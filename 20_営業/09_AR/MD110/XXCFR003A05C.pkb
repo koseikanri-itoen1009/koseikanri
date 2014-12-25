@@ -7,7 +7,7 @@ AS
  * Description      : 請求金額一覧表出力
  * MD.050           : MD050_CFR_003_A05_請求金額一覧表出力
  * MD.070           : MD050_CFR_003_A05_請求金額一覧表出力
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/04/28    1.3  SCS 萱原 伸哉    [障害T1_0742] 伝票日付セット値修正対応
  *  2009/10/02    1.4  SCS 安川 智博    共通課題「IE535」対応
  *  2009/12/24    1.5  SCS 廣瀬 真佐人  [障害本稼動_00606] 期間中の顧客階層変更対応
+ *  2014/11/05    1.6  SCSK 竹下 昭範   E_本稼動_12310 対応
  *
  *****************************************************************************************/
 --
@@ -146,6 +147,17 @@ AS
 --
   cv_status_yes      CONSTANT VARCHAR2(1)   := '1';         -- 有効ステータス（1：有効）
   cv_status_no       CONSTANT VARCHAR2(1)   := '0';         -- 有効ステータス（0：無効）
+-- ADD Ver1.6 Start
+  cv_out_0           CONSTANT VARCHAR2(1)   := '0';         -- 入金基準
+  cv_out_1           CONSTANT VARCHAR2(1)   := '1';         -- 請求基準
+  cv_cust_kbn_10     CONSTANT VARCHAR2(2)   := '10';        -- 顧客区分：10
+  cv_cust_kbn_14     CONSTANT VARCHAR2(2)   := '14';        -- 顧客区分：14
+  cv_site_code_ship  CONSTANT VARCHAR2(7)   := 'SHIP_TO';   -- 使用目的：SHIP_TO
+  cv_site_code_bill  CONSTANT VARCHAR2(7)   := 'BILL_TO';   -- 使用目的：BILL_TO
+  cv_status_a        CONSTANT VARCHAR2(1)   := 'A';         -- ステータス：有効(A)
+  cv_relate_bill     CONSTANT VARCHAR2(1)   := '1';         -- 顧客関連：請求関連(1)
+  cv_acct_name_f     CONSTANT VARCHAR2(1)   := '0';         -- 顧客名称取得関数パラメータ(全角)
+-- ADD Ver1.6 End
 --
   cv_format_date_ymd    CONSTANT VARCHAR2(8)  := 'YYYYMMDD';             -- 日付フォーマット（年月日）
   cv_format_date_ymdhns CONSTANT VARCHAR2(25) := 'YYYY/MM/DD HH24:MI:SS';     -- 日付フォーマット（年月日時分秒
@@ -160,6 +172,9 @@ AS
   -- ===============================
 --
   gd_target_date        DATE;                                      -- パラメータ．締日（データ型変換用）
+-- ADD Ver1.6 Start
+  gv_output_standard    VARCHAR2(8);                               -- パラメータ. 出力基準名
+-- ADD Ver1.6 End
   gn_org_id             NUMBER;                                    -- 組織ID
   gn_set_of_bks_id      NUMBER;                                    -- 会計帳簿ID
   gv_output_date        VARCHAR2(19);                              -- 出力日
@@ -171,6 +186,9 @@ AS
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
+-- ADD Ver1.6 Start
+    iv_output_kbn          IN      VARCHAR2,         -- 出力基準
+-- ADD Ver1.6 End
     iv_target_date         IN      VARCHAR2,         -- 締日
     iv_bill_cust_code      IN      VARCHAR2,         -- 売掛コード１(請求書)
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
@@ -194,6 +212,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- ADD Ver1.6 Start
+    cv_lookup_output_kbn  CONSTANT VARCHAR2(30) := 'XXCFR1_INV_OUT_STANDARD'; -- 請求書一覧出力基準
+-- ADD Ver1.6 End
 --
     -- *** ローカル変数 ***
 --
@@ -231,8 +252,13 @@ AS
 --
     -- ログ出力
     xxcfr_common_pkg.put_log_param( iv_which        => cv_file_type_log                            -- ログ出力
-                                   ,iv_conc_param1  => TO_CHAR(gd_target_date,cv_format_date_ymds) -- コンカレントパラメータ１
-                                   ,iv_conc_param2  => iv_bill_cust_code                                 -- コンカレントパラメータ２
+-- Modifiy Ver1.6 Start
+--                                   ,iv_conc_param1  => TO_CHAR(gd_target_date,cv_format_date_ymds) -- コンカレントパラメータ１
+--                                   ,iv_conc_param2  => iv_bill_cust_code                                 -- コンカレントパラメータ２
+                                   ,iv_conc_param1  => iv_output_kbn                               -- コンカレントパラメータ１
+                                   ,iv_conc_param2  => TO_CHAR(gd_target_date,cv_format_date_ymds) -- コンカレントパラメータ２
+                                   ,iv_conc_param3  => iv_bill_cust_code                           -- コンカレントパラメータ３
+-- Modifiy Ver1.6 End
                                    ,ov_errbuf       => ov_errbuf                                   -- エラー・メッセージ
                                    ,ov_retcode      => ov_retcode                                  -- リターン・コード
                                    ,ov_errmsg       => ov_errmsg);                                 -- ユーザー・エラー・メッセージ 
@@ -240,6 +266,23 @@ AS
     IF (lv_retcode <> cv_status_normal) THEN
       RAISE global_api_expt;
     END IF;
+--
+-- ADD Ver1.6 Start
+    -- パラメータ．出力基準の名称を取得する
+    BEGIN
+      SELECT flva.description  AS output_standard
+        INTO gv_output_standard
+        FROM fnd_lookup_values  flva
+       WHERE flva.lookup_code   = iv_output_kbn
+         AND flva.lookup_type   = cv_lookup_output_kbn  -- 請求書一覧出力基準
+         AND flva.language      = USERENV( 'LANG' )
+         AND flva.enabled_flag  = cv_enabled_yes
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        gv_output_standard := NULL;
+    END;
+-- ADD Ver1.6 End
 --
   EXCEPTION
     -- *** 共通関数例外ハンドラ ***
@@ -539,6 +582,9 @@ AS
    * Description      : ワークテーブルデータ登録 (A-5)
    ***********************************************************************************/
   PROCEDURE insert_work_table(
+-- ADD Ver1.6 Start
+    iv_output_kbn           IN   VARCHAR2,            -- 出力基準
+-- ADD Ver1.6 End
     iv_target_date          IN   VARCHAR2,            -- 締日
     iv_bill_cust_code       IN   VARCHAR2,            -- 売掛コード１(請求書)
     ov_errbuf               OUT  VARCHAR2,            -- エラー・メッセージ           --# 固定 #
@@ -573,6 +619,26 @@ AS
     lv_func_status  VARCHAR2(1);    -- SVF帳票共通関数(0件出力メッセージ)終了ステータス
 --
     -- *** ローカル・カーソル ***
+-- Add Ver1.6 Start
+    -- 合計金額算出用カーソル
+    CURSOR upd_rep_inv_cur
+    IS
+      SELECT xrsi.cutoff_date                         cutoff_date             -- 締日
+            ,xrsi.bill_cust_code                      bill_cust_code          -- 請求先顧客
+            ,xrsi.bill_location_code                  bill_location_code      -- 拠点
+            ,SUM(xrsi.ship_amount + xrsi.tax_amount)  inv_amount_includ_tax   -- 請求額合計
+            ,SUM(xrsi.ship_amount)                    inv_amount_no_tax       -- 本体額合計
+            ,SUM(xrsi.tax_amount)                     tax_amount_sum          -- 税額合計
+      FROM   xxcfr_rep_invoice_list xrsi       -- 請求金額一覧表帳票ワークテーブル
+      WHERE  xrsi.request_id = cn_request_id   -- 要求ID
+      GROUP BY
+             xrsi.cutoff_date
+            ,xrsi.bill_cust_code
+            ,xrsi.bill_location_code
+      ;
+--
+    lt_upd_rep_inv_rec    upd_rep_inv_cur%ROWTYPE;
+-- Add Ver1.6 End
 --
   BEGIN
 --
@@ -627,28 +693,89 @@ AS
       ,request_id             -- 要求ID
       ,program_application_id -- コンカレント・プログラム・アプリケーションID
       ,program_id             -- コンカレント・プログラムID
-      ,program_update_date  ) -- プログラム更新日
-    SELECT cv_pkg_name,                                    -- 帳票ID
+-- Modify Ver1.6 Start
+--      ,program_update_date  ) -- プログラム更新日
+      ,program_update_date    -- プログラム更新日
+      ,inv_amount_no_tax      -- 税抜請求額合計
+      ,tax_amount_sum         -- 税額合計
+      ,output_standard        -- 出力基準
+    )
+-- Modify Ver1.6 End
+-- Modify Ver1.6 Start
+--    SELECT cv_pkg_name,                                    -- 帳票ID
+    SELECT /*+ LEADING(xih)
+               USE_NL(xih xil flv ffvs ffvb2 xxca)
+               INDEX(xih XXCFR_INVOICE_HEADERS_U01)
+           */
+           cv_pkg_name,                                    -- 帳票ID
+-- Modify Ver1.6 End
            gv_output_date,                                 -- 出力日
            xih.cutoff_date           cutoff_date,           -- 締日
-           xih.payment_cust_code     payment_cust_code,     -- 親請求先顧客コード
--- Modify 2009.10.02 Ver1.4 Start
-           --xih.bill_location_code    bill_location_code,    -- 請求拠点コード
-           xxca.receiv_base_code     bill_location_code,    -- 入金拠点コード
-           --xih.bill_location_name    bill_location_name,    -- 請求拠点名
-           ffvb.description          bill_location_name,    -- 入金拠点名
--- Modify 2009.10.02 Ver1.4 End
+-- Modify Ver1.6 Start
+--           xih.payment_cust_code     payment_cust_code,     -- 親請求先顧客コード
+---- Modify 2009.10.02 Ver1.4 Start
+--           --xih.bill_location_code    bill_location_code,    -- 請求拠点コード
+--           xxca.receiv_base_code     bill_location_code,    -- 入金拠点コード
+--           --xih.bill_location_name    bill_location_name,    -- 請求拠点名
+--           ffvb.description          bill_location_name,    -- 入金拠点名
+---- Modify 2009.10.02 Ver1.4 End
+           xxca.bill_cred_rec_code1  payment_cust_code,     -- 親請求先顧客コード
+           CASE
+             -- パラメータ.出力基準='0'(入金拠点)の場合
+             WHEN iv_output_kbn = cv_out_0 THEN
+               xxca.receiv_base_code                            -- 入金
+             -- 上記以外の場合
+             ELSE
+               xxca.bill_base_code                              -- 請求
+           END                       bill_location_code,        -- 拠点コード
+           CASE
+             -- パラメータ.出力基準='0'(入金拠点)の場合
+             WHEN iv_output_kbn = cv_out_0 THEN
+               ffvb.description                                 -- 入金
+             -- 上記以外の場合
+             ELSE
+               ffvb2.description                                -- 請求
+           END                       bill_location_name ,       -- 拠点名
+-- Modify Ver1.6 End
            flv.meaning               tax_type,              -- 消費税区分名
-           xih.bill_cust_code        bill_cust_code,        -- 請求先顧客コード（ソート順４）
-           xih.bill_cust_name        bill_cust_name,        -- 請求先顧客名
+-- Modify Ver1.6 Start
+--           xih.bill_cust_code        bill_cust_code,        -- 請求先顧客コード（ソート順４）
+--           xih.bill_cust_name        bill_cust_name,        -- 請求先顧客名
+           xxca.bill_cust_code       bill_cust_code,        -- 請求先顧客コード（ソート順４）
+           -- 顧客名称取得関数から全角文字で顧客名取得
+           xxcfr_common_pkg.get_cust_account_name(
+                              xxca.bill_cust_code
+                             ,cv_acct_name_f)
+                                     bill_cust_name,        -- 請求先顧客名
+-- Modify Ver1.6 End
 -- Modify 2009.10.02 Ver1.4 Start
            --ffvb.attribute9           bill_area_code        ,-- 請求拠点本部コード
+-- Modify Ver1.6 Start
+--           CASE
+--           WHEN NVL(TO_DATE(ffvb.attribute6,'YYYYMMDD'),gd_target_date) <= gd_target_date THEN
+--             ffvb.attribute9
+--           ELSE
+--             ffvb.attribute7
+--           END                       bill_area_code        ,-- 入金拠点本部コード
            CASE
-           WHEN NVL(TO_DATE(ffvb.attribute6,'YYYYMMDD'),gd_target_date) <= gd_target_date THEN
-             ffvb.attribute9
-           ELSE
-             ffvb.attribute7
+             -- パラメータ.出力基準='0'(入金拠点)の場合
+             WHEN iv_output_kbn = cv_out_0 THEN
+               CASE
+                 WHEN NVL(TO_DATE(ffvb.attribute6 ,'YYYYMMDD') ,gd_target_date) <= gd_target_date THEN
+                   ffvb.attribute9
+                 ELSE
+                   ffvb.attribute7
+               END
+             -- 上記以外の場合
+             ELSE
+               CASE
+                 WHEN NVL(TO_DATE(ffvb2.attribute6 ,'YYYYMMDD') ,gd_target_date) <= gd_target_date THEN
+                   ffvb2.attribute9
+                 ELSE
+                   ffvb2.attribute7
+               END
            END                       bill_area_code        ,-- 入金拠点本部コード
+-- Modify Ver1.6 End
 -- Modify 2009.10.02 Ver1.4 End
            xih.inv_amount_includ_tax inv_amount_includ_tax, -- 請求額合計
            xih.tax_gap_amount        tax_gap_amount ,       -- 税差額
@@ -682,12 +809,60 @@ AS
            cn_request_id,                                  -- 要求ID
            cn_program_application_id,                      -- コンカレント・プログラム・アプリケーションID
            cn_program_id,                                  -- コンカレント・プログラムID
-           cd_program_update_date                          -- プログラム更新日
+-- Modify Ver1.6 Start
+--           cd_program_update_date                          -- プログラム更新日
+           cd_program_update_date,                         -- プログラム更新日
+           xih.inv_amount_no_tax       inv_amount_no_tax,  -- 本体額合計
+           xih.tax_amount_sum          tax_amount_sum,     -- 税額合計
+           gv_output_standard          output_standard     -- 出力基準
+-- Modify Ver1.6 End
     FROM xxcfr_invoice_headers          xih,  -- 請求ヘッダ
          xxcfr_invoice_lines            xil,  -- 請求明細
--- Modify 2009.10.02 Ver1.4 Start
-         xxcmm_cust_accounts            xxca, -- 顧客追加情報
--- Modify 2009.10.02 Ver1.4 End
+-- Modify Ver1.6 Start
+---- Modify 2009.10.02 Ver1.4 Start
+--         xxcmm_cust_accounts            xxca, -- 顧客追加情報
+---- Modify 2009.10.02 Ver1.4 End
+         (SELECT /*+ USE_NL(hca10 hcas10 hcsu10 xca hca14 hcas14 hcsu14 hcp) */
+                 hca10.account_number    AS ship_cust_code      -- 出荷先顧客コード
+                ,hca14.account_number    AS bill_cust_code      -- 請求先顧客コード
+                ,xca.receiv_base_code    AS receiv_base_code    -- 入金拠点コード
+                ,xca.bill_base_code      AS bill_base_code      -- 請求拠点コード
+                ,hcsu14.attribute4       AS bill_cred_rec_code1 -- 売掛コード１
+          FROM   hz_cust_accounts       hca10
+                ,hz_cust_acct_sites_all hcas10
+                ,hz_cust_site_uses_all  hcsu10
+                ,xxcmm_cust_accounts    xca
+                ,hz_cust_accounts       hca14
+                ,hz_cust_acct_sites_all hcas14
+                ,hz_cust_site_uses_all  hcsu14
+                ,hz_customer_profiles   hcp
+          WHERE  hca10.cust_account_id      = hcas10.cust_account_id
+            AND  hca10.customer_class_code  = cv_cust_kbn_10       -- 顧客区分：10
+            AND  hcas10.cust_acct_site_id   = hcsu10.cust_acct_site_id
+            AND  hcas10.org_id              = gn_org_id
+            AND  hcsu10.org_id              = gn_org_id
+            AND  hcas14.org_id              = gn_org_id
+            AND  hcsu14.org_id              = gn_org_id
+            AND  hcsu10.site_use_code       = cv_site_code_ship    -- 使用目的：SHIP_TO
+            AND  hcsu10.bill_to_site_use_id = hcsu14.site_use_id
+            AND  hcsu14.site_use_code       = cv_site_code_bill    -- 使用目的：BILL_TO
+            AND  hcsu14.cust_acct_site_id   = hcas14.cust_acct_site_id
+            AND  hcas14.cust_account_id     = hca14.cust_account_id
+            AND  hca14.cust_account_id      = xca.customer_id
+            AND  hcsu14.site_use_id         = hcp.site_use_id
+            AND  hca14.cust_account_id      = hcp.cust_account_id
+            AND  hcp.cons_inv_flag          = cv_enabled_yes       -- 一括請求書フラグ「Y」
+            AND (hca14.customer_class_code  = cv_cust_kbn_14       -- 顧客区分：14
+            AND  EXISTS (
+                   SELECT /*+ USE_NL(hcar) */ 'X'
+                   FROM  hz_cust_acct_relate_all hcar
+                   WHERE hcar.cust_account_id         = hca14.cust_account_id
+                     AND hcar.related_cust_account_id = hca10.cust_account_id
+                     AND hcar.attribute1              = cv_relate_bill -- 請求関連：1
+                     AND hcar.status                  = cv_status_a    -- 有効：A
+                ) OR hca14.customer_class_code  = cv_cust_kbn_10)
+         )                              xxca,  -- 顧客追加情報ビュー
+-- Modify Ver1.6 End
          (SELECT ffvv.flex_value flex_value
 -- Modify 2009.10.02 Ver1.4 Start
                 ,ffvv.description
@@ -699,7 +874,19 @@ AS
                fnd_flex_values_vl  ffvv
           WHERE ffvs.flex_value_set_name = cv_value_set_name
             AND ffvs.flex_value_set_id = ffvv.flex_value_set_id
-         )                               ffvb, -- 請求拠点値セット値ビュー
+         )                               ffvb, -- 入金拠点値セット値ビュー
+-- ADD Ver1.6 Start
+         (SELECT ffvv.flex_value  AS flex_value   -- 部門
+                ,ffvv.description AS description  -- 部門名
+                ,ffvv.attribute6  AS attribute6   -- 適用開始日
+                ,ffvv.attribute7  AS attribute7   -- 本部コード(旧)
+                ,ffvv.attribute9  AS attribute9   -- 本部コード(新)
+          FROM   fnd_flex_value_sets  ffvs
+                ,fnd_flex_values_vl   ffvv
+          WHERE  ffvs.flex_value_set_name = cv_value_set_name
+            AND  ffvs.flex_value_set_id   = ffvv.flex_value_set_id
+         )                               ffvb2, -- 請求拠点値セット値ビュー
+-- ADD Ver1.6 End
          (SELECT ffvv.flex_value flex_value
 -- Modify 2009.10.02 Ver1.4 Start
                 ,ffvv.attribute6
@@ -720,64 +907,131 @@ AS
          )                               flv  -- 参照表（消費税区分）
     WHERE xih.invoice_id = xil.invoice_id  -- 一括請求書ID
       AND xih.cutoff_date = gd_target_date -- パラメータ．締日
-      AND EXISTS (SELECT 'X'
--- Modify 2009.10.02 Ver1.4 Start
--- Modify 2009.12.24 Ver1.5 Start
---                  FROM xxcfr_bill_customers_v xb,                      -- 請求先顧客ビュー
-                  FROM xxcfr_all_bill_customers_v xb,                     -- 顧客ビュー
--- Modify 2009.12.24 Ver1.5 End
--- Modify 2009.10.02 Ver1.4 Start
-                       xxcmm_cust_accounts    xca                      -- 顧客追加情報
--- Modify 2009.10.02 Ver1.4 End
--- Modify 2009.12.24 Ver1.5 Start
---                  WHERE xih.bill_cust_code = xb.bill_customer_code
+-- Delete Ver1.6 Start
+--      AND EXISTS (SELECT 'X'
+--                    'X'
 ---- Modify 2009.10.02 Ver1.4 Start
---                    AND xca.customer_code = xb.bill_customer_code
+---- Modify 2009.12.24 Ver1.5 Start
+----                  FROM xxcfr_bill_customers_v xb,                      -- 請求先顧客ビュー
+--                  FROM xxcfr_all_bill_customers_v xb,                     -- 顧客ビュー
+---- Modify 2009.12.24 Ver1.5 End
+---- Modify 2009.10.02 Ver1.4 Start
+--                       xxcmm_cust_accounts    xca                      -- 顧客追加情報
 ---- Modify 2009.10.02 Ver1.4 End
-                  WHERE xih.bill_cust_code = xb.customer_code
-                    AND xca.customer_code = xb.customer_code
--- Modify 2009.12.24 Ver1.5 End
-                    AND xb.cons_inv_flag = cv_enabled_yes             -- 一括請求書発行フラグ＝有効
--- Modify 2009.12.24 Ver1.5 Start
---                    AND (xb.bill_customer_code = NVL(iv_bill_cust_code,xb.bill_customer_code ) ) -- 請求先顧客コード
-                    AND (xb.customer_code = NVL(iv_bill_cust_code,xb.customer_code ) ) -- 請求先顧客コード
--- Modify 2009.12.24 Ver1.5 End
-                    AND ( (gv_inv_all_flag = cv_status_yes) OR
-                          (gv_inv_all_flag = cv_status_no AND 
--- Modify 2009.10.02 Ver1.4 Start
-                           --xb.bill_base_code = gt_user_dept) ) )      -- 請求拠点コード
-                           xca.receiv_base_code = gt_user_dept) ) )      -- 売掛管理先顧客の入金拠点コード
+---- Modify 2009.12.24 Ver1.5 Start
+----                  WHERE xih.bill_cust_code = xb.bill_customer_code
+------ Modify 2009.10.02 Ver1.4 Start
+----                    AND xca.customer_code = xb.bill_customer_code
+------ Modify 2009.10.02 Ver1.4 End
+--                  WHERE xih.bill_cust_code = xb.customer_code
+--                    AND xca.customer_code = xb.customer_code
+---- Modify 2009.12.24 Ver1.5 End
+--                    AND xb.cons_inv_flag = cv_enabled_yes             -- 一括請求書発行フラグ＝有効
+---- Modify 2009.12.24 Ver1.5 Start
+----                    AND (xb.bill_customer_code = NVL(iv_bill_cust_code,xb.bill_customer_code ) ) -- 請求先顧客コード
+--                    AND (xb.customer_code = NVL(iv_bill_cust_code,xb.customer_code ) ) -- 請求先顧客コード
+---- Modify 2009.12.24 Ver1.5 End
+--                    AND ( (gv_inv_all_flag = cv_status_yes) OR
+--                          (gv_inv_all_flag = cv_status_no AND 
+---- Modify 2009.10.02 Ver1.4 Start
+--                           --xb.bill_base_code = gt_user_dept) ) )      -- 請求拠点コード
+--                           xca.receiv_base_code = gt_user_dept) ) )      -- 売掛管理先顧客の入金拠点コード
+-- Delete Ver1.6 End
 -- Modify 2009.10.02 Ver1.4 End
       AND xih.tax_type                = flv.lookup_code
 -- Modify 2009.10.02 Ver1.4 Start
-      AND xih.bill_cust_code = xxca.customer_code
+-- Modify Ver1.6 Start
+--      AND xih.bill_cust_code = xxca.customer_code
+      AND xil.ship_cust_code = xxca.ship_cust_code  -- 出荷先顧客コード
+      AND xxca.bill_cust_code = NVL(iv_bill_cust_code, xxca.bill_cust_code )
+      AND ( (gv_inv_all_flag = cv_status_yes) OR
+            (gv_inv_all_flag = cv_status_no AND 
+             gt_user_dept    = CASE
+                                 -- パラメータ.出力基準='0'(入金拠点)の場合
+                                 WHEN iv_output_kbn = cv_out_0 THEN
+                                   xxca.receiv_base_code
+                                 -- 上記以外の場合
+                                 ELSE
+                                   xxca.bill_base_code
+                               END
+                            ) )      -- 売掛管理先顧客の入金or請求拠点コード
+-- Modify Ver1.6 End
       AND ffvb.flex_value(+) = xxca.receiv_base_code
       --AND ffvb.flex_value(+) = xih.bill_location_code
 -- Modify 2009.10.02 Ver1.4 End
       AND ffvs.flex_value(+) = xil.sold_location_code
+-- ADD Ver1.6 Start
+      AND ffvb2.flex_value(+) = xxca.bill_base_code -- 請求拠点コード
+-- ADD Ver1.6 End
       AND xih.set_of_books_id = gn_set_of_bks_id
       AND xih.org_id = gn_org_id
     GROUP BY  cv_pkg_name,
               gv_output_date,
               xih.cutoff_date           , -- 締日
-              xih.payment_cust_code     , -- 親請求先顧客コード
--- Modify 2009.10.02 Ver1.4 Start
-              --xih.bill_location_code    , -- 請求拠点コード
-              xxca.receiv_base_code     , -- 入金拠点コード
-              --xih.bill_location_name    , -- 請求拠点名
-              ffvb.description          , -- 入金拠点名
--- Modify 2009.10.02 Ver1.4 End
+-- Modify Ver1.6 Start
+--              xih.payment_cust_code     , -- 親請求先顧客コード
+---- Modify 2009.10.02 Ver1.4 Start
+--              --xih.bill_location_code    , -- 請求拠点コード
+--              xxca.receiv_base_code     , -- 入金拠点コード
+--              --xih.bill_location_name    , -- 請求拠点名
+--              ffvb.description          , -- 入金拠点名
+---- Modify 2009.10.02 Ver1.4 End
+              xxca.bill_cred_rec_code1,    -- 親請求先顧客コード
+              CASE
+                -- パラメータ.出力基準='0'(入金拠点)の場合
+                WHEN iv_output_kbn = cv_out_0 THEN
+                  xxca.receiv_base_code
+                -- 上記以外の場合
+                ELSE
+                  xxca.bill_base_code
+              END                       , -- 拠点コード
+              CASE
+                -- パラメータ.出力基準='0'(入金拠点)の場合
+                WHEN iv_output_kbn = cv_out_0 THEN
+                  ffvb.description
+                -- 上記以外の場合
+                ELSE
+                  ffvb2.description
+              END                       , -- 拠点名
+-- Modify Ver1.6 End
               flv.meaning               , -- 消費税区分名
-              xih.bill_cust_code        , -- 請求先顧客コード
-              xih.bill_cust_name        , -- 請求先顧客名
+-- Modify Ver1.6 Start
+--              xih.bill_cust_code        , -- 請求先顧客コード
+--              xih.bill_cust_name        , -- 請求先顧客名
+              xxca.bill_cust_code       , -- 請求先顧客コード
+              xxcfr_common_pkg.get_cust_account_name(
+                                 xxca.bill_cust_code
+                                ,cv_acct_name_f)
+                                        , -- 請求先顧客名
+-- Modify Ver1.6 End
 -- Modify 2009.10.02 Ver1.4 Start
               --ffvb.attribute9           , -- 請求拠点本部コード
-              CASE
-              WHEN NVL(TO_DATE(ffvb.attribute6,'YYYYMMDD'),gd_target_date) <= gd_target_date THEN
-                ffvb.attribute9
-              ELSE
-                ffvb.attribute7
-              END                       , -- 入金拠点本部コード
+-- Modify Ver1.6 Start
+--              CASE
+--              WHEN NVL(TO_DATE(ffvb.attribute6,'YYYYMMDD'),gd_target_date) <= gd_target_date THEN
+--                ffvb.attribute9
+--              ELSE
+--                ffvb.attribute7
+--              END                       , -- 入金拠点本部コード
+           CASE
+             -- パラメータ.出力基準='0'(入金拠点)の場合
+             WHEN iv_output_kbn = cv_out_0 THEN
+               CASE
+                 WHEN NVL(TO_DATE(ffvb.attribute6 ,'YYYYMMDD') ,gd_target_date) <= gd_target_date THEN
+                   ffvb.attribute9
+                 ELSE
+                   ffvb.attribute7
+               END
+             -- 上記以外の場合
+             ELSE
+               CASE
+                 WHEN NVL(TO_DATE(ffvb2.attribute6 ,'YYYYMMDD') ,gd_target_date) <= gd_target_date THEN
+                   ffvb2.attribute9
+                 ELSE
+                   ffvb2.attribute7
+               END
+           END                          , -- 入金拠点本部コード
+-- Modify Ver1.6 End
 -- Modify 2009.10.02 Ver1.4 End
               xih.inv_amount_includ_tax , -- 請求額合計
               xih.tax_gap_amount        , -- 税差額
@@ -798,12 +1052,46 @@ AS
               xil.slip_num              , -- 伝票no
 -- Modify 2009.04.28 Ver1.3 Start              
 --              xil.delivery_date           -- 伝票日付
-              NVL(xil.acceptance_date , xil.delivery_date)  -- 伝票日付
--- Modify 2009.04.28 Ver1.3 End
+-- Modify Ver1.6 Start
+--              NVL(xil.acceptance_date , xil.delivery_date)  -- 伝票日付
+---- Modify 2009.04.28 Ver1.3 End
+              NVL(xil.acceptance_date , xil.delivery_date)
+                                        , -- 伝票日付
+              xih.inv_amount_no_tax     , -- 本体額合計
+              xih.tax_amount_sum        , -- 税額合計
+              gv_output_standard          -- 出力基準
+-- Modify Ver1.6 End
       ;
 --
     -- 対象件数
     gn_target_cnt := SQL%ROWCOUNT;
+--
+-- Add Ver1.6 Start
+      --***************************************************
+      -- 合計額更新
+      --***************************************************
+      OPEN   upd_rep_inv_cur;
+      --
+      LOOP
+        FETCH upd_rep_inv_cur INTO lt_upd_rep_inv_rec;
+        EXIT WHEN upd_rep_inv_cur%NOTFOUND;
+        -- 
+        -- 改ページ条件で更新する
+        UPDATE xxcfr_rep_invoice_list xril
+        SET    inv_amount_includ_tax  = lt_upd_rep_inv_rec.inv_amount_includ_tax
+              ,inv_amount_no_tax      = lt_upd_rep_inv_rec.inv_amount_no_tax
+              ,tax_amount_sum         = lt_upd_rep_inv_rec.tax_amount_sum
+        WHERE  xril.request_id          =  cn_request_id
+          AND  xril.cutoff_date         =  lt_upd_rep_inv_rec.cutoff_date
+          AND  xril.bill_cust_code      =  lt_upd_rep_inv_rec.bill_cust_code
+          AND  xril.bill_location_code  =  lt_upd_rep_inv_rec.bill_location_code
+        ;
+        --
+      END LOOP;
+      --
+      CLOSE  upd_rep_inv_cur;
+      --
+-- Add Ver1.6 End
 --
       -- 登録データが１件も存在しない場合、０件メッセージレコード追加
       IF ( gn_target_cnt = 0 ) THEN
@@ -812,6 +1100,9 @@ AS
           output_date                  , -- 出力日
           cutoff_date                  , -- 締日
           bill_cust_code               , -- 請求先顧客コード
+-- ADD Ver1.6 Start
+          output_standard              , -- 出力基準
+-- ADD Ver1.6 End
           data_empty_message           , -- 0件メッセージ
           created_by                   , -- 作成者
           creation_date                , -- 作成日
@@ -826,6 +1117,9 @@ AS
           gv_output_date               , -- 出力日
           gd_target_date               , -- 締日
           iv_bill_cust_code            , -- 請求先顧客コード
+-- ADD Ver1.6 Start
+          gv_output_standard           , -- 出力基準
+-- ADD Ver1.6 End
           lv_no_data_msg               , -- 0件メッセージ
           cn_created_by                , -- 作成者
           cd_creation_date             , -- 作成日
@@ -850,7 +1144,13 @@ AS
 --
     EXCEPTION
       WHEN OTHERS THEN  -- 登録時エラー
-        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
+-- Add Ver1.6 Start
+        IF ( upd_rep_inv_cur%ISOPEN ) THEN
+            CLOSE upd_rep_inv_cur;
+        END IF;
+        --
+ -- Add Ver1.6 End
+       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
                                                        ,cv_msg_003a05_013    -- テーブル登録エラー
                                                        ,cv_tkn_table         -- トークン'TABLE'
                                                        ,xxcfr_common_pkg.get_table_comment(cv_table))
@@ -1142,6 +1442,9 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- ADD Ver1.6 Start
+   iv_output_kbn           IN      VARCHAR2,         -- 出力基準
+-- ADD Ver1.6 End
     iv_target_date         IN      VARCHAR2,         -- 締日
     iv_bill_cust_code      IN      VARCHAR2,         -- 請求先顧客コード
     ov_errbuf              OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
@@ -1197,7 +1500,11 @@ AS
     --  初期処理(A-1)
     -- =====================================================
     init(
-       iv_target_date         -- 締日
+-- Modify Ver1.6 Start
+--       iv_target_date         -- 締日
+       iv_output_kbn          -- 出力基準
+      ,iv_target_date         -- 締日
+-- Modify Ver1.6 End
       ,iv_bill_cust_code            -- 売掛コード１(請求書)
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
@@ -1247,7 +1554,11 @@ AS
     --  ワークテーブルデータ登録 (A-5)
     -- =====================================================
     insert_work_table(
-       iv_target_date         -- 締日
+-- Modify Ver1.6 Start
+--       iv_target_date         -- 締日
+       iv_output_kbn          -- 出力基準
+      ,iv_target_date         -- 締日
+-- Modify Ver1.6 End
       ,iv_bill_cust_code            -- 売掛コード１(請求書)
       ,lv_errbuf              -- エラー・メッセージ           --# 固定 #
       ,lv_retcode             -- リターン・コード             --# 固定 #
@@ -1319,6 +1630,9 @@ AS
   PROCEDURE main(
     errbuf                 OUT     VARCHAR2,         -- エラー・メッセージ  #固定#
     retcode                OUT     VARCHAR2,         -- エラーコード        #固定#
+-- ADD Ver1.6 Start
+    iv_output_kbn          IN      VARCHAR2,         -- 出力基準
+-- ADD Ver1.6 End
     iv_target_date         IN      VARCHAR2,         -- 締日
     iv_bill_cust_code      IN      VARCHAR2          -- 売掛コード１(請求書)
   )
@@ -1376,7 +1690,11 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       iv_target_date -- 締日
+-- Modify Ver1.6 Start
+--       iv_target_date -- 締日
+       iv_output_kbn  -- 出力基準
+      ,iv_target_date -- 締日
+-- Modify Ver1.6 End
       ,iv_bill_cust_code    -- 売掛コード１(請求書)
       ,lv_errbuf      -- エラー・メッセージ           --# 固定 #
       ,lv_retcode     -- リターン・コード             --# 固定 #
