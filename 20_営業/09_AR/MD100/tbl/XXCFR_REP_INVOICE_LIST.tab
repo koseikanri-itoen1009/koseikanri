@@ -5,13 +5,14 @@ CREATE TABLE xxcfr.xxcfr_rep_invoice_list
  * Description     : ¿‹‹àŠzˆê——•\’ •[ƒ[ƒNƒe[ƒuƒ‹
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : MD.050_LDM_CFR_001
- * Version         : 1.0
+ * Version         : 1.1
  * 	
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2008/10/31    1.0  SCS ‘åì Œb    ‰‰ñì¬
+ *  2014/10/30    1.1  SCSK ’|‰º º”Í E_–{‰Ò“®_12310‘Î‰
  ************************************************************************/
 ( 
   report_id                    VARCHAR2(20)                   ,     -- ’ •[ID
@@ -37,6 +38,11 @@ CREATE TABLE xxcfr.xxcfr_rep_invoice_list
   ship_amount                  NUMBER                         ,     -- ‹àŠz
   tax_amount                   NUMBER                         ,     -- ÅŠz
   data_empty_message           VARCHAR2(100)                  ,     -- 0ŒƒƒbƒZ[ƒW
+-- 2014/10/30 Ver1.1 ADD Start
+  output_standard              VARCHAR2(8)                    ,     -- o—ÍŠî€
+  inv_amount_no_tax            NUMBER                         ,     -- Å”²¿‹Šz‡Œv
+  tax_amount_sum               NUMBER                         ,     -- ÅŠz‡Œv
+-- 2014/10/30 Ver1.1 ADD End
   created_by                   NUMBER(15)    NOT NULL         ,     -- ì¬Ò
   creation_date                DATE          NOT NULL         ,     -- ì¬“ú
   last_updated_by              NUMBER(15)    NOT NULL         ,     -- ÅIXVÒ
@@ -72,6 +78,11 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.delivery_date             IS '”[•
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ship_amount               IS '‹àŠz';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_amount                IS 'ÅŠz';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.data_empty_message        IS '0ŒƒƒbƒZ[ƒW';
+-- 2014/10/14 Ver1.1 ADD Start
+COMMENT ON COLUMN xxcvr.xxcfr_rep_invoice_list.output_standard           IS 'o—ÍŠî€';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.inv_amount_no_tax         IS 'Å”²¿‹Šz‡Œv';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_amount_sum            IS 'ÅŠz‡Œv';
+-- 2014/10/14 Ver1.1 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.created_by                IS 'ì¬Ò';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.creation_date             IS 'ì¬“ú';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.last_updated_by           IS 'ÅIXVÒ';
