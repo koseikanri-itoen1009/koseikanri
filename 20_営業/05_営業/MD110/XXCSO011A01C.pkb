@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.36
+ * Version          : 1.37
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -115,6 +115,7 @@ AS
  *                                        ・自販機、ショーケース廃棄決済申請チェックの条件変更
  *  2014-05-13    1.35 K.Nakamura        【E_本稼動_11853】ベンダー購入対応
  *  2014-08-29    1.36 S.Yamashita       【E_本稼動_11719】ベンダー購入対応(PH2)
+ *  2014-12-15    1.37 K.Kanada          【E_本稼動_12775】廃棄決裁の条件変更
  *
  *****************************************************************************************/
   --
@@ -4318,15 +4319,21 @@ AS
 /* 2014.04.30 T.Nakano E_本稼動_11770対応 START */
         -- 処理区分が「発注依頼申請」の場合
         IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
-          -- 『リース区分が「原契約」かつ物件ステータスが「中途解約(自己都合)」かつ証書受領フラグが「受領済」』か、
-          -- 『リース区分が「原契約」かつ物件ステータスが「中途解約(保険対応)」かつ証書受領フラグが「受領済」』
+          -- 物件ステータスが「中途解約(自己都合)」かつ証書受領フラグが「受領済」』か、
+          -- 物件ステータスが「中途解約(保険対応)」かつ証書受領フラグが「受領済」』
           IF (
-              (     ( lt_lease_type           = cv_ls_tp_lease_cntrctd     )
-                AND ( lv_object_status        = cv_obj_sts_canceled_cnvnnc )
+/* 2014-12-15 K.Kanada E_本稼動_12775対応 START */
+--              (     ( lt_lease_type           = cv_ls_tp_lease_cntrctd     )
+--                AND ( lv_object_status        = cv_obj_sts_canceled_cnvnnc )
+              (     ( lv_object_status        = cv_obj_sts_canceled_cnvnnc )
+/* 2014-12-15 K.Kanada E_本稼動_12775対応 END   */
                 AND ( lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd    ) )
             OR
-              (     ( lt_lease_type           = cv_ls_tp_lease_cntrctd        )
-                AND ( lv_object_status        = cv_obj_sts_canceled_insurance )
+/* 2014-12-15 K.Kanada E_本稼動_12775対応 START */
+--              (     ( lt_lease_type           = cv_ls_tp_lease_cntrctd        )
+--                AND ( lv_object_status        = cv_obj_sts_canceled_insurance )
+              (     ( lv_object_status        = cv_obj_sts_canceled_insurance )
+/* 2014-12-15 K.Kanada E_本稼動_12775対応 END   */
                 AND ( lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd       ) )
               ) THEN
                 lv_no_chk_flag := 'Y'; -- 償却期間チェック対象外
