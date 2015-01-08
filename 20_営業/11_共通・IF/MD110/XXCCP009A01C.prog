@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 1.12                                                      ##
+## Version          : 1.15                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -94,6 +94,12 @@
 ##                                       起動対象コンカレントが警告の場合(データ##
 ##                                       部が0件の場合)、EDI/帳票システムへ連携 ##
 ##                                       を行わない。                           ##
+##  2014/11/06    1.13  Koji.Oomata      [リプレース_00197]                     ##
+##                                       jpqjobsubコマンドのパス修正。          ##
+##  2014/11/17    1.14  Koji.Oomata      [リプレース_00197]                     ##
+##                                       EDI/帳票でjpqjobsubコマンドのパス分岐。##
+##  2014/11/19    1.15  Kazuyuki.Kiriu   [リプレース_00199]                     ##
+##                                       EDI/帳票のjpqjobsubコマンドパス修正。  ##
 ##                                                                              ##
 ##################################################################################
 
@@ -1962,7 +1968,22 @@ EOF
   #IFファイル名(ディレクトリ無し)
   L_file_nam=`printf "$L_file_nam_all" | cut -d " " -f $loop_cnt`
   #jpqjobsubコマンド発行
-  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
+# 2014/11/17 Ver.1.14 Koji.Oomata mod START
+## 2014/11/06 Ver.1.13 Koji.Oomata mod START
+##  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
+#  /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files (x86)\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
+## 2014/11/06 Ver.1.13 Koji.Oomata mod END
+  if [ "${8}" = 'EDI' ]
+  then
+    /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files (x86)\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
+  elif [ "${8}" = 'REPORT' ]
+  then
+## 2014/11/19 Ver.1.15 Kazuyuki.Kiriu mod START
+#    /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
+    /opt/jp1ajs2/bin/jpqjobsub -q ${L_que} -mh ${L_host} -jn ${L_request_id_val} -sc "C:\Program Files (x86)\Hitachi\JP1AJS2\bin\ajsentry" -arg "-F ${L_service_name} -n -T -c AJS2SHNM:${L_sts_updt} -c AJS2CCID:${L_request_id_val} -c AJS2CPSHNM:${C_copyshell_path} -c AJS2FILENM:${L_file_nam} -c AJS2FROMDIR:${L_if_mov_from} -c AJS2TODIR:${L_if_mov_to} -c AJS2RMSHNM:${C_delshell_path} ${L_jobnet_parf}"
+## 2014/11/19 Ver.1.15 Kazuyuki.Kiriu mod END
+  fi
+# 2014/11/17 Ver.1.14 Koji.Oomata mod END
   L_ret_code=${?}
 # 2009/08/27 Ver1.8 Masayuki.Sano mod End
   if [ ${L_ret_code} -ne 0 ]
