@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (spec)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -37,6 +37,11 @@ AS
  *                                       クイックコード取得時のパフォーマンス対応
  *  2013/03/26    1.7   T.Ishiwata       【E_本稼動_10343対応】
  *                                        パラメータ「出力区分」追加、文言、タイトル変更
+ *  2014/11/14    1.8   K.Oomata         【E_本稼動_12575対応】
+ *                                        パラメータ「出力順優先項目」「国際CSV出力」追加。
+ *                                        処理対象受注ソース修正。
+ *                                       「摘要」欄に顧客発注番号設定するよう修正。
+ *                                        SVF共通関数に渡すVRQファイルの設定値修正。
  *
  *****************************************************************************************/
 --
@@ -49,8 +54,13 @@ AS
 -- 2013/03/26 Ver.1.7 Mod T.Ishiwata Start
 --    iv_ordered_date_to        IN      VARCHAR2          -- 3.受注日（To）
     iv_ordered_date_to        IN      VARCHAR2,         -- 3.受注日（To）
-    iv_output_code            IN      VARCHAR2          -- 4.出力区分
--- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
+-- 2014/11/14 Ver.1.8 Mod K.Oomata Start
+--    iv_output_code            IN      VARCHAR2          -- 4.出力区分
+---- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
+    iv_output_code            IN      VARCHAR2,          -- 4.出力区分
+    iv_sort_key               IN      VARCHAR2,          -- 5.出力順優先項目(0：出荷元保管場所優先、1：伝票No.優先)
+    iv_international_csv      IN      VARCHAR2           -- 6.国際CSV出力(Y：国際CSVを対象とする、N：国際CSVを対象としない)
+-- 2014/11/14 Ver.1.8 Mod K.Oomata End
   );
 END XXCOS006A04R;
 /
