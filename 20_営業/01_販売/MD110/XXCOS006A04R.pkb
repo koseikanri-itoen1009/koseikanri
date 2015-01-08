@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (body)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,7 +46,11 @@ AS
  *                                        パラメータ「出力区分」追加、文言、タイトル変更
  *  2013/05/16    1.8   T.Ishiwata       【E_本稼動_10683対応】
  *                                        ヒント句の見直し
- *
+ *  2014/11/14    1.9   K.Oomata         【E_本稼動_12575対応】
+ *                                        パラメータ「出力順優先項目」「国際CSV出力」追加。
+ *                                        処理対象受注ソース修正。
+ *                                       「摘要」欄に顧客発注番号設定するよう修正。
+ *                                        SVF共通関数に渡すVRQファイルの設定値修正。
  *
  *****************************************************************************************/
 --
@@ -125,6 +129,9 @@ AS
   cv_extension_pdf          CONSTANT  VARCHAR2(100) := '.pdf';                  -- 拡張子（ＰＤＦ）
   cv_frm_file               CONSTANT  VARCHAR2(100) := 'XXCOS006A04S.xml';      -- フォーム様式ファイル名
   cv_vrq_file               CONSTANT  VARCHAR2(100) := 'XXCOS006A04S.vrq';      -- クエリー様式ファイル名
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+  cv_vrq_file1              CONSTANT  VARCHAR2(100) := 'XXCOS006A04S1.vrq';     -- クエリー様式ファイル名(伝票No.優先用)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
   cv_output_mode_pdf        CONSTANT  VARCHAR2(1)   := '1';                     -- 出力区分（ＰＤＦ）
   --アプリケーション短縮名
   ct_xxcos_appl_short_name  CONSTANT  fnd_application.application_short_name%TYPE
@@ -182,6 +189,10 @@ AS
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
   cv_tkn_param4             CONSTANT  VARCHAR2(100) := 'PARAM4';                --第４入力パラメータ
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata End
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+  cv_tkn_param5             CONSTANT  VARCHAR2(100) := 'PARAM5';                --第５入力パラメータ
+  cv_tkn_param6             CONSTANT  VARCHAR2(100) := 'PARAM6';                --第６入力パラメータ
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
   cv_tkn_request            CONSTANT  VARCHAR2(100) := 'REQUEST';               --要求ＩＤ
   --プロファイル名称
   ct_prof_org_id            CONSTANT  fnd_profile_options.profile_option_name%TYPE
@@ -254,6 +265,13 @@ AS
   ct_lang            CONSTANT fnd_lookup_values.language%TYPE
                                             := USERENV( 'LANG' );
 -- ************************ 2009/10/01 S.Miyakoshi Var1.6 ADD  END  ************************ --
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+  cv_sort_key_0             CONSTANT  VARCHAR2(1)   := '0';           --出力順優先項目：0 出荷元保管場所優先
+  cv_sort_key_1             CONSTANT  VARCHAR2(1)   := '1';           --出力順優先項目：1：伝票No.優先
+  cv_international_csv_y    CONSTANT  VARCHAR2(1)   := 'Y';           --国際CSV出力：Y 国際CSVを対象とする
+  cv_international_csv_n    CONSTANT  VARCHAR2(1)   := 'N';           --国際CSV出力：N 国際CSVを対象としない
+  cv_connection_code        CONSTANT  VARCHAR2(3)   := ' : ';
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -298,6 +316,10 @@ AS
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
     iv_output_code            IN      VARCHAR2,       -- 4.出力区分
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata End
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+    iv_sort_key               IN      VARCHAR2,          -- 5.出力順優先項目(0：出荷元保管場所優先、1：伝票No.優先)
+    iv_international_csv      IN      VARCHAR2,          -- 6.国際CSV出力(Y：国際CSVを対象とする、N：国際CSVを対象としない)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -350,8 +372,15 @@ AS
 --                                   iv_token_value3       => iv_ordered_date_to
                                    iv_token_value3       => iv_ordered_date_to,
                                    iv_token_name4        => cv_tkn_param4,
-                                   iv_token_value4       => iv_output_code
--- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
+-- 2014/11/14 Ver.1.9 Mod K.Oomata Start
+--                                   iv_token_value4       => iv_output_code
+---- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
+                                   iv_token_value4       => iv_output_code,
+                                   iv_token_name5        => cv_tkn_param5,
+                                   iv_token_value5       => iv_sort_key,
+                                   iv_token_name6        => cv_tkn_param6,
+                                   iv_token_value6       => iv_international_csv
+-- 2014/11/14 Ver.1.9 Mod K.Oomata End
                                  );
     --
     FND_FILE.PUT_LINE(
@@ -609,6 +638,9 @@ AS
    * Description      : データ取得(A-2)
    ***********************************************************************************/
   PROCEDURE get_data(
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+    iv_international_csv   IN VARCHAR2,   -- 国際CSV出力(Y：国際CSVを対象とする、N：国際CSVを対象としない)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -643,7 +675,8 @@ AS
     IS
       SELECT
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
-       /*+ INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N10)
+       /*+ OPTIMIZER_FEATURES_ENABLE('10.2.0.3') 
+           INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N10)
 -- 2013/05/16 Ver.1.8 Add T.Ishiwata Start
            NO_INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
 -- 2013/05/16 Ver.1.8 Add T.Ishiwata End
@@ -671,7 +704,12 @@ AS
         hl.address1                         delivery_to_address1,         --配送先住所１
         hl.address2                         delivery_to_address2,         --配送先住所２
         hl.address_lines_phonetic           delivery_to_tel,              --電話番号
-        ooha.shipping_instructions          shipping_instructions,        --出荷指示
+-- 2014/11/14 Ver.1.9 Mod K.Oomata Start
+--        ooha.shipping_instructions          shipping_instructions,        --出荷指示
+        ooha.cust_po_number
+        || cv_connection_code ||
+        ooha.shipping_instructions          shipping_instructions,        --顧客発注番号 : 出荷指示 (帳票上の摘要欄)
+-- 2014/11/14 Ver.1.9 Mod K.Oomata End
         oola.line_number                    line_number,                  --明細番号
         msib.segment1                       item_code,                    --品目コード
         msib.description                    description,                  --摘要
@@ -767,6 +805,21 @@ AS
                 flv.lookup_type             = ct_qct_order_source
             AND flv.lookup_code             LIKE ct_qcc_order_source
             AND flv.meaning                 = oos.name
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+            AND (
+                 (
+                  iv_international_csv       = cv_international_csv_y    --国際CSV出力：Y 国際CSVを対象とする
+                  AND
+                  NVL(flv.attribute1,cv_international_csv_y) = cv_international_csv_y
+                 )
+                 OR
+                 (
+                  iv_international_csv       = cv_international_csv_n    --国際CSV出力：N 国際CSVを対象としない
+                  AND
+                  flv.attribute1             IS NULL
+                 )
+                )
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
             AND TRUNC( ooha.ordered_date )  >= flv.start_date_active
             AND TRUNC( ooha.ordered_date )  <= NVL( flv.end_date_active, gd_max_date )
             AND flv.enabled_flag            = ct_enabled_flag_yes
@@ -1180,6 +1233,9 @@ AS
    * Description      : ＳＶＦ起動(A-4)
    ***********************************************************************************/
   PROCEDURE execute_svf(
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+    iv_sort_key   IN VARCHAR2,      -- 出力順優先項目(0：出荷元保管場所優先、1：伝票No.優先)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1206,6 +1262,9 @@ AS
     lv_nodata_msg    VARCHAR2(5000);
     lv_file_name     VARCHAR2(5000);
     lv_api_name      VARCHAR2(5000);
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+    lv_vrq_file      VARCHAR2(100);   -- クエリー様式ファイル名
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1220,6 +1279,18 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+    --==================================
+    -- クエリー様式ファイル名の設定
+    --==================================
+    -- 出力順優先項目：0 出荷元保管場所優先  の場合
+    IF ( iv_sort_key = cv_sort_key_0 ) THEN
+      lv_vrq_file := cv_vrq_file;
+    -- 出力順優先項目：1：伝票No.優先  の場合
+    ELSE
+      lv_vrq_file := cv_vrq_file1;
+    END IF;
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
     --==================================
     -- 1.明細0件用メッセージ取得
     --==================================
@@ -1245,7 +1316,10 @@ AS
       iv_file_id              => cv_file_id,
       iv_output_mode          => cv_output_mode_pdf,
       iv_frm_file             => cv_frm_file,
-      iv_vrq_file             => cv_vrq_file,
+-- 2014/11/14 Ver.1.9 Mod K.Oomata Start
+--      iv_vrq_file             => cv_vrq_file,
+      iv_vrq_file             => lv_vrq_file,
+-- 2014/11/14 Ver.1.9 Mod K.Oomata End
       iv_org_id               => NULL,
       iv_user_name            => NULL,
       iv_resp_name            => NULL,
@@ -1483,6 +1557,10 @@ AS
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
     iv_output_code            IN      VARCHAR2,       -- 4.出力区分
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata End
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+    iv_sort_key               IN      VARCHAR2,          -- 5.出力順優先項目(0：出荷元保管場所優先、1：伝票No.優先)
+    iv_international_csv      IN      VARCHAR2,          -- 6.国際CSV出力(Y：国際CSVを対象とする、N：国際CSVを対象としない)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1532,6 +1610,10 @@ AS
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
       iv_output_code            => iv_output_code,              -- 4.出力区分
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata End
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+      iv_sort_key               => iv_sort_key,                 -- 5.出力順優先項目(0：出荷元保管場所優先、1：伝票No.優先)
+      iv_international_csv      => iv_international_csv,        -- 6.国際CSV出力(Y：国際CSVを対象とする、N：国際CSVを対象としない)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
       ov_errbuf                 => lv_errbuf,                   -- エラー・メッセージ
       ov_retcode                => lv_retcode,                  -- リターン・コード
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
@@ -1560,6 +1642,9 @@ AS
     -- A-2  データ取得
     -- ===============================
     get_data(
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+      iv_international_csv      => iv_international_csv,        -- 国際CSV出力(Y：国際CSVを対象とする、N：国際CSVを対象としない)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
       ov_errbuf                 => lv_errbuf,                   -- エラー・メッセージ
       ov_retcode                => lv_retcode,                  -- リターン・コード
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
@@ -1590,6 +1675,9 @@ AS
     -- A-4  ＳＶＦ起動
     -- ===============================
     execute_svf(
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+      iv_sort_key               => iv_sort_key,                 -- 出力順優先項目(0：出荷元保管場所優先、1：伝票No.優先)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
       ov_errbuf                 => lv_errbuf,                   -- エラー・メッセージ
       ov_retcode                => lv_retcode,                  -- リターン・コード
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
@@ -1672,8 +1760,13 @@ AS
 -- 2013/03/26 Ver.1.7 Mod T.Ishiwata Start
 --    iv_ordered_date_to        IN      VARCHAR2        -- 3.受注日（To）
     iv_ordered_date_to        IN      VARCHAR2,         -- 3.受注日（To）
-    iv_output_code            IN      VARCHAR2          -- 4.出力区分
--- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
+-- 2014/11/14 Ver.1.9 Mod K.Oomata Start
+--    iv_output_code            IN      VARCHAR2          -- 4.出力区分
+---- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
+    iv_output_code            IN      VARCHAR2,          -- 4.出力区分
+    iv_sort_key               IN      VARCHAR2,          -- 5.出力順優先項目(0：出荷元保管場所優先、1：伝票No.優先)
+    iv_international_csv      IN      VARCHAR2           -- 6.国際CSV出力(Y：国際CSVを対象とする、N：国際CSVを対象としない)
+-- 2014/11/14 Ver.1.9 Mod K.Oomata End
   )
 --
 --
@@ -1734,6 +1827,10 @@ AS
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
       iv_output_code,                    -- 4.出力区分
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata End
+-- 2014/11/14 Ver.1.9 Add K.Oomata Start
+      iv_sort_key,                       -- 5.出力順優先項目(0：出荷元保管場所優先、1：伝票No.優先)
+      iv_international_csv,              -- 6.国際CSV出力(Y：国際CSVを対象とする、N：国際CSVを対象としない)
+-- 2014/11/14 Ver.1.9 Add K.Oomata End
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #
