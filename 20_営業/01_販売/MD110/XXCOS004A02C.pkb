@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2010/03/25    1.18  M.Hokkanji       [E_本稼働_02015]店舗別消化計算情報のチェック処理
  *                                       を修正
  *  2014/04/22    1.19  K.Nakamura       [E_本稼働_09071]消化締め後のAR入力対応
+ *  2015/01/08    1.20  T.Ishiwata       [E_本稼働_xxxxx]緊急パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -1131,6 +1132,9 @@ AS
 --                 USE_NL(flv xxca)
 --               */
         SELECT /*+
+-- 2015/01/09 Ver.1.20 Add Start
+                 OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
+-- 2015/01/09 Ver.1.20 Add End
                  LEADING(xsdh)
                  INDEX(xsdh xxcos_shop_digestion_hdrs_n04 )
                  INDEX(xxca xxcmm_cust_accounts_pk)
