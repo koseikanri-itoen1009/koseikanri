@@ -1,0 +1,60 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name  : XXCFO_MFG_IF_CONTROL
+ * Description : 連携管理テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014-09-19    1.0   K.Kubo           新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE XXCFO.XXCFO_MFG_IF_CONTROL
+(
+   PROGRAM_NAME                   VARCHAR2(30)  NOT NULL,
+   SET_OF_BOOKS_ID                NUMBER(15)    NOT NULL,
+   PERIOD_NAME                    VARCHAR2(7)   NOT NULL,
+   GL_PROCESS_FLAG                VARCHAR2(1)   NOT NULL,
+   CREATED_BY                     NUMBER(15)    NOT NULL,
+   CREATION_DATE                  DATE          NOT NULL,
+   LAST_UPDATED_BY                NUMBER(15)    NOT NULL,
+   LAST_UPDATE_DATE               DATE          NOT NULL,
+   LAST_UPDATE_LOGIN              NUMBER(15),
+   REQUEST_ID                     NUMBER(15),
+   PROGRAM_APPLICATION_ID         NUMBER(15),
+   PROGRAM_ID                     NUMBER(15),
+   PROGRAM_UPDATE_DATE            DATE
+)
+PCTFREE 10 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 65M )
+/
+COMMENT ON TABLE  XXCFO.XXCFO_MFG_IF_CONTROL                                     IS '連携管理テーブル'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.PROGRAM_NAME                        IS '機能名'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.SET_OF_BOOKS_ID                     IS '会計帳簿ID'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.PERIOD_NAME                         IS '会計期間'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.GL_PROCESS_FLAG                     IS 'GL転送フラグ'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.CREATED_BY                          IS '作成者'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.CREATION_DATE                       IS '作成日'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.LAST_UPDATED_BY                     IS '最終更新者'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.LAST_UPDATE_DATE                    IS '最終更新日'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.LAST_UPDATE_LOGIN                   IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.REQUEST_ID                          IS '要求ID'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.PROGRAM_APPLICATION_ID              IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.PROGRAM_ID                          IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCFO.XXCFO_MFG_IF_CONTROL.PROGRAM_UPDATE_DATE                 IS 'プログラム更新日'
+/
