@@ -1,0 +1,54 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name  : XXCFO_PO_WAIT_COOP
+ * Description : 仕入実績取引未連携テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014-10-08    1.0   A.Uchida         新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE xxcfo.XXCFO_PO_WAIT_COOP (
+     set_of_books_id                NUMBER(15)    NOT NULL
+    ,period_name                    VARCHAR2(7)   NOT NULL
+    ,txns_id                        NUMBER(15)    NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcfo.xxcfo_po_wait_coop IS '仕入実績取引未連携テーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.set_of_books_id                             IS '会計帳簿ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.period_name                                 IS '会計期間'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.txns_id                                     IS '取引ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.created_by                                  IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.creation_date                               IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.last_updated_by                             IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.last_update_date                            IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.last_update_login                           IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.request_id                                  IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.program_id                                  IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_po_wait_coop.program_update_date                         IS 'プログラム更新日'
+/
