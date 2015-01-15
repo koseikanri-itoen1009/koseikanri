@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfo_mfg_txn_if_control FOR xxcfo.xxcfo_mfg_txn_if_control;
