@@ -1,0 +1,72 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name  : XXCFO_PRO_WAIT_COOP
+ * Description : 受払取引(生産)未連携テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014-10-16    1.0   A.Uchida         新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE xxcfo.xxcfo_pro_wait_coop (
+     set_of_books_id                NUMBER(15)    NOT NULL
+    ,period_name                    VARCHAR2(7)   NOT NULL
+    ,batch_id                       NUMBER(10)    NOT NULL
+    ,plant_code                     VARCHAR2(4)   NOT NULL
+    ,material_detail_id             NUMBER(10)    NOT NULL
+    ,lot_no_kansei                  VARCHAR2(32)
+    ,lot_no_tounyu                  VARCHAR2(32)
+    ,lot_no_uchikomi                VARCHAR2(32)
+    ,lot_no_fukusan                 VARCHAR2(32)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcfo.xxcfo_pro_wait_coop IS '受払取引(生産)未連携テーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.set_of_books_id                            IS '会計帳簿ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.period_name                                IS '会計期間'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.batch_id                                   IS 'バッチID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.plant_code                                 IS 'プラントコード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.material_detail_id                         IS '生産原料詳細ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.lot_no_kansei                              IS '完成品ロットNo'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.lot_no_tounyu                              IS '投入品ロットNo'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.lot_no_uchikomi                            IS '打込品ロットNo'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.lot_no_fukusan                             IS '副産物品ロットNo'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.created_by                                 IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.creation_date                              IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.last_updated_by                            IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.last_update_date                           IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.last_update_login                          IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.request_id                                 IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.program_application_id                     IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.program_id                                 IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_pro_wait_coop.program_update_date                        IS 'プログラム更新日'
+/
