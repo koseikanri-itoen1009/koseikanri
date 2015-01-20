@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A01C(body)
  * Description      : 受払その他実績仕訳IF作成
  * MD.050           : 受払その他実績仕訳IF作成<MD050_CFO_020_A01>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,7 +28,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014-11-25    1.0   SCSK H.Itou      新規作成
- *
+ *  2015-01-09    1.1   SCSK A.Uchida    棚卸減耗費のカーソルで対象の倉庫コードのみ
+ *                                       抽出が出来るよう修正。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -149,6 +150,9 @@ AS
   cv_mode_2                   CONSTANT VARCHAR2(30) := '2'; -- 倉庫別
   cv_mode_3                   CONSTANT VARCHAR2(30) := '3'; -- 総合計
   cv_mode_4                   CONSTANT VARCHAR2(30) := '4'; -- 部署・仕入先別
+  -- 2015.01.09 Ver1.1 Add Start 
+  cv_item_class_code_4        CONSTANT VARCHAR2(1)  := '4'; -- 半製品
+  -- 2015.01.09 Ver1.1 Add End 
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1257,6 +1261,11 @@ AS
     cv_dealings_div_509      CONSTANT VARCHAR2(3)   := '509';            -- 取引区分 509:廃却
     cv_source_document_rma   CONSTANT VARCHAR2(3)   := 'RMA';            -- ソース文書 RMA
     rcv_pay_div_1            CONSTANT VARCHAR2(3)   := '1';              -- 受払区分 1
+    -- 2015.01.09 Ver1.1 Add Start
+    ct_lang                  CONSTANT fnd_lookup_values.language%TYPE    := USERENV('LANG');             -- 言語
+    ct_lookup_cost_whse      CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFO1_PACKAGE_COST_WHSE';  -- 参照タイプ：受払生産倉庫リスト
+    cv_flag_1                VARCHAR2(1)                                 := '1';                         -- 棚卸減耗倉庫フラグ
+    -- 2015.01.09 Ver1.1 Add End
 --
     -- *** ローカル変数 ***
     lt_siwake_rec            siwake_rec;                                 -- 仕訳情報
@@ -1719,10 +1728,14 @@ AS
     IS
     SELECT ROUND(
              CASE
-               -- 棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
-               WHEN (xrpm.rcv_pay_div = rcv_pay_div_1)
-               AND  (itc.reason_code  = cv_reason_911) THEN 
-                 NVL(itc.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div) * -1
+               -- 2015.01.09 Ver1.1 Mod Start
+               -- 【不要のため削除】棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
+--               WHEN (xrpm.rcv_pay_div = rcv_pay_div_1)
+--               AND  (itc.reason_code  = cv_reason_911) THEN 
+--                 NVL(itc.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div) * -1
+               WHEN (itc.reason_code  = cv_reason_911) THEN 
+                 NVL(itc.trans_qty, 0)
+               -- 2015.01.09 Ver1.1 Mod End
                ELSE
                  NVL(itc.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)
                END *
@@ -1769,6 +1782,19 @@ AS
     AND    xicv.item_id                = itc.item_id
     AND    itc.whse_code               = iwm.whse_code
     AND    iwm.attribute1              = cv_itoen_inv
+    -- 2015.01.09 Ver1.1 Add Start 
+    AND  ((xicv.item_class_code = cv_item_class_code_4      -- 半製品
+      AND  EXISTS (SELECT 1
+                   FROM   fnd_lookup_values   flv
+                   WHERE  flv.lookup_type             = ct_lookup_cost_whse
+                   AND    flv.language                = ct_lang
+                   AND    flv.attribute3              = cv_flag_1           -- 棚卸減耗半製品倉庫判断用フラグ
+                   AND    itc.trans_date              BETWEEN flv.start_date_active
+                                                      AND     NVL(flv.end_date_active,itc.trans_date)
+                   AND    flv.enabled_flag            = cv_y
+                   AND    flv.lookup_code             = iwm.whse_code   ))
+    OR    (xicv.item_class_code <> cv_item_class_code_4))   -- 半製品以外
+    -- 2015.01.09 Ver1.1 Add End
     ORDER BY
            xicv.prod_class_code       -- 商品区分
           ,xicv.item_class_code       -- 品目区分
