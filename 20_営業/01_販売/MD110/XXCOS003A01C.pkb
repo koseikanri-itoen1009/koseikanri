@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/09/01   1.5    M.Sano           [0001066]『HHT向け納品予定データ作成』PTの考慮
  *  2010/03/30   1.6    S.Miyakoshi      [E_本稼動_02058]単位換算処理の追加
  *  2014/03/04   1.7    T.Nakano         [E_本稼動_11551]パフォーマンス対応
+ *  2015/01/08   1.8    H.Wajima         [E_本稼動_12806]単位換算処理の修正
  *
  *****************************************************************************************/
 --
@@ -1032,6 +1033,10 @@ AS
     ln_after_quantity      NUMBER;                          -- 換算後数量
     ln_content             NUMBER;                          -- 入数
 -- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
+/* 2015/01/08 Ver1.8 Add Start */
+    ln_tmp_selling_price      xxcos_edi_lines.selling_price%TYPE;          -- 売単価(一時)
+    ln_tmp_unit_selling_price oe_order_lines_all.unit_selling_price%TYPE;  -- 卸単価(一時)
+/* 2015/01/08 Ver1.8 Add End */
 --
   BEGIN
 --
@@ -1191,6 +1196,10 @@ AS
         -- 受注数量の単位換算
         lv_organization_id := NULL;  --NULLを設定（共通関数内で導出）
         lv_after_uom_code  := NULL;  --換算後単位コードの初期化
+/* 2015/01/08 Ver1.8 Add Start */
+        ln_tmp_unit_selling_price := NULL;  --卸単価の初期化
+        ln_tmp_selling_price      := NULL;  --売単価の初期化
+/* 2015/01/08 Ver1.8 Add End */
         xxcos_common_pkg.get_uom_cnv(
                                      main_rec.order_quantity_uom,   -- 換算前単位コード
                                      main_rec.ordered_quantity,     -- 換算前数量
@@ -1208,6 +1217,17 @@ AS
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_change_err_expt;
         END IF;
+/* 2015/01/08 Ver1.8 Add Start */
+        -- 換算前数量と換算後数量が異なる場合
+        IF ( main_rec.ordered_quantity <> ln_after_quantity ) THEN
+           ln_tmp_unit_selling_price := TRUNC(main_rec.unit_selling_price / ln_content, 2);--卸単価
+           ln_tmp_selling_price      := TRUNC(main_rec.selling_price      / ln_content);   --売単価
+        -- 換算前後で数量が等しい場合
+        ELSE
+           ln_tmp_unit_selling_price   := main_rec.unit_selling_price   ;--卸単価
+           ln_tmp_selling_price        := main_rec.selling_price        ;--売単価
+        END IF;
+/* 2015/01/08 Ver1.8 Add End */
 -- ************************ 2010/03/30 S.Miyakoshi Var1.6 ADD  END  ************************ --
 --
         -- 受注明細テーブル：受注数量
@@ -1225,7 +1245,10 @@ AS
         END IF;
 --
         -- 受注明細テーブル：販売単価
-        IF ( main_rec.unit_selling_price > cn_max_val_unit_selling_price ) THEN
+/* 2015/01/08 Ver1.8 Mod Start */
+--        IF ( main_rec.unit_selling_price > cn_max_val_unit_selling_price ) THEN
+        IF ( ln_tmp_unit_selling_price > cn_max_val_unit_selling_price ) THEN
+/* 2015/01/08 Ver1.8 Mod End */
           lv_message_code := cv_msg_overflow;
           lv_item_name := gv_msg_unit_selling_price;
           lv_item_value   := main_rec.unit_selling_price;
@@ -1233,7 +1256,10 @@ AS
         END IF;
 --
         -- EDI明細情報テーブル：売単価
-        IF ( main_rec.selling_price > cn_max_val_selling_price ) THEN
+/* 2015/01/08 Ver1.8 Mod Start */
+--        IF ( main_rec.selling_price > cn_max_val_selling_price ) THEN
+        IF ( ln_tmp_selling_price > cn_max_val_selling_price ) THEN
+/* 2015/01/08 Ver1.8 Mod End */
           lv_message_code := cv_msg_overflow;
           lv_item_name := gv_msg_selling_price;
           lv_item_value   := main_rec.selling_price;
@@ -1324,8 +1350,12 @@ AS
 --      gt_vndor_deli_lines(gn_set_cnt).ordered_quantity     := main_rec.ordered_quantity     ;--数量
       gt_vndor_deli_lines(gn_set_cnt).ordered_quantity     := ln_after_quantity             ;--数量
 -- ************************ 2010/03/30 S.Miyakoshi Var1.6 MOD  END  ************************ --
-      gt_vndor_deli_lines(gn_set_cnt).unit_selling_price   := main_rec.unit_selling_price   ;--卸単価
-      gt_vndor_deli_lines(gn_set_cnt).selling_price        := main_rec.selling_price        ;--売単価
+/* 2015/01/08 Ver1.8 Mod Start */
+--      gt_vndor_deli_lines(gn_set_cnt).unit_selling_price   := main_rec.unit_selling_price   ;--卸単価
+--      gt_vndor_deli_lines(gn_set_cnt).selling_price        := main_rec.selling_price        ;--売単価
+      gt_vndor_deli_lines(gn_set_cnt).unit_selling_price   := ln_tmp_unit_selling_price     ;--卸単価
+      gt_vndor_deli_lines(gn_set_cnt).selling_price        := ln_tmp_selling_price          ;--売単価
+/* 2015/01/08 Ver1.8 Mod End */
       gt_vndor_deli_lines(gn_set_cnt).edi_line_info_id     := main_rec.edi_line_info_id     ;--EDI明細情報ID
 --
       --次ループ時に使用するためにヘッダファイル出力用に変数設定
