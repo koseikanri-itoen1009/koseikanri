@@ -7,7 +7,7 @@ AS
  * Description      : 入金情報データ連携
  * MD.050           : MD050_CFR_001_A03_入金情報データ連携
  * MD.070           : MD050_CFR_001_A03_入金情報データ連携
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,6 +18,7 @@ AS
  *  get_last_close_period_name p 最後にクローズした会計期間名取得    (A-4)
  *  get_cash_receipts_data p 入金情報データ取得                      (A-5)
  *  put_cash_receipts_data p 入金情報データＣＳＶ作成処理            (A-6)
+ *  upd_cfr_period_control p 処理対象期間管理テーブル更新処理        (A-7)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -29,6 +30,7 @@ AS
  *  2009/02/27    1.1  SCS T.KANEDA     [障害CFR_001] 金額取得不具合対応
  *  2010/01/06    1.2  SCS 安川 智博    障害「E_本稼動_00753」対応
  *  2010/03/08    1.3  SCS 安川 智博    障害「E_本稼動_01859」対応
+ *  2014/11/20    1.4  SCSK依田 稲道    障害「E_本稼動_12579」対応
  *
  *****************************************************************************************/
 --
@@ -83,6 +85,12 @@ AS
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
+-- Add Ver1.4 Start
+  global_lock_expt          EXCEPTION;  -- ロック(ビジー)エラー
+--
+  PRAGMA EXCEPTION_INIT(global_lock_expt, -54);
+--
+-- Add Ver1.4 End
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -102,6 +110,10 @@ AS
   cv_msg_001a03_015  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00048'; --ファイルをオープンできないメッセージ
   cv_msg_001a03_016  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00049'; --ファイルに書込みできないメッセー
   cv_msg_001a03_017  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00050'; --ファイルが存在しているメッセージ
+-- Add Ver1.4 Start
+  cv_msg_001a03_018  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00003'; --TABLEのロックに失敗したメッセージ
+  cv_msg_001a03_019  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00017'; --TABLEの更新に失敗したメッセージ
+-- Add Ver1.4 End
 --
 -- トークン
   cv_tkn_prof        CONSTANT VARCHAR2(15) := 'PROF_NAME';        -- プロファイル名
@@ -120,6 +132,9 @@ AS
 --
   -- 日本語辞書
   cv_dict_peroid_name  CONSTANT VARCHAR2(100) := 'CFR001A03001';    -- 最後にクローズした会計期間名
+-- Add Ver1.4 Start
+  cv_dict_table_name   CONSTANT VARCHAR2(100) := 'CFR001A03002';    -- 処理対象期間管理テーブルのデータ
+-- Add Ver1.4 End
 --
   -- 改行コード
   cv_cr              CONSTANT VARCHAR2(1) := CHR(10);      -- 改行コード
@@ -156,6 +171,9 @@ AS
   gd_start_date            DATE;              -- 会計期間開始日
   gd_end_date              DATE;              -- 会計期間終了日
 -- Modify 2009.02.27 Ver1.1 End
+-- Add Ver1.4 Start
+  gt_target_period_num     gl_period_statuses.effective_period_num%TYPE;        -- 処理対象会計期間番号
+-- Add Ver1.4 End
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -544,10 +562,13 @@ AS
     -- *** ローカル変数 ***
     ln_target_cnt     NUMBER;         -- 対象件数
     ln_loop_cnt       NUMBER;         -- ループカウンタ
+-- Add Ver1.4 Start
+    lt_effective_period_num xxcfr_period_control.effective_period_num%TYPE; --処理済会計期間番号
+-- Add Ver1.4 End
 --
     -- *** ローカル・カーソル ***
 --
-    -- 最後にクローズした会計期間名抽出
+    -- 最後にクローズした会計期間の翌月取得カーソル
     CURSOR get_period_name_cur
     IS
       SELECT gps.period_name                                period_name,    -- 会計期間名
@@ -555,7 +576,11 @@ AS
              gps.start_date                                 start_date,     -- 会計期間開始日
              gps.end_date                                   end_date,       -- 会計期間終了日
 -- Modify 2009.02.27 Ver1.1 End
-             TO_CHAR ( gps.start_date, cv_format_date_ym )  start_date_yymm -- 会計期間年月
+-- Modify Ver1.4 Start
+--             TO_CHAR ( gps.start_date, cv_format_date_ym )  start_date_yymm -- 会計期間年月
+             TO_CHAR ( gps.start_date, cv_format_date_ym )  start_date_yymm,    -- 会計期間年月
+             gps.effective_period_num                       target_period_num   -- 処理対象会計期間番号
+-- Modify Ver1.4 End
       FROM gl_period_statuses             gps,          -- GL会計期間ステータス
            gl_sets_of_books               gsob,         -- GL会計帳簿
            fnd_application                fa            -- 会計アプリケーション
@@ -566,7 +591,13 @@ AS
         -- AND gps.closing_status            IN ( 'O','C','P' )   -- クローズ、永久クローズ
         AND gps.closing_status            IN ( cv_close_status_c, cv_close_status_p )  -- クローズ、永久クローズ
         AND gsob.set_of_books_id          = gn_set_of_bks_id
-      ORDER BY gps.start_date desc
+-- Add Ver1.4 Start
+        AND gps.effective_period_num      > lt_effective_period_num -- 最後にクローズした会計期間の翌月を取得
+-- Add Ver1.4 End
+-- Modify Ver1.4 Start
+--      ORDER BY gps.start_date desc
+      ORDER BY gps.effective_period_num
+-- Modify Ver1.4 End
     ;
 --
     TYPE l_period_name_ttype IS TABLE OF get_period_name_cur%ROWTYPE INDEX BY PLS_INTEGER;
@@ -584,6 +615,48 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+--
+-- Add Ver1.4 Start
+    BEGIN
+      --処理対象期間管理テーブル該当行のロックを取得する
+      --
+      SELECT    xpc.effective_period_num  as effective_period_num -- 会計期間番号
+      INTO      lt_effective_period_num
+      FROM      xxcfr_period_control xpc                          -- 処理対象期間管理テーブル
+      WHERE     xpc.process_name = cv_pkg_name
+      FOR UPDATE NOWAIT
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg := substrb(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr           -- 'XXCFR'
+                                                      ,cv_msg_001a03_013        -- 会計期間名取得なしエラー
+                                                      ,cv_tkn_data
+                                                      ,xxcfr_common_pkg.lookup_dictionary(
+                                                         cv_msg_kbn_cfr
+                                                        ,cv_dict_table_name     -- 処理対象期間管理テーブル
+                                                       )
+                                                     )
+                                                     ,1
+                                                     ,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      -- *** ロックエラー例外ハンドラ ***
+      WHEN global_lock_expt THEN
+--
+        lv_errmsg := substrb(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr           -- 'XXCFR'
+                                                      ,cv_msg_001a03_018        -- TABLEロックエラー
+                                                      ,cv_tkn_table
+                                                      ,xxcfr_common_pkg.lookup_dictionary(
+                                                         cv_msg_kbn_cfr
+                                                        ,cv_dict_table_name     -- 処理対象期間管理テーブル
+                                                       )
+                                                     )
+                                                     ,1
+                                                     ,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+-- Add Ver1.4 End
 --
     -- カーソルオープン
     OPEN get_period_name_cur;
@@ -606,6 +679,9 @@ AS
       gd_start_date       := lt_period_name_data(1).start_date;
       gd_end_date         := TO_DATE(TO_CHAR(lt_period_name_data(1).end_date,'yyyymmdd')||'235959','yyyymmddhh24miss');
 -- Modify 2009.02.27 Ver1.1 End
+-- Add Ver1.4 Start
+      gt_target_period_num := lt_period_name_data(1).target_period_num;         -- 処理対象会計期間番号
+-- Add Ver1.4 End
 --
     -- 対象データなしの場合は、エラーメッセージを設定
     ELSE
@@ -640,6 +716,12 @@ AS
     WHEN OTHERS THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
+-- Add Ver1.4 Start
+      -- カーソルクローズ
+      IF get_period_name_cur%ISOPEN THEN
+        CLOSE get_period_name_cur;
+      END IF;
+-- Add Ver1.4 End
 --
 --#####################################  固定部 END   ##########################################
 --
@@ -934,6 +1016,102 @@ AS
 --
   END put_cash_receipts_data;
 --
+-- Add Ver1.4 Start
+  /**********************************************************************************
+   * Procedure Name   : upd_cfr_period_control
+   * Description      : 処理対象期間管理テーブル更新処理 (A-7)
+   ***********************************************************************************/
+  PROCEDURE upd_cfr_period_control(
+    ov_errbuf               OUT VARCHAR2,            -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT VARCHAR2,            -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT VARCHAR2)            -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_cfr_period_control'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    BEGIN
+      -- ====================================================
+      -- 処理対象期間管理テーブルの更新
+      -- ====================================================
+      --
+      --処理対象期間管理テーブルの処理対象期間を更新する
+      --
+      UPDATE xxcfr_period_control xpc                                   -- 処理対象期間管理テーブル
+      SET    xpc.effective_period_num   = gt_target_period_num          -- 処理対象会計期間番号
+            ,xpc.last_updated_by        = cn_last_updated_by            -- 最終更新者
+            ,xpc.last_update_date       = cd_last_update_date           -- 最終更新日
+            ,xpc.last_update_login      = cn_last_update_login          -- 最終更新ログイン
+            ,xpc.request_id             = cn_request_id                 -- 要求ID
+            ,xpc.program_application_id = cn_program_application_id     -- プログラムアプリケーションID
+            ,xpc.program_id             = cn_program_id                 -- プログラムID
+            ,xpc.program_update_date    = cd_program_update_date        -- プログラム更新日
+      WHERE  xpc.process_name           = cv_pkg_name                   -- 機能名
+      ;
+  --
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := substrb(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr             -- 'XXCFR'
+                                                      ,cv_msg_001a03_019          -- TABLE更新エラー
+                                                      ,cv_tkn_table
+                                                      ,xxcfr_common_pkg.lookup_dictionary(
+                                                         cv_msg_kbn_cfr
+                                                        ,cv_dict_table_name       -- 処理対象期間管理テーブル
+                                                       )
+                                                     )
+                                                     ,1
+                                                     ,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+  EXCEPTION
+      -- *** 任意で例外処理を記述する ****
+      -- カーソルのクローズをここに記述する
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_cfr_period_control;
+-- Add Ver1.4 End
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -1070,6 +1248,20 @@ AS
       --(エラー処理)
       RAISE global_process_expt;
     END IF;
+--
+-- Add Ver1.4 Start
+    -- =====================================================
+    --  処理対象期間管理テーブル更新処理 (A-7)
+    -- =====================================================
+    upd_cfr_period_control(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+-- Add Ver1.4 End
 --
     -- 正常件数の設定
     gn_normal_cnt := gn_target_cnt - gn_error_cnt;
