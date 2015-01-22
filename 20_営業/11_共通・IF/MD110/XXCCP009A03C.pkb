@@ -4,7 +4,7 @@ AS
  *
  * Package Name     : XXCCP009A03C(body)
  * Description      : 請求書保留ステータス更新処理
- * Version          : 1.00
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -18,7 +18,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2014/10/30    1.00  SCSK K.Nakatsu  [E_本稼動_11000]新規作成
+ *  2014/10/30    1.0   SCSK K.Nakatsu  [E_本稼動_11000]新規作成
+ *  2015/01/08    1.1   SCSK T.Ishiwata [E_本稼動_11000]再対応
  *
  *****************************************************************************************/
 --
@@ -172,10 +173,22 @@ AS
     AND      hca.account_number     = gv_bill_cust_code             -- 請求先顧客
     AND      rcta.org_id            = cn_org_id                     -- ログインユーザ組織
     AND      rcta.request_id        = in_request_id                 -- 要求ID
-    AND      apsa.due_date          = gd_target_date                -- 締日
+-- 2015/01/08 Ver.1.1 Mod Start
+--    AND      apsa.due_date          = gd_target_date                -- 締日
+    AND EXISTS (
+        SELECT /*+ INDEX_SS(xil XXCFR_INVOICE_LINES_N01) */
+               'X'
+        FROM   xxcfr_invoice_lines xil
+        WHERE  xil.trx_id      = rcta.customer_trx_id
+        AND    xil.cutoff_date = gd_target_date                     -- 締日
+    )
+-- 2015/01/08 Ver.1.1 Mod End
     AND      rcta.attribute7        = gv_status_from                -- 変更対象ステータス
     ORDER BY rcta.trx_date
-    FOR UPDATE NOWAIT
+-- 2015/01/08 Ver.1.1 Mod Start
+--    FOR UPDATE NOWAIT
+    FOR UPDATE OF rcta.customer_trx_id NOWAIT
+-- 2015/01/08 Ver.1.1 Mod End
   ;
   target_rec target_cur%ROWTYPE;
 --
