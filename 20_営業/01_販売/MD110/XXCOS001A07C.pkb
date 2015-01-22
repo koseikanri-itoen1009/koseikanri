@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,6 +18,7 @@ AS
  *  inv_data_register      入出庫データ登録(A-3)
  *  dlv_data_register      納品データ登録(A-4)
  *  data_update            コラム別転送済フラグ、販売実績連携済みフラグ更新(A-5)
+ *  ins_err_msg            エラー情報登録処理(A-6)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -46,6 +47,7 @@ AS
  *  2010/03/18    1.16  S.Miyakoshi      [E_本稼動_01907]顧客使用目的、顧客所在地からの抽出時に有効条件追加
  *  2012/04/24    1.17  Y.Horikawa       [E_本稼動_09440]「売上値引金額」「売上消費税額」のマッピング不正の修正
  *  2014/10/16    1.18  Y.Enokido        [E_本稼動_09378]納品者の有効チェックを行う
+ *  2014/11/27    1.19  K.Nakatsu        [E_本稼動_12599]汎用エラーリストテーブルへの出力追加
  *
  *****************************************************************************************/
 --
@@ -108,6 +110,11 @@ AS
   -- クイックコード取得エラー
   lookup_types_expt EXCEPTION;
   insert_err_expt   EXCEPTION;
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+  global_ins_key_expt       EXCEPTION;                        -- 汎用エラーリスト登録例外（submainハンドリング用） 
+  global_bulk_ins_expt      EXCEPTION;                        -- 汎用エラーリスト登録例外
+  PRAGMA EXCEPTION_INIT(global_bulk_ins_expt, -24381);
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -140,7 +147,9 @@ AS
   cv_msg_normal      CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90004';       -- 正常終了メッセージ
   cv_msg_warn        CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90005';       -- 警告終了メッセージ
   cv_msg_error       CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90006';       -- エラー終了全ロールバックメッセージ
-  cv_msg_parameter   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90008';       -- コンカレント入力パラメータなし
+--****************************** 2014/11/27 1.19 K.Nakatsu DEL START ******************************--
+--  cv_msg_parameter   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90008';       -- コンカレント入力パラメータなし
+--****************************** 2014/11/27 1.19 K.Nakatsu DEL  END  ******************************--
 -- *************** 2009/09/04 1.13 N.Maeda MOD START *****************************--
 --  cv_msg_tax_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10352';       -- 参照コードマスタ及びAR消費税マスタ
   cv_msg_tax_table   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00190';       -- 消費税VIEW
@@ -167,6 +176,17 @@ AS
 --****************************** 2014/10/16 1.18 MOD START ******************************
   cv_empl_effect     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10367';       -- 納品者コード有効性チェック
 --****************************** 2014/10/16 1.18 MOD END   ******************************
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+  cv_msg_cus_code    CONSTANT VARCHAR2(30)  := 'APP-XXCOS1-00053';      -- 顧客コード
+  cv_msg_dlv         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00080';      -- 納品者コード
+  cv_msg_hht_inv_no  CONSTANT VARCHAR2(30)  := 'APP-XXCOS1-00131';      -- HHT伝票No.
+  cv_msg_dlv_date    CONSTANT VARCHAR2(30)  := 'APP-XXCOS1-10169';      -- 納品日
+  cv_msg_gen_errlst  CONSTANT VARCHAR2(30)  := 'APP-XXCOS1-00213';      -- メッセージ用文字列
+  cv_msg_err_out_flg CONSTANT VARCHAR2(30)  := 'APP-XXCOS1-10260';      -- 汎用エラーリスト出力フラグ
+  cv_tkn_err_out_flg CONSTANT VARCHAR2(30)  := 'GEN_ERR_OUT_FLAG';      -- 汎用エラーリスト出力フラグ
+  cv_status_err_ins  CONSTANT VARCHAR2(1)   := '3';                     -- リターンコード
+  cv_key_data        CONSTANT VARCHAR2(20)  := 'KEY_DATA';              -- 編集されたキー情報
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
   -- トークン
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE_NAME';             -- テーブル名
   cv_tkn_tab         CONSTANT VARCHAR2(20)  := 'TABLE';                  -- テーブル名
@@ -259,6 +279,9 @@ AS
      ,dlv_by_code         xxcos_dlv_headers.dlv_by_code%TYPE                  -- 納品者コード
      ,dlv_date            xxcos_dlv_headers.dlv_date%TYPE                     -- 納品日
 --****************************** 2014/10/16 1.18 MOD END   ******************************
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+     ,base_code           xxcos_dlv_headers.base_code%TYPE                    -- 拠点コード
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
     );
   TYPE g_tab_inv_data_type IS TABLE OF g_get_inv_data_type INDEX BY PLS_INTEGER;
 --
@@ -485,7 +508,11 @@ AS
   TYPE g_tab_vd_can_cor_class            IS TABLE OF xxcos_vd_column_headers.cancel_correct_class%TYPE
     INDEX BY PLS_INTEGER;                -- 取消訂正区分
 --******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
-
+--
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+  TYPE g_err_key_ttype                   IS TABLE OF xxcos_gen_err_list%ROWTYPE
+    INDEX BY BINARY_INTEGER;
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -578,6 +605,12 @@ AS
   gt_dlv_headers_row_id             g_tab_vd_row_id;                 -- 納品ヘッダテーブルレコードID
 --******************** 2009/05/21 Ver1.9  T.Kitajima ADD  END  ******************************************
 --
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+  gt_err_key_msg_tab                g_err_key_ttype;                -- 汎用エラーリスト用keyメッセージ
+  gv_prm_gen_err_out_flag           VARCHAR2(1);                    -- 汎用エラーリスト出力フラグ
+  gn_msg_cnt                        NUMBER;                         -- 汎用エラーリスト用メッセージ件数
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
+--
   gn_inv_target_cnt     NUMBER;                         -- 入出庫情報抽出件数
   gn_dlv_h_target_cnt   NUMBER;                         -- 納品ヘッダ情報抽出件数
   gn_dlv_l_target_cnt   NUMBER;                         -- 納品明細情報抽出件数
@@ -603,6 +636,9 @@ AS
   gv_tkn1               VARCHAR2(50);                   -- エラーメッセージ用トークン１
   gv_tkn2               VARCHAR2(50);                   -- エラーメッセージ用トークン２
   gv_tkn3               VARCHAR2(50);                   -- エラーメッセージ用トークン３
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+  gv_tkn4               VARCHAR2(2000);                 -- エラーメッセージ用トークン４
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
 --****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
   gt_org_id             fnd_profile_option_values.profile_option_value%TYPE;      -- MO:営業単位
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
@@ -641,6 +677,9 @@ AS
     -- *** ローカル変数 ***
     ld_process_date  DATE;              -- 業務処理日
     lv_max_date      VARCHAR2(50);      -- MAX日付
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+    lv_para_msg      VARCHAR2(100);     -- パラメータ出力
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
 --
     -- *** ローカル・カーソル ***
 --
@@ -655,38 +694,70 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
-    --==============================================================
-    -- 「コンカレント入力パラメータなし」メッセージを出力
+--****************************** 2014/11/27 1.19 K.Nakatsu MOD START ******************************--
+--    --==============================================================
+--    --メッセージ出力をする必要がある場合は処理を記述
+--    --==============================================================
+--    -- 「コンカレント入力パラメータなし」メッセージを出力
+--    FND_FILE.PUT_LINE(
+--       which => FND_FILE.OUTPUT
+--      ,buff  => xxccp_common_pkg.get_msg( cv_application_ccp, cv_msg_parameter )
+--    );
+--    --空行挿入
+--    FND_FILE.PUT_LINE(
+--       which => FND_FILE.OUTPUT
+--      ,buff  => ''
+--    );
+----
+--    --==============================================================
+--    --「コンカレント入力パラメータなし」メッセージをログ出力
+--    --==============================================================
+--    --空行挿入
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.LOG
+--      ,buff   => ''
+--    );
+--    -- メッセージログ
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.LOG
+--      ,buff   => xxccp_common_pkg.get_msg( cv_application_ccp, cv_msg_parameter )
+--    );
+--    --空行挿入
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.LOG
+--      ,buff   => ''
+--    );
+    -- パラメータ出力
+    lv_para_msg  :=  xxccp_common_pkg.get_msg(
+                         iv_application   =>  cv_application
+                       , iv_name          =>  cv_msg_err_out_flg
+                       , iv_token_name1   =>  cv_tkn_err_out_flg
+                       , iv_token_value1  =>  gv_prm_gen_err_out_flag
+                     );
+--
     FND_FILE.PUT_LINE(
-       which => FND_FILE.OUTPUT
-      ,buff  => xxccp_common_pkg.get_msg( cv_application_ccp, cv_msg_parameter )
-    );
-    --空行挿入
-    FND_FILE.PUT_LINE(
-       which => FND_FILE.OUTPUT
-      ,buff  => ''
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  lv_para_msg
     );
 --
-    --==============================================================
-    --「コンカレント入力パラメータなし」メッセージをログ出力
-    --==============================================================
-    --空行挿入
+    --1行空白
     FND_FILE.PUT_LINE(
-       which  => FND_FILE.LOG
-      ,buff   => ''
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  NULL
     );
+--
+    -- 空行出力
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.LOG
+      , buff    =>  NULL
+    );
+--
     -- メッセージログ
     FND_FILE.PUT_LINE(
-       which  => FND_FILE.LOG
-      ,buff   => xxccp_common_pkg.get_msg( cv_application_ccp, cv_msg_parameter )
+        which   =>  FND_FILE.LOG
+      , buff    =>  lv_para_msg
     );
-    --空行挿入
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.LOG
-      ,buff   => ''
-    );
+--****************************** 2014/11/27 1.19 K.Nakatsu DEL  END  ******************************--
 --
     --==============================================================
     -- 共通関数＜業務処理日取得＞の呼び出し
@@ -2250,6 +2321,9 @@ AS
     lt_inv_dlv_date                    xxcos_dlv_headers.dlv_date%TYPE;                   -- 納品日
     lt_inv_dlv_date_yyyymmdd           VARCHAR2(10);                                      -- 納品日（メッセージ出力用）
 --****************************** 2014/10/16 1.18 MOD END   ******************************
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+    lt_inv_base_code                   xxcos_dlv_headers.base_code%TYPE;                  -- 拠点コード
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
 --
     -- *** ローカル・カーソル ***
 -- ******************* 2009/07/17 Ver1.11 N.Maeda ADD START ******************************************--
@@ -2271,6 +2345,9 @@ AS
             ,head.dlv_by_code                dlv_by_code               -- 納品者コード
             ,head.dlv_date                   dlv_date                  -- 納品日
 --****************************** 2014/10/16 1.18 MOD END   ******************************
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+            ,head.base_code                  base_code                 -- 拠点コード
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
       FROM   xxcos_dlv_headers  head         -- 納品ヘッダ
             ,xxcos_dlv_lines    line         -- 納品明細テーブル
       WHERE  head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
@@ -2468,6 +2545,9 @@ AS
       lt_inv_dlv_by_code           := gt_inv_data_tab(i).dlv_by_code;          -- 納品者コード
       lt_inv_dlv_date              := gt_inv_data_tab(i).dlv_date;             -- 納品日
 --****************************** 2014/10/16 1.18 MOD END   ******************************
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+      lt_inv_base_code             := gt_inv_data_tab(i).base_code;            -- 拠点コード
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
 --
       BEGIN
         -- ===================
@@ -2710,6 +2790,35 @@ AS
           FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
 --
 --****************************** 2014/10/16 1.18 MOD END   ******************************
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+          -- キー情報編集
+          xxcos_common_pkg.makeup_key_info(
+              iv_item_name1     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv )         --  項目名称１
+            , iv_item_name2     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_hht_inv_no )  --  項目名称２
+            , iv_item_name3     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code )    --  項目名称３
+            , iv_item_name4     =>  xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_date )    --  項目名称４
+            , iv_data_value1    =>  lt_inv_dlv_by_code                         --  納品者コード
+            , iv_data_value2    =>  lt_inv_hht_invoice_no                      --  HHT伝票No.
+            , iv_data_value3    =>  lt_inv_customer_number                     --  顧客コード
+            , iv_data_value4    =>  lt_inv_dlv_date_yyyymmdd                   --  納品日
+            , ov_key_info       =>  gv_tkn4                                    --  キー情報
+            , ov_errbuf         =>  lv_errbuf                                  --  エラー・メッセージエラー
+            , ov_retcode        =>  lv_retcode                                 --  リターン・コード
+            , ov_errmsg         =>  lv_errmsg                                  --  ユーザー・エラー・メッセージ
+          );
+          -- 汎用エラーリスト用キー情報保持
+          IF (gv_prm_gen_err_out_flag = cv_tkn_yes) THEN
+            --  汎用エラーリスト出力要の場合
+            gn_msg_cnt  :=  gn_msg_cnt + 1;
+            --  汎用エラーリスト用キー情報
+            --  納品拠点
+            gt_err_key_msg_tab(gn_msg_cnt).base_code      :=  lt_inv_base_code;
+            --  エラーメッセージ名
+            gt_err_key_msg_tab(gn_msg_cnt).message_name   :=  cv_empl_effect;
+            --  キーメッセージ
+            gt_err_key_msg_tab(gn_msg_cnt).message_text   :=  SUBSTRB(gv_tkn4, 1, 2000);
+          END IF;
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
       END;
 --
     END LOOP get_inv_loop;
@@ -3463,15 +3572,150 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END data_update;
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_err_msg
+   * Description      : エラー情報登録処理(A-6)
+   ***********************************************************************************/
+--
+  PROCEDURE ins_err_msg(
+    ov_errbuf       OUT     VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode      OUT     VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg       OUT     VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_err_msg'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_outmsg       VARCHAR2(5000);   --  エラーメッセージ
+    lv_table_name   VARCHAR2(100);    --  テーブル名称
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    FOR ln_set_cnt  IN  1 .. gn_msg_cnt LOOP
+      -- ===============================
+      --  キー情報以外の設定
+      -- ===============================
+      --  汎用エラーリストID
+      SELECT  xxcos_gen_err_list_s01.NEXTVAL
+      INTO    gt_err_key_msg_tab(ln_set_cnt).gen_err_list_id
+      FROM    dual;
+      --
+      gt_err_key_msg_tab(ln_set_cnt).concurrent_program_name  :=  cv_pkg_name;                  --  コンカレント名
+      gt_err_key_msg_tab(ln_set_cnt).business_date            :=  gd_process_date;              --  登録業務日付
+      gt_err_key_msg_tab(ln_set_cnt).created_by               :=  cn_created_by;                --  作成者
+      gt_err_key_msg_tab(ln_set_cnt).creation_date            :=  SYSDATE;                      --  作成日
+      gt_err_key_msg_tab(ln_set_cnt).last_updated_by          :=  cn_last_updated_by;           --  最終更新者
+      gt_err_key_msg_tab(ln_set_cnt).last_update_date         :=  SYSDATE;                      --  最終更新日
+      gt_err_key_msg_tab(ln_set_cnt).last_update_login        :=  cn_last_update_login;         --  最終更新ログイン
+      gt_err_key_msg_tab(ln_set_cnt).request_id               :=  cn_request_id;                --  要求ID
+      gt_err_key_msg_tab(ln_set_cnt).program_application_id   :=  cn_program_application_id;    --  コンカレント・プログラム・アプリケーションID
+      gt_err_key_msg_tab(ln_set_cnt).program_id               :=  cn_program_id;                --  コンカレント・プログラムID
+      gt_err_key_msg_tab(ln_set_cnt).program_update_date      :=  SYSDATE;                      --  プログラム更新日
+    END LOOP;
+    --
+    -- ===============================
+    --  汎用エラーリスト登録
+    -- ===============================
+    FORALL ln_cnt IN 1 .. gn_msg_cnt  SAVE EXCEPTIONS
+      INSERT  INTO  xxcos_gen_err_list VALUES gt_err_key_msg_tab(ln_cnt);
+--
+  EXCEPTION
+    -- *** バルクインサート例外処理 ***
+    WHEN global_bulk_ins_expt THEN
+      gn_error_cnt  :=  SQL%BULK_EXCEPTIONS.COUNT;        --  エラー件数
+      ov_retcode    :=  cv_status_err_ins;                --  ステータス（エラー）
+      ov_errmsg     :=  NULL;                             --  ユーザー・エラー・メッセージ
+      ov_errbuf     :=  NULL;                             --  エラー・メッセージ
+      --
+      --  テーブル名称
+      lv_table_name :=  xxccp_common_pkg.get_msg(
+                            iv_application  =>  cv_application
+                          , iv_name         =>  cv_msg_gen_errlst
+                        );
+      --
+      <<output_error_loop>>
+      FOR ln_cnt IN 1 .. gn_error_cnt  LOOP
+        -- エラーメッセージ生成
+        lv_outmsg :=  SUBSTRB(
+                        xxccp_common_pkg.get_msg(
+                            iv_application    =>  cv_application
+                          , iv_name           =>  cv_msg_add
+                          , iv_token_name1    =>  cv_tkn_table
+                          , iv_token_value1   =>  lv_table_name
+                          , iv_token_name2    =>  cv_key_data
+                          , iv_token_value2   =>  cv_prg_name||cv_msg_part||SQLERRM(-SQL%BULK_EXCEPTIONS(ln_cnt).ERROR_CODE)
+                        ), 1, 5000
+                      );
+        -- エラーメッセージ出力
+        fnd_file.put_line(
+            which   =>  FND_FILE.OUTPUT
+          , buff    =>  lv_outmsg
+        );
+        FND_FILE.PUT_LINE(
+            which   =>  FND_FILE.LOG
+          , buff    =>  lv_outmsg
+        );
+      END LOOP output_error_loop;
+      --
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_err_msg;
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
 --
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+    iv_gen_err_out_flag  IN         VARCHAR2,     --  汎用エラーリスト出力フラグ
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
+    ov_errbuf            OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode           OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg            OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
   IS
 --
 --#####################  固定ローカル定数変数宣言部 START   ####################
@@ -3521,6 +3765,10 @@ AS
     gn_l_normal_cnt     := 0;
     gn_dlv_h_nor_cnt    := 0;
     gn_dlv_l_nor_cnt    := 0;
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+    gn_msg_cnt                :=  0;                                --  汎用エラーリスト出力件数
+    gv_prm_gen_err_out_flag   :=  iv_gen_err_out_flag;              --  汎用エラーリスト出力フラグ
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -3618,6 +3866,27 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
+      -- =======================================================
+      -- A-6.エラー情報登録処理
+      -- =======================================================
+    IF (gn_msg_cnt <> 0) THEN
+      --  汎用エラーリスト出力対象有りの場合
+      ins_err_msg(
+          ov_errbuf       =>  lv_errbuf     -- エラー・メッセージ           --# 固定 #
+        , ov_retcode      =>  lv_retcode    -- リターン・コード             --# 固定 #
+        , ov_errmsg       =>  lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      --
+      IF (lv_retcode = cv_status_err_ins) THEN
+        -- INSERT時エラー
+        RAISE global_ins_key_expt;
+      ELSIF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+      --
+    END IF;
+--****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
     -- スキップ発生時
     IF ( gn_warn_cnt <> 0 ) THEN
       -- ステータス警告
@@ -3662,7 +3931,11 @@ AS
 --
   PROCEDURE main(
     errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
-    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+--****************************** 2014/11/27 1.19 K.Nakatsu MOD START ******************************--
+--    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_gen_err_out_flag  IN VARCHAR2 --  汎用エラーリスト出力フラグ
+--****************************** 2014/11/27 1.19 K.Nakatsu MOD  END  ******************************--
   )
 --
 --###########################  固定部 START   ###########################
@@ -3713,7 +3986,11 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--****************************** 2014/11/27 1.19 K.Nakatsu MOD START ******************************--
+--       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+       NVL(iv_gen_err_out_flag, cv_tkn_no)         --  汎用エラーリスト出力フラグ
+      ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+--****************************** 2014/11/27 1.19 K.Nakatsu MOD  END  ******************************--
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
