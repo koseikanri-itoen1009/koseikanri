@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.37
+ * Version          : 1.38
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -116,6 +116,7 @@ AS
  *  2014-05-13    1.35 K.Nakamura        【E_本稼動_11853】ベンダー購入対応
  *  2014-08-29    1.36 S.Yamashita       【E_本稼動_11719】ベンダー購入対応(PH2)
  *  2014-12-15    1.37 K.Kanada          【E_本稼動_12775】廃棄決裁の条件変更
+ *  2015-01-13    1.38 T.Sano            【E_本稼動_12289】対応売上・担当拠点妥当性チェックを追加 
  *
  *****************************************************************************************/
   --
@@ -293,6 +294,9 @@ AS
   cv_tkn_number_75  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00663';  -- メッセージ用文字列(申告地マスタ)
   cv_tkn_number_76  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00545';  -- 参照タイプ内容取得エラーメッセージ
   /* 2014-05-13 K.Nakamura E_本稼動_11853対応 END */
+  /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+  cv_tkn_number_77  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00717';  -- 参照タイプ内容取得エラーメッセージ
+  /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -429,6 +433,9 @@ AS
 /* 2014-05-13 K.Nakamura E_本稼動_11853対応 START */
   cv_input_chk_kbn_16  CONSTANT VARCHAR2(2) := '16';  -- 申告地必須入力チェック
 /* 2014-05-13 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+  cv_input_chk_kbn_17  CONSTANT VARCHAR2(2) := '17';  -- 売上・担当拠点妥当性チェック
+/* 2015-01-13 T.Sano E_本稼動_12289対応 END */
   --
   -- 物件ステータスチェック処理内のチェック区分番号
   cv_obj_sts_chk_kbn_01  CONSTANT VARCHAR2(2) := '01';  -- チェック対象：設置用物件
@@ -522,6 +529,9 @@ AS
     , work_hope_time_type       xxcso_requisition_lines_v.work_hope_time_type%TYPE       -- 作業希望時間区分
     , work_hope_time_hour       xxcso_requisition_lines_v.work_hope_time_hour%TYPE       -- 作業希望時
     , work_hope_time_minute     xxcso_requisition_lines_v.work_hope_time_minute%TYPE     -- 作業希望分
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+    , sold_charge_base          xxcso_requisition_lines_v.sold_charge_base%TYPE     -- 売上・担当拠点
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
     , install_place_type        xxcso_requisition_lines_v.install_place_type%TYPE        -- 設置場所区分
     , install_place_floor       xxcso_requisition_lines_v.install_place_floor%TYPE       -- 設置場所階数
     , elevator_frontage         xxcso_requisition_lines_v.elevator_frontage%TYPE         -- エレベータ間口
@@ -1154,6 +1164,9 @@ AS
            , xrlv.work_hope_time_type       work_hope_time_type       -- 作業希望時間区分
            , xrlv.work_hope_time_hour       work_hope_time_hour       -- 作業希望時
            , xrlv.work_hope_time_minute     work_hope_time_minute     -- 作業希望分
+           /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+           , xrlv.sold_charge_base          sold_charge_base          -- 売上・担当拠点
+           /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
            , xrlv.install_place_type        install_place_type        -- 設置場所区分
            , xrlv.install_place_floor       install_place_floor       -- 設置場所階数
            , xrlv.elevator_frontage         elevator_frontage         -- エレベータ間口
@@ -1203,6 +1216,9 @@ AS
            , o_requisition_rec.work_hope_time_type       -- 作業希望時間区分
            , o_requisition_rec.work_hope_time_hour       -- 作業希望時
            , o_requisition_rec.work_hope_time_minute     -- 作業希望分
+           /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+           , o_requisition_rec.sold_charge_base          -- 売上・担当拠点
+           /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
            , o_requisition_rec.install_place_type        -- 設置場所区分
            , o_requisition_rec.install_place_floor       -- 設置場所階数
            , o_requisition_rec.elevator_frontage         -- エレベータ間口
@@ -1398,6 +1414,9 @@ AS
     cv_tkn_val_phone_fmt         CONSTANT VARCHAR2(100) := '半角数字、「XX-XXXX-XXXX」の形式（各6桁以内）';
     cv_tkn_val_emp_nm_fmt        CONSTANT VARCHAR2(100) := '全角10文字以内';
     cv_temp_info                 CONSTANT VARCHAR2(100) := '情報テンプレート';
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+    cv_cust_mast                 CONSTANT VARCHAR2(100) := '顧客マスタ';
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
     -- 情報テンプレート取得用パラメータ
     cv_inst_at_cstmr_nm          CONSTANT VARCHAR2(100) :=  'INSTALL_AT_CUSTOMER_NAME';   -- 設置先顧客名
     cv_inst_at_zp                CONSTANT VARCHAR2(100) :=  'INSTALL_AT_ZIP';             -- 設置先_郵便番号
@@ -1412,6 +1431,9 @@ AS
     -- *** ローカル変数 ***
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
     
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+    ln_cnt_rec     NUMBER;
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
     /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
     ld_wk_date     DATE;
     /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
@@ -2738,12 +2760,71 @@ AS
         --
       END IF;
     /* 2014-05-13 K.Nakamura E_本稼動_11853対応 END */
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+    -- チェック区分が「売上・担当拠点妥当性チェック」の場合
+    ELSIF ( iv_chk_kbn = cv_input_chk_kbn_17 ) THEN
+      -- 売上・担当拠点が半角英数以外の場合
+      IF ( xxccp_common_pkg.chk_number( i_requisition_rec.sold_charge_base ) = FALSE ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_77         -- メッセージコード
+                      );
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_warn;
+      -- 売上・担当拠点がマスタに存在しない場合
+      ELSE
+        BEGIN
+          SELECT count(1)
+          INTO   ln_cnt_rec
+          FROM   hz_cust_accounts hca
+          WHERE  hca.account_number      =  i_requisition_rec.sold_charge_base -- 売上・担当拠点
+          AND    hca.customer_class_code =  '1'                                --【分類区分】1:拠点
+          ;
+        --
+        EXCEPTION
+          -- 抽出に失敗した場合
+          WHEN OTHERS THEN
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name                 -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_08                         -- メッセージコード
+                         , iv_token_name1  => cv_tkn_table                             -- トークンコード1
+                         , iv_token_value1 => cv_cust_mast                             -- トークン値1
+                         , iv_token_name2  => cv_tkn_req_header_num                    -- トークンコード2
+                         , iv_token_value2 => i_requisition_rec.requisition_number     -- トークン値2
+                         , iv_token_name3  => cv_tkn_err_msg                           -- トークンコード3
+                         , iv_token_value3 => SQLERRM                                  -- トークン値3
+                      );
+            RAISE global_process_expt;
+        END;
+        --
+        -- 該当データが存在しない場合
+        IF ( ln_cnt_rec = 0 ) THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_77          -- メッセージコード
+                       );
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          ov_retcode := cv_status_warn;
+        END IF;
+      END IF;
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
     END IF;
     --
     ov_errbuf := lv_errbuf;
     --
   EXCEPTION
     --#################################  固定例外処理部 START   ####################################
+    --
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+    WHEN global_process_expt THEN
+      -- *** 処理部共通例外ハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
     --
     WHEN global_api_others_expt THEN
       -- *** 共通関数OTHERS例外ハンドラ ***
@@ -7954,6 +8035,33 @@ AS
           --
         END IF;
         /* 2014-05-13 K.Nakamura E_本稼動_11853対応 END */
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+        ------------------------------
+        -- 売上・担当拠点妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_17 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
           -- リターンコードに「異常」を設定
@@ -8314,6 +8422,33 @@ AS
           --
         END IF;
         /* 2014-05-13 K.Nakamura E_本稼動_11853対応 END */
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+        ------------------------------
+        -- 売上・担当拠点妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_17 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
           -- リターンコードに「異常」を設定
@@ -8680,6 +8815,33 @@ AS
           --
         END IF;
         /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+        ------------------------------
+        -- 売上・担当拠点妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_17 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -9049,6 +9211,33 @@ AS
           --
         END IF;
         /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+        ------------------------------
+        -- 売上・担当拠点妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_17 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -9470,6 +9659,33 @@ AS
           --
         END IF;
         /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+        ------------------------------
+        -- 売上・担当拠点妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_17 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -10095,6 +10311,33 @@ AS
           --
         END IF;
         /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
+        ------------------------------
+        -- 売上・担当拠点妥当性チェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_17 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,id_process_date   => ld_process_date     -- 業務処理日付
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
