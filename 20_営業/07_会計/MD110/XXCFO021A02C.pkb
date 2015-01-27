@@ -29,7 +29,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2014-10-16    1.0   A.Uchida        新規作成
+ *  2014-10-16    1.0   A.Uchida         新規作成
+ *  2015-01-23    1.1   A.Uchida         システムテスト障害対応
+ *                                       ・包装材料セットの抽出を追加
  *
  *****************************************************************************************/
 --
@@ -1979,6 +1981,12 @@ AS
     lt_record_type_code_40 CONSTANT xxinv_mov_lot_details.record_type_code%TYPE   := '40';  -- 投入済み
     lt_doc_type_prod       CONSTANT ic_tran_pnd.doc_type%TYPE                     := 'PROD';-- 生産
     lt_completed_ind_1     CONSTANT ic_tran_pnd.completed_ind%TYPE                := 1;     -- 完了
+    -- 2015-01-23 Ver1.1 Add Start
+    cv_dummy_whse_code     CONSTANT ic_tran_cmp.whse_code%TYPE                    := 'ZZZZ';
+    ct_doc_type_adji       CONSTANT ic_tran_cmp.doc_type%TYPE                     := 'ADJI';-- その他
+    ct_dummy_line_no       CONSTANT gmd_routings_b.routing_no%TYPE                := 'ZZZZZ';
+    cv_reason_code_X952    CONSTANT VARCHAR2(4)                                   := 'X952';--製造使用
+    -- 2015-01-23 Ver1.1 Add End
 --
     -- ルックアップタイプ
     cv_lookup_l03          CONSTANT VARCHAR2(30) := 'XXCMN_L03';
@@ -2759,6 +2767,166 @@ AS
                                           AND     NVL(xvv.end_date_active   , itp.trans_date)
       AND    itp.trans_date               BETWEEN TO_DATE(gv_period_name,cv_date_format_ym)
                                           AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+      -- 2015-01-23 Ver1.1 Add Start
+      UNION ALL
+      --包装材料セット
+      SELECT ijm.attribute5                                               -- 仕訳キー
+            ,itc.trans_id                                                 -- バッチID
+            ,itc.line_id                                                  -- 生産原料詳細ID
+            -- 生産バッチ－明細
+            ,NULL                                                         -- 手配No
+            ,srct.reason_desc1                                            -- 伝票区分
+            ,NULL                                                         -- ステータス名
+            ,NULL                                                         -- 成績管理部署名
+            ,NULL                                                         -- 完成品目コード
+            ,NULL                                                         -- 完成品目名称
+            ,NULL                                                         -- ロットNo
+            ,ct_dummy_line_no                                             -- ラインNo
+            ,NULL                                                         -- ライン名・略称
+            ,TO_CHAR(itc.trans_date,cv_date_format_ymd)                   -- 生産予定日
+            ,NULL                                                         -- 原料入庫予定日
+            ,NULL                                                         -- 依頼総数
+            ,NULL                                                         -- 指示総数
+            ,xim2v.item_um                                                -- 単位
+            ,CASE 
+               WHEN itc.trans_qty >= 0 THEN xil2v.segment1
+                                       ELSE cv_dummy_whse_code
+             END                                                          -- 納品場所コード
+            ,CASE 
+               WHEN itc.trans_qty >= 0 THEN xil2v.description
+                                       ELSE NULL
+             END                                                          -- 納品場所名
+            ,CASE 
+               WHEN itc.trans_qty < 0  THEN xil2v.segment1
+                                       ELSE cv_dummy_whse_code
+             END                                                          -- 移動場所コード
+            ,CASE
+               WHEN itc.trans_qty < 0  THEN xil2v.description
+                                       ELSE NULL
+             END                                                          -- 移動場所名
+            ,NULL                                                         -- タイプ
+            ,NULL                                                         -- ランク1
+            ,NULL                                                         -- ランク2
+            ,NULL                                                         -- ランク3
+            ,ijm.attribute2                                               -- 摘要
+            ,NULL                                                         -- フォーミュラNO
+            ,NULL                                                         -- レシピNO
+            ,itc.whse_code                                                -- プラントコード
+            ,NULL                                                         -- 指示／実績区分
+            -- 投入情報
+            ,xim2v.item_no                                                -- 投入品目コード
+            ,xim2v.item_short_name                                        -- 投入品目名称
+            ,NULL                                                         -- 投入口名
+            ,NULL                                                         -- 計画数
+            ,NULL                                                         -- 投入品依頼総数計
+            ,NULL                                                         -- 投入品指示総数
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード
+            ,NULL                                                         -- 打込品目名称
+            ,NULL                                                         -- 打込品依頼総数計
+            -- 生産バッチ－ロット明細
+            ,NULL                                                         -- 完成品ロットNo
+            ,NULL                                                         -- 完成品ロット指示総数
+            ,NULL                                                         -- 完成品ロット数量
+            -- 投入情報
+            ,xim2v.item_no                                                -- 投入品目コード(投入品-ロット)
+            ,xim2v.item_short_name                                        -- 投入品目名称(投入品-ロット)
+            ,ct_doc_type_adji||'_'||itc.reason_code                       -- 投入品ロットNo
+            ,NULL                                                         -- 投入品ロット指示総数
+            ,itc.trans_qty                                                -- 投入品ロット数量
+            ,NULL                                                         -- 在庫入数(投入品-ロット)
+            ,(SELECT xsupv.stnd_unit_price
+              FROM   xxcmn_stnd_unit_price_v  xsupv
+              WHERE  xsupv.item_id = itc.item_id
+              AND    itc.trans_date BETWEEN xsupv.start_date_active
+                                    AND     xsupv.end_date_active   )     -- 単価(投入品-ロット)
+            ,NULL                                                         -- 仕入形態名(投入品-ロット)
+            ,NULL                                                         -- 茶期(投入品-ロット)
+            ,NULL                                                         -- 年度(投入品-ロット)
+            ,NULL                                                         -- 産地(投入品-ロット)
+            ,NULL                                                         -- タイプ(投入品-ロット)
+            ,NULL                                                         -- ランク1(投入品-ロット)
+            ,NULL                                                         -- ランク2(投入品-ロット)
+            ,NULL                                                         -- ランク3(投入品-ロット)
+            ,NULL                                                         -- 製造日(投入品-ロット)
+            ,NULL                                                         -- 賞味期限(投入品-ロット)
+            ,NULL                                                         -- 固有記号(投入品-ロット)
+            ,NULL                                                         -- 納入日(投入品-ロット)
+            ,NULL                                                         -- 生産区分(投入品-ロット)
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード(打込品-ロット)
+            ,NULL                                                         -- 打込品目名称(打込品-ロット)
+            ,NULL                                                         -- 打込品ロットNo
+            ,NULL                                                         -- 打込品ロット指示総数
+            ,NULL                                                         -- 打込品ロット数量
+            ,NULL                                                         -- 在庫入数(打込品-ロット)
+            ,NULL                                                         -- 単価(打込品-ロット)
+            ,NULL                                                         -- 取引先名称（打込品-ロット）
+            ,NULL                                                         -- 仕入形態名(打込品-ロット)
+            ,NULL                                                         -- 茶期(打込品-ロット)
+            ,NULL                                                         -- 年度(打込品-ロット)
+            ,NULL                                                         -- 産地(打込品-ロット)
+            ,NULL                                                         -- タイプ(打込品-ロット)
+            ,NULL                                                         -- ランク1(打込品-ロット)
+            ,NULL                                                         -- ランク2(打込品-ロット)
+            ,NULL                                                         -- ランク3(打込品-ロット)
+            ,NULL                                                         -- 製造日(打込品-ロット)
+            ,NULL                                                         -- 賞味期限(打込品-ロット)
+            ,NULL                                                         -- 固有記号(打込品-ロット)
+            ,NULL                                                         -- 納入日(打込品-ロット)
+            ,NULL                                                         -- 生産区分(打込品-ロット)
+            -- 副産物情報
+            ,NULL                                                         -- 品目コード(副産物品-ロット)
+            ,NULL                                                         -- 品目名称(副産物品-ロット)
+            ,NULL                                                         -- 副産物品ロットNo
+            ,NULL                                                         -- 副産物品ロット指示総数
+            ,NULL                                                         -- 副産物品ロット数量
+            ,NULL                                                         -- 在庫入数(副産物品-ロット)
+            ,NULL                                                         -- 単価(副産物品-ロット)
+            ,NULL                                                         -- 取引先名称（副産物品-ロット）
+            ,NULL                                                         -- 仕入形態名(副産物品-ロット)
+            ,NULL                                                         -- 茶期(副産物品-ロット)
+            ,NULL                                                         -- 年度(副産物品-ロット)
+            ,NULL                                                         -- 産地(副産物品-ロット)
+            ,NULL                                                         -- タイプ(副産物品-ロット)
+            ,NULL                                                         -- ランク1(副産物品-ロット)
+            ,NULL                                                         -- ランク2(副産物品-ロット)
+            ,NULL                                                         -- ランク3(副産物品-ロット)
+            ,NULL                                                         -- 製造日(副産物品-ロット)
+            ,NULL                                                         -- 賞味期限(副産物品-ロット)
+            ,NULL                                                         -- 固有記号(副産物品-ロット)
+            ,NULL                                                         -- 納入日(副産物品-ロット)
+            ,NULL                                                         -- 生産区分(副産物品-ロット)
+            -- システム情報
+            ,gv_transfer_date                                             -- 連携日時
+            ,gv_period_name                                               -- 会計期間
+            ,cv_data_type_0                                               -- データタイプ('0':連携分)
+      FROM   ic_tran_cmp              itc       -- 完了在庫トランザクション
+            ,ic_adjs_jnl              iaj       -- 在庫調整ジャーナル
+            ,ic_jrnl_mst              ijm       -- OPMジャーナルマスタ
+            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別）
+            ,xxcmn_item_mst2_v        xim2v     -- OPM品目マスタ
+            ,xxcmn_item_locations2_v  xil2v     -- OPM保管場所情報View
+            ,ic_lots_mst              ilm       -- OPMロットマスタ
+            ,xxcmn_rcv_pay_mst        xrpm      -- 受払区分アドオンマスタ
+      WHERE  ijm.journal_id           = iaj.journal_id
+      AND    iaj.doc_id               = itc.doc_id
+      AND    iaj.doc_line             = itc.doc_line
+      AND    itc.reason_code          = srct.reason_code(+)
+      AND    srct.language(+)         = cv_lang
+      AND    xim2v.item_id(+)         = itc.item_id
+      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
+                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      AND    xil2v.segment1(+)        = itc.location
+      AND    ilm.item_id(+)           = itc.item_id
+      AND    ilm.lot_id(+)            = itc.lot_id
+      AND    itc.doc_type             = ct_doc_type_adji
+      AND    itc.doc_type             = xrpm.doc_type
+      AND    itc.reason_code          = xrpm.reason_code
+      AND    itc.reason_code          = cv_reason_code_X952   --製造使用
+      AND    itc.trans_date           BETWEEN TO_DATE(gv_period_name,cv_date_format_ym)
+                                      AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+      -- 2015-01-23 Ver1.1 Add End
       ORDER BY 106,2,29,3
       ;
 --
@@ -3527,6 +3695,166 @@ AS
                                           AND     NVL(xvv.end_date_active   , itp.trans_date)
       AND    itp.trans_date               BETWEEN TO_DATE(gt_next_period_name,cv_date_format_ym)
                                           AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))
+      -- 2015-01-23 Ver1.1 Add Start
+      UNION ALL
+      --包装材料セット
+      SELECT ijm.attribute5                                               -- 仕訳キー
+            ,itc.trans_id                                                 -- バッチID
+            ,itc.line_id                                                  -- 生産原料詳細ID
+            -- 生産バッチ－明細
+            ,NULL                                                         -- 手配No
+            ,srct.reason_desc1                                            -- 伝票区分
+            ,NULL                                                         -- ステータス名
+            ,NULL                                                         -- 成績管理部署名
+            ,NULL                                                         -- 完成品目コード
+            ,NULL                                                         -- 完成品目名称
+            ,NULL                                                         -- ロットNo
+            ,ct_dummy_line_no                                             -- ラインNo
+            ,NULL                                                         -- ライン名・略称
+            ,TO_CHAR(itc.trans_date,cv_date_format_ymd)                   -- 生産予定日
+            ,NULL                                                         -- 原料入庫予定日
+            ,NULL                                                         -- 依頼総数
+            ,NULL                                                         -- 指示総数
+            ,xim2v.item_um                                                -- 単位
+            ,CASE 
+               WHEN itc.trans_qty >= 0 THEN xil2v.segment1
+                                       ELSE cv_dummy_whse_code
+             END                                                          -- 納品場所コード
+            ,CASE 
+               WHEN itc.trans_qty >= 0 THEN xil2v.description
+                                       ELSE NULL
+             END                                                          -- 納品場所名
+            ,CASE 
+               WHEN itc.trans_qty < 0  THEN xil2v.segment1
+                                       ELSE cv_dummy_whse_code
+             END                                                          -- 移動場所コード
+            ,CASE
+               WHEN itc.trans_qty < 0  THEN xil2v.description
+                                       ELSE NULL
+             END                                                          -- 移動場所名
+            ,NULL                                                         -- タイプ
+            ,NULL                                                         -- ランク1
+            ,NULL                                                         -- ランク2
+            ,NULL                                                         -- ランク3
+            ,ijm.attribute2                                               -- 摘要
+            ,NULL                                                         -- フォーミュラNO
+            ,NULL                                                         -- レシピNO
+            ,itc.whse_code                                                -- プラントコード
+            ,NULL                                                         -- 指示／実績区分
+            -- 投入情報
+            ,xim2v.item_no                                                -- 投入品目コード
+            ,xim2v.item_short_name                                        -- 投入品目名称
+            ,NULL                                                         -- 投入口名
+            ,NULL                                                         -- 計画数
+            ,NULL                                                         -- 投入品依頼総数計
+            ,NULL                                                         -- 投入品指示総数
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード
+            ,NULL                                                         -- 打込品目名称
+            ,NULL                                                         -- 打込品依頼総数計
+            -- 生産バッチ－ロット明細
+            ,NULL                                                         -- 完成品ロットNo
+            ,NULL                                                         -- 完成品ロット指示総数
+            ,NULL                                                         -- 完成品ロット数量
+            -- 投入情報
+            ,xim2v.item_no                                                -- 投入品目コード(投入品-ロット)
+            ,xim2v.item_short_name                                        -- 投入品目名称(投入品-ロット)
+            ,ct_doc_type_adji||'_'||itc.reason_code                       -- 投入品ロットNo
+            ,NULL                                                         -- 投入品ロット指示総数
+            ,itc.trans_qty                                                -- 投入品ロット数量
+            ,NULL                                                         -- 在庫入数(投入品-ロット)
+            ,(SELECT xsupv.stnd_unit_price
+              FROM   xxcmn_stnd_unit_price_v  xsupv
+              WHERE  xsupv.item_id = itc.item_id
+              AND    itc.trans_date BETWEEN xsupv.start_date_active
+                                    AND     xsupv.end_date_active   )     -- 単価(投入品-ロット)
+            ,NULL                                                         -- 仕入形態名(投入品-ロット)
+            ,NULL                                                         -- 茶期(投入品-ロット)
+            ,NULL                                                         -- 年度(投入品-ロット)
+            ,NULL                                                         -- 産地(投入品-ロット)
+            ,NULL                                                         -- タイプ(投入品-ロット)
+            ,NULL                                                         -- ランク1(投入品-ロット)
+            ,NULL                                                         -- ランク2(投入品-ロット)
+            ,NULL                                                         -- ランク3(投入品-ロット)
+            ,NULL                                                         -- 製造日(投入品-ロット)
+            ,NULL                                                         -- 賞味期限(投入品-ロット)
+            ,NULL                                                         -- 固有記号(投入品-ロット)
+            ,NULL                                                         -- 納入日(投入品-ロット)
+            ,NULL                                                         -- 生産区分(投入品-ロット)
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード(打込品-ロット)
+            ,NULL                                                         -- 打込品目名称(打込品-ロット)
+            ,NULL                                                         -- 打込品ロットNo
+            ,NULL                                                         -- 打込品ロット指示総数
+            ,NULL                                                         -- 打込品ロット数量
+            ,NULL                                                         -- 在庫入数(打込品-ロット)
+            ,NULL                                                         -- 単価(打込品-ロット)
+            ,NULL                                                         -- 取引先名称（打込品-ロット）
+            ,NULL                                                         -- 仕入形態名(打込品-ロット)
+            ,NULL                                                         -- 茶期(打込品-ロット)
+            ,NULL                                                         -- 年度(打込品-ロット)
+            ,NULL                                                         -- 産地(打込品-ロット)
+            ,NULL                                                         -- タイプ(打込品-ロット)
+            ,NULL                                                         -- ランク1(打込品-ロット)
+            ,NULL                                                         -- ランク2(打込品-ロット)
+            ,NULL                                                         -- ランク3(打込品-ロット)
+            ,NULL                                                         -- 製造日(打込品-ロット)
+            ,NULL                                                         -- 賞味期限(打込品-ロット)
+            ,NULL                                                         -- 固有記号(打込品-ロット)
+            ,NULL                                                         -- 納入日(打込品-ロット)
+            ,NULL                                                         -- 生産区分(打込品-ロット)
+            -- 副産物情報
+            ,NULL                                                         -- 品目コード(副産物品-ロット)
+            ,NULL                                                         -- 品目名称(副産物品-ロット)
+            ,NULL                                                         -- 副産物品ロットNo
+            ,NULL                                                         -- 副産物品ロット指示総数
+            ,NULL                                                         -- 副産物品ロット数量
+            ,NULL                                                         -- 在庫入数(副産物品-ロット)
+            ,NULL                                                         -- 単価(副産物品-ロット)
+            ,NULL                                                         -- 取引先名称（副産物品-ロット）
+            ,NULL                                                         -- 仕入形態名(副産物品-ロット)
+            ,NULL                                                         -- 茶期(副産物品-ロット)
+            ,NULL                                                         -- 年度(副産物品-ロット)
+            ,NULL                                                         -- 産地(副産物品-ロット)
+            ,NULL                                                         -- タイプ(副産物品-ロット)
+            ,NULL                                                         -- ランク1(副産物品-ロット)
+            ,NULL                                                         -- ランク2(副産物品-ロット)
+            ,NULL                                                         -- ランク3(副産物品-ロット)
+            ,NULL                                                         -- 製造日(副産物品-ロット)
+            ,NULL                                                         -- 賞味期限(副産物品-ロット)
+            ,NULL                                                         -- 固有記号(副産物品-ロット)
+            ,NULL                                                         -- 納入日(副産物品-ロット)
+            ,NULL                                                         -- 生産区分(副産物品-ロット)
+            -- システム情報
+            ,gv_transfer_date                                             -- 連携日時
+            ,gt_next_period_name                                          -- 会計期間
+            ,cv_data_type_0                                               -- データタイプ('0':連携分)
+      FROM   ic_tran_cmp              itc       -- 完了在庫トランザクション
+            ,ic_adjs_jnl              iaj       -- 在庫調整ジャーナル
+            ,ic_jrnl_mst              ijm       -- OPMジャーナルマスタ
+            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別）
+            ,xxcmn_item_mst2_v        xim2v     -- OPM品目マスタ
+            ,xxcmn_item_locations2_v  xil2v     -- OPM保管場所情報View
+            ,ic_lots_mst              ilm       -- OPMロットマスタ
+            ,xxcmn_rcv_pay_mst        xrpm      -- 受払区分アドオンマスタ
+      WHERE  ijm.journal_id           = iaj.journal_id
+      AND    iaj.doc_id               = itc.doc_id
+      AND    iaj.doc_line             = itc.doc_line
+      AND    itc.reason_code          = srct.reason_code(+)
+      AND    srct.language(+)         = cv_lang
+      AND    xim2v.item_id(+)         = itc.item_id
+      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
+                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      AND    xil2v.segment1(+)        = itc.location
+      AND    ilm.item_id(+)           = itc.item_id
+      AND    ilm.lot_id(+)            = itc.lot_id
+      AND    itc.doc_type             = ct_doc_type_adji
+      AND    itc.doc_type             = xrpm.doc_type
+      AND    itc.reason_code          = xrpm.reason_code
+      AND    itc.reason_code          = cv_reason_code_X952   --製造使用
+      AND    itc.trans_date           BETWEEN TO_DATE(gt_next_period_name,cv_date_format_ym)
+                                      AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))
+      -- 2015-01-23 Ver1.1 Add End
       UNION ALL
       --完成品(未連携分)
       SELECT gmd.attribute27                                              -- 仕訳キー
@@ -4318,6 +4646,173 @@ AS
       AND    xpwc.lot_no_uchikomi         IS NULL
       AND    xpwc.lot_no_fukusan          = ilm.lot_no
       AND    xpwc.set_of_books_id         = gn_set_of_bks_id
+      -- 2015-01-23 Ver1.1 Add Start
+      UNION ALL
+      --包装材料セット
+      SELECT ijm.attribute5                                               -- 仕訳キー
+            ,itc.trans_id                                                 -- バッチID
+            ,itc.line_id                                                  -- 生産原料詳細ID
+            -- 生産バッチ－明細
+            ,NULL                                                         -- 手配No
+            ,srct.reason_desc1                                            -- 伝票区分
+            ,NULL                                                         -- ステータス名
+            ,NULL                                                         -- 成績管理部署名
+            ,NULL                                                         -- 完成品目コード
+            ,NULL                                                         -- 完成品目名称
+            ,NULL                                                         -- ロットNo
+            ,ct_dummy_line_no                                             -- ラインNo
+            ,NULL                                                         -- ライン名・略称
+            ,TO_CHAR(itc.trans_date,cv_date_format_ymd)                   -- 生産予定日
+            ,NULL                                                         -- 原料入庫予定日
+            ,NULL                                                         -- 依頼総数
+            ,NULL                                                         -- 指示総数
+            ,xim2v.item_um                                                -- 単位
+            ,CASE 
+               WHEN itc.trans_qty >= 0 THEN xil2v.segment1
+                                       ELSE cv_dummy_whse_code
+             END                                                          -- 納品場所コード
+            ,CASE 
+               WHEN itc.trans_qty >= 0 THEN xil2v.description
+                                       ELSE NULL
+             END                                                          -- 納品場所名
+            ,CASE 
+               WHEN itc.trans_qty < 0  THEN xil2v.segment1
+                                       ELSE cv_dummy_whse_code
+             END                                                          -- 移動場所コード
+            ,CASE
+               WHEN itc.trans_qty < 0  THEN xil2v.description
+                                       ELSE NULL
+             END                                                          -- 移動場所名
+            ,NULL                                                         -- タイプ
+            ,NULL                                                         -- ランク1
+            ,NULL                                                         -- ランク2
+            ,NULL                                                         -- ランク3
+            ,ijm.attribute2                                               -- 摘要
+            ,NULL                                                         -- フォーミュラNO
+            ,NULL                                                         -- レシピNO
+            ,itc.whse_code                                                -- プラントコード
+            ,NULL                                                         -- 指示／実績区分
+            -- 投入情報
+            ,xim2v.item_no                                                -- 投入品目コード
+            ,xim2v.item_short_name                                        -- 投入品目名称
+            ,NULL                                                         -- 投入口名
+            ,NULL                                                         -- 計画数
+            ,NULL                                                         -- 投入品依頼総数計
+            ,NULL                                                         -- 投入品指示総数
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード
+            ,NULL                                                         -- 打込品目名称
+            ,NULL                                                         -- 打込品依頼総数計
+            -- 生産バッチ－ロット明細
+            ,NULL                                                         -- 完成品ロットNo
+            ,NULL                                                         -- 完成品ロット指示総数
+            ,NULL                                                         -- 完成品ロット数量
+            -- 投入情報
+            ,xim2v.item_no                                                -- 投入品目コード(投入品-ロット)
+            ,xim2v.item_short_name                                        -- 投入品目名称(投入品-ロット)
+            ,ct_doc_type_adji||'_'||itc.reason_code                       -- 投入品ロットNo
+            ,NULL                                                         -- 投入品ロット指示総数
+            ,itc.trans_qty                                                -- 投入品ロット数量
+            ,NULL                                                         -- 在庫入数(投入品-ロット)
+            ,(SELECT xsupv.stnd_unit_price
+              FROM   xxcmn_stnd_unit_price_v  xsupv
+              WHERE  xsupv.item_id = itc.item_id
+              AND    itc.trans_date BETWEEN xsupv.start_date_active
+                                    AND     xsupv.end_date_active   )     -- 単価(投入品-ロット)
+            ,NULL                                                         -- 仕入形態名(投入品-ロット)
+            ,NULL                                                         -- 茶期(投入品-ロット)
+            ,NULL                                                         -- 年度(投入品-ロット)
+            ,NULL                                                         -- 産地(投入品-ロット)
+            ,NULL                                                         -- タイプ(投入品-ロット)
+            ,NULL                                                         -- ランク1(投入品-ロット)
+            ,NULL                                                         -- ランク2(投入品-ロット)
+            ,NULL                                                         -- ランク3(投入品-ロット)
+            ,NULL                                                         -- 製造日(投入品-ロット)
+            ,NULL                                                         -- 賞味期限(投入品-ロット)
+            ,NULL                                                         -- 固有記号(投入品-ロット)
+            ,NULL                                                         -- 納入日(投入品-ロット)
+            ,NULL                                                         -- 生産区分(投入品-ロット)
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード(打込品-ロット)
+            ,NULL                                                         -- 打込品目名称(打込品-ロット)
+            ,NULL                                                         -- 打込品ロットNo
+            ,NULL                                                         -- 打込品ロット指示総数
+            ,NULL                                                         -- 打込品ロット数量
+            ,NULL                                                         -- 在庫入数(打込品-ロット)
+            ,NULL                                                         -- 単価(打込品-ロット)
+            ,NULL                                                         -- 取引先名称（打込品-ロット）
+            ,NULL                                                         -- 仕入形態名(打込品-ロット)
+            ,NULL                                                         -- 茶期(打込品-ロット)
+            ,NULL                                                         -- 年度(打込品-ロット)
+            ,NULL                                                         -- 産地(打込品-ロット)
+            ,NULL                                                         -- タイプ(打込品-ロット)
+            ,NULL                                                         -- ランク1(打込品-ロット)
+            ,NULL                                                         -- ランク2(打込品-ロット)
+            ,NULL                                                         -- ランク3(打込品-ロット)
+            ,NULL                                                         -- 製造日(打込品-ロット)
+            ,NULL                                                         -- 賞味期限(打込品-ロット)
+            ,NULL                                                         -- 固有記号(打込品-ロット)
+            ,NULL                                                         -- 納入日(打込品-ロット)
+            ,NULL                                                         -- 生産区分(打込品-ロット)
+            -- 副産物情報
+            ,NULL                                                         -- 品目コード(副産物品-ロット)
+            ,NULL                                                         -- 品目名称(副産物品-ロット)
+            ,NULL                                                         -- 副産物品ロットNo
+            ,NULL                                                         -- 副産物品ロット指示総数
+            ,NULL                                                         -- 副産物品ロット数量
+            ,NULL                                                         -- 在庫入数(副産物品-ロット)
+            ,NULL                                                         -- 単価(副産物品-ロット)
+            ,NULL                                                         -- 取引先名称（副産物品-ロット）
+            ,NULL                                                         -- 仕入形態名(副産物品-ロット)
+            ,NULL                                                         -- 茶期(副産物品-ロット)
+            ,NULL                                                         -- 年度(副産物品-ロット)
+            ,NULL                                                         -- 産地(副産物品-ロット)
+            ,NULL                                                         -- タイプ(副産物品-ロット)
+            ,NULL                                                         -- ランク1(副産物品-ロット)
+            ,NULL                                                         -- ランク2(副産物品-ロット)
+            ,NULL                                                         -- ランク3(副産物品-ロット)
+            ,NULL                                                         -- 製造日(副産物品-ロット)
+            ,NULL                                                         -- 賞味期限(副産物品-ロット)
+            ,NULL                                                         -- 固有記号(副産物品-ロット)
+            ,NULL                                                         -- 納入日(副産物品-ロット)
+            ,NULL                                                         -- 生産区分(副産物品-ロット)
+            -- システム情報
+            ,gv_transfer_date                                             -- 連携日時
+            ,xpwc.period_name                                             -- 会計期間
+            ,cv_data_type_1                                               -- データタイプ('1':未連携分)
+      FROM   ic_tran_cmp              itc       -- 完了在庫トランザクション
+            ,ic_adjs_jnl              iaj       -- 在庫調整ジャーナル
+            ,ic_jrnl_mst              ijm       -- OPMジャーナルマスタ
+            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別）
+            ,xxcmn_item_mst2_v        xim2v     -- OPM品目マスタ
+            ,xxcmn_item_locations2_v  xil2v     -- OPM保管場所情報View
+            ,ic_lots_mst              ilm       -- OPMロットマスタ
+            ,xxcmn_rcv_pay_mst        xrpm      -- 受払区分アドオンマスタ
+            ,xxcfo_pro_wait_coop      xpwc      -- 受払取引(生産)未連携テーブル
+      WHERE  ijm.journal_id           = iaj.journal_id
+      AND    iaj.doc_id               = itc.doc_id
+      AND    iaj.doc_line             = itc.doc_line
+      AND    itc.reason_code          = srct.reason_code(+)
+      AND    srct.language(+)         = cv_lang
+      AND    xim2v.item_id(+)         = itc.item_id
+      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
+                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      AND    xil2v.segment1(+)        = itc.location
+      AND    ilm.item_id(+)           = itc.item_id
+      AND    ilm.lot_id(+)            = itc.lot_id
+      AND    itc.doc_type             = ct_doc_type_adji
+      AND    itc.doc_type             = xrpm.doc_type
+      AND    itc.reason_code          = xrpm.reason_code
+      AND    itc.reason_code          = cv_reason_code_X952   --製造使用
+      AND    xpwc.batch_id            = itc.trans_id
+      AND    xpwc.plant_code          = itc.whse_code
+      AND    xpwc.material_detail_id  = itc.line_id
+      AND    xpwc.lot_no_kansei       IS NULL
+      AND    xpwc.lot_no_tounyu       LIKE ct_doc_type_adji||'%'
+      AND    xpwc.lot_no_uchikomi     IS NULL
+      AND    xpwc.lot_no_fukusan      IS NULL
+      AND    xpwc.set_of_books_id     = gn_set_of_bks_id
+      -- 2015-01-23 Ver1.1 Add End
       ORDER BY 106,2,29,3
       ;
 --
