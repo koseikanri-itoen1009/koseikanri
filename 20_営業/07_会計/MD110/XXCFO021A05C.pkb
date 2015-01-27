@@ -29,7 +29,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2014-09-24    1.0   A.Uchida        新規作成
+ *  2014-09-24    1.0   A.Uchida         新規作成
+ *  2015-01-16    1.1   A.Uchida         システムテスト障害対応
+ *                                       パーティサイトビューの検索条件にステータスを追加
  *
  *****************************************************************************************/
 --
@@ -1948,6 +1950,7 @@ AS
     cv_adjs_class_2           CONSTANT VARCHAR2(1)  := '2';        -- 在庫調整区分：2
     cv_req_status_08          CONSTANT VARCHAR2(2)  := '08';       -- 出荷依頼ステータス：出荷実績計上済
     cv_document_type_30       CONSTANT VARCHAR2(2)  := '30';       -- 文書タイプ(アドオン)：30（支給指示）
+    cv_party_site_status_a    CONSTANT VARCHAR2(1)  := 'A';        -- パーティサイトステータス：A        -- 2015/01/16 Ver1.1 Add
 --
     -- ルックアップタイプ
     cv_lookup_arrival_time    CONSTANT VARCHAR2(30) := 'XXWSH_ARRIVAL_TIME';
@@ -2156,9 +2159,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -2414,9 +2419,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -2671,9 +2678,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -2928,9 +2937,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -3193,9 +3204,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -3449,9 +3462,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status (+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -3711,9 +3726,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -3968,9 +3985,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -4229,9 +4248,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -4486,9 +4507,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)      = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -4747,9 +4770,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)      = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
@@ -5005,9 +5030,11 @@ AS
       AND    xoha.arrival_date                 BETWEEN NVL(xca2v_branch.start_date_active, xoha.arrival_date)
                                                AND     NVL(xca2v_branch.end_date_active, xoha.arrival_date)
       AND    xoha.deliver_to                   = xps2v_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_deli.party_site_status(+)   = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_deli.end_date_active, xoha.arrival_date)
       AND    xoha.result_deliver_to            = xps2v_res_deli.PARTY_SITE_NUMBER(+)
+      AND    xps2v_res_deli.party_site_status(+)  = cv_party_site_status_a                       -- 2015/01/16 Ver1.1 Add
       AND    xoha.arrival_date                 BETWEEN NVL(xps2v_res_deli.start_date_active, xoha.arrival_date)
                                                AND     NVL(xps2v_res_deli.end_date_active, xoha.arrival_date)
       AND    xoha.customer_id                  = xca2v_cust.party_id(+)
