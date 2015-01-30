@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A03C(body)
  * Description      : 仕入実績仕訳IF作成
  * MD.050           : 仕入実績仕訳IF作成<MD050_CFO_020_A03>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014-10-17    1.0   T.Kobori        新規作成
+ *  2015-01-22    1.1   Y.Shoji         システムテスト不具合対応
  *
  *****************************************************************************************/
 --
@@ -484,7 +485,10 @@ AS
     it_department_code  IN  xxpo_rcv_and_rtn_txns.department_code%TYPE, --   3.部門コード
     it_item_class_code  IN  mtl_categories_b.segment1%TYPE,             --   4.品目区分
     it_vendor_code      IN  po_vendors.segment1%TYPE,                   --   5.仕入先コード
-    it_vendor_name      IN  xxcmn_vendors.vendor_short_name%TYPE,       --   6.仕入先名
+-- 2015.01.22 Ver1.1 Mod Start
+--    it_vendor_name      IN  xxcmn_vendors.vendor_short_name%TYPE,       --   6.仕入先名
+    it_vendor_name      IN  xxcmn_vendors.vendor_name%TYPE,       --   6.仕入先名
+-- 2015.01.22 Ver1.1 Mod End
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -690,7 +694,10 @@ AS
        ,gt_attribute8                   -- 仕訳名
        ,gv_description_dr || '_' || it_department_code || '_' || it_vendor_code || ' ' || it_vendor_name
                                         -- リファレンス5（仕訳名摘要）
-       ,lv_description  || it_vendor_code || it_vendor_name
+-- 2015.01.22 Ver1.1 Mod Start
+--       ,lv_description  || it_vendor_code || it_vendor_name
+       ,it_vendor_code || '_' || lv_description || '_' || it_vendor_name
+-- 2015.01.22 Ver1.1 Mod End
                                         -- リファレンス10（仕訳明細摘要）
        ,gv_period_name                  -- 会計期間名
        ,cn_request_id                   -- 要求ID
@@ -914,7 +921,10 @@ AS
     lt_department_code       xxpo_rcv_and_rtn_txns.department_code%TYPE; -- 仕訳単位：部門コード
     lt_item_class_code       mtl_categories_b.segment1%TYPE;             -- 仕訳単位：品目区分
     lt_vendor_code           po_vendors.segment1%TYPE;                   -- 仕訳単位：仕入先コード
-    lt_vendor_name           xxcmn_vendors.vendor_short_name%TYPE;       -- 仕訳単位：仕入先名
+-- 2015.01.22 Ver1.1 Mod Start
+--    lt_vendor_name           xxcmn_vendors.vendor_short_name%TYPE;       -- 仕訳単位：仕入先名
+    lt_vendor_name           xxcmn_vendors.vendor_name%TYPE;       -- 仕訳単位：仕入先名
+-- 2015.01.22 Ver1.1 Mod End
     lt_vendor_id             xxpo_rcv_and_rtn_txns.vendor_id%TYPE;       -- 仕訳単位：仕入先ID
 --
     -- ===============================
@@ -928,8 +938,12 @@ AS
             ,trn.vendor_id                                          AS vendor_id          -- 仕入先ID
             ,trn.item_class_code                                    AS item_class_code    -- 品目区分
             ,trn.txns_id                                            AS txns_id            -- 取引ID
-            ,ROUND((trn.stnd_unit_price * (SUM(trn.trans_qty) * trn.rcv_pay_div))
-             - (trn.unit_price * (SUM(trn.trans_qty) * trn.rcv_pay_div))) AS genka_sagaku -- 原価差額
+-- 2015.01.22 Ver1.1 Mod Start
+--            ,ROUND((trn.stnd_unit_price * (SUM(trn.trans_qty) * trn.rcv_pay_div))
+--             - (trn.unit_price * (SUM(trn.trans_qty) * trn.rcv_pay_div))) AS genka_sagaku -- 原価差額
+            ,ROUND(trn.stnd_unit_price * SUM(trn.trans_qty) * trn.rcv_pay_div)
+             - ROUND(trn.unit_price * SUM(trn.trans_qty) * trn.rcv_pay_div) AS genka_sagaku -- 原価差額
+-- 2015.01.22 Ver1.1 Mod End
       FROM(
            -- 抽出①（受入実績）
            SELECT
@@ -1075,7 +1089,10 @@ AS
         -- ===============================
         BEGIN
           SELECT xv2v.segment1                      -- 仕入先コード
-                ,xv2v.vendor_short_name             -- 仕入先略称
+-- 2015.01.22 Ver1.1 Mod Start
+--                ,xv2v.vendor_short_name             -- 仕入先略称
+                ,xv2v.vendor_full_name             -- 正式名
+-- 2015.01.22 Ver1.1 Mod End
           INTO   lt_vendor_code
                 ,lt_vendor_name
           FROM   xxcmn_vendors2_v xv2v              -- 仕入先情報view2
@@ -1192,7 +1209,10 @@ AS
         -- ===============================
         BEGIN
           SELECT xv2v.segment1                      -- 仕入先コード
-                ,xv2v.vendor_short_name             -- 仕入先略称
+-- 2015.01.22 Ver1.1 Mod Start
+--                ,xv2v.vendor_short_name             -- 仕入先略称
+                ,xv2v.vendor_full_name             -- 正式名
+-- 2015.01.22 Ver1.1 Mod End
           INTO   lt_vendor_code
                 ,lt_vendor_name
           FROM   xxcmn_vendors2_v xv2v              -- 仕入先情報view2
