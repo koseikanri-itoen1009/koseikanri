@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A01C(body)
  * Description      : 受払その他実績仕訳IF作成
  * MD.050           : 受払その他実績仕訳IF作成<MD050_CFO_020_A01>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *  2014-11-25    1.0   SCSK H.Itou      新規作成
  *  2015-01-09    1.1   SCSK A.Uchida    棚卸減耗費のカーソルで対象の倉庫コードのみ
  *                                       抽出が出来るよう修正。
+ *  2015-01-29    1.2   SCSK A.Uchida    システムテスト障害対応
+ *                                       ・「抽出カーソル_その他」の抽出条件変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1266,6 +1268,11 @@ AS
     ct_lookup_cost_whse      CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFO1_PACKAGE_COST_WHSE';  -- 参照タイプ：受払生産倉庫リスト
     cv_flag_1                VARCHAR2(1)                                 := '1';                         -- 棚卸減耗倉庫フラグ
     -- 2015.01.09 Ver1.1 Add End
+    -- 2015-01.29 Ver1.2 Add Start
+    ct_dealings_div_502      CONSTANT xxcmn_rcv_pay_mst.dealings_div%TYPE := '502';
+    ct_dealings_div_511      CONSTANT xxcmn_rcv_pay_mst.dealings_div%TYPE := '511';
+    ct_rcv_pay_div_minus1    CONSTANT xxcmn_rcv_pay_mst.rcv_pay_div%TYPE  := '-1';
+    -- 2015-01.29 Ver1.2 Add End
 --
     -- *** ローカル変数 ***
     lt_siwake_rec            siwake_rec;                                 -- 仕訳情報
@@ -1692,7 +1699,12 @@ AS
           ,ic_whse_mst                iwm             -- OPM倉庫マスタ
           ,ic_lots_mst                ilm             -- OPMロットマスタ
     WHERE  itc.doc_type                = cv_adji
-    AND    itc.reason_code             = cv_reason_951   -- その他払出
+    -- 2015-01-29 Ver1.1 Mod Start
+--    AND    itc.reason_code             = cv_reason_951   -- その他払出
+    AND    xrpm.dealings_div          IN (ct_dealings_div_502
+                                         ,ct_dealings_div_511)   -- その他払出
+    AND    xrpm.rcv_pay_div            = ct_rcv_pay_div_minus1   -- 受払区分：払出
+    -- 2015-01-29 Ver1.1 Mod End
     AND    itc.trans_date             >= gd_target_date_from
     AND    itc.trans_date             <= gd_target_date_to
     AND    itc.doc_type                = iaj.trans_type
