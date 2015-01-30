@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,10 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014-09-19    1.0   K.Kubo           新規作成
+ *  2015-01-26    1.1   A.Uchida         システムテスト障害対応
+ *                                       ・抽出①（受入実績）に不足していた結合条件を追加。
+ *                                       ・AP請求書ヘッダOIFとAP請求書明細の「摘要」に設定する値を修正。
+ *                                       ・口銭消費税を【仮払消費税/預り金】として計上する。
  *
  *****************************************************************************************/
 --
@@ -53,6 +57,7 @@ AS
 --
   cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+  cv_underbar      CONSTANT VARCHAR2(1) := '_';       -- 2015-01-26 Ver1.1 Add
 --
 --################################  固定部 END   ##################################
 --
@@ -176,6 +181,10 @@ AS
   cv_line_no_03               CONSTANT VARCHAR2(1)   := '3';
   cv_line_no_04               CONSTANT VARCHAR2(1)   := '4';
   cv_line_no_05               CONSTANT VARCHAR2(1)   := '5';
+  -- 2015-01-26 Ver1.1 Add Start
+  cv_line_no_06               CONSTANT VARCHAR2(1)   := '6';
+  cv_line_no_07               CONSTANT VARCHAR2(1)   := '7';
+  -- 2015-01-26 Ver1.1 Add End
 --
   -- 品目区分
   cv_item_class_1             CONSTANT VARCHAR2(1)   := '1';           -- 原料
@@ -227,6 +236,9 @@ AS
   gn_vendor_site_id_hdr       NUMBER        DEFAULT NULL;    -- 請求書単位：仕入先サイトID（生産）
   gv_department_code_hdr      VARCHAR2(100) DEFAULT NULL;    -- 請求書単位：部門コード
   gv_item_class_code_hdr      VARCHAR2(100) DEFAULT NULL;    -- 請求書単位：品目区分
+  -- 2015-01-26 Ver1.1 Add Start
+  gn_commission_tax_all       NUMBER        DEFAULT NULL;    -- 請求書単位：口銭消費税
+  -- 2015-01-26 Ver1.1 Add End
 --
   gv_mfg_vendor_name          VARCHAR2(100) DEFAULT NULL;    -- 請求書単位：仕入先名（生産）
   gv_invoice_num              VARCHAR2(100) DEFAULT NULL;    -- 請求書単位：請求書番号
@@ -270,6 +282,9 @@ AS
      ,payment_tax             NUMBER                         -- 支払消費税額
      ,tax_code                NUMBER                         -- 税コード（営業）
      ,tax_ccid                NUMBER                         -- 消費税勘定CCID
+     -- 2015-01-26 Ver1.1 Add Start
+     ,commission_tax          NUMBER                         -- 口銭消費税
+     -- 2015-01-26 Ver1.1 Add End
     );
   TYPE g_ap_invoice_line_ttype IS TABLE OF g_ap_invoice_line_rec INDEX BY PLS_INTEGER;
 --
@@ -1007,12 +1022,15 @@ AS
         ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
       , gv_invoice_num                          -- 請求書番号(直前で取得)
       , cv_type_standard                        -- 請求書タイプ
-      , gd_target_date_to                       -- 請求日付(対象月の月末)
+      , gd_target_date_to                       -- 請求日付(	)
       , lv_sales_vendor_code                    -- 仕入先コード
       , lv_sales_vendor_site_code               -- 仕入先サイトコード
       , gn_payment_amount_all                   -- 請求書単位：支払金額（税込）
-      , lv_description || lv_mfg_vendor_code || gv_mfg_vendor_name
-                                                -- 「摘要」＋「仕入先コード（生産）」＋「仕入先名（生産）」
+      -- 2015-01-26 Ver1.1 Mod Start
+--      , lv_description || lv_mfg_vendor_code || gv_mfg_vendor_name
+      , lv_mfg_vendor_code || cv_underbar || lv_description || cv_underbar || gv_mfg_vendor_name
+      -- 2015-01-26 Ver1.1 Mod End
+                                                -- 「仕入先コード（生産）」＋「摘要」＋「仕入先名（生産）」
       , cd_last_update_date                     -- 最終更新日
       , cn_last_updated_by                      -- 最終更新者
       , cn_last_update_login                    -- 最終ログインID
@@ -1130,6 +1148,22 @@ AS
     lv_account_subsidiary_tax       VARCHAR2(100) DEFAULT NULL;    -- (消費税)補助科目
     lv_description_tax              VARCHAR2(100) DEFAULT NULL;    -- (消費税)摘要
 --
+    -- 2015-01-26 Ver1.1 Add Start
+    lv_comp_code_comm_tax_dr        VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税DR)会社
+    lv_dept_code_comm_tax_dr        VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税DR)部門
+    lv_acct_title_comm_tax_dr       VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税DR)勘定科目
+    lv_acct_sub_comm_tax_dr         VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税DR)補助科目
+    lv_desc_comm_tax_dr             VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税DR)摘要
+    lv_ccid_comm_tax_dr             NUMBER        DEFAULT NULL;    -- (口銭消費税DR)CCID
+--
+    lv_comp_code_comm_tax_cr        VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税CR)会社
+    lv_dept_code_comm_tax_cr        VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税CR)部門
+    lv_acct_title_comm_tax_cr       VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税CR)勘定科目
+    lv_acct_sub_comm_tax_cr         VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税CR)補助科目
+    lv_desc_comm_tax_cr             VARCHAR2(100) DEFAULT NULL;    -- (口銭消費税CR)摘要
+    lv_ccid_comm_tax_cr             NUMBER        DEFAULT NULL;    -- (口銭消費税CR)CCID
+    -- 2015-01-26 Ver1.1 Add End
+--
     ln_detail_num                   NUMBER        DEFAULT 1;       -- 明細の連番
 --
     -- *** ローカル・カーソル ***
@@ -1164,6 +1198,10 @@ AS
     lv_account_subsidiary_fukakin   := NULL;
     lv_description_fukakin          := NULL;
     lv_ccid_fukakin                 := NULL;
+    -- 2015-01-26 Ver1.1 Add Start
+    lv_ccid_comm_tax_dr             := NULL;
+    lv_ccid_comm_tax_cr             := NULL;
+    -- 2015-01-26 Ver1.1 Add End
     --
     lv_company_code_kosen           := NULL;
     lv_department_code_kosen        := NULL;
@@ -1267,7 +1305,10 @@ AS
                          , iv_segment7  => gv_aff7_preliminary1_dummy    -- 予備1ダミー値
                          , iv_segment8  => gv_aff8_preliminary2_dummy    -- 予備2ダミー値
                          );
-      IF ( lv_ccid_hontai IS NULL ) THEN
+      -- 2015-01-26 Ver1.1 Mod Start
+--      IF ( lv_ccid_hontai IS NULL ) THEN
+      IF ( lv_ccid_kosen IS NULL ) THEN
+      -- 2015-01-26 Ver1.1 Mod End
         lv_errmsg    := xxccp_common_pkg.get_msg(
                           iv_application  => cv_appl_short_name_cfo
                         , iv_name         => cv_msg_cfo_10035            -- データ取得エラー
@@ -1319,7 +1360,10 @@ AS
                          , iv_segment7  => gv_aff7_preliminary1_dummy      -- 予備1ダミー値
                          , iv_segment8  => gv_aff8_preliminary2_dummy      -- 予備2ダミー値
                          );
-      IF ( lv_ccid_hontai IS NULL ) THEN
+      -- 2015-01-26 Ver1.1 Mod Start
+--      IF ( lv_ccid_hontai IS NULL ) THEN
+      IF ( lv_ccid_fukakin IS NULL ) THEN
+      -- 2015-01-26 Ver1.1 Mod End
         lv_errmsg    := xxccp_common_pkg.get_msg(
                           iv_application  => cv_appl_short_name_cfo
                         , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
@@ -1333,6 +1377,88 @@ AS
         RAISE global_api_expt;
       END IF;
     END IF;
+--
+    -- 2015-01-26 Ver1.1 Add Start
+    -- 口銭消費税がある場合、共通関数で科目情報を取得
+    IF ( gn_commission_tax_all <> 0 ) THEN
+      -- 借方
+      -- 共通関数で口銭消費税レコードの「摘要」を取得
+      xxcfo020a06c.get_siwake_account_title(
+          iv_report                   =>  gv_je_ptn_purchasing           -- (IN)帳票
+        , iv_class_code               =>  gv_item_class_code_hdr         -- (IN)品目区分
+        , iv_prod_class               =>  NULL                           -- (IN)商品区分
+        , iv_reason_code              =>  NULL                           -- (IN)事由コード
+        , iv_ptn_siwake               =>  cv_ptn_siwake_01               -- (IN)仕訳パターン ：1
+        , iv_line_no                  =>  cv_line_no_06                  -- (IN)行番号(6)
+        , iv_gloif_dr_cr              =>  cv_gloif_dr                    -- (IN)借方・貸方
+        , iv_warehouse_code           =>  NULL                           -- (IN)倉庫コード
+        , ov_company_code             =>  lv_comp_code_comm_tax_dr       -- (OUT)会社
+        , ov_department_code          =>  lv_dept_code_comm_tax_dr       -- (OUT)部門
+        , ov_account_title            =>  lv_acct_title_comm_tax_dr      -- (OUT)勘定科目
+        , ov_account_subsidiary       =>  lv_acct_sub_comm_tax_dr        -- (OUT)補助科目
+        , ov_description              =>  lv_desc_comm_tax_dr            -- (OUT)摘要
+        , ov_retcode                  =>  lv_retcode                     -- リターンコード
+        , ov_errbuf                   =>  lv_errbuf                      -- エラーメッセージ
+        , ov_errmsg                   =>  lv_errmsg                      -- ユーザー・エラーメッセージ
+      );
+--
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 貸方
+      -- 共通関数で科目情報を取得
+      xxcfo020a06c.get_siwake_account_title(
+          iv_report                   =>  gv_je_ptn_purchasing           -- (IN)帳票
+        , iv_class_code               =>  gv_item_class_code_hdr         -- (IN)品目区分
+        , iv_prod_class               =>  NULL                           -- (IN)商品区分
+        , iv_reason_code              =>  NULL                           -- (IN)事由コード
+        , iv_ptn_siwake               =>  cv_ptn_siwake_01               -- (IN)仕訳パターン ：1
+        , iv_line_no                  =>  cv_line_no_07                  -- (IN)行番号 ：7
+        , iv_gloif_dr_cr              =>  cv_gloif_cr                    -- (IN)借方・貸方
+        , iv_warehouse_code           =>  NULL                           -- (IN)倉庫コード
+        , ov_company_code             =>  lv_comp_code_comm_tax_cr       -- (OUT)会社
+        , ov_department_code          =>  lv_dept_code_comm_tax_cr       -- (OUT)部門
+        , ov_account_title            =>  lv_acct_title_comm_tax_cr      -- (OUT)勘定科目
+        , ov_account_subsidiary       =>  lv_acct_sub_comm_tax_cr        -- (OUT)補助科目
+        , ov_description              =>  lv_desc_comm_tax_cr            -- (OUT)摘要
+        , ov_retcode                  =>  lv_retcode                     -- リターンコード
+        , ov_errbuf                   =>  lv_errbuf                      -- エラーメッセージ
+        , ov_errmsg                   =>  lv_errmsg                      -- ユーザー・エラーメッセージ
+      );
+--
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 口銭消費税貸方レコードのCCIDを取得
+      lv_ccid_comm_tax_cr := xxcok_common_pkg.get_code_combination_id_f(
+                               id_proc_date => gd_process_date                 -- 処理日
+                             , iv_segment1  => lv_comp_code_comm_tax_cr        -- 会社コード
+                             , iv_segment2  => lv_dept_code_comm_tax_cr        -- 部門コード
+                             , iv_segment3  => lv_acct_title_comm_tax_cr       -- 勘定科目コード
+                             , iv_segment4  => lv_acct_sub_comm_tax_cr         -- 補助科目コード
+                             , iv_segment5  => gv_aff5_customer_dummy          -- 顧客コードダミー値
+                             , iv_segment6  => gv_aff6_company_dummy           -- 企業コードダミー値
+                             , iv_segment7  => gv_aff7_preliminary1_dummy      -- 予備1ダミー値
+                             , iv_segment8  => gv_aff8_preliminary2_dummy      -- 予備2ダミー値
+                             );
+      IF ( lv_ccid_comm_tax_cr IS NULL ) THEN
+        lv_errmsg    := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_appl_short_name_cfo
+                        , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
+                        , iv_token_name1  => cv_tkn_data
+                        , iv_token_value1 => cv_msg_out_item_05            -- 口銭CCID
+                        , iv_token_name2  => cv_tkn_item
+                        , iv_token_value2 => cv_msg_out_item_04            -- 品目区分
+                        , iv_token_name3  => cv_tkn_key
+                        , iv_token_value3 => gv_item_class_code_hdr
+                        );
+        RAISE global_api_expt;
+      END IF;
+--
+    END IF;
+    -- 2015-01-26 Ver1.1 Add End
 --
     -- 共通関数で消費税レコードの「摘要」を取得
     xxcfo020a06c.get_siwake_account_title(
@@ -1416,8 +1542,11 @@ AS
         , ln_detail_num                                     -- ヘッダー内での連番
         , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
         , g_ap_invoice_line_tab(line_cnt).payment_amount_net  -- 支払金額（税抜）
-        , lv_description_hontai || gv_vendor_code_hdr || gv_mfg_vendor_name
-                                                            -- 摘要（摘要＋仕入先C＋仕入先名）
+        -- 2015-01-26 Ver1.1 Mod Start
+--        , lv_description_hontai || gv_vendor_code_hdr || gv_mfg_vendor_name
+        , gv_vendor_code_hdr || cv_underbar || lv_description_hontai || cv_underbar || gv_mfg_vendor_name
+        -- 2015-01-26 Ver1.1 Mod End
+                                                            -- 摘要（仕入先C＋摘要＋仕入先名）
         , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
         , lv_ccid_hontai                                    -- CCID
         , cn_last_updated_by                                -- 最終更新者
@@ -1473,7 +1602,10 @@ AS
         , ln_detail_num                                     -- ヘッダー内での連番
         , gv_detail_type_tax                                -- 明細タイプ：税金(TAX)
         , g_ap_invoice_line_tab(line_cnt).payment_tax       -- 仕入金額（税抜）
-        , lv_description_tax || gv_vendor_code_hdr || gv_mfg_vendor_name
+        -- 2015-01-26 Ver1.1 Mod Start
+--        , lv_description_tax || gv_vendor_code_hdr || gv_mfg_vendor_name
+        , gv_vendor_code_hdr || cv_underbar || lv_description_tax || cv_underbar || gv_mfg_vendor_name
+        -- 2015-01-26 Ver1.1 Mod End
                                                             -- 摘要（摘要＋仕入先C＋仕入先名）
         , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
         , g_ap_invoice_line_tab(line_cnt).tax_ccid          -- CCID
@@ -1532,8 +1664,11 @@ AS
           , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
           , g_ap_invoice_line_tab(line_cnt).commission_net * cn_minus
                                                               -- 口銭金額（税抜）
-          , lv_description_kosen || gv_vendor_code_hdr || gv_mfg_vendor_name
-                                                              -- 摘要（摘要＋仕入先C＋仕入先名）
+          -- 2015-01-26 Ver1.1 Mod Start
+--          , lv_description_kosen || gv_vendor_code_hdr || gv_mfg_vendor_name
+          , gv_vendor_code_hdr || cv_underbar || lv_description_kosen || cv_underbar || gv_mfg_vendor_name
+          -- 2015-01-26 Ver1.1 Mod End
+                                                              -- 摘要（仕入先C＋摘要＋仕入先名）
           , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
           , lv_ccid_kosen                                     -- CCID
           , cn_last_updated_by                                -- 最終更新者
@@ -1593,8 +1728,11 @@ AS
           , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
           , g_ap_invoice_line_tab(line_cnt).assessment * cn_minus
                                                               -- 賦課金額（税込）
-          , lv_description_fukakin || gv_vendor_code_hdr || gv_mfg_vendor_name
-                                                              -- 摘要（摘要＋仕入先C＋仕入先名）
+          -- 2015-01-26 Ver1.1 Mod Start
+--          , lv_description_fukakin || gv_vendor_code_hdr || gv_mfg_vendor_name
+          , gv_vendor_code_hdr || cv_underbar || lv_description_fukakin || cv_underbar || gv_mfg_vendor_name
+          -- 2015-01-26 Ver1.1 Mod End
+                                                              -- 摘要（仕入先C＋摘要＋仕入先名）
           , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
           , lv_ccid_fukakin                                   -- CCID
           , cn_last_updated_by                                -- 最終更新者
@@ -1626,6 +1764,112 @@ AS
         ln_detail_num := ln_detail_num + 1;
       --
       END IF;
+--
+      -- 2015-01-26 Ver1.1 Add Start
+      -- 口銭消費税レコードの登録
+      IF ( g_ap_invoice_line_tab(line_cnt).commission_tax <> 0 ) THEN
+        BEGIN
+          -- 借方　仮払消費税
+          INSERT INTO ap_invoice_lines_interface (
+            invoice_id                                        -- 請求書ID
+          , invoice_line_id                                   -- 請求書明細ID
+          , line_number                                       -- 明細行番号
+          , line_type_lookup_code                             -- 明細タイプ
+          , amount                                            -- 明細金額
+          , description                                       -- 摘要
+          , tax_code                                          -- 税コード
+          , dist_code_combination_id                          -- CCID
+          , last_updated_by                                   -- 最終更新者
+          , last_update_date                                  -- 最終更新日
+          , last_update_login                                 -- 最終ログインID
+          , created_by                                        -- 作成者
+          , creation_date                                     -- 作成日
+          , attribute_category                                -- DFFコンテキスト
+          , org_id                                            -- 組織ID
+          )
+          VALUES (
+            ap_invoices_interface_s.CURRVAL                   -- 直前に作成したAP請求書OIFヘッダーの請求ID
+          , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
+          , ln_detail_num                                     -- ヘッダー内での連番
+          , gv_detail_type_tax                                -- 明細タイプ：税金(TAX)
+          , g_ap_invoice_line_tab(line_cnt).commission_tax    -- 賦課金額（税込）
+          , gv_vendor_code_hdr || cv_underbar || lv_desc_comm_tax_dr || cv_underbar || gv_mfg_vendor_name
+                                                              -- 摘要（仕入先C＋摘要＋仕入先名）
+          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+          , g_ap_invoice_line_tab(line_cnt).tax_ccid          -- CCID
+          , cn_last_updated_by                                -- 最終更新者
+          , SYSDATE                                           -- 最終更新日
+          , cn_last_update_login                              -- 最終ログインID
+          , cn_created_by                                     -- 作成者
+          , SYSDATE                                           -- 作成日
+          , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
+          , gn_org_id_sales                                   -- 組織ID
+          );
+--
+          -- 正常に作成された場合、ヘッダー内明細連番をカウントアップ
+          ln_detail_num := ln_detail_num + 1;
+--
+          -- 貸方　預かり金
+          INSERT INTO ap_invoice_lines_interface (
+            invoice_id                                        -- 請求書ID
+          , invoice_line_id                                   -- 請求書明細ID
+          , line_number                                       -- 明細行番号
+          , line_type_lookup_code                             -- 明細タイプ
+          , amount                                            -- 明細金額
+          , description                                       -- 摘要
+          , tax_code                                          -- 税コード
+          , dist_code_combination_id                          -- CCID
+          , last_updated_by                                   -- 最終更新者
+          , last_update_date                                  -- 最終更新日
+          , last_update_login                                 -- 最終ログインID
+          , created_by                                        -- 作成者
+          , creation_date                                     -- 作成日
+          , attribute_category                                -- DFFコンテキスト
+          , org_id                                            -- 組織ID
+          )
+          VALUES (
+            ap_invoices_interface_s.CURRVAL                   -- 直前に作成したAP請求書OIFヘッダーの請求ID
+          , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
+          , ln_detail_num                                     -- ヘッダー内での連番
+          , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
+          , g_ap_invoice_line_tab(line_cnt).commission_tax * cn_minus
+                                                              -- 賦課金額（税込）
+          , gv_vendor_code_hdr || cv_underbar || lv_desc_comm_tax_cr || cv_underbar || gv_mfg_vendor_name
+                                                              -- 摘要（仕入先C＋摘要＋仕入先名）
+          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+          , lv_ccid_comm_tax_cr                               -- CCID
+          , cn_last_updated_by                                -- 最終更新者
+          , SYSDATE                                           -- 最終更新日
+          , cn_last_update_login                              -- 最終ログインID
+          , cn_created_by                                     -- 作成者
+          , SYSDATE                                           -- 作成日
+          , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
+          , gn_org_id_sales                                   -- 組織ID
+          );
+--
+          -- 正常に作成された場合、ヘッダー内明細連番をカウントアップ
+          ln_detail_num := ln_detail_num + 1;
+--
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name_cfo            -- 'XXCFO'
+                      , iv_name         => cv_msg_cfo_10040
+                      , iv_token_name1  => cv_tkn_data                       -- データ
+                      , iv_token_value1 => cv_msg_out_data_09                -- AP請求書OIF明細_賦課金
+                      , iv_token_name2  => cv_tkn_vendor_site_code           -- 仕入先サイトコード
+                      , iv_token_value2 => gv_vendor_code_hdr
+                      , iv_token_name3  => cv_tkn_department                 -- 部門
+                      , iv_token_value3 => gv_department_code_hdr
+                      , iv_token_name4  => cv_tkn_item_kbn                   -- 品目区分
+                      , iv_token_value4 => gv_item_class_code_hdr
+                      );
+            lv_errbuf := lv_errmsg;
+            RAISE global_process_expt;
+        END;
+      --
+      END IF;
+      -- 2015-01-26 Ver1.1 Add End
 --
     END LOOP line_insert_loop;
 --
@@ -2269,6 +2513,9 @@ AS
            AND     xlv2v.end_date_active           >= TO_DATE(pha.attribute4, 'YYYY/MM/DD')
            AND     TO_DATE(pha.attribute4,'YYYY/MM/DD') BETWEEN gd_target_date_from  -- 納入日
                                                         AND     gd_target_date_to
+           -- 2015-01-26 Ver1.1 Add Start
+           and     xrart.txns_id                   = rsl.attribute1
+           -- 2015-01-26 Ver1.1 Add End
            GROUP BY
                    xvv_vendor.segment1
                   ,pvsa.vendor_site_code
@@ -2681,6 +2928,9 @@ AS
         gn_payment_amount_all     := 0;                   -- 請求書単位：支払金額（税込）
         gn_commission_all         := 0;                   -- 請求書単位：口銭金額（税抜）
         gn_assessment_all         := 0;                   -- 請求書単位：賦課金額
+        -- 2015-01-26 Ver1.1 Add Start
+        gn_commission_tax_all     := 0;                   -- 請求書単位：口銭消費税
+        -- 2015-01-26 Ver1.1 Add End
         --
         ln_tax_rate_jdge          := 0;                   -- 消費税率(判定用)
         ln_out_count              := 0;
@@ -2702,6 +2952,9 @@ AS
       gn_payment_amount_all     := NVL(gn_payment_amount_all,0) + ap_invoice_rec.payment_amount;     -- 請求書単位：支払金額（税込）
       gn_commission_all         := NVL(gn_commission_all,0) + ap_invoice_rec.commission_net;         -- 請求書単位：口銭金額（税抜）
       gn_assessment_all         := NVL(gn_assessment_all,0) + ap_invoice_rec.assessment;             -- 請求書単位：賦課金額
+      -- 2015-01-26 Ver1.1 Add Start
+      gn_commission_tax_all     := NVL(gn_commission_tax_all,0) + ap_invoice_rec.commission_tax;     -- 請求書単位：口銭消費税
+      -- 2015-01-26 Ver1.1 Add End
 --
       -- 消費税率ごとの積み上げを行う。
       IF (NVL(ln_tax_rate_jdge,0) = 0) THEN
@@ -2721,6 +2974,10 @@ AS
                                                              + ap_invoice_rec.assessment;            -- 請求書明細単位：賦課金額
       g_ap_invoice_line_tab(ln_tax_cnt).payment_tax        := NVL(g_ap_invoice_line_tab(ln_tax_cnt).payment_tax,0)
                                                              + ap_invoice_rec.payment_tax;           -- 請求書明細単位：支払消費税額
+      -- 2015-01-26 Ver1.1 Add Start
+      g_ap_invoice_line_tab(ln_tax_cnt).commission_tax     := NVL(g_ap_invoice_line_tab(ln_tax_cnt).commission_tax,0)
+                                                             + ap_invoice_rec.commission_tax  ;      -- 請求書明細単位：口銭消費税
+      -- 2015-01-26 Ver1.1 Add End
       -- 消費税率(判定用)を保持
       ln_tax_rate_jdge                                     := ap_invoice_rec.tax_rate;
 --
