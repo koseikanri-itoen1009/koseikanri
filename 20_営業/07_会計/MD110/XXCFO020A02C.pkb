@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A02C(body)
  * Description      : 受払取引（生産）仕訳IF作成
  * MD.050           : 受払取引（生産）仕訳IF作成<MD050_CFO_020_A02>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------------- ----------------------------------------------------------
@@ -18,6 +18,7 @@ AS
  *  ins_journal_oif                仕訳OIF登録(A-5)
  *  upd_gme_material_details_data  生産原料詳細データ更新(A-6)
  *  ins_mfg_if_control             連携管理テーブル登録(A-7)
+ *  upd_ic_jrnl_mst_data           ジャーナルマスタデータ更新(A-9)
  *  submain                        メイン処理プロシージャ
  *  main                           コンカレント実行ファイル登録プロシージャ
  *
@@ -26,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014-10-30    1.0   Y.Shoji          新規作成
+ *  2015-01-23    1.1   Y.Shoji          システムテスト障害対応
  *
  *****************************************************************************************/
 --
@@ -147,6 +149,9 @@ AS
   cv_mesg_out_table_02        CONSTANT VARCHAR2(20)  := '生産原料詳細';
   cv_mesg_out_table_03        CONSTANT VARCHAR2(20)  := '受注明細';
   cv_mesg_out_table_04        CONSTANT VARCHAR2(20)  := '連携管理テーブル';
+-- 2015.01.23 Ver1.1 Add START
+  cv_mesg_out_table_05        CONSTANT VARCHAR2(20)  := 'ジャーナルマスタ';
+-- 2015.01.23 Ver1.1 Add END
 --
   -- 日付書式変換関連
   cv_fdy                      CONSTANT VARCHAR2(02) := '01';                       --月初日付
@@ -201,19 +206,31 @@ AS
     );
   TYPE g_gme_material_details_ttype IS TABLE OF g_gme_material_details_rec INDEX BY PLS_INTEGER;
 --
-  -- 生産取引データ更新情報格納用
-  TYPE g_oe_order_lines_rec IS RECORD
+-- 2015.01.23 Ver1.1 Mod START
+--  -- 生産取引データ更新情報格納用
+--  TYPE g_oe_order_lines_rec IS RECORD
+--    (
+--      header_id               NUMBER                         -- 受注ヘッダID
+--     ,line_id                 NUMBER                         -- 受注明細ID
+--    );
+--  TYPE g_oe_order_lines_ttype IS TABLE OF g_oe_order_lines_rec INDEX BY PLS_INTEGER;
+  -- ジャーナルマスタデータ更新情報格納用
+  TYPE g_ic_jrnl_mst_rec IS RECORD
     (
-      header_id               NUMBER                         -- 受注ヘッダID
-     ,line_id                 NUMBER                         -- 受注明細ID
+      journal_id              NUMBER                         -- ジャーナルID
     );
-  TYPE g_oe_order_lines_ttype IS TABLE OF g_oe_order_lines_rec INDEX BY PLS_INTEGER;
+  TYPE g_ic_jrnl_mst_ttype IS TABLE OF g_ic_jrnl_mst_rec INDEX BY PLS_INTEGER;
+-- 2015.01.23 Ver1.1 Mod END
 --
   -- ===============================
   -- ユーザー定義プライベート変数
   -- ===============================
   -- 生産原料詳細データ更新情報格納用PL/SQL表
   g_gme_material_details_tab      g_gme_material_details_ttype;
+-- 2015.01.23 Ver1.1 Add START
+  -- ジャーナルマスタデータ更新情報格納用PL/SQL表
+  g_ic_jrnl_mst_tab               g_ic_jrnl_mst_ttype;
+-- 2015.01.23 Ver1.1 Add END
 --
   -- ===============================
   -- グローバル例外
@@ -1091,6 +1108,131 @@ AS
 --
   END upd_gme_material_details_data;
 --
+-- 2015.01.23 Ver1.1 Add START
+  /**********************************************************************************
+   * Procedure Name   : upd_ic_jrnl_mst_data
+   * Description      : ジャーナルマスタデータ更新(A-9)
+   ***********************************************************************************/
+  PROCEDURE upd_ic_jrnl_mst_data(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_ic_jrnl_mst_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_upd_cnt    NUMBER;
+    lt_journal_id      ic_jrnl_mst.journal_id%TYPE;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- =========================================================
+    -- ジャーナルマスタテーブルに対して行ロックを取得
+    -- =========================================================
+    << lock_loop >>
+    FOR ln_upd_cnt IN 1..g_ic_jrnl_mst_tab.COUNT LOOP
+      BEGIN
+        SELECT ijm.journal_id
+        INTO   lt_journal_id
+        FROM   ic_jrnl_mst       ijm
+        WHERE  ijm.journal_id = g_ic_jrnl_mst_tab(ln_upd_cnt).journal_id
+        FOR UPDATE NOWAIT
+        ;
+      EXCEPTION
+        WHEN global_lock_expt THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name_cfo              -- 'XXCFO'
+                    , iv_name         => cv_msg_cfo_00019
+                    , iv_token_name1  => cv_tkn_table                        -- テーブル
+                    , iv_token_value1 => cv_mesg_out_table_05                -- ジャーナルマスタ
+                    );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+    END LOOP lock_loop;
+--
+    BEGIN
+      FORALL ln_upd_cnt IN 1..g_ic_jrnl_mst_tab.COUNT
+        -- 取引データを識別する一意な値をジャーナルマスタに更新
+        UPDATE ic_jrnl_mst       ijm
+        SET    ijm.attribute5 = xxcfo_gl_je_key_s1.CURRVAL             -- 「A-5.仕訳OIF登録」で採番した参照項目1 (仕訳キー)
+        WHERE  ijm.journal_id = g_ic_jrnl_mst_tab(ln_upd_cnt).journal_id
+        ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_appl_short_name_cfo              -- 'XXCFO'
+                  , iv_name         => cv_msg_cfo_10020
+                  , iv_token_name1  => cv_tkn_table                        -- テーブル
+                  , iv_token_value1 => cv_mesg_out_table_05                -- ジャーナルマスタ
+                  , iv_token_name2  => cv_tkn_errmsg                       -- アイテム
+                  , iv_token_value2 => SQLERRM                             -- SQLエラーメッセージ
+                  );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+    -- 正常件数カウント
+    gn_normal_cnt := gn_normal_cnt + g_ic_jrnl_mst_tab.COUNT;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_ic_jrnl_mst_data;
+--
+-- 2015.01.23 Ver1.1 Add END
   /**********************************************************************************
    * Procedure Name   : get_journal_oif_data
    * Description      : 仕訳OIF情報抽出(A-3)
@@ -1160,6 +1302,10 @@ AS
     cv_dealings_div_308        CONSTANT VARCHAR2(3)   := '308';                            -- 取引区分：品種振替
     cv_dealings_div_309        CONSTANT VARCHAR2(3)   := '309';                            -- 取引区分：品種振替
     cv_dealings_div_310        CONSTANT VARCHAR2(3)   := '310';                            -- 取引区分：ブレンド合組
+-- 2015.01.23 Ver1.1 Add Start
+    cv_dealings_div_311        CONSTANT VARCHAR2(3)   := '311';                            -- 取引区分：包装
+    cv_dealings_div_312        CONSTANT VARCHAR2(3)   := '312';                            -- 取引区分：包装打込
+-- 2015.01.23 Ver1.1 Add END
     cv_dealings_div_504        CONSTANT VARCHAR2(3)   := '504';                            -- 取引区分：廃却
     cv_dealings_div_509        CONSTANT VARCHAR2(3)   := '509';                            -- 取引区分：見本
     cv_prod_class_code_1       CONSTANT VARCHAR2(1)   := '1';                              -- 商品区分：リーフ
@@ -1218,6 +1364,9 @@ AS
     -- *** ローカル変数 ***
     ln_count                 NUMBER       DEFAULT 0;                                     -- 抽出件数のカウント
     ln_out_count             NUMBER       DEFAULT 0;                                     -- 同一ブレークキー件数のカウント
+-- 2015.01.23 Ver1.1 Add START
+    ln_out_jrnl_count        NUMBER       DEFAULT 0;                                     -- ジャーナルマスタデータ更新用カウント
+-- 2015.01.23 Ver1.1 Add END
     ln_count_whse_data       NUMBER       DEFAULT 0;                                     -- 対象倉庫件数のカウント
     lv_data7_flag            VARCHAR2(1)  DEFAULT NULL;                                  -- (7)(8)(9)棚卸減耗（原料、半製品、資材）用データ有無フラグ
     lv_whse_data_flag        VARCHAR2(1)  DEFAULT NULL;                                  -- 対象倉庫チェックフラグ
@@ -1501,13 +1650,19 @@ AS
     IS
       -- (4)包装セット払出
       -- ①包装一課・沖縄 以外分
-      SELECT /*+ LEADING(itp) 
-                 USE_NL(xrpm grb xicv gmd gbh xsup flvv) */
+-- 2015.01.23 Ver1.1 Mod Start
+      SELECT /*+ LEADING(itp gmd gbh grb xrpm xicv xsup flvv) 
+                 USE_NL(itp gmd gbh grb xrpm xicv xsup flvv) */
+-- 2015.01.23 Ver1.1 Mod END
              ROUND( NVL(itp.trans_qty, 0)        *
                     NVL(xsup.stnd_unit_price, 0) *
                     TO_NUMBER(xrpm.rcv_pay_div) )    AS  price               -- 金額
             ,itp.whse_code                           AS  whse_code           -- 倉庫コード
             ,gmd.material_detail_id                  AS  material_detail_id  -- 生産原料詳細ID
+-- 2015.01.23 Ver1.1 Add Start
+            ,NULL                                    AS  journal_id          -- ジャーナルID
+            ,'N'                                     AS  jrnl_mst_upd_flag   -- ジャーナルマスタアップデートフラグ
+-- 2015.01.23 Ver1.1 Add END
       FROM   ic_tran_pnd                 itp                      -- 保留在庫トランザクション
             ,gme_batch_header            gbh                      -- 生産バッチヘッダ
             ,gme_material_details        gmd                      -- 生産原料詳細
@@ -1520,7 +1675,15 @@ AS
       AND    itp.completed_ind      = cn_completed_ind_1                   -- 完了フラグ
       AND    itp.trans_date         >= gd_target_date_from                 -- 開始日
       AND    itp.trans_date         <= gd_target_date_to                   -- 終了日
-      AND    xrpm.dealings_div      = cv_dealings_div_307                  -- 取引区分（セット）
+-- 2015.01.23 Ver1.1 Mod Start
+--      AND    xrpm.dealings_div      = cv_dealings_div_307                  -- 取引区分（セット）
+      AND    xrpm.dealings_div      IN (cv_dealings_div_307                -- 取引区分（セット）
+                                       ,cv_dealings_div_311                -- 取引区分（包装）
+                                       ,cv_dealings_div_312)               -- 取引区分（包装打込）
+      AND    ( ( gmd.attribute5     IS NULL
+          AND    xrpm.hit_in_div    IS NULL )
+        OR     gmd.attribute5       = xrpm.hit_in_div )
+-- 2015.01.23 Ver1.1 Mod END
       AND    xrpm.doc_type          = itp.doc_type
       AND    xrpm.line_type         = itp.line_type
       AND    xrpm.routing_class     = grb.routing_class
@@ -1543,13 +1706,19 @@ AS
       AND    flvv.END_DATE_ACTIVE   >= gd_target_date_to                   -- 終了日
       UNION ALL
       -- ②包装一課分
-      SELECT /*+ LEADING(itp) 
-                 USE_NL(xrpm grb xicv gmd gbh xsup flvv) */
+-- 2015.01.23 Ver1.1 Mod Start
+      SELECT /*+ LEADING(itp gmd gbh grb xrpm xicv xsup)
+                 USE_NL(itp gmd gbh grb xrpm xicv xsup) */
+-- 2015.01.23 Ver1.1 Mod END
              ROUND( NVL(itp.trans_qty, 0)        *
                     NVL(xsup.stnd_unit_price, 0) *
                     TO_NUMBER(xrpm.rcv_pay_div) )    AS  price               -- 金額
             ,itp.whse_code                           AS  whse_code           -- 倉庫コード
             ,gmd.material_detail_id                  AS  material_detail_id  -- 生産原料詳細ID
+-- 2015.01.23 Ver1.1 Add Start
+            ,NULL                                    AS  journal_id          -- ジャーナルID
+            ,'N'                                     AS  jrnl_mst_upd_flag   -- ジャーナルマスタアップデートフラグ
+-- 2015.01.23 Ver1.1 Add END
       FROM   ic_tran_pnd                 itp                      -- 保留在庫トランザクション
             ,gme_batch_header            gbh                      -- 生産バッチヘッダ
             ,gme_material_details        gmd                      -- 生産原料詳細
@@ -1561,7 +1730,15 @@ AS
       AND    itp.completed_ind      = cn_completed_ind_1                   -- 完了フラグ
       AND    itp.trans_date         >= gd_target_date_from                 -- 開始日
       AND    itp.trans_date         <= gd_target_date_to                   -- 終了日
-      AND    xrpm.dealings_div      = cv_dealings_div_307                  -- 取引区分(セット)
+-- 2015.01.23 Ver1.1 Mod Start
+--      AND    xrpm.dealings_div      = cv_dealings_div_307                  -- 取引区分（セット）
+      AND    xrpm.dealings_div      IN (cv_dealings_div_307                -- 取引区分（セット）
+                                       ,cv_dealings_div_311                -- 取引区分（包装）
+                                       ,cv_dealings_div_312)               -- 取引区分（包装打込）
+      AND    ( ( gmd.attribute5     IS NULL
+          AND    xrpm.hit_in_div    IS NULL )
+        OR     gmd.attribute5       = xrpm.hit_in_div )
+-- 2015.01.23 Ver1.1 Mod END
       AND    xrpm.doc_type          = itp.doc_type
       AND    xrpm.line_type         = itp.line_type
       AND    xrpm.routing_class     = grb.routing_class
@@ -1587,6 +1764,116 @@ AS
                      AND    flvv.start_date_active <= gd_target_date_from            -- 開始日
                      AND    flvv.end_date_active   >= gd_target_date_to              -- 終了日
                     )
+-- 2015.01.23 Ver1.1 Add Start
+      UNION ALL
+      -- ③包装一課・沖縄 以外分（事由コード：X952）
+      SELECT /*+ leading (itc ilm iimb ximb xrpm iwm iaj ijm xicv xsup flvv)
+                  use_nl (itc ilm iimb ximb xrpm iwm iaj ijm xicv xsup flvv)*/
+             ROUND( NVL(itc.trans_qty, 0)        *
+                    NVL(xsup.stnd_unit_price, 0) *
+                    TO_NUMBER(xrpm.rcv_pay_div) )    AS  price               -- 金額
+            ,itc.whse_code                           AS  whse_code           -- 倉庫コード
+            ,NULL                                    AS  material_detail_id  -- 生産原料詳細ID
+            ,ijm.journal_id                          AS  journal_id          -- ジャーナルID
+            ,'Y'                                     AS  jrnl_mst_upd_flag   -- ジャーナルマスタアップデートフラグ
+      FROM   ic_tran_cmp                 itc             -- 完了在庫トランザクション
+            ,ic_item_mst_b               iimb            -- OPM品目マスタ
+            ,xxcmn_item_mst_b            ximb            -- OPM品目アドオンマスタ
+            ,ic_lots_mst                 ilm             -- OPMロットマスタ
+            ,xxcmn_rcv_pay_mst           xrpm            -- 受払区分アドオンマスタ
+            ,ic_whse_mst                 iwm             -- 倉庫マスタ
+            ,ic_adjs_jnl                 iaj             -- OPM在庫調整ジャーナル
+            ,ic_jrnl_mst                 ijm             -- OPMジャーナルマスタ
+            ,xxcmn_item_categories5_v    xicv            -- OPM品目カテゴリ割当情報View5
+            ,xxcmn_stnd_unit_price_v     xsup            -- 標準原価情報Ｖｉｅｗ
+            ,fnd_lookup_values_vl        flvv            -- 参照タイプ
+      WHERE  itc.doc_type            = cv_doc_type_adji          -- 文書タイプ
+      AND    itc.reason_code         = cv_reason_code_x952       -- 事由コード
+      AND    itc.trans_date          >= gd_target_date_from           -- 開始日
+      AND    itc.trans_date          <= gd_target_date_to             -- 終了日
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active  <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active    >= TRUNC(itc.trans_date)
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_01       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = cv_att1_0                      -- 伊藤園在庫管理倉庫
+      AND    itc.doc_type            = iaj.trans_type
+      AND    itc.doc_id              = iaj.doc_id
+      AND    itc.doc_line            = iaj.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    xicv.item_id            = itc.item_id
+      AND    xicv.item_class_code    = cv_item_class_code_2                 -- 資材
+      AND    xicv.prod_class_code    = cv_prod_class_code_1                 -- リーフ
+      AND    xsup.item_id            = itc.item_id
+      AND    itc.trans_date          BETWEEN NVL(xsup.start_date_active, itc.trans_date)
+                                     AND     NVL(xsup.end_date_active, itc.trans_date)
+      AND    flvv.lookup_type        = cv_type_package_cost_whse      -- 包装材料費倉庫リスト
+      AND    itc.whse_code           = flvv.lookup_code
+      AND    flvv.attribute1         = cv_att1_1                      -- 包装一課、沖縄以外
+      AND    flvv.START_DATE_ACTIVE  <= gd_target_date_from           -- 開始日
+      AND    flvv.END_DATE_ACTIVE    >= gd_target_date_to             -- 終了日
+      UNION ALL
+      -- ④包装一課分（事由コード：X952）
+      SELECT /*+ leading (itc ilm iimb ximb xrpm iwm iaj ijm xicv xsup)
+                  use_nl (itc ilm iimb ximb xrpm iwm iaj ijm xicv xsup)*/
+             ROUND( NVL(itc.trans_qty, 0)        *
+                    NVL(xsup.stnd_unit_price, 0) *
+                    TO_NUMBER(xrpm.rcv_pay_div) )    AS  price               -- 金額
+            ,itc.whse_code                           AS  whse_code           -- 倉庫コード
+            ,NULL                                    AS  material_detail_id  -- 生産原料詳細ID
+            ,ijm.journal_id                          AS  journal_id          -- ジャーナルID
+            ,'Y'                                     AS  jrnl_mst_upd_flag   -- ジャーナルマスタアップデートフラグ
+      FROM   ic_tran_cmp                 itc             -- 完了在庫トランザクション
+            ,ic_item_mst_b               iimb            -- OPM品目マスタ
+            ,xxcmn_item_mst_b            ximb            -- OPM品目アドオンマスタ
+            ,ic_lots_mst                 ilm             -- OPMロットマスタ
+            ,xxcmn_rcv_pay_mst           xrpm            -- 受払区分アドオンマスタ
+            ,ic_whse_mst                 iwm             -- 倉庫マスタ
+            ,ic_adjs_jnl                 iaj             -- OPM在庫調整ジャーナル
+            ,ic_jrnl_mst                 ijm             -- OPMジャーナルマスタ
+            ,xxcmn_item_categories5_v    xicv            -- OPM品目カテゴリ割当情報View5
+            ,xxcmn_stnd_unit_price_v     xsup            -- 標準原価情報Ｖｉｅｗ
+      WHERE  itc.doc_type            = cv_doc_type_adji          --文書タイプ
+      AND    itc.reason_code         = cv_reason_code_x952       -- 事由コード
+      AND    itc.trans_date          >= gd_target_date_from            -- 開始日
+      AND    itc.trans_date          <= gd_target_date_to              -- 終了日
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active  <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active    >= TRUNC(itc.trans_date)
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_01       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = cv_att1_0                 -- 伊藤園在庫管理倉庫
+      AND    itc.doc_type            = iaj.trans_type
+      AND    itc.doc_id              = iaj.doc_id
+      AND    itc.doc_line            = iaj.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    xicv.item_id            = itc.item_id
+      AND    xicv.item_class_code    = cv_item_class_code_2                 -- 資材
+      AND    xicv.prod_class_code    = cv_prod_class_code_1                 -- リーフ
+      AND    xsup.item_id            = itc.item_id
+      AND    itc.trans_date          BETWEEN NVL(xsup.start_date_active, itc.trans_date)
+                                     AND     NVL(xsup.end_date_active, itc.trans_date)
+      AND    NOT EXISTS (
+                     SELECT 1
+                     FROM   fnd_lookup_values_vl flvv
+                     WHERE  flvv.lookup_type       = cv_type_package_cost_whse      -- 包装材料費倉庫リスト
+                     AND    flvv.attribute1        IS NOT NULL
+                     AND    itc.whse_code          = flvv.lookup_code
+                     AND    flvv.lookup_code       <> cv_lookup_code_zzz
+                     AND    flvv.start_date_active <= gd_target_date_from            -- 開始日
+                     AND    flvv.end_date_active   >= gd_target_date_to              -- 終了日
+                    )
+-- 2015.01.23 Ver1.1 Add END
       ORDER BY whse_code
       ;
     -- GL仕訳OIF情報4格納用PL/SQL表
@@ -3172,7 +3459,10 @@ AS
         -- 金額が0の場合、A-5,A-6の処理をしない
         IF ( gn_price_all = 0 ) THEN
           -- スキップ件数に対象件数分を加算
-          gn_warn_cnt := gn_warn_cnt + ln_out_count;
+-- 2015.01.23 Ver1.1 Mod START
+--          gn_warn_cnt := gn_warn_cnt + ln_out_count;
+          gn_warn_cnt := gn_warn_cnt + ln_out_count + ln_out_jrnl_count;
+-- 2015.01.23 Ver1.1 Mod END
         ELSE
           -- ===============================
           -- 仕訳OIF登録(A-5)
@@ -3186,17 +3476,49 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          -- ===============================
-          -- 生産原料詳細データ更新(A-6)
-          -- ===============================
-          upd_gme_material_details_data(
-            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+-- 2015.01.23 Ver1.1 Mod Start
+--          -- ===============================
+--          -- 生産原料詳細データ更新(A-6)
+--          -- ===============================
+--          upd_gme_material_details_data(
+--            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+--            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+--            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--          IF (lv_retcode <> cv_status_normal) THEN
+--            RAISE global_process_expt;
+--          END IF;
+--        END IF;
+          -- ジャーナルマスタ更新フラグがYのデータが存在する場合
+          IF ( ln_out_jrnl_count > 0 ) THEN
+            -- ===============================
+            -- ジャーナルマスタデータ更新(A-9)
+            -- ===============================
+            upd_ic_jrnl_mst_data(
+              ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+              ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+              ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
 --
-          IF (lv_retcode <> cv_status_normal) THEN
-            RAISE global_process_expt;
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
           END IF;
+--
+          -- ジャーナルマスタ更新フラグがNのデータが存在する場合
+          IF ( ln_out_count > 0 ) THEN
+            -- ===============================
+            -- 生産原料詳細データ更新(A-6)
+            -- ===============================
+            upd_gme_material_details_data(
+              ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+              ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+              ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+-- 2015.01.23 Ver1.1 Add END
         END IF;
 --
         -- ===============================
@@ -3205,12 +3527,31 @@ AS
         ln_out_count     := 0;              -- カウント(生産原料詳細データ更新用)
         gn_price_all     := 0;              -- 金額
         g_gme_material_details_tab.DELETE;  -- 生産原料詳細データ更新情報格納用PL/SQL表の初期化
+-- 2015.01.23 Ver1.1 Add START
+        ln_out_jrnl_count := 0;             -- カウント(ジャーナルマスタデータ更新用)
+        g_ic_jrnl_mst_tab.DELETE;           -- ジャーナルマスタデータ更新情報格納用PL/SQL表の初期化
+-- 2015.01.23 Ver1.1 Add END
       END IF;
+-- 2015.01.23 Ver1.1 Mod START
+--      -- 対象件数をカウント(生産原料詳細データ更新用)
+--      ln_out_count  := ln_out_count + 1;
+--      -- 「生産原料詳細ID」を保持
+--      g_gme_material_details_tab(ln_out_count).material_detail_id := journal_oif_data4_tab(ln_count).material_detail_id;
 --
-      -- 対象件数をカウント(生産原料詳細データ更新用)
-      ln_out_count  := ln_out_count + 1;
-      -- 「生産原料詳細ID」を保持
-      g_gme_material_details_tab(ln_out_count).material_detail_id := journal_oif_data4_tab(ln_count).material_detail_id;
+      -- ジャーナルマスタ更新フラグがYの場合
+      IF ( journal_oif_data4_tab(ln_count).jrnl_mst_upd_flag = cv_flag_y ) THEN
+        -- 対象件数をカウント(ジャーナルマスタデータ更新用)
+        ln_out_jrnl_count := ln_out_jrnl_count + 1;
+        -- 「ジャーナルマスタID」を保持
+        g_ic_jrnl_mst_tab(ln_out_jrnl_count).journal_id := journal_oif_data4_tab(ln_count).journal_id;
+      -- ジャーナルマスタ更新フラグがNの場合
+      ELSE
+        -- 対象件数をカウント(生産原料詳細データ更新用)
+        ln_out_count  := ln_out_count + 1;
+        -- 「生産原料詳細ID」を保持
+        g_gme_material_details_tab(ln_out_count).material_detail_id := journal_oif_data4_tab(ln_count).material_detail_id;
+      END IF;
+-- 2015.01.23 Ver1.1 Mod END
       -- 金額を加算
       gn_price_all  := gn_price_all + journal_oif_data4_tab(ln_count).price;
       -- 倉庫コードを保持
@@ -3221,7 +3562,10 @@ AS
         -- 金額が0の場合、A-5,A-6の処理をしない
         IF ( gn_price_all = 0 ) THEN
           -- スキップ件数に対象件数分を加算
-          gn_warn_cnt := gn_warn_cnt + ln_out_count;
+-- 2015.01.23 Ver1.1 Mod START
+--          gn_warn_cnt := gn_warn_cnt + ln_out_count;
+          gn_warn_cnt := gn_warn_cnt + ln_out_count + ln_out_jrnl_count;
+-- 2015.01.23 Ver1.1 Mod END
         ELSE
           -- ===============================
           -- 仕訳OIF登録(A-5)
@@ -3235,17 +3579,49 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          -- ===============================
-          -- 生産原料詳細データ更新(A-6)
-          -- ===============================
-          upd_gme_material_details_data(
-            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+-- 2015.01.23 Ver1.1 Mod Start
+--          -- ===============================
+--          -- 生産原料詳細データ更新(A-6)
+--          -- ===============================
+--          upd_gme_material_details_data(
+--            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+--            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+--            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--          IF (lv_retcode <> cv_status_normal) THEN
+--            RAISE global_process_expt;
+--          END IF;
+--        END IF;
+          -- ジャーナルマスタ更新フラグがYのデータが存在する場合
+          IF ( ln_out_jrnl_count > 0 ) THEN
+            -- ===============================
+            -- ジャーナルマスタデータ更新(A-9)
+            -- ===============================
+            upd_ic_jrnl_mst_data(
+              ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+              ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+              ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
 --
-          IF (lv_retcode <> cv_status_normal) THEN
-            RAISE global_process_expt;
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
           END IF;
+--
+          -- ジャーナルマスタ更新フラグがNのデータが存在する場合
+          IF ( ln_out_count > 0 ) THEN
+            -- ===============================
+            -- 生産原料詳細データ更新(A-6)
+            -- ===============================
+            upd_gme_material_details_data(
+              ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+              ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+              ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+-- 2015.01.23 Ver1.1 Add END
         END IF;
       END IF;
 --
