@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A02C(body)
  * Description      : AP仕入請求情報生成（有償支給）
  * MD.050           : AP仕入請求情報生成（有償支給）<MD050_CFO_022_A02>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,10 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014-10-24    1.0   K.Kubo           新規作成
+ *  2015-01-27    1.1   A.Uchida         システムテスト障害対応
+ *                                       ・振替出荷で、異なる品目区分の品目へ振替が行われている場合、
+ *                                         依頼品目の区分を参照する。
+ *                                       ・仕訳OIFの「仕訳明細摘要」に設定する値を修正。
  *
  *****************************************************************************************/
 --
@@ -49,6 +53,7 @@ AS
 --
   cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+  cv_underbar      CONSTANT VARCHAR2(1) := '_';       -- 2015-01-27 Ver1.1 Add
 --
 --################################  固定部 END   ##################################
 --
@@ -754,10 +759,14 @@ AS
         , lv_sales_vendor_code                    -- 仕入先コード
         , lv_sales_vendor_site_code               -- 仕入先サイトコード
         , gn_this_month_amount * cn_minus         -- 請求書単位：当月相殺金額
-        , lv_description || gv_period_name || cv_comment_01
-          || lv_mfg_vendor_code || gv_mfg_vendor_name
-                                                  -- 摘要：「摘要」＋「入力パラメータの会計年月」
-                                                  -- ＋「仕入先コード（生産）」＋「仕入先名（生産）」
+        -- 2015-01-27 Ver1.1 Mod Start
+--        , lv_description || gv_period_name || cv_comment_01
+--          || lv_mfg_vendor_code || gv_mfg_vendor_name
+        , lv_mfg_vendor_code || cv_underbar || lv_description || cv_underbar || gv_period_name 
+          || cv_comment_01|| gv_mfg_vendor_name
+        -- 2015-01-27 Ver1.1 Mod End
+                                                  -- 「仕入先コード（生産）」＋摘要：「摘要」＋
+                                                  -- 「入力パラメータの会計年月」＋「仕入先名（生産）」
         , cd_last_update_date                     -- 最終更新日
         , cn_last_updated_by                      -- 最終更新者
         , cn_last_update_login                    -- 最終ログインID
@@ -969,9 +978,14 @@ AS
         , cn_detail_num                                     -- ヘッダー内での連番 （1固定）
         , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
         , gn_this_month_amount * cn_minus                   -- 前月相殺金額
-        , lv_description || gv_period_name || cv_comment_01
-          || gv_vendor_code_hdr || gv_mfg_vendor_name       -- 摘要：「摘要」＋「入力パラメータの会計年月」
-                                                            -- ＋「仕入先コード（生産）」＋「仕入先名（生産）」
+        -- 2015.01.27 Ver1.1 Mod Start
+--        , lv_description || gv_period_name || cv_comment_01
+--          || gv_vendor_code_hdr || gv_mfg_vendor_name       
+        , gv_vendor_code_hdr || cv_underbar || lv_description || cv_underbar || gv_period_name
+          || cv_comment_01 || gv_mfg_vendor_name
+        -- 2015.01.27 Ver1.1 Mod End
+                                                            -- 「仕入先コード（生産）」＋摘要：「摘要」
+                                                            -- ＋「入力パラメータの会計年月」＋「仕入先名（生産）」
         , cv_tax_code_0000                                  -- 請求書税コード
         , lv_line_ccid                                      -- CCID
         , cn_last_updated_by                                -- 最終更新者
@@ -1127,7 +1141,10 @@ AS
            AND    otta.org_id                       = gn_org_id_mfg
            AND    otta.attribute1                   = cv_shikyu_class        -- 出荷支給区分 = 2(支給依頼)
            AND    xola.order_line_id                = xmld.mov_line_id
-           AND    xola.shipping_inventory_item_id   = msib.inventory_item_id
+           -- 2015-01-27 Ver1.1 Mod Start
+--           AND    xola.shipping_inventory_item_id   = msib.inventory_item_id
+           AND    xola.request_item_id              = msib.inventory_item_id
+           -- 2015-01-27 Ver1.1 Mod End
            AND    msib.segment1                     = iimb.item_no
            AND    msib.organization_id              = gn_prof_mst_org_id  -- 品目マスタ組織
            AND    iimb.item_id                      = ximb.item_id
