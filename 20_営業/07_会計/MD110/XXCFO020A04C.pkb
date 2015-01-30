@@ -25,7 +25,11 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2014-10-30    1.0   T.Kobori        新規作成
+ *  2014-10-30    1.0   T.Kobori         新規作成
+ *  2015-01-22    1.1   A.Uchida         システムテスト障害対応
+ *                                       ・振替出荷で、異なる品目区分の品目へ振替が行われている場合、
+ *                                         依頼品目の区分を参照する。
+ *                                       ・仕訳OIFの「仕訳明細摘要」に設定する値を修正。
  *
  *****************************************************************************************/
 --
@@ -148,7 +152,10 @@ AS
   cv_msg_out_data_01         CONSTANT VARCHAR2(30)  := '仕訳OIF';
   cv_msg_out_data_02         CONSTANT VARCHAR2(30)  := '受注明細';
   cv_msg_out_data_03         CONSTANT VARCHAR2(30)  := '連携管理テーブル';
-  cv_msg_out_data_04         CONSTANT VARCHAR2(30)  := '仕入先サイトアドオンマスタ';
+  -- 2015.01.22 Ver1.1 Mod Start
+--  cv_msg_out_data_04         CONSTANT VARCHAR2(30)  := '仕入先サイトアドオンマスタ';
+  cv_msg_out_data_04         CONSTANT VARCHAR2(30)  := '仕入先マスタ';
+  -- 2015.01.22 Ver1.1 Mod End
   cv_msg_out_data_05         CONSTANT VARCHAR2(30)  := 'AP税金コードマスタ';
   --
   cv_msg_out_item_01         CONSTANT VARCHAR2(30)  := '受注ヘッダID,受注明細ID';
@@ -502,8 +509,12 @@ AS
     in_prc_mode         IN  NUMBER,                                                   --   1.処理モード
     it_department_code  IN  xxwsh_order_headers_all.performance_management_dept%TYPE, --   2.部門コード
     it_item_class_code  IN  mtl_categories_b.segment1%TYPE,                           --   3.品目区分
-    it_vendor_site_code IN  xxwsh_order_headers_all.vendor_site_code%TYPE,            --   4.出荷先コード
-    it_vendor_site_name IN  xxcmn_vendor_sites_all.vendor_site_short_name%TYPE,       --   5.出荷先名
+    -- 2015-01-22 Ver1.1 Mod Start
+--    it_vendor_site_code IN  xxwsh_order_headers_all.vendor_site_code%TYPE,            --   4.出荷先コード
+--    it_vendor_site_name IN  xxcmn_vendor_sites_all.vendor_site_short_name%TYPE,       --   5.出荷先名
+    it_vendor_code      IN  po_vendors.segment1%TYPE,                                 --   4.出荷先コード
+    it_vendor_name      IN  xxcmn_vendors.vendor_name%TYPE,                           --   5.出荷先名
+    -- 2015-01-22 Ver1.1 Mod End
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -782,9 +793,13 @@ AS
            ,gv_je_category_mfg_fee_pay || '_' || gv_period_name
                                             -- バッチ摘要
            ,gt_attribute8                   -- 仕訳名
-           ,gv_description_dr || '_' || it_department_code || '_' || it_vendor_site_code || ' ' || it_vendor_site_name
+           -- 2015-01-22 Ver1.1 Mod Start
+--           ,gv_description_dr || '_' || it_department_code || '_' || it_vendor_site_code || ' ' || it_vendor_site_name
+           ,gv_description_dr || '_' || it_department_code || '_' || it_vendor_code || ' ' || it_vendor_name
                                             -- リファレンス5（仕訳名摘要）
-           ,lv_description || it_vendor_site_code || it_vendor_site_name
+--           ,lv_description || it_vendor_site_code || it_vendor_site_name
+           ,it_vendor_code || '_' || lv_description || '_' || it_vendor_name
+           -- 2015-01-22 Ver1.1 Mod End
                                             -- リファレンス10（仕訳明細摘要）
            ,gv_period_name                  -- 会計期間名
            ,cn_request_id                   -- 要求ID
@@ -1030,8 +1045,12 @@ AS
     ld_opminv_date           DATE          DEFAULT NULL;                               -- OPM在庫会計期間の終了日
     lt_department_code       xxwsh_order_headers_all.performance_management_dept%TYPE; -- 仕訳単位：部門コード
     lt_item_class_code       mtl_categories_b.segment1%TYPE;                           -- 仕訳単位：品目区分
-    lt_vendor_site_code      xxwsh_order_headers_all.vendor_site_code%TYPE;            -- 仕訳単位：出荷先コード
-    lt_vendor_site_name      xxcmn_vendor_sites_all.vendor_site_short_name%TYPE;       -- 仕訳単位：出荷先名
+    -- 2015-01-22 Ver1.1 Mod Start
+--    lt_vendor_site_code      xxwsh_order_headers_all.vendor_site_code%TYPE;            -- 仕訳単位：出荷先コード
+--    lt_vendor_site_name      xxcmn_vendor_sites_all.vendor_site_short_name%TYPE;       -- 仕訳単位：出荷先名
+    lt_vendor_code           po_vendors.segment1%TYPE;                                 -- 仕訳単位：出荷先コード
+    lt_vendor_name           xxcmn_vendors.vendor_name%TYPE;                           -- 仕訳単位：出荷先名
+    -- 2015-01-22 Ver1.1 Add End	
     lt_vendor_site_id        xxwsh_order_headers_all.vendor_site_id%TYPE;              -- 仕訳単位：出荷先ID
 --
     -- ===============================
@@ -1480,7 +1499,10 @@ AS
           AND    ilm.item_id                       = xlc.item_id(+)
           AND    ilm.lot_id                        = xlc.lot_id(+)
           AND    iimb.item_no                      = xola.request_item_code
-          AND    xicv.item_no                      = xola.shipping_item_code
+          -- 2015-01-22 Ver1.1 Mod Start
+--          AND    xicv.item_no                      = xola.shipping_item_code
+          AND    xicv.item_id                      = iimb.item_id
+          -- 2015-01-22 Ver1.1 Mod End
           AND    flv.lookup_type                   = cv_profile_name_03
           AND    xoha.arrival_date                 BETWEEN flv.start_date_active
                                                    AND     flv.end_date_active
@@ -1569,7 +1591,10 @@ AS
           AND    ilm.item_id                       = xlc.item_id(+)
           AND    ilm.lot_id                        = xlc.lot_id(+)
           AND    iimb.item_no                      = xola.request_item_code
-          AND    xicv.item_no                      = xola.shipping_item_code
+          -- 2015-01-22 Ver1.1 Mod Start
+--          AND    xicv.item_no                      = xola.shipping_item_code
+          AND    xicv.item_id                      = iimb.item_id
+          -- 2015-01-22 Ver1.1 Mod End
           AND    flv.lookup_type                   = cv_profile_name_03
           AND    xoha.arrival_date                 BETWEEN flv.start_date_active
                                                    AND     flv.end_date_active
@@ -1672,7 +1697,10 @@ AS
           AND    ilm.item_id                       = xlc.item_id(+)
           AND    ilm.lot_id                        = xlc.lot_id(+)
           AND    iimb.item_no                      = xola.request_item_code
-          AND    xicv.item_no                      = xola.shipping_item_code
+          -- 2015-01-22 Ver1.1 Mod Start
+--          AND    xicv.item_no                      = xola.shipping_item_code
+          AND    xicv.item_id                      = iimb.item_id
+          -- 2015-01-22 Ver1.1 Mod End
           AND    flv.lookup_type                   = cv_profile_name_03
           AND    xoha.arrival_date                 BETWEEN flv.start_date_active
                                                    AND     flv.end_date_active
@@ -1772,7 +1800,10 @@ AS
           AND    ilm.item_id                       = xlc.item_id(+)
           AND    ilm.lot_id                        = xlc.lot_id(+)
           AND    iimb.item_no                      = xola.request_item_code
-          AND    xicv.item_no                      = xola.shipping_item_code
+          -- 2015-01-22 Ver1.1 Mod Start
+--          AND    xicv.item_no                      = xola.shipping_item_code
+          AND    xicv.item_id                      = iimb.item_id
+          -- 2015-01-22 Ver1.1 Mod End
           AND    flv.lookup_type                   = cv_profile_name_03
           AND    xoha.arrival_date                 BETWEEN flv.start_date_active
                                                    AND     flv.end_date_active
@@ -1833,13 +1864,28 @@ AS
         -- 出荷先情報を取得
         -- ===============================
         BEGIN
-          SELECT xvsa.vendor_site_short_name                  -- 仕入先略称
-          INTO   lt_vendor_site_name
-          FROM   xxcmn_vendor_sites_all xvsa                  -- 仕入先サイトアドオンマスタ
-          WHERE  xvsa.vendor_site_id = lt_vendor_site_id      -- 仕入先サイトID
-          AND    NVL(xvsa.start_date_active,ld_opminv_date) <= ld_opminv_date
-          AND    NVL(xvsa.end_date_active,ld_opminv_date)   >= ld_opminv_date
-          ;
+          -- 2015-01-22 Ver1.1 Mod Start
+--          SELECT xvsa.vendor_site_short_name                  -- 仕入先略称
+--          INTO   lt_vendor_site_name
+--          FROM   xxcmn_vendor_sites_all xvsa                  -- 仕入先サイトアドオンマスタ
+--          WHERE  xvsa.vendor_site_id = lt_vendor_site_id      -- 仕入先サイトID
+--          AND    NVL(xvsa.start_date_active,ld_opminv_date) <= ld_opminv_date
+--          AND    NVL(xvsa.end_date_active,ld_opminv_date)   >= ld_opminv_date
+--          ;
+          SELECT pv.segment1
+                ,xv.vendor_name
+          INTO   lt_vendor_code
+                ,lt_vendor_name
+          FROM   po_vendors           pv
+                ,po_vendor_sites_all  pvsa
+                ,xxcmn_vendors        xv
+          WHERE  pvsa.vendor_site_id = lt_vendor_site_id
+          AND    pv.vendor_id        = pvsa.vendor_id
+          AND    pv.vendor_id        = xv.vendor_id
+          AND    ld_opminv_date      BETWEEN xv.start_date_active
+                                     AND     NVL(xv.end_date_active,trunc(sysdate))
+          AND    ld_opminv_date      <= NVL(pv.end_date_active,ld_opminv_date);
+          -- 2015-01-22 Ver1.1 Mod End
 --
         EXCEPTION
           WHEN OTHERS THEN
@@ -1864,8 +1910,12 @@ AS
           in_prc_mode              => cn_prc_mode1,        -- 1.処理モード（未収入金）
           it_department_code       => lt_department_code,  -- 2.部門コード
           it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
-          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod Start
+--          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod End
           ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1881,8 +1931,12 @@ AS
           in_prc_mode              => cn_prc_mode2,        -- 1.処理モード（仮受消費税）
           it_department_code       => lt_department_code,  -- 2.部門コード
           it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
-          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod Start
+--          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod End
           ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1898,8 +1952,12 @@ AS
           in_prc_mode              => cn_prc_mode3,        -- 1.処理モード（有償支給）
           it_department_code       => lt_department_code,  -- 2.部門コード
           it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
-          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod Start
+--          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod End
           ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1915,8 +1973,12 @@ AS
           in_prc_mode              => cn_prc_mode4,        -- 1.処理モード（仮受金）
           it_department_code       => lt_department_code,  -- 2.部門コード
           it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
-          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod Start
+--          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod End
           ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1940,8 +2002,12 @@ AS
         -- 仕訳単位の情報を持つ変数の初期化を実施
         lt_department_code         := NULL;                -- 仕訳単位：部門コード
         lt_item_class_code         := NULL;                -- 仕訳単位：品目区分
-        lt_vendor_site_code        := NULL;                -- 仕訳単位：出荷先コード
-        lt_vendor_site_name        := NULL;                -- 仕訳単位：出荷先名
+        -- 2015-01-22 Ver1.1 Mod Start
+--        lt_vendor_site_code        := NULL;                -- 仕訳単位：出荷先コード
+--        lt_vendor_site_name        := NULL;                -- 仕訳単位：出荷先名
+        lt_vendor_code             := NULL;                -- 仕訳単位：出荷先コード
+        lt_vendor_name             := NULL;                -- 仕訳単位：出荷先名
+        -- 2015-01-22 Ver1.1 Mod End
         lt_vendor_site_id          := NULL;                -- 仕訳単位：出荷先ID
         gt_attribute8              := NULL;                -- 仕訳単位：参照項目１(仕訳キー)
         gv_description_dr          := NULL;                -- 仕訳単位：摘要（借方）
@@ -2003,13 +2069,28 @@ AS
         -- 出荷先情報を取得
         -- ===============================
         BEGIN
-          SELECT xvsa.vendor_site_short_name                  -- 仕入先略称
-          INTO   lt_vendor_site_name
-          FROM   xxcmn_vendor_sites_all xvsa                  -- 仕入先サイトアドオンマスタ
-          WHERE  xvsa.vendor_site_id = lt_vendor_site_id      -- 仕入先サイトID
-          AND    NVL(xvsa.start_date_active,ld_opminv_date) <= ld_opminv_date
-          AND    NVL(xvsa.end_date_active,ld_opminv_date)   >= ld_opminv_date
-          ;
+          -- 2015-01-22 Ver1.1 Mod End
+--          SELECT xvsa.vendor_site_short_name                  -- 仕入先略称
+--          INTO   lt_vendor_site_name
+--          FROM   xxcmn_vendor_sites_all xvsa                  -- 仕入先サイトアドオンマスタ
+--          WHERE  xvsa.vendor_site_id = lt_vendor_site_id      -- 仕入先サイトID
+--          AND    NVL(xvsa.start_date_active,ld_opminv_date) <= ld_opminv_date
+--          AND    NVL(xvsa.end_date_active,ld_opminv_date)   >= ld_opminv_date
+--          ;
+          SELECT pv.segment1
+                ,xv.vendor_short_name
+          INTO   lt_vendor_code
+                ,lt_vendor_name
+          FROM   po_vendors           pv
+                ,po_vendor_sites_all  pvsa
+                ,xxcmn_vendors        xv
+          WHERE  pvsa.vendor_site_id = lt_vendor_site_id
+          AND    pv.vendor_id        = pvsa.vendor_id
+          AND    pv.vendor_id        = xv.vendor_id
+          AND    ld_opminv_date      BETWEEN xv.start_date_active
+                                     AND     NVL(xv.end_date_active,trunc(sysdate))
+          AND    ld_opminv_date      <= NVL(pv.end_date_active,ld_opminv_date);
+          -- 2015-01-22 Ver1.1 Mod End
 --
         EXCEPTION
           WHEN OTHERS THEN
@@ -2034,8 +2115,12 @@ AS
           in_prc_mode              => cn_prc_mode1,        -- 1.処理モード（未収入金）
           it_department_code       => lt_department_code,  -- 2.部門コード
           it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
-          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod Start
+--          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod End
           ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2051,8 +2136,12 @@ AS
           in_prc_mode              => cn_prc_mode2,        -- 1.処理モード（仮受消費税）
           it_department_code       => lt_department_code,  -- 2.部門コード
           it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
-          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod Start
+--          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod End
           ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2068,8 +2157,12 @@ AS
           in_prc_mode              => cn_prc_mode3,        -- 1.処理モード（有償支給）
           it_department_code       => lt_department_code,  -- 2.部門コード
           it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
-          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod Start
+--          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod End
           ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2085,8 +2178,12 @@ AS
           in_prc_mode              => cn_prc_mode4,        -- 1.処理モード（仮受金）
           it_department_code       => lt_department_code,  -- 2.部門コード
           it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
-          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod Start
+--          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+          -- 2015-01-22 Ver1.1 Mod End
           ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
