@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A01C(body)
  * Description      : 受払その他実績仕訳IF作成
  * MD.050           : 受払その他実績仕訳IF作成<MD050_CFO_020_A01>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,8 @@ AS
  *                                       抽出が出来るよう修正。
  *  2015-01-29    1.2   SCSK A.Uchida    システムテスト障害対応
  *                                       ・「抽出カーソル_その他」の抽出条件変更
+ *  2015-02-06    1.3   SCSK Y.Shoji     システムテスト障害#42 対応
+ *                                       ・「抽出カーソル_その他」の抽出条件から取引区分：511（目視品目払出）を削除
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1701,8 +1703,11 @@ AS
     WHERE  itc.doc_type                = cv_adji
     -- 2015-01-29 Ver1.1 Mod Start
 --    AND    itc.reason_code             = cv_reason_951   -- その他払出
-    AND    xrpm.dealings_div          IN (ct_dealings_div_502
-                                         ,ct_dealings_div_511)   -- その他払出
+    -- 2015-02-06 Ver1.3 Mod Start
+--    AND    xrpm.dealings_div          IN (ct_dealings_div_502
+--                                         ,ct_dealings_div_511)   -- その他払出
+    AND    xrpm.dealings_div           = ct_dealings_div_502     -- その他払出
+    -- 2015-02-06 Ver1.3 Mod End
     AND    xrpm.rcv_pay_div            = ct_rcv_pay_div_minus1   -- 受払区分：払出
     -- 2015-01-29 Ver1.1 Mod End
     AND    itc.trans_date             >= gd_target_date_from
