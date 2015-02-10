@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A02C(body)
  * Description      : 受払取引（生産）仕訳IF作成
  * MD.050           : 受払取引（生産）仕訳IF作成<MD050_CFO_020_A02>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------------- ----------------------------------------------------------
@@ -27,7 +27,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014-10-30    1.0   Y.Shoji          新規作成
- *  2015-01-23    1.1   Y.Shoji          システムテスト障害対応
+ *  2015-01-23    1.1   Y.Shoji          システムテスト障害#35 対応
+ *  2015-02-05    1.2   Y.Shoji          システムテスト障害#41 対応
  *
  *****************************************************************************************/
 --
@@ -3556,6 +3557,10 @@ AS
       gn_price_all  := gn_price_all + journal_oif_data4_tab(ln_count).price;
       -- 倉庫コードを保持
       gv_whse_code  := journal_oif_data4_tab(ln_count).whse_code;
+-- 2015.02.06 Ver1.2 Add START
+      -- 倉庫コード（勘定科目取得用）を保持
+      gv_warehouse_code := journal_oif_data4_tab(ln_count).whse_code;
+-- 2015.02.06 Ver1.2 Add END
 --
       -- 最終レコードの場合
       IF ( ln_count = journal_oif_data4_tab.COUNT ) THEN
@@ -3633,6 +3638,9 @@ AS
     -- 初期化
     g_gme_material_details_tab.DELETE;               -- 生産原料詳細データ更新情報格納用PL/SQL表の初期化
     gv_whse_code           := NULL;                  -- 倉庫コード
+-- 2015.02.06 Ver1.2 Add START
+    gv_warehouse_code      := NULL;                  -- 倉庫コード（勘定科目取得用）
+-- 2015.02.06 Ver1.2 Add END
     ln_out_count           := 0;                     -- カウント(生産原料詳細データ更新用)
     gn_price_all           := 0;                     -- 金額
     gv_process_no          := cv_process_no_06;      -- 処理番号：(5)払出 他勘定振替分（原料・半製品へ）
