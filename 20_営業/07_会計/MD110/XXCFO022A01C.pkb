@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,10 @@ AS
  *                                       ・抽出①（受入実績）に不足していた結合条件を追加。
  *                                       ・AP請求書ヘッダOIFとAP請求書明細の「摘要」に設定する値を修正。
  *                                       ・口銭消費税を【仮払消費税/預り金】として計上する。
+ *  2015-02-06    1.2   A.Uchida         システムテスト障害#40対応
+ *                                       ・抽出方法の変更
+ *                                         ⇒受入明細のattribute1(受入返品実績の取引ID)が
+ *                                           NULLのデータが存在するため
  *
  *****************************************************************************************/
 --
@@ -2356,6 +2360,9 @@ AS
 --
     cv_proc_type_1           CONSTANT VARCHAR2(1)   := '1';              -- 内部処理区分（1:繰越処理）
     cv_proc_type_2           CONSTANT VARCHAR2(1)   := '2';              -- 内部処理区分（2:登録処理）
+    -- 2015-02-06 Ver1.2 Add Start
+    cn_rcv_pay_div_1         CONSTANT NUMBER        := 1;                -- 受払区分：１
+    -- 2015-02-06 Ver1.2 Add End
 --
     -- *** ローカル変数 ***
     ln_out_count             NUMBER       DEFAULT 0;                     -- 請求書カウント
@@ -2425,97 +2432,148 @@ AS
                   ,xic5v.item_class_code           AS item_class_code           -- 品目区分
                   ,SUBSTRB(pha.attribute4,1,7)     AS target_period             -- 対象年月
                   ,xrart.txns_id                   AS txns_id                   -- 取引ID
-                  ,SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))
+                  -- 2015-02-06 Ver1.2 Mod Start
+--                  ,SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))
+                  ,SUM(NVL(xrart.quantity, 0) * cn_rcv_pay_div_1)
+                  -- 2015-02-06 Ver1.2 Mod End
                                                    AS trans_qty                 -- 取引数量
                   ,TO_NUMBER(xlv2v.lookup_code)    AS tax_rate                  -- 消費税率
-                  ,ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0)
-                     * TO_NUMBER(xrpm.rcv_pay_div))) AS order_amount_net        -- 仕入金額（税抜）
+                  -- 2015-02-06 Ver1.2 Mod Start
+--                  ,ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0)
+--                     * TO_NUMBER(xrpm.rcv_pay_div))) AS order_amount_net        -- 仕入金額（税抜）
+                  ,ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0)
+                     * cn_rcv_pay_div_1))          AS order_amount_net        -- 仕入金額（税抜）
+                  -- 2015-02-06 Ver1.2 Mod End
                   ,CASE plla.attribute3   -- 口銭区分
                      WHEN cv_kousen_type_yen THEN     -- 1:円
-                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0)
-                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0)
+--                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+--                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0)
+                         * cn_rcv_pay_div_1)) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       -- 2015-02-06 Ver1.2 Mod End
                      WHEN cv_kousen_type_ritsu THEN   -- 2:率
-                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0) 
-                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         - ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) 
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0) 
+--                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+--                         - ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) 
+--                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0) 
+                         * cn_rcv_pay_div_1)) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                         - ROUND(TRUNC( pla.attribute8 * SUM(NVL(xrart.quantity, 0)) 
                          * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       -- 2015-02-06 Ver1.2 Mod End
                      ELSE 
-                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0) 
-                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0) 
+--                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0) 
+                         * cn_rcv_pay_div_1)) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       -- 2015-02-06 Ver1.2 Mod End
                      END                           AS payment_tax               -- 支払消費税金額
                   ,CASE plla.attribute3   -- 口銭区分
                      WHEN cv_kousen_type_yen THEN     -- 1:円
-                       TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0)))
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0)))
+                       TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0)))
+                       -- 2015-02-06 Ver1.2 Mod End
                      WHEN cv_kousen_type_ritsu THEN   -- 2:率
-                       TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 )
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 )
+                       TRUNC( pla.attribute8 * SUM(NVL(xrart.quantity, 0)) * NVL(plla.attribute4, 0) / 100 )
+                       -- 2015-02-06 Ver1.2 Mod End
                      ELSE 
                        0 
                      END                           AS commission_net            -- 口銭金額（税抜）
                   ,CASE plla.attribute3   -- 口銭区分
                      WHEN cv_kousen_type_yen THEN     -- 1:円
-                       ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) 
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) 
+--                         * TO_NUMBER(xlv2v.lookup_code) / 100) 
+                       ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) 
                          * TO_NUMBER(xlv2v.lookup_code) / 100) 
+                       -- 2015-02-06 Ver1.2 Mod End
                      WHEN cv_kousen_type_ritsu THEN   -- 2:率
-                       ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0))
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0))
+--                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       ROUND(TRUNC( pla.attribute8 * SUM(NVL(xrart.quantity, 0))
                          * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
+                       -- 2015-02-06 Ver1.2 Mod End
                      ELSE 
                        0 
                      END                           AS commission_tax            -- 口銭消費税金額
                   ,CASE plla.attribute6   -- 賦課金区分
                      WHEN cv_kousen_type_yen THEN     -- 1:円
-                       TRUNC( NVL(plla.attribute7,0) * SUM(NVL(itp.trans_qty, 0)))
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       TRUNC( NVL(plla.attribute7,0) * SUM(NVL(itp.trans_qty, 0)))
+                       TRUNC( NVL(plla.attribute7,0) * SUM(NVL(xrart.quantity, 0)))
+                       -- 2015-02-06 Ver1.2 Mod End
                      WHEN cv_kousen_type_ritsu THEN   -- 2:率
-                       TRUNC((pla.attribute8 * SUM(NVL(itp.trans_qty, 0))
-                         - pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute1,0) / 100)
+                       -- 2015-02-06 Ver1.2 Mod Start
+--                       TRUNC((pla.attribute8 * SUM(NVL(itp.trans_qty, 0))
+--                         - pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute1,0) / 100)
+--                         * NVL(plla.attribute7,0) / 100)
+                       TRUNC((pla.attribute8 * SUM(NVL(xrart.quantity, 0))
+                         - pla.attribute8 * SUM(NVL(xrart.quantity, 0)) * NVL(plla.attribute1,0) / 100)
                          * NVL(plla.attribute7,0) / 100)
+                       -- 2015-02-06 Ver1.2 Mod End
                      ELSE 
                        0 
                      END                           AS assessment                -- 賦課金額
            FROM    xxpo_rcv_and_rtn_txns           xrart                        -- 受入返品実績アドオン
-                  ,ic_tran_pnd                     itp                          -- 保留在庫トランザクション
+--                  ,ic_tran_pnd                     itp                          -- 保留在庫トランザクション   -- 2015-02-06 Ver1.2 Del
                   ,po_headers_all                  pha                          -- 発注ヘッダ
                   ,xxpo_headers_all                xha                          -- 発注ヘッダアドオン
                   ,po_lines_all                    pla                          -- 発注明細
                   ,po_line_locations_all           plla                         -- 発注納入明細
-                  ,rcv_shipment_lines              rsl                          -- 受入明細
+--                  ,rcv_shipment_lines              rsl                          -- 受入明細                   -- 2015-02-06 Ver1.2 Del
                   ,xxcmn_item_categories5_v        xic5v                        -- OPM品目カテゴリ割当情報VIEW5
                   ,xxcmn_vendors_v                 xvv_vendor                   -- 仕入先情報VIEW（取引先）
                   ,po_vendor_sites_all             pvsa                         -- 仕入先サイト（工場）
-                  ,rcv_transactions                rt                           -- 受入取引
-                  ,xxcmn_rcv_pay_mst               xrpm                         -- 受払区分アドオンマスタ
+--                  ,rcv_transactions                rt                           -- 受入取引                   -- 2015-02-06 Ver1.2 Del
+--                  ,xxcmn_rcv_pay_mst               xrpm                         -- 受払区分アドオンマスタ     -- 2015-02-06 Ver1.2 Del
                   ,xxcmn_lookup_values2_v          xlv2v                        -- 消費税率情報VIEW
            WHERE   xrart.txns_type                 = cv_txns_type_1             -- 実績区分：1（受入）
            AND     xrart.source_document_number    = pha.segment1
            AND     xrart.source_document_line_num  = pla.line_num
            AND     pha.segment1                    = xha.po_header_number
-           AND     pha.po_header_id                = rsl.po_header_id
-           AND     rsl.shipment_header_id          = itp.doc_id
-           AND     rsl.line_num                    = itp.doc_line
-           AND     itp.doc_type                    = cv_doc_type_porc           -- 購買関連
-           AND     itp.completed_ind               = cn_completed_ind           -- 完了
-           AND     rsl.po_line_id                  = pla.po_line_id
+           -- 2015-02-06 Ver1.2 Del Start
+--           AND     pha.po_header_id                = rsl.po_header_id
+--           AND     rsl.shipment_header_id          = itp.doc_id
+--           AND     rsl.line_num                    = itp.doc_line
+--           AND     itp.doc_type                    = cv_doc_type_porc           -- 購買関連
+--           AND     itp.completed_ind               = cn_completed_ind           -- 完了
+--           AND     rsl.po_line_id                  = pla.po_line_id
+           -- 2015-02-06 Ver1.2 Del Start
            AND     pla.po_line_id                  = plla.po_line_id
            AND     pha.vendor_id                   = xvv_vendor.vendor_id
            AND     pla.attribute2                  = pvsa.vendor_site_code(+)
            AND     pvsa.inactive_date              IS NULL
            AND     pvsa.org_id                     = FND_PROFILE.VALUE(cv_profile_name_06)
            AND     xic5v.item_id                   = xrart.item_id
-           AND     rt.transaction_id               = itp.line_id
-           AND     rt.shipment_line_id             = rsl.shipment_line_id
-           AND     rt.transaction_type             = xrpm.transaction_type
-           AND     xrpm.doc_type                   = itp.doc_type
-           AND     xrpm.source_document_code       <> cv_source_doc_cd_rma
-           AND     xrpm.source_document_code       = rsl.source_document_code
-           AND     xrpm.break_col_05               IS NOT NULL
+           -- 2015-02-06 Ver1.2 Del Start
+--           AND     rt.transaction_id               = itp.line_id
+--           AND     rt.shipment_line_id             = rsl.shipment_line_id
+--           AND     rt.transaction_type             = xrpm.transaction_type
+--           AND     xrpm.doc_type                   = itp.doc_type
+--           AND     xrpm.source_document_code       <> cv_source_doc_cd_rma
+--           AND     xrpm.source_document_code       = rsl.source_document_code
+--           AND     xrpm.break_col_05               IS NOT NULL
+           -- 2015-02-06 Ver1.2 Del Start
            AND     xlv2v.lookup_type               = cv_lookup_type_01          -- 参照タイプ：消費税率マスタ
            AND     xlv2v.start_date_active         < TO_DATE(pha.attribute4, 'YYYY/MM/DD') + 1
            AND     xlv2v.end_date_active           >= TO_DATE(pha.attribute4, 'YYYY/MM/DD')
            AND     TO_DATE(pha.attribute4,'YYYY/MM/DD') BETWEEN gd_target_date_from  -- 納入日
                                                         AND     gd_target_date_to
-           -- 2015-01-26 Ver1.1 Add Start
-           and     xrart.txns_id                   = rsl.attribute1
-           -- 2015-01-26 Ver1.1 Add End
+           -- 2015-02-06 Ver1.2 Mod Start
+--           -- 2015-01-26 Ver1.1 Add Start
+--           and     xrart.txns_id                   = rsl.attribute1
+--           -- 2015-01-26 Ver1.1 Add End
+           AND     pha.po_header_id = pla.po_header_id
+           -- 2015-02-06 Ver1.2 Mod End
            GROUP BY
                    xvv_vendor.segment1
                   ,pvsa.vendor_site_code
@@ -2524,7 +2582,7 @@ AS
                   ,xic5v.item_class_code
                   ,SUBSTRB(pha.attribute4,1,7)
                   ,xrart.txns_id
-                  ,xrpm.rcv_pay_div
+--                  ,xrpm.rcv_pay_div                 -- 2015-02-06 Ver1.2 Del
                   ,xlv2v.lookup_code
                   ,pla.attribute8
                   ,plla.attribute3
