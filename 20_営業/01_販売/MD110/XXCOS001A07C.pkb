@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2012/04/24    1.17  Y.Horikawa       [E_本稼動_09440]「売上値引金額」「売上消費税額」のマッピング不正の修正
  *  2014/10/16    1.18  Y.Enokido        [E_本稼動_09378]納品者の有効チェックを行う
  *  2014/11/27    1.19  K.Nakatsu        [E_本稼動_12599]汎用エラーリストテーブルへの出力追加
+ *  2015/01/29    1.20  H.Wajima         [E_本稼働_12599]HWリプレースによるパフォーマンス対応反映
  *
  *****************************************************************************************/
 --
@@ -1053,6 +1054,13 @@ AS
       AND    inv.status         = cv_one                          -- 処理ステータス＝1
       FOR UPDATE NOWAIT;
 --
+/* 2015.01.29 H.Wajima E_本稼動_12599 MOD START */
+--ヒント句追加
+-- 出庫側情報抽出サブクエリ  OPTIMIZER_FEATURES_ENABLE、顧客使用目的（HZ_CUST_SITE_USES_N1）
+-- 入庫側情報抽出            OPTIMIZER_FEATURES_ENABLE、VDコラムマスタ（XXCOI_MST_VD_COLUMN_U01）
+-- 入庫側情報抽出サブクエリ  OPTIMIZER_FEATURES_ENABLE、顧客使用目的（HZ_CUST_SITE_USES_N1）
+--ヒント句削除
+-- 入庫側情報抽出            担当営業員ビュー（HZ_ORG_PROFILES_EXT_B_N1、hz_org_profiles_ext_b_n1）
     -- 入出庫一時表データ抽出
     CURSOR get_inv_data_cur
     IS
@@ -1091,6 +1099,8 @@ AS
 -- *************** 2009/08/10 1.12 N.Maeda ADD START *****************************--
 -- *************** 2009/11/27 1.14 K.Atsushiba Mod START *****************************--
              /*+
+               OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
+               INDEX(site HZ_CUST_SITE_USES_N1)
                INDEX ( vd XXCOI_MST_VD_COLUMN_U01 )
                INDEX (ACCT HZ_CUST_ACCT_SITES_N3)
              */
@@ -1213,6 +1223,7 @@ AS
       SELECT
 -- *************** 2009/08/10 1.12 N.Maeda ADD START *****************************--
              /*+
+               OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
                INDEX ( vd XXCOI_MST_VD_COLUMN_U01 )
              */
 -- *************** 2009/08/10 1.12 N.Maeda ADD  END  *****************************--
@@ -1249,8 +1260,10 @@ AS
 -- *************** 2009/11/27 1.14 K.Atsushiba Mod START *****************************--
           SELECT
         /*+
-          INDEX(XSV.hopeb HZ_ORG_PROFILES_EXT_B_N1)
-          INDEX(XSV.hopeb hz_org_profiles_ext_b_n1)
+          OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
+          INDEX(site HZ_CUST_SITE_USES_N1)
+--          INDEX(XSV.hopeb HZ_ORG_PROFILES_EXT_B_N1)
+--          INDEX(XSV.hopeb hz_org_profiles_ext_b_n1)
           INDEX(INV XXCOI_HHT_INV_TRANSACTIONS_N06)
           INDEX(ACCT HZ_CUST_ACCT_SITES_N3)
         */
@@ -1365,6 +1378,7 @@ AS
                    ,inv.column_no              -- コラムNo.
         )
       ;
+/* 2015.01.29 H.Wajima E_本稼動_12599 MOD END */
 --
     -- *** ローカル・レコード ***
 --
