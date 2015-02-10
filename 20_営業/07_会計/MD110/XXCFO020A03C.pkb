@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A03C(body)
  * Description      : 仕入実績仕訳IF作成
  * MD.050           : 仕入実績仕訳IF作成<MD050_CFO_020_A03>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,8 +25,12 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2014-10-17    1.0   T.Kobori        新規作成
- *  2015-01-22    1.1   Y.Shoji         システムテスト不具合対応
+ *  2014-10-17    1.0   T.Kobori         新規作成
+ *  2015-01-22    1.1   Y.Shoji          システムテスト不具合対応
+ *  2015-02-06    1.2   A.Uchida         システムテスト障害#40対応
+ *                                       ・抽出方法の変更
+ *                                         ⇒受入明細のattribute1(受入返品実績の取引ID)が
+ *                                           NULLのデータが存在するため
  *
  *****************************************************************************************/
 --
@@ -907,11 +911,15 @@ AS
     cv_doc_type_porc         CONSTANT VARCHAR2(30)  := 'PORC';           -- 購買関連
     cv_doc_type_adji         CONSTANT VARCHAR2(30)  := 'ADJI';           -- 在庫調整
     cv_reason_cd_x201        CONSTANT VARCHAR2(30)  := 'X201';           -- 仕入先返品
+    cv_txns_type_1           CONSTANT VARCHAR2(1)   := '1';              -- 取引区分（2:受入）   --2015-02-06 Ver1.2 Add
     cv_txns_type_2           CONSTANT VARCHAR2(1)   := '2';              -- 取引区分（2:仕入先返品）
     cv_txns_type_3           CONSTANT VARCHAR2(1)   := '3';              -- 取引区分（3:発注なし返品）
     cn_completed_ind         CONSTANT NUMBER        := 1;                -- 完了フラグ
     cn_prc_mode1             CONSTANT NUMBER        := 1;                -- 処理モード（借方）
     cn_prc_mode2             CONSTANT NUMBER        := 2;                -- 処理モード（貸方）
+    -- 2015-02-06 Ver1.2 Add Start
+    cn_rcv_pay_div_1         CONSTANT NUMBER        := 1;                -- 受払区分：１
+    -- 2015-02-06 Ver1.2 Add End
 --
     -- *** ローカル変数 ***
     ln_count                 NUMBER        DEFAULT 0;                    -- 抽出件数のカウント
@@ -948,43 +956,71 @@ AS
            -- 抽出①（受入実績）
            SELECT
                   NVL(xsup.stnd_unit_price, 0)            AS stnd_unit_price    -- 標準原価
-                 ,NVL(itp.trans_qty, 0)                   AS trans_qty          -- 取引数量
-                 ,TO_NUMBER(xrpm.rcv_pay_div)             AS rcv_pay_div        -- 受払区分
+                 -- 2014-02-06 Ver1.2 Mod Start
+--                 ,NVL(itp.trans_qty, 0)                   AS trans_qty          -- 取引数量
+--                 ,TO_NUMBER(xrpm.rcv_pay_div)             AS rcv_pay_div        -- 受払区分
+                 ,NVL(xrart.quantity, 0)                  AS trans_qty          -- 取引数量 
+                 ,cn_rcv_pay_div_1                        AS rcv_pay_div        -- 受払区分
+                 -- 2014-02-06 Ver1.2 Mod End
                  ,pla.unit_price                          AS unit_price         -- 単価
                  ,pha.attribute10                         AS department_code    -- 部門
                  ,pha.vendor_id                           AS vendor_id          -- 仕入先ID
                  ,xicv.item_class_code                    AS item_class_code    -- 品目区分
-                 ,TO_NUMBER(rsl.attribute1)               AS txns_id            -- 取引ID
-           FROM   ic_tran_pnd               itp                -- 保留在庫トランザクション
-                 ,rcv_shipment_lines        rsl                -- 受入明細
-                 ,rcv_transactions          rt                 -- 受入取引
-                 ,xxcmn_rcv_pay_mst         xrpm               -- 受払区分アドオンマスタ
-                 ,po_headers_all            pha                -- 発注ヘッダ
+                 -- 2014-02-06 Ver1.2 Mod Start
+--                 ,TO_NUMBER(rsl.attribute1)               AS txns_id            -- 取引ID
+                 ,xrart.txns_id                           AS txns_id            -- 取引ID
+                 -- 2014-02-06 Ver1.2 Mod End
+           -- 2014-02-06 Ver1.2 Mod Start
+--           FROM   ic_tran_pnd               itp                -- 保留在庫トランザクション
+--                 ,rcv_shipment_lines        rsl                -- 受入明細
+--                 ,rcv_transactions          rt                 -- 受入取引
+--                 ,xxcmn_rcv_pay_mst         xrpm               -- 受払区分アドオンマスタ
+--                 ,po_headers_all            pha                -- 発注ヘッダ
+           FROM   po_headers_all            pha                -- 発注ヘッダ
+           -- 2014-02-06 Ver1.2 Mod End
                  ,po_lines_all              pla                -- 発注明細
                  ,xxcmn_item_categories5_v  xicv               -- opm品目カテゴリ割当情報view5
                  ,xxcmn_stnd_unit_price_v   xsup               -- 標準原価情報view
-                 ,po_line_locations_all     plla               -- 発注納入明細
-           WHERE  itp.doc_type                    = cv_doc_type_porc
-           AND    itp.completed_ind               = cn_completed_ind
-           AND    itp.trans_date                  BETWEEN gd_target_date_from
-                                                  AND     gd_target_date_to
-           AND    rsl.shipment_header_id          = itp.doc_id
-           AND    rsl.line_num                    = itp.doc_line
-           AND    rt.transaction_id               = itp.line_id
-           AND    rt.shipment_line_id             = rsl.shipment_line_id
-           AND    itp.doc_type                    = xrpm.doc_type
-           AND    rsl.source_document_code        = xrpm.source_document_code
-           AND    rt.transaction_type             = xrpm.transaction_type
-           AND    pha.po_header_id                = rsl.po_header_id
-           AND    pla.po_line_id                  = rsl.po_line_id
-           AND    rsl.po_line_location_id         = plla.line_location_id 
-           AND    pha.org_id                      = gn_org_id_mfg
-           AND    xicv.item_id                    = itp.item_id
+                 -- 2014-02-06 Ver1.2 Mod Start
+--                 ,po_line_locations_all     plla               -- 発注納入明細
+                 ,xxpo_rcv_and_rtn_txns     xrart              -- 受入返品実績
+                 -- 2014-02-06 Ver1.2 Mod End
+           -- 2014-02-06 Ver1.2 Mod Start
+--           WHERE  itp.doc_type                    = cv_doc_type_porc
+--           AND    itp.completed_ind               = cn_completed_ind
+--           AND    itp.trans_date                  BETWEEN gd_target_date_from
+--                                                  AND     gd_target_date_to
+--           AND    rsl.shipment_header_id          = itp.doc_id
+--           AND    rsl.line_num                    = itp.doc_line
+--           AND    rt.transaction_id               = itp.line_id
+--           AND    rt.shipment_line_id             = rsl.shipment_line_id
+--           AND    itp.doc_type                    = xrpm.doc_type
+--           AND    rsl.source_document_code        = xrpm.source_document_code
+--           AND    rt.transaction_type             = xrpm.transaction_type
+--           AND    pha.po_header_id                = rsl.po_header_id
+--           AND    pla.po_line_id                  = rsl.po_line_id
+--           AND    rsl.po_line_location_id         = plla.line_location_id 
+--           AND    pha.org_id                      = gn_org_id_mfg
+--           AND    xicv.item_id                    = itp.item_id
+           WHERE  pha.org_id                      = gn_org_id_mfg
+           AND    xrart.item_id                   = xicv.item_id
+           -- 2014-02-06 Ver1.2 Mod End
            AND    xicv.item_class_code            IN (cv_item_class_2,cv_item_class_5)
-           AND    itp.item_id                     = xsup.item_id(+)
-           AND    itp.trans_date                  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
-                                                  AND     NVL(xsup.end_date_active(+), itp.trans_date)
-           AND    xrpm.break_col_05               IS NOT NULL
+           -- 2014-02-06 Ver1.2 Mod Start
+--           AND    itp.item_id                     = xsup.item_id(+)
+--           AND    itp.trans_date                  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+--                                                  AND     NVL(xsup.end_date_active(+), itp.trans_date)
+--           AND    xrpm.break_col_05               IS NOT NULL
+           AND    xrart.item_id                   = xsup.item_id(+)
+           AND    xrart.txns_date                 BETWEEN NVL(xsup.start_date_active(+), xrart.txns_date)
+                                                  AND     NVL(xsup.end_date_active(+), xrart.txns_date)
+           AND    pha.segment1                    = xrart.rcv_rtn_number
+           AND    xrart.txns_date                 BETWEEN gd_target_date_from
+                                                  AND     gd_target_date_to
+           and    xrart.txns_type                 = cv_txns_type_1
+           and    pha.po_header_id                = pla.po_header_id
+           and    pla.line_num                    = xrart.source_document_line_num
+           -- 2014-02-06 Ver1.2 Mod End
 --
            UNION ALL
 --
