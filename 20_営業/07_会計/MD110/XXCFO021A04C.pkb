@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO021A04C(body)
  * Description      : 電子帳簿有償支給取引の情報系システム連携
  * MD.050           : 電子帳簿有償支給取引の情報系システム連携 <MD050_CFO_021_A04>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,7 +29,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2014-10-15    1.0   A.Uchida        新規作成
+ *  2014-10-15    1.0   A.Uchida         新規作成
+ *  2015-02-09    1.1   A.Uchida         移行障害#3対応
+ *                                       ラベル枚数の小数点以下切り上げ
  *
  *****************************************************************************************/
 --
@@ -1467,15 +1469,48 @@ AS
           END IF;
 --
         ELSIF ln_cnt = 85 THEN
-          IF LENGTHB(g_data_tab(ln_cnt)) > LENGTHB(cv_max_small_quantity) THEN
-            g_data_tab(ln_cnt) := cv_max_small_quantity;
+          -- 2015-02-09 Ver1.2 Add Start
+          -- 小口個数の切り上げ
+          IF TO_NUMBER(g_data_tab(ln_cnt)) < 0 THEN
+            g_data_tab(ln_cnt) := TO_CHAR(CEIL(ABS(TO_NUMBER(g_data_tab(ln_cnt)))) * -1);
+          ELSE
+            g_data_tab(ln_cnt) := TO_CHAR(CEIL(TO_NUMBER(g_data_tab(ln_cnt))));
+          END IF;
+          -- 2015-02-09 Ver1.2 Add End
+--
+          -- 2015-02-09 Ver1.1 Mod Start
+--          IF LENGTHB(g_data_tab(ln_cnt)) > LENGTHB(cv_max_small_quantity) THEN
+--            g_data_tab(ln_cnt) := cv_max_small_quantity;
+          IF LENGTHB(ABS(TO_NUMBER(g_data_tab(ln_cnt)))) > LENGTHB(cv_max_small_quantity) THEN
+            IF TO_NUMBER(g_data_tab(ln_cnt)) < 0 THEN
+              g_data_tab(ln_cnt) := '-'||cv_max_small_quantity;
+            ELSE
+              g_data_tab(ln_cnt) := cv_max_small_quantity;
+            END IF;
+          -- 2015-02-09 Ver1.1 Mod End
           END IF;
 --
         ELSIF ln_cnt = 86 THEN
-          IF LENGTHB(g_data_tab(ln_cnt)) > LENGTHB(cv_max_label_quantity) THEN
-            g_data_tab(ln_cnt) := cv_max_label_quantity;
+          -- 2015-02-09 Ver1.1 Add Start
+          -- ラベル枚数の切り上げ
+          IF TO_NUMBER(g_data_tab(ln_cnt)) < 0 THEN
+            g_data_tab(ln_cnt) := TO_CHAR(CEIL(ABS(TO_NUMBER(g_data_tab(ln_cnt)))) * -1);
+          ELSE
+            g_data_tab(ln_cnt) := TO_CHAR(CEIL(TO_NUMBER(g_data_tab(ln_cnt))));
           END IF;
+          -- 2015-02-09 Ver1.1 Add End
 --
+          -- 2015-02-09 Ver1.1 Mod Start
+--          IF LENGTHB(g_data_tab(ln_cnt)) > LENGTHB(cv_max_label_quantity) THEN
+--            g_data_tab(ln_cnt) := cv_max_label_quantity;
+          IF LENGTHB(ABS(TO_NUMBER(g_data_tab(ln_cnt)))) > LENGTHB(cv_max_label_quantity) THEN
+            IF TO_NUMBER(g_data_tab(ln_cnt)) < 0 THEN
+              g_data_tab(ln_cnt) := '-'||cv_max_label_quantity;
+            ELSE
+              g_data_tab(ln_cnt) := cv_max_label_quantity;
+            END IF;
+          -- 2015-02-09 Ver1.1 Mod End
+          END IF;
         END IF;
 --
         xxcfo_common_pkg2.chk_electric_book_item (
