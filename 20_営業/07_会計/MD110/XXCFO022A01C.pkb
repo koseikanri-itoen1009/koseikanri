@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *                                       ・抽出方法の変更
  *                                         ⇒受入明細のattribute1(受入返品実績の取引ID)が
  *                                           NULLのデータが存在するため
+ *  2015-02-10    1.3   Y.Shoji          システムテスト障害#44対応
+ *                                       ・請求書単位の仕入先サイトコードを仕入先コードに修正。
  *
  *****************************************************************************************/
 --
@@ -2236,7 +2238,10 @@ AS
       SELECT xoai.vendor_site_code
       BULK COLLECT INTO lt_vendor_site_code
       FROM   xxcfo_offset_amount_info xoai                            -- 相殺金額情報
-      WHERE  xoai.vendor_site_code       = gv_vendor_site_code_hdr    -- 仕入先サイトコード
+      -- 2015-02-10 Ver1.3 Mod Start
+--      WHERE  xoai.vendor_site_code       = gv_vendor_site_code_hdr    -- 仕入先サイトコード
+      WHERE  xoai.vendor_code            = gv_vendor_code_hdr         -- 仕入先コード
+      -- 2015-02-10 Ver1.3 Mod End
       AND    xoai.dept_code              = gv_department_code_hdr     -- 部門コード
       AND    xoai.item_kbn               = gv_item_class_code_hdr     -- 品目区分
       AND    xoai.data_type              = cv_data_type_1             -- データタイプ（1:仕入繰越）
@@ -2264,7 +2269,10 @@ AS
       UPDATE xxcfo_offset_amount_info xoai                            -- 相殺金額情報
       SET    xoai.proc_flag  = cv_flag_y
             ,xoai.proc_date  = SYSDATE
-      WHERE  xoai.vendor_site_code       = gv_vendor_site_code_hdr    -- 仕入先サイトコード
+      -- 2015-02-10 Ver1.3 Mod Start
+--      WHERE  xoai.vendor_site_code       = gv_vendor_site_code_hdr    -- 仕入先サイトコード
+      WHERE  xoai.vendor_code            = gv_vendor_code_hdr         -- 仕入先コード
+      -- 2015-02-10 Ver1.3 Mod End
       AND    xoai.dept_code              = gv_department_code_hdr     -- 部門コード
       AND    xoai.item_kbn               = gv_item_class_code_hdr     -- 品目区分
       AND    xoai.data_type              = cv_data_type_1             -- データタイプ（1:仕入繰越）
@@ -2838,7 +2846,9 @@ AS
            AND     xoai.proc_flag                  = cv_flag_n                  -- N:未処理
           ) trn
       ORDER BY  vendor_code                     -- 仕入先コード
-               ,vendor_site_code                -- 仕入先サイトコード
+               -- 2015-02-10 Ver1.3 Del Start
+--               ,vendor_site_code                -- 仕入先サイトコード
+               -- 2015-02-10 Ver1.3 Del End
                ,department_code                 -- 部門コード
                ,item_class_code                 -- 品目区分
                ,tax_rate                        -- 消費税率
@@ -2863,9 +2873,12 @@ AS
     LOOP 
       FETCH get_ap_invoice_cur INTO ap_invoice_rec;
 --
-      -- ブレイクキー（仕入先サイトコード／部門コード／品目区分）が前レコードと異なる場合(1レコード目は除く)
+      -- ブレイクキー（仕入先コード／部門コード／品目区分）が前レコードと異なる場合(1レコード目は除く)
       -- また、最終レコードの場合、請求書単位での金額チェックを行う。
-      IF (((NVL(gv_vendor_site_code_hdr,ap_invoice_rec.vendor_site_code) <> ap_invoice_rec.vendor_site_code)
+      -- 2015-02-10 Ver1.3 Mod Start
+--      IF (((NVL(gv_vendor_site_code_hdr,ap_invoice_rec.vendor_site_code) <> ap_invoice_rec.vendor_site_code)
+      IF (((NVL(gv_vendor_code_hdr,ap_invoice_rec.vendor_code) <> ap_invoice_rec.vendor_code)
+      -- 2015-02-10 Ver1.3 Mod End
           OR (NVL(gv_department_code_hdr,ap_invoice_rec.department_code) <> ap_invoice_rec.department_code)
           OR (NVL(gv_item_class_code_hdr,ap_invoice_rec.item_class_code) <> ap_invoice_rec.item_class_code))
           AND NVL(gn_payment_amount_all,0) <> 0 )
