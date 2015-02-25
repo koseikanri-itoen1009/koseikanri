@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A02C(body)
  * Description      : AP仕入請求情報生成（有償支給）
  * MD.050           : AP仕入請求情報生成（有償支給）<MD050_CFO_022_A02>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *                                       ・振替出荷で、異なる品目区分の品目へ振替が行われている場合、
  *                                         依頼品目の区分を参照する。
  *                                       ・仕訳OIFの「仕訳明細摘要」に設定する値を修正。
+ *  2015-02-10    1.2   Y.Shoji          システムテスト障害対応#44対応
+ *                                       ・請求書単位の仕入先サイトコードを仕入先コードに修正。
  *
  *****************************************************************************************/
 --
@@ -1186,7 +1188,9 @@ AS
           ) trn
       ORDER BY
               vendor_code                      -- 仕入先コード
-             ,vendor_site_code                 -- 仕入先サイトコード
+             -- 2015-02-10 Ver1.2 Del Start
+--             ,vendor_site_code                 -- 仕入先サイトコード
+             -- 2015-02-10 Ver1.2 Del End
              ,department_code                  -- 部門コード
              ,item_class_code                  -- 品目区分
     ;
@@ -1210,52 +1214,57 @@ AS
     LOOP 
       FETCH get_fee_payment_cur INTO ap_fee_payment_rec;
 --
-      -- ブレイクキー（仕入先サイトコード／部門コード／品目区分）が前レコードと異なる場合(1レコード目は除く)
+      -- ブレイクキー（仕入先コード／部門コード／品目区分）が前レコードと異なる場合(1レコード目は除く)
       -- また、最終レコードの場合、請求書単位での金額チェックを行う。
-      IF (((NVL(gv_vendor_site_code_hdr,ap_fee_payment_rec.vendor_site_code) <> ap_fee_payment_rec.vendor_site_code)
+      -- 2015-02-10 Ver1.2 Mod Start
+      --IF (((NVL(gv_vendor_site_code_hdr,ap_fee_payment_rec.vendor_site_code) <> ap_fee_payment_rec.vendor_site_code)
+      IF (((NVL(gv_vendor_code_hdr,ap_fee_payment_rec.vendor_code) <> ap_fee_payment_rec.vendor_code)
+      -- 2015-02-10 Ver1.2 Mod End
           OR (NVL(gv_department_code_hdr,ap_fee_payment_rec.department_code) <> ap_fee_payment_rec.department_code)
           OR (NVL(gv_item_class_code_hdr,ap_fee_payment_rec.item_class_code) <> ap_fee_payment_rec.item_class_code))
           AND NVL(gn_payment_amount_all,0) <> 0 )
          OR (get_fee_payment_cur%NOTFOUND)
       THEN
-        -- 仕入実績アドオンから、有償支給相殺の対象となる仕入金額を取得
-        BEGIN
-          SELECT xrr.invoice_amount
-          INTO   ln_rcv_result_amount          -- 仕入実績_支払金額（税込）
-          FROM   xxcfo_rcv_result xrr          -- 仕入実績アドオン
-          WHERE  xrr.vendor_site_code = gv_vendor_site_code_hdr
-          AND    xrr.bumon_code       = gv_department_code_hdr
-          AND    xrr.item_kbn         = gv_item_class_code_hdr
-          AND    xrr.rcv_month        = REPLACE(iv_period_name,'-')
-          ;
-        --
-        EXCEPTION
-          -- データが存在しない場合は0円を設定
-          WHEN NO_DATA_FOUND THEN
-            ln_rcv_result_amount      := 0;
-        END;
-        --
-        -- 請求書単位で「仕入実績_支払金額（税込）」-「相殺金額（税込）」がマイナスの場合、
-        -- 繰越処理を実施する
-        IF (ln_rcv_result_amount - gn_payment_amount_all < 0 ) THEN 
-          lv_proc_type := cv_proc_type_1;
-        ELSIF (ln_rcv_result_amount - gn_payment_amount_all >= 0) THEN
-          lv_proc_type := cv_proc_type_2;
-        ELSE
-          -- 対象データが取得できない場合、ループを抜ける
-          lv_errmsg    := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_appl_short_name_cfo
-                          , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
-                          , iv_token_name1  => cv_tkn_data
-                          , iv_token_value1 => cv_msg_out_data_05            -- 生産取引データ
-                          , iv_token_name2  => cv_tkn_item
-                          , iv_token_value2 => cv_msg_out_item_04            -- 会計期間
-                          , iv_token_name3  => cv_tkn_key
-                          , iv_token_value3 => iv_period_name
-                          );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-        END IF;
+        -- 2015-02-10 Ver1.2 Del Start
+--        -- 仕入実績アドオンから、有償支給相殺の対象となる仕入金額を取得
+--        BEGIN
+--          SELECT xrr.invoice_amount
+--          INTO   ln_rcv_result_amount          -- 仕入実績_支払金額（税込）
+--          FROM   xxcfo_rcv_result xrr          -- 仕入実績アドオン
+--          WHERE  xrr.vendor_site_code = gv_vendor_site_code_hdr
+--          AND    xrr.bumon_code       = gv_department_code_hdr
+--          AND    xrr.item_kbn         = gv_item_class_code_hdr
+--          AND    xrr.rcv_month        = REPLACE(iv_period_name,'-')
+--          ;
+--        --
+--        EXCEPTION
+--          -- データが存在しない場合は0円を設定
+--          WHEN NO_DATA_FOUND THEN
+--            ln_rcv_result_amount      := 0;
+--        END;
+--        --
+--        -- 請求書単位で「仕入実績_支払金額（税込）」-「相殺金額（税込）」がマイナスの場合、
+--        -- 繰越処理を実施する
+--        IF (ln_rcv_result_amount - gn_payment_amount_all < 0 ) THEN 
+--          lv_proc_type := cv_proc_type_1;
+--        ELSIF (ln_rcv_result_amount - gn_payment_amount_all >= 0) THEN
+--          lv_proc_type := cv_proc_type_2;
+--        ELSE
+--          -- 対象データが取得できない場合、ループを抜ける
+--          lv_errmsg    := xxccp_common_pkg.get_msg(
+--                            iv_application  => cv_appl_short_name_cfo
+--                          , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
+--                          , iv_token_name1  => cv_tkn_data
+--                          , iv_token_value1 => cv_msg_out_data_05            -- 生産取引データ
+--                          , iv_token_name2  => cv_tkn_item
+--                          , iv_token_value2 => cv_msg_out_item_04            -- 会計期間
+--                          , iv_token_name3  => cv_tkn_key
+--                          , iv_token_value3 => iv_period_name
+--                          );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--        END IF;
+        -- 2015-02-10 Ver1.2 Del Start
 --
         gn_prev_month_amount         := 0;                                   -- 前月相殺金額
         gn_this_month_amount         := gn_payment_amount_all;               -- 当月相殺金額
