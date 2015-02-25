@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A04C(body)
  * Description      : 有償支給仕訳IF作成
  * MD.050           : 有償支給仕訳IF作成<MD050_CFO_020_A04>
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,9 @@ AS
  *                                       ・振替出荷で、異なる品目区分の品目へ振替が行われている場合、
  *                                         依頼品目の区分を参照する。
  *                                       ・仕訳OIFの「仕訳明細摘要」に設定する値を修正。
+ *  2015-02-18    1.2   A.Uchida         システムテスト障害#44、#46、#47対応
+ *                                       ・#44:仕入先単位で仕訳を作成するよう修正
+ *                                       ・#46:消費税の計算方法を修正
  *
  *****************************************************************************************/
 --
@@ -1050,8 +1053,11 @@ AS
 --    lt_vendor_site_name      xxcmn_vendor_sites_all.vendor_site_short_name%TYPE;       -- 仕訳単位：出荷先名
     lt_vendor_code           po_vendors.segment1%TYPE;                                 -- 仕訳単位：出荷先コード
     lt_vendor_name           xxcmn_vendors.vendor_name%TYPE;                           -- 仕訳単位：出荷先名
-    -- 2015-01-22 Ver1.1 Add End	
+    -- 2015-01-22 Ver1.1 Mod End
     lt_vendor_site_id        xxwsh_order_headers_all.vendor_site_id%TYPE;              -- 仕訳単位：出荷先ID
+    -- 2015-02-18 Ver1.2 #44 Add Start
+    lt_vendor_id             xxwsh_order_headers_all.vendor_id%TYPE;                    -- 仕訳単位：仕入先ID
+    -- 2015-02-18 Ver1.2 #44 Add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1075,7 +1081,10 @@ AS
                                    ,trn.stnd_unit_price)
                       END) * trn.trans_qty
              ))                                                     AS kari_kin                     --仮受金
-            ,((trn.UNIT_PRICE * trn.trans_qty)
+             -- 2015-02-18 Ver1.2 #46 Mod Start
+--            ,((trn.UNIT_PRICE * trn.trans_qty)
+            ,ROUND((trn.UNIT_PRICE * trn.trans_qty)
+             -- 2015-02-18 Ver1.2 #46 Mod End
               * DECODE( NVL(TO_NUMBER(trn.tax_rate),0),0,0,(TO_NUMBER(trn.tax_rate)/100) )
              )                                                      AS tax_kin                      --仮受消費税
             ,trn.tax_rate                                           AS tax_rate                     --税率
@@ -1085,6 +1094,9 @@ AS
             ,trn.item_class_code                                    AS item_class_code              --品目区分
             ,trn.header_id                                          AS header_id                    --受注ヘッダID
             ,trn.line_id                                            AS line_id                      --受注明細ID
+             -- 2015-02-18 Ver1.2 #44 Add Start
+            ,trn.vendor_id                                          AS vendor_id                    --仕入先ID
+             -- 2015-02-18 Ver1.2 #44 Add End
       FROM(
           --①支給依頼・仕入有償(原料・資材・半製品)
           SELECT /*+ LEADING(flv xoha ooha otta xola wdd itp xrpm iimb gic mcb xmld oola ilm xlc) 
@@ -1107,6 +1119,9 @@ AS
                ,xicv.item_class_code                                                              AS item_class_code
                ,oola.header_id                                                                    AS header_id
                ,oola.line_id                                                                      AS line_id
+                -- 2015-02-18 Ver1.2 #44 Add Start
+               ,xoha.vendor_id                                                                    AS vendor_id
+                -- 2015-02-18 Ver1.2 #44 Add End
           FROM  oe_order_headers_all        ooha                     --受注ヘッダ(標準)
                ,oe_order_lines_all          oola                     --受注明細(標準)
                ,xxwsh_order_headers_all     xoha                     --受注ヘッダアドオン
@@ -1189,6 +1204,9 @@ AS
                ,xicv.item_class_code                                                              AS item_class_code
                ,oola.header_id                                                                    AS header_id
                ,oola.line_id                                                                      AS line_id
+                -- 2015-02-18 Ver1.2 #44 Add Start
+               ,xoha.vendor_id                                                                    AS vendor_id
+                -- 2015-02-18 Ver1.2 #44 Add End
           FROM  oe_order_headers_all        ooha                     --受注ヘッダ(標準)
                ,oe_order_lines_all          oola                     --受注明細(標準)
                ,xxwsh_order_headers_all     xoha                     --受注ヘッダアドオン
@@ -1273,6 +1291,9 @@ AS
                ,xicv.item_class_code                                                              AS item_class_code
                ,oola.header_id                                                                    AS header_id
                ,oola.line_id                                                                      AS line_id
+                -- 2015-02-18 Ver1.2 #44 Add Start
+               ,xoha.vendor_id                                                                    AS vendor_id
+                -- 2015-02-18 Ver1.2 #44 Add End
           FROM  oe_order_headers_all        ooha                     --受注ヘッダ(標準)
                ,oe_order_lines_all          oola                     --受注明細(標準)
                ,xxwsh_order_headers_all     xoha                     --受注ヘッダアドオン
@@ -1355,6 +1376,9 @@ AS
                ,xicv.item_class_code                                                              AS item_class_code
                ,oola.header_id                                                                    AS header_id
                ,oola.line_id                                                                      AS line_id
+                -- 2015-02-18 Ver1.2 #44 Add Start
+               ,xoha.vendor_id                                                                    AS vendor_id
+                -- 2015-02-18 Ver1.2 #44 Add End
           FROM  oe_order_headers_all        ooha                     --受注ヘッダ(標準)
                ,oe_order_lines_all          oola                     --受注明細(標準)
                ,xxwsh_order_headers_all     xoha                     --受注ヘッダアドオン
@@ -1439,6 +1463,9 @@ AS
                ,xicv.item_class_code                                                              AS item_class_code
                ,oola.header_id                                                                    AS header_id
                ,oola.line_id                                                                      AS line_id
+                -- 2015-02-18 Ver1.2 #44 Add Start
+               ,xoha.vendor_id                                                                    AS vendor_id
+                -- 2015-02-18 Ver1.2 #44 Add End
           FROM  oe_order_headers_all        ooha                     --受注ヘッダ(標準)
                ,oe_order_lines_all          oola                     --受注明細(標準)
                ,xxwsh_order_headers_all     xoha                     --受注ヘッダアドオン
@@ -1529,6 +1556,9 @@ AS
                ,xicv.item_class_code                                                              AS item_class_code
                ,oola.header_id                                                                    AS header_id
                ,oola.line_id                                                                      AS line_id
+                -- 2015-02-18 Ver1.2 #44 Add Start
+               ,xoha.vendor_id                                                                    AS vendor_id
+                -- 2015-02-18 Ver1.2 #44 Add End
           FROM  oe_order_headers_all        ooha                     --受注ヘッダ(標準)
                ,oe_order_lines_all          oola                     --受注明細(標準)
                ,xxwsh_order_headers_all     xoha                     --受注ヘッダアドオン
@@ -1621,6 +1651,9 @@ AS
                ,xicv.item_class_code                                                              AS item_class_code
                ,oola.header_id                                                                    AS header_id
                ,oola.line_id                                                                      AS line_id
+                -- 2015-02-18 Ver1.2 #44 Add Start
+               ,xoha.vendor_id                                                                    AS vendor_id
+                -- 2015-02-18 Ver1.2 #44 Add End
           FROM  oe_order_headers_all        ooha                     --受注ヘッダ(標準)
                ,oe_order_lines_all          oola                     --受注明細(標準)
                ,xxwsh_order_headers_all     xoha                     --受注ヘッダアドオン
@@ -1727,6 +1760,9 @@ AS
                ,xicv.item_class_code                                                              AS item_class_code
                ,oola.header_id                                                                    AS header_id
                ,oola.line_id                                                                      AS line_id
+                -- 2015-02-18 Ver1.2 #44 Add Start
+               ,xoha.vendor_id                                                                    AS vendor_id
+                -- 2015-02-18 Ver1.2 #44 Add End
           FROM  oe_order_headers_all        ooha                     --受注ヘッダ(標準)
                ,oe_order_lines_all          oola                     --受注明細(標準)
                ,xxwsh_order_headers_all     xoha                     --受注ヘッダアドオン
@@ -1811,7 +1847,10 @@ AS
           ) trn
       ORDER BY
                 department_code                   -- 部門
-               ,vendor_site_id                    -- 出荷先
+                -- 2015-02-18 Ver1.2 #44 Mod Start
+--               ,vendor_site_id                    -- 出荷先
+               ,vendor_id                         -- 仕入先
+                -- 2015-02-18 Ver1.2 #44 Mod End
                ,item_class_code                   -- 品目区分
                ,tax_rate                          -- 税率
                ,header_id                         -- 受注ヘッダID
@@ -1855,7 +1894,10 @@ AS
 --
       -- ブレイクキーが前レコードと違う場合、前レコードの登録を行う(1レコード目は対象外)
       IF ( ( NVL(lt_department_code,gl_interface_tab(ln_count).department_code)  <> gl_interface_tab(ln_count).department_code )
-        OR ( NVL(lt_vendor_site_id,gl_interface_tab(ln_count).vendor_site_id)    <> gl_interface_tab(ln_count).vendor_site_id )
+        -- 2015-02-18 Ver1.2 #44 Mod Start
+--        OR ( NVL(lt_vendor_site_id,gl_interface_tab(ln_count).vendor_site_id)    <> gl_interface_tab(ln_count).vendor_site_id )
+        OR ( NVL(lt_vendor_id,gl_interface_tab(ln_count).vendor_id)    <> gl_interface_tab(ln_count).vendor_id )
+        -- 2015-02-18 Ver1.2 #44 Mod End
         OR ( NVL(lt_item_class_code,gl_interface_tab(ln_count).item_class_code)  <> gl_interface_tab(ln_count).item_class_code ) )
         AND g_gl_interface_tab(ln_tax_cnt).misyu_kin <> 0
       THEN
@@ -2011,6 +2053,9 @@ AS
         lt_vendor_site_id          := NULL;                -- 仕訳単位：出荷先ID
         gt_attribute8              := NULL;                -- 仕訳単位：参照項目１(仕訳キー)
         gv_description_dr          := NULL;                -- 仕訳単位：摘要（借方）
+        -- 2015-02-18 Ver1.2 #44 Add Start
+        lt_vendor_id               := NULL;                -- 仕訳単位：仕入先ID
+        -- 2015-02-18 Ver1.2 #44 Add End
 --
         ln_tax_rate_jdge           := 0;                   -- 消費税率(判定用)
         ln_tax_cnt                 := 0;
@@ -2051,6 +2096,9 @@ AS
         lt_department_code           := gl_interface_tab(ln_count).department_code;                 -- 仕訳単位：部門
         lt_vendor_site_id            := gl_interface_tab(ln_count).vendor_site_id;                  -- 仕訳単位：出荷先ID
         lt_item_class_code           := gl_interface_tab(ln_count).item_class_code;                 -- 仕訳単位：品目区分
+        -- 2015-02-18 Ver1.2 #44 Add Start
+        lt_vendor_id                 :=gl_interface_tab(ln_count).vendor_id;                   -- 仕訳単位：仕入先ID
+        -- 2015-02-18 Ver1.2 #44 Add End
 --
         -- 「取引ID」を配列に保持
         ln_out_count :=  ln_out_count + 1;
