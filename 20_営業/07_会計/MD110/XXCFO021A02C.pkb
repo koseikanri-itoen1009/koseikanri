@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO021A02C(body)
  * Description      : 電子帳簿受払取引(生産)の情報系システム連携
  * MD.050           : 電子帳簿受払取引(生産)の情報系システム連携 <MD050_CFO_021_A02>
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,10 @@ AS
  *  2014-10-16    1.0   A.Uchida         新規作成
  *  2015-01-23    1.1   A.Uchida         システムテスト障害対応
  *                                       ・包装材料セットの抽出を追加
+ *  2015-02-19    1.2   A.Uchida         移行障害#5、#7対応
+ *                                       ・#5 ：会計期間の抽出条件を月末日の23:59:59までに変更
+ *                                       ・#8 ：「解体」を抽出できるように修正
+ *                                       ・#12：最新の取引のみ出力する条件を追加
  *
  *****************************************************************************************/
 --
@@ -1987,6 +1991,10 @@ AS
     ct_dummy_line_no       CONSTANT gmd_routings_b.routing_no%TYPE                := 'ZZZZZ';
     cv_reason_code_X952    CONSTANT VARCHAR2(4)                                   := 'X952';--製造使用
     -- 2015-01-23 Ver1.1 Add End
+    -- 2015-02-19 Ver1.2 Add Start
+    cv_routing_class_61    CONSTANT gmd_routings_b.routing_class%TYPE             := '61';
+    cv_routing_class_62    CONSTANT gmd_routings_b.routing_class%TYPE             := '62';
+    -- 2015-02-19 Ver1.2 Add End
 --
     -- ルックアップタイプ
     cv_lookup_l03          CONSTANT VARCHAR2(30) := 'XXCMN_L03';
@@ -2159,9 +2167,15 @@ AS
       AND    itp.item_id                  = ilm.item_id
       AND    itp.lot_id                   = ilm.lot_id
       AND    itp.trans_date               BETWEEN TO_DATE(gv_period_name,cv_date_format_ym)
-                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          -- 2015-02-19 Ver1.2 Mod Start
+--                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                          -- 2015-02-19 Ver1.2 Mod End
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
-      --投入品
+      --投入品(解体以外)
       SELECT gmd.attribute27                                              -- 仕訳キー
             ,gbh.batch_id                                                 -- バッチID
             ,gmd.material_detail_id                                       -- 生産原料詳細ID
@@ -2330,7 +2344,9 @@ AS
               FROM   xxcmn_lookup_values_v xlvv
               WHERE  xlvv.lookup_type = cv_lookup_duty_status) xlvv_duty_status
                                                                   -- クイックコード(業務ステータス)
-            ,xxcmn_vendors2_v               xvv                   -- 仕入先情報VIEW
+             -- 2015-02-19 Ver1.2 Del Start
+--            ,xxcmn_vendors2_v               xvv                   -- 仕入先情報VIEW
+             -- 2015-02-19 Ver1.2 Del End
       WHERE  1 = 1
       AND    gbh.batch_id                 = gmd.batch_id
       AND    gmd.line_type                = lt_line_type_minus1
@@ -2360,9 +2376,11 @@ AS
       AND    ilm.attribute13              = xlvv_xl8.lookup_code(+)
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
-      AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Del Start
+--      AND    ilm.attribute8               = xvv.segment1(+)
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Del End
       AND    gmd.batch_id                 = itp.doc_id
       AND    xmd.material_detail_id       = itp.line_id
       AND    xmd.item_id                  = itp.item_id
@@ -2370,7 +2388,213 @@ AS
       AND    itp.doc_type                 = lt_doc_type_prod
       AND    itp.completed_ind            = lt_completed_ind_1
       AND    itp.trans_date               BETWEEN TO_DATE(gv_period_name,cv_date_format_ym)
-                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          -- 2015-02-19 Ver1.2 Mod Start
+--                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                          -- 2015-02-19 Ver1.2 Mod End
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      AND    grb.routing_class            NOT IN (cv_routing_class_61,cv_routing_class_62)
+      UNION ALL
+      --投入品(解体)
+      SELECT gmd.attribute27                                              -- 仕訳キー
+            ,gbh.batch_id                                                 -- バッチID
+            ,gmd.material_detail_id                                       -- 生産原料詳細ID
+            -- 生産バッチ－明細
+            ,gbh.batch_no                                                 -- 手配No
+            ,gbh.attribute1                                               -- 伝票区分
+            ,xlvv_duty_status.meaning                                     -- ステータス名
+            ,gbh.attribute2                                               -- 成績管理部署名
+            ,NULL                                                         -- 完成品目コード
+            ,NULL                                                         -- 完成品目名称
+            ,NULL                                                         -- ロットNo
+            ,grb.routing_no                                               -- ラインNo
+            ,grb.attribute1                                               -- ライン名・略称
+            ,TO_CHAR(gbh.plan_start_date,cv_date_format_ymd)              -- 生産予定日
+            ,NULL                                                         -- 原料入庫予定日
+            ,NULL                                                         -- 依頼総数
+            ,NULL                                                         -- 指示総数
+            ,NULL                                                         -- 単位
+            ,NULL                                                         -- 納品場所コード
+            ,NULL                                                         -- 納品場所名
+            ,NULL                                                         -- 移動場所コード
+            ,NULL                                                         -- 移動場所名
+            ,NULL                                                         -- タイプ
+            ,NULL                                                         -- ランク1
+            ,NULL                                                         -- ランク2
+            ,NULL                                                         -- ランク3
+            ,NULL                                                         -- 摘要
+            ,ffmb.formula_no                                              -- フォーミュラNO
+            ,greb.recipe_no                                               -- レシピNO
+            ,gbh.plant_code                                               -- プラントコード
+            ,lt_record_type_code_40                                       -- 指示／実績区分
+            -- 投入情報
+            ,ximv.item_no                                                 -- 投入品目コード
+            ,ximv.item_short_name                                         -- 投入品目名称
+            ,gov.oprn_desc                                                -- 投入口名
+            ,gmd.attribute25       * -1                                   -- 計画数
+            ,gmd.attribute7        * -1                                   -- 投入品依頼総数計
+            ,(SELECT SUM(gmd_sum.actual_qty) * -1
+              FROM   xxcmn_gme_material_details_arc   gmd_sum
+              WHERE  gmd_sum.batch_id  = gbh.batch_id
+              AND    gmd_sum.line_type = lt_line_type_minus1
+              AND    attribute5 IS NULL     )                             -- 投入品指示総数
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード
+            ,NULL                                                         -- 打込品目名称
+            ,NULL                                                         -- 打込品依頼総数計
+            -- 生産バッチ－ロット明細
+            ,NULL                                                         -- 完成品ロットNo
+            ,NULL                                                         -- 完成品ロット指示総数
+            ,NULL                                                         -- 完成品ロット数量
+            -- 投入情報
+            ,ximv.item_no                                                 -- 投入品目コード(投入品-ロット)
+            ,ximv.item_short_name                                         -- 投入品目名称(投入品-ロット)
+            ,ilm.lot_no                                                   -- 投入品ロットNo
+            ,gmd.actual_qty  * -1                                         -- 投入品ロット指示総数
+            ,itp.trans_qty                                                -- 投入品ロット数量
+            ,ilm.attribute6                                               -- 在庫入数(投入品-ロット)
+            ,TO_NUMBER(ilm.attribute7)                                    -- 単価(投入品-ロット)
+            ,xlvv_xl5.meaning                                             -- 仕入形態名(投入品-ロット)
+            ,xlvv_xl6.meaning                                             -- 茶期(投入品-ロット)
+            ,ilm.attribute11                                              -- 年度(投入品-ロット)
+            ,xlvv_xl7.meaning                                             -- 産地(投入品-ロット)
+            ,xlvv_xl8.meaning                                             -- タイプ(投入品-ロット)
+            ,ilm.attribute14                                              -- ランク1(投入品-ロット)
+            ,ilm.attribute15                                              -- ランク2(投入品-ロット)
+            ,ilm.attribute19                                              -- ランク3(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute1,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 製造日(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute3,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 賞味期限(投入品-ロット)
+            ,ilm.attribute2                                               -- 固有記号(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute4,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 納入日(投入品-ロット)
+            ,xlvv_xl3.meaning                                             -- 生産区分(投入品-ロット)
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード(打込品-ロット)
+            ,NULL                                                         -- 打込品目名称(打込品-ロット)
+            ,NULL                                                         -- 打込品ロットNo
+            ,NULL                                                         -- 打込品ロット指示総数
+            ,NULL                                                         -- 打込品ロット数量
+            ,NULL                                                         -- 在庫入数(打込品-ロット)
+            ,NULL                                                         -- 単価(打込品-ロット)
+            ,NULL                                                         -- 取引先名称（打込品-ロット）
+            ,NULL                                                         -- 仕入形態名(打込品-ロット)
+            ,NULL                                                         -- 茶期(打込品-ロット)
+            ,NULL                                                         -- 年度(打込品-ロット)
+            ,NULL                                                         -- 産地(打込品-ロット)
+            ,NULL                                                         -- タイプ(打込品-ロット)
+            ,NULL                                                         -- ランク1(打込品-ロット)
+            ,NULL                                                         -- ランク2(打込品-ロット)
+            ,NULL                                                         -- ランク3(打込品-ロット)
+            ,NULL                                                         -- 製造日(打込品-ロット)
+            ,NULL                                                         -- 賞味期限(打込品-ロット)
+            ,NULL                                                         -- 固有記号(打込品-ロット)
+            ,NULL                                                         -- 納入日(打込品-ロット)
+            ,NULL                                                         -- 生産区分(打込品-ロット)
+            -- 副産物情報
+            ,NULL                                                         -- 品目コード(副産物品-ロット)
+            ,NULL                                                         -- 品目名称(副産物品-ロット)
+            ,NULL                                                         -- 副産物品ロットNo
+            ,NULL                                                         -- 副産物品ロット指示総数
+            ,NULL                                                         -- 副産物品ロット数量
+            ,NULL                                                         -- 在庫入数(副産物品-ロット)
+            ,NULL                                                         -- 単価(副産物品-ロット)
+            ,NULL                                                         -- 取引先名称（副産物品-ロット）
+            ,NULL                                                         -- 仕入形態名(副産物品-ロット)
+            ,NULL                                                         -- 茶期(副産物品-ロット)
+            ,NULL                                                         -- 年度(副産物品-ロット)
+            ,NULL                                                         -- 産地(副産物品-ロット)
+            ,NULL                                                         -- タイプ(副産物品-ロット)
+            ,NULL                                                         -- ランク1(副産物品-ロット)
+            ,NULL                                                         -- ランク2(副産物品-ロット)
+            ,NULL                                                         -- ランク3(副産物品-ロット)
+            ,NULL                                                         -- 製造日(副産物品-ロット)
+            ,NULL                                                         -- 賞味期限(副産物品-ロット)
+            ,NULL                                                         -- 固有記号(副産物品-ロット)
+            ,NULL                                                         -- 納入日(副産物品-ロット)
+            ,NULL                                                         -- 生産区分(副産物品-ロット)
+            -- システム情報
+            ,gv_transfer_date                                             -- 連携日時
+            ,gv_period_name                                               -- 会計期間
+            ,cv_data_type_0                                               -- データタイプ('0':連携分)
+      FROM   gme_batch_header               gbh                   -- 生産バッチヘッダ（標準）バックアップ
+            ,gme_material_details           gmd                   -- 生産原料詳細（標準）バックアップ
+            ,ic_lots_mst                    ilm                   -- OPMロットマスタ
+            ,gmd_routings_b                 grb                   -- 工順マスタ
+            ,xxcmn_item_locations_v         xil1v1                -- OPM保管場所情報VIEW(納品場所)
+            ,xxcmn_item_locations_v         xil1v2                -- OPM保管場所情報VIEW(移動場所)
+            ,fm_form_mst_b                  ffmb                  -- フォーミュラマスタ
+            ,xxcmn_item_mst_v               ximv                  -- 品目情報VIEW
+            ,gmd_recipe_validity_rules      grvr                  -- 妥当性ルールマスタ
+            ,gmd_recipes_b                  greb                  -- レシピマスタ
+            ,gme_batch_step_items           gbsi                  -- 生産バッチステップ品目
+            ,gme_batch_steps                gbs                   -- 生産バッチステップ（標準）バックアップ
+            ,gmd_operations_vl              gov                   -- 工程マスタビュー
+            ,ic_tran_pnd                    itp                   -- OPM保留在庫トランザクション（標準）バックアップ
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l05) xlvv_xl5
+                                                                  -- クイックコード(仕入形態内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l06) xlvv_xl6
+                                                                  -- クイックコード(茶期区分内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l07) xlvv_xl7
+                                                                  -- クイックコード(産地内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l08) xlvv_xl8
+                                                                  -- クイックコード(タイプ内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l03) xlvv_xl3
+                                                                  -- クイックコード(生産伝票区分内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_duty_status) xlvv_duty_status
+                                                                  -- クイックコード(業務ステータス)
+      WHERE  1 = 1
+      AND    gbh.batch_id                 = gmd.batch_id
+      AND    gmd.line_type                = lt_line_type_minus1
+      AND    gmd.attribute5               IS NULL
+      AND    gbh.routing_id               = grb.routing_id
+      AND    grb.attribute9               = xil1v1.segment1(+)            -- OPM保管場所情報VIEW(納品場所)条件
+      AND    gmd.attribute12              = xil1v2.segment1(+)            -- OPM保管場所情報VIEW(移動場所)条件
+      AND    gbh.formula_id               = ffmb.formula_id(+)
+      AND    gmd.item_id                  = ximv.item_id(+)
+      AND    itp.item_id                  = ilm.item_id
+      AND    itp.lot_id                   = ilm.lot_id
+      AND    gbh.recipe_validity_rule_id  = grvr.recipe_validity_rule_id(+)
+      AND    grvr.recipe_id               = greb.recipe_id(+)
+      AND    gmd.material_detail_id       = gbsi.material_detail_id(+)
+      AND    gbsi.batchstep_id            = gbs.batchstep_id(+)
+      AND    gbs.oprn_id                  = gov.oprn_id(+)
+      AND    ilm.attribute9               = xlvv_xl5.lookup_code(+)
+      AND    ilm.attribute10              = xlvv_xl6.lookup_code(+)
+      AND    ilm.attribute12              = xlvv_xl7.lookup_code(+)
+      AND    ilm.attribute13              = xlvv_xl8.lookup_code(+)
+      AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
+      AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
+      AND    gmd.batch_id                 = itp.doc_id
+      AND    gmd.material_detail_id       = itp.line_id
+      AND    gmd.item_id                  = itp.item_id
+      AND    itp.doc_type                 = lt_doc_type_prod
+      AND    itp.completed_ind            = lt_completed_ind_1
+      AND    itp.trans_date               BETWEEN TO_DATE(gv_period_name,cv_date_format_ym)
+                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))+1-(1/(24*60*60)) --月末日の翌日の1秒前
+      AND    itp.reverse_id               IS NULL
+      AND    grb.routing_class            IN (cv_routing_class_61,cv_routing_class_62)
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
       --打込品
       SELECT gmd.attribute27                                              -- 仕訳キー
@@ -2568,8 +2792,12 @@ AS
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
       AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      AND    TRUNC(itp.trans_date)        BETWEEN NVL(xvv.start_date_active , TRUNC(itp.trans_date))
+                                          AND     NVL(xvv.end_date_active   , TRUNC(itp.trans_date))
+      -- 2015-02-19 Ver1.2 Mod End
       AND    gmd.batch_id                 = itp.doc_id
       AND    xmd.material_detail_id       = itp.line_id
       AND    xmd.item_id                  = itp.item_id
@@ -2577,7 +2805,13 @@ AS
       AND    itp.doc_type                 = lt_doc_type_prod
       AND    itp.completed_ind            = lt_completed_ind_1
       AND    itp.trans_date               BETWEEN TO_DATE(gv_period_name,cv_date_format_ym)
-                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          -- 2015-02-19 Ver1.2 Mod Start
+--                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                          -- 2015-02-19 Ver1.2 Mod End
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
       --副産物
       SELECT gmd.attribute27                                              -- 仕訳キー
@@ -2763,10 +2997,20 @@ AS
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
       AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      AND    TRUNC(itp.trans_date)        BETWEEN NVL(xvv.start_date_active , TRUNC(itp.trans_date))
+                                          AND     NVL(xvv.end_date_active   , TRUNC(itp.trans_date))
+      -- 2015-02-19 Ver1.2 Mod End
       AND    itp.trans_date               BETWEEN TO_DATE(gv_period_name,cv_date_format_ym)
-                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          -- 2015-02-19 Ver1.2 Mod Start
+--                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                          -- 2015-02-19 Ver1.2 Mod End
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       -- 2015-01-23 Ver1.1 Add Start
       UNION ALL
       --包装材料セット
@@ -2904,7 +3148,7 @@ AS
       FROM   ic_tran_cmp              itc       -- 完了在庫トランザクション
             ,ic_adjs_jnl              iaj       -- 在庫調整ジャーナル
             ,ic_jrnl_mst              ijm       -- OPMジャーナルマスタ
-            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別）
+            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別)
             ,xxcmn_item_mst2_v        xim2v     -- OPM品目マスタ
             ,xxcmn_item_locations2_v  xil2v     -- OPM保管場所情報View
             ,ic_lots_mst              ilm       -- OPMロットマスタ
@@ -2915,8 +3159,12 @@ AS
       AND    itc.reason_code          = srct.reason_code(+)
       AND    srct.language(+)         = cv_lang
       AND    xim2v.item_id(+)         = itc.item_id
-      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
-                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
+--                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      AND    TRUNC(itc.trans_date)    BETWEEN NVL(xim2v.start_date_active,TRUNC(itc.trans_date))
+                                      AND     NVL(xim2v.end_date_active  ,TRUNC(itc.trans_date))
+      -- 2015-02-12 Ver1.2 Mod End
       AND    xil2v.segment1(+)        = itc.location
       AND    ilm.item_id(+)           = itc.item_id
       AND    ilm.lot_id(+)            = itc.lot_id
@@ -2925,7 +3173,10 @@ AS
       AND    itc.reason_code          = xrpm.reason_code
       AND    itc.reason_code          = cv_reason_code_X952   --製造使用
       AND    itc.trans_date           BETWEEN TO_DATE(gv_period_name,cv_date_format_ym)
-                                      AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                      -- 2015-02-19 Ver1.2 Mod Start
+--                                      AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                      AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                      -- 2015-02-19 Ver1.2 Mod End
       -- 2015-01-23 Ver1.1 Add End
       ORDER BY 106,2,29,3
       ;
@@ -3087,9 +3338,15 @@ AS
       AND    itp.item_id                  = ilm.item_id
       AND    itp.lot_id                   = ilm.lot_id
       AND    itp.trans_date               BETWEEN TO_DATE(gt_next_period_name,cv_date_format_ym)
-                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))
+                                          -- 2015-02-19 Ver1.2 Mod Start
+--                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                          -- 2015-02-19 Ver1.2 Mod End
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
-      --投入品(連携分)
+      --投入品(解体以外)(連携分)
       SELECT gmd.attribute27                                              -- 仕訳キー
             ,gbh.batch_id                                                 -- バッチID
             ,gmd.material_detail_id                                       -- 生産原料詳細ID
@@ -3258,7 +3515,9 @@ AS
               FROM   xxcmn_lookup_values_v xlvv
               WHERE  xlvv.lookup_type = cv_lookup_duty_status) xlvv_duty_status
                                                                   -- クイックコード(業務ステータス)
-            ,xxcmn_vendors2_v               xvv                   -- 仕入先情報VIEW
+             -- 2015-02-19 Ver1.2 Del Start
+--            ,xxcmn_vendors2_v               xvv                   -- 仕入先情報VIEW
+             -- 2015-02-19 Ver1.2 Del End
       WHERE  1 = 1
       AND    gbh.batch_id                 = gmd.batch_id
       AND    gmd.line_type                = lt_line_type_minus1
@@ -3288,9 +3547,11 @@ AS
       AND    ilm.attribute13              = xlvv_xl8.lookup_code(+)
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
-      AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+             -- 2015-02-19 Ver1.2 Del Start
+--      AND    ilm.attribute8               = xvv.segment1(+)
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+             -- 2015-02-19 Ver1.2 Del End
       AND    gmd.batch_id                 = itp.doc_id
       AND    xmd.material_detail_id       = itp.line_id
       AND    xmd.item_id                  = itp.item_id
@@ -3298,7 +3559,213 @@ AS
       AND    itp.doc_type                 = lt_doc_type_prod
       AND    itp.completed_ind            = lt_completed_ind_1
       AND    itp.trans_date               BETWEEN TO_DATE(gt_next_period_name,cv_date_format_ym)
-                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))
+                                          -- 2015-02-19 Ver1.2 Mod Start
+--                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                          -- 2015-02-19 Ver1.2 Mod End
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      AND    grb.routing_class            NOT IN (cv_routing_class_61,cv_routing_class_62)
+      UNION ALL
+      --投入品(解体)(連携分)
+      SELECT gmd.attribute27                                              -- 仕訳キー
+            ,gbh.batch_id                                                 -- バッチID
+            ,gmd.material_detail_id                                       -- 生産原料詳細ID
+            -- 生産バッチ－明細
+            ,gbh.batch_no                                                 -- 手配No
+            ,gbh.attribute1                                               -- 伝票区分
+            ,xlvv_duty_status.meaning                                     -- ステータス名
+            ,gbh.attribute2                                               -- 成績管理部署名
+            ,NULL                                                         -- 完成品目コード
+            ,NULL                                                         -- 完成品目名称
+            ,NULL                                                         -- ロットNo
+            ,grb.routing_no                                               -- ラインNo
+            ,grb.attribute1                                               -- ライン名・略称
+            ,TO_CHAR(gbh.plan_start_date,cv_date_format_ymd)              -- 生産予定日
+            ,NULL                                                         -- 原料入庫予定日
+            ,NULL                                                         -- 依頼総数
+            ,NULL                                                         -- 指示総数
+            ,NULL                                                         -- 単位
+            ,NULL                                                         -- 納品場所コード
+            ,NULL                                                         -- 納品場所名
+            ,NULL                                                         -- 移動場所コード
+            ,NULL                                                         -- 移動場所名
+            ,NULL                                                         -- タイプ
+            ,NULL                                                         -- ランク1
+            ,NULL                                                         -- ランク2
+            ,NULL                                                         -- ランク3
+            ,NULL                                                         -- 摘要
+            ,ffmb.formula_no                                              -- フォーミュラNO
+            ,greb.recipe_no                                               -- レシピNO
+            ,gbh.plant_code                                               -- プラントコード
+            ,lt_record_type_code_40                                       -- 指示／実績区分
+            -- 投入情報
+            ,ximv.item_no                                                 -- 投入品目コード
+            ,ximv.item_short_name                                         -- 投入品目名称
+            ,gov.oprn_desc                                                -- 投入口名
+            ,gmd.attribute25       * -1                                   -- 計画数
+            ,gmd.attribute7        * -1                                   -- 投入品依頼総数計
+            ,(SELECT SUM(gmd_sum.actual_qty) * -1
+              FROM   xxcmn_gme_material_details_arc   gmd_sum
+              WHERE  gmd_sum.batch_id  = gbh.batch_id
+              AND    gmd_sum.line_type = lt_line_type_minus1
+              AND    attribute5 IS NULL     )                             -- 投入品指示総数
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード
+            ,NULL                                                         -- 打込品目名称
+            ,NULL                                                         -- 打込品依頼総数計
+            -- 生産バッチ－ロット明細
+            ,NULL                                                         -- 完成品ロットNo
+            ,NULL                                                         -- 完成品ロット指示総数
+            ,NULL                                                         -- 完成品ロット数量
+            -- 投入情報
+            ,ximv.item_no                                                 -- 投入品目コード(投入品-ロット)
+            ,ximv.item_short_name                                         -- 投入品目名称(投入品-ロット)
+            ,ilm.lot_no                                                   -- 投入品ロットNo
+            ,gmd.actual_qty  * -1                                         -- 投入品ロット指示総数
+            ,itp.trans_qty                                                -- 投入品ロット数量
+            ,ilm.attribute6                                               -- 在庫入数(投入品-ロット)
+            ,TO_NUMBER(ilm.attribute7)                                    -- 単価(投入品-ロット)
+            ,xlvv_xl5.meaning                                             -- 仕入形態名(投入品-ロット)
+            ,xlvv_xl6.meaning                                             -- 茶期(投入品-ロット)
+            ,ilm.attribute11                                              -- 年度(投入品-ロット)
+            ,xlvv_xl7.meaning                                             -- 産地(投入品-ロット)
+            ,xlvv_xl8.meaning                                             -- タイプ(投入品-ロット)
+            ,ilm.attribute14                                              -- ランク1(投入品-ロット)
+            ,ilm.attribute15                                              -- ランク2(投入品-ロット)
+            ,ilm.attribute19                                              -- ランク3(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute1,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 製造日(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute3,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 賞味期限(投入品-ロット)
+            ,ilm.attribute2                                               -- 固有記号(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute4,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 納入日(投入品-ロット)
+            ,xlvv_xl3.meaning                                             -- 生産区分(投入品-ロット)
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード(打込品-ロット)
+            ,NULL                                                         -- 打込品目名称(打込品-ロット)
+            ,NULL                                                         -- 打込品ロットNo
+            ,NULL                                                         -- 打込品ロット指示総数
+            ,NULL                                                         -- 打込品ロット数量
+            ,NULL                                                         -- 在庫入数(打込品-ロット)
+            ,NULL                                                         -- 単価(打込品-ロット)
+            ,NULL                                                         -- 取引先名称（打込品-ロット）
+            ,NULL                                                         -- 仕入形態名(打込品-ロット)
+            ,NULL                                                         -- 茶期(打込品-ロット)
+            ,NULL                                                         -- 年度(打込品-ロット)
+            ,NULL                                                         -- 産地(打込品-ロット)
+            ,NULL                                                         -- タイプ(打込品-ロット)
+            ,NULL                                                         -- ランク1(打込品-ロット)
+            ,NULL                                                         -- ランク2(打込品-ロット)
+            ,NULL                                                         -- ランク3(打込品-ロット)
+            ,NULL                                                         -- 製造日(打込品-ロット)
+            ,NULL                                                         -- 賞味期限(打込品-ロット)
+            ,NULL                                                         -- 固有記号(打込品-ロット)
+            ,NULL                                                         -- 納入日(打込品-ロット)
+            ,NULL                                                         -- 生産区分(打込品-ロット)
+            -- 副産物情報
+            ,NULL                                                         -- 品目コード(副産物品-ロット)
+            ,NULL                                                         -- 品目名称(副産物品-ロット)
+            ,NULL                                                         -- 副産物品ロットNo
+            ,NULL                                                         -- 副産物品ロット指示総数
+            ,NULL                                                         -- 副産物品ロット数量
+            ,NULL                                                         -- 在庫入数(副産物品-ロット)
+            ,NULL                                                         -- 単価(副産物品-ロット)
+            ,NULL                                                         -- 取引先名称（副産物品-ロット）
+            ,NULL                                                         -- 仕入形態名(副産物品-ロット)
+            ,NULL                                                         -- 茶期(副産物品-ロット)
+            ,NULL                                                         -- 年度(副産物品-ロット)
+            ,NULL                                                         -- 産地(副産物品-ロット)
+            ,NULL                                                         -- タイプ(副産物品-ロット)
+            ,NULL                                                         -- ランク1(副産物品-ロット)
+            ,NULL                                                         -- ランク2(副産物品-ロット)
+            ,NULL                                                         -- ランク3(副産物品-ロット)
+            ,NULL                                                         -- 製造日(副産物品-ロット)
+            ,NULL                                                         -- 賞味期限(副産物品-ロット)
+            ,NULL                                                         -- 固有記号(副産物品-ロット)
+            ,NULL                                                         -- 納入日(副産物品-ロット)
+            ,NULL                                                         -- 生産区分(副産物品-ロット)
+            -- システム情報
+            ,gv_transfer_date                                             -- 連携日時
+            ,gt_next_period_name                                          -- 会計期間
+            ,cv_data_type_0                                               -- データタイプ('0':連携分)
+      FROM   gme_batch_header               gbh                   -- 生産バッチヘッダ（標準）バックアップ
+            ,gme_material_details           gmd                   -- 生産原料詳細（標準）バックアップ
+            ,ic_lots_mst                    ilm                   -- OPMロットマスタ
+            ,gmd_routings_b                 grb                   -- 工順マスタ
+            ,xxcmn_item_locations_v         xil1v1                -- OPM保管場所情報VIEW(納品場所)
+            ,xxcmn_item_locations_v         xil1v2                -- OPM保管場所情報VIEW(移動場所)
+            ,fm_form_mst_b                  ffmb                  -- フォーミュラマスタ
+            ,xxcmn_item_mst_v               ximv                  -- 品目情報VIEW
+            ,gmd_recipe_validity_rules      grvr                  -- 妥当性ルールマスタ
+            ,gmd_recipes_b                  greb                  -- レシピマスタ
+            ,gme_batch_step_items           gbsi                  -- 生産バッチステップ品目
+            ,gme_batch_steps                gbs                   -- 生産バッチステップ（標準）バックアップ
+            ,gmd_operations_vl              gov                   -- 工程マスタビュー
+            ,ic_tran_pnd                    itp                   -- OPM保留在庫トランザクション（標準）バックアップ
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l05) xlvv_xl5
+                                                                  -- クイックコード(仕入形態内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l06) xlvv_xl6
+                                                                  -- クイックコード(茶期区分内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l07) xlvv_xl7
+                                                                  -- クイックコード(産地内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l08) xlvv_xl8
+                                                                  -- クイックコード(タイプ内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l03) xlvv_xl3
+                                                                  -- クイックコード(生産伝票区分内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_duty_status) xlvv_duty_status
+                                                                  -- クイックコード(業務ステータス)
+      WHERE  1 = 1
+      AND    gbh.batch_id                 = gmd.batch_id
+      AND    gmd.line_type                = lt_line_type_minus1
+      AND    gmd.attribute5               IS NULL
+      AND    gbh.routing_id               = grb.routing_id
+      AND    grb.attribute9               = xil1v1.segment1(+)            -- OPM保管場所情報VIEW(納品場所)条件
+      AND    gmd.attribute12              = xil1v2.segment1(+)            -- OPM保管場所情報VIEW(移動場所)条件
+      AND    gbh.formula_id               = ffmb.formula_id(+)
+      AND    gmd.item_id                  = ximv.item_id(+)
+      AND    itp.item_id                  = ilm.item_id
+      AND    itp.lot_id                   = ilm.lot_id
+      AND    gbh.recipe_validity_rule_id  = grvr.recipe_validity_rule_id(+)
+      AND    grvr.recipe_id               = greb.recipe_id(+)
+      AND    gmd.material_detail_id       = gbsi.material_detail_id(+)
+      AND    gbsi.batchstep_id            = gbs.batchstep_id(+)
+      AND    gbs.oprn_id                  = gov.oprn_id(+)
+      AND    ilm.attribute9               = xlvv_xl5.lookup_code(+)
+      AND    ilm.attribute10              = xlvv_xl6.lookup_code(+)
+      AND    ilm.attribute12              = xlvv_xl7.lookup_code(+)
+      AND    ilm.attribute13              = xlvv_xl8.lookup_code(+)
+      AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
+      AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
+      AND    gmd.batch_id                 = itp.doc_id
+      AND    gmd.material_detail_id       = itp.line_id
+      AND    gmd.item_id                  = itp.item_id
+      AND    itp.doc_type                 = lt_doc_type_prod
+      AND    itp.completed_ind            = lt_completed_ind_1
+      AND    itp.trans_date               BETWEEN TO_DATE(gt_next_period_name,cv_date_format_ym)
+                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))+1-(1/(24*60*60)) --月末日の翌日の1秒前
+      AND    itp.reverse_id               IS NULL
+      AND    grb.routing_class            IN (cv_routing_class_61,cv_routing_class_62)
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
       --打込品(連携分)
       SELECT gmd.attribute27                                              -- 仕訳キー
@@ -3496,8 +3963,12 @@ AS
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
       AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      AND    TRUNC(itp.trans_date)        BETWEEN NVL(xvv.start_date_active , TRUNC(itp.trans_date))
+                                          AND     NVL(xvv.end_date_active   , TRUNC(itp.trans_date))
+      -- 2015-02-19 Ver1.2 Mod End
       AND    gmd.batch_id                 = itp.doc_id
       AND    xmd.material_detail_id       = itp.line_id
       AND    xmd.item_id                  = itp.item_id
@@ -3505,7 +3976,13 @@ AS
       AND    itp.doc_type                 = lt_doc_type_prod
       AND    itp.completed_ind            = lt_completed_ind_1
       AND    itp.trans_date               BETWEEN TO_DATE(gt_next_period_name,cv_date_format_ym)
-                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))
+                                          -- 2015-02-19 Ver1.2 Mod Start
+--                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                          -- 2015-02-19 Ver1.2 Mod End
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
       --副産物(連携分)
       SELECT gmd.attribute27                                              -- 仕訳キー
@@ -3691,10 +4168,20 @@ AS
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
       AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      AND    TRUNC(itp.trans_date)        BETWEEN NVL(xvv.start_date_active , TRUNC(itp.trans_date))
+                                          AND     NVL(xvv.end_date_active   , TRUNC(itp.trans_date))
+      -- 2015-02-19 Ver1.2 Mod End
       AND    itp.trans_date               BETWEEN TO_DATE(gt_next_period_name,cv_date_format_ym)
-                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))
+                                          -- 2015-02-19 Ver1.2 Mod Start
+--                                          AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                          AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))+1-(1/(24*60*60))	
+                                          -- 2015-02-19 Ver1.2 Mod End
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       -- 2015-01-23 Ver1.1 Add Start
       UNION ALL
       --包装材料セット
@@ -3832,7 +4319,7 @@ AS
       FROM   ic_tran_cmp              itc       -- 完了在庫トランザクション
             ,ic_adjs_jnl              iaj       -- 在庫調整ジャーナル
             ,ic_jrnl_mst              ijm       -- OPMジャーナルマスタ
-            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別）
+            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別)
             ,xxcmn_item_mst2_v        xim2v     -- OPM品目マスタ
             ,xxcmn_item_locations2_v  xil2v     -- OPM保管場所情報View
             ,ic_lots_mst              ilm       -- OPMロットマスタ
@@ -3843,8 +4330,12 @@ AS
       AND    itc.reason_code          = srct.reason_code(+)
       AND    srct.language(+)         = cv_lang
       AND    xim2v.item_id(+)         = itc.item_id
-      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
-                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
+--                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      AND    TRUNC(itc.trans_date)    BETWEEN NVL(xim2v.start_date_active,TRUNC(itc.trans_date))
+                                      AND     NVL(xim2v.end_date_active  ,TRUNC(itc.trans_date))
+      -- 2015-02-19 Ver1.2 Mod End
       AND    xil2v.segment1(+)        = itc.location
       AND    ilm.item_id(+)           = itc.item_id
       AND    ilm.lot_id(+)            = itc.lot_id
@@ -3853,7 +4344,10 @@ AS
       AND    itc.reason_code          = xrpm.reason_code
       AND    itc.reason_code          = cv_reason_code_X952   --製造使用
       AND    itc.trans_date           BETWEEN TO_DATE(gt_next_period_name,cv_date_format_ym)
-                                      AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))
+                                      -- 2015-02-19 Ver1.2 Mod Start
+--                                      AND     LAST_DAY(TO_DATE(gv_period_name,cv_date_format_ym))
+                                      AND     LAST_DAY(TO_DATE(gt_next_period_name,cv_date_format_ym))+1-(1/(24*60*60))
+                                      -- 2015-02-19 Ver1.2 Mod End
       -- 2015-01-23 Ver1.1 Add End
       UNION ALL
       --完成品(未連携分)
@@ -4018,8 +4512,11 @@ AS
       AND    xpwc.lot_no_uchikomi         IS NULL
       AND    xpwc.lot_no_fukusan          IS NULL
       AND    xpwc.set_of_books_id         = gn_set_of_bks_id
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
-      --投入品(未連携分)
+      --投入品(解体以外)(未連携分)
       SELECT gmd.attribute27                                              -- 仕訳キー
             ,gbh.batch_id                                                 -- バッチID
             ,gmd.material_detail_id                                       -- 生産原料詳細ID
@@ -4188,7 +4685,9 @@ AS
               FROM   xxcmn_lookup_values_v xlvv
               WHERE  xlvv.lookup_type = cv_lookup_duty_status) xlvv_duty_status
                                                                   -- クイックコード(業務ステータス)
-            ,xxcmn_vendors2_v               xvv                   -- 仕入先情報VIEW
+             -- 2015-02-19 Ver1.2 Del Start
+--            ,xxcmn_vendors2_v               xvv                   -- 仕入先情報VIEW
+             -- 2015-02-19 Ver1.2 Del End
             ,xxcfo_pro_wait_coop            xpwc                  -- 受払取引(生産)未連携テーブル
       WHERE  1 = 1
       AND    gbh.batch_id                 = gmd.batch_id
@@ -4219,9 +4718,11 @@ AS
       AND    ilm.attribute13              = xlvv_xl8.lookup_code(+)
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
-      AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Del Start
+--      AND    ilm.attribute8               = xvv.segment1(+)
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Del End
       AND    gmd.batch_id                 = itp.doc_id
       AND    xmd.material_detail_id       = itp.line_id
       AND    xmd.item_id                  = itp.item_id
@@ -4236,6 +4737,216 @@ AS
       AND    xpwc.lot_no_uchikomi         IS NULL
       AND    xpwc.lot_no_fukusan          IS NULL
       AND    xpwc.set_of_books_id         = gn_set_of_bks_id
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      AND    grb.routing_class            NOT IN (cv_routing_class_61,cv_routing_class_62)
+      UNION ALL
+      --投入品(解体)(未連携分)
+      SELECT gmd.attribute27                                              -- 仕訳キー
+            ,gbh.batch_id                                                 -- バッチID
+            ,gmd.material_detail_id                                       -- 生産原料詳細ID
+            -- 生産バッチ－明細
+            ,gbh.batch_no                                                 -- 手配No
+            ,gbh.attribute1                                               -- 伝票区分
+            ,xlvv_duty_status.meaning                                     -- ステータス名
+            ,gbh.attribute2                                               -- 成績管理部署名
+            ,NULL                                                         -- 完成品目コード
+            ,NULL                                                         -- 完成品目名称
+            ,NULL                                                         -- ロットNo
+            ,grb.routing_no                                               -- ラインNo
+            ,grb.attribute1                                               -- ライン名・略称
+            ,TO_CHAR(gbh.plan_start_date,cv_date_format_ymd)              -- 生産予定日
+            ,NULL                                                         -- 原料入庫予定日
+            ,NULL                                                         -- 依頼総数
+            ,NULL                                                         -- 指示総数
+            ,NULL                                                         -- 単位
+            ,NULL                                                         -- 納品場所コード
+            ,NULL                                                         -- 納品場所名
+            ,NULL                                                         -- 移動場所コード
+            ,NULL                                                         -- 移動場所名
+            ,NULL                                                         -- タイプ
+            ,NULL                                                         -- ランク1
+            ,NULL                                                         -- ランク2
+            ,NULL                                                         -- ランク3
+            ,NULL                                                         -- 摘要
+            ,ffmb.formula_no                                              -- フォーミュラNO
+            ,greb.recipe_no                                               -- レシピNO
+            ,gbh.plant_code                                               -- プラントコード
+            ,lt_record_type_code_40                                       -- 指示／実績区分
+            -- 投入情報
+            ,ximv.item_no                                                 -- 投入品目コード
+            ,ximv.item_short_name                                         -- 投入品目名称
+            ,gov.oprn_desc                                                -- 投入口名
+            ,gmd.attribute25       * -1                                   -- 計画数
+            ,gmd.attribute7        * -1                                   -- 投入品依頼総数計
+            ,(SELECT SUM(gmd_sum.actual_qty) * -1
+              FROM   xxcmn_gme_material_details_arc   gmd_sum
+              WHERE  gmd_sum.batch_id  = gbh.batch_id
+              AND    gmd_sum.line_type = lt_line_type_minus1
+              AND    attribute5 IS NULL     )                             -- 投入品指示総数
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード
+            ,NULL                                                         -- 打込品目名称
+            ,NULL                                                         -- 打込品依頼総数計
+            -- 生産バッチ－ロット明細
+            ,NULL                                                         -- 完成品ロットNo
+            ,NULL                                                         -- 完成品ロット指示総数
+            ,NULL                                                         -- 完成品ロット数量
+            -- 投入情報
+            ,ximv.item_no                                                 -- 投入品目コード(投入品-ロット)
+            ,ximv.item_short_name                                         -- 投入品目名称(投入品-ロット)
+            ,ilm.lot_no                                                   -- 投入品ロットNo
+            ,gmd.actual_qty  * -1                                         -- 投入品ロット指示総数
+            ,itp.trans_qty                                                -- 投入品ロット数量
+            ,ilm.attribute6                                               -- 在庫入数(投入品-ロット)
+            ,TO_NUMBER(ilm.attribute7)                                    -- 単価(投入品-ロット)
+            ,xlvv_xl5.meaning                                             -- 仕入形態名(投入品-ロット)
+            ,xlvv_xl6.meaning                                             -- 茶期(投入品-ロット)
+            ,ilm.attribute11                                              -- 年度(投入品-ロット)
+            ,xlvv_xl7.meaning                                             -- 産地(投入品-ロット)
+            ,xlvv_xl8.meaning                                             -- タイプ(投入品-ロット)
+            ,ilm.attribute14                                              -- ランク1(投入品-ロット)
+            ,ilm.attribute15                                              -- ランク2(投入品-ロット)
+            ,ilm.attribute19                                              -- ランク3(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute1,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 製造日(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute3,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 賞味期限(投入品-ロット)
+            ,ilm.attribute2                                               -- 固有記号(投入品-ロット)
+            ,TO_CHAR(TO_DATE(ilm.attribute4,cv_date_format_ymd_slash),cv_date_format_ymd)
+                                                                          -- 納入日(投入品-ロット)
+            ,xlvv_xl3.meaning                                             -- 生産区分(投入品-ロット)
+            -- 打込情報
+            ,NULL                                                         -- 打込品目コード(打込品-ロット)
+            ,NULL                                                         -- 打込品目名称(打込品-ロット)
+            ,NULL                                                         -- 打込品ロットNo
+            ,NULL                                                         -- 打込品ロット指示総数
+            ,NULL                                                         -- 打込品ロット数量
+            ,NULL                                                         -- 在庫入数(打込品-ロット)
+            ,NULL                                                         -- 単価(打込品-ロット)
+            ,NULL                                                         -- 取引先名称（打込品-ロット）
+            ,NULL                                                         -- 仕入形態名(打込品-ロット)
+            ,NULL                                                         -- 茶期(打込品-ロット)
+            ,NULL                                                         -- 年度(打込品-ロット)
+            ,NULL                                                         -- 産地(打込品-ロット)
+            ,NULL                                                         -- タイプ(打込品-ロット)
+            ,NULL                                                         -- ランク1(打込品-ロット)
+            ,NULL                                                         -- ランク2(打込品-ロット)
+            ,NULL                                                         -- ランク3(打込品-ロット)
+            ,NULL                                                         -- 製造日(打込品-ロット)
+            ,NULL                                                         -- 賞味期限(打込品-ロット)
+            ,NULL                                                         -- 固有記号(打込品-ロット)
+            ,NULL                                                         -- 納入日(打込品-ロット)
+            ,NULL                                                         -- 生産区分(打込品-ロット)
+            -- 副産物情報
+            ,NULL                                                         -- 品目コード(副産物品-ロット)
+            ,NULL                                                         -- 品目名称(副産物品-ロット)
+            ,NULL                                                         -- 副産物品ロットNo
+            ,NULL                                                         -- 副産物品ロット指示総数
+            ,NULL                                                         -- 副産物品ロット数量
+            ,NULL                                                         -- 在庫入数(副産物品-ロット)
+            ,NULL                                                         -- 単価(副産物品-ロット)
+            ,NULL                                                         -- 取引先名称（副産物品-ロット）
+            ,NULL                                                         -- 仕入形態名(副産物品-ロット)
+            ,NULL                                                         -- 茶期(副産物品-ロット)
+            ,NULL                                                         -- 年度(副産物品-ロット)
+            ,NULL                                                         -- 産地(副産物品-ロット)
+            ,NULL                                                         -- タイプ(副産物品-ロット)
+            ,NULL                                                         -- ランク1(副産物品-ロット)
+            ,NULL                                                         -- ランク2(副産物品-ロット)
+            ,NULL                                                         -- ランク3(副産物品-ロット)
+            ,NULL                                                         -- 製造日(副産物品-ロット)
+            ,NULL                                                         -- 賞味期限(副産物品-ロット)
+            ,NULL                                                         -- 固有記号(副産物品-ロット)
+            ,NULL                                                         -- 納入日(副産物品-ロット)
+            ,NULL                                                         -- 生産区分(副産物品-ロット)
+            -- システム情報
+            ,gv_transfer_date                                             -- 連携日時
+            ,xpwc.period_name                                             -- 会計期間
+            ,cv_data_type_1                                               -- データタイプ('0':連携分)
+      FROM   gme_batch_header               gbh                   -- 生産バッチヘッダ（標準）バックアップ
+            ,gme_material_details           gmd                   -- 生産原料詳細（標準）バックアップ
+            ,ic_lots_mst                    ilm                   -- OPMロットマスタ
+            ,gmd_routings_b                 grb                   -- 工順マスタ
+            ,xxcmn_item_locations_v         xil1v1                -- OPM保管場所情報VIEW(納品場所)
+            ,xxcmn_item_locations_v         xil1v2                -- OPM保管場所情報VIEW(移動場所)
+            ,fm_form_mst_b                  ffmb                  -- フォーミュラマスタ
+            ,xxcmn_item_mst_v               ximv                  -- 品目情報VIEW
+            ,gmd_recipe_validity_rules      grvr                  -- 妥当性ルールマスタ
+            ,gmd_recipes_b                  greb                  -- レシピマスタ
+            ,gme_batch_step_items           gbsi                  -- 生産バッチステップ品目
+            ,gme_batch_steps                gbs                   -- 生産バッチステップ（標準）バックアップ
+            ,gmd_operations_vl              gov                   -- 工程マスタビュー
+            ,ic_tran_pnd                    itp                   -- OPM保留在庫トランザクション（標準）バックアップ
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l05) xlvv_xl5
+                                                                  -- クイックコード(仕入形態内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l06) xlvv_xl6
+                                                                  -- クイックコード(茶期区分内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l07) xlvv_xl7
+                                                                  -- クイックコード(産地内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l08) xlvv_xl8
+                                                                  -- クイックコード(タイプ内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_l03) xlvv_xl3
+                                                                  -- クイックコード(生産伝票区分内容)
+            ,(SELECT xlvv.lookup_code,
+                     xlvv.meaning
+              FROM   xxcmn_lookup_values_v xlvv
+              WHERE  xlvv.lookup_type = cv_lookup_duty_status) xlvv_duty_status
+                                                                  -- クイックコード(業務ステータス)
+            ,xxcfo_pro_wait_coop            xpwc                  -- 受払取引(生産)未連携テーブル
+      WHERE  1 = 1
+      AND    gbh.batch_id                 = gmd.batch_id
+      AND    gmd.line_type                = lt_line_type_minus1
+      AND    gmd.attribute5               IS NULL
+      AND    gbh.routing_id               = grb.routing_id
+      AND    grb.attribute9               = xil1v1.segment1(+)            -- OPM保管場所情報VIEW(納品場所)条件
+      AND    gmd.attribute12              = xil1v2.segment1(+)            -- OPM保管場所情報VIEW(移動場所)条件
+      AND    gbh.formula_id               = ffmb.formula_id(+)
+      AND    gmd.item_id                  = ximv.item_id(+)
+      AND    itp.item_id                  = ilm.item_id
+      AND    itp.lot_id                   = ilm.lot_id
+      AND    gbh.recipe_validity_rule_id  = grvr.recipe_validity_rule_id(+)
+      AND    grvr.recipe_id               = greb.recipe_id(+)
+      AND    gmd.material_detail_id       = gbsi.material_detail_id(+)
+      AND    gbsi.batchstep_id            = gbs.batchstep_id(+)
+      AND    gbs.oprn_id                  = gov.oprn_id(+)
+      AND    ilm.attribute9               = xlvv_xl5.lookup_code(+)
+      AND    ilm.attribute10              = xlvv_xl6.lookup_code(+)
+      AND    ilm.attribute12              = xlvv_xl7.lookup_code(+)
+      AND    ilm.attribute13              = xlvv_xl8.lookup_code(+)
+      AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
+      AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
+      AND    gmd.batch_id                 = itp.doc_id
+      AND    gmd.material_detail_id       = itp.line_id
+      AND    gmd.item_id                  = itp.item_id
+      AND    itp.doc_type                 = lt_doc_type_prod
+      AND    itp.completed_ind            = lt_completed_ind_1
+      AND    xpwc.batch_id                = gbh.batch_id
+      AND    xpwc.plant_code              = gbh.plant_code
+      AND    xpwc.material_detail_id      = gmd.material_detail_id
+      AND    xpwc.lot_no_kansei           IS NULL
+      AND    xpwc.lot_no_tounyu           = ilm.lot_no
+      AND    xpwc.lot_no_uchikomi         IS NULL
+      AND    xpwc.lot_no_fukusan          IS NULL
+      AND    xpwc.set_of_books_id         = gn_set_of_bks_id
+      AND    grb.routing_class            IN (cv_routing_class_61,cv_routing_class_62)
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
       --打込品(未連携分)
       SELECT gmd.attribute27                                              -- 仕訳キー
@@ -4434,8 +5145,12 @@ AS
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
       AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      AND    TRUNC(itp.trans_date)        BETWEEN NVL(xvv.start_date_active , TRUNC(itp.trans_date))
+                                          AND     NVL(xvv.end_date_active   , TRUNC(itp.trans_date))
+      -- 2015-02-19 Ver1.2 Mod End
       AND    gmd.batch_id                 = itp.doc_id
       AND    xmd.material_detail_id       = itp.line_id
       AND    xmd.item_id                  = itp.item_id
@@ -4450,6 +5165,9 @@ AS
       AND    xpwc.lot_no_uchikomi         = ilm.lot_no
       AND    xpwc.lot_no_fukusan          IS NULL
       AND    xpwc.set_of_books_id         = gn_set_of_bks_id
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       UNION ALL
       --副産物(未連携分)
       SELECT gmd.attribute27                                              -- 仕訳キー
@@ -4636,8 +5354,12 @@ AS
       AND    ilm.attribute16              = xlvv_xl3.lookup_code(+)
       AND    gbh.attribute4               = xlvv_duty_status.lookup_code(+)
       AND    ilm.attribute8               = xvv.segment1(+)
-      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
-                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itp.trans_date               BETWEEN NVL(xvv.start_date_active , itp.trans_date)
+--                                          AND     NVL(xvv.end_date_active   , itp.trans_date)
+      AND    TRUNC(itp.trans_date)        BETWEEN NVL(xvv.start_date_active , TRUNC(itp.trans_date))
+                                          AND     NVL(xvv.end_date_active   , TRUNC(itp.trans_date))
+      -- 2015-02-19 Ver1.2 Mod End
       AND    xpwc.batch_id                = gbh.batch_id
       AND    xpwc.plant_code              = gbh.plant_code
       AND    xpwc.material_detail_id      = gmd.material_detail_id
@@ -4646,6 +5368,9 @@ AS
       AND    xpwc.lot_no_uchikomi         IS NULL
       AND    xpwc.lot_no_fukusan          = ilm.lot_no
       AND    xpwc.set_of_books_id         = gn_set_of_bks_id
+      -- 2015-02-19 Ver1.2 Add Start
+      AND    itp.reverse_id               IS NULL
+      -- 2015-02-19 Ver1.2 Add End
       -- 2015-01-23 Ver1.1 Add Start
       UNION ALL
       --包装材料セット
@@ -4783,7 +5508,7 @@ AS
       FROM   ic_tran_cmp              itc       -- 完了在庫トランザクション
             ,ic_adjs_jnl              iaj       -- 在庫調整ジャーナル
             ,ic_jrnl_mst              ijm       -- OPMジャーナルマスタ
-            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別）
+            ,sy_reas_cds_tl           srct      -- 事由コード表(言語別)
             ,xxcmn_item_mst2_v        xim2v     -- OPM品目マスタ
             ,xxcmn_item_locations2_v  xil2v     -- OPM保管場所情報View
             ,ic_lots_mst              ilm       -- OPMロットマスタ
@@ -4795,8 +5520,12 @@ AS
       AND    itc.reason_code          = srct.reason_code(+)
       AND    srct.language(+)         = cv_lang
       AND    xim2v.item_id(+)         = itc.item_id
-      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
-                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      -- 2015-02-19 Ver1.2 Mod Start
+--      AND    itc.trans_date           BETWEEN NVL(xim2v.start_date_active,itc.trans_date)
+--                                      AND     NVL(xim2v.end_date_active,itc.trans_date)
+      AND    TRUNC(itc.trans_date)    BETWEEN NVL(xim2v.start_date_active,TRUNC(itc.trans_date))
+                                      AND     NVL(xim2v.end_date_active  ,TRUNC(itc.trans_date))
+      -- 2015-02-19 Ver1.2 Mod End
       AND    xil2v.segment1(+)        = itc.location
       AND    ilm.item_id(+)           = itc.item_id
       AND    ilm.lot_id(+)            = itc.lot_id
