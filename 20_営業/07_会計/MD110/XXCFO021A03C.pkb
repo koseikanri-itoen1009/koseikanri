@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO021A03C(body)
  * Description      : 電子帳簿仕入実績取引の情報系システム連携
  * MD.050           : 電子帳簿仕入実績取引の情報系システム連携<MD050_CFO_021_A03>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,7 +29,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2014-10-08    1.0   A.Uchida        新規作成
+ *  2014-10-08    1.0   A.Uchida         新規作成
+ *  2015-02-24    1.1   A.Uchida         移行障害#7対応
+ *                                       ・仕入先出荷数量の桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -1414,6 +1416,14 @@ AS
       IF   (( ln_cnt <> 82 )
         AND ( ln_cnt <> 15 )
         AND ( ln_cnt <> 17 )) THEN
+--
+        -- 2015-02-24 Ver1.1 Add Start
+        -- 仕入先出荷数量を小数点第3位で四捨五入
+        IF ln_cnt = 39 THEN
+          g_data_tab(ln_cnt) := TO_CHAR(ROUND(TO_NUMBER(g_data_tab(ln_cnt)),2));
+        END IF;
+        -- 2015-02-24 Ver1.1 Add End
+--
         xxcfo_common_pkg2.chk_electric_book_item (
             iv_item_name     => g_item_name_tab(ln_cnt)     --項目名称
           , iv_item_value    => g_data_tab(ln_cnt)          --項目の値
