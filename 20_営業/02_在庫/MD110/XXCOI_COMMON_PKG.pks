@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -41,6 +41,16 @@ AS
  *  GET_BASE_AFF_ACTIVE_DATE   拠点AFF部門適用開始日取得
  *  GET_SUBINV_AFF_ACTIVE_DATE 保管場所AFF部門適用開始日取得
  *  CHK_AFF_ACTIVE             AFF部門チェック
+ *  CRE_LOT_TRX_TEMP           ロット別取引TEMP作成
+ *  DEL_LOT_TRX_TEMP           ロット別取引TEMP削除
+ *  CRE_LOT_TRX                ロット別取引明細作成
+ *  GET_CUSTOMER_ID            顧客導出（受注アドオン）
+ *  GET_PARENT_CHILD_ITEM_INFO 品目コード導出（親／子）
+ *  INS_UPD_LOT_HOLD_INFO      ロット情報保持マスタ反映
+ *  INS_UPD_DEL_LOT_ONHAND     ロット別手持数量反映
+ *  GET_FRESH_CONDITION_DATE   鮮度条件基準日算出
+ *  GET_RESERVED_QUANTITY      引当可能数算出
+ *  GET_FRESH_CONDITION_DATE_F 鮮度条件基準日算出(ファンクション型)
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -51,8 +61,30 @@ AS
  *  2010/03/23    1.2   Y.Goto           [E_本稼動_01943]AFF部門適用開始日取得を追加
  *  2010/03/29    1.3   Y.Goto           [E_本稼動_01943]AFF部門チェックを追加
  *  2011/11/01    1.4   T.Yoshimoto      [E_本稼動_07570]所属拠点コード取得3を追加
+ *  2014/10/28    1.5   Y.Nagasue        [E_本稼動_12237]倉庫管理システム対応 以下の関数を新規作成
+ *                                        ロット別取引TEMP作成、ロット別取引TEMP削除、ロット別取引明細、
+ *                                        顧客導出（受注アドオン）、品目コード導出（親／子）、
+ *                                        ロット情報保持マスタ反映、ロット別手持数量反映、
+ *                                        鮮度条件基準日算出、引当可能数算出、鮮度条件基準日算出(ファンクション型)
  *
  *****************************************************************************************/
+--
+-- == 2014/10/28 Ver1.5 Y.Nagasue ADD START ======================================================
+  --==============================================
+  -- レコードタイプ
+  --==============================================
+  TYPE item_info_rtype IS RECORD
+  (item_id            mtl_system_items_b.inventory_item_id%TYPE -- 品目ID
+  ,item_no            ic_item_mst_b.item_no%TYPE            -- 品目コード
+  ,item_short_name    xxcmn_item_mst_b.item_short_name%TYPE -- 略称
+  ,item_kbn           mtl_categories_vl.segment1%TYPE       -- 商品区分
+  ,item_kbn_name      mtl_categories_vl.description%TYPE    -- 商品区分名
+  );
+  --==============================================
+  -- テーブルタイプ
+  --==============================================
+  TYPE item_info_ttype IS TABLE OF item_info_rtype INDEX BY BINARY_INTEGER;
+-- == 2014/10/28 Ver1.5 Y.Nagasue ADD END ======================================================
 --
 /************************************************************************
  * Function Name   : ORG_ACCT_PERIOD_CHK
@@ -470,5 +502,195 @@ AS
    ,ov_errmsg         OUT VARCHAR2        -- ユーザー・エラーメッセージ
   );
 -- 2011/11/01 v1.4 T.Yoshimoto Add End
+-- == 2014/10/28 Ver1.5 Y.Nagasue ADD START ======================================================
+/************************************************************************
+ * Procedure Name  : CRE_LOT_TRX_TEMP
+ * Description     : ロット別取引TEMP作成
+ ************************************************************************/
+  PROCEDURE cre_lot_trx_temp(
+    in_trx_set_id       IN  NUMBER   -- 取引セットID
+   ,iv_parent_item_code IN  VARCHAR2 -- 親品目コード
+   ,iv_child_item_code  IN  VARCHAR2 -- 子品目コード
+   ,iv_lot              IN  VARCHAR2 -- ロット(賞味期限)
+   ,iv_diff_sum_code    IN  VARCHAR2 -- 固有記号
+   ,iv_trx_type_code    IN  VARCHAR2 -- 取引タイプコード
+   ,id_trx_date         IN  DATE     -- 取引日
+   ,iv_slip_num         IN  VARCHAR2 -- 伝票No
+   ,in_case_in_qty      IN  NUMBER   -- 入数
+   ,in_case_qty         IN  NUMBER   -- ケース数
+   ,in_singly_qty       IN  NUMBER   -- バラ数
+   ,in_summary_qty      IN  NUMBER   -- 取引数量
+   ,iv_base_code        IN  VARCHAR2 -- 拠点コード
+   ,iv_subinv_code      IN  VARCHAR2 -- 保管場所コード
+   ,iv_tran_subinv_code IN  VARCHAR2 -- 転送先保管場所コード
+   ,iv_tran_loc_code    IN  VARCHAR2 -- 転送先ロケーションコード
+   ,iv_inout_code       IN  VARCHAR2 -- 入出庫コード
+   ,iv_source_code      IN  VARCHAR2 -- ソースコード
+   ,iv_relation_key     IN  VARCHAR2 -- 紐付けキー
+   ,on_trx_id           OUT NUMBER   -- ロット別TEMP取引ID
+   ,ov_errbuf           OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode          OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg           OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Procedure Name  : DEL_LOT_TRX_TEMP
+ * Description     : ロット別取引TEMP削除
+ ************************************************************************/
+  PROCEDURE del_lot_trx_temp(
+    in_trx_id  IN  NUMBER          -- ロット別TEMP取引ID
+   ,ov_errbuf  OUT VARCHAR2        -- エラーメッセージ
+   ,ov_retcode OUT VARCHAR2        -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg  OUT VARCHAR2        -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Procedure Name  : CRE_LOT_TRX
+ * Description     : ロット別取引明細作成
+ ************************************************************************/
+  PROCEDURE cre_lot_trx(
+    in_trx_set_id            IN  NUMBER   -- 取引セットID
+   ,iv_parent_item_code      IN  VARCHAR2 -- 親品目コード
+   ,iv_child_item_code       IN  VARCHAR2 -- 子品目コード
+   ,iv_lot                   IN  VARCHAR2 -- ロット(賞味期限)
+   ,iv_diff_sum_code         IN  VARCHAR2 -- 固有記号
+   ,iv_trx_type_code         IN  VARCHAR2 -- 取引タイプコード
+   ,id_trx_date              IN  DATE     -- 取引日
+   ,iv_slip_num              IN  VARCHAR2 -- 伝票No
+   ,in_case_in_qty           IN  NUMBER   -- 入数
+   ,in_case_qty              IN  NUMBER   -- ケース数
+   ,in_singly_qty            IN  NUMBER   -- バラ数
+   ,in_summary_qty           IN  NUMBER   -- 取引数量
+   ,iv_base_code             IN  VARCHAR2 -- 拠点コード
+   ,iv_subinv_code           IN  VARCHAR2 -- 保管場所コード
+   ,iv_loc_code              IN  VARCHAR2 -- ロケーションコード
+   ,iv_tran_subinv_code      IN  VARCHAR2 -- 転送先保管場所コード
+   ,iv_tran_loc_code         IN  VARCHAR2 -- 転送先ロケーションコード
+   ,iv_source_code           IN  VARCHAR2 -- ソースコード
+   ,iv_relation_key          IN  VARCHAR2 -- 紐付けキー
+   ,iv_reason                IN  VARCHAR2 -- 事由
+   ,iv_reserve_trx_type_code IN  VARCHAR2 -- 引当時取引タイプコード
+   ,on_trx_id                OUT NUMBER   -- ロット別取引明細
+   ,ov_errbuf                OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode               OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg                OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Function Name   : GET_CUSTOMER_ID
+ * Description     : 顧客導出（受注アドオン）
+ ************************************************************************/
+--
+  FUNCTION get_customer_id(
+    in_deliver_to_id IN NUMBER -- 出荷先ID
+  ) RETURN NUMBER 
+  ;
+--
+/************************************************************************
+ * Procedure Name  : GET_PARENT_CHILD_ITEM_INFO
+ * Description     : 品目コード導出（親／子）
+ ************************************************************************/
+--
+  PROCEDURE get_parent_child_item_info(
+    id_date             IN  DATE            -- 日付
+   ,in_inv_org_id       IN  NUMBER          -- 在庫組織ID
+   ,in_parent_item_id   IN  NUMBER          -- 親品目ID
+   ,in_child_item_id    IN  NUMBER          -- 子品目ID
+   ,ot_item_info_tab    OUT item_info_ttype -- 品目情報（テーブル型）
+   ,ov_errbuf           OUT VARCHAR2        -- エラーメッセージ
+   ,ov_retcode          OUT VARCHAR2        -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg           OUT VARCHAR2        -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Procedure Name  : INS_UPD_LOT_HOLD_INFO
+ * Description     : ロット情報保持マスタ反映
+ ************************************************************************/
+--
+  PROCEDURE ins_upd_lot_hold_info(
+    in_customer_id    IN  NUMBER   -- 顧客ID
+   ,in_deliver_to_id  IN  NUMBER   -- 出荷先ID
+   ,in_parent_item_id IN  NUMBER   -- 親品目ID
+   ,iv_deliver_lot    IN  VARCHAR2 -- 納品ロット
+   ,id_delivery_date  IN  DATE     -- 納品日
+   ,iv_e_s_kbn        IN  VARCHAR2 -- 営業生産区分
+   ,iv_cancel_kbn     IN  VARCHAR2 -- 取消区分
+   ,ov_errbuf         OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode        OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg         OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Function Name   : INS_UPD_DEL_LOT_ONHAND
+ * Description     : ロット別手持数量反映
+ ************************************************************************/
+--
+  PROCEDURE ins_upd_del_lot_onhand(
+    in_inv_org_id       IN  NUMBER   -- 在庫組織ID
+   ,iv_base_code        IN  VARCHAR2 -- 拠点コード
+   ,iv_subinv_code      IN  VARCHAR2 -- 保管場所コード
+   ,iv_loc_code         IN  VARCHAR2 -- ロケーションコード
+   ,in_child_item_id    IN  NUMBER   -- 子品目ID
+   ,iv_lot              IN  VARCHAR2 -- ロット(賞味期限)
+   ,iv_diff_sum_code    IN  VARCHAR2 -- 固有記号
+   ,in_case_in_qty      IN  NUMBER   -- 入数
+   ,in_case_qty         IN  NUMBER   -- ケース数
+   ,in_singly_qty       IN  NUMBER   -- バラ数
+   ,in_summary_qty      IN  NUMBER   -- 取引数量
+   ,ov_errbuf           OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode          OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg           OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Procedure Name  : GET_FRESH_CONDITION_DATE
+ * Description     : 鮮度条件基準日算出
+ ************************************************************************/
+--
+  PROCEDURE get_fresh_condition_date(
+    id_use_by_date           IN  DATE     -- 賞味期限
+   ,id_product_date          IN  DATE     -- 製造年月日
+   ,iv_fresh_condition       IN  VARCHAR2 -- 鮮度条件
+   ,od_fresh_condition_date  OUT DATE     -- 鮮度条件基準日
+   ,ov_errbuf                OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode               OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg                OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Procedure Name  : GET_RESERVED_QUANTITY
+ * Description     : 引当可能数算出
+ ************************************************************************/
+--
+  PROCEDURE get_reserved_quantity(
+    in_inv_org_id       IN  NUMBER   -- 在庫組織ID
+   ,iv_base_code        IN  VARCHAR2 -- 拠点コード
+   ,iv_subinv_code      IN  VARCHAR2 -- 保管場所コード
+   ,iv_loc_code         IN  VARCHAR2 -- ロケーションコード
+   ,in_child_item_id    IN  NUMBER   -- 子品目ID
+   ,iv_lot              IN  VARCHAR2 -- ロット(賞味期限)
+   ,iv_diff_sum_code    IN  VARCHAR2 -- 固有記号
+   ,on_case_in_qty      OUT NUMBER   -- 入数
+   ,on_case_qty         OUT NUMBER   -- ケース数
+   ,on_singly_qty       OUT NUMBER   -- バラ数
+   ,on_summary_qty      OUT NUMBER   -- 取引数量
+   ,ov_errbuf           OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode          OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg           OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  );
+--
+/************************************************************************
+ * Function Name   : GET_FRESH_CONDITION_DATE_F
+ * Description     : 鮮度条件基準日算出(ファンクション型)
+ ************************************************************************/
+--
+  FUNCTION get_fresh_condition_date_f(
+    id_use_by_date     IN  DATE     -- 賞味期限
+   ,id_product_date    IN  DATE     -- 製造年月日
+   ,iv_fresh_condition IN  VARCHAR2 -- 鮮度条件
+  ) RETURN DATE
+  ;
+--
+-- == 2014/10/28 Ver1.5 Y.Nagasue ADD END ======================================================
 END XXCOI_COMMON_PKG;
 /
