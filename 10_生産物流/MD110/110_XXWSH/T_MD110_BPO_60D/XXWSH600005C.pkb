@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  set_upd_data           通知ステータス更新用PL／SQL表 格納処理
  *  upd_notif_status       通知ステータス 一括更新処理
  *  purge_tbl              中間テーブルパージ処理
+ *  ins_upd_lot_hold_info  ロット情報保持マスタ反映処理
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -44,6 +45,7 @@ AS
  *  2008/12/01    1.8  SCS    伊藤ひとみ 本番#148対応
  *  2008/12/02    1.9  SCS    菅原大輔   本番#148対応
  *  2009/08/18    1.10 SCS    伊藤ひとみ 本番#1581対応(営業システム:特別横持マスタ対応)
+ *  2014/12/24    1.11 SCSK   鈴木康徳   E_本稼動_12237    倉庫管理システム対応（ロット情報保持マスタ反映処理を追加）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -221,6 +223,31 @@ AS
   gv_process_err              CONSTANT VARCHAR2(100) := 'APP-XXCMN-05002';
                                                              -- 処理失敗
 -- 2009/08/18 H.Itou Add End
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+  gv_inv_org_code_err         CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';
+                                                             -- 在庫組織コード取得エラーメッセージ
+  gv_inv_org_id_err           CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00006'; 
+                                                             -- 在庫組織ID取得エラーメッセージ
+  gv_process_date_err         CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00011'; 
+                                                             -- 業務日付取得エラーメッセージ
+  gv_customer_id_err          CONSTANT VARCHAR2(15) := 'APP-XXWSH-13187';
+                                                             -- 顧客導出（受注アドオン）取得エラー
+  gv_item_pc_err              CONSTANT VARCHAR2(15) := 'APP-XXWSH-13188';
+                                                             -- 品目情報取得エラー
+  gv_item_tst_err             CONSTANT VARCHAR2(15) := 'APP-XXWSH-10025';
+                                                             -- 賞味期限取得エラー
+  gv_lot_mst_upd_err          CONSTANT VARCHAR2(15) := 'APP-XXWSH-13189';
+                                                             -- ロット情報保持マスタ反映エラー
+--
+  -- トークン
+  gv_param1_token             CONSTANT VARCHAR2(6)  := 'PARAM1';      -- 参照値トークン
+  gv_param2_token             CONSTANT VARCHAR2(6)  := 'PARAM2';      -- 参照値トークン
+  gv_param3_token             CONSTANT VARCHAR2(6)  := 'PARAM3';      -- 参照値トークン
+  gv_param4_token             CONSTANT VARCHAR2(6)  := 'PARAM4';      -- 参照値トークン
+  gv_param5_token             CONSTANT VARCHAR2(6)  := 'PARAM5';      -- 参照値トークン
+  gv_param_data               CONSTANT VARCHAR2(6)  := 'DATA';      -- 参照値トークン
+
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
   gv_cnst_tkn_para            CONSTANT VARCHAR2(100) := 'PARAMETER';
                                                              -- 入力パラメータ名
   gv_cnst_tkn_para2           CONSTANT VARCHAR2(100) := 'PARAMETER2';
@@ -241,6 +268,10 @@ AS
   gv_cnst_tkn_process         CONSTANT VARCHAR2(100) := 'PROCESS';
                                                              -- 処理名
 -- 2009/08/18 H.Itou Add End
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+  gv_tkn_pro_tok               CONSTANT VARCHAR2(20) := 'PRO_TOK';        -- プロファイル名
+  gv_tkn_org_code_tok          CONSTANT VARCHAR2(20) := 'ORG_CODE_TOK';   -- 在庫組織コード
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
   -- トークン
   gv_tkn_item_div_security    CONSTANT VARCHAR2(100) := 'XXCMN：商品区分(セキュリティ)';
   gv_tkn_dept_code            CONSTANT VARCHAR2(100) := '部署';
@@ -269,6 +300,13 @@ AS
   gv_tkn_upd_assignment       CONSTANT VARCHAR2(100) := '割当セットAPI起動';
                                                              -- 処理名
 -- 2009/08/18 H.Itou Add End
+--
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+  -- 賞味期限
+  gv_item_tst                 CONSTANT VARCHAR2(8)  := '賞味期限';
+  -- プロファイル名
+  gv_xxcoi1_organization_code CONSTANT VARCHAR2(50) := 'XXCOI1_ORGANIZATION_CODE'; -- XXCOI:在庫組織コード
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -300,16 +338,21 @@ AS
   TYPE rec_temp_tab_data IS RECORD
     (
      data_class           xxwsh.xxwsh_confirm_block_tmp.data_class%TYPE           -- データ区分
-    ,whse_code            xxwsh.xxwsh_confirm_block_tmp.whse_code%TYPE          -- 保管倉庫コード
+    ,whse_code            xxwsh.xxwsh_confirm_block_tmp.whse_code%TYPE            -- 保管倉庫コード
     ,header_id            xxwsh.xxwsh_confirm_block_tmp.header_id%TYPE            -- ヘッダID
     ,notif_status         xxwsh.xxwsh_confirm_block_tmp.notif_status%TYPE         -- 通知ステータス
     ,prod_class           xxwsh.xxwsh_confirm_block_tmp.prod_class%TYPE           -- 商品区分
     ,item_class           xxwsh.xxwsh_confirm_block_tmp.item_class%TYPE           -- 品目区分
     ,delivery_no          xxwsh.xxwsh_confirm_block_tmp.delivery_no%TYPE          -- 配送No
     ,request_no           xxwsh.xxwsh_confirm_block_tmp.request_no%TYPE           -- 依頼No
-    ,freight_charge_class xxwsh.xxwsh_confirm_block_tmp.freight_charge_class%TYPE  -- 運賃区分
+    ,freight_charge_class xxwsh.xxwsh_confirm_block_tmp.freight_charge_class%TYPE -- 運賃区分
     ,d1_whse_code         xxwsh.xxwsh_confirm_block_tmp.d1_whse_code%TYPE         -- D+1倉庫フラグ
     ,base_date            xxwsh.xxwsh_confirm_block_tmp.base_date%TYPE            -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+    ,deliver_to_id        xxwsh.xxwsh_confirm_block_tmp.deliver_to_id%TYPE        -- 出荷先ID
+    ,result_deliver_to_id xxwsh.xxwsh_confirm_block_tmp.result_deliver_to_id%TYPE -- 出荷先_実績ID
+    ,arrival_date         xxwsh.xxwsh_confirm_block_tmp.arrival_date%TYPE         -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
     ) ;
   TYPE rec_temp_tab_data_tab IS TABLE OF rec_temp_tab_data INDEX BY PLS_INTEGER;
 --
@@ -325,6 +368,10 @@ AS
 -- 2008/12/01 H.Itou Add Start 本番障害#148
      ,item_code         xxcmn_item_mst_v.item_no%TYPE -- 品目NO
 -- 2008/12/01 H.Itou Add End
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+     ,shipping_inventory_item_id NUMBER  -- 出荷品目ID
+     ,line_id                    NUMBER  -- 明細ID
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
     ) ;
   TYPE rec_get_data_line_tab IS TABLE OF rec_get_data_line INDEX BY PLS_INTEGER;
 --
@@ -344,6 +391,7 @@ AS
   gr_param                rec_param_data ;      -- パラメータ
   gr_chk_header_data_tab  rec_temp_tab_data_tab; -- チェック用ヘッダデータ群
   gr_chk_line_data_tab    rec_get_data_line_tab; -- チェック用明細データ群
+  gr_chk_line_data_tab_cncl  rec_get_data_line_tab; -- チェック用明細データ群
   gr_checked_data_tab     rec_checked_data_tab;   -- チェック済データ格納用データ群
   gr_upd_data_tab         rec_checked_data_tab;   -- 更新データ格納用データ群
   -- 入力パラメータ格納用
@@ -358,6 +406,7 @@ AS
   gv_prov_ship_date_from  VARCHAR2(20);     -- 支給/出庫日From
   gv_prov_ship_date_to    VARCHAR2(20);     -- 支給/出庫日To
   gn_cnt_line             NUMBER ;   -- 明細件数
+  gn_cnt_line_cncl        NUMBER ;   -- 取消明細件数
   gn_cnt_prod             NUMBER ;   -- 製品件数
   gn_cnt_no_prod          NUMBER ;   -- 製品以外件数
   gn_cnt_upd              NUMBER ;   -- 更新用データ件数
@@ -400,6 +449,13 @@ AS
   gt_base_record_class       XXWSH_TIGHTENING_CONTROL.BASE_RECORD_CLASS%TYPE;
                                                                          -- 基準レコード区分
   gt_system_date             DATE;                                       -- システム日付
+--
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+  gd_process_date            DATE;   -- 業務日付
+  gt_inv_org_code            mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
+  gt_inv_org_id              mtl_parameters.organization_id%TYPE;    -- 在庫組織ID
+  gn_ins_upd_lot_info_cnt    NUMBER;                                 -- ロット情報保持マスタ登録更新件数
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
 --
   /**********************************************************************************
    * Procedure Name   : check_parameter
@@ -982,6 +1038,51 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+    --
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+    --==============================================================
+    -- 在庫組織コード取得
+    --==============================================================
+    gt_inv_org_code := FND_PROFILE.VALUE( gv_xxcoi1_organization_code );
+    IF ( gt_inv_org_code IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => gv_cons_msg_kbn_wsh
+                    ,iv_name         => gv_inv_org_code_err
+                    ,iv_token_name1  => gv_tkn_pro_tok              -- プロファイル名
+                    ,iv_token_value1 => gv_xxcoi1_organization_code
+                   );
+      RAISE global_process_expt;
+    END IF;
+--
+    --==============================================================
+    -- 在庫組織ID取得
+    --==============================================================
+    gt_inv_org_id := xxcoi_common_pkg.get_organization_id(
+                       iv_organization_code => gt_inv_org_code
+                 );
+    IF ( gt_inv_org_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => gv_cons_msg_kbn_wsh
+                    ,iv_name         => gv_inv_org_id_err
+                    ,iv_token_name1  => gv_tkn_org_code_tok -- 在庫組織コード
+                    ,iv_token_value1 => gt_inv_org_code
+                   );
+      RAISE global_process_expt;
+    END IF;
+--
+    --==============================================================
+    -- 業務日付取得
+    --==============================================================
+    gd_process_date := xxccp_common_pkg2.get_process_date;
+    IF ( gd_process_date IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => gv_cons_msg_kbn_wsh
+                    ,iv_name         => gv_process_date_err
+                   );
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -1051,6 +1152,11 @@ AS
          ,freight_charge_class    -- 運賃区分
          ,d1_whse_code            -- D+1倉庫フラグ
          ,base_date               -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+         ,deliver_to_id           -- 出荷先ID
+         ,result_deliver_to_id    -- 出荷先_実績ID
+         ,arrival_date            -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
          ,created_by              -- 作成者
          ,creation_date           -- 作成日
          ,last_updated_by         -- 最終更新者
@@ -1072,6 +1178,11 @@ AS
          ,SUBSTRB( ir_temp_tab_tab(i).freight_charge_class , 1, 1  ) -- 運賃区分
          ,SUBSTRB( ir_temp_tab_tab(i).d1_whse_code   , 1, 1  ) -- D+1倉庫フラグ
          ,ir_temp_tab_tab(i).base_date                         -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+         ,ir_temp_tab_tab(i).deliver_to_id                     -- 出荷先ID
+         ,ir_temp_tab_tab(i).result_deliver_to_id              -- 出荷先_実績ID
+         ,ir_temp_tab_tab(i).arrival_date                      -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
          ,gt_user_id                                           -- 作成者
          ,gt_system_date                                       -- 作成日
          ,gt_user_id                                           -- 最終更新者
@@ -1264,6 +1375,11 @@ AS
            ,  lt1_date.freight_charge_class  -- 運賃区分
            ,  lt1_date.d1_whse_code          -- D+1倉庫フラグ
            ,  lt1_date.base_date             -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+           ,  lt1_date.deliver_to_id         -- 出荷先ID
+           ,  lt1_date.result_deliver_to_id  -- 出荷先_実績ID
+           ,  lt1_date.arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
       FROM 
         (
           -- ＜抽出条件(A)＞配送先
@@ -1281,6 +1397,11 @@ AS
                , xoha.freight_charge_class   AS freight_charge_class  -- 運賃区分
                , xil2v.d1_whse_code          AS d1_whse_code          -- D+1倉庫フラグ
                , gr_param.lt1_ship_date_from AS base_date             -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+               , xoha.deliver_to_id          AS deliver_to_id         -- 出荷先ID
+               , xoha.result_deliver_to_id   AS result_deliver_to_id  -- 出荷先_実績ID
+               , xoha.schedule_arrival_date  AS arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
           FROM xxwsh_order_headers_all            xoha,               -- 受注ヘッダアドオン
                xxwsh_oe_transaction_types2_v      xott2v,             -- 受注タイプ
                xxcmn_item_locations2_v            xil2v,              -- OPM保管場所情報
@@ -1373,6 +1494,11 @@ AS
                , xoha.freight_charge_class   AS freight_charge_class  -- 運賃区分
                , xil2v.d1_whse_code          AS d1_whse_code          -- D+1倉庫フラグ
                , gr_param.lt1_ship_date_from AS base_date             -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+               , xoha.deliver_to_id          AS deliver_to_id         -- 出荷先ID
+               , xoha.result_deliver_to_id   AS result_deliver_to_id  -- 出荷先_実績ID
+               , xoha.schedule_arrival_date  AS arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
           FROM xxwsh_order_headers_all            xoha,               -- 受注ヘッダアドオン
                xxwsh_oe_transaction_types2_v      xott2v,             -- 受注タイプ
                xxcmn_item_locations2_v            xil2v,              -- OPM保管場所情報
@@ -1589,6 +1715,11 @@ AS
            ,  lt1_date.freight_charge_class  -- 運賃区分
            ,  lt1_date.d1_whse_code          -- D+1倉庫フラグ
            ,  lt1_date.base_date             -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+           ,  lt1_date.deliver_to_id         -- 出荷先ID
+           ,  lt1_date.result_deliver_to_id  -- 出荷先_実績ID
+           ,  lt1_date.arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
       FROM 
         (
           -- ＜抽出条件(B)＞配送先
@@ -1604,8 +1735,13 @@ AS
                , xoha.delivery_no            AS delivery_no      -- 配送NO
                , xoha.request_no             AS request_no      -- 依頼NO
                , xoha.freight_charge_class   AS freight_charge_class      -- 運賃区分
-               , xil2v.d1_whse_code           AS d1_whse_code      -- D+1倉庫フラグ
+               , xil2v.d1_whse_code          AS d1_whse_code      -- D+1倉庫フラグ
                , gr_param.lt2_ship_date_from AS base_date      -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+               , xoha.deliver_to_id          AS deliver_to_id         -- 出荷先ID
+               , xoha.result_deliver_to_id   AS result_deliver_to_id  -- 出荷先_実績ID
+               , xoha.schedule_arrival_date  AS arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
           FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
                xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
                xxcmn_item_locations2_v            xil2v,    -- OPM保管場所情報
@@ -1696,8 +1832,13 @@ AS
                , xoha.delivery_no            AS delivery_no      -- 配送NO
                , xoha.request_no             AS request_no      -- 依頼NO
                , xoha.freight_charge_class   AS freight_charge_class      -- 運賃区分
-               , xil2v.d1_whse_code           AS d1_whse_code      -- D+1倉庫フラグ
+               , xil2v.d1_whse_code          AS d1_whse_code      -- D+1倉庫フラグ
                , gr_param.lt2_ship_date_from AS base_date      -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+               , xoha.deliver_to_id          AS deliver_to_id         -- 出荷先ID
+               , xoha.result_deliver_to_id   AS result_deliver_to_id  -- 出荷先_実績ID
+               , xoha.schedule_arrival_date  AS arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
           FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
                xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
                xxcmn_item_locations2_v            xil2v,    -- OPM保管場所情報
@@ -1814,6 +1955,11 @@ AS
            , xoha.freight_charge_class  AS freight_charge_class      -- 運賃区分
            , xil2v.d1_whse_code         AS d1_whse_code      -- D+1倉庫フラグ
            , gr_param.ship_date_from    AS base_date      -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+           , xoha.deliver_to_id         AS deliver_to_id         -- 出荷先ID
+           , xoha.result_deliver_to_id  AS result_deliver_to_id  -- 出荷先_実績ID
+           , xoha.schedule_arrival_date AS arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
       FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
            xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
            xxcmn_item_locations2_v            xil2v    -- OPM保管場所情報
@@ -1879,6 +2025,11 @@ AS
            , xoha.freight_charge_class    AS freight_charge_class      -- 運賃区分
            , xil2v.d1_whse_code           AS d1_whse_code      -- D+1倉庫フラグ
            , gr_param.prov_ship_date_from AS base_date      -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+           , xoha.deliver_to_id           AS deliver_to_id         -- 出荷先ID
+           , xoha.result_deliver_to_id    AS result_deliver_to_id  -- 出荷先_実績ID
+           , xoha.schedule_arrival_date   AS arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
       FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
            xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
            xxcmn_item_locations2_v             xil2v    -- OPM保管場所情報
@@ -1940,6 +2091,11 @@ AS
            , xmrih.freight_charge_class   AS freight_charge_class      -- 運賃区分
            , xil2v.d1_whse_code           AS d1_whse_code      -- D+1倉庫フラグ
            , gr_param.move_ship_date_from AS base_date      -- 基準日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+           , NULL                         AS deliver_to_id         -- 出荷先ID
+           , NULL                         AS result_deliver_to_id  -- 出荷先_実績ID
+           , NULL                         AS arrival_date          -- 着荷日
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxcmn_item_locations2_v        xil2v     -- ＯＰＭ保管場所マスタ
       WHERE
@@ -2385,6 +2541,10 @@ AS
 -- 2008/12/01 H.Itou Add Start 本番障害#148
            , xola.shipping_item_code    AS item_code            -- 品目NO
 -- 2008/12/01 H.Itou Add End
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+           , xola.shipping_inventory_item_id AS shipping_inventory_item_id -- 出荷品目ID
+           , xola.line_id                    AS line_id                    -- 明細ID
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
       FROM xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,xxcmn_item_mst2_v          ximv      -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories5_v   xicv      -- ＯＰＭ品目カテゴリ割当情報VIEW5
@@ -2421,6 +2581,10 @@ AS
 -- 2008/12/01 H.Itou Add Start 本番障害#148
            , xmril.item_code                           AS item_code            -- 品目NO
 -- 2008/12/01 H.Itou Add End
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+           , NULL                                      AS shipping_inventory_item_id -- 出荷品目ID
+           , NULL                                      AS line_id                    -- 明細ID
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
       FROM xxinv_mov_req_instr_lines    xmril     -- 移動依頼/指示明細アドオン
           ,xxcmn_item_mst2_v            ximv      -- ＯＰＭ品目情報VIEW2
       WHERE
@@ -3237,6 +3401,383 @@ AS
 --
   END purge_tbl;
 --
+--
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+--
+ /**********************************************************************************
+  * Procedure Name   : ins_upd_lot_hold_info
+  * Description      : D-14 ロット情報保持マスタ反映処理
+  ***********************************************************************************/
+  PROCEDURE ins_upd_lot_hold_info(
+    ln_cnt        IN  NUMBER,              --   データindex(header)
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name          CONSTANT VARCHAR2(100) := 'ins_upd_lot_hold_info';
+                                                                            -- プログラム名
+    ct_document_type_10  CONSTANT xxinv_mov_lot_details.document_type_code%TYPE := '10'; 
+                                                                            -- 文書タイプ：10(出荷依頼)
+    ct_record_type_01    CONSTANT xxinv_mov_lot_details.record_type_code%TYPE := '10'; 
+                                                                            -- レコードタイプ：01(指示)
+    cv_cancel_kbn_0      CONSTANT VARCHAR2(1) := '0';
+                                                                            -- 取消区分：'0'(取消以外)
+    cv_cancel_kbn_1      CONSTANT VARCHAR2(1) := '1';
+                                                                            -- 取消区分：'1'(取消)
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_e_s_kbn_2      CONSTANT VARCHAR2(1) := '2';  -- 営業生産区分（生産）
+    cn_num_1          CONSTANT NUMBER      :=  1;   -- テーブルデータ取得用：1
+    cv_status_a       CONSTANT VARCHAR2(1) := 'A';  -- 顧客ステータス_有効
+    cv_class_10       CONSTANT VARCHAR2(2) := '10'; -- 顧客区分_10
+--
+    -- *** ローカル変数 ***
+    lt_deliver_to_id  xxwsh_order_headers_all.result_deliver_to_id%TYPE; -- 出荷先_実績ID
+    lt_customer_id    hz_cust_accounts.cust_account_id%TYPE;             -- 顧客ID
+    lt_child_item_id  mtl_system_items_b.inventory_item_id%TYPE;         -- 子品目ID
+    lt_deliver_lot    xxcoi_mst_lot_hold_info.last_deliver_lot_s%TYPE;   -- 納品ロット
+    lt_delivery_date  xxcoi_mst_lot_hold_info.delivery_date_s%TYPE;      -- 納品日
+    lt_item_info_tab  xxcoi_common_pkg.item_info_ttype;                  -- 品目情報（テーブル型）
+    lt_order_line_id  xxwsh_order_lines_all.order_line_id%TYPE;          -- 受注明細ID
+    lt_customer_class_code hz_cust_accounts.customer_class_code%TYPE;    -- 顧客区分
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- ローカル変数初期化
+    lt_deliver_to_id  := NULL;
+    lt_customer_id    := NULL;
+    lt_child_item_id  := NULL;
+    lt_deliver_lot    := NULL;
+    lt_delivery_date  := NULL;
+--
+    -- 各変数へカーソルの取得値を代入
+    lt_deliver_to_id  := gr_chk_header_data_tab(ln_cnt).deliver_to_id;     -- 出荷先_実績ID
+    lt_delivery_date  := gr_chk_header_data_tab(ln_cnt).arrival_date;             -- 納品日
+    --
+    IF gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order THEN
+      lt_child_item_id  := gr_chk_line_data_tab(gn_cnt_line).shipping_inventory_item_id;        -- 子品目ID
+      lt_order_line_id  := gr_chk_line_data_tab(gn_cnt_line).order_line_id;
+    ELSIF gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order_cncl THEN
+      lt_child_item_id  := gr_chk_line_data_tab_cncl(gn_cnt_line_cncl).shipping_inventory_item_id;        -- 子品目ID
+      lt_order_line_id  := gr_chk_line_data_tab_cncl(gn_cnt_line_cncl).order_line_id;
+    END IF;
+--
+      BEGIN
+        SELECT hca.cust_account_id cust_account_id,            -- 顧客ID
+               hca.customer_class_code                         -- 顧客区分
+        INTO   lt_customer_id,
+               lt_customer_class_code
+        FROM   hz_cust_accounts hca,                           -- 顧客マスタ
+               hz_parties       hp,                            -- パーティマスタ
+               hz_party_sites   hps                            -- パーティサイトマスタ
+        WHERE  hps.party_site_id       = lt_deliver_to_id      -- パーティサイトID
+        AND    hps.party_id            = hp.party_id
+        AND    hp.party_id             = hca.party_id
+        AND    hca.status              = cv_status_a           -- ステータス
+        ;
+      --
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                  gv_cons_msg_kbn_wsh,      -- 'XXWSH'
+                  gv_customer_id_err,       -- 顧客導出（受注アドオン）取得エラー
+                  gv_param1_token,          -- トークン'PARAM1'
+                  lt_deliver_to_id);        -- 出荷先_実績ID
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+--
+    -- 顧客区分が'10'の場合のみ後続の処理実行
+    IF lt_customer_class_code = cv_class_10 THEN
+      -- 在庫共通関数「品目コード導出（親／子）」より、親品目の品目情報を取得
+      xxcoi_common_pkg.get_parent_child_item_info(
+         id_date           => TRUNC(sysdate),         -- 日付
+         in_inv_org_id     => gt_inv_org_id,          -- 在庫組織ID
+         in_parent_item_id => NULL,                   -- 親品目ID
+         in_child_item_id  => lt_child_item_id,       -- 子品目ID（出荷品目ID）
+         ot_item_info_tab  => lt_item_info_tab,       -- 品目情報
+         ov_errbuf         => lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+         ov_retcode        => lv_retcode,             -- リターン・コード             --# 固定 #
+         ov_errmsg         => lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+--
+      IF ( lv_retcode <> gv_status_normal ) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(
+                gv_cons_msg_kbn_wsh, -- 'XXWSH'
+                gv_item_pc_err,      -- 親品目情報取得エラー
+                gv_param1_token,     -- トークン'PARAM1'
+                gt_inv_org_id,       -- 在庫組織ID
+                gv_param2_token,     -- トークン'PARAM2'
+                lt_child_item_id);   -- 子品目ID（出荷品目ID）
+        lv_errbuf := lv_errmsg;
+--
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 納品ロット情報（賞味期限）取得
+      BEGIN
+        SELECT TO_CHAR( MAX( info.taste_term ), 'YYYY/MM/DD' )
+        INTO   lt_deliver_lot
+        FROM(
+          SELECT TO_DATE( ilm.attribute3, 'YYYY/MM/DD' ) taste_term
+          FROM   ic_lots_mst             ilm,      -- OPMロットマスタ
+                 xxinv_mov_lot_details   xmld      -- 移動ロット詳細
+          WHERE  ilm.lot_id                = xmld.lot_id              -- OPMロットID
+          AND    ilm.item_id               = xmld.item_id             -- OPM品目ID
+          AND    xmld.document_type_code   = ct_document_type_10      -- 文書タイプ
+          AND    xmld.record_type_code     = ct_record_type_01        -- レコードタイプ
+          AND    xmld.mov_line_id          = lt_order_line_id   -- 明細ID
+        ) info
+        ;
+        IF ( lt_deliver_lot IS NULL ) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                  gv_cons_msg_kbn_wsh, -- 'XXWSH'
+                  gv_item_tst_err,     -- 賞味期限取得エラー
+                  gv_param_data,       -- トークン'DATA'
+                  gv_item_tst);        -- 賞味期限
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(
+                  gv_cons_msg_kbn_wsh, -- 'XXWSH'
+                  gv_item_tst_err,     -- 賞味期限取得エラー
+                  gv_param_data,       -- トークン'DATA'
+                  gv_item_tst);        -- 賞味期限
+          lv_errbuf := lv_errmsg;
+--
+          RAISE global_api_expt;
+      END;
+--
+      -- 在庫共通関数「ロット情報保持マスタ反映」より、出荷情報をロット情報保持マスタへ反映
+      -- 取消以外の場合
+      IF gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order THEN
+        xxcoi_common_pkg.ins_upd_lot_hold_info(
+           in_customer_id    => lt_customer_id,                     -- 顧客ID
+           in_deliver_to_id  => lt_deliver_to_id,                   -- 出荷先ID
+           in_parent_item_id => lt_item_info_tab(cn_num_1).item_id, -- 親品目ID
+           iv_deliver_lot    => lt_deliver_lot,                     -- 納品ロット（賞味期限）
+           id_delivery_date  => lt_delivery_date,                   -- 納品日（着荷日）
+           iv_e_s_kbn        => cv_e_s_kbn_2,                       -- 営業生産区分（生産）
+           iv_cancel_kbn     => cv_cancel_kbn_0,                    -- 取消区分
+           ov_errbuf         => lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+           ov_retcode        => lv_retcode,             -- リターン・コード             --# 固定 #
+           ov_errmsg         => lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+      -- 取消の場合
+      ELSIF gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order_cncl THEN
+        xxcoi_common_pkg.ins_upd_lot_hold_info(
+           in_customer_id    => lt_customer_id,                     -- 顧客ID
+           in_deliver_to_id  => lt_deliver_to_id,                   -- 出荷先ID
+           in_parent_item_id => lt_item_info_tab(cn_num_1).item_id, -- 親品目ID
+           iv_deliver_lot    => lt_deliver_lot,                     -- 納品ロット（賞味期限）
+           id_delivery_date  => lt_delivery_date,                   -- 納品日（着荷日）
+           iv_e_s_kbn        => cv_e_s_kbn_2,                       -- 営業生産区分（生産）
+           iv_cancel_kbn     => cv_cancel_kbn_1,                    -- 取消区分
+           ov_errbuf         => lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+           ov_retcode        => lv_retcode,             -- リターン・コード             --# 固定 #
+           ov_errmsg         => lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+      END IF;
+--
+      IF (lv_retcode <> gv_status_normal) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(
+                gv_cons_msg_kbn_wsh,      -- 'XXWSH'
+                gv_lot_mst_upd_err,       -- ロット情報保持マスタ反映エラー
+                gv_param1_token,          -- トークン'PARAM1'
+                lt_customer_id,           -- 顧客ID
+                gv_param2_token,          -- トークン'PARAM2'
+                lt_item_info_tab(cn_num_1).item_id, -- 親品目ID
+                gv_param3_token,          -- トークン'PARAM3'
+                lt_deliver_lot,           -- 納品ロット（賞味期限）
+                gv_param4_token,          -- トークン'PARAM4'
+                lt_delivery_date,         -- 納品日（着荷日）
+                gv_param5_token,          -- トークン'PARAM5'
+                lv_errbuf);               -- エラー・メッセージ
+        lv_errbuf := lv_errmsg;
+--
+        RAISE global_api_expt;
+      ELSE
+        gn_ins_upd_lot_info_cnt := gn_ins_upd_lot_info_cnt + 1;
+      END IF;
+--
+    END IF;
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_upd_lot_hold_info;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_confirm_block_line_cncl
+   * Description      : D-15  出荷取消情報明細抽出処理
+   ***********************************************************************************/
+  PROCEDURE get_confirm_block_line_cncl(
+    ln_cnt                  IN  NUMBER,
+    ov_errbuf               OUT NOCOPY VARCHAR2, -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT NOCOPY VARCHAR2, -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_confirm_block_line_cncl'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lr_temp_tab           rec_temp_tab_data ;   -- 中間テーブル登録用レコード変数
+    lr_temp_tab_tab       rec_temp_tab_data_tab ;   -- 中間テーブル登録用レコード変数
+--
+    -- *** ローカル・カーソル ***
+    --------------------------------------------------
+    -- 出荷取消明細抽出カーソル
+    --------------------------------------------------
+    CURSOR cur_sel_order_line_cncl(ln_cnt NUMBER)
+    IS
+      SELECT
+             xola.order_header_id       AS order_header_id      -- 受注ヘッダID
+           , xola.order_line_id         AS order_line_id        -- 受注明細ID
+           , NVL(xola.quantity,0)       AS quantity             -- 数量
+           , NVL(xola.reserved_quantity,0) AS reserved_quantity    -- 引当数
+           , ximv.lot_ctl               AS lot_ctl    -- ロット管理区分
+           , xicv.item_class_code       AS item_class_code      -- 品目区分
+           , xola.shipping_item_code    AS item_code            -- 品目NO
+           , xola.shipping_inventory_item_id AS shipping_inventory_item_id -- 出荷品目ID
+           , xola.line_id                    AS line_id                    -- 明細ID
+      FROM xxwsh_order_lines_all      xola      -- 受注明細アドオン
+          ,xxcmn_item_mst2_v          ximv      -- ＯＰＭ品目情報VIEW2
+          ,xxcmn_item_categories5_v   xicv      -- ＯＰＭ品目カテゴリ割当情報VIEW5
+      WHERE
+      ---------------------------------------------------------------------------------------------
+      -- ＯＰＭ品目
+      ---------------------------------------------------------------------------------------------
+      -- パラメータ条件．品目区分
+            ximv.item_id            = xicv.item_id
+      AND   trunc(gr_chk_header_data_tab(ln_cnt).base_date) BETWEEN ximv.start_date_active
+                AND NVL( ximv.end_date_active, trunc(gr_chk_header_data_tab(ln_cnt).base_date) )
+      AND   xola.shipping_item_code = ximv.item_no
+      ---------------------------------------------------------------------------------------------
+      -- 受注明細アドオン
+      ---------------------------------------------------------------------------------------------
+      AND   NVL(xola.delete_flag,gc_yn_div_n) = gc_yn_div_y          -- 未削除
+      AND   xola.order_header_id                 = gr_chk_header_data_tab(ln_cnt).header_id
+      FOR UPDATE OF xola.order_line_id NOWAIT
+     ;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***************************************
+    -- カーソルオープン
+    OPEN cur_sel_order_line_cncl(ln_cnt);
+    -- バルクフェッチ
+    FETCH cur_sel_order_line_cncl BULK COLLECT INTO gr_chk_line_data_tab_cncl;
+    -- カーソルクローズ
+    CLOSE cur_sel_order_line_cncl;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF ( cur_sel_order_line_cncl%ISOPEN ) THEN
+        CLOSE cur_sel_order_line_cncl ;
+      END IF ;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF ( cur_sel_order_line_cncl%ISOPEN ) THEN
+        CLOSE cur_sel_order_line_cncl ;
+      END IF ;
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF ( cur_sel_order_line_cncl%ISOPEN ) THEN
+        CLOSE cur_sel_order_line_cncl ;
+      END IF ;
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_confirm_block_line_cncl;
+--
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -3335,6 +3876,9 @@ AS
 -- 2008/12/01 H.Itou Add Start 本番障害#148
     gn_warn_cnt        := 0;                    -- 警告件数
 -- 2008/12/01 H.Itou Add End
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+    gn_ins_upd_lot_info_cnt   := 0;             -- ロット情報保持マスタ登録更新
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
     gr_chk_header_data_tab.DELETE;
     -- エラーフラグの初期化
     gv_data_found_flg     := gc_onoff_div_off;   -- 処理対象データありフラグ
@@ -3469,6 +4013,11 @@ AS
       gr_chk_header_data_tab(ln_cnt).freight_charge_class := re_header.freight_charge_class;
       gr_chk_header_data_tab(ln_cnt).d1_whse_code         := re_header.d1_whse_code        ;
       gr_chk_header_data_tab(ln_cnt).base_date            := re_header.base_date           ;
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+      gr_chk_header_data_tab(ln_cnt).deliver_to_id        := re_header.deliver_to_id;
+      gr_chk_header_data_tab(ln_cnt).result_deliver_to_id := re_header.result_deliver_to_id;
+      gr_chk_header_data_tab(ln_cnt).arrival_date         := re_header.arrival_date;
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
 --
       -- ===============================================
       -- D-4  出荷・支給・移動情報明細抽出処理
@@ -3538,6 +4087,27 @@ AS
               RAISE global_process_expt;
             ELSIF (lv_retcode = gv_status_warn) THEN
               ov_retcode := lv_retcode;
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+            ELSE
+              -- ===============================================
+              -- D-14  ロット情報保持マスタ 更新処理
+              -- ===============================================
+              -- データ区分が'1'（出荷依頼）の場合のみ処理実行
+              IF gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order THEN
+                ins_upd_lot_hold_info(
+                  ln_cnt,             --
+                  lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+                  lv_retcode,         -- リターン・コード             --# 固定 #
+                  lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+                );
+                IF (lv_retcode = gv_status_error) THEN
+                  --(エラー処理)
+                  RAISE global_process_expt;
+                ELSIF (lv_retcode = gv_status_warn) THEN
+                  ov_retcode := lv_retcode;
+                END IF;
+              END IF;
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
             END IF;
 -- 2008/12/01 H.Itou Mod Start 本番障害#148
           END IF;
@@ -3545,6 +4115,53 @@ AS
         END LOOP line_loop;
       END IF;
 --
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+      -- ===============================================
+      -- D-15  出荷取消情報明細抽出処理
+      -- ===============================================
+      -- データ区分が'8'（出荷取消）の場合のみ処理実行
+      IF gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order_cncl THEN
+        get_confirm_block_line_cncl(
+          ln_cnt,             --
+          lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+          lv_retcode,         -- リターン・コード             --# 固定 #
+          lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode = gv_status_error) THEN
+          --(エラー処理)
+          RAISE global_process_expt;
+        ELSIF (lv_retcode = gv_status_warn) THEN
+          ov_retcode := lv_retcode;
+          RAISE ex_worn ;
+        END IF;
+  --
+        -- 明細件数の初期化
+        gn_cnt_line_cncl    := 0; -- 明細件数
+        --
+        IF gr_chk_line_data_tab_cncl.COUNT > 0 THEN
+          <<cncl_line_loop>>
+          FOR i IN gr_chk_line_data_tab_cncl.FIRST .. gr_chk_line_data_tab_cncl.LAST LOOP
+            gn_cnt_line_cncl := gn_cnt_line_cncl + 1;
+            -- ===============================================
+            -- D-14  ロット情報保持マスタ 更新処理
+            -- ===============================================
+            ins_upd_lot_hold_info(
+              ln_cnt,             --
+              lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+              lv_retcode,         -- リターン・コード             --# 固定 #
+              lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            IF (lv_retcode = gv_status_error) THEN
+              --(エラー処理)
+              RAISE global_process_expt;
+            ELSIF (lv_retcode = gv_status_warn) THEN
+              ov_retcode := lv_retcode;
+            END IF;
+          END LOOP cncl_line_loop;
+        END IF;
+      --
+      END IF;
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
 -- 2008/12/01 H.Itou Add Start 本番障害#148
       -- 引当エラーフラグ２がONの場合、後続処理(確定処理)実行
       IF (gv_err_flg_resv2 = gc_onoff_div_off) THEN
@@ -3940,6 +4557,9 @@ AS
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  出荷    ：' || TO_CHAR( gn_cnt_upd_ship,'FM999,999,990' ) ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  支給    ：' || TO_CHAR( gn_cnt_upd_prov,'FM999,999,990' ) ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  移動    ：' || TO_CHAR( gn_cnt_upd_move,'FM999,999,990' ) ) ;
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT,'  ロット情報保持マスタ    ：' || TO_CHAR( gn_ins_upd_lot_info_cnt,'FM999,999,990' ) ) ;
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
 --
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_sep_msg ) ;   --区切り文字列出力
 --
