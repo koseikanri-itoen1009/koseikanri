@@ -3,7 +3,7 @@
  *
  * Table Name      : XXCOI_STORAGE_INFORMATION
  * Description     : 入庫情報一時表
- * Version         : 1.3
+ * Version         : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,7 +13,8 @@
  *  2009/04/30    1.1   T.Nakamura       バックスラッシュを追加
  *  2009/06/02    1.2   H.Sasaki         [T1_1310]工場固有記号桁数変更（3→6）
  *  2009/07/09    1.3   S.Moriyama       [0000496]Storage句を追加
- *
+ *  2014/10/01    1.4   Y.Nagasue        [E_本稼動_12237]倉庫管理システム対応
+ *                                        ロット別取引作成済フラグ(LOT_TRX_CREATED_FLAG)追加
  ************************************************************************/
 CREATE TABLE XXCOI.XXCOI_STORAGE_INFORMATION
 (
@@ -46,6 +47,9 @@ CREATE TABLE XXCOI.XXCOI_STORAGE_INFORMATION
   STORE_CHECK_FLAG                      VARCHAR2(1),
   MATERIAL_TRANSACTION_SET_FLAG         VARCHAR2(1),
   AUTO_STORE_CHECK_FLAG                 VARCHAR2(1),
+-- == 2014/10/01 V1.4 ADD START ==================================================================
+  LOT_TRX_CREATED_FLAG                  VARCHAR2(1),
+-- == 2014/10/01 V1.4 ADD END ====================================================================
   CREATION_DATE                         DATE,
   CREATED_BY                            NUMBER,
   LAST_UPDATE_DATE                      DATE,
@@ -115,6 +119,10 @@ COMMENT ON COLUMN XXCOI.XXCOI_STORAGE_INFORMATION.MATERIAL_TRANSACTION_SET_FLAG 
 /
 COMMENT ON COLUMN XXCOI.XXCOI_STORAGE_INFORMATION.AUTO_STORE_CHECK_FLAG             IS '自動入庫確認フラグ ';
 /
+-- == 2014/10/01 V1.4 ADD START ==================================================================
+COMMENT ON COLUMN XXCOI.XXCOI_STORAGE_INFORMATION.LOT_TRX_CREATED_FLAG              IS 'ロット別取引作成済フラグ';
+/
+-- == 2014/10/01 V1.4 ADD END ====================================================================
 COMMENT ON COLUMN XXCOI.XXCOI_STORAGE_INFORMATION.CREATION_DATE                     IS '作成日 ';
 /
 COMMENT ON COLUMN XXCOI.XXCOI_STORAGE_INFORMATION.CREATED_BY                        IS '作成者 ';
