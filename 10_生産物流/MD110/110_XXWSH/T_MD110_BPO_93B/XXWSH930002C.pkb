@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.65
+ * Version          : 1.66
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  err_output                          エラー内容出力プロシージャ (A-14)
  *  ins_upd_del_processing              登録更新削除処理プロシージャ (A-15)
  *  ship_results_regist_process         出荷実績登録処理プロシージャ (A-16)
+ *  ins_upd_lot_hold_info               ロット情報保持マスタ反映プロシージャ (A-16)
  *  move_results_regist_process         入出庫実績登録処理プロシージャ (A-17)
  *  submain                             メイン処理プロシージャ
  *  main                                コンカレント実行ファイル登録プロシージャ
@@ -167,6 +168,7 @@ AS
  *  2010/03/12    1.63 SCS    北寒寺正夫 本稼働障害  #1622 移動の実績訂正の際に実績計上済区分をYからNに更新するように修正
  *  2010/04/16    1.64 SCS    伊藤ひとみ E_本稼動_02302    指示なし実績のとき、入力拠点に報告部署をセットする。
  *  2011/06/09    1.65 SCS    H.Sasaki   E_本稼動_05234,07582    出荷先、品目チェックを追加
+ *  2014/12/25    1.66 SCSK   山下翔太   E_本稼動_12237    倉庫管理システム対応（ロット情報保持マスタ反映処理を追加）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -352,6 +354,14 @@ AS
   gv_msg_93a_182                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13182';
   gv_msg_93a_183                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13183';
 -- 2011/06/09 E_本稼動_06875 V1.66 Added END
+-- 2014/12/25 E_本稼動_12237 V1.66 Add START
+  -- 顧客導出（受注アドオン）取得エラー
+  gv_msg_93a_187                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13187';
+  -- 親品目情報取得エラー
+  gv_msg_93a_188                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13188';
+  -- ロット情報保持マスタ反映エラー
+  gv_msg_93a_189                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13189';
+-- 2014/12/25 E_本稼動_12237 V1.66 Add END
 --
   -- トークン
   gv_tkn_cnt                     CONSTANT VARCHAR2(3)  := 'CNT';         -- カウントトークン
@@ -416,6 +426,10 @@ AS
   gv_ord_correct_syukka_cnt_nm   CONSTANT VARCHAR2(50) := '訂正受注（出荷）作成';
   gv_mov_correct_cnt_nm          CONSTANT VARCHAR2(50) := '訂正移動　　　　作成';
 --********** 2008/07/07 ********** ADD    START ***
+-- 2014/12/25 E_本稼動_12237 V1.66 Add START
+  -- ロット情報保持マスタ登録更新件数
+  gv_ins_upd_lot_info_cnt_nm     CONSTANT VARCHAR2(50) := 'ロット情報保持マスタ登録更新';
+-- 2014/12/25 E_本稼動_12237 V1.66 Add END
 --
 --********** 2008/07/07 ********** DELETE START ***
 --*  -- 受注ヘッダ
@@ -684,6 +698,9 @@ AS
   gt_inv_org_id                 mtl_parameters.organization_id%TYPE;
   gd_process_date               DATE;
 -- 2011/06/09 E_本稼動_06875 V1.65 Added END
+-- 2014/12/25 E_本稼動_12237 V1.66 Add START
+  gv_cust_class_10               CONSTANT VARCHAR2(2) := '10';    -- 顧客区分(10)
+-- 2014/12/25 E_本稼動_12237 V1.66 Add END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1125,6 +1142,12 @@ AS
   gn_ord_correct_syukka_cnt NUMBER;               -- 訂正受注（出荷）作成件数
   gn_mov_correct_cnt        NUMBER;               -- 訂正移動作成件数
 --********** 2008/07/07 ********** ADD    END   ***
+-- 2014/12/25 E_本稼動_12237 V1.66 Add START
+  -- ロット情報保持マスタ登録更新件数
+  gv_ins_upd_lot_info_cnt   NUMBER;               -- ロット情報保持マスタ登録更新件数
+  -- 取消処理フラグ
+  gv_delete_flag            VARCHAR2(1);          -- 取消処理フラグ
+-- 2014/12/25 E_本稼動_12237 V1.66 Add END
 --
 --********** 2008/07/07 ********** DELETE START ***
 --*  -- 受注ヘッダ
@@ -20119,6 +20142,182 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
 --
   END ins_upd_del_processing;
 --
+-- 2014/12/25 E_本稼動_12237 V1.66 Add START
+--
+ /**********************************************************************************
+  * Procedure Name   : ins_upd_lot_hold_info
+  * Description      : ロット情報保持マスタ反映 プロシージャ (A-16)
+  ***********************************************************************************/
+  PROCEDURE ins_upd_lot_hold_info(
+    in_idx        IN  NUMBER,              --   データindex
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_upd_lot_hold_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_e_s_kbn_2      CONSTANT VARCHAR2(1) := '2';  -- 営業生産区分（生産）
+    cn_num_1          CONSTANT NUMBER      :=  1;   -- テーブルデータ取得用：1
+--
+    -- *** ローカル変数 ***
+    lt_deliver_to_id  xxwsh_order_headers_all.result_deliver_to_id%TYPE; -- 出荷先_実績ID
+    lt_customer_id    hz_cust_accounts.cust_account_id%TYPE;             -- 顧客ID
+    lt_child_item_id  mtl_system_items_b.inventory_item_id%TYPE;         -- 子品目ID
+    lt_deliver_lot    xxcoi_mst_lot_hold_info.last_deliver_lot_s%TYPE;   -- 納品ロット
+    lt_delivery_date  xxcoi_mst_lot_hold_info.delivery_date_s%TYPE;      -- 納品日
+    lt_item_info_tab  xxcoi_common_pkg.item_info_ttype;                  -- 品目情報（テーブル型）
+    lt_cancel_kbn     VARCHAR2(1);                                       -- 取消区分
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- ローカル変数初期化
+    lt_deliver_to_id  := NULL;
+    lt_customer_id    := NULL;
+    lt_child_item_id  := NULL;
+    lt_deliver_lot    := NULL;
+    lt_delivery_date  := NULL;
+    lt_cancel_kbn     := NULL;
+--
+    -- 各変数へカーソルの取得値を代入
+    lt_deliver_to_id  := gr_interface_info_rec(in_idx).result_deliver_to_id;     -- 出荷先_実績ID
+    lt_child_item_id  := gr_interface_info_rec(in_idx).inventory_item_id;        -- 子品目ID
+    lt_deliver_lot    := TO_CHAR(gr_interface_info_rec(in_idx).use_by_date,'YYYY/MM/DD'); -- 納品ロット
+    lt_delivery_date  := gr_interface_info_rec(in_idx).arrival_date;             -- 納品日
+    -- 実績数量0の場合、取消区分を設定
+    IF ( NVL( gr_interface_info_rec(in_idx).shiped_quantity, gr_interface_info_rec(in_idx).detailed_quantity ) > 0 ) THEN
+      lt_cancel_kbn := 0;
+    ELSE
+      lt_cancel_kbn := 1;
+    END IF;
+--
+    -- 在庫共通関数「顧客導出（受注アドオン）」より、顧客IDを取得
+    lt_customer_id := xxcoi_common_pkg.get_customer_id(lt_deliver_to_id);       -- 出荷先_実績ID
+--
+    IF (lt_customer_id IS NULL) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(
+              gv_msg_kbn,               -- 'XXWSH'
+              gv_msg_93a_187,           -- 顧客導出（受注アドオン）取得エラー
+              gv_param1_token,          -- トークン'PARAM1'
+              lt_deliver_to_id);        -- 出荷先_実績ID
+      lv_errbuf := lv_errmsg;
+--
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 在庫共通関数「品目コード導出（親／子）」より、親品目の品目情報を取得
+    xxcoi_common_pkg.get_parent_child_item_info(
+       id_date           => gd_process_date,        -- 日付
+       in_inv_org_id     => gt_inv_org_id,          -- 在庫組織ID
+       in_parent_item_id => NULL,                   -- 親品目ID
+       in_child_item_id  => lt_child_item_id,       -- 子品目ID（出荷品目ID）
+       ot_item_info_tab  => lt_item_info_tab,       -- 品目情報
+       ov_errbuf         => lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+       ov_retcode        => lv_retcode,             -- リターン・コード             --# 固定 #
+       ov_errmsg         => lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    IF ( lv_retcode <> gv_status_normal ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(
+              gv_msg_kbn,          -- 'XXWSH'
+              gv_msg_93a_188,      -- 親品目情報取得エラー
+              gv_param1_token,     -- トークン'PARAM1'
+              gt_inv_org_id,       -- 在庫組織ID
+              gv_param2_token,     -- トークン'PARAM2'
+              lt_child_item_id);   -- 子品目ID（出荷品目ID）
+      lv_errbuf := lv_errmsg;
+--
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 在庫共通関数「ロット情報保持マスタ反映」より、出荷情報をロット情報保持マスタへ反映
+    xxcoi_common_pkg.ins_upd_lot_hold_info(
+       in_customer_id    => lt_customer_id,                     -- 顧客ID
+       in_deliver_to_id  => lt_deliver_to_id,                   -- 出荷先ID
+       in_parent_item_id => lt_item_info_tab(cn_num_1).item_id, -- 親品目ID
+       iv_deliver_lot    => lt_deliver_lot,                     -- 納品ロット（賞味期限）
+       id_delivery_date  => lt_delivery_date,                   -- 納品日（着荷日）
+       iv_e_s_kbn        => cv_e_s_kbn_2,                       -- 営業生産区分（生産）
+       iv_cancel_kbn     => lt_cancel_kbn,                      -- 取消区分
+       ov_errbuf         => lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+       ov_retcode        => lv_retcode,             -- リターン・コード             --# 固定 #
+       ov_errmsg         => lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    IF (lv_retcode <> gv_status_normal) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg(
+              gv_msg_kbn,               -- 'XXWSH'
+              gv_msg_93a_189,           -- ロット情報保持マスタ反映エラー
+              gv_param1_token,          -- トークン'PARAM1'
+              lt_customer_id,           -- 顧客ID
+              gv_param2_token,          -- トークン'PARAM2'
+              lt_item_info_tab(cn_num_1).item_id, -- 親品目ID
+              gv_param3_token,          -- トークン'PARAM3'
+              lt_deliver_lot,           -- 納品ロット（賞味期限）
+              gv_param4_token,          -- トークン'PARAM4'
+              lt_delivery_date,         -- 納品日（着荷日）
+              gv_param5_token,          -- トークン'PARAM5'
+              lv_errbuf);               -- エラー・メッセージ
+      lv_errbuf := lv_errmsg;
+--
+      RAISE global_api_expt;
+    ELSE
+      gv_ins_upd_lot_info_cnt := gv_ins_upd_lot_info_cnt + 1;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_upd_lot_hold_info;
+--
+-- 2014/12/25 E_本稼動_12237 V1.66 Add END
 -- 2009/12/28 H.Itou Del Start 本稼動障害#695 呼ばないプロシージャなので削除
 -- /**********************************************************************************
 --  * Procedure Name   : ship_results_regist_process
@@ -20412,6 +20611,10 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
     gn_mov_correct_cnt        := 0;              -- 訂正移動作成件数
 --********** 2008/07/07 ********** ADD    END   ***
 --
+-- 2014/12/25 E_本稼動_12237 V1.66 Add START
+    gv_ins_upd_lot_info_cnt   := 0;              -- ロット情報保持マスタ登録更新
+    gv_delete_flag            := gv_yesno_n;     -- 取消処理フラグ
+-- 2014/12/25 E_本稼動_12237 V1.66 Add END
 --********** 2008/07/07 ********** DELETE START ***
 --* -- 受注ヘッダ
 --* gn_ord_h_upd_n_cnt        := 0;              -- 受注ヘッダ更新作成件数(実績計上)
@@ -20771,6 +20974,40 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
             RAISE global_process_expt;
           END IF;
 --
+-- 2014/12/25 E_本稼動_12237 V1.66 Add START
+          -- A-6,A-7にてエラー・保留が確定してるデータは処理対象外とする。
+          IF ((gr_interface_info_rec(i).err_flg = gv_flg_off) AND      --エラーflag：'0'(正常)
+             (gr_interface_info_rec(i).reserve_flg = gv_flg_off))      --保留flag  ：'0'(正常)
+          THEN
+            -- 顧客区分が10（顧客）の場合
+            IF ( gr_interface_info_rec(in_idx).customer_class_code = gv_cust_class_10 ) THEN
+              -- 出荷の場合は、ロット情報保持マスタ登録更新処理を実行
+              IF ( gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210  --210 拠点出荷確定報告
+                OR  gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215 )--215 庭先出荷確定報告
+              THEN
+                -- ===============================
+                -- ロット情報保持マスタ登録更新処理 プロシージャ (A-16)
+                -- ===============================
+                ins_upd_lot_hold_info(
+                  in_idx,                 -- データindex
+                  lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+                  lv_retcode,             -- リターン・コード             --# 固定 #
+                  lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+                );
+--
+                IF (lv_retcode = gv_status_warn) THEN
+                  lv_warn_flg := gv_status_warn;
+                END IF;
+--
+                IF (lv_retcode = gv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+              END IF;
+            END IF;
+            -- 取消処理フラグを'N'に更新
+            gv_delete_flag := gv_yesno_n;
+          END IF;
+-- 2014/12/25 E_本稼動_12237 V1.66 Add END
         --
         -- A-6,A-7にてエラー・保留が確定してるデータは処理対象外とする。
         --
@@ -21494,6 +21731,18 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
 --
 --********** 2008/07/07 ********** ADD    END   ***
 --
+-- 2014/12/25 E_本稼動_12237 V1.66 Add START
+    --ロット情報保持マスタ登録更新 出力
+    gv_out_msg := xxcmn_common_pkg.get_msg(
+                        gv_msg_kbn,              -- 'XXWSH'
+                        gv_msg_93a_040,          -- 各処理結果件数メッセージ
+                        gv_param1_token,         -- トークン'PARAM1'
+                        gv_ins_upd_lot_info_cnt_nm,   -- ロット情報保持マスタ登録更新
+                        gv_tkn_cnt,              -- トークン'CNT'
+                        TO_CHAR(gv_ins_upd_lot_info_cnt));
+--
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+-- 2014/12/25 E_本稼動_12237 V1.66 Add END
 --********** 2008/07/07 ********** DELETE START ***
 --* -- 出荷依頼インタフェースヘッダ(アドオン)削除件数 出力
 --* gv_out_msg := xxcmn_common_pkg.get_msg(
