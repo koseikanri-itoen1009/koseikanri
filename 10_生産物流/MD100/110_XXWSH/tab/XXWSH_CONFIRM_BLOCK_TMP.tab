@@ -11,6 +11,11 @@ CREATE  TABLE xxwsh.xxwsh_confirm_block_tmp
   freight_charge_class   VARCHAR2(1),
   d1_whse_code           VARCHAR2(1),
   base_date              DATE,
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+  deliver_to_id          NUMBER,
+  result_deliver_to_id   NUMBER,
+  arrival_date           DATE,
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
   created_by             NUMBER(15,0) NOT NULL,
   creation_date          DATE NOT NULL,
   last_updated_by        NUMBER(15,0) NOT NULL,
@@ -34,6 +39,11 @@ COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.request_no IS '依頼No';
 COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.freight_charge_class IS '運賃区分';
 COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.d1_whse_code IS 'D+1倉庫フラグ';
 COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.base_date IS '基準日';
+-- 2014/12/24 E_本稼動_12237 V1.11 Add START
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.deliver_to_id IS '出荷先ID';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.result_deliver_to_id IS '出荷先_実績ID';
+COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.arrival_date IS '着荷日';
+-- 2014/12/24 E_本稼動_12237 V1.11 Add END
 COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.created_by IS '作成者';
 COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.creation_date IS '作成日';
 COMMENT ON COLUMN xxwsh.xxwsh_confirm_block_tmp.last_updated_by IS '最終更新者';
