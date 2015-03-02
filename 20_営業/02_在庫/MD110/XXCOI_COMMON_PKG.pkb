@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -41,6 +41,16 @@ AS
  *  GET_BASE_AFF_ACTIVE_DATE   拠点AFF部門適用開始日取得
  *  GET_SUBINV_AFF_ACTIVE_DATE 保管場所AFF部門適用開始日取得
  *  CHK_AFF_ACTIVE             AFF部門チェック
+ *  CRE_LOT_TRX_TEMP           ロット別取引TEMP作成
+ *  DEL_LOT_TRX_TEMP           ロット別取引TEMP削除
+ *  CRE_LOT_TRX                ロット別取引明細作成
+ *  GET_CUSTOMER_ID            顧客導出（受注アドオン）
+ *  GET_PARENT_CHILD_ITEM_INFO 品目コード導出（親／子）
+ *  INS_UPD_LOT_HOLD_INFO      ロット情報保持マスタ反映
+ *  INS_UPD_DEL_LOT_ONHAND     ロット別手持数量反映
+ *  GET_FRESH_CONDITION_DATE   鮮度条件基準日算出
+ *  GET_RESERVED_QUANTITY      引当可能数算出
+ *  GET_FRESH_CONDITION_DATE_F 鮮度条件基準日算出(ファンクション型)
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -59,6 +69,11 @@ AS
  *  2010/03/23    1.9   Y.Goto           [E_本稼動_01943]AFF部門適用開始日取得を追加
  *  2010/03/29    1.10  Y.Goto           [E_本稼動_01943]AFF部門チェックを追加
  *  2011/11/01    1.11  T.Yoshimoto      [E_本稼動_07570]所属拠点コード取得3を追加
+ *  2014/11/07    1.12  Y.Nagasue        [E_本稼動_12237]倉庫管理システム対応 以下の関数を新規作成
+ *                                        ロット別取引TEMP作成、ロット別取引TEMP削除、ロット別取引明細、
+ *                                        顧客導出（受注アドオン）、品目コード導出（親／子）、
+ *                                        ロット情報保持マスタ反映、ロット別手持数量反映、
+ *                                        鮮度条件基準日算出、引当可能数算出、鮮度条件基準日算出(ファンクション型)
  *
  *****************************************************************************************/
 --
@@ -3505,5 +3520,3822 @@ AS
       ov_retcode := cv_status_error;
   END get_belonging_base2;
 -- 2011/11/01 T.Yoshimoto v1.11 Add End
+-- == 2014/11/07 Ver1.5 Y.Nagasue ADD START ======================================================
+/************************************************************************
+ * Procedure Name  : CRE_LOT_TRX_TEMP
+ * Description     : ロット別取引TEMP作成
+ ************************************************************************/
+  PROCEDURE cre_lot_trx_temp(
+    in_trx_set_id       IN  NUMBER   -- 取引セットID
+   ,iv_parent_item_code IN  VARCHAR2 -- 親品目コード
+   ,iv_child_item_code  IN  VARCHAR2 -- 子品目コード
+   ,iv_lot              IN  VARCHAR2 -- ロット(賞味期限)
+   ,iv_diff_sum_code    IN  VARCHAR2 -- 固有記号
+   ,iv_trx_type_code    IN  VARCHAR2 -- 取引タイプコード
+   ,id_trx_date         IN  DATE     -- 取引日
+   ,iv_slip_num         IN  VARCHAR2 -- 伝票No
+   ,in_case_in_qty      IN  NUMBER   -- 入数
+   ,in_case_qty         IN  NUMBER   -- ケース数
+   ,in_singly_qty       IN  NUMBER   -- バラ数
+   ,in_summary_qty      IN  NUMBER   -- 取引数量
+   ,iv_base_code        IN  VARCHAR2 -- 拠点コード
+   ,iv_subinv_code      IN  VARCHAR2 -- 保管場所コード
+   ,iv_tran_subinv_code IN  VARCHAR2 -- 転送先保管場所コード
+   ,iv_tran_loc_code    IN  VARCHAR2 -- 転送先ロケーションコード
+   ,iv_inout_code       IN  VARCHAR2 -- 入出庫コード
+   ,iv_source_code      IN  VARCHAR2 -- ソースコード
+   ,iv_relation_key     IN  VARCHAR2 -- 紐付けキー
+   ,on_trx_id           OUT NUMBER   -- ロット別TEMP取引ID
+   ,ov_errbuf           OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode          OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg           OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  )IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'cre_lot_trx_temp'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージ用定数
+    cv_msg_kbn_coi          CONSTANT VARCHAR2(5)   := 'XXCOI';            -- アプリケーション短縮名
+    cv_err_msg_xxcoi1_10477 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10477'; -- 共通関数パラメータ必須エラー
+    cv_err_msg_xxcoi1_10478 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10478'; -- ケース数・バラ数符号チェックエラー
+    cv_err_msg_xxcoi1_10479 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10479'; -- 取引数量チェックエラー
+    cv_err_msg_xxcoi1_00005 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
+    cv_err_msg_xxcoi1_10470 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10470'; -- マスタ組織取得エラー
+    cv_err_msg_xxcoi1_00006 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00006'; -- 在庫組織ID取得エラーメッセージ
+    cv_err_msg_xxcoi1_10480 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10480'; -- 品目ID取得エラー
+    cv_err_msg_xxcoi1_10481 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10481'; -- ロケーション取得エラー
+    cv_err_msg_xxcoi1_10507 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10507'; -- 入数0以下エラー
+--
+    cv_msg_xxcoi1_10493     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10493'; -- ロット別取引TEMP作成
+    cv_msg_xxcoi1_10496     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10496'; -- 親品目コード
+    cv_msg_xxcoi1_10497     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10497'; -- 取引タイプコード
+    cv_msg_xxcoi1_10498     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10498'; -- 取引日
+    cv_msg_xxcoi1_10499     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10499'; -- 伝票No
+    cv_msg_xxcoi1_10500     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10500'; -- 入数
+    cv_msg_xxcoi1_10501     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10501'; -- 取引数量
+    cv_msg_xxcoi1_10502     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10502'; -- 拠点コード
+    cv_msg_xxcoi1_10503     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10503'; -- 保管場所コード
+    cv_msg_xxcoi1_10504     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10504'; -- ソースコード
+    cv_msg_xxcoi1_10505     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10505'; -- 紐付けキー
+--
+    cv_msg_tkn_param1       CONSTANT VARCHAR2(20)  := 'PARAM1';           -- トークン：パラメータ１
+    cv_msg_tkn_param2       CONSTANT VARCHAR2(20)  := 'PARAM2';           -- トークン：パラメータ２
+    cv_msg_tkn_pro_tok      CONSTANT VARCHAR2(20)  := 'PRO_TOK';          -- トークン：プロファイル名
+    cv_msg_tkn_org_code_tok CONSTANT VARCHAR2(20)  := 'ORG_CODE_TOK';     -- トークン：在庫組織コード
+    cv_msg_tkn_item_code    CONSTANT VARCHAR2(20)  := 'ITEM_CODE';        -- トークン：品目コード
+    cv_msg_tkn_subinv_code  CONSTANT VARCHAR2(20)  := 'SUBINV_CODE';      -- トークン：保管場所コード
+--
+    -- プロファイル
+    cv_xxcoi1_organization_code
+                            CONSTANT VARCHAR2(30)  := 'XXCOI1_ORGANIZATION_CODE'; -- 在庫組織コード
+--
+    -- 参照タイプ
+    cv_xxcoi1_tran_type     CONSTANT VARCHAR2(30)  := 'XXCOI1_TRANSACTION_TYPE_NAME';   -- ユーザー定義取引タイプ名称
+    cv_xxcoi1_lot_tran_type CONSTANT VARCHAR2(30)  := 'XXCOI1_LOT_TRAN_TYPE_NAME_DISP'; -- ロット別取引表示取引タイプ名
+--
+    -- 取引タイプコード
+    cv_trx_type_code_10     CONSTANT VARCHAR2(2)   := '10'; -- 入出庫
+    cv_trx_type_code_20     CONSTANT VARCHAR2(2)   := '20'; -- 倉替
+    cv_trx_type_code_70     CONSTANT VARCHAR2(2)   := '70'; -- 消化VD補充
+--
+    -- ソースコード値
+    cv_invttmtx             CONSTANT VARCHAR2(15)  := 'INVTTMTX';     -- その他取引入力画面
+    cv_xxcoi016a06c         CONSTANT VARCHAR2(15)  := 'XXCOI016A06C'; -- ロット別出荷情報作成
+--
+    -- SQL使用定数
+    cv_flag_y               CONSTANT VARCHAR2(1)   := 'Y'; -- フラグ:Y
+    ct_lang                 CONSTANT fnd_lookup_values.language%TYPE                 := USERENV('LANG'); -- 言語
+    ct_priority_1           CONSTANT xxcoi_mst_warehouse_location.priority%TYPE      := 1;               -- 優先順位：メインロケーション
+    ct_location_type_3      CONSTANT xxcoi_mst_warehouse_location.location_type%TYPE := '3';             -- ロケーションタイプ：ダミーロケーション
+--
+--
+    -- *** ローカル変数 ***
+    -- 入力パラメータ格納用変数
+    lt_trx_set_id        xxcoi_lot_transactions_temp.transaction_set_id%TYPE;      -- 取引セットID
+    lt_parent_item_code  mtl_system_items_b.segment1%TYPE;                         -- 親品目コード
+    lt_child_item_code   mtl_system_items_b.segment1%TYPE;                         -- 子品目コード
+    lt_lot               xxcoi_lot_transactions_temp.lot%TYPE;                     -- ロット(賞味期限)
+    lt_diff_sum_code     xxcoi_lot_transactions_temp.difference_summary_code%TYPE; -- 固有記号
+    lt_trx_type_code     xxcoi_lot_transactions_temp.transaction_type_code%TYPE;   -- 取引タイプコード
+    lt_trx_date          xxcoi_lot_transactions_temp.transaction_date%TYPE;        -- 取引日
+    lt_slip_num          xxcoi_lot_transactions_temp.slip_num%TYPE;                -- 伝票No
+    lt_case_in_qty       xxcoi_lot_transactions_temp.case_in_qty%TYPE;             -- 入数
+    lt_case_qty          xxcoi_lot_transactions_temp.case_qty%TYPE;                -- ケース数
+    lt_singly_qty        xxcoi_lot_transactions_temp.singly_qty%TYPE;              -- バラ数
+    lt_summary_qty       xxcoi_lot_transactions_temp.summary_qty%TYPE;             -- 取引数量
+    lt_base_code         xxcoi_lot_transactions_temp.base_code%TYPE;               -- 拠点コード
+    lt_subinv_code       xxcoi_lot_transactions_temp.subinventory_code%TYPE;       -- 保管場所コード
+    lt_tran_subinv_code  xxcoi_lot_transactions_temp.transfer_subinventory%TYPE;   -- 転送先保管場所コード
+    lt_tran_loc_code     xxcoi_lot_transactions_temp.transfer_location_code%TYPE;  -- 転送先ロケーションコード
+    lt_sign_div          xxcoi_lot_transactions_temp.sign_div%TYPE;                -- 符号区分
+    lt_source_code       xxcoi_lot_transactions_temp.source_code%TYPE;             -- ソースコード
+    lt_relation_key      xxcoi_lot_transactions_temp.relation_key%TYPE;            -- 紐付けキー
+--
+    -- ID変換、導出項目
+    lt_org_code          mtl_parameters.organization_code%TYPE;           -- 在庫組織コード
+    lt_org_id            mtl_parameters.organization_id%TYPE;             -- 在庫組織ID
+    lt_parent_item_id    xxcoi_lot_transactions_temp.parent_item_id%TYPE; -- 親品目ID
+    lt_child_item_id     xxcoi_lot_transactions_temp.child_item_id%TYPE;  -- 子品目ID
+    lt_loc_code          xxcoi_lot_transactions_temp.location_code%TYPE;  -- ロケーションコード
+    lt_trx_id            xxcoi_lot_transactions_temp.transaction_id%TYPE; -- 取引ID
+--
+    -- メッセージ格納用変数
+    lv_msg_proc_name     VARCHAR2(100); -- プロシージャ名
+    lv_msg_chk_tkn       VARCHAR2(100); -- 入力パラメータエラートークン格納用変数
+--
+    -- その他
+    lv_inout_code        VARCHAR2(3); -- 入出庫コード
+    ln_trx_num_chk       NUMBER;      -- 取引数量チェック用変数
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- ローカル変数初期化
+    -- 入力パラメータ格納用変数
+    lt_trx_set_id           := NULL; -- 取引セットID
+    lt_parent_item_code     := NULL; -- 親品目コード
+    lt_child_item_code      := NULL; -- 子品目コード
+    lt_lot                  := NULL; -- ロット(賞味期限)
+    lt_diff_sum_code        := NULL; -- 固有記号
+    lt_trx_type_code        := NULL; -- 取引タイプコード
+    lt_trx_date             := NULL; -- 取引日
+    lt_slip_num             := NULL; -- 伝票No
+    lt_case_in_qty          := NULL; -- 入数
+    lt_case_qty             := NULL; -- ケース数
+    lt_singly_qty           := NULL; -- バラ数
+    lt_summary_qty          := NULL; -- 取引数量
+    lt_base_code            := NULL; -- 拠点コード
+    lt_subinv_code          := NULL; -- 保管場所コード
+    lt_tran_subinv_code     := NULL; -- 転送先保管場所コード
+    lt_tran_loc_code        := NULL; -- 転送先ロケーションコード
+    lt_sign_div             := NULL; -- 符号区分
+    lt_source_code          := NULL; -- ソースコード
+    lt_relation_key         := NULL; -- 紐付けキー
+--
+    -- SQL導出項目
+    lt_org_code             := NULL; -- 在庫組織コード
+    lt_org_id               := NULL; -- 在庫組織ID
+    lt_parent_item_id       := NULL; -- 親品目ID
+    lt_child_item_id        := NULL; -- 子品目ID
+    lt_loc_code             := NULL; -- ロケーションコード
+    lt_trx_id               := NULL; -- 取引ID
+--
+    -- メッセージ格納用変数
+    lv_msg_proc_name        := NULL; -- プロシージャ名
+    lv_msg_chk_tkn          := NULL; -- 入力パラメータエラートークン格納用変数
+--
+    -- その他
+    lv_inout_code           := NULL; -- 入出庫コード
+    ln_trx_num_chk          := NULL; -- 取引数量チェック用変数
+--
+    -- プロシージャ名取得
+    lv_msg_proc_name := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10493
+                        );
+--
+    -- ======================================
+    -- １：入力パラメータのチェック
+    -- ======================================
+    -- 親品目コード
+    IF ( iv_parent_item_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10496
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 取引タイプコード
+    IF ( iv_trx_type_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10497
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 取引日
+    IF ( id_trx_date IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10498
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 伝票No
+    IF ( iv_slip_num IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10499
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入数
+    IF ( in_case_in_qty IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10500
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 取引数量
+    IF ( in_summary_qty IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10501
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 拠点コード
+    IF ( iv_base_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10502
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 保管場所コード
+    IF ( iv_subinv_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10503
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ソースコード
+    IF ( iv_source_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10504
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 紐付けキー
+    IF ( iv_relation_key IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10505
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- INパラメータを変数に退避
+    lt_trx_set_id       := in_trx_set_id;       -- 取引セットID
+    lt_parent_item_code := iv_parent_item_code; -- 親品目コード
+    lt_child_item_code  := iv_child_item_code;  -- 子品目コード
+    lt_lot              := iv_lot;              -- ロット(賞味期限)
+    lt_diff_sum_code    := iv_diff_sum_code;    -- 固有記号
+    lt_trx_type_code    := iv_trx_type_code;    -- 取引タイプコード
+    lt_trx_date         := id_trx_date;         -- 取引日
+    lt_slip_num         := iv_slip_num;         -- 伝票No
+    lt_case_in_qty      := in_case_in_qty;      -- 入数
+    lt_case_qty         := in_case_qty;         -- ケース数
+    lt_singly_qty       := in_singly_qty;       -- バラ数
+    lt_summary_qty      := in_summary_qty;      -- 取引数量
+    lt_base_code        := iv_base_code;        -- 拠点コード
+    lt_subinv_code      := iv_subinv_code;      -- 保管場所コード
+    lt_tran_subinv_code := iv_tran_subinv_code; -- 転送先保管場所コード
+    lt_tran_loc_code    := iv_tran_loc_code;    -- 転送先ロケーションコード
+    lv_inout_code       := iv_inout_code;       -- 入出庫コード
+    lt_source_code      := iv_source_code;      -- ソースコード
+    lt_relation_key     := iv_relation_key;     -- 紐付けキー
+--
+    -- 入数、ケース数、バラ数、取引数量の検証
+    -- ケース数がNULLの場合は0を設定
+    IF ( lt_case_qty IS NULL ) THEN
+      lt_case_qty := 0;
+    END IF;
+--
+    -- バラ数がNULLの場合は0を設定
+    IF ( lt_singly_qty IS NULL ) THEN
+      lt_singly_qty := 0;
+    END IF;
+--
+    -- 入数が0以下の場合は、エラー
+    IF ( lt_case_in_qty <= 0 ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10507
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+/*
+    -- ケース数、バラ数の符号チェック
+    -- 符号が異なる場合はエラー
+    IF ( (lt_case_qty >= 0 AND lt_singly_qty >= 0) OR (lt_case_qty <= 0 AND lt_singly_qty <= 0) ) THEN
+      NULL;
+    ELSE
+     lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10478
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+*/
+--
+    -- (入数＊ケース数)＋バラ数が取引数量と異なる場合はエラー
+    ln_trx_num_chk := ( lt_case_in_qty * lt_case_qty ) + lt_singly_qty;
+    IF ( lt_summary_qty <> ln_trx_num_chk ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10479
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- WHOカラム取得
+    -- 固定グローバル変数を使用するため割愛
+--
+    -- プロファイル「XXCOI:在庫組織コード」を取得
+    -- 取得できない場合はエラー
+    lt_org_code := FND_PROFILE.VALUE( cv_xxcoi1_organization_code );
+    IF ( lt_org_code IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00005
+                     ,iv_token_name1  => cv_msg_tkn_pro_tok
+                     ,iv_token_value1 => cv_xxcoi1_organization_code
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ======================================
+    -- ２：ID変換、取得
+    -- ======================================
+    -- 共通関数を使用し、在庫組織IDを取得
+    -- 取得できない場合はエラー
+    lt_org_id := xxcoi_common_pkg.get_organization_id(
+                   iv_organization_code => lt_org_code
+                 );
+    IF ( lt_org_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00006
+                     ,iv_token_name1  => cv_msg_tkn_org_code_tok
+                     ,iv_token_value1 => lt_org_code
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 親品目ID取得
+    -- 取得できない場合はエラー
+    BEGIN
+      SELECT msib.inventory_item_id inventory_item_id
+      INTO   lt_parent_item_id
+      FROM   mtl_system_items_b msib                    -- Disc品目マスタ
+      WHERE  msib.segment1        = lt_parent_item_code -- 親品目コード
+      AND    msib.organization_id = lt_org_id           -- 在庫組織ID
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10480
+                       ,iv_token_name1  => cv_msg_tkn_org_code_tok
+                       ,iv_token_value1 => lt_org_code
+                       ,iv_token_name2  => cv_msg_tkn_item_code
+                       ,iv_token_value2 => lt_parent_item_code
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+--
+    -- 子品目ID取得
+    -- NULLの場合は処理を行わない
+    IF ( lt_child_item_code IS NULL ) THEN
+      NULL;
+    ELSE
+      -- 子品目IDを取得
+      -- 取得できない場合はエラー
+      BEGIN
+        SELECT msib.inventory_item_id inventory_item_id
+        INTO   lt_child_item_id
+        FROM   mtl_system_items_b msib                   -- Disc品目マスタ
+        WHERE  msib.segment1        = lt_child_item_code -- 子品目コード
+        AND    msib.organization_id = lt_org_id          -- 在庫組織ID
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_err_msg_xxcoi1_10480
+                         ,iv_token_name1  => cv_msg_tkn_org_code_tok
+                         ,iv_token_value1 => lt_org_code
+                         ,iv_token_name2  => cv_msg_tkn_item_code
+                         ,iv_token_value2 => lt_child_item_code
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+    END IF;
+--
+    -- ロケーションコード取得
+    -- 子品目コードがNULL、または、ロット別出荷情報作成から起動の場合は処理を行わない
+    IF ( ( lt_child_item_code IS NULL ) OR ( lt_source_code = cv_xxcoi016a06c ) ) THEN
+      NULL;
+    ELSE
+      -- メインロケーションを取得
+      -- 取得できなかった場合は、ダミーロケーションを取得
+      BEGIN
+        SELECT xmwl.location_code location_code
+        INTO   lt_loc_code
+        FROM   xxcoi_mst_warehouse_location xmwl         -- 倉庫ロケーションマスタ
+        WHERE  xmwl.organization_id   = lt_org_id        -- 在庫組織ID
+        AND    xmwl.base_code         = lt_base_code     -- 拠点コード
+        AND    xmwl.subinventory_code = lt_subinv_code   -- 保管場所コード
+        AND    xmwl.child_item_id     = lt_child_item_id -- 子品目ID
+        AND    xmwl.priority          = ct_priority_1    -- 優先順位：１（メインロケーション）
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- ダミーロケーションを取得
+          -- 取得できなかった場合はエラー
+          BEGIN
+            SELECT xmwl.location_code location_code
+            INTO   lt_loc_code
+            FROM   xxcoi_mst_warehouse_location xmwl            -- 倉庫ロケーションマスタ
+            WHERE  xmwl.organization_id   = lt_org_id           -- 在庫組織ID
+            AND    xmwl.base_code         = lt_base_code        -- 拠点コード
+            AND    xmwl.subinventory_code = lt_subinv_code      -- 保管場所コード
+            AND    xmwl.location_type     = ct_location_type_3  -- ロケーションタイプ：ダミーロケーション
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_msg_kbn_coi
+                             ,iv_name         => cv_err_msg_xxcoi1_10481
+                             ,iv_token_name1  => cv_msg_tkn_org_code_tok
+                             ,iv_token_value1 => lt_org_code
+                             ,iv_token_name2  => cv_msg_tkn_subinv_code
+                             ,iv_token_value2 => lt_subinv_code
+                             ,iv_token_name3  => cv_msg_tkn_item_code
+                             ,iv_token_value3 => lt_child_item_code
+                           );
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+          END;
+      END;
+    END IF;
+--
+    -- 符号取得
+    -- 入出庫、倉替、消化VD補充の場合
+    IF ( lt_trx_type_code IN ( cv_trx_type_code_10, cv_trx_type_code_20, cv_trx_type_code_70 ) ) THEN
+      SELECT flv.attribute2    AS attribute2 -- 符号区分
+      INTO   lt_sign_div
+      FROM   fnd_lookup_values flv --参照タイプ
+      WHERE  flv.lookup_type  = cv_xxcoi1_lot_tran_type
+      AND    flv.lookup_code  = lv_inout_code
+      AND    flv.language     = ct_lang
+      AND    flv.enabled_flag = cv_flag_y
+      AND    lt_trx_date      BETWEEN NVL(flv.start_date_active, lt_trx_date)
+                              AND     NVL(flv.end_date_active  , lt_trx_date)
+      ;
+    -- 上記以外の場合
+    ELSE
+      SELECT flv.attribute2    AS attribute2 -- 符号区分
+      INTO   lt_sign_div
+      FROM   fnd_lookup_values flv --参照タイプ
+      WHERE  flv.lookup_type  = cv_xxcoi1_tran_type
+      AND    flv.lookup_code  = lt_trx_type_code
+      AND    flv.language     = ct_lang
+      AND    flv.enabled_flag = cv_flag_y
+      AND    lt_trx_date      BETWEEN NVL(flv.start_date_active, lt_trx_date)
+                              AND     NVL(flv.end_date_active  , lt_trx_date)
+      ;
+    END IF;
+--
+    -- ======================================
+    -- ３：ロット別取引TEMP登録、更新
+    -- ======================================
+    -- 存在チェック
+    BEGIN
+      SELECT xltt.transaction_id transaction_id
+      INTO   lt_trx_id
+      FROM   xxcoi_lot_transactions_temp xltt              -- ロット別取引TEMP
+      WHERE  xltt.transaction_type_code = lt_trx_type_code -- 取引タイプコード
+      AND    xltt.source_code           = lt_source_code   -- ソースコード
+      AND    xltt.relation_key          = lt_relation_key  -- 紐付けキー
+      AND    xltt.base_code             = lt_base_code     -- 拠点コード
+      AND    xltt.subinventory_code     = lt_subinv_code   -- 保管場所コード
+      AND    xltt.organization_id       = lt_org_id        -- 在庫組織ID
+      AND    xltt.source_code           = cv_invttmtx      -- その他取引画面
+      ;
+--
+      -- 存在する場合は、更新
+      UPDATE xxcoi_lot_transactions_temp
+      SET    transaction_set_id        = lt_trx_set_id                    -- 取引セットID
+            ,organization_id           = lt_org_id                        -- 在庫組織ID
+            ,parent_item_id            = lt_parent_item_id                -- 親品目ID
+            ,child_item_id             = lt_child_item_id                 -- 子品目ID
+            ,lot                       = lt_lot                           -- ロット
+            ,difference_summary_code   = lt_diff_sum_code                 -- 固有記号
+            ,transaction_month         = TO_CHAR( lt_trx_date, 'YYYYMM' ) -- 取引年月
+            ,transaction_date          = lt_trx_date                      -- 取引日
+            ,slip_num                  = lt_slip_num                      -- 伝票No
+            ,case_in_qty               = lt_case_in_qty                   -- 入数
+            ,case_qty                  = lt_case_qty                      -- ケース数
+            ,singly_qty                = lt_singly_qty                    -- バラ数
+            ,summary_qty               = lt_summary_qty                   -- 取引数量
+            ,base_code                 = lt_base_code                     -- 拠点コード
+            ,subinventory_code         = lt_subinv_code                   -- 保管場所コード
+            ,location_code             = lt_loc_code                      -- ロケーションコード
+            ,transfer_organization_id  = DECODE( lt_tran_subinv_code, NULL, NULL, lt_org_id )
+                                                                          -- 転送先在庫組織ID
+            ,transfer_subinventory     = lt_tran_subinv_code              -- 転送先保管場所コード
+            ,transfer_location_code    = lt_tran_loc_code                 -- 転送先ロケーションコード
+            ,last_updated_by           = cn_last_updated_by               -- 最終更新者
+            ,last_update_date          = cd_last_update_date              -- 最終更新日
+            ,last_update_login         = cn_last_update_login             -- 最終更新ログイン
+            ,request_id                = cn_request_id                    -- 要求ID
+            ,program_application_id    = cn_program_application_id        -- コンカレント・プログラム・アプリケーションID
+            ,program_id                = cn_program_id                    -- コンカレント・プログラムID
+            ,program_update_date       = cd_program_update_date           -- プログラム更新日
+      WHERE  transaction_id            = lt_trx_id                        -- 取引ID
+      ;
+--
+    EXCEPTION
+      -- 存在しない場合は、新規作成
+      WHEN NO_DATA_FOUND THEN
+--
+        -- シーケンス値取得
+        SELECT xxcoi_lot_trx_temp_s01.NEXTVAL
+        INTO   lt_trx_id
+        FROM   DUAL
+        ;
+--
+        IF ( lt_case_qty * lt_singly_qty >= 0 ) THEN
+          -- ケース数とバラ数の符号が一致する場合、ロット別取引TEMPを1行で登録する。
+          -- ロット別取引TEMP作成
+          INSERT INTO xxcoi_lot_transactions_temp(
+             transaction_id                                       -- 取引ID
+            ,transaction_set_id                                   -- 取引セットID
+            ,organization_id                                      -- 在庫組織ID
+            ,parent_item_id                                       -- 親品目ID
+            ,child_item_id                                        -- 子品目ID
+            ,lot                                                  -- ロット
+            ,difference_summary_code                              -- 固有記号
+            ,transaction_type_code                                -- 取引タイプコード
+            ,transaction_month                                    -- 取引年月
+            ,transaction_date                                     -- 取引日
+            ,slip_num                                             -- 伝票No
+            ,case_in_qty                                          -- 入数
+            ,case_qty                                             -- ケース数
+            ,singly_qty                                           -- バラ数
+            ,summary_qty                                          -- 取引数量
+            ,transaction_uom                                      -- 基準単位
+            ,primary_quantity                                     -- 基準単位数量
+            ,base_code                                            -- 拠点コード
+            ,subinventory_code                                    -- 保管場所コード
+            ,location_code                                        -- ロケーションコード
+            ,transfer_organization_id                             -- 転送先在庫組織ID
+            ,transfer_subinventory                                -- 転送先保管場所コード
+            ,transfer_location_code                               -- 転送先ロケーションコード
+            ,sign_div                                             -- 符号区分
+            ,source_code                                          -- ソースコード
+            ,relation_key                                         -- 紐付けキー
+            ,created_by                                           -- 作成者
+            ,creation_date                                        -- 作成日
+            ,last_updated_by                                      -- 最終更新者
+            ,last_update_date                                     -- 最終更新日
+            ,last_update_login                                    -- 最終更新ログイン
+            ,request_id                                           -- 要求ID
+            ,program_application_id                               -- コンカレント・プログラム・アプリケーションID
+            ,program_id                                           -- コンカレント・プログラムID
+            ,program_update_date                                  -- プログラム更新日
+          )VALUES(
+             lt_trx_id                                            -- 取引ID
+            ,lt_trx_set_id                                        -- 取引セットID
+            ,lt_org_id                                            -- 在庫組織ID
+            ,lt_parent_item_id                                    -- 親品目ID
+            ,lt_child_item_id                                     -- 子品目ID
+            ,lt_lot                                               -- ロット
+            ,lt_diff_sum_code                                     -- 固有記号
+            ,lt_trx_type_code                                     -- 取引タイプコード
+            ,TO_CHAR( lt_trx_date, 'YYYYMM' )                     -- 取引年月
+            ,lt_trx_date                                          -- 取引日
+            ,lt_slip_num                                          -- 伝票No
+            ,lt_case_in_qty                                       -- 入数
+            ,lt_case_qty                                          -- ケース数
+            ,lt_singly_qty                                        -- バラ数
+            ,lt_summary_qty                                       -- 取引数量
+            ,NULL                                                 -- 基準単位
+            ,NULL                                                 -- 基準単位数量
+            ,lt_base_code                                         -- 拠点コード
+            ,lt_subinv_code                                       -- 保管場所コード
+            ,lt_loc_code                                          -- ロケーションコード
+            ,DECODE( lt_tran_subinv_code, NULL, NULL, lt_org_id ) -- 転送先在庫組織ID
+            ,lt_tran_subinv_code                                  -- 転送先保管場所コード
+            ,lt_tran_loc_code                                     -- 転送先ロケーションコード
+            ,lt_sign_div                                          -- 符号区分
+            ,lt_source_code                                       -- ソースコード
+            ,lt_relation_key                                      -- 紐付けキー
+            ,cn_created_by                                        -- 作成者
+            ,cd_creation_date                                     -- 作成日
+            ,cn_last_updated_by                                   -- 最終更新者
+            ,cd_last_update_date                                  -- 最終更新日
+            ,cn_last_update_login                                 -- 最終更新ログイン
+            ,cn_request_id                                        -- 要求ID
+            ,cn_program_application_id                            -- コンカレント・プログラム・アプリケーションID
+            ,cn_program_id                                        -- コンカレント・プログラムID
+            ,cd_program_update_date                               -- プログラム更新日
+          );
+        ELSE
+          -- ケース数とバラ数の符号が異なる場合、ロット別取引TEMPを2行に分けて登録する。
+          -- ロット別取引TEMP作成
+          INSERT INTO xxcoi_lot_transactions_temp(
+             transaction_id                                       -- 取引ID
+            ,transaction_set_id                                   -- 取引セットID
+            ,organization_id                                      -- 在庫組織ID
+            ,parent_item_id                                       -- 親品目ID
+            ,child_item_id                                        -- 子品目ID
+            ,lot                                                  -- ロット
+            ,difference_summary_code                              -- 固有記号
+            ,transaction_type_code                                -- 取引タイプコード
+            ,transaction_month                                    -- 取引年月
+            ,transaction_date                                     -- 取引日
+            ,slip_num                                             -- 伝票No
+            ,case_in_qty                                          -- 入数
+            ,case_qty                                             -- ケース数
+            ,singly_qty                                           -- バラ数
+            ,summary_qty                                          -- 取引数量
+            ,transaction_uom                                      -- 基準単位
+            ,primary_quantity                                     -- 基準単位数量
+            ,base_code                                            -- 拠点コード
+            ,subinventory_code                                    -- 保管場所コード
+            ,location_code                                        -- ロケーションコード
+            ,transfer_organization_id                             -- 転送先在庫組織ID
+            ,transfer_subinventory                                -- 転送先保管場所コード
+            ,transfer_location_code                               -- 転送先ロケーションコード
+            ,sign_div                                             -- 符号区分
+            ,source_code                                          -- ソースコード
+            ,relation_key                                         -- 紐付けキー
+            ,created_by                                           -- 作成者
+            ,creation_date                                        -- 作成日
+            ,last_updated_by                                      -- 最終更新者
+            ,last_update_date                                     -- 最終更新日
+            ,last_update_login                                    -- 最終更新ログイン
+            ,request_id                                           -- 要求ID
+            ,program_application_id                               -- コンカレント・プログラム・アプリケーションID
+            ,program_id                                           -- コンカレント・プログラムID
+            ,program_update_date                                  -- プログラム更新日
+          )VALUES(
+             lt_trx_id                                            -- 取引ID
+            ,lt_trx_set_id                                        -- 取引セットID
+            ,lt_org_id                                            -- 在庫組織ID
+            ,lt_parent_item_id                                    -- 親品目ID
+            ,lt_child_item_id                                     -- 子品目ID
+            ,lt_lot                                               -- ロット
+            ,lt_diff_sum_code                                     -- 固有記号
+            ,lt_trx_type_code                                     -- 取引タイプコード
+            ,TO_CHAR( lt_trx_date, 'YYYYMM' )                     -- 取引年月
+            ,lt_trx_date                                          -- 取引日
+            ,lt_slip_num                                          -- 伝票No
+            ,lt_case_in_qty                                       -- 入数
+            ,lt_case_qty                                          -- ケース数
+            ,0                                                    -- バラ数
+            ,lt_case_in_qty * lt_case_qty                         -- 取引数量
+            ,NULL                                                 -- 基準単位
+            ,NULL                                                 -- 基準単位数量
+            ,lt_base_code                                         -- 拠点コード
+            ,lt_subinv_code                                       -- 保管場所コード
+            ,lt_loc_code                                          -- ロケーションコード
+            ,DECODE( lt_tran_subinv_code, NULL, NULL, lt_org_id ) -- 転送先在庫組織ID
+            ,lt_tran_subinv_code                                  -- 転送先保管場所コード
+            ,lt_tran_loc_code                                     -- 転送先ロケーションコード
+            ,lt_sign_div                                          -- 符号区分
+            ,lt_source_code                                       -- ソースコード
+            ,lt_relation_key                                      -- 紐付けキー
+            ,cn_created_by                                        -- 作成者
+            ,cd_creation_date                                     -- 作成日
+            ,cn_last_updated_by                                   -- 最終更新者
+            ,cd_last_update_date                                  -- 最終更新日
+            ,cn_last_update_login                                 -- 最終更新ログイン
+            ,cn_request_id                                        -- 要求ID
+            ,cn_program_application_id                            -- コンカレント・プログラム・アプリケーションID
+            ,cn_program_id                                        -- コンカレント・プログラムID
+            ,cd_program_update_date                               -- プログラム更新日
+          );
+--
+          -- シーケンス値取得
+          SELECT xxcoi_lot_trx_temp_s01.NEXTVAL
+          INTO   lt_trx_id
+          FROM   DUAL
+          ;
+--
+          -- ロット別取引TEMP作成
+          INSERT INTO xxcoi_lot_transactions_temp(
+             transaction_id                                       -- 取引ID
+            ,transaction_set_id                                   -- 取引セットID
+            ,organization_id                                      -- 在庫組織ID
+            ,parent_item_id                                       -- 親品目ID
+            ,child_item_id                                        -- 子品目ID
+            ,lot                                                  -- ロット
+            ,difference_summary_code                              -- 固有記号
+            ,transaction_type_code                                -- 取引タイプコード
+            ,transaction_month                                    -- 取引年月
+            ,transaction_date                                     -- 取引日
+            ,slip_num                                             -- 伝票No
+            ,case_in_qty                                          -- 入数
+            ,case_qty                                             -- ケース数
+            ,singly_qty                                           -- バラ数
+            ,summary_qty                                          -- 取引数量
+            ,transaction_uom                                      -- 基準単位
+            ,primary_quantity                                     -- 基準単位数量
+            ,base_code                                            -- 拠点コード
+            ,subinventory_code                                    -- 保管場所コード
+            ,location_code                                        -- ロケーションコード
+            ,transfer_organization_id                             -- 転送先在庫組織ID
+            ,transfer_subinventory                                -- 転送先保管場所コード
+            ,transfer_location_code                               -- 転送先ロケーションコード
+            ,sign_div                                             -- 符号区分
+            ,source_code                                          -- ソースコード
+            ,relation_key                                         -- 紐付けキー
+            ,created_by                                           -- 作成者
+            ,creation_date                                        -- 作成日
+            ,last_updated_by                                      -- 最終更新者
+            ,last_update_date                                     -- 最終更新日
+            ,last_update_login                                    -- 最終更新ログイン
+            ,request_id                                           -- 要求ID
+            ,program_application_id                               -- コンカレント・プログラム・アプリケーションID
+            ,program_id                                           -- コンカレント・プログラムID
+            ,program_update_date                                  -- プログラム更新日
+          )VALUES(
+             lt_trx_id                                            -- 取引ID
+            ,lt_trx_set_id                                        -- 取引セットID
+            ,lt_org_id                                            -- 在庫組織ID
+            ,lt_parent_item_id                                    -- 親品目ID
+            ,lt_child_item_id                                     -- 子品目ID
+            ,lt_lot                                               -- ロット
+            ,lt_diff_sum_code                                     -- 固有記号
+            ,lt_trx_type_code                                     -- 取引タイプコード
+            ,TO_CHAR( lt_trx_date, 'YYYYMM' )                     -- 取引年月
+            ,lt_trx_date                                          -- 取引日
+            ,lt_slip_num                                          -- 伝票No
+            ,lt_case_in_qty                                       -- 入数
+            ,0                                                    -- ケース数
+            ,lt_singly_qty                                        -- バラ数
+            ,lt_singly_qty                                        -- 取引数量
+            ,NULL                                                 -- 基準単位
+            ,NULL                                                 -- 基準単位数量
+            ,lt_base_code                                         -- 拠点コード
+            ,lt_subinv_code                                       -- 保管場所コード
+            ,lt_loc_code                                          -- ロケーションコード
+            ,DECODE( lt_tran_subinv_code, NULL, NULL, lt_org_id ) -- 転送先在庫組織ID
+            ,lt_tran_subinv_code                                  -- 転送先保管場所コード
+            ,lt_tran_loc_code                                     -- 転送先ロケーションコード
+            ,lt_sign_div                                          -- 符号区分
+            ,lt_source_code                                       -- ソースコード
+            ,lt_relation_key                                      -- 紐付けキー
+            ,cn_created_by                                        -- 作成者
+            ,cd_creation_date                                     -- 作成日
+            ,cn_last_updated_by                                   -- 最終更新者
+            ,cd_last_update_date                                  -- 最終更新日
+            ,cn_last_update_login                                 -- 最終更新ログイン
+            ,cn_request_id                                        -- 要求ID
+            ,cn_program_application_id                            -- コンカレント・プログラム・アプリケーションID
+            ,cn_program_id                                        -- コンカレント・プログラムID
+            ,cd_program_update_date                               -- プログラム更新日
+          );
+      END IF;
+--
+    END;
+--
+    -- OUTパラメータに取得した取引IDを設定
+    on_trx_id := lt_trx_id;
+--
+  EXCEPTION
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+  END cre_lot_trx_temp;
+--
+/************************************************************************
+ * Procedure Name  : DEL_LOT_TRX_TEMP
+ * Description     : ロット別取引TEMP削除
+ ************************************************************************/
+  PROCEDURE del_lot_trx_temp(
+    in_trx_id  IN  NUMBER          -- ロット別TEMP取引ID
+   ,ov_errbuf  OUT VARCHAR2        -- エラーメッセージ
+   ,ov_retcode OUT VARCHAR2        -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg  OUT VARCHAR2        -- ユーザー・エラーメッセージ
+  )IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'del_lot_trx_temp'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージ用定数
+    cv_msg_kbn_coi          CONSTANT VARCHAR2(5)   := 'XXCOI';            -- アプリケーション短縮名
+    cv_err_msg_xxcoi1_10477 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10477'; -- 共通関数パラメータ必須エラー
+    cv_msg_xxcoi1_10494     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10494'; -- プロシージャ名：ロット別取引TEMP削除
+    cv_msg_xxcoi1_10506     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10506'; -- 取引ID
+--
+    cv_msg_tkn_param1       CONSTANT VARCHAR2(20)  := 'PARAM1';           -- トークン：パラメータ１
+    cv_msg_tkn_param2       CONSTANT VARCHAR2(20)  := 'PARAM2';           -- トークン：パラメータ２
+-- 
+    -- *** ローカル変数 ***
+    -- 入力パラメータ格納用変数
+    lt_trx_id          xxcoi_lot_transactions_temp.transaction_id%TYPE; -- 取引ID
+--
+    -- メッセージ格納用変数
+    lv_msg_proc_name VARCHAR2(100); -- プロシージャ名
+    lv_msg_chk_tkn   VARCHAR2(100); -- 入力パラメータエラートークン格納用変数
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- ローカル変数初期化
+--
+    -- 入力パラメータ格納用変数
+    lt_trx_id        := NULL; -- 取引ID
+--
+    -- メッセージ格納用変数
+    lv_msg_proc_name := NULL; -- プロシージャ名
+    lv_msg_chk_tkn   := NULL; -- 入力パラメータエラートークン格納用変数
+--
+    -- プロシージャ名取得
+    lv_msg_proc_name := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10494
+                        );
+--
+--
+    -- ======================================
+    -- １：入力パラメータのチェック
+    -- ======================================
+    -- 取引ID
+    IF ( in_trx_id IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10506
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータを変数に退避
+    lt_trx_id := in_trx_id; -- 取引ID
+--
+    -- ======================================
+    -- ２：ロット別取引TEMP削除
+    -- ======================================
+    DELETE 
+    FROM   xxcoi_lot_transactions_temp xltt
+    WHERE  transaction_id = lt_trx_id      -- 取引ID
+    ;
+--
+  EXCEPTION
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+  END del_lot_trx_temp;
+--
+/************************************************************************
+ * Procedure Name  : CRE_LOT_TRX
+ * Description     : ロット別取引明細作成
+ ************************************************************************/
+  PROCEDURE cre_lot_trx(
+    in_trx_set_id            IN  NUMBER   -- 取引セットID
+   ,iv_parent_item_code      IN  VARCHAR2 -- 親品目コード
+   ,iv_child_item_code       IN  VARCHAR2 -- 子品目コード
+   ,iv_lot                   IN  VARCHAR2 -- ロット(賞味期限)
+   ,iv_diff_sum_code         IN  VARCHAR2 -- 固有記号
+   ,iv_trx_type_code         IN  VARCHAR2 -- 取引タイプコード
+   ,id_trx_date              IN  DATE     -- 取引日
+   ,iv_slip_num              IN  VARCHAR2 -- 伝票No
+   ,in_case_in_qty           IN  NUMBER   -- 入数
+   ,in_case_qty              IN  NUMBER   -- ケース数
+   ,in_singly_qty            IN  NUMBER   -- バラ数
+   ,in_summary_qty           IN  NUMBER   -- 取引数量
+   ,iv_base_code             IN  VARCHAR2 -- 拠点コード
+   ,iv_subinv_code           IN  VARCHAR2 -- 保管場所コード
+   ,iv_loc_code              IN  VARCHAR2 -- ロケーションコード
+   ,iv_tran_subinv_code      IN  VARCHAR2 -- 転送先保管場所コード
+   ,iv_tran_loc_code         IN  VARCHAR2 -- 転送先ロケーションコード
+   ,iv_source_code           IN  VARCHAR2 -- ソースコード
+   ,iv_relation_key          IN  VARCHAR2 -- 紐付けキー
+   ,iv_reason                IN  VARCHAR2 -- 事由
+   ,iv_reserve_trx_type_code IN  VARCHAR2 -- 引当時取引タイプコード
+   ,on_trx_id                OUT NUMBER   -- ロット別取引明細
+   ,ov_errbuf                OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode               OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg                OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  )IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'cre_lot_trx'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージ用定数
+    cv_msg_kbn_coi          CONSTANT VARCHAR2(5)   := 'XXCOI';            -- アプリケーション短縮名
+    cv_err_msg_xxcoi1_10477 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10477'; -- 共通関数パラメータ必須エラー
+    cv_err_msg_xxcoi1_10478 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10478'; -- ケース数・バラ数符号チェックエラー
+    cv_err_msg_xxcoi1_10479 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10479'; -- 取引数量チェックエラー
+    cv_err_msg_xxcoi1_00005 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
+    cv_err_msg_xxcoi1_00006 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00006'; -- 在庫組織ID取得エラーメッセージ
+    cv_err_msg_xxcoi1_10480 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10480'; -- 品目ID取得エラー
+    cv_err_msg_xxcoi1_10482 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10482'; -- 品目情報取得エラー
+    cv_err_msg_xxcoi1_10483 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10483'; -- 換算後数量取得エラー
+    cv_err_msg_xxcoi1_10484 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10484'; -- 従業員情報取得エラー
+    cv_err_msg_xxcoi1_10507 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10507'; -- 入数0以下エラー
+    cv_err_msg_xxcoi1_00011 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00011'; -- 業務日付未取得エラー
+--
+    cv_msg_xxcoi1_10495     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10495'; -- プロシージャ：ロット別取引明細作成
+    cv_msg_xxcoi1_10496     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10496'; -- 親品目コード
+    cv_msg_xxcoi1_10497     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10497'; -- 取引タイプコード
+    cv_msg_xxcoi1_10498     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10498'; -- 取引日
+    cv_msg_xxcoi1_10500     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10500'; -- 入数
+    cv_msg_xxcoi1_10501     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10501'; -- 取引数量
+    cv_msg_xxcoi1_10502     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10502'; -- 拠点コード
+    cv_msg_xxcoi1_10503     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10503'; -- 保管場所コード
+    cv_msg_xxcoi1_10504     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10504'; -- ソースコード
+--
+    cv_msg_tkn_param1       CONSTANT VARCHAR2(20)  := 'PARAM1';           -- トークン：パラメータ１
+    cv_msg_tkn_param2       CONSTANT VARCHAR2(20)  := 'PARAM2';           -- トークン：パラメータ２
+    cv_msg_tkn_pro_tok      CONSTANT VARCHAR2(20)  := 'PRO_TOK';          -- トークン：プロファイル名
+    cv_msg_tkn_org_code_tok CONSTANT VARCHAR2(20)  := 'ORG_CODE_TOK';     -- トークン：在庫組織コード
+    cv_msg_tkn_item_code    CONSTANT VARCHAR2(20)  := 'ITEM_CODE';        -- トークン：品目コード
+    cv_msg_tkn_err_msg      CONSTANT VARCHAR2(20)  := 'ERR_MSG';          -- トークン：エラーメッセージ
+    cv_msg_tkn_uom_code     CONSTANT VARCHAR2(20)  := 'UOM_CODE';         -- トークン：換算前単位
+--
+    -- プロファイル名
+    cv_xxcoi1_organization_code CONSTANT VARCHAR2(50) := 'XXCOI1_ORGANIZATION_CODE'; -- プロファイル：在庫組織コード
+--
+    -- *** ローカル変数 ***
+    -- 入力パラメータ格納用変数
+    lt_trx_set_id            xxcoi_lot_transactions.transaction_set_id%TYPE;            -- 取引セットID
+    lt_parent_item_code      mtl_system_items_b.segment1%TYPE;                          -- 親品目コード
+    lt_child_item_code       mtl_system_items_b.segment1%TYPE;                          -- 子品目コード
+    lt_lot                   xxcoi_lot_transactions.lot%TYPE;                           -- ロット(賞味期限)
+    lt_diff_sum_code         xxcoi_lot_transactions.difference_summary_code%TYPE;       -- 固有記号
+    lt_trx_type_code         xxcoi_lot_transactions.transaction_type_code%TYPE;         -- 取引タイプコード
+    lt_trx_date              xxcoi_lot_transactions.transaction_date%TYPE;              -- 取引日
+    lt_slip_num              xxcoi_lot_transactions.slip_num%TYPE;                      -- 伝票No
+    lt_case_in_qty           xxcoi_lot_transactions.case_in_qty%TYPE;                   -- 入数
+    lt_case_qty              xxcoi_lot_transactions.case_qty%TYPE;                      -- ケース数
+    lt_singly_qty            xxcoi_lot_transactions.singly_qty%TYPE;                    -- バラ数
+    lt_summary_qty           xxcoi_lot_transactions.summary_qty%TYPE;                   -- 取引数量
+    lt_base_code             xxcoi_lot_transactions.base_code%TYPE;                     -- 拠点コード
+    lt_subinv_code           xxcoi_lot_transactions.subinventory_code%TYPE;             -- 保管場所コード
+    lt_loc_code              xxcoi_lot_transactions.location_code%TYPE;                 -- ロケーションコード
+    lt_tran_subinv_code      xxcoi_lot_transactions.transfer_subinventory%TYPE;         -- 転送先保管場所コード
+    lt_tran_loc_code         xxcoi_lot_transactions.transfer_location_code%TYPE;        -- 転送先ロケーションコード
+    lt_source_code           xxcoi_lot_transactions.source_code%TYPE;                   -- ソースコード
+    lt_relation_key          xxcoi_lot_transactions.relation_key%TYPE;                  -- 紐付けキー
+    lt_reason                xxcoi_lot_transactions.reason%TYPE;                        -- 事由
+    lt_reserve_trx_type_code xxcoi_lot_transactions.reserve_transaction_type_code%TYPE; -- 引当時取引タイプコード
+--
+    -- ID変換、導出項目
+    ld_proc_date       DATE;                                       -- 業務日付
+    lt_org_code        mtl_parameters.organization_code%TYPE;      -- 在庫組織コード
+    lt_org_id          mtl_parameters.organization_id%TYPE;        -- 在庫組織ID
+    lt_parent_item_id  xxcoi_lot_transactions.parent_item_id%TYPE; -- 親品目ID
+    lt_trx_id          xxcoi_lot_transactions.transaction_id%TYPE; -- 取引ID
+    lt_fix_user_code   xxcoi_lot_transactions.fix_user_code%TYPE;  -- 確定者コード
+    lt_fix_user_name   xxcoi_lot_transactions.fix_user_name%TYPE;  -- 確定者名
+--
+    -- 共通関数取得項目
+    -- 在庫共通関数「品目情報取得2」
+    lt_item_status        mtl_system_items_b.inventory_item_status_code%TYPE;    -- 品目ステータス
+    lt_cust_order_flg     mtl_system_items_b.customer_order_enabled_flag%TYPE;   -- 顧客受注可能フラグ
+    lt_transaction_enable mtl_system_items_b.mtl_transactions_enabled_flag%TYPE; -- 取引可能
+    lt_stock_enabled_flg  mtl_system_items_b.stock_enabled_flag%TYPE;            -- 在庫保有可能フラグ
+    lt_return_enable      mtl_system_items_b.returnable_flag%TYPE;               -- 返品可能
+    lt_sales_class        ic_item_mst_b.attribute26%TYPE;                        -- 売上対象区分
+    lt_primary_unit       mtl_system_items_b.primary_unit_of_measure%TYPE;       -- 基準単位
+    lt_child_item_id      xxcoi_lot_transactions.child_item_id%TYPE;             -- 子品目ID
+    lt_primary_uom_code   mtl_system_items_b.primary_uom_code%TYPE;              -- 基準単位コード
+--
+    -- 販売共通関数「単位換算取得」
+    lt_after_quantity xxcoi_lot_transactions.primary_quantity%TYPE; -- 換算後数量
+    ln_content        NUMBER;                                       -- 入数
+--
+    -- メッセージ格納用変数
+    lv_msg_proc_name VARCHAR2(100); -- プロシージャ名
+    lv_msg_chk_tkn   VARCHAR2(100); -- 入力パラメータエラートークン格納用変数
+--
+    -- その他
+    ln_trx_num_chk NUMBER; -- 取引数量チェック用変数
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- ローカル変数初期化
+    -- 入力パラメータ格納用変数
+    lt_trx_set_id            := NULL; -- 取引セットID
+    lt_parent_item_code      := NULL; -- 親品目コード
+    lt_child_item_code       := NULL; -- 子品目コード
+    lt_lot                   := NULL; -- ロット(賞味期限)
+    lt_diff_sum_code         := NULL; -- 固有記号
+    lt_trx_type_code         := NULL; -- 取引タイプコード
+    lt_trx_date              := NULL; -- 取引日
+    lt_slip_num              := NULL; -- 伝票No
+    lt_case_in_qty           := NULL; -- 入数
+    lt_case_qty              := NULL; -- ケース数
+    lt_singly_qty            := NULL; -- バラ数
+    lt_summary_qty           := NULL; -- 取引数量
+    lt_base_code             := NULL; -- 拠点コード
+    lt_subinv_code           := NULL; -- 保管場所コード
+    lt_loc_code              := NULL; -- ロケーションコード
+    lt_tran_subinv_code      := NULL; -- 転送先保管場所コード
+    lt_tran_loc_code         := NULL; -- 転送先ロケーションコード
+    lt_source_code           := NULL; -- ソースコード
+    lt_relation_key          := NULL; -- 紐付けキー
+    lt_reason                := NULL; -- 事由
+    lt_reserve_trx_type_code := NULL; -- 引当時取引タイプコード
+--
+    -- ID変換、導出項目
+    ld_proc_date             := NULL; -- 業務日付
+    lt_org_code              := NULL; -- 在庫組織コード
+    lt_org_id                := NULL; -- 在庫組織ID
+    lt_parent_item_id        := NULL; -- 親品目ID
+    lt_trx_id                := NULL; -- 取引ID
+    lt_fix_user_code         := NULL; -- 確定者コード
+    lt_fix_user_name         := NULL; -- 確定者名
+--
+    -- 共通関数取得項目
+    -- 在庫共通関数「品目情報取得2」
+    lt_item_status           := NULL; -- 品目ステータス
+    lt_cust_order_flg        := NULL; -- 顧客受注可能フラグ
+    lt_transaction_enable    := NULL; -- 取引可能
+    lt_stock_enabled_flg     := NULL; -- 在庫保有可能フラグ
+    lt_return_enable         := NULL; -- 返品可能
+    lt_sales_class           := NULL; -- 売上対象区分
+    lt_primary_unit          := NULL; -- 基準単位
+    lt_child_item_id         := NULL; -- 子品目ID
+    lt_primary_uom_code      := NULL; -- 基準単位コード
+--
+    -- 販売共通関数「単位換算取得」
+    lt_after_quantity        := NULL; -- 換算後数量
+    ln_content               := NULL; -- 入数
+--
+    -- その他
+    ln_trx_num_chk           := NULL; -- 取引数量チェック用変数
+--
+    -- プロシージャ名取得
+    lv_msg_proc_name := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10495
+                        );
+--
+    -- ======================================
+    -- １：入力パラメータのチェック
+    -- ======================================
+    -- 親品目コード
+    IF ( iv_parent_item_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10496
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 取引タイプコード
+    IF ( iv_trx_type_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10497
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 取引日
+    IF ( id_trx_date IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10498
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入数
+    IF ( in_case_in_qty IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10500
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 取引数量
+    IF ( in_summary_qty IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10501
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 拠点コード
+    IF ( iv_base_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10502
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 保管場所コード
+    IF ( iv_subinv_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10503
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ソースコード
+    IF ( iv_source_code IS NULL ) THEN
+      -- トークン設定値取得
+      lv_msg_chk_tkn := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_msg_xxcoi1_10504
+                        );
+--
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10477
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => lv_msg_proc_name
+                     ,iv_token_name2  => cv_msg_tkn_param2
+                     ,iv_token_value2 => lv_msg_chk_tkn
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- INパラメータを変数に退避
+    lt_trx_set_id            := in_trx_set_id;             -- 取引セットID
+    lt_parent_item_code      := iv_parent_item_code;       -- 親品目コード
+    lt_child_item_code       := iv_child_item_code;        -- 子品目コード
+    lt_lot                   := iv_lot;                    -- ロット(賞味期限)
+    lt_diff_sum_code         := iv_diff_sum_code;          -- 固有記号
+    lt_trx_type_code         := iv_trx_type_code;          -- 取引タイプコード
+    lt_trx_date              := id_trx_date;               -- 取引日
+    lt_slip_num              := iv_slip_num;               -- 伝票No
+    lt_case_in_qty           := in_case_in_qty;            -- 入数
+    lt_case_qty              := in_case_qty;               -- ケース数
+    lt_singly_qty            := in_singly_qty;             -- バラ数
+    lt_summary_qty           := in_summary_qty;            -- 取引数量
+    lt_base_code             := iv_base_code;              -- 拠点コード
+    lt_subinv_code           := iv_subinv_code;            -- 保管場所コード
+    lt_loc_code              := iv_loc_code;               -- ロケーションコード
+    lt_tran_subinv_code      := iv_tran_subinv_code;       -- 転送先保管場所コード
+    lt_tran_loc_code         := iv_tran_loc_code;          -- 転送先ロケーションコード
+    lt_source_code           := iv_source_code;            -- ソースコード
+    lt_relation_key          := iv_relation_key;           -- 紐付けキー
+    lt_reason                := iv_reason;                 -- 事由
+    lt_reserve_trx_type_code := iv_reserve_trx_type_code ; -- 引当時取引タイプコード
+--
+    -- 入数、ケース数、バラ数、取引数量の検証
+    -- ケース数がNULLの場合は0を設定
+    IF ( lt_case_qty IS NULL ) THEN
+      lt_case_qty := 0;
+    END IF;
+--
+    -- バラ数がNULLの場合は0を設定
+    IF ( lt_singly_qty IS NULL ) THEN
+      lt_singly_qty := 0;
+    END IF;
+--
+    -- 入数が0以下の場合は、エラー
+    IF ( lt_case_in_qty <= 0 ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10507
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ケース数、バラ数の符号チェック
+    -- 符号が異なる場合はエラー
+    IF ( ( lt_case_qty >= 0 AND lt_singly_qty >= 0 ) OR ( lt_case_qty <= 0 AND lt_singly_qty <= 0 ) ) THEN
+      NULL;
+    ELSE
+     lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10478
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- (入数＊ケース数)＋バラ数が取引数量と異なる場合はエラー
+    ln_trx_num_chk := (lt_case_in_qty * lt_case_qty) + lt_singly_qty;
+    IF ( lt_summary_qty <> ln_trx_num_chk ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10479
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- WHOカラム取得
+    -- 固定グローバル変数を使用するため割愛
+--
+    -- プロファイル「XXCOI:在庫組織コード」を取得
+    -- 取得できない場合はエラー
+    lt_org_code := FND_PROFILE.VALUE( cv_xxcoi1_organization_code );
+    IF ( lt_org_code IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00005
+                     ,iv_token_name1  => cv_msg_tkn_pro_tok
+                     ,iv_token_value1 => cv_xxcoi1_organization_code
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 業務日付取得
+    -- 取得できない場合は、エラー
+    ld_proc_date := xxccp_common_pkg2.get_process_date;
+    IF ( ld_proc_date IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00011
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ======================================
+    -- ２：ID変換、取得
+    -- ======================================
+    -- 共通関数を使用し、在庫組織IDを取得
+    -- 取得できない場合はエラー
+    lt_org_id := xxcoi_common_pkg.get_organization_id(
+                   iv_organization_code => lt_org_code
+                 );
+    IF ( lt_org_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00006
+                     ,iv_token_name1  => cv_msg_tkn_org_code_tok
+                     ,iv_token_value1 => lt_org_code
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 親品目ID取得
+    -- 取得できない場合はエラー
+    BEGIN
+      SELECT msib.inventory_item_id inventory_item_id
+      INTO   lt_parent_item_id
+      FROM   mtl_system_items_b msib                    -- Disc品目マスタ
+      WHERE  msib.segment1        = lt_parent_item_code -- 親品目コード
+      AND    msib.organization_id = lt_org_id           -- 在庫組織ID
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10480
+                       ,iv_token_name1  => cv_msg_tkn_org_code_tok
+                       ,iv_token_value1 => lt_org_code
+                       ,iv_token_name2  => cv_msg_tkn_item_code
+                       ,iv_token_value2 => lt_parent_item_code
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+--
+    -- 子品目ID取得
+    -- NULLの場合は処理を行わない
+    IF ( lt_child_item_code IS NULL ) THEN
+      NULL;
+    ELSE
+      -- 子品目の品目情報を取得
+      -- 在庫共通関数「品目情報取得2」
+      xxcoi_common_pkg.get_item_info2(
+        ov_errbuf               => lv_errbuf             -- エラーメッセージ
+       ,ov_retcode              => lv_retcode            -- リターン・コード
+       ,ov_errmsg               => lv_errmsg             -- ユーザー・エラーメッセージ
+       ,iv_item_code            => lt_child_item_code    -- INパラメータ.子品目コード
+       ,in_org_id               => lt_org_id             -- 在庫組織ID
+       ,ov_item_status          => lt_item_status        -- ※使用しない_品目ステータス
+       ,ov_cust_order_flg       => lt_cust_order_flg     -- ※使用しない_顧客受注可能フラグ
+       ,ov_transaction_enable   => lt_transaction_enable -- ※使用しない_取引可能
+       ,ov_stock_enabled_flg    => lt_stock_enabled_flg  -- ※使用しない_在庫保有可能フラグ
+       ,ov_return_enable        => lt_return_enable      -- ※使用しない_返品可能
+       ,ov_sales_class          => lt_sales_class        -- ※使用しない_売上対象区分
+       ,ov_primary_unit         => lt_primary_unit       -- ※使用しない_基準単位
+       ,on_inventory_item_id    => lt_child_item_id      -- 子品目ID
+       ,ov_primary_uom_code     => lt_primary_uom_code   -- 基準単位コード
+      );
+      -- リターンコードが正常以外の場合、エラー
+      IF ( lv_retcode <> cv_status_normal ) THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_err_msg_xxcoi1_10482
+                         ,iv_token_name1  => cv_msg_tkn_org_code_tok
+                         ,iv_token_value1 => lt_org_code
+                         ,iv_token_name2  => cv_msg_tkn_item_code
+                         ,iv_token_value2 => lt_child_item_code
+                         ,iv_token_name3  => cv_msg_tkn_err_msg
+                         ,iv_token_value3 => lv_errmsg
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END IF;
+--
+      -- 基準単位数量を取得
+      -- 販売共通関数「単位換算取得」
+      xxcos_common_pkg.get_uom_cnv(
+        iv_before_uom_code    => lt_primary_uom_code -- 換算前単位コード
+       ,in_before_quantity    => lt_summary_qty      -- 換算前数量
+       ,iov_item_code         => lt_child_item_code  -- 品目コード
+       ,iov_organization_code => lt_org_code         -- 在庫組織コード
+       ,ion_inventory_item_id => lt_child_item_id    -- 品目ＩＤ
+       ,ion_organization_id   => lt_org_id           -- 在庫組織ＩＤ
+       ,iov_after_uom_code    => lt_primary_uom_code -- 換算後単位コード
+       ,on_after_quantity     => lt_after_quantity   -- 換算後数量
+       ,on_content            => ln_content          -- 入数
+       ,ov_errbuf             => lv_errbuf           -- エラー・メッセージエラー
+       ,ov_retcode            => lv_retcode          -- リターン・コード
+       ,ov_errmsg             => lv_errmsg           -- ユーザー・エラー・メッセージ
+      );
+      -- リターンコードが正常以外の場合、エラー
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_err_msg_xxcoi1_10483
+                         ,iv_token_name1  => cv_msg_tkn_org_code_tok
+                         ,iv_token_value1 => lt_org_code
+                         ,iv_token_name2  => cv_msg_tkn_item_code
+                         ,iv_token_value2 => lt_child_item_code
+                         ,iv_token_name3  => cv_msg_tkn_uom_code
+                         ,iv_token_value3 => lt_primary_uom_code
+                         ,iv_token_name4  => cv_msg_tkn_err_msg
+                         ,iv_token_value4 => lv_errmsg
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END IF;
+--
+    END IF;
+--
+    -- 従業員情報の取得
+    BEGIN
+      SELECT papf.employee_number                                     emp_code -- 従業員コード
+            ,papf.per_information18 || ' ' || papf.per_information19  emp_name -- 従業員名
+      INTO   lt_fix_user_code                                                  -- 確定者コード
+            ,lt_fix_user_name                                                  -- 確定者名
+      FROM   fnd_user fu                                                       -- ユーザマスタ
+            ,per_all_people_f papf                                             -- 従業員マスタ
+      WHERE  fu.user_id     = cn_created_by                                    -- ユーザID
+      AND    fu.employee_id = papf.person_id
+      AND    ld_proc_date BETWEEN papf.effective_start_date
+                          AND     papf.effective_end_date                      -- 有効日付チェック
+      ;
+--
+    EXCEPTION
+      -- 取得できなかった場合は、エラー
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_kbn_coi
+                      ,iv_name         => cv_err_msg_xxcoi1_10484
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+--
+    -- シーケンス値取得
+    SELECT xxcoi_lot_transactions_s01.NEXTVAL
+    INTO   lt_trx_id
+    FROM   DUAL
+    ;
+--
+    -- ロット別取引明細作成
+    INSERT INTO xxcoi_lot_transactions(
+      transaction_id                                       -- 取引ID
+     ,transaction_set_id                                   -- 取引セットID
+     ,organization_id                                      -- 在庫組織ID
+     ,parent_item_id                                       -- 親品目ID
+     ,child_item_id                                        -- 子品目ID
+     ,lot                                                  -- ロット
+     ,difference_summary_code                              -- 固有記号
+     ,transaction_type_code                                -- 取引タイプコード
+     ,transaction_month                                    -- 取引年月
+     ,transaction_date                                     -- 取引日
+     ,slip_num                                             -- 伝票No
+     ,case_in_qty                                          -- 入数
+     ,case_qty                                             -- ケース数
+     ,singly_qty                                           -- バラ数
+     ,summary_qty                                          -- 取引数量
+     ,transaction_uom                                      -- 基準単位
+     ,primary_quantity                                     -- 基準単位数量
+     ,base_code                                            -- 拠点コード
+     ,subinventory_code                                    -- 保管場所コード
+     ,location_code                                        -- ロケーションコード
+     ,transfer_organization_id                             -- 転送先在庫組織ID
+     ,transfer_subinventory                                -- 転送先保管場所コード
+     ,transfer_location_code                               -- 転送先ロケーションコード
+     ,source_code                                          -- ソースコード
+     ,relation_key                                         -- 紐付けキー
+     ,reserve_transaction_type_code                        -- 引当時取引タイプコード
+     ,reason                                               -- 事由
+     ,fix_user_code                                        -- 確定者コード
+     ,fix_user_name                                        -- 確定者名
+     ,created_by                                           -- 作成者
+     ,creation_date                                        -- 作成日
+     ,last_updated_by                                      -- 最終更新者
+     ,last_update_date                                     -- 最終更新日
+     ,last_update_login                                    -- 最終更新ログイン
+     ,request_id                                           -- 要求ID
+     ,program_application_id                               -- コンカレント・プログラム・アプリケーションID
+     ,program_id                                           -- コンカレント・プログラムID
+     ,program_update_date                                  -- プログラム更新日
+    )VALUES(
+      lt_trx_id                                            -- 取引ID
+     ,lt_trx_set_id                                        -- 取引セットID
+     ,lt_org_id                                            -- 在庫組織ID
+     ,lt_parent_item_id                                    -- 親品目ID
+     ,lt_child_item_id                                     -- 子品目ID
+     ,lt_lot                                               -- ロット
+     ,lt_diff_sum_code                                     -- 固有記号
+     ,lt_trx_type_code                                     -- 取引タイプコード
+     ,TO_CHAR( lt_trx_date, 'YYYYMM' )                     -- 取引年月
+     ,lt_trx_date                                          -- 取引日
+     ,lt_slip_num                                          -- 伝票No
+     ,lt_case_in_qty                                       -- 入数
+     ,lt_case_qty                                          -- ケース数
+     ,lt_singly_qty                                        -- バラ数
+     ,lt_summary_qty                                       -- 取引数量
+     ,lt_primary_uom_code                                  -- 基準単位
+     ,lt_after_quantity                                    -- 基準単位数量
+     ,lt_base_code                                         -- 拠点コード
+     ,lt_subinv_code                                       -- 保管場所コード
+     ,lt_loc_code                                          -- ロケーションコード
+     ,DECODE( lt_tran_subinv_code, NULL, NULL, lt_org_id ) -- 転送先在庫組織ID
+     ,lt_tran_subinv_code                                  -- 転送先保管場所コード
+     ,lt_tran_loc_code                                     -- 転送先ロケーションコード
+     ,lt_source_code                                       -- ソースコード
+     ,lt_relation_key                                      -- 紐付けキー
+     ,lt_reserve_trx_type_code                             -- 引当時取引タイプコード
+     ,lt_reason                                            -- 事由
+     ,lt_fix_user_code                                     -- 確定者コード
+     ,lt_fix_user_name                                     -- 確定者名
+     ,cn_created_by                                        -- 作成者
+     ,cd_creation_date                                     -- 作成日
+     ,cn_last_updated_by                                   -- 最終更新者
+     ,cd_last_update_date                                  -- 最終更新日
+     ,cn_last_update_login                                 -- 最終更新ログイン
+     ,cn_request_id                                        -- 要求ID
+     ,cn_program_application_id                            -- コンカレント・プログラム・アプリケーションID
+     ,cn_program_id                                        -- コンカレント・プログラムID
+     ,cd_program_update_date                               -- プログラム更新日
+    );
+--
+    -- OUTパラメータ設定
+    on_trx_id := lt_trx_id;
+--
+  EXCEPTION
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+  END cre_lot_trx;
+--
+/************************************************************************
+ * Function Name   : GET_CUSTOMER_ID
+ * Description     : 顧客導出（受注アドオン）
+ ************************************************************************/
+--
+  FUNCTION get_customer_id(
+    in_deliver_to_id IN NUMBER -- 出荷先ID
+  ) RETURN NUMBER 
+  IS
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    ct_status_a           CONSTANT hz_cust_accounts.status%TYPE              := 'A';  -- 顧客ステータス_有効
+    ct_cust_class_code_10 CONSTANT hz_cust_accounts.customer_class_code%TYPE := '10'; -- 顧客区分_顧客
+--
+    -- *** ローカル変数 ***
+    lt_cust_acct_id  hz_cust_accounts.cust_account_id%TYPE; -- 顧客ID(出力値)
+    lt_party_site_id hz_party_sites.party_site_id%TYPE;     -- パーティサイトID（入力値）
+--
+  BEGIN
+--
+    -- ===============================
+    -- 1.初期処理
+    -- ===============================
+    -- 変数初期化
+    lt_cust_acct_id  := NULL;
+    lt_party_site_id := NULL;
+--
+    -- NULLの場合は、後続処理を実施しない
+    IF ( in_deliver_to_id IS NULL ) THEN 
+      NULL;
+    ELSE
+      -- INパラメータ退避
+      lt_party_site_id := in_deliver_to_id; -- パーティサイトID
+--
+      -- ===============================
+      -- 2.顧客ID取得
+      -- ===============================
+      BEGIN
+        SELECT hca.cust_account_id cust_account_id             -- 顧客ID
+        INTO   lt_cust_acct_id
+        FROM   hz_cust_accounts hca                            -- 顧客マスタ
+              ,hz_parties       hp                             -- パーティマスタ
+              ,hz_party_sites   hps                            -- パーティサイトマスタ
+        WHERE  hps.party_site_id       = lt_party_site_id      -- パーティサイトID
+        AND    hps.party_id            = hp.party_id
+        AND    hp.party_id             = hca.party_id
+        AND    hca.status              = ct_status_a           -- ステータス
+        AND    hca.customer_class_code = ct_cust_class_code_10 -- 顧客区分
+        ;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          NULL;
+      END;
+    END IF;
+--
+    -- ===============================
+    -- 3.戻り値設定
+    -- ===============================
+    RETURN lt_cust_acct_id;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN NULL;
+--
+  END get_customer_id;
+--
+/************************************************************************
+ * Procedure Name  : GET_PARENT_CHILD_ITEM_INFO
+ * Description     : 品目コード導出（親／子）
+ ************************************************************************/
+  PROCEDURE get_parent_child_item_info(
+    id_date           IN  DATE            -- 日付
+   ,in_inv_org_id     IN  NUMBER          -- 在庫組織ID
+   ,in_parent_item_id IN  NUMBER          -- 親品目ID
+   ,in_child_item_id  IN  NUMBER          -- 子品目ID
+   ,ot_item_info_tab  OUT item_info_ttype -- 品目情報（テーブル型）
+   ,ov_errbuf         OUT VARCHAR2        -- エラーメッセージ
+   ,ov_retcode        OUT VARCHAR2        -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg         OUT VARCHAR2        -- ユーザー・エラーメッセージ
+  )IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'get_parent_child_item_info'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージ用定数
+    cv_msg_kbn_coi            CONSTANT VARCHAR2(5)   := 'XXCOI';            -- アプリケーション短縮名
+    cv_err_msg_xxcoi1_10492   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10492'; -- 品目（親／子）入力パラメータエラー
+    cv_err_msg_xxcoi1_00024   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00024'; -- 入力パラメータ未設定エラー
+    cv_err_msg_xxcoi1_00032   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00032'; -- プロファイル取得エラー
+    cv_err_msg_xxcoi1_10513   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10513'; -- 日付
+    cv_err_msg_xxcoi1_10514   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10514'; -- 在庫組織ID
+    cv_err_msg_xxcoi1_10520   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10520'; -- 品目（親／子）取得エラー
+    cv_msg_tkn_param1         CONSTANT VARCHAR2(20)  := 'PARAM1';           -- トークン：パラメータ１
+    cv_msg_tkn_param2         CONSTANT VARCHAR2(20)  := 'PARAM2';           -- トークン：パラメータ２
+    cv_msg_tkn_item_id        CONSTANT VARCHAR2(20)  := 'ITEM_ID';          -- トークン：品目ID
+    cv_msg_tkn_in_param_name  CONSTANT VARCHAR2(20)  := 'IN_PARAM_NAME';    -- トークン：入力パラメータ
+    cv_msg_tkn_pro_tok        CONSTANT VARCHAR2(30)  := 'PRO_TOK';          -- トークン：プロファイル
+    cv_item_div_h             CONSTANT VARCHAR2(30)  := 'XXCOS1_ITEM_DIV_H';-- プロファイル名：XXCOS:本社商品区分
+--
+    -- *** ローカル変数 ***
+    lv_cstegory_set_name      VARCHAR2(100);   -- カテゴリセット名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- ======================================
+    -- １：初期処理
+    -- ======================================
+    -- 在庫組織IDがNULLの場合
+    IF ( in_inv_org_id IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10514 -- 在庫組織ID
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 日付がNULLの場合
+    IF ( id_date IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10513 -- 日付
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 親品目ID、子品目IDがどちらもNULL、またはどちらもNOT NULLの場合はエラー
+    IF ((in_parent_item_id IS NULL 
+      AND  in_child_item_id IS NULL)
+    OR (in_parent_item_id IS NOT NULL
+       AND  in_child_item_id IS NOT NULL))
+    THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_coi
+                    ,iv_name         => cv_err_msg_xxcoi1_10492
+                    ,iv_token_name1  => cv_msg_tkn_param1
+                    ,iv_token_value1 => in_parent_item_id -- 親品目ID
+                    ,iv_token_name2  => cv_msg_tkn_param2
+                    ,iv_token_value2 => in_child_item_id  -- 子品目ID
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- プロファイル「本社商品区分」取得
+    lv_cstegory_set_name := FND_PROFILE.VALUE( cv_item_div_h );
+    IF ( lv_cstegory_set_name IS NULL ) THEN
+      -- エラーメッセージ
+      lv_errmsg := xxcmn_common_pkg.get_msg( 
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00032
+                     ,iv_token_name1  => cv_msg_tkn_pro_tok
+                     ,iv_token_value1 => cv_item_div_h
+                  );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ======================================
+    -- ２：子品目情報取得
+    -- ======================================
+    -- INパラメータ.親品目IDがNOT NULLの場合、子品目情報を取得
+    IF ( in_parent_item_id IS NOT NULL ) THEN
+      SELECT msib2.inventory_item_id item_id         -- 品目ID
+            ,iimb2.item_no           item_no         -- 品目コード
+            ,ximb2.item_short_name   item_short_name -- 略称
+            ,item_kbn.item_kbn       item_kbn        -- 商品区分
+            ,item_kbn.item_kbn_name  item_kbn_name   -- 商品区分名
+      BULK COLLECT INTO  ot_item_info_tab           -- 品目情報（テーブル型）
+      FROM   mtl_system_items_b msib1  -- Disc品目マスタ（親）
+            ,mtl_system_items_b msib2  -- Disc品目マスタ（子）
+            ,ic_item_mst_b      iimb1 -- OPM品目マスタ（親）
+            ,ic_item_mst_b      iimb2 -- OPM品目マスタ（子）
+            ,xxcmn_item_mst_b   ximb1 -- OPM品目アドオンマスタ（親）
+            ,xxcmn_item_mst_b   ximb2 -- OPM品目アドオンマスタ（子）
+            ,(SELECT gic.item_id        item_id       -- 品目ID
+                    ,mcv.segment1       item_kbn      -- 商品区分
+                    ,mcv.description    item_kbn_name -- 商品区分名
+              FROM   gmi_item_categories  gic  -- 品目カテゴリ
+                    ,mtl_category_sets_vl mcsv -- 品目カテゴリセットビュー
+                    ,mtl_categories_vl    mcv  -- 品目カテゴリビュー
+              WHERE  gic.category_set_id     = mcsv.category_set_id -- カテゴリセットID
+                AND  mcsv.category_set_name  = lv_cstegory_set_name -- カテゴリセット名
+                AND  gic.category_id         = mcv.category_id      -- カテゴリID
+              ) item_kbn
+      WHERE msib1.organization_id   = in_inv_org_id
+        AND msib1.inventory_item_id = in_parent_item_id
+        AND msib1.segment1          = iimb1.item_no
+        AND iimb1.item_id           = ximb1.item_id
+        AND id_date BETWEEN ximb1.start_date_active AND ximb1.end_date_active
+        AND iimb1.item_id           = ximb2.parent_item_id
+        AND ximb2.item_id           = iimb2.item_id
+        AND id_date BETWEEN ximb2.start_date_active AND ximb2.end_date_active
+        AND iimb2.item_no           = msib2.segment1
+        AND iimb2.item_id           = item_kbn.item_id
+        AND msib2.organization_id   = in_inv_org_id
+      ;
+--
+    ELSIF ( in_child_item_id IS NOT NULL ) THEN
+      -- ======================================
+      -- ３：親品目情報取得
+      -- ======================================
+      SELECT msib1.inventory_item_id item_id         -- 品目ID
+            ,iimb1.item_no           item_no         -- 品目コード
+            ,ximb1.item_short_name   item_short_name -- 略称
+            ,item_kbn.item_kbn             item_kbn        -- 商品区分
+            ,item_kbn.item_kbn_name        item_kbn_name   -- 商品区分名
+      BULK COLLECT INTO  ot_item_info_tab           -- 品目情報（テーブル型）
+      FROM   mtl_system_items_b msib1  -- Disc品目マスタ（親）
+            ,mtl_system_items_b msib2  -- Disc品目マスタ（子）
+            ,ic_item_mst_b      iimb1  -- OPM品目マスタ（親）
+            ,ic_item_mst_b      iimb2  -- OPM品目マスタ（子）
+            ,xxcmn_item_mst_b   ximb1  -- OPM品目アドオンマスタ（親）
+            ,xxcmn_item_mst_b   ximb2  -- OPM品目アドオンマスタ（子）
+            ,(SELECT gic.item_id        item_id       -- 品目ID
+                    ,mcv.segment1       item_kbn      -- 商品区分
+                    ,mcv.description    item_kbn_name -- 商品区分名
+              FROM   gmi_item_categories  gic  -- 品目カテゴリ
+                    ,mtl_category_sets_vl mcsv -- 品目カテゴリセットビュー
+                    ,mtl_categories_vl    mcv  -- 品目カテゴリビュー
+              WHERE  gic.category_set_id     = mcsv.category_set_id -- カテゴリセットID
+                AND  mcsv.category_set_name  = lv_cstegory_set_name -- カテゴリセット名
+                AND  gic.category_id         = mcv.category_id      -- カテゴリID
+              ) item_kbn
+      WHERE msib2.organization_id   = in_inv_org_id
+        AND msib2.inventory_item_id = in_child_item_id
+        AND msib2.segment1          = iimb2.item_no
+        AND iimb2.item_id           = ximb2.item_id
+        AND id_date BETWEEN ximb2.start_date_active AND ximb2.end_date_active
+        AND ximb2.parent_item_id    = ximb1.item_id
+        AND ximb1.item_id           = iimb1.item_id
+        AND id_date BETWEEN ximb1.start_date_active AND ximb1.end_date_active
+        AND iimb1.item_no           = msib1.segment1
+        AND iimb1.item_id           = item_kbn.item_id
+        AND msib1.organization_id   = in_inv_org_id
+      ;
+    END IF;
+--
+    -- データが取得できなかった場合
+    IF ( ot_item_info_tab.COUNT = 0 ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_coi
+                    ,iv_name         => cv_err_msg_xxcoi1_10520
+                    ,iv_token_name1  => cv_msg_tkn_item_id
+                    ,iv_token_value1 => NVL(in_parent_item_id,in_child_item_id) -- 品目ID
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+  EXCEPTION
+    WHEN global_process_expt THEN
+      ot_item_info_tab(1).item_id := -1; -- OAFからの起動でエラーとなってしまうため
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+    WHEN OTHERS THEN
+      ot_item_info_tab(1).item_id := -1; -- OAFからの起動でエラーとなってしまうため
+--
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+  END get_parent_child_item_info;
+--
+/************************************************************************
+ * Procedure Name  : INS_UPD_LOT_HOLD_INFO
+ * Description     : ロット情報保持マスタ反映
+ ************************************************************************/
+  PROCEDURE ins_upd_lot_hold_info(
+    in_customer_id    IN  NUMBER   -- 顧客ID
+   ,in_deliver_to_id  IN  NUMBER   -- 出荷先ID
+   ,in_parent_item_id IN  NUMBER   -- 親品目ID
+   ,iv_deliver_lot    IN  VARCHAR2 -- 納品ロット
+   ,id_delivery_date  IN  DATE     -- 納品日
+   ,iv_e_s_kbn        IN  VARCHAR2 -- 営業生産区分
+   ,iv_cancel_kbn     IN  VARCHAR2 -- 取消区分
+   ,ov_errbuf         OUT VARCHAR2 -- エラーメッセージ
+   ,ov_retcode        OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg         OUT VARCHAR2 -- ユーザー・エラーメッセージ
+  )IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'ins_upd_lot_hold_info'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージ用定数
+    cv_msg_kbn_coi            CONSTANT VARCHAR2(5)   := 'XXCOI';            -- アプリケーション短縮名
+    cv_err_msg_xxcoi1_00024   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00024'; -- 入力パラメータ未設定エラー
+    cv_err_msg_xxcoi1_10512   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10512'; -- 営業生産区分エラー
+    cv_err_msg_xxcoi1_10515   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10515'; -- 顧客ID
+    cv_err_msg_xxcoi1_10516   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10516'; -- 親品目ID
+    cv_err_msg_xxcoi1_10517   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10517'; -- 納品ロット
+    cv_err_msg_xxcoi1_10518   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10518'; -- 納品日
+    cv_err_msg_xxcoi1_10519   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10519'; -- 営業生産区分
+    cv_err_msg_xxcoi1_10639   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10639'; -- 取消区分エラー
+    cv_err_msg_xxcoi1_10640   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10640'; -- 取消区分
+    cv_msg_tkn_in_param_name  CONSTANT VARCHAR2(20)  := 'IN_PARAM_NAME';    -- トークン：入力パラメータ
+    cv_e_s_kbn_1              CONSTANT VARCHAR2(20)  := '1';                -- 営業生産区分：'1'（営業）
+    cv_e_s_kbn_2              CONSTANT VARCHAR2(20)  := '2';                -- 営業生産区分：'2'（生産）
+    cv_insert_flag_y          CONSTANT VARCHAR2(20)  := 'Y';                -- insertフラグ：'Y'
+    cv_insert_flag_n          CONSTANT VARCHAR2(20)  := 'N';                -- insertフラグ：'N'
+    cv_cancel_kbn_0           CONSTANT VARCHAR2(1)   := '0';                -- 取消区分：'0'
+    cv_cancel_kbn_1           CONSTANT VARCHAR2(1)   := '1';                -- 取消区分：'1'
+    cv_yyyymmdd               CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';       -- 日付形式：YYYY/MM/DD
+    ct_req_status_03          CONSTANT xxwsh_order_headers_all.req_status%TYPE := '03'; 
+                                                                            -- ステータス：03(締め済み)
+    ct_req_status_04          CONSTANT xxwsh_order_headers_all.req_status%TYPE := '04';
+                                                                            -- ステータス：04(出荷実績計上済)
+    ct_lastest_ext_flag_y     CONSTANT xxwsh_order_headers_all.latest_external_flag%TYPE := 'Y'; 
+                                                                            -- 最新フラグ：Y
+    ct_lastest_ext_flag_n     CONSTANT xxwsh_order_headers_all.latest_external_flag%TYPE := 'N';
+                                                                            -- 最新フラグ：N
+    ct_ship_shikyu_class_1    CONSTANT xxwsh_oe_transaction_types2_v.shipping_shikyu_class%TYPE := '1';
+                                                                            -- 出荷支給区分：1(出荷依頼)
+    ct_del_flag_y             CONSTANT xxwsh_order_lines_all.delete_flag%TYPE := 'Y'; 
+                                                                            -- 削除フラグ：Y
+    ct_del_flag_n             CONSTANT xxwsh_order_lines_all.delete_flag%TYPE := 'N'; 
+                                                                            -- 削除フラグ：N
+    ct_document_type_10       CONSTANT xxinv_mov_lot_details.document_type_code%TYPE := '10'; 
+                                                                            -- 文書タイプ：10(出荷依頼)
+    ct_record_type_01         CONSTANT xxinv_mov_lot_details.record_type_code%TYPE := '10'; 
+                                                                            -- レコードタイプ：10(指示)
+    ct_record_type_02         CONSTANT xxinv_mov_lot_details.record_type_code%TYPE := '20'; 
+                                                                            -- レコードタイプ：20(実績)
+--
+--
+    -- *** ローカル変数 ***
+    lt_last_deliver_lot_e   xxcoi_mst_lot_hold_info.last_deliver_lot_e%TYPE; -- 納品ロット（営業）
+    lt_last_deliver_lot_s   xxcoi_mst_lot_hold_info.last_deliver_lot_s%TYPE; -- 納品ロット（生産）
+    lt_delivery_date_e      xxcoi_mst_lot_hold_info.delivery_date_e%TYPE;    -- 納品日（営業）
+    lt_delivery_date_s      xxcoi_mst_lot_hold_info.delivery_date_s%TYPE;    -- 納品日（生産）
+    lt_request_id           xxcoi_mst_lot_hold_info.request_id%TYPE;         -- 要求ID
+    lt_lot_hold_info_id     xxcoi_mst_lot_hold_info.lot_hold_info_id%TYPE;   -- ロット情報保持マスタID
+    lv_insert_flag          VARCHAR2(1);                                     -- INSERTフラグ
+    lt_last_date_03         xxwsh_order_headers_all.arrival_date%TYPE;       -- 直近過去の出荷指示情報着日
+    lt_last_date_04         xxwsh_order_headers_all.arrival_date%TYPE;       -- 直近過去の出荷実績情報着日
+    ld_last_lot_date        DATE;                                            -- 納品ロット日付型
+    lt_upd_lot_s            xxcoi_mst_lot_hold_info.last_deliver_lot_s%TYPE; -- 納品ロット(生産)更新用
+    lt_upd_date_s           xxcoi_mst_lot_hold_info.delivery_date_s%TYPE;    -- 納品日(生産)更新用
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- ローカル変数初期化
+    lt_last_deliver_lot_e := NULL;
+    lt_last_deliver_lot_s := NULL;
+    lt_delivery_date_e    := NULL;
+    lt_delivery_date_s    := NULL;
+    lt_request_id         := NULL;
+    lt_lot_hold_info_id   := NULL;
+    lv_insert_flag        := cv_insert_flag_n;
+    lt_last_date_03       := NULL;
+    lt_last_date_04       := NULL;
+    ld_last_lot_date      := NULL;
+    lt_upd_lot_s          := NULL;
+    lt_upd_date_s         := NULL;
+--
+    -- ======================================
+    -- １：初期処理
+    -- ======================================
+    -- 入力パラメータ「顧客ID」がNULLの場合
+    IF ( in_customer_id IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_coi
+                    ,iv_name         => cv_err_msg_xxcoi1_00024
+                    ,iv_token_name1  => cv_msg_tkn_in_param_name
+                    ,iv_token_value1 => cv_err_msg_xxcoi1_10515 -- 顧客ID
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「親品目ID」がNULLの場合
+    IF ( in_parent_item_id IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10516 -- 親品目ID
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「営業生産区分」がNULLの場合
+    IF ( iv_e_s_kbn IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10519 -- 営業生産区分
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    IF ( iv_cancel_kbn IS NULL ) THEN
+    -- 入力パラメータ「取消区分」がNULLの場合
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10640 -- 取消区分
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- INパラメータ.営業生産区分が'1'（営業）または'2'（生産）以外の場合はエラー
+    IF ( iv_e_s_kbn <> cv_e_s_kbn_1
+      AND iv_e_s_kbn <> cv_e_s_kbn_2
+    ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_coi
+                    ,iv_name         => cv_err_msg_xxcoi1_10512
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- INパラメータ.取消区分が0または1以外の場合、エラー
+    IF ( iv_cancel_kbn <> cv_cancel_kbn_0
+      AND iv_cancel_kbn <> cv_cancel_kbn_1
+    ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_coi
+                    ,iv_name         => cv_err_msg_xxcoi1_10639
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 生産の取消以外の場合、必須
+    IF ( iv_e_s_kbn = cv_e_s_kbn_2 AND iv_cancel_kbn = cv_cancel_kbn_1 ) THEN
+      NULL;
+--
+    ELSE
+--
+      -- 入力パラメータ「納品ロット」がNULLの場合
+      IF ( iv_deliver_lot IS NULL ) THEN
+        -- 入力パラメータ未設定エラーメッセージを設定
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_00024
+                       ,iv_token_name1  => cv_msg_tkn_in_param_name
+                       ,iv_token_value1 => cv_err_msg_xxcoi1_10517 -- 納品ロット
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+  --
+      -- 入力パラメータ「納品日」がNULLの場合
+      IF ( id_delivery_date IS NULL ) THEN
+        -- 入力パラメータ未設定エラーメッセージを設定
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_00024
+                       ,iv_token_name1  => cv_msg_tkn_in_param_name
+                       ,iv_token_value1 => cv_err_msg_xxcoi1_10518 -- 納品日
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+    END IF;
+--
+    -- ======================================
+    -- ２：ロット情報保持マスタ取得
+    -- ======================================
+    -- 取消以外の場合
+    IF ( iv_cancel_kbn = cv_cancel_kbn_0 ) THEN
+--
+      BEGIN
+        -- INパラメータより、ロット情報保持マスタのデータを取得します
+        SELECT xmlhi.last_deliver_lot_e  last_deliver_lot_e -- 納品ロット（営業）
+              ,xmlhi.delivery_date_e     delivery_date_e    -- 納品日（営業）
+              ,xmlhi.last_deliver_lot_s  last_deliver_lot_s -- 納品ロット（生産）
+              ,xmlhi.delivery_date_s     delivery_date_s    -- 納品日（生産）
+        INTO   lt_last_deliver_lot_e
+              ,lt_delivery_date_e   
+              ,lt_last_deliver_lot_s
+              ,lt_delivery_date_s   
+        FROM   xxcoi_mst_lot_hold_info  xmlhi               -- ロット情報保持マスタ
+        WHERE  xmlhi.customer_id     = in_customer_id       -- 顧客ID
+          AND  xmlhi.parent_item_id  = in_parent_item_id    -- 親品目ID
+        ;
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        -- データが取得できなかった場合、INSERTフラグをYに更新します
+        lv_insert_flag := cv_insert_flag_y;
+      END;
+--
+    END IF;
+--
+    -- ======================================
+    -- ３：ロット情報保持マスタ登録
+    -- ======================================
+    -- INSERTフラグがYの場合のみ登録します
+    IF ( lv_insert_flag = cv_insert_flag_y ) THEN
+--
+      -- シーケンス値取得
+      SELECT xxcoi_mst_lot_hold_info_s01.NEXTVAL
+      INTO   lt_lot_hold_info_id
+      FROM   DUAL
+      ;
+--
+      -- 営業生産区分を判定し、変数に値をセットします
+      -- 営業生産区分が'1'（営業）の場合
+      IF ( iv_e_s_kbn = cv_e_s_kbn_1 ) THEN
+        -- 納品ロット（営業）
+        lt_last_deliver_lot_e := iv_deliver_lot;
+        -- 納品日（営業）
+        lt_delivery_date_e    := id_delivery_date;
+        -- 納品ロット（生産）
+        lt_last_deliver_lot_s := NULL;
+        -- 納品日（生産）
+        lt_delivery_date_s    := NULL;
+--
+      -- 営業生産区分が'2'（生産）の場合
+      ELSE
+        -- 納品ロット（営業）
+        lt_last_deliver_lot_e := NULL;
+        -- 納品日（営業）
+        lt_delivery_date_e    := NULL;
+        -- 納品ロット（生産）
+        lt_last_deliver_lot_s := iv_deliver_lot;
+        -- 納品日（生産）
+        lt_delivery_date_s    := id_delivery_date;
+      END IF;
+--
+      -- ロット情報保持マスタ登録
+      INSERT INTO xxcoi_mst_lot_hold_info(
+        lot_hold_info_id        -- ロット情報保持マスタID
+       ,customer_id             -- 顧客ID
+       ,parent_item_id          -- 親品目ID
+       ,last_deliver_lot_e      -- 納品ロット_営業
+       ,delivery_date_e         -- 納品日_営業
+       ,last_deliver_lot_s      -- 納品ロット_生産
+       ,delivery_date_s         -- 納品日_生産
+       ,created_by              -- 作成者
+       ,creation_date           -- 作成日
+       ,last_updated_by         -- 最終更新者
+       ,last_update_date        -- 最終更新日
+       ,last_update_login       -- 最終更新ログイン
+       ,request_id              -- 要求ID
+       ,program_application_id  -- コンカレント・プログラム・アプリケーションID
+       ,program_id              -- コンカレント・プログラムID
+       ,program_update_date     -- プログラム更新日
+      )VALUES(
+        lt_lot_hold_info_id        -- ロット情報保持マスタID
+       ,in_customer_id             -- 顧客ID
+       ,in_parent_item_id          -- 親品目ID
+       ,lt_last_deliver_lot_e      -- 納品ロット_営業
+       ,lt_delivery_date_e         -- 納品日_営業
+       ,lt_last_deliver_lot_s      -- 納品ロット_生産
+       ,lt_delivery_date_s         -- 納品日_生産
+       ,cn_created_by              -- 作成者
+       ,cd_creation_date           -- 作成日
+       ,cn_last_updated_by         -- 最終更新者
+       ,cd_last_update_date        -- 最終更新日
+       ,cn_last_update_login       -- 最終更新ログイン
+       ,cn_request_id              -- 要求ID
+       ,cn_program_application_id  -- コンカレント・プログラム・アプリケーションID
+       ,cn_program_id              -- コンカレント・プログラムID
+       ,cd_program_update_date     -- プログラム更新日
+      );
+--
+    -- ======================================
+    -- ４：ロット情報保持マスタ更新
+    -- ======================================
+    -- INSERTフラグがNの場合は更新
+    ELSE
+--
+      -- 営業生産区分が'1'(営業)の場合
+      IF ( iv_e_s_kbn = cv_e_s_kbn_1 ) THEN
+        -- 更新判定
+        -- 納品日_営業がNULL
+        IF ( lt_delivery_date_e IS NULL 
+        -- 納品日_営業 < INパラメータ.納品日
+          OR lt_delivery_date_e < id_delivery_date
+        -- 納品日_営業 = INパラメータ.納品日かつ納品ロット_営業＜INパラメータ.納品ロット
+          OR ( ( lt_delivery_date_e = id_delivery_date )
+            AND ( TO_DATE( lt_last_deliver_lot_e, cv_yyyymmdd ) < TO_DATE( iv_deliver_lot, cv_yyyymmdd ) )
+          )
+        ) THEN
+--
+          -- 更新対象の場合、INパラメータの値でロット情報保持マスタ更新
+          UPDATE xxcoi_mst_lot_hold_info xmlhi
+          SET    xmlhi.last_deliver_lot_e      = iv_deliver_lot            -- 納品ロット_営業
+                ,xmlhi.delivery_date_e         = id_delivery_date          -- 納品日_営業
+                ,xmlhi.last_updated_by         = cn_last_updated_by        -- 最終更新者
+                ,xmlhi.last_update_date        = cd_last_update_date       -- 最終更新日
+                ,xmlhi.last_update_login       = cn_last_update_login      -- 最終更新ログイン
+                ,xmlhi.request_id              = cn_request_id             -- 要求ID
+                ,xmlhi.program_application_id  = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+                ,xmlhi.program_id              = cn_program_id             -- コンカレント・プログラムID
+                ,xmlhi.program_update_date     = cd_program_update_date    -- プログラム更新日
+          WHERE  xmlhi.customer_id             = in_customer_id            -- 顧客ID
+            AND  xmlhi.parent_item_id          = in_parent_item_id         -- 親品目ID
+          ;
+        END IF;
+--
+      -- 営業生産区分が'2'(生産)の場合
+      ELSE
+        -- 取消以外の場合
+        IF ( iv_cancel_kbn = cv_cancel_kbn_0 ) THEN
+          -- 更新判定
+          -- 納品日_生産がNULL
+          IF ( lt_delivery_date_s IS NULL
+          -- 納品日_生産 < INパラメータ.納品日
+            OR lt_delivery_date_s < id_delivery_date
+          -- 納品日_生産=INパラメータ.納品日かつ納品ロット_生産＜INパラメータ.納品ロット
+            OR ( ( lt_delivery_date_s = id_delivery_date )
+              AND ( TO_DATE( lt_last_deliver_lot_s, cv_yyyymmdd ) < TO_DATE( iv_deliver_lot, cv_yyyymmdd ) )
+            )
+          ) THEN
+            -- 取消以外の場合で更新対象の場合、INパラメータの値でロット情報保持マスタ更新
+            UPDATE xxcoi_mst_lot_hold_info xmlhi
+            SET    xmlhi.last_deliver_lot_s      = iv_deliver_lot            -- 納品ロット_生産
+                  ,xmlhi.delivery_date_s         = id_delivery_date          -- 納品日_生産
+                  ,xmlhi.last_updated_by         = cn_last_updated_by        -- 最終更新者
+                  ,xmlhi.last_update_date        = cd_last_update_date       -- 最終更新日
+                  ,xmlhi.last_update_login       = cn_last_update_login      -- 最終更新ログイン
+                  ,xmlhi.request_id              = cn_request_id             -- 要求ID
+                  ,xmlhi.program_application_id  = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+                  ,xmlhi.program_id              = cn_program_id             -- コンカレント・プログラムID
+                  ,xmlhi.program_update_date     = cd_program_update_date    -- プログラム更新日
+            WHERE  xmlhi.customer_id             = in_customer_id            -- 顧客ID
+              AND  xmlhi.parent_item_id          = in_parent_item_id         -- 親品目ID
+            ;
+--
+          END IF;
+--
+        -- 取消の場合
+        ELSE
+--
+          BEGIN
+            -- 直近過去の出荷指示情報取得
+            SELECT MAX( xoha.schedule_ship_date ) schedule_ship_date        -- MAX(出荷予定日)
+            INTO   lt_last_date_03
+            FROM   xxwsh_order_headers_all       xoha                       -- 受注ヘッダ
+                  ,xxwsh_order_lines_all         xola                       -- 受注明細
+                  ,xxwsh_oe_transaction_types2_v xottv                      -- 受注タイプ
+            WHERE  xoha.deliver_to_id              = in_deliver_to_id       -- 出荷先ID
+              AND  NVL( xoha.latest_external_flag, ct_lastest_ext_flag_n )
+                                                   = ct_lastest_ext_flag_y  -- 最新フラグ
+              AND  xoha.schedule_ship_date        <= id_delivery_date       -- 出荷予定日：INパラメータ.納品日
+              AND  xoha.req_status                 = ct_req_status_03       -- ステータス：締め済み
+              AND  xottv.transaction_type_id       = xoha.order_type_id     -- 受注タイプID
+              AND  xottv.shipping_shikyu_class     = ct_ship_shikyu_class_1 -- 出荷依頼
+              AND  xottv.start_date_active        <= TRUNC( SYSDATE )       -- 開始日
+              AND  ( ( xottv.end_date_active      >= TRUNC( SYSDATE ) )
+                    OR ( xottv.end_date_active     IS NULL ) 
+                   )                                                        -- 終了日
+              AND  xola.order_header_id            = xoha.order_header_id   -- 受注ヘッダID
+              AND  xola.shipping_item_code        IN                        -- 出荷品目
+                  ( SELECT ximv.item_no item_no                             -- 品目コード
+                    FROM   xxcmn_item_mst2_v  ximv                          -- 品目情報ビュー2_子
+                          ,xxcmn_item_mst2_v  ximv2                         -- 品目情報ビュー2_親
+                    WHERE  ximv.start_date_active  <= TRUNC( SYSDATE )      -- 適用開始日
+                    AND    ximv.end_date_active    >= TRUNC( SYSDATE )      -- 適用終了日
+                    AND    ximv.parent_item_id     = ximv2.item_id
+                    AND    ximv2.start_date_active <= TRUNC( SYSDATE )      -- 適用開始日
+                    AND    ximv2.end_date_active   >= TRUNC( SYSDATE )      -- 適用終了日
+                    AND    ximv2.inventory_item_id  = in_parent_item_id     -- INパラメータ.親品目ID
+                  )
+              AND  NVL( xola.delete_flag,  ct_del_flag_n ) 
+                                                  <> ct_del_flag_y          -- 削除フラグ'Y'以外
+            ;
+          EXCEPTION
+            -- 未取得時はNULLを設定し継続
+            WHEN NO_DATA_FOUND THEN
+              lt_last_date_03 := NULL;
+          END;
+--
+          BEGIN
+            -- 直近過去の出荷実績情報
+            SELECT  MAX( info.arrival_date ) arrival_date                      -- 最大着荷日
+            INTO    lt_last_date_04
+            FROM(
+              SELECT xoha.arrival_date arrival_date                            -- 着荷日
+              FROM   xxwsh_order_headers_all       xoha                        -- 受注ヘッダアドオン
+                    ,xxwsh_order_lines_all         xola                        -- 受注明細アドオン
+                    ,xxwsh_oe_transaction_types2_v xottv                       -- 受注タイプ
+              WHERE  xoha.result_deliver_to_id        = in_deliver_to_id       -- 出荷先ID(実績)
+                AND  NVL( xoha.latest_external_flag, ct_lastest_ext_flag_n )
+                                                      = ct_lastest_ext_flag_y  -- 最新フラグ
+                AND  xoha.req_status                  = ct_req_status_04       -- ステータス：出荷実績計上済
+                AND  xottv.transaction_type_id        = xoha.order_type_id     -- 受注タイプID
+                AND  xottv.shipping_shikyu_class      = ct_ship_shikyu_class_1 -- 出荷支給区分
+                AND  xottv.start_date_active         <= TRUNC( SYSDATE )       -- 開始日
+                AND  ( ( xottv.end_date_active       >= TRUNC( SYSDATE ) )
+                       OR ( xottv.end_date_active    IS NULL )
+                     )                                                         -- 終了日
+                AND  xola.order_header_id             = xoha.order_header_id   -- 受注ヘッダID
+                AND  xola.shipping_item_code       IN                          -- 出荷品目
+                  ( SELECT ximv.item_no item_no                                -- 品目コード
+                    FROM   xxcmn_item_mst2_v  ximv                             -- 品目情報ビュー2_子
+                          ,xxcmn_item_mst2_v  ximv2                            -- 品目情報ビュー2_親
+                    WHERE  ximv.start_date_active  <= TRUNC( SYSDATE )         -- 適用開始日
+                    AND    ximv.end_date_active    >= TRUNC( SYSDATE )         -- 適用終了日
+                    AND    ximv.parent_item_id     = ximv2.item_id
+                    AND    ximv2.start_date_active <= TRUNC( SYSDATE )         -- 適用開始日
+                    AND    ximv2.end_date_active   >= TRUNC( SYSDATE )         -- 適用終了日
+                    AND    ximv2.inventory_item_id  = in_parent_item_id        -- INパラメータ.親品目ID
+                  )
+                AND  NVL( xola.delete_flag, ct_del_flag_n )
+                                                    <> ct_del_flag_y           -- 削除フラグ'Y'以外
+                AND  xola.shipped_quantity           > 0                       -- 出荷実績数量0以上
+              UNION ALL
+              SELECT /*+ leading(xoha) index(xoha xxwsh_oh_n13) */
+                     xoha.arrival_date arrival_date                            -- 着荷日
+              FROM   xxwsh_order_headers_all       xoha                        -- 受注ヘッダアドオン
+                    ,xxwsh_order_lines_all         xola                        -- 受注明細アドオン
+                    ,xxwsh_oe_transaction_types2_v xottv                       -- 受注タイプ
+              WHERE  xoha.result_deliver_to_id       IS NULL                   -- 出荷先ID(実績)
+                AND  xoha.deliver_to_id               = in_deliver_to_id       -- 出荷先ID
+                AND  NVL( xoha.latest_external_flag, ct_lastest_ext_flag_n )
+                                                      = ct_lastest_ext_flag_y  -- 最新フラグ
+                AND  xoha.req_status                  = ct_req_status_04       -- ステータス：出荷実績計上済
+                AND  xottv.transaction_type_id        = xoha.order_type_id     -- 受注タイプID
+                AND  xottv.shipping_shikyu_class      = ct_ship_shikyu_class_1 -- 出荷支給区分
+                AND  xottv.start_date_active         <= TRUNC( SYSDATE )       -- 開始日
+                AND  ( ( xottv.end_date_active       >= TRUNC( SYSDATE ) )
+                       OR( xottv.end_date_active     IS NULL )
+                     )                                                         -- 終了日
+                AND  xola.order_header_id             = xoha.order_header_id   -- 受注ヘッダID
+                AND  xola.shipping_item_code         IN                        -- 出荷品目
+                  ( SELECT ximv.item_no item_no                             -- 品目コード
+                    FROM   xxcmn_item_mst2_v  ximv                          -- 品目情報ビュー2_子
+                          ,xxcmn_item_mst2_v  ximv2                         -- 品目情報ビュー2_親
+                    WHERE  ximv.start_date_active  <= TRUNC( SYSDATE )      -- 適用開始日
+                    AND    ximv.end_date_active    >= TRUNC( SYSDATE )      -- 適用終了日
+                    AND    ximv.parent_item_id     = ximv2.item_id
+                    AND    ximv2.start_date_active <= TRUNC( SYSDATE )      -- 適用開始日
+                    AND    ximv2.end_date_active   >= TRUNC( SYSDATE )      -- 適用終了日
+                    AND    ximv2.inventory_item_id  = in_parent_item_id     -- INパラメータ.親品目ID
+                  )
+                AND  NVL( xola.delete_flag, ct_del_flag_n )  
+                                                     <> ct_del_flag_y           -- 削除フラグ'Y'以外
+                AND  xola.shipped_quantity            > 0                       -- 出荷実績数量0以上
+              ) info
+            ;
+          EXCEPTION
+            -- 未取得時はNULLをセットし処理を継続
+            WHEN NO_DATA_FOUND THEN
+              lt_last_date_04 := NULL;
+          END;
+--
+          -- 賞味期限取得
+          -- 指示実績ともに存在しない場合
+          IF ( ( lt_last_date_03 IS NULL ) AND ( lt_last_date_04 IS NULL ) ) THEN
+            NULL;
+          -- 実績 < 指示 の場合
+          ELSIF ( ( lt_last_date_04 < lt_last_date_03 ) OR ( lt_last_date_04 IS NULL ) ) THEN
+          --
+            -- 賞味期限取得
+            SELECT MAX( TO_DATE( ilm.attribute3, cv_yyyymmdd ) ) taste_term   -- 賞味期限
+              INTO ld_last_lot_date
+              FROM xxwsh_order_headers_all        xoha                        -- 受注ヘッダアドオン
+                  ,xxwsh_order_lines_all          xola                        -- 受注明細アドオン
+                  ,xxinv_mov_lot_details          xmld                        -- 移動ロット詳細
+                  ,xxwsh_oe_transaction_types2_v  xottv                       -- 受注タイプ
+                  ,ic_lots_mst                    ilm                         -- OPMロットマスタ
+             WHERE xoha.deliver_to_id              = in_deliver_to_id         -- 出荷先ID
+               AND NVL( xoha.latest_external_flag, ct_lastest_ext_flag_n )
+                                                   = ct_lastest_ext_flag_y    -- 最新フラグ
+               AND xoha.schedule_ship_date         = TRUNC( lt_last_date_03 ) -- 出荷予定日：出荷指示情報の最大着日
+               AND xoha.req_status                 = ct_req_status_03         -- ステータス：締め済み
+               AND xottv.transaction_type_id       = xoha.order_type_id       -- 受注タイプID
+               AND xottv.shipping_shikyu_class     = ct_ship_shikyu_class_1   -- 出荷依頼
+               AND xottv.start_date_active        <= TRUNC( SYSDATE )         -- 開始日
+               AND ( ( xottv.end_date_active      >= TRUNC( SYSDATE ) )
+                    OR ( xottv.end_date_active    IS NULL ) 
+                   )                                                          -- 終了日
+               AND xola.order_header_id            = xoha.order_header_id     -- 受注ヘッダID
+               AND xola.shipping_item_code        IN                          -- 出荷品目
+                  ( SELECT ximv.item_no item_no                             -- 品目コード
+                    FROM   xxcmn_item_mst2_v  ximv                          -- 品目情報ビュー2_子
+                          ,xxcmn_item_mst2_v  ximv2                         -- 品目情報ビュー2_親
+                    WHERE  ximv.start_date_active  <= TRUNC( SYSDATE )      -- 適用開始日
+                    AND    ximv.end_date_active    >= TRUNC( SYSDATE )      -- 適用終了日
+                    AND    ximv.parent_item_id     = ximv2.item_id
+                    AND    ximv2.start_date_active <= TRUNC( SYSDATE )      -- 適用開始日
+                    AND    ximv2.end_date_active   >= TRUNC( SYSDATE )      -- 適用終了日
+                    AND    ximv2.inventory_item_id  = in_parent_item_id     -- INパラメータ.親品目ID
+                  )
+               AND NVL( xola.delete_flag,  ct_del_flag_n ) 
+                                                  <> ct_del_flag_y            -- 削除フラグ'Y'以外
+               AND xmld.mov_line_id                = xola.order_line_id       -- 明細ID
+               AND xmld.document_type_code         = ct_document_type_10      -- 文書タイプ：出荷依頼
+               AND xmld.record_type_code           = ct_record_type_01        -- レコードタイプ：指示
+               AND ilm.lot_id                      = xmld.lot_id              -- OPMロットID
+               AND ilm.item_id                     = xmld.item_id             -- OPM品目ID
+            ;
+--
+            -- 出荷日、出荷ロット設定
+            lt_upd_lot_s  := TO_CHAR( ld_last_lot_date, cv_yyyymmdd ); -- 出荷ロット
+            lt_upd_date_s := lt_last_date_03;                          -- 出荷日
+--
+          -- 指示 < 実績 の場合
+          ELSE
+            SELECT MAX( TO_DATE( info.taste_term, cv_yyyymmdd ) ) taste_term
+              INTO ld_last_lot_date
+              FROM(
+                SELECT ilm.attribute3 taste_term                                 -- 賞味期限
+                  FROM xxwsh_order_headers_all        xoha                       -- 受注ヘッダアドオン
+                      ,xxwsh_order_lines_all          xola                       -- 受注明細アドオン
+                      ,xxinv_mov_lot_details          xmld                       -- 移動ロット詳細
+                      ,xxwsh_oe_transaction_types2_v  xottv                      -- 受注タイプ
+                      ,ic_lots_mst                    ilm                        -- OPMロットマスタ
+                 WHERE xoha.result_deliver_to_id      = in_deliver_to_id         -- 出荷先ID(実績)
+                   AND xoha.arrival_date             >= TRUNC( lt_last_date_04 ) -- 着荷日:出荷実績情報の最大着日
+                   AND xoha.arrival_date              < TRUNC( lt_last_date_04 + 1 ) -- 着荷日:出荷実績情報の最大着日
+                   AND NVL( xoha.latest_external_flag, ct_lastest_ext_flag_n ) 
+                                                      = ct_lastest_ext_flag_y    -- 最新フラグ=Y
+                   AND xoha.req_status                = ct_req_status_04         -- ステータス：出荷実績計上済
+                   AND xottv.transaction_type_id      = xoha.order_type_id       -- 受注タイプID
+                   AND xottv.shipping_shikyu_class    = ct_ship_shikyu_class_1   -- 出荷依頼
+                   AND xottv.start_date_active       <= TRUNC( SYSDATE )
+                   AND ( ( xottv.end_date_active     >= TRUNC( SYSDATE ) )
+                         OR ( xottv.end_date_active  IS NULL ) 
+                       )
+                   AND xola.order_header_id           = xoha.order_header_id     -- 受注ヘッダID
+                   AND xola.shipping_item_code       IN                          -- 出荷品目
+                       ( SELECT ximv.item_no item_no                             -- 品目コード
+                         FROM   xxcmn_item_mst2_v  ximv                          -- 品目情報ビュー2_子
+                               ,xxcmn_item_mst2_v  ximv2                         -- 品目情報ビュー2_親
+                         WHERE  ximv.start_date_active  <= TRUNC( SYSDATE )      -- 適用開始日
+                         AND    ximv.end_date_active    >= TRUNC( SYSDATE )      -- 適用終了日
+                         AND    ximv.parent_item_id     = ximv2.item_id
+                         AND    ximv2.start_date_active <= TRUNC( SYSDATE )      -- 適用開始日
+                         AND    ximv2.end_date_active   >= TRUNC( SYSDATE )      -- 適用終了日
+                         AND    ximv2.inventory_item_id  = in_parent_item_id     -- INパラメータ.親品目ID
+                       )
+                   AND NVL( xola.delete_flag, ct_del_flag_n ) 
+                                                     <> ct_del_flag_y            -- 削除フラグ'Y'以外
+                   AND xmld.mov_line_id               = xola.order_line_id       -- 明細ID
+                   AND xmld.document_type_code        = ct_document_type_10      -- 文書タイプ：出荷依頼
+                   AND xmld.record_type_code          = ct_record_type_02        -- レコードタイプ：出荷実績
+                   AND ilm.lot_id                     = xmld.lot_id              -- OPMロットID
+                   AND ilm.item_id                    = xmld.item_id             -- OPM品目ID
+                   AND xmld.actual_quantity           > 0                        -- 実績数量
+                UNION ALL
+                SELECT /*+ leading(xoha xola) index(xoha xxwsh_oh_n13) */
+                       ilm.attribute3 taste_term                                 -- 賞味期限
+                  FROM xxwsh_order_headers_all        xoha                       -- 受注ヘッダアドオン
+                      ,xxwsh_order_lines_all          xola                       -- 受注明細アドオン
+                      ,xxinv_mov_lot_details          xmld                       -- 移動ロット詳細
+                      ,xxwsh_oe_transaction_types2_v  xottv                      -- 受注タイプ
+                      ,ic_lots_mst                    ilm                        -- OPMロットマスタ
+                 WHERE xoha.result_deliver_to_id     IS NULL                     -- 出荷先ID(実績)
+                   AND xoha.deliver_to_id             = in_deliver_to_id         -- 出荷先ID
+                   AND xoha.schedule_arrival_date    >= TRUNC( lt_last_date_04 ) -- 着荷予定日:出荷実績情報の最大着日
+                   AND xoha.schedule_arrival_date     < TRUNC( lt_last_date_04 + 1 ) -- 着荷予定日:出荷実績情報の最大着日
+                   AND NVL( xoha.latest_external_flag, ct_lastest_ext_flag_n )
+                                                      = ct_lastest_ext_flag_y    -- 最新フラグ=Y
+                   AND xoha.req_status                = ct_req_status_04         -- 出荷実績計上済
+                   AND xottv.transaction_type_id      = xoha.order_type_id       -- 受注タイプID
+                   AND xottv.shipping_shikyu_class    = ct_ship_shikyu_class_1   -- 出荷依頼
+                   AND xottv.start_date_active       <= TRUNC( SYSDATE )         -- 開始日
+                   AND ( ( xottv.end_date_active     >= TRUNC( SYSDATE ) )
+                         OR( xottv.end_date_active   IS NULL )
+                       )                                                         -- 終了日
+                   AND xola.order_header_id           = xoha.order_header_id     -- 受注ヘッダID
+                   AND xola.shipping_item_code       IN                          -- 出荷品目
+                       ( SELECT ximv.item_no item_no                             -- 品目コード
+                         FROM   xxcmn_item_mst2_v  ximv                          -- 品目情報ビュー2_子
+                               ,xxcmn_item_mst2_v  ximv2                         -- 品目情報ビュー2_親
+                         WHERE  ximv.start_date_active  <= TRUNC( SYSDATE )      -- 適用開始日
+                         AND    ximv.end_date_active    >= TRUNC( SYSDATE )      -- 適用終了日
+                         AND    ximv.parent_item_id     = ximv2.item_id
+                         AND    ximv2.start_date_active <= TRUNC( SYSDATE )      -- 適用開始日
+                         AND    ximv2.end_date_active   >= TRUNC( SYSDATE )      -- 適用終了日
+                         AND    ximv2.inventory_item_id  = in_parent_item_id     -- INパラメータ.親品目ID
+                       )
+                   AND NVL( xola.delete_flag, ct_del_flag_n ) 
+                                                     <> ct_del_flag_y            -- 削除フラグ'Y'以外
+                   AND xmld.mov_line_id               = xola.order_line_id       -- 明細ID
+                   AND xmld.document_type_code        = ct_document_type_10      -- 文書タイプ
+                   AND xmld.record_type_code          = ct_record_type_02        -- レコードタイプ
+                   AND ilm.lot_id                     = xmld.lot_id              -- OPMロットID
+                   AND ilm.item_id                    = xmld.item_id             -- OPM品目ID
+                   AND xmld.actual_quantity           > 0                        -- 実績数量
+              ) info
+            ;
+            -- 出荷日、出荷ロット設定
+            lt_upd_lot_s  := TO_CHAR( ld_last_lot_date, cv_yyyymmdd ); -- 出荷ロット
+            lt_upd_date_s := lt_last_date_04;                          -- 出荷日
+--
+          END IF;
+--
+          IF ( lt_upd_lot_s IS NOT NULL ) THEN
+            -- ロット情報保持マスタ更新
+            UPDATE xxcoi_mst_lot_hold_info xmlhi
+            SET    xmlhi.last_deliver_lot_s      = lt_upd_lot_s              -- 納品ロット_生産
+                  ,xmlhi.delivery_date_s         = TRUNC( lt_upd_date_s )    -- 納品日_生産
+                  ,xmlhi.last_updated_by         = cn_last_updated_by        -- 最終更新者
+                  ,xmlhi.last_update_date        = cd_last_update_date       -- 最終更新日
+                  ,xmlhi.last_update_login       = cn_last_update_login      -- 最終更新ログイン
+                  ,xmlhi.request_id              = cn_request_id             -- 要求ID
+                  ,xmlhi.program_application_id  = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+                  ,xmlhi.program_id              = cn_program_id             -- コンカレント・プログラムID
+                  ,xmlhi.program_update_date     = cd_program_update_date    -- プログラム更新日
+            WHERE  xmlhi.customer_id             = in_customer_id            -- 顧客ID
+              AND  xmlhi.parent_item_id          = in_parent_item_id         -- 親品目ID
+            ;
+          END IF;
+--
+        END IF;
+--
+      END IF;
+--
+    END IF;
+--
+    -- ======================================
+    -- ５：エラー処理
+    -- ======================================
+--
+  EXCEPTION
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+  END ins_upd_lot_hold_info;
+--
+/************************************************************************
+ * Procedure Name  : INS_UPD_DEL_LOT_ONHAND
+ * Description     : ロット別手持数量反映
+ ************************************************************************/
+  PROCEDURE ins_upd_del_lot_onhand(
+    in_inv_org_id       IN  NUMBER           -- 在庫組織ID
+   ,iv_base_code        IN  VARCHAR2         -- 拠点コード
+   ,iv_subinv_code      IN  VARCHAR2         -- 保管場所コード
+   ,iv_loc_code         IN  VARCHAR2         -- ロケーションコード
+   ,in_child_item_id    IN  NUMBER           -- 子品目ID
+   ,iv_lot              IN  VARCHAR2         -- ロット(賞味期限)
+   ,iv_diff_sum_code    IN  VARCHAR2         -- 固有記号
+   ,in_case_in_qty      IN  NUMBER           -- 入数
+   ,in_case_qty         IN  NUMBER           -- ケース数
+   ,in_singly_qty       IN  NUMBER           -- バラ数
+   ,in_summary_qty      IN  NUMBER           -- 取引数量
+   ,ov_errbuf           OUT VARCHAR2         -- エラーメッセージ
+   ,ov_retcode          OUT VARCHAR2         -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg           OUT VARCHAR2         -- ユーザー・エラーメッセージ
+  )IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'ins_upd_del_lot_onhand'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージ用定数
+    cv_msg_kbn_coi            CONSTANT VARCHAR2(5)   := 'XXCOI';            -- アプリケーション短縮名
+    cv_err_msg_xxcoi1_00024   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00024'; -- 入力パラメータ未設定エラー
+    cv_err_msg_xxcoi1_10500   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10500'; -- 入数
+    cv_err_msg_xxcoi1_10501   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10501'; -- 取引数量
+    cv_err_msg_xxcoi1_10502   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10502'; -- 拠点コード
+    cv_err_msg_xxcoi1_10503   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10503'; -- 保管場所コード
+    cv_err_msg_xxcoi1_10514   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10514'; -- 在庫組織ID
+    cv_err_msg_xxcoi1_10581   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10581'; -- ロケーションコード
+    cv_err_msg_xxcoi1_10582   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10582'; -- 子品目ID
+    cv_err_msg_xxcoi1_10583   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10583'; -- 入力パラメータマイナスエラー
+    cv_err_msg_xxcoi1_10584   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10584'; -- 入力パラメータ（入数）妥当性エラー
+    cv_err_msg_xxcoi1_10585   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10585'; -- 手持数量算出結果マイナスエラー
+    cv_err_msg_xxcoi1_10586   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10586'; -- ケース数
+    cv_err_msg_xxcoi1_10587   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10587'; -- バラ数
+    cv_err_msg_xxcoi1_10607   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10607'; -- 製造日取得エラー
+--
+    cv_msg_tkn_in_param_name  CONSTANT VARCHAR2(13)  := 'IN_PARAM_NAME';    -- トークン：入力パラメータ
+    cv_msg_tkn_item_id        CONSTANT VARCHAR2(13)  := 'ITEM_ID';          -- トークン：品目ID
+    cv_msg_tkn_diff_sum_code  CONSTANT VARCHAR2(13)  := 'DIFF_SUM_CODE';    -- トークン：固有記号
+    cv_msg_tkn_lot            CONSTANT VARCHAR2(13)  := 'LOT';              -- トークン：ロット
+--
+    cv_insert_flag_y          CONSTANT VARCHAR2(1)   := 'Y';                -- insertフラグ：'Y'
+    cv_insert_flag_n          CONSTANT VARCHAR2(1)   := 'N';                -- insertフラグ：'N'
+    cv_lot_no_dafault         CONSTANT VARCHAR2(10)  := 'DEFAULTLOT';       -- ロット番号：'DEFAULTLOT'
+--
+    cv_date_fmt               CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';       -- 日付型YYYY/MM/DD
+--
+    -- *** ローカル変数 ***
+    lt_case_qty        xxcoi_lot_onhand_quantites.case_qty%TYPE;    -- ケース数
+    lt_singly_qty      xxcoi_lot_onhand_quantites.singly_qty%TYPE;  -- バラ数
+    lt_summary_qty     xxcoi_lot_onhand_quantites.summary_qty%TYPE; -- 取引数量
+    lt_case_qty_sum    xxcoi_lot_onhand_quantites.case_qty%TYPE;    -- ケース数（算出用）
+    lt_singly_qty_sum  xxcoi_lot_onhand_quantites.singly_qty%TYPE;  -- バラ数（算出用）
+    lt_summary_qty_sum xxcoi_lot_onhand_quantites.summary_qty%TYPE; -- 取引数量（算出用）
+    lt_product_date    ic_lots_mst.attribute1%TYPE;                 -- 製造年月日
+    lv_insert_flag     VARCHAR2(1);                                 -- INSERTフラグ
+    ln_case_qty_minus  NUMBER;                                      -- ケース数（取り崩し計算用）
+    lt_expiration_day  xxcmn_item_mst_b.expiration_day%TYPE;        -- 賞味期間
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- ローカル変数初期化
+    lt_case_qty         := NULL;  -- ケース数
+    lt_singly_qty       := NULL;  -- バラ数
+    lt_summary_qty      := NULL;  -- 取引数量
+    lt_case_qty_sum     := NULL;  -- ケース数（算出用）
+    lt_singly_qty_sum   := NULL;  -- バラ数（算出用）
+    lt_summary_qty_sum  := NULL;  -- 取引数量（算出用）
+    lt_product_date     := NULL;  -- 製造年月日
+    ln_case_qty_minus   := NULL;  -- ケース数（取り崩し計算用）
+    lv_insert_flag      := cv_insert_flag_n; -- INSERTフラグ
+--
+    -- ======================================
+    -- １：初期処理
+    -- ======================================
+    -- 入力パラメータ「在庫組織ID」がNULLの場合
+    IF ( in_inv_org_id IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10514 -- 在庫組織ID
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「拠点コード」がNULLの場合
+    IF ( iv_base_code IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10502 -- 拠点コード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「保管場所コード」がNULLの場合
+    IF ( iv_subinv_code IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10503 -- 保管場所コード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「ロケーションコード」がNULLの場合
+    IF ( iv_loc_code IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10581 -- ロケーションコード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「子品目ID」がNULLの場合
+    IF ( in_child_item_id IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10582 -- 子品目ID
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「取引数量」がNULLの場合
+    IF ( in_summary_qty IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10501 -- 取引数量
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「入数」がNULLの場合
+    IF ( in_case_in_qty IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10500 -- 入数
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- -- 入力パラメータ「入数」が0以下の場合
+    IF ( in_case_in_qty <= 0) THEN
+      -- 入力パラメータ（入数）妥当性エラー
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10584
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- WHOカラムの取得
+    -- 固定グローバル変数を使用するため割愛
+--
+    -- ======================================
+    -- ２：ロット別手持数量抽出
+    -- ======================================
+    BEGIN
+      -- INパラメータより、ロット別手持数量のデータを取得します
+      SELECT xloq.case_qty    case_qty    -- ケース数
+            ,xloq.singly_qty  singly_qty  -- バラ数
+            ,xloq.summary_qty summary_qty -- 取引数量
+      INTO   lt_case_qty    -- ケース数
+            ,lt_singly_qty  -- バラ数
+            ,lt_summary_qty -- 取引数量
+      FROM   xxcoi_lot_onhand_quantites  xloq  -- ロット別手持数量
+      WHERE  xloq.organization_id    = in_inv_org_id     -- 在庫組織ID
+        AND  xloq.base_code          = iv_base_code      -- 拠点コード
+        AND  xloq.subinventory_code  = iv_subinv_code    -- 保管場所コード
+        AND  xloq.location_code      = iv_loc_code       -- ロケーションコード
+        AND  xloq.child_item_id      = in_child_item_id  -- 子品目ID
+        AND  (xloq.lot               = iv_lot
+           OR (xloq.lot IS NULL AND iv_lot IS NULL))     -- ロット（賞味期限）
+        AND  (xloq.difference_summary_code  = iv_diff_sum_code
+           OR (xloq.difference_summary_code IS NULL AND iv_diff_sum_code IS NULL)) -- 固有記号
+      ;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+      -- データが取得できなかった場合、INSERTフラグをYに更新します
+      lv_insert_flag := cv_insert_flag_y;
+    END;
+    -- ======================================
+    -- ３：ロット別手持数量登録
+    -- ======================================
+    -- INSERTフラグがYの場合のみ登録します
+    IF ( lv_insert_flag = cv_insert_flag_y ) THEN
+      -- 入力パラメータチェック
+      -- 入力パラメータ「ケース数」がマイナスの場合
+      IF ( in_case_qty < 0 ) THEN
+        -- 入力パラメータマイナスエラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10583
+                       ,iv_token_name1  => cv_msg_tkn_in_param_name
+                       ,iv_token_value1 => cv_err_msg_xxcoi1_10586 -- ケース数
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- 入力パラメータ「バラ数」がマイナスの場合
+      IF ( in_singly_qty < 0 ) THEN
+        -- 入力パラメータマイナスエラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10583
+                       ,iv_token_name1  => cv_msg_tkn_in_param_name
+                       ,iv_token_value1 => cv_err_msg_xxcoi1_10587 -- バラ数
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- 入力パラメータ「取引数量」がマイナスの場合
+      IF ( in_summary_qty < 0 ) THEN
+        -- 入力パラメータマイナスエラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10583
+                       ,iv_token_name1  => cv_msg_tkn_in_param_name
+                       ,iv_token_value1 => cv_err_msg_xxcoi1_10501 -- 取引数量
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+      BEGIN
+        -- 製造日を取得
+        -- ロット（賞味期限）がNULLの場合は製造日にNULLを設定
+        IF ( iv_lot IS NULL ) THEN
+          lt_product_date := NULL;
+--
+        -- ロット（賞味期限）がNULL以外の場合は賞味期限-賞味期間で製造日を導出
+        ELSE
+          -- 賞味期間導出
+          SELECT ximb.expiration_day expiration_day        -- 賞味期間
+          INTO   lt_expiration_day
+          FROM   xxcmn_item_mst_b   ximb                   -- OPM品目アドオンマスタ
+                ,ic_item_mst_b      iimb                   -- OPM品目マスタ
+                ,mtl_system_items_b msib                   -- Disc品目マスタ
+          WHERE msib.organization_id    = in_inv_org_id    -- INパラメータ.在庫組織ID
+          AND   msib.inventory_item_id  = in_child_item_id -- INパラメータ.Disc品目ID
+          AND   iimb.item_no            = msib.segment1
+          AND   iimb.item_id            = ximb.item_id
+          AND   ximb.start_date_active <= TRUNC( SYSDATE ) -- 適用開始日
+          AND   ximb.end_date_active   >= TRUNC( SYSDATE ) -- 適用終了日
+          ;
+--
+          -- INパラメータ.賞味期限 - 算出した賞味期間の計算結果を製造日に設定する
+          lt_product_date := TO_CHAR( TO_DATE( iv_lot , cv_date_fmt ) - lt_expiration_day , cv_date_fmt );
+--
+        END IF;
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 製造日取得エラー
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_coi
+                         ,iv_name         => cv_err_msg_xxcoi1_10607
+                         ,iv_token_name1  => cv_msg_tkn_item_id
+                         ,iv_token_value1 => in_child_item_id   -- 子品目ID
+                         ,iv_token_name2  => cv_msg_tkn_diff_sum_code
+                         ,iv_token_value2 => iv_diff_sum_code   -- 固有記号
+                         ,iv_token_name3  => cv_msg_tkn_lot
+                         ,iv_token_value3 => iv_lot             -- ロット
+                        );
+           lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+--
+      -- 取引数量が0より大きい場合、手持数量を反映
+      IF( NVL( in_summary_qty, 0 ) > 0 )THEN
+        -- ロット別手持数量登録
+        INSERT INTO xxcoi_lot_onhand_quantites(
+          organization_id         -- 在庫組織ID
+         ,base_code               -- 拠点コード
+         ,subinventory_code       -- 保管場所コード
+         ,location_code           -- ロケーションコード
+         ,child_item_id           -- 子品目ID
+         ,lot                     -- ロット
+         ,difference_summary_code -- 固有記号
+         ,case_in_qty             -- 入数
+         ,case_qty                -- ケース数
+         ,singly_qty              -- バラ数
+         ,summary_qty             -- 取引数量
+         ,production_date         -- 製造日
+         ,created_by              -- 作成者
+         ,creation_date           -- 作成日
+         ,last_updated_by         -- 最終更新者
+         ,last_update_date        -- 最終更新日
+         ,last_update_login       -- 最終更新ログイン
+         ,request_id              -- 要求ID
+         ,program_application_id  -- コンカレント・プログラム・アプリケーションID
+         ,program_id              -- コンカレント・プログラムID
+         ,program_update_date     -- プログラム更新日
+        )VALUES(
+          in_inv_org_id             -- 在庫組織ID
+         ,iv_base_code              -- 拠点コード
+         ,iv_subinv_code            -- 保管場所コード
+         ,iv_loc_code               -- ロケーションコード
+         ,in_child_item_id          -- 子品目ID
+         ,iv_lot                    -- ロット
+         ,iv_diff_sum_code          -- 固有記号
+         ,in_case_in_qty            -- 入数
+         ,NVL( in_case_qty, 0 )     -- ケース数
+         ,NVL( in_singly_qty, 0 )   -- バラ数
+         ,NVL( in_summary_qty, 0 )  -- 取引数量
+         ,lt_product_date           -- 製造日
+         ,cn_created_by             -- 作成者
+         ,cd_creation_date          -- 作成日
+         ,cn_last_updated_by        -- 最終更新者
+         ,cd_last_update_date       -- 最終更新日
+         ,cn_last_update_login      -- 最終更新ログイン
+         ,cn_request_id             -- 要求ID
+         ,cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+         ,cn_program_id             -- コンカレント・プログラムID
+         ,cd_program_update_date    -- プログラム更新日
+        );
+      END IF;
+--
+    -- ======================================
+    -- ４：ロット情報保持マスタ更新
+    -- ======================================
+    ELSE
+      -- ケース数、バラ数、取引数量の算出
+      -- ケース数
+      lt_case_qty_sum     := NVL(lt_case_qty,0) + NVL(in_case_qty,0);
+      -- バラ数
+      lt_singly_qty_sum   := NVL(lt_singly_qty,0) + NVL(in_singly_qty,0);
+      -- 取引数量
+      lt_summary_qty_sum  := NVL(lt_summary_qty,0) + NVL(in_summary_qty,0);
+--
+      -- ケース数がマイナスの場合はエラー
+      IF ( lt_case_qty_sum  < 0 ) THEN
+        -- 手持数量算出結果マイナスエラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10585
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- バラ数がマイナスの場合、ケースを取り崩す
+      IF ( lt_singly_qty_sum < 0 ) THEN
+        -- 取り崩すケース数を算出
+        IF ( MOD(lt_singly_qty_sum,in_case_in_qty) = 0 ) THEN
+          -- バラ数が入数の倍数の場合：（バラ数 / 入数) * -1
+          ln_case_qty_minus := TRUNC((lt_singly_qty_sum / in_case_in_qty)) * -1;
+        ELSE
+          -- 上記以外の場合：（(バラ数 / 入数) * -1) +1
+          ln_case_qty_minus := (TRUNC((lt_singly_qty_sum / in_case_in_qty)) * -1) +1;
+        END IF;
+--
+        -- ケースを取り崩した後のケース数、バラ数を計算
+        lt_case_qty_sum   := lt_case_qty_sum   - ln_case_qty_minus;
+        lt_singly_qty_sum := lt_singly_qty_sum + (in_case_in_qty * ln_case_qty_minus);
+--
+      END IF;
+--
+      -- 算出後のケース数、バラ数、取引数量のいずれかがマイナスの場合はエラー
+      IF ( lt_case_qty_sum    < 0
+        OR lt_singly_qty_sum  < 0
+        OR lt_summary_qty_sum < 0)
+      THEN
+         -- 手持数量算出結果マイナスエラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10585
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- 算出後のケース数、バラ数、取引数量が全て0の場合は、テーブルから削除
+      IF ( lt_case_qty_sum    = 0
+       AND lt_singly_qty_sum  = 0
+       AND lt_summary_qty_sum = 0 )
+      THEN
+        DELETE FROM xxcoi_lot_onhand_quantites xloq -- ロット別手持数量
+        WHERE  xloq.organization_id    = in_inv_org_id     -- 在庫組織ID
+          AND  xloq.base_code          = iv_base_code      -- 拠点コード
+          AND  xloq.subinventory_code  = iv_subinv_code    -- 保管場所コード
+          AND  xloq.location_code      = iv_loc_code       -- ロケーションコード
+          AND  xloq.child_item_id      = in_child_item_id  -- 子品目ID
+          AND  (xloq.lot               = iv_lot
+             OR (xloq.lot IS NULL AND iv_lot IS NULL)) -- ロット（賞味期限）
+          AND  (xloq.difference_summary_code  = iv_diff_sum_code
+             OR (xloq.difference_summary_code IS NULL AND iv_diff_sum_code IS NULL)) -- 固有記号
+        ;
+      -- 上記以外の場合は、更新
+      ELSE
+        UPDATE xxcoi_lot_onhand_quantites xloq -- ロット別手持数量
+        SET    xloq.case_qty      = lt_case_qty_sum       -- ケース数
+              ,xloq.singly_qty    = lt_singly_qty_sum     -- バラ数
+              ,xloq.summary_qty   = lt_summary_qty_sum    -- 取引数量
+              ,xloq.last_updated_by         = cn_last_updated_by        -- 最終更新者
+              ,xloq.last_update_date        = cd_last_update_date       -- 最終更新日
+              ,xloq.last_update_login       = cn_last_update_login      -- 最終更新ログイン
+              ,xloq.request_id              = cn_request_id             -- 要求ID
+              ,xloq.program_application_id  = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+              ,xloq.program_id              = cn_program_id             -- コンカレント・プログラムID
+              ,xloq.program_update_date     = cd_program_update_date    -- プログラム更新日
+        WHERE  xloq.organization_id    = in_inv_org_id     -- 在庫組織ID
+          AND  xloq.base_code          = iv_base_code      -- 拠点コード
+          AND  xloq.subinventory_code  = iv_subinv_code    -- 保管場所コード
+          AND  xloq.location_code      = iv_loc_code       -- ロケーションコード
+          AND  xloq.child_item_id      = in_child_item_id  -- 子品目ID
+          AND  (xloq.lot               = iv_lot
+             OR (xloq.lot IS NULL AND iv_lot IS NULL))     -- ロット（賞味期限）
+          AND  (xloq.difference_summary_code  = iv_diff_sum_code
+             OR (xloq.difference_summary_code IS NULL AND iv_diff_sum_code IS NULL))     -- 固有記号
+        ;
+      END IF;
+    END IF;
+--
+    -- ======================================
+    -- ５：エラー処理
+    -- ======================================
+--
+  EXCEPTION
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+  END ins_upd_del_lot_onhand;
+--
+/************************************************************************
+ * Procedure Name  : GET_FRESH_CONDITION_DATE
+ * Description     : 鮮度条件基準日算出
+ ************************************************************************/
+  PROCEDURE get_fresh_condition_date(
+    id_use_by_date           IN  DATE             -- 賞味期限
+   ,id_product_date          IN  DATE             -- 製造年月日
+   ,iv_fresh_condition       IN  VARCHAR2         -- 鮮度条件
+   ,od_fresh_condition_date  OUT DATE             -- 鮮度条件基準日
+   ,ov_errbuf                OUT VARCHAR2         -- エラーメッセージ
+   ,ov_retcode               OUT VARCHAR2         -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg                OUT VARCHAR2         -- ユーザー・エラーメッセージ
+  )IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'get_fresh_condition_date'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージ用定数
+    cv_msg_kbn_coi            CONSTANT VARCHAR2(5)   := 'XXCOI';            -- アプリケーション短縮名
+    cv_err_msg_xxcoi1_00011   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00011'; -- 業務日付未取得エラー
+    cv_err_msg_xxcoi1_00024   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00024'; -- 入力パラメータ未設定エラー
+    cv_err_msg_xxcoi1_10588   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10588'; -- 賞味期限
+    cv_err_msg_xxcoi1_10589   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10589'; -- 製造年月日
+    cv_err_msg_xxcoi1_10590   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10590'; -- 鮮度条件
+    cv_err_msg_xxcoi1_10591   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10591'; -- 鮮度条件情報取得エラー
+--
+    cv_msg_tkn_param1         CONSTANT VARCHAR2(13)  := 'PARAM1';           -- トークン：パラメータ１
+    cv_msg_tkn_in_param_name  CONSTANT VARCHAR2(13)  := 'IN_PARAM_NAME';    -- トークン：入力パラメータ
+--
+    cv_freshness_condition    CONSTANT VARCHAR2(30)  := 'XXCOI1_FRESHNESS_CONDITION'; -- 参照タイプ：鮮度条件
+--
+    cv_fresh_con_type_0       CONSTANT VARCHAR2(1)   := '0'; -- 鮮度条件タイプ：'0'（一般）
+    cv_fresh_con_type_1       CONSTANT VARCHAR2(1)   := '1'; -- 鮮度条件タイプ：'1'（賞味期限基準）
+    cv_fresh_con_type_2       CONSTANT VARCHAR2(1)   := '2'; -- 鮮度条件タイプ：'2'（製造日基準）
+    cv_flag_y                 CONSTANT VARCHAR2(1)   := 'Y'; -- フラグ:Y
+--
+    -- *** ローカル変数 ***
+    lt_fresh_condition_type   fnd_lookup_values.attribute1%TYPE;  -- 鮮度条件タイプ
+    lt_standard_value         fnd_lookup_values.attribute2%TYPE;  -- 基準値
+    lt_adjusted_value         fnd_lookup_values.attribute3%TYPE;  -- 調整値
+    ld_proc_date              DATE; -- 業務日付
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- ローカル変数初期化
+    lt_fresh_condition_type  := NULL;  -- 鮮度条件タイプ
+    lt_standard_value        := NULL;  -- 基準値
+    lt_adjusted_value        := NULL;  -- 調整値
+    ld_proc_date             := NULL;  -- 業務日付
+--
+    -- ======================================
+    -- １：初期処理
+    -- ======================================
+    -- 賞味期限がNULLの場合
+    IF ( id_use_by_date IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10588 -- 賞味期限
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 製造年月日がNULLの場合
+    IF ( id_product_date IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10589 -- 製造年月日
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    
+--
+    -- 鮮度条件がNULLの場合
+    IF ( iv_fresh_condition IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10590 -- 鮮度条件
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 業務日付を取得
+    ld_proc_date := xxccp_common_pkg2.get_process_date;
+    -- 取得できない場合は、エラー
+    IF ( ld_proc_date IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00011
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ======================================
+    -- ２：鮮度条件情報取得
+    -- ======================================
+    BEGIN
+      SELECT flv.attribute1    fresh_condition_type -- 鮮度条件タイプ
+            ,flv.attribute2    standard_value       -- 基準値
+            ,flv.attribute3    adjusted_value       -- 調整値
+      INTO   lt_fresh_condition_type -- 鮮度条件タイプ
+            ,lt_standard_value       -- 基準値
+            ,lt_adjusted_value       -- 調整値
+      FROM   fnd_lookup_values  flv    -- 参照タイプ
+      WHERE  flv.lookup_type         = cv_freshness_condition -- タイプ
+        AND  flv.language            = USERENV('LANG')        -- 言語
+        AND  flv.lookup_code         = iv_fresh_condition     -- コード
+        AND  flv.enabled_flag        = cv_flag_y              -- 有効フラグ
+        AND  ld_proc_date BETWEEN NVL(flv.start_date_active,ld_proc_date) -- 有効開始日
+                          AND     NVL(flv.end_date_active,ld_proc_date)   -- 有効終了日
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+      -- 鮮度条件情報取得エラー
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10591
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => iv_fresh_condition -- INパラメータ.鮮度条件
+                    );
+      lv_errbuf := SQLERRM;
+      RAISE global_process_expt;
+    END;
+--
+    -- ======================================
+    -- ３：鮮度条件基準日算出
+    -- ======================================
+    -- 鮮度条件タイプ = '0' (一般) の場合
+    IF ( lt_fresh_condition_type = cv_fresh_con_type_0 ) THEN
+      od_fresh_condition_date
+        := id_use_by_date               -- 賞味期限
+         + NVL( lt_standard_value, 0 )  -- 基準値
+         + NVL( lt_adjusted_value, 0 ); -- 調整値
+--
+    -- 鮮度条件タイプ = '1' (賞味期限基準) の場合
+    ELSIF ( lt_fresh_condition_type = cv_fresh_con_type_1 ) THEN
+      od_fresh_condition_date
+        := id_product_date              -- 製造年月日
+         + TRUNC((id_use_by_date - id_product_date) / lt_standard_value) -- (賞味期限 - 製造年月日) / 基準値
+         + NVL( lt_adjusted_value, 0 ); -- 調整値
+    -- 鮮度条件タイプ = '2' (製造日基準) の場合
+    ELSIF ( lt_fresh_condition_type = cv_fresh_con_type_2 ) THEN
+      od_fresh_condition_date
+        := id_product_date              -- 製造年月日
+         + NVL( lt_standard_value, 0 )  -- 基準値
+         + NVL( lt_adjusted_value, 0 ); -- 調整値
+    END IF;
+--
+  EXCEPTION
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+  END get_fresh_condition_date;
+--
+/************************************************************************
+ * Procedure Name  : GET_RESERVED_QUANTITY
+ * Description     : 引当可能数算出
+ ************************************************************************/
+  PROCEDURE get_reserved_quantity(
+    in_inv_org_id       IN  NUMBER           -- 在庫組織ID
+   ,iv_base_code        IN  VARCHAR2         -- 拠点コード
+   ,iv_subinv_code      IN  VARCHAR2         -- 保管場所コード
+   ,iv_loc_code         IN  VARCHAR2         -- ロケーションコード
+   ,in_child_item_id    IN  NUMBER           -- 子品目ID
+   ,iv_lot              IN  VARCHAR2         -- ロット(賞味期限)
+   ,iv_diff_sum_code    IN  VARCHAR2         -- 固有記号
+   ,on_case_in_qty      OUT NUMBER           -- 入数
+   ,on_case_qty         OUT NUMBER           -- ケース数
+   ,on_singly_qty       OUT NUMBER           -- バラ数
+   ,on_summary_qty      OUT NUMBER           -- 取引数量
+   ,ov_errbuf           OUT VARCHAR2         -- エラーメッセージ
+   ,ov_retcode          OUT VARCHAR2         -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg           OUT VARCHAR2         -- ユーザー・エラーメッセージ
+  )IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name  CONSTANT VARCHAR2(100) := 'get_reserved_quantity'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- メッセージ用定数
+    cv_msg_kbn_coi            CONSTANT VARCHAR2(5)   := 'XXCOI';            -- アプリケーション短縮名
+    cv_err_msg_xxcoi1_00024   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00024'; -- 入力パラメータ未設定エラー
+    cv_err_msg_xxcoi1_00032   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00032'; -- プロファイル取得エラー
+    cv_err_msg_xxcoi1_10502   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10502'; -- 拠点コード
+    cv_err_msg_xxcoi1_10503   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10503'; -- 保管場所コード
+    cv_err_msg_xxcoi1_10514   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10514'; -- 在庫組織ID
+    cv_err_msg_xxcoi1_10581   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10581'; -- ロケーションコード
+    cv_err_msg_xxcoi1_10582   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10582'; -- 子品目ID
+    cv_err_msg_xxcoi1_10585   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10585'; -- 手持数量算出結果マイナスエラー
+    cv_err_msg_xxcoi1_10592   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10592'; -- ロット別手持数量取得エラー
+--
+    cv_msg_tkn_in_param_name  CONSTANT VARCHAR2(13)  := 'IN_PARAM_NAME';    -- トークン：入力パラメータ
+    cv_msg_tkn_pro_tok        CONSTANT VARCHAR2(13)  := 'PRO_TOK';          -- トークン：プロファイル
+--
+    cv_org_id                 CONSTANT VARCHAR2(13)  := 'ORG_ID';           -- MO:営業単位
+--
+    cv_shipping_status_10     CONSTANT VARCHAR2(2)   := '10';               -- 出荷情報ステータス：10（引当未）
+    cv_shipping_status_20     CONSTANT VARCHAR2(2)   := '20';               -- 出荷情報ステータス：20（引当済）
+    cv_shipping_status_25     CONSTANT VARCHAR2(2)   := '25';               -- 出荷情報ステータス：25（出荷仮確定）
+--
+    cv_lot_tran_kbn_9         CONSTANT VARCHAR2(1)   := '9';                -- ロット別取引作成区分：9(対象外)
+--
+    cv_xxcoi016a06c           CONSTANT VARCHAR2(15)  := 'XXCOI016A06C';     -- ロット別出荷情報作成
+--
+    -- *** ローカル変数 ***
+    lt_case_in_qty     xxcoi_lot_onhand_quantites.case_in_qty%TYPE; -- 入数
+    lt_case_qty        xxcoi_lot_onhand_quantites.case_qty%TYPE;    -- ケース数
+    lt_singly_qty      xxcoi_lot_onhand_quantites.singly_qty%TYPE;  -- バラ数
+    lt_summary_qty     xxcoi_lot_onhand_quantites.summary_qty%TYPE; -- 取引数量
+    lt_case_qty_sum    xxcoi_lot_onhand_quantites.case_qty%TYPE;    -- ケース数（合計）
+    lt_singly_qty_sum  xxcoi_lot_onhand_quantites.singly_qty%TYPE;  -- バラ数（合計）
+    lt_summary_qty_sum xxcoi_lot_onhand_quantites.summary_qty%TYPE; -- 取引数量（合計）
+    lt_org_id          fnd_profile_option_values.profile_option_value%TYPE; -- 営業単位
+    ln_case_qty_minus  NUMBER;      -- ケース数（取り崩し計算用）
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- ローカル変数初期化
+    lt_case_in_qty     := NULL; -- 入数
+    lt_case_qty        := NULL; -- ケース数
+    lt_singly_qty      := NULL; -- バラ数
+    lt_summary_qty     := NULL; -- 取引数量
+    lt_case_qty_sum    := NULL; -- ケース数（合計）
+    lt_singly_qty_sum  := NULL; -- バラ数（合計）
+    lt_summary_qty_sum := NULL; -- 取引数量（合計）
+    ln_case_qty_minus  := NULL; -- 取り崩すケース数
+    lt_org_id          := NULL; -- 営業単位
+--
+    -- ======================================
+    -- １：初期処理
+    -- ======================================
+    -- 入力パラメータ「在庫組織ID」がNULLの場合
+    IF ( in_inv_org_id IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10514 -- 在庫組織ID
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「拠点コード」がNULLの場合
+    IF ( iv_base_code IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10502 -- 拠点コード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「保管場所コード」がNULLの場合
+    IF ( iv_subinv_code IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10503 -- 保管場所コード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「ロケーションコード」がNULLの場合
+    IF ( iv_loc_code IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10581 -- ロケーションコード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 入力パラメータ「子品目ID」がNULLの場合
+    IF ( in_child_item_id IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10582 -- 子品目ID
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- プロファイル「MO:営業単位」を取得
+    lt_org_id := FND_PROFILE.VALUE(cv_org_id);
+    IF ( lt_org_id IS NULL ) THEN
+      -- プロファイル値取得エラー
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00032
+                     ,iv_token_name1  => cv_msg_tkn_pro_tok
+                     ,iv_token_value1 => cv_org_id
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ======================================
+    -- ２：手持数量情報取得
+    -- ======================================
+    BEGIN
+      -- ロット手持数量情報を取得します
+      SELECT xloq.case_in_qty case_in_qty -- 入数
+            ,xloq.case_qty    case_qty    -- ケース数
+            ,xloq.singly_qty  singly_qty  -- バラ数
+            ,xloq.summary_qty summary_qty -- 取引数量
+      INTO   lt_case_in_qty -- 入数
+            ,lt_case_qty    -- ケース数
+            ,lt_singly_qty  -- バラ数
+            ,lt_summary_qty -- 取引数量
+      FROM   xxcoi_lot_onhand_quantites  xloq  -- ロット別手持数量
+      WHERE  xloq.organization_id    = in_inv_org_id     -- 在庫組織ID
+        AND  xloq.base_code          = iv_base_code      -- 拠点コード
+        AND  xloq.subinventory_code  = iv_subinv_code    -- 保管場所コード
+        AND  xloq.location_code      = iv_loc_code       -- ロケーションコード
+        AND  xloq.child_item_id      = in_child_item_id  -- 子品目ID
+        AND  (xloq.lot               = iv_lot
+           OR (xloq.lot IS NULL AND iv_lot IS NULL))     -- ロット（賞味期限）
+        AND  (xloq.difference_summary_code  = iv_diff_sum_code
+           OR (xloq.difference_summary_code IS NULL AND iv_diff_sum_code IS NULL))     -- 固有記号
+      ;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- ロット別手持数量取得エラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10592
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+--
+    -- ======================================
+    -- ３：引当情報取得
+    -- ======================================
+    -- 引当情報を取得
+    SELECT NVL(SUM(xlri.case_qty), 0)    case_qty_sum    -- ケース数（合計）
+          ,NVL(SUM(xlri.singly_qty), 0)  singly_qty_sum  -- バラ数（合計）
+          ,NVL(SUM(xlri.summary_qty), 0) summary_qty_sum -- 取引数量（合計）
+    INTO   lt_case_qty_sum                               -- ケース数（合計）
+          ,lt_singly_qty_sum                             -- バラ数（合計）
+          ,lt_summary_qty_sum                            -- 取引数量（合計）
+    FROM   xxcoi_lot_reserve_info  xlri                  -- ロット別引当情報
+    WHERE  xlri.shipping_status    IN ( cv_shipping_status_10, cv_shipping_status_20, cv_shipping_status_25 ) -- 出荷情報ステータス
+--
+      AND  xlri.org_id             = lt_org_id             -- 営業単位
+      AND  xlri.base_code          = iv_base_code          -- 拠点コード
+      AND  xlri.whse_code          = iv_subinv_code        -- 保管場所コード
+      AND  xlri.location_code      = iv_loc_code           -- ロケーションコード
+      AND  xlri.item_id            = in_child_item_id      -- 子品目ID
+      AND  (xlri.lot               = iv_lot
+         OR (xlri.lot IS NULL AND iv_lot IS NULL))         -- ロット（賞味期限）
+      AND  (xlri.difference_summary_code  = iv_diff_sum_code
+         OR (xlri.difference_summary_code IS NULL AND iv_diff_sum_code IS NULL))  -- 固有記号
+    ;
+--
+    -- ======================================
+    -- 3-1.ロット別取引TEMP存在数取得
+    -- ======================================
+--
+    -- ======================================
+    -- ４：引当可能数算出
+    -- ======================================
+    -- ケース数、バラ数、取引数量の算出
+    lt_case_qty_sum    := lt_case_qty    - lt_case_qty_sum;    -- ケース数
+    lt_singly_qty_sum  := lt_singly_qty  - lt_singly_qty_sum;  -- バラ数
+    lt_summary_qty_sum := lt_summary_qty - lt_summary_qty_sum; -- 取引数量
+--
+    -- ケース数がマイナスの場合はエラー
+    IF ( lt_case_qty_sum  < 0 ) THEN
+      -- 手持数量算出結果マイナスエラー
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10585
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- バラ数がマイナスの場合、ケースを取り崩す
+    IF ( lt_singly_qty_sum < 0 ) THEN
+      -- 取り崩すケース数を算出
+      IF ( MOD(lt_singly_qty_sum,lt_case_in_qty) = 0 ) THEN
+        -- バラ数が入数の倍数の場合：（バラ数 / 入数) * -1
+        ln_case_qty_minus := TRUNC((lt_singly_qty_sum / lt_case_in_qty)) * -1;
+      ELSE
+        -- 上記以外の場合：（(バラ数 / 入数) * -1) +1
+        ln_case_qty_minus := (TRUNC((lt_singly_qty_sum / lt_case_in_qty)) * -1) +1;
+      END IF;
+--
+      -- ケースを取り崩した後のケース数、バラ数を計算
+      lt_case_qty_sum   := lt_case_qty_sum   - ln_case_qty_minus;
+      lt_singly_qty_sum := lt_singly_qty_sum + (lt_case_in_qty * ln_case_qty_minus);
+--
+    END IF;
+--
+    -- 算出後のケース数、バラ数、取引数量のいずれかがマイナスの場合はエラー
+    IF ( lt_case_qty_sum    < 0
+      OR lt_singly_qty_sum  < 0
+      OR lt_summary_qty_sum < 0)
+    THEN
+       -- 手持数量算出結果マイナスエラー
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10585
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ======================================
+    -- ５：戻り値設定
+    -- ======================================
+    on_case_in_qty := lt_case_in_qty;     -- 入数
+    on_case_qty    := lt_case_qty_sum;    -- ケース数
+    on_singly_qty  := lt_singly_qty_sum;  -- バラ数
+    on_summary_qty := lt_summary_qty_sum; -- 取引数量
+--
+  EXCEPTION
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+  END get_reserved_quantity;
+--
+/************************************************************************
+ * Function Name   : GET_FRESH_CONDITION_DATE_F
+ * Description     : 鮮度条件基準日算出(ファンクション型)
+ ************************************************************************/
+--
+  FUNCTION get_fresh_condition_date_f(
+    id_use_by_date     IN  DATE     -- 賞味期限
+   ,id_product_date    IN  DATE     -- 製造年月日
+   ,iv_fresh_condition IN  VARCHAR2 -- 鮮度条件
+  ) RETURN DATE
+  IS
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    ld_return DATE; -- 戻り値
+--
+  BEGIN
+    -- 変数初期化
+    ld_return := NULL;
+--
+    -- 共通関数：「鮮度条件基準日算出」を使用し鮮度条件を導出
+    xxcoi_common_pkg.get_fresh_condition_date(
+      id_use_by_date          => id_use_by_date     -- 賞味期限
+     ,id_product_date         => id_product_date    -- 製造年月日
+     ,iv_fresh_condition      => iv_fresh_condition -- 鮮度条件
+     ,od_fresh_condition_date => ld_return          -- 鮮度条件基準日
+     ,ov_errbuf               => lv_errbuf          -- エラーメッセージ
+     ,ov_retcode              => lv_retcode         -- リターン・コード(0:正常、2:エラー)
+     ,ov_errmsg               => lv_errmsg          -- ユーザー・エラーメッセージ
+    );
+--
+    -- 戻り値セット
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      RETURN NULL;
+    ELSE
+      RETURN ld_return;
+    END IF;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN NULL;
+--
+  END get_fresh_condition_date_f;
+--
+-- == 2014/11/07 Ver1.12 Y.Nagasue ADD END ======================================================
 END XXCOI_COMMON_PKG;
 /
