@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.7
+ * Version         : 1.8
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -19,6 +19,8 @@
  *                                                     店舗営業区分対応の取消
  *  2011/05/18    1.6  S.Niki        【E_本稼動_07429】経度 -> ピークカット開始時刻
  *  2011/09/29    1.7  K.Nakamura    【E_本稼動_08440】稼働日カレンダコードの追加
+ *  2014/11/21    1.8  Y.Nagasue     【E_本稼動_12237】倉庫管理システム対応
+                                                       顧客別鮮度条件コード追加
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
@@ -117,6 +119,9 @@ CREATE TABLE xxcmm.xxcmm_cust_accounts
 -- 2010/09/16 Ver1.5 add start by S.Niki
     store_cust_code             VARCHAR2(9),
 -- 2010/09/16 Ver1.5 add end by S.Niki
+-- 2014/11/21 Ver1.8 add start by Y.Nagasue
+    cust_fresh_con_code         VARCHAR2(2),
+-- 2014/11/21 Ver1.8 add end   by Y.Nagasue
     created_by                  NUMBER(15,0)    NOT NULL,
     creation_date               DATE            NOT NULL,
     last_updated_by             NUMBER(15,0)    NOT NULL,
@@ -312,6 +317,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.enclose_invoice_code        IS '統括
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.store_cust_code             IS '店舗営業用顧客コード'
 /
 -- 2010/09/16 Ver1.5 add end by S.Niki
+-- 2014/11/21 Ver1.8 add start by Y.Nagasue
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.cust_fresh_con_code         IS '顧客別鮮度条件コード'
+/
+-- 2014/11/21 Ver1.8 add end   by Y.Nagasue
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.created_by                  IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.creation_date               IS '作成日'
