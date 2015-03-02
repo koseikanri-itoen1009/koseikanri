@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,7 +17,7 @@ AS
  *  chk_hht_inv_if_data    HHT入出庫IFデータ妥当性チェック(B-3)
  *  cnv_subinv_code        HHT入出庫IFデータの保管場所コード変換(B-4)
  *  insert_hht_inv_tran    HHT入出庫IFのレコード追加(B-5)
- *  del_hht_inv_if_data    HHT入出庫IFのレコード削除(B-7)
+ *  del_hht_inv_if_data    HHT入出庫IFのレコード削除(B-8)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -36,6 +36,7 @@ AS
  *  2010/04/22    1.8   N.Abe            [E_本稼動_02415]見本の拠点有効チェック修正(上様顧客)
  *  2011/04/14    1.9   S.Ochiai         [E_本稼動_06588]レコード種別'21'(新規ベンダ基準在庫)追加対応
  *  2011/11/01    1.10  T.Yoshimoto      [E_本稼動_07570]拠点コード妥当性チェック追加対応
+ *  2014/10/27    1.11  Y.Koh            [E_本稼動_12237]倉庫管理システム対応
  *
  *****************************************************************************************/
 --
@@ -148,6 +149,11 @@ AS
   cv_msg_xxcoi_10092           CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10092';     -- 所属拠点取得エラーメッセージ
   cv_msg_xxcoi_10211           CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10211';     -- 所属拠点不一致エラーメッセージ
 -- 2011/11/01 v1.10 T.Yoshimoto Add End
+-- 2014/10/27 E_本稼動_12237 V1.11 Add START
+  cv_outside_subinv_inf_err    CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10508';     -- 出庫側倉庫管理対象区分取得エラーメッセージ
+  cv_inside_subinv_inf_err     CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10509';     -- 入庫側倉庫管理対象区分取得エラーメッセージ
+  cv_cre_lot_trx_temp_err      CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10510';     -- ロット別取引TEMP作成エラーメッセージ
+-- 2014/10/27 E_本稼動_12237 V1.11 Add END
 --
   -- トークン
   cv_tkn_pro                   CONSTANT VARCHAR2(20)  := 'PRO_TOK';              -- プロファイル名
@@ -179,6 +185,25 @@ AS
 -- == 2010/04/22 V1.8 Added START ===============================================================
   cv_cust_class_code_12        CONSTANT VARCHAR2(2)   := '12';                   -- 顧客区分（上様顧客）
 -- == 2010/04/22 V1.8 Added END   ===============================================================
+-- 2014/10/27 E_本稼動_12237 V1.11 Add START
+  cv_record_type_30            CONSTANT VARCHAR2(2)   := '30';                   -- レコード種別(30:入出庫)
+  cv_record_type_40            CONSTANT VARCHAR2(2)   := '40';                   -- レコード種別(40:見本)
+  cv_hht_program_div_2         CONSTANT VARCHAR2(1)   := '2';                    -- 入出庫ジャーナル処理区分(2:拠点間倉替)
+  cv_hht_program_div_5         CONSTANT VARCHAR2(1)   := '5';                    -- 入出庫ジャーナル処理区分(5:その他入出庫（消化VD補充含む）)
+  cv_consume_vd_flag_Y         CONSTANT VARCHAR2(2)   := 'Y';                    -- 消化VD補充対象フラグ(Y:対象)
+  cv_transaction_type_10       CONSTANT VARCHAR2(3)   := '10';                   -- 取引タイプコード(10:入出庫)
+  cv_transaction_type_20       CONSTANT VARCHAR2(3)   := '20';                   -- 取引タイプコード(20:見倉替本)
+  cv_transaction_type_70       CONSTANT VARCHAR2(3)   := '70';                   -- 取引タイプコード(70:消化VD補充)
+  cv_transaction_type_320      CONSTANT VARCHAR2(3)   := '320';                  -- 取引タイプコード(320:顧客見本出庫)
+  cv_transaction_type_330      CONSTANT VARCHAR2(3)   := '330';                  -- 取引タイプコード(330:顧客見本出庫振戻)
+  cv_inout_11                  CONSTANT VARCHAR2(3)   := '11';                   -- 入出庫コード(11:拠点内入庫)
+  cv_inout_12                  CONSTANT VARCHAR2(3)   := '12';                   -- 入出庫コード(12:拠点内出庫)
+  cv_inout_21                  CONSTANT VARCHAR2(3)   := '21';                   -- 入出庫コード(21:倉替入庫)
+  cv_inout_22                  CONSTANT VARCHAR2(3)   := '22';                   -- 入出庫コード(22:倉替出庫)
+  cv_inout_71                  CONSTANT VARCHAR2(3)   := '71';                   -- 入出庫コード(71:消化VD補充入庫)
+  cv_inout_72                  CONSTANT VARCHAR2(3)   := '72';                   -- 入出庫コード(72:消化VD補充入庫)
+  cv_attribute14_Y             CONSTANT VARCHAR2(1)   := 'Y';                    -- 倉庫管理対象フラグ(Y:対象)
+-- 2014/10/27 E_本稼動_12237 V1.11 Add END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -235,7 +260,10 @@ AS
   gt_stock_balance_list_div    xxcoi_hht_inv_transactions.stock_balance_list_div%TYPE;          -- 入庫差異確認リスト対象区分
   gt_consume_vd_flag           xxcoi_hht_inv_transactions.consume_vd_flag%TYPE;                 -- 消化VD補充対象ﾌﾗｸﾞ
   -- PL/SQL表
-  g_hht_inv_if_tab             g_hht_inv_rec_type;                                      -- HHT入出庫一時表格納用
+  g_hht_inv_if_tab             g_hht_inv_rec_type;                                              -- HHT入出庫一時表格納用
+-- 2014/10/27 E_本稼動_12237 V1.11 Add START
+  gt_transaction_id            xxcoi_hht_inv_transactions.transaction_id%TYPE;   -- 入出庫一時表ID
+-- 2014/10/27 E_本稼動_12237 V1.11 Add END
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -1669,6 +1697,12 @@ AS
     -- -------------------------------
     -- 1.HHT入出庫一時表への登録
     -- -------------------------------
+-- 2014/10/27 E_本稼動_12237 V1.11 Add START
+    SELECT  xxcoi_hht_inv_transactions_s01.NEXTVAL
+    INTO    gt_transaction_id
+    FROM    DUAL;
+-- 2014/10/27 E_本稼動_12237 V1.11 Add END
+--
     INSERT INTO XXCOI_HHT_INV_TRANSACTIONS(
          transaction_id                                         -- 1.入出庫一時表ID
         ,interface_id                                           -- 2.インターフェースID
@@ -1727,7 +1761,10 @@ AS
         ,program_update_date                                    -- 55.プログラム更新日
     )
     VALUES(
-         xxcoi_hht_inv_transactions_s01.NEXTVAL                  -- 1.入出庫一時表ID
+-- 2014/10/27 E_本稼動_12237 V1.11 Update START
+         gt_transaction_id                                      -- 1.入出庫一時表ID
+--         xxcoi_hht_inv_transactions_s01.NEXTVAL                 -- 1.入出庫一時表ID
+-- 2014/10/27 E_本稼動_12237 V1.11 Update END
         ,g_hht_inv_if_tab( in_work_count ).interface_id          -- 2.インターフェースID
         ,NULL                                                    -- 3.画面入力用ヘッダID
         ,g_hht_inv_if_tab( in_work_count ).base_code             -- 4.拠点コード
@@ -1820,7 +1857,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : del_hht_inv_if_data
-   * Description      : HHT入出庫IFのレコード削除(B-7)
+   * Description      : HHT入出庫IFのレコード削除(B-8)
    ***********************************************************************************/
   PROCEDURE del_hht_inv_if_data(
     in_work_count IN         NUMBER,       --   TABLE(INDEX)
@@ -1912,6 +1949,13 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- 2014/10/27 E_本稼動_12237 V1.11 Add START
+    lv_inout_code_out        VARCHAR2(3);                                            -- 入出庫コード（出庫）
+    lv_inout_code_in         VARCHAR2(3);                                            -- 入出庫コード（入庫）
+    lt_attribute14           mtl_secondary_inventories.attribute14%TYPE;             -- 倉庫管理対象区分
+    lt_transaction_id        xxcoi_lot_transactions_temp.transaction_id%TYPE;        -- 取引ID
+    lt_transaction_type_code xxcoi_lot_transactions_temp.transaction_type_code%TYPE; -- 取引タイプコード
+-- 2014/10/27 E_本稼動_12237 V1.11 Add END
 --
 --###########################  固定部 END   ####################################
 --
@@ -2063,8 +2107,183 @@ AS
                 RAISE global_process_expt;
              END IF;
         --
+-- 2014/10/27 E_本稼動_12237 V1.11 Add START
     -- ===========================================
-    --  HHT入出庫IFデータのHHTエラーリスト表追加(B-6)
+    -- ロット別取引TEMP作成 (B-6)
+    -- ===========================================
+            lt_transaction_type_code := NULL; -- 取引タイプコード
+            lv_inout_code_out        := NULL; -- 入出庫コード（出庫）
+            lv_inout_code_in         := NULL; -- 入出庫コード（入庫）
+            --
+            IF ( g_hht_inv_if_tab( ln_work_count ).record_type = cv_record_type_30 ) THEN
+              IF ( gt_hht_program_div = cv_hht_program_div_2 ) THEN
+                lt_transaction_type_code := cv_transaction_type_20;
+                lv_inout_code_out        := cv_inout_22;
+                lv_inout_code_in         := cv_inout_21;
+              ELSIF ( gt_hht_program_div = cv_hht_program_div_5 ) THEN
+                IF ( gt_consume_vd_flag = cv_consume_vd_flag_Y ) THEN
+                  lt_transaction_type_code := cv_transaction_type_70;
+                  lv_inout_code_out        := cv_inout_72;
+                  lv_inout_code_in         := cv_inout_71;
+                ELSIF ( gt_consume_vd_flag IS NULL) THEN
+                  lt_transaction_type_code := cv_transaction_type_10;
+                  lv_inout_code_out        := cv_inout_12;
+                  lv_inout_code_in         := cv_inout_11;
+                END IF;
+              END IF;
+            ELSIF ( g_hht_inv_if_tab( ln_work_count ).record_type = cv_record_type_40 ) THEN
+              IF ( gn_total_quantity >= 0 ) THEN
+                lt_transaction_type_code := cv_transaction_type_320;
+              ELSIF (gn_total_quantity < 0 ) THEN
+                lt_transaction_type_code := cv_transaction_type_330;
+              END IF;
+            END IF;
+            --
+            IF ( lt_transaction_type_code IS NOT NULL ) THEN
+              -- ロット別取引TEMP作成(出庫側保管場所)
+              BEGIN
+                SELECT msi.attribute14 AS attribute14
+                INTO   lt_attribute14
+                FROM   mtl_secondary_inventories msi
+                WHERE  msi.organization_id          = gt_org_id
+                AND    msi.secondary_inventory_name = gt_outside_subinv_code;
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                  lv_errmsg := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_application_short_name
+                                 , iv_name         => cv_outside_subinv_inf_err
+                                 , iv_token_name1  => cv_tkn_subinv
+                                 , iv_token_value1 => gt_outside_subinv_code
+                               );
+                  lv_errbuf := lv_errmsg;
+                  RAISE global_process_expt;
+              END;
+              --
+              IF ( lt_attribute14 = cv_attribute14_Y ) THEN
+                xxcoi_common_pkg.cre_lot_trx_temp(
+                    in_trx_set_id       => NULL                                               -- 取引セットID
+                  , iv_parent_item_code => g_hht_inv_if_tab( ln_work_count ).item_code        -- 親品目コード
+                  , iv_child_item_code  => NULL                                               -- 子品目コード
+                  , iv_lot              => NULL                                               -- ロット(賞味期限)
+                  , iv_diff_sum_code    => NULL                                               -- 固有記号
+                  , iv_trx_type_code    => lt_transaction_type_code                           -- 取引タイプコード
+                  , id_trx_date         => g_hht_inv_if_tab( ln_work_count ).invoice_date     -- 取引日
+                  , iv_slip_num         => g_hht_inv_if_tab( ln_work_count ).invoice_no       -- 伝票No
+                  , in_case_in_qty      => g_hht_inv_if_tab( ln_work_count ).case_in_quantity -- 入数
+                  , in_case_qty         => g_hht_inv_if_tab( ln_work_count ).case_quantity    -- ケース数
+                  , in_singly_qty       => g_hht_inv_if_tab( ln_work_count ).quantity         -- バラ数
+                  , in_summary_qty      => gn_total_quantity                                  -- 取引数量
+                  , iv_base_code        => g_hht_inv_if_tab( ln_work_count ).base_code        -- 拠点コード
+                  , iv_subinv_code      => gt_outside_subinv_code                             -- 保管場所コード
+                  , iv_tran_subinv_code => gt_inside_subinv_code                              -- 転送先保管場所コード
+                  , iv_tran_loc_code    => NULL                                               -- 転送先ロケーションコード
+                  , iv_inout_code       => lv_inout_code_out                                  -- 入出庫コード
+                  , iv_source_code      => cv_pkg_name                                        -- ソースコード
+                  , iv_relation_key     => gt_transaction_id                                  -- 紐付けキー
+                  , on_trx_id           => lt_transaction_id                                  -- ロット別TEMP取引ID
+                  , ov_errbuf           => lv_errbuf                                          -- エラーメッセージ
+                  , ov_retcode          => lv_retcode                                         -- リターン・コード(0:正常、2:エラー)
+                  , ov_errmsg           => lv_errmsg                                          -- ユーザー・エラーメッセージ
+                );
+                --
+                IF ( lv_retcode = cv_status_error ) THEN
+                  lv_errmsg := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_application_short_name
+                                 , iv_name         => cv_cre_lot_trx_temp_err
+                                 , iv_token_name1  => cv_tkn_base_code
+                                 , iv_token_value1 => g_hht_inv_if_tab( ln_work_count ).base_code
+                                 , iv_token_name2  => cv_tkn_record_type
+                                 , iv_token_value2 => g_hht_inv_if_tab( ln_work_count ).record_type
+                                 , iv_token_name3  => cv_tkn_invoice_type
+                                 , iv_token_value3 => g_hht_inv_if_tab( ln_work_count ).invoice_type
+                                 , iv_token_name4  => cv_tkn_dept_flag
+                                 , iv_token_value4 => g_hht_inv_if_tab( ln_work_count ).department_flag
+                                 , iv_token_name5  => cv_tkn_invoice_no
+                                 , iv_token_value5 => g_hht_inv_if_tab( ln_work_count ).invoice_no
+                                 , iv_token_name6  => cv_tkn_column_no
+                                 , iv_token_value6 => g_hht_inv_if_tab( ln_work_count ).column_no
+                                 , iv_token_name7  => cv_tkn_item_code
+                                 , iv_token_value7 => g_hht_inv_if_tab( ln_work_count ).item_code
+                               );
+                  RAISE global_process_expt;
+                END IF;
+              END IF;
+            END IF;
+            --
+            IF ( lt_transaction_type_code IN ( cv_transaction_type_10, cv_transaction_type_70 ) ) THEN
+              -- ロット別取引TEMP作成(入庫側保管場所)
+              BEGIN
+                SELECT msi.attribute14 AS attribute14
+                INTO   lt_attribute14
+                FROM   mtl_secondary_inventories msi
+                WHERE  msi.organization_id          = gt_org_id
+                AND    msi.secondary_inventory_name = gt_inside_subinv_code;
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                  lv_errmsg := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_application_short_name
+                                 , iv_name         => cv_inside_subinv_inf_err
+                                 , iv_token_name1  => cv_tkn_subinv
+                                 , iv_token_value1 => gt_inside_subinv_code
+                               );
+                  lv_errbuf := lv_errmsg;
+                  RAISE global_process_expt;
+              END;
+              --
+              IF ( lt_attribute14 = cv_attribute14_Y ) THEN
+                xxcoi_common_pkg.cre_lot_trx_temp(
+                    in_trx_set_id       => NULL                                               -- 取引セットID
+                  , iv_parent_item_code => g_hht_inv_if_tab( ln_work_count ).item_code        -- 親品目コード
+                  , iv_child_item_code  => NULL                                               -- 子品目コード
+                  , iv_lot              => NULL                                               -- ロット(賞味期限)
+                  , iv_diff_sum_code    => NULL                                               -- 固有記号
+                  , iv_trx_type_code    => lt_transaction_type_code                           -- 取引タイプコード
+                  , id_trx_date         => g_hht_inv_if_tab( ln_work_count ).invoice_date     -- 取引日
+                  , iv_slip_num         => g_hht_inv_if_tab( ln_work_count ).invoice_no       -- 伝票No
+                  , in_case_in_qty      => g_hht_inv_if_tab( ln_work_count ).case_in_quantity -- 入数
+                  , in_case_qty         => g_hht_inv_if_tab( ln_work_count ).case_quantity    -- ケース数
+                  , in_singly_qty       => g_hht_inv_if_tab( ln_work_count ).quantity         -- バラ数
+                  , in_summary_qty      => gn_total_quantity                                  -- 取引数量
+                  , iv_base_code        => g_hht_inv_if_tab( ln_work_count ).base_code        -- 拠点コード
+                  , iv_subinv_code      => gt_inside_subinv_code                              -- 保管場所コード
+                  , iv_tran_subinv_code => gt_outside_subinv_code                             -- 転送先保管場所コード
+                  , iv_tran_loc_code    => NULL                                               -- 転送先ロケーションコード
+                  , iv_inout_code       => lv_inout_code_in                                   -- 入出庫コード
+                  , iv_source_code      => cv_pkg_name                                        -- ソースコード
+                  , iv_relation_key     => gt_transaction_id                                  -- 紐付けキー
+                  , on_trx_id           => lt_transaction_id                                  -- ロット別TEMP取引ID
+                  , ov_errbuf           => lv_errbuf                                          -- エラーメッセージ
+                  , ov_retcode          => lv_retcode                                         -- リターン・コード(0:正常、2:エラー)
+                  , ov_errmsg           => lv_errmsg                                          -- ユーザー・エラーメッセージ
+                );
+                --
+                IF ( lv_retcode = cv_status_error ) THEN
+                  lv_errmsg := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_application_short_name
+                                 , iv_name         => cv_cre_lot_trx_temp_err
+                                 , iv_token_name1  => cv_tkn_base_code
+                                 , iv_token_value1 => g_hht_inv_if_tab( ln_work_count ).base_code
+                                 , iv_token_name2  => cv_tkn_record_type
+                                 , iv_token_value2 => g_hht_inv_if_tab( ln_work_count ).record_type
+                                 , iv_token_name3  => cv_tkn_invoice_type
+                                 , iv_token_value3 => g_hht_inv_if_tab( ln_work_count ).invoice_type
+                                 , iv_token_name4  => cv_tkn_dept_flag
+                                 , iv_token_value4 => g_hht_inv_if_tab( ln_work_count ).department_flag
+                                 , iv_token_name5  => cv_tkn_invoice_no
+                                 , iv_token_value5 => g_hht_inv_if_tab( ln_work_count ).invoice_no
+                                 , iv_token_name6  => cv_tkn_column_no
+                                 , iv_token_value6 => g_hht_inv_if_tab( ln_work_count ).column_no
+                                 , iv_token_name7  => cv_tkn_item_code
+                                 , iv_token_value7 => g_hht_inv_if_tab( ln_work_count ).item_code
+                               );
+                  RAISE global_process_expt;
+                END IF;
+              END IF;
+            END IF;
+--
+-- 2014/10/27 E_本稼動_12237 V1.11 Add END
+    -- ===========================================
+    --  HHT入出庫IFデータのHHTエラーリスト表追加(B-7)
     -- ===========================================
         ELSE
             -- 
@@ -2095,7 +2314,7 @@ AS
         END IF;
         --
     -- ===========================================
-    --  HHT入出庫IFのレコード削除(B-7)
+    --  HHT入出庫IFのレコード削除(B-8)
     -- ===========================================
         del_hht_inv_if_data(
                 ln_work_count        -- TABLE(INDEX)
@@ -2115,7 +2334,7 @@ AS
     --
     END LOOP hht_inv_if_loop;
     -- ===========================================
-    --  終了処理(B-8)
+    --  終了処理(B-9)
     -- ===========================================
     -- 正常処理件数の設定
     gn_normal_cnt := gn_target_cnt - gn_warn_cnt - gn_error_cnt;
