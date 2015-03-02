@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -22,6 +22,7 @@
 * 2009-01-26 1.13 伊藤ひとみ   本番障害#936対応
 * 2009-02-13 1.14 伊藤ひとみ   本番障害#863対応
 * 2009-12-04 1.15 伊藤ひとみ     本稼動障害#11対応
+* 2014-11-11 1.16 桐生和幸     E_本稼働_12237対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -6459,4 +6460,331 @@ public class XxwshUtility
     }
   } // getOpenDate
 // 2009-12-04 H.Itou Add End 本稼動障害#11
+// 2014-11-11 K.Kiriu Add Start E_本稼動_12237対応
+  /*****************************************************************************
+   * 直送の場合に顧客IDを取得します。
+   * @param  trans       - トランザクション
+   * @param  deliverToId - 出荷先ID
+   * @return Number      - 顧客ID
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static Number getCustID(
+    OADBTransaction trans,
+    Number deliverToId
+  ) throws OAException
+  {
+    String apiName = "getCustID";  // API名
+
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE                                   ");
+    sb.append("BEGIN                                     ");
+    sb.append("  :1 := xxcoi_common_pkg.get_customer_id( ");
+    sb.append("          in_deliver_to_id => :2          "); // 2.出荷先ID
+    sb.append("        );                                ");
+    sb.append("  IF ( :1 IS NULL ) THEN                  ");
+    sb.append("   :1 := -1;                              ");
+    sb.append("  END IF;                                 ");
+    sb.append("END;                                      ");
+
+    // PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try 
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(deliverToId)); // 出荷先ID
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.INTEGER); // 顧客ID
+
+      // PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値の設定
+      return new Number(cstmt.getObject(1));
+
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                             XxcmnConstants.XXCMN10123
+                             );
+
+    } finally 
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // getCustID
+  /*****************************************************************************
+   * 子品目から親品目IDを取得します。
+   * @param  trans        - トランザクション
+   * @param  standardDate - 日付
+   * @param  childItemId  - 子品目ID
+   * @return Number       - 親品目ID
+   * @throws OAException  - OA例外
+   ****************************************************************************/
+  public static Number getParentItemId(
+    OADBTransaction trans,
+    Date   standardDate,
+    Number childItemId
+  ) throws OAException
+  {
+    String apiName = "getParentItemId";  // API名
+
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE                                                             ");
+    sb.append("  gt_item_info_tab  xxcoi_common_pkg.item_info_ttype;               ");
+    sb.append("BEGIN                                                               ");
+    sb.append("  xxcoi_common_pkg.get_parent_child_item_info(                      ");
+    sb.append("    id_date            => :1,                                       "); // 1.日付
+    sb.append("    in_inv_org_id      => FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID'), "); // 2.在庫組織ID
+    sb.append("    in_parent_item_id  => NULL,                                     "); //   親品目ID
+    sb.append("    in_child_item_id   => :2,                                       "); // 3.子品目ID
+    sb.append("    ot_item_info_tab   => gt_item_info_tab,                         "); // 4.品目情報
+    sb.append("    ov_errbuf          => :3,                                       "); //   エラーバッファ
+    sb.append("    ov_retcode         => :4,                                       "); //   リターンコード
+    sb.append("    ov_errmsg          => :5                                        "); //   エラーメッセージ
+    sb.append("  );                                                                ");
+    sb.append("  IF ( :4 = xxccp_common_pkg.set_status_normal ) THEN               ");
+    sb.append("    FOR i IN gt_item_info_tab.FIRST..gt_item_info_tab.LAST LOOP     ");
+    sb.append("      :6 := gt_item_info_tab(i).item_id;                            ");
+    sb.append("    END LOOP;                                                       ");
+    sb.append("  ELSE                                                              ");
+    sb.append("    :6 := -1;                                                       ");
+    sb.append("  END IF;                                                           ");
+    sb.append("END;                                                                ");
+
+    // PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try 
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setDate(1, XxcmnUtility.dateValue(standardDate)); // 基準日(システム日付)
+      cstmt.setInt(2, XxcmnUtility.intValue(childItemId));    // 子品目ID
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(3, Types.VARCHAR, 5000);     // システムメッセージ
+      cstmt.registerOutParameter(4, Types.VARCHAR, 1);        // ステータスコード
+      cstmt.registerOutParameter(5, Types.VARCHAR, 5000);     // エラーメッセージ
+      cstmt.registerOutParameter(6, Types.NUMERIC);           // 親品目ID
+
+      // PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値の取得
+      String retCode   = cstmt.getString(4);  // リターンコード
+
+      if (!XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 
+      {
+
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                            XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                            cstmt.getString(5),
+                            6);
+
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                               XxcmnConstants.XXCMN10123
+                               );
+      }
+
+      // 戻り値返却
+      return new Number(cstmt.getObject(6));  // 親品目ID
+
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                             XxcmnConstants.XXCMN10123
+                             );
+
+    } finally 
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // getParentItemId
+  /*****************************************************************************
+   * ロット情報保持マスタの追加・更新を行います。
+   * @param  trans        - トランザクション
+   * @param  params       - パラメータ
+   * @throws OAException  - OA例外
+   ****************************************************************************/
+  public static void insUpdLotHoldInfo(
+    OADBTransaction trans,
+    HashMap params
+  ) throws OAException
+  {
+    String apiName = "insUpdLotHoldInfo";  // API名
+
+    // パラメータ取得
+    Number custId                 = (Number)params.get("cutId");                  // 顧客ID
+    Number resultDeliverToId      = (Number)params.get("resultDeliverToId");      // 出荷先ID_実績
+    Number parentItemId           = (Number)params.get("parentItemId");           // 親品目ID
+    Date   deliverLot             = (Date)params.get("deliverLot");               // 納品ロット
+    Date   deliveryDate           = (Date)params.get("deliveryDate");             // 納品日
+    String eSKbn                  = (String)params.get("eSKbn");                  // 営業生産区分
+    String cancelKbn              = (String)params.get("cancelKbn");              // 取消区分
+
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE                                               ");
+    sb.append("BEGIN                                                 ");
+    sb.append("  xxcoi_common_pkg.ins_upd_lot_hold_info(             ");
+    sb.append("    in_customer_id      => :1,                        "); // 1.顧客ID
+    sb.append("    in_deliver_to_id    => :2,                        "); // 2.出荷先ID
+    sb.append("    in_parent_item_id   => :3,                        "); // 3.親品目ID
+    sb.append("    iv_deliver_lot      => TO_CHAR(:4, 'YYYY/MM/DD'), "); // 4.納品ロット(賞味期限)
+    sb.append("    id_delivery_date    => :5,                        "); // 5.納品日(着荷日)
+    sb.append("    iv_e_s_kbn          => :6,                        "); // 6.営業生産区分
+    sb.append("    iv_cancel_kbn       => :7,                        "); // 7.取消区分
+    sb.append("    ov_errbuf           => :8,                        "); //   エラーバッファ
+    sb.append("    ov_retcode          => :9,                        "); //   リターンコード
+    sb.append("    ov_errmsg           => :10                        "); //   エラーメッセージ
+    sb.append("  );                                                  ");
+    sb.append("END;                                                  ");
+
+    // PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try 
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(1, XxcmnUtility.intValue(custId));            // 顧客ID
+      cstmt.setInt(2, XxcmnUtility.intValue(resultDeliverToId)); // 出荷先ID_実績
+      cstmt.setInt(3, XxcmnUtility.intValue(parentItemId));      // 親品目ID
+      cstmt.setDate(4, XxcmnUtility.dateValue(deliverLot));      // 納品ロット(賞味期限)
+      cstmt.setDate(5, XxcmnUtility.dateValue(deliveryDate));    // 納品日(着荷日)
+      cstmt.setString(6, eSKbn);                                 // 営業生産区分
+      cstmt.setString(7, cancelKbn);                             // 取消区分
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(8, Types.VARCHAR, 5000);     // システムメッセージ
+      cstmt.registerOutParameter(9, Types.VARCHAR, 1);        // ステータスコード
+      cstmt.registerOutParameter(10, Types.VARCHAR, 5000);    // エラーメッセージ
+
+      // PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値の取得
+      String retCode   = cstmt.getString(9);  // リターンコード
+
+      if (!XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 
+      {
+
+        // ロールバック
+        rollBack(trans);
+
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                            XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                            cstmt.getString(10),
+                            6);
+
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                               XxcmnConstants.XXCMN10123
+                               );
+      }
+
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                             XxcmnConstants.XXCMN10123
+                             );
+
+    } finally 
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // insUpdLotHoldInfo
+// 2014-11-11 K.Kiriu Add End E_本稼動_12237対応
 }
