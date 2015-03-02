@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshShipLotInputAMImpl
 * 概要説明   : 入出荷実績ロット入力画面アプリケーションモジュール
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2008-09-25 1.5  伊藤ひとみ   T_TE080_BPO_400指摘93 受注タイプ：廃棄・見本の場合、ロットステータスチェックを行わない
 * 2008-10-17 1.6  伊藤ひとみ   統合テスト指摘346 入庫実績の場合も在庫クローズチェックを行う。
 * 2009-03-04 1.7  飯田　甫     本番障害#1234対応
+* 2014-11-11 1.8  桐生和幸     E_本稼働_12237対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920001j.server;
@@ -1489,6 +1490,13 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
         getOADBTransaction(),
         newOrderLineId,
         actualQtySum);
+
+// 2014-11-11 K.kiriu Add Start
+      // ****************************************** // 
+      // *  ロット情報保持マスタ作成更新処理      * //
+      // ****************************************** //
+      insertHoldLot();
+// 2014-11-11 K.kiriu Add End
       
       // *********************** // 
       // *  出荷実績計上処理   * //
@@ -1519,7 +1527,14 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
         getOADBTransaction(),
         orderLineId,
         actualQtySum);
-    
+
+// 2014-11-11 K.kiriu Add Start
+      // ****************************************** // 
+      // *  ロット情報保持マスタ作成更新処理      * //
+      // ****************************************** //
+      insertHoldLot();
+// 2014-11-11 K.kiriu Add End
+
       // 受注明細アドオンの出荷実績数量がすべて登録済の場合
       if (XxwshUtility.checkShippedQuantityEntry(getOADBTransaction(), orderHeaderId))
       {       
@@ -1851,6 +1866,113 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
       resultLotVo.next();
     }
   }
+// 2014-11-11 K.kiriu Add Start
+  /***************************************************************************
+   * ロット情報保持マスタの実績登録、実績更新処理を行うメソッドです。
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void insertHoldLot() throws OAException
+  {
+
+    // 明細VO取得
+    OAViewObject lineVo      = getXxwshLineVO1();
+    OARow        lineRow     = (OARow) lineVo.first();
+    String lotCtl            = (String)lineRow.getAttribute("LotCtl");            // ロット管理区分
+    String callPictureKbn    = (String)lineRow.getAttribute("CallPictureKbn");    // 呼出画面区分
+    Number resultDeliverToId = (Number)lineRow.getAttribute("ResultDeliverToId"); // 出荷先_実績ID
+    Number invItemId         = (Number)lineRow.getAttribute("InvItemId");         // 出荷品目ID
+    Date   arrivalDate       = (Date)  lineRow.getAttribute("ArrivalDate");       // 着荷日
+    Number custId            = new Number();
+    Number parentItemId      = new Number();
+    String lotInfoCreateFlg  = XxcmnConstants.STRING_N;                           // ロット情報保持マスタ作成フラグ
+
+    //ロット管理区分が1：ロット管理品の場合のみ実行
+    if (XxwshConstants.LOT_CTL_Y.equals(lotCtl))
+    {
+      // 呼出画面区分が1:出荷依頼入力画面の場合のみ
+      if (XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn))
+      {
+          // ************************************** // 
+          // *  直送データの判定(顧客ID取得)処理  * //
+          // ************************************** //
+          custId = XxwshUtility.getCustID(getOADBTransaction(), resultDeliverToId);
+
+          // 直送データの場合
+          if (!custId.equals(XxwshConstants.NOT_DIRECT_CUST))
+          {
+            //ロット情報保持マスタ作成を作成する
+            lotInfoCreateFlg = XxcmnConstants.STRING_Y;
+
+            // システム日付を取得
+            Date currentDate = getOADBTransaction().getCurrentDBDate();
+
+            // ********************** //
+            // *  親品目ID取得処理  * //
+            // ********************** //
+            parentItemId = XxwshUtility.getParentItemId(
+                             getOADBTransaction(),
+                             currentDate,   // システム日付
+                             invItemId      // 出荷品目ID
+                           );
+          }
+      }
+      // 直送顧客のみ実施
+      if (lotInfoCreateFlg.equals(XxcmnConstants.STRING_Y))
+      {
+        // 実績ロットVO取得
+        OAViewObject resultLotVo = getXxwshResultLotVO1();
+        resultLotVo.first();
+        OARow resultLotRow = null;
+
+        // 全件ループ
+        while (resultLotVo.getCurrentRow() != null)
+        {
+          resultLotRow            = (OARow)resultLotVo.getCurrentRow();
+          Date   useByDate        = (Date)resultLotRow.getAttribute("UseByDate");          // 賞味期限
+          String convertQuantity  = (String)resultLotRow.getAttribute("ConvertQuantity");  // 換算実績数量
+          double convertQuantityD = Double.parseDouble(convertQuantity);                   // 換算数量(取消判断用)
+          String eSKbn            = XxcmnConstants.STRING_TWO;                             // 営業生産区分(生産)
+          String cancelKbn        = new String();                                          // 取消区分
+
+          // ロット情報保持マスタの追加・更新用HashMap取得
+          HashMap lotData = new HashMap();
+
+          // 数量が0(取消)の場合
+          if (convertQuantityD != 0)
+          {
+            cancelKbn = XxcmnConstants.STRING_ZERO;  //取消区分0
+          // 取消以外の場合
+          } else
+          {
+            cancelKbn = XxcmnConstants.STRING_ONE;   //取消区分1
+          }
+
+          // パラメータの編集
+          lotData.put("cutId",             custId);             // 顧客ID
+          lotData.put("resultDeliverToId", resultDeliverToId);  // 出荷先ID_実績
+          lotData.put("parentItemId",      parentItemId);       // 親品目ID
+          lotData.put("deliverLot",        useByDate);          // 納品ロット(賞味期限)
+          lotData.put("deliveryDate",      arrivalDate);        // 納品日(着荷日)
+          lotData.put("eSKbn",             eSKbn);              // 営業生産区分
+          lotData.put("cancelKbn",         cancelKbn);          // 取消区分
+
+          // ****************************************** //
+          // *  ロット情報保持マスタの追加・更新処理  * //
+          // ****************************************** //
+          XxwshUtility.insUpdLotHoldInfo(
+            getOADBTransaction(),
+            lotData
+          );
+
+          // 次のレコードへ
+          resultLotVo.next();
+
+        }
+      }
+    }
+  }
+// 2014-11-11 K.kiriu Add End
 
   /***************************************************************************
    * 受注ヘッダアドオンステータスを出荷実績計上済に更新するメソッドです。
