@@ -369,6 +369,7 @@ AS
 -- **************** 2009/09/18 2.10 N.Maeda MOD START **************** --
 -- **************** 2009/09/28 2.10 N.Maeda MOD START **************** --
     SELECT /*+
+           OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
            LEADING(xseh)
            USE_NL(xseh xsel)
            USE_NL(xseh hca xchv)
@@ -461,6 +462,7 @@ AS
 -- **************** 2009/09/25 2.10 N.Maeda MOD START **************** --
 -- **************** 2009/09/28 2.10 N.Maeda MOD START **************** --
     SELECT /*+
+           OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
            LEADING(xseh)
            USE_NL(xseh xsel)
            USE_NL(xseh hca hpt)
