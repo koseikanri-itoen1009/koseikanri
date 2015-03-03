@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY APPS.XXCOS002A05R
+create or replace PACKAGE BODY      XXCOS002A05R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.26
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,7 +75,6 @@ AS
  *  2012/03/30    1.23  Y.Horikawa       [E_本稼動_09039]パフォーマンス改善対応
  *  2013/04/12    1.24  T.Ishiwata       [E_本稼動_10660]入金データ更新項目追加対応
  *  2013/07/03    1.25  T.Shimoji        [E_本稼動_10904]消費税増税対応
- *  2014/11/24    1.26  N.Miyamoto       [HWリプレース]リプレース_00200パフォーマンス障害対応
  *
  *****************************************************************************************/
 --
@@ -1024,15 +1023,10 @@ AS
 --           USE_NL  ( infd )
 --         */
 ---- 2009/09/01 Ver.1.15 M.Sano Add End
--- 2014/11/24 Ver.1.26 N.Miyamoto Mod Start
---         /*+
---             LEADING(infh disc base parb cust cuac parc tacl gysm gysm1 incl htcl orct ppf cscl riv infd)
---         */
          /*+
              OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
              LEADING(infh disc base parb cust cuac parc tacl gysm gysm1 incl htcl orct ppf cscl riv infd)
          */
--- 2014/11/24 Ver.1.26 N.Miyamoto Mod End
 -- 2012/03/30 Ver.1.23 Mod End
          infh.delivery_date                        AS target_date                     -- 対象日付
         ,infh.sales_base_code                      AS base_code                       -- 拠点コード
