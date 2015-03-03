@@ -2672,7 +2672,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A06C AS
 --                 USE_NL(rct rctl rctl2 rctg_h hcab hpb hcas hps aps tax ttype)
 --                 INDEX(rct RA_CUSTOMER_TRX_N5)
 --              */
-      SELECT /*+ LEADING(rct)
+--2014/09/26 Ver.1.4 Mod Start
+--      SELECT /*+ LEADING(rct)
+      SELECT /*+ LEADING(rct rctl rctl2 rctg_h)
                  USE_NL(rct rctl rctl2 rctg_h hcab hpb hcas hps aps tax ttype)
                  INDEX(rct RA_CUSTOMER_TRX_U1)
               */
