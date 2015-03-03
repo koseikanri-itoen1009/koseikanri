@@ -1643,6 +1643,7 @@ AS
   --    */
   ---- ********** 2009/09/12 1.13 M.Sano  MOD End ************ --
       /*+
+          OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
           LEADING(ilv1)
           INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
           INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
@@ -1796,6 +1797,7 @@ AS
 --                  */
       , ( SELECT 
                 /*+
+                   OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
                    USE_NL(ooha)
                    USE_NL(oola)
                    USE_NL(xoha)
@@ -2011,6 +2013,7 @@ AS
 --          USE_NL(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
 --      */
       /*+
+          OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
           LEADING(ilv1)
           INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
           INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
@@ -2149,6 +2152,7 @@ AS
 --                     INDEX(oola xxcos_oe_order_lines_all_n23)
 --                  */
                   /*+
+                     OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
                      LEADING(xca ooha)
                      USE_NL(ooha)
                      USE_NL(xca)
