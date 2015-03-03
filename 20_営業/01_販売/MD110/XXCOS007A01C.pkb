@@ -1824,6 +1824,7 @@ AS
             /*+
       -- 2010/05/18 Ver1.16 Mod Start
       --        LEADING(ooha)
+              OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
               LEADING(ooha oola msi)
               INDEX(oola xxcos_oe_order_lines_all_n23)
       -- 2010/05/18 Ver1.16 Mod End
@@ -2206,6 +2207,7 @@ AS
           SELECT
             /*+
 -- ************ 2010/12/17 1.20 H.Sekine MOD START *********** --
+              OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
               LEADING(XCA)
               INDEX(xca XXCMM_CUST_ACCOUNTS_N21)
 --              LEADING(ooha oola msi)
