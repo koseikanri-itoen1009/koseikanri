@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A03C(body)
  * Description      : 販手残高計算処理
  * MD.050           : 販売手数料（自販機）の支払予定額（未払残高）を計算 MD050_COK_014_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/05/28    1.3   M.Hiruta         [障害T1_1138] 販手残高保留情報の初期化で正しく保留情報を初期化できるよう変更
  *  2009/12/12    1.4   K.Yamaguchi      [E_本稼動_00360] 未確定データで削除されないデータが残るため再作成
  *  2012/07/09    1.5   K.Onotsuka       [E_本稼動_08365] 販手残高テーブルに項目追加(処理区分)※初期値：0
+ *  2015/03/04    1.6   K.Kiriu          [E_本稼動_12937] PT対応(ヒント句追加)
  *
  *****************************************************************************************/
   --==================================================
@@ -271,7 +272,11 @@ AS
     --==================================================
     CURSOR xcbs_update_lock_cur
     IS
-      SELECT xcbs.cond_bm_support_id    AS cond_bm_support_id           -- 条件別販手販協ID
+-- 2015/03/04 Ver.1.6 [E_本稼動_12937] SCSK K.Kiriu MOD START
+--      SELECT xcbs.cond_bm_support_id    AS cond_bm_support_id           -- 条件別販手販協ID
+      SELECT /*+ INDEX( xcbs XXCOK_COND_BM_SUPPORT_N04 ) */
+             xcbs.cond_bm_support_id    AS cond_bm_support_id           -- 条件別販手販協ID
+-- 2015/03/04 Ver.1.6 [E_本稼動_12937] SCSK K.Kiriu MOD END
       FROM xxcok_cond_bm_support   xcbs               -- 条件別販手販協テーブル
       WHERE xcbs.base_code            = i_xcbs_data_rec.base_code
         AND xcbs.supplier_code        = i_xcbs_data_rec.supplier_code
