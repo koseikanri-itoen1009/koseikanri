@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  chk_account_many          P    -     アカウント複数チェック
  *  chk_cust_site_uses        P    -     顧客使用目的チェック
  *  chk_validate_db           P    -     ＤＢ更新判定チェック
+ *  get_contract_end_period   F    V     契約終了期間取得
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -59,6 +60,7 @@ AS
  *  2010/01/12    1.12  D.Abe            [E_本稼動_00823]顧客マスタの整合性チェック対応
  *  2010/01/15    1.13  D.Abe            [E_本稼動_00950]ＤＢ更新判定チェック対応
  *  2010/03/01    1.14  D.Abe            [E_本稼動_01678]現金支払対応
+ *  2014/12/15    1.15  K.Kiriu          [E_本稼動_12565]SP・契約書画面改修対応
 *****************************************************************************************/
 --
   -- ===============================
@@ -2080,9 +2082,11 @@ AS
   PROCEDURE conv_number_separate(
     iv_sele_number                 IN  VARCHAR2
    ,iv_contract_year_date          IN  VARCHAR2
-   ,iv_install_support_amt         IN  VARCHAR2
-   ,iv_install_support_amt2        IN  VARCHAR2
-   ,iv_payment_cycle               IN  VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Del Start
+--   ,iv_install_support_amt         IN  VARCHAR2
+--   ,iv_install_support_amt2        IN  VARCHAR2
+--   ,iv_payment_cycle               IN  VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Del End
    ,iv_electricity_amount          IN  VARCHAR2
    ,iv_sales_month                 IN  VARCHAR2
    ,iv_bm_rate                     IN  VARCHAR2
@@ -2090,11 +2094,29 @@ AS
    ,iv_lease_charge_month          IN  VARCHAR2
    ,iv_contruction_charge          IN  VARCHAR2
    ,iv_electricity_amt_month       IN  VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Add Start
+   ,iv_contract_year_month         IN  VARCHAR2
+   ,iv_contract_start_month        IN  VARCHAR2
+   ,iv_contract_end_month          IN  VARCHAR2
+   ,iv_ad_assets_amt               IN  VARCHAR2
+   ,iv_ad_assets_this_time         IN  VARCHAR2
+   ,iv_ad_assets_payment_year      IN  VARCHAR2
+   ,iv_install_supp_amt            IN  VARCHAR2
+   ,iv_install_supp_this_time      IN  VARCHAR2
+   ,iv_install_supp_payment_year   IN  VARCHAR2
+   ,iv_intro_chg_amt               IN  VARCHAR2
+   ,iv_intro_chg_this_time         IN  VARCHAR2
+   ,iv_intro_chg_payment_year      IN  VARCHAR2
+   ,iv_intro_chg_per_sales_price   IN  VARCHAR2
+   ,iv_intro_chg_per_piece         IN  VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Add End
    ,ov_sele_number                 OUT VARCHAR2
    ,ov_contract_year_date          OUT VARCHAR2
-   ,ov_install_support_amt         OUT VARCHAR2
-   ,ov_install_support_amt2        OUT VARCHAR2
-   ,ov_payment_cycle               OUT VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Del Start
+--   ,ov_install_support_amt         OUT VARCHAR2
+--   ,ov_install_support_amt2        OUT VARCHAR2
+--   ,ov_payment_cycle               OUT VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Del End
    ,ov_electricity_amount          OUT VARCHAR2
    ,ov_sales_month                 OUT VARCHAR2
    ,ov_bm_rate                     OUT VARCHAR2
@@ -2102,6 +2124,22 @@ AS
    ,ov_lease_charge_month          OUT VARCHAR2
    ,ov_contruction_charge          OUT VARCHAR2
    ,ov_electricity_amt_month       OUT VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Add Start
+   ,ov_contract_year_month         OUT VARCHAR2
+   ,ov_contract_start_month        OUT VARCHAR2
+   ,ov_contract_end_month          OUT VARCHAR2
+   ,ov_ad_assets_amt               OUT VARCHAR2
+   ,ov_ad_assets_this_time         OUT VARCHAR2
+   ,ov_ad_assets_payment_year      OUT VARCHAR2
+   ,ov_install_supp_amt            OUT VARCHAR2
+   ,ov_install_supp_this_time      OUT VARCHAR2
+   ,ov_install_supp_payment_year   OUT VARCHAR2
+   ,ov_intro_chg_amt               OUT VARCHAR2
+   ,ov_intro_chg_this_time         OUT VARCHAR2
+   ,ov_intro_chg_payment_year      OUT VARCHAR2
+   ,ov_intro_chg_per_sales_price   OUT VARCHAR2
+   ,ov_intro_chg_per_piece         OUT VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Add End
   )
   IS
     -- ===============================
@@ -2113,9 +2151,11 @@ AS
     -- ===============================
     ln_sele_number                 NUMBER;
     ln_contract_year_date          NUMBER;
-    ln_install_support_amt         NUMBER;
-    ln_install_support_amt2        NUMBER;
-    ln_payment_cycle               NUMBER;
+-- 20141215_K.Kiriu E_本稼動_12565 Del Start
+--    ln_install_support_amt         NUMBER;
+--    ln_install_support_amt2        NUMBER;
+--    ln_payment_cycle               NUMBER;
+-- 20141215_K.Kiriu E_本稼動_12565 Del End
     ln_electricity_amount          NUMBER;
     ln_sales_month                 NUMBER;
     ln_bm_rate                     NUMBER;
@@ -2123,6 +2163,22 @@ AS
     ln_lease_charge_month          NUMBER;
     ln_contruction_charge          NUMBER;
     ln_electricity_amt_month       NUMBER;
+-- 20141215_K.Kiriu E_本稼動_12565 Add Start
+    ln_contract_year_month         NUMBER;
+    ln_contract_start_month        NUMBER;
+    ln_contract_end_month          NUMBER;
+    ln_ad_assets_amt               NUMBER;
+    ln_ad_assets_this_time         NUMBER;
+    ln_ad_assets_payment_year      NUMBER;
+    ln_install_supp_amt            NUMBER;
+    ln_install_supp_this_time      NUMBER;
+    ln_install_supp_payment_year   NUMBER;
+    ln_intro_chg_amt               NUMBER;
+    ln_intro_chg_this_time         NUMBER;
+    ln_intro_chg_payment_year      NUMBER;
+    ln_intro_chg_per_sales_price   NUMBER; --注意
+    ln_intro_chg_per_piece         NUMBER;
+-- 20141215_K.Kiriu E_本稼動_12565 Add End
 --
   BEGIN
 --
@@ -2150,41 +2206,42 @@ AS
         ov_contract_year_date := iv_contract_year_date;
     END;
 --
-    BEGIN
-      ln_install_support_amt := TO_NUMBER(REPLACE(iv_install_support_amt, ',',''));
-      IF ( (ln_install_support_amt - TRUNC(ln_install_support_amt)) = 0 ) THEN
-        ov_install_support_amt := TO_CHAR(ln_install_support_amt, 'FM999G999G999G999G990');
-      ELSE
-        ov_install_support_amt := iv_install_support_amt;
-      END IF;
-    EXCEPTION
-      WHEN OTHERS THEN
-        ov_install_support_amt := iv_install_support_amt;
-    END;
+-- 20141215_K.Kiriu E_本稼動_12565 Mod Start
+--    BEGIN
+--      ln_install_support_amt := TO_NUMBER(REPLACE(iv_install_support_amt, ',',''));
+--      IF ( (ln_install_support_amt - TRUNC(ln_install_support_amt)) = 0 ) THEN
+--        ov_install_support_amt := TO_CHAR(ln_install_support_amt, 'FM999G999G999G999G990');
+--      ELSE
+--        ov_install_support_amt := iv_install_support_amt;
+--      END IF;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        ov_install_support_amt := iv_install_support_amt;
+--    END;
 --
-    BEGIN
-      ln_install_support_amt2 := TO_NUMBER(REPLACE(iv_install_support_amt2, ',',''));
-      IF ( (ln_install_support_amt2 - TRUNC(ln_install_support_amt2)) = 0 ) THEN
-        ov_install_support_amt2 := TO_CHAR(ln_install_support_amt2, 'FM999G999G999G999G990');
-      ELSE
-        ov_install_support_amt2 := iv_install_support_amt2;
-      END IF;
-    EXCEPTION
-      WHEN OTHERS THEN
-        ov_install_support_amt2 := iv_install_support_amt2;
-    END;
+--    BEGIN
+--      ln_install_support_amt2 := TO_NUMBER(REPLACE(iv_install_support_amt2, ',',''));
+--      IF ( (ln_install_support_amt2 - TRUNC(ln_install_support_amt2)) = 0 ) THEN
+--        ov_install_support_amt2 := TO_CHAR(ln_install_support_amt2, 'FM999G999G999G999G990');
+--      ELSE
+--        ov_install_support_amt2 := iv_install_support_amt2;
+--      END IF;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        ov_install_support_amt2 := iv_install_support_amt2;
+--    END;
 --
-    BEGIN
-      ln_payment_cycle := TO_NUMBER(REPLACE(iv_payment_cycle, ',',''));
-      IF ( (ln_payment_cycle - TRUNC(ln_payment_cycle)) = 0 ) THEN
-        ov_payment_cycle := TO_CHAR(ln_payment_cycle, 'FM999G999G999G999G990');
-      ELSE
-        ov_payment_cycle := iv_payment_cycle;
-      END IF;
-    EXCEPTION
-      WHEN OTHERS THEN
-        ov_payment_cycle := iv_payment_cycle;
-    END;
+--    BEGIN
+--      ln_payment_cycle := TO_NUMBER(REPLACE(iv_payment_cycle, ',',''));
+--      IF ( (ln_payment_cycle - TRUNC(ln_payment_cycle)) = 0 ) THEN
+--        ov_payment_cycle := TO_CHAR(ln_payment_cycle, 'FM999G999G999G999G990');
+--      ELSE
+--        ov_payment_cycle := iv_payment_cycle;
+--      END IF;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        ov_payment_cycle := iv_payment_cycle;
+--    END;
 --
     BEGIN
       ln_electricity_amount := TO_NUMBER(REPLACE(iv_electricity_amount, ',',''));
@@ -2197,6 +2254,7 @@ AS
       WHEN OTHERS THEN
         ov_electricity_amount := iv_electricity_amount;
     END;
+-- 20141215_K.Kiriu E_本稼動_12565 Mod End
 --
     BEGIN
       ln_sales_month := TO_NUMBER(REPLACE(iv_sales_month, ',',''));
@@ -2269,6 +2327,176 @@ AS
       WHEN OTHERS THEN
         ov_electricity_amt_month := iv_electricity_amt_month;
     END;
+-- 20141215_K.Kiriu E_本稼動_12565 Add Start
+--
+    BEGIN
+      ln_contract_year_month := TO_NUMBER(REPLACE(iv_contract_year_month, ',',''));
+      IF ( (ln_contract_year_month - TRUNC(ln_contract_year_month)) = 0 ) THEN
+        ov_contract_year_month := TO_CHAR(ln_contract_year_month, 'FM999G999G999G999G990');
+      ELSE
+        ov_contract_year_month := iv_contract_year_month;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_contract_year_month := iv_contract_year_month;
+    END;
+--
+    BEGIN
+      ln_contract_start_month := TO_NUMBER(REPLACE(iv_contract_start_month, ',',''));
+      IF ( (ln_contract_start_month - TRUNC(ln_contract_start_month)) = 0 ) THEN
+        ov_contract_start_month := TO_CHAR(ln_contract_start_month, 'FM999G999G999G999G990');
+      ELSE
+        ov_contract_start_month := iv_contract_start_month;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_contract_start_month := iv_contract_start_month;
+    END;
+--
+    BEGIN
+      ln_contract_end_month := TO_NUMBER(REPLACE(iv_contract_end_month, ',',''));
+      IF ( (ln_contract_end_month - TRUNC(ln_contract_end_month)) = 0 ) THEN
+        ov_contract_end_month := TO_CHAR(ln_contract_end_month, 'FM999G999G999G999G990');
+      ELSE
+        ov_contract_end_month := iv_contract_end_month;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_contract_end_month := iv_contract_end_month;
+    END;
+--
+    BEGIN
+      ln_ad_assets_amt := TO_NUMBER(REPLACE(iv_ad_assets_amt, ',',''));
+      IF ( (ln_ad_assets_amt - TRUNC(ln_ad_assets_amt)) = 0 ) THEN
+        ov_ad_assets_amt := TO_CHAR(ln_ad_assets_amt, 'FM999G999G999G999G990');
+      ELSE
+        ov_ad_assets_amt := iv_ad_assets_amt;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_ad_assets_amt := iv_ad_assets_amt;
+    END;
+--
+    BEGIN
+      ln_ad_assets_this_time := TO_NUMBER(REPLACE(iv_ad_assets_this_time, ',',''));
+      IF ( (ln_ad_assets_this_time - TRUNC(ln_ad_assets_this_time)) = 0 ) THEN
+        ov_ad_assets_this_time := TO_CHAR(ln_ad_assets_this_time, 'FM999G999G999G999G990');
+      ELSE
+        ov_ad_assets_this_time := iv_ad_assets_this_time;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_ad_assets_this_time := iv_ad_assets_this_time;
+    END;
+--
+    BEGIN
+      ln_ad_assets_payment_year := TO_NUMBER(REPLACE(iv_ad_assets_payment_year, ',',''));
+      IF ( (ln_ad_assets_payment_year - TRUNC(ln_ad_assets_payment_year)) = 0 ) THEN
+        ov_ad_assets_payment_year := TO_CHAR(ln_ad_assets_payment_year, 'FM999G999G999G999G990');
+      ELSE
+        ov_ad_assets_payment_year := iv_ad_assets_payment_year;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_ad_assets_payment_year := iv_ad_assets_payment_year;
+    END;
+--
+    BEGIN
+      ln_install_supp_amt := TO_NUMBER(REPLACE(iv_install_supp_amt, ',',''));
+      IF ( (ln_install_supp_amt - TRUNC(ln_install_supp_amt)) = 0 ) THEN
+        ov_install_supp_amt := TO_CHAR(ln_install_supp_amt, 'FM999G999G999G999G990');
+      ELSE
+        ov_install_supp_amt := iv_install_supp_amt;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_install_supp_amt := iv_install_supp_amt;
+    END;
+--
+    BEGIN
+      ln_install_supp_this_time := TO_NUMBER(REPLACE(iv_install_supp_this_time, ',',''));
+      IF ( (ln_install_supp_this_time - TRUNC(ln_install_supp_this_time)) = 0 ) THEN
+        ov_install_supp_this_time := TO_CHAR(ln_install_supp_this_time, 'FM999G999G999G999G990');
+      ELSE
+        ov_install_supp_this_time := iv_install_supp_this_time;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_install_supp_this_time := iv_install_supp_this_time;
+    END;
+--
+    BEGIN
+      ln_install_supp_payment_year := TO_NUMBER(REPLACE(iv_install_supp_payment_year, ',',''));
+      IF ( (ln_install_supp_payment_year - TRUNC(ln_install_supp_payment_year)) = 0 ) THEN
+        ov_install_supp_payment_year := TO_CHAR(ln_install_supp_payment_year, 'FM999G999G999G999G990');
+      ELSE
+        ov_install_supp_payment_year := iv_install_supp_payment_year;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_install_supp_payment_year := iv_install_supp_payment_year;
+    END;
+--
+    BEGIN
+      ln_intro_chg_amt := TO_NUMBER(REPLACE(iv_intro_chg_amt, ',',''));
+      IF ( (ln_intro_chg_amt - TRUNC(ln_intro_chg_amt)) = 0 ) THEN
+        ov_intro_chg_amt := TO_CHAR(ln_intro_chg_amt, 'FM999G999G999G999G990');
+      ELSE
+        ov_intro_chg_amt := iv_intro_chg_amt;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_intro_chg_amt := iv_intro_chg_amt;
+    END;
+--
+    BEGIN
+      ln_intro_chg_this_time := TO_NUMBER(REPLACE(iv_intro_chg_this_time, ',',''));
+      IF ( (ln_intro_chg_this_time - TRUNC(ln_intro_chg_this_time)) = 0 ) THEN
+        ov_intro_chg_this_time := TO_CHAR(ln_intro_chg_this_time, 'FM999G999G999G999G990');
+      ELSE
+        ov_intro_chg_this_time := iv_intro_chg_this_time;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_intro_chg_this_time := iv_intro_chg_this_time;
+    END;
+--
+    BEGIN
+      ln_intro_chg_payment_year := TO_NUMBER(REPLACE(iv_intro_chg_payment_year, ',',''));
+      IF ( (ln_intro_chg_payment_year - TRUNC(ln_intro_chg_payment_year)) = 0 ) THEN
+        ov_intro_chg_payment_year := TO_CHAR(ln_intro_chg_payment_year, 'FM999G999G999G999G990');
+      ELSE
+        ov_intro_chg_payment_year := iv_intro_chg_payment_year;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_intro_chg_payment_year := iv_intro_chg_payment_year;
+    END;
+--
+    BEGIN
+      ln_intro_chg_per_sales_price := TO_NUMBER(REPLACE(iv_intro_chg_per_sales_price, ',',''));
+      IF ( (ln_intro_chg_per_sales_price - TRUNC(ln_intro_chg_per_sales_price, 2)) = 0 ) THEN
+        ov_intro_chg_per_sales_price := TO_CHAR(ln_intro_chg_per_sales_price, 'FM999G999G999G999G990D90');
+      ELSE
+        ov_intro_chg_per_sales_price := iv_intro_chg_per_sales_price;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_intro_chg_per_sales_price := iv_intro_chg_per_sales_price;
+    END;
+--
+    BEGIN
+      ln_intro_chg_per_piece := TO_NUMBER(REPLACE(iv_intro_chg_per_piece, ',',''));
+      IF ( (ln_intro_chg_per_piece - TRUNC(ln_intro_chg_per_piece)) = 0 ) THEN
+        ov_intro_chg_per_piece := TO_CHAR(ln_intro_chg_per_piece, 'FM999G999G999G999G990');
+      ELSE
+        ov_intro_chg_per_piece := iv_intro_chg_per_piece;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        ov_intro_chg_per_piece := iv_intro_chg_per_piece;
+    END;
+-- 20141215_K.Kiriu E_本稼動_12565 Add End
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -2809,5 +3037,79 @@ AS
   END chk_validate_db;
 --
 -- 20100115_D.Abe E_本稼動_00950 Mod END
+-- 20141215_K.Kiriu E_本稼動_12565 Add START
+  /**********************************************************************************
+   * Function Name    : get_contract_end_period
+   * Description      : 契約終了期間取得
+   ***********************************************************************************/
+  PROCEDURE get_contract_end_period(
+    iv_contract_year_date         IN  VARCHAR2
+   ,iv_contract_year_month        IN  VARCHAR2
+   ,iv_contract_start_year        IN  VARCHAR2
+   ,iv_contract_start_month       IN  VARCHAR2
+   ,iv_contract_end_year          IN  VARCHAR2
+   ,iv_contract_end_month         IN  VARCHAR2
+   ,ov_contract_end               OUT VARCHAR2
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_contract_end_period';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cn_months                    CONSTANT NUMBER          := 12;         --月数
+    cv_slash                     CONSTANT VARCHAR2(1)     := '/';        --スラッシュ
+    cv_date_format_yyyymm        CONSTANT VARCHAR2(7)     := 'YYYY/MM';  --DATEフォーマット(YYYY/MM)
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ln_number_of_months          NUMBER;
+    lv_contract_year_month       VARCHAR2(7);
+--
+  BEGIN
+--
+    --初期化
+    ov_retcode             := xxcso_common_pkg.gv_status_normal;
+    ov_contract_end        := NULL;
+    ln_number_of_months    := 0;
+    lv_contract_year_month := NULL;
+--
+    --契約年数を月数に変換し契約月数と合算(1年間(当月を含める為-1ヶ月とする))
+    ln_number_of_months := ( TO_NUMBER( iv_contract_year_date ) * cn_months ) + TO_NUMBER( iv_contract_year_month ) -1;
+    --契約期間終了の編集
+    lv_contract_year_month := TO_CHAR( 
+                                 TO_DATE( iv_contract_end_year || cv_slash || iv_contract_end_month, cv_date_format_yyyymm)
+                                ,cv_date_format_yyyymm
+                              );
+--
+    --契約期間開始(年)(月)と契約月数より、契約期間終了(年月）を取得
+    SELECT  TO_CHAR(
+              ADD_MONTHS(
+                TO_DATE( iv_contract_start_year || cv_slash || iv_contract_start_month, cv_date_format_yyyymm )
+               ,ln_number_of_months )
+             ,cv_date_format_yyyymm )
+    INTO    ov_contract_end
+    FROM    DUAL
+    ;
+    --契約期間のチェック
+    IF ( lv_contract_year_month <> ov_contract_end ) THEN
+      ov_retcode := xxcso_common_pkg.gv_status_warn;
+    END IF;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END get_contract_end_period;
+-- 20141215_K.Kiriu E_本稼動_12565 Add END
 END xxcso_020001j_pkg;
 /
