@@ -1,0 +1,24 @@
+/***************************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Index Name  : XXCOI_LOT_REC_MONTHLY_N01
+ * Description : ロット別受払（月次）インデックスN01
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/10/30    1.0   Y.Nagasue       新規作成
+ **************************************************************************************/
+CREATE INDEX xxcoi.xxcoi_lot_rec_monthly_n01 ON xxcoi.xxcoi_lot_reception_monthly (
+   practice_month
+  ,base_code
+  ,subinventory_code
+  ,location_code
+  ,parent_item_id
+  ,child_item_id
+  ,lot
+  ,difference_summary_code
+ ) TABLESPACE xxidx2
+/

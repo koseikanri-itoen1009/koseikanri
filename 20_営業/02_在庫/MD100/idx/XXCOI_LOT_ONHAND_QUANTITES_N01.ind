@@ -1,0 +1,21 @@
+/***************************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Index Name  : XXCOI_LOT_ONHAND_QUANTITES_N01
+ * Description : ロット別手持数量 インデックスN01
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/11/18    1.0   K.Nakamura       新規作成
+ **************************************************************************************/
+ CREATE INDEX xxcoi.xxcoi_lot_onhand_quantites_n01 ON xxcoi.xxcoi_lot_onhand_quantites ( 
+   organization_id
+  ,base_code
+  ,subinventory_code
+  ,location_code
+  ,child_item_id
+ ) TABLESPACE xxidx2
+/

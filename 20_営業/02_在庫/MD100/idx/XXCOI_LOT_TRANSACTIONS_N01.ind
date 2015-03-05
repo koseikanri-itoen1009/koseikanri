@@ -1,0 +1,21 @@
+/***************************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Index Name  : XXCOI_LOT_TRANSACTIONS_N01
+ * Description : ロット別取引 インデックスN01
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/11/18    1.0   K.Nakamura       新規作成
+ **************************************************************************************/
+ CREATE INDEX xxcoi.xxcoi_lot_transactions_n01 ON xxcoi.xxcoi_lot_transactions ( 
+   organization_id
+  ,base_code
+  ,subinventory_code
+  ,transaction_date
+  ,parent_item_id
+ ) TABLESPACE xxidx2
+/
