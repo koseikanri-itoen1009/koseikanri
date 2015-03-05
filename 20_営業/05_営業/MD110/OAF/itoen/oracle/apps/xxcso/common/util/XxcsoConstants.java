@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.22
+* バージョン : 1.23
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -32,6 +32,7 @@
 * 2013-04-19 1.20 SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.21 SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 * 2014-03-13 1.22 SCSK桐生和幸 [E_本稼動_11670]税率変更警告メッセージ出力対応
+* 2014-12-15 1.23 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -250,6 +251,13 @@ public class XxcsoConstants
 // 2014-03-13 [E_本稼動_11670] Add Start
   public static final String APP_XXCSO1_00661    = "APP-XXCSO1-00661";
 // 2014-03-13 [E_本稼動_11670] Add End
+// 2014-12-15 Ver1.23 [E_本稼動_12565] Add Start
+  public static final String APP_XXCSO1_00718    = "APP-XXCSO1-00718";
+  public static final String APP_XXCSO1_00719    = "APP-XXCSO1-00719";
+  public static final String APP_XXCSO1_00720    = "APP-XXCSO1-00720";
+  public static final String APP_XXCSO1_00721    = "APP-XXCSO1-00721";
+  public static final String APP_XXCSO1_00730    = "APP-XXCSO1-00730";
+// 2014-12-15 Ver1.23 [E_本稼動_12565] Add End
 
   /*****************************************************************************
    * トークン名
@@ -308,6 +316,9 @@ public class XxcsoConstants
 // 2014-01-31 Ver1.21 [E_本稼動_11397] Add Start
   public static final String TOKEN_CARD_SALE     = "CARD_SALE";
 // 2014-01-31 Ver1.21 [E_本稼動_11397] Add End
+// 2014-12-15 Ver1.23 [E_本稼動_12565] Add Start
+  public static final String TOKEN_RESULTS       = "RESULTS";
+// 2014-12-15 Ver1.23 [E_本稼動_12565] Add End
   /*****************************************************************************
    * トークン値
    *****************************************************************************
