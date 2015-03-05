@@ -1,0 +1,99 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_LOT_PICK_CHAIN_PRO
+ * Description : ロット別ピックリスト_チェーン_製品別トータル帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/09/24    1.0   SCSK S.Ito       新規作成
+ ****************************************************************************************/
+CREATE TABLE xxcos.xxcos_rep_lot_pick_chain_pro 
+(
+     record_id                      NUMBER        NOT NULL
+    ,base_code                      VARCHAR2(4)
+    ,base_name                      VARCHAR2(40)
+    ,whse_code                      VARCHAR2(10)
+    ,whse_name                      VARCHAR2(50)
+    ,chain_code                     VARCHAR2(4)
+    ,chain_name                     VARCHAR2(40)
+    ,center_code                    VARCHAR2(10)
+    ,center_name                    VARCHAR2(40)
+    ,area_code                      VARCHAR2(8)
+    ,area_name                      VARCHAR2(40)
+    ,shipped_date                   DATE
+    ,arrival_date                   DATE
+    ,item_code                      VARCHAR2(16)
+    ,item_name                      VARCHAR2(20)
+    ,content                        NUMBER
+    ,case_num                       NUMBER
+    ,indivi                         NUMBER
+    ,quantity                       NUMBER
+    ,regular_sale_class_head        VARCHAR2(4)
+    ,regular_sale_class_line        VARCHAR2(4)
+    ,edi_received_date              DATE
+    ,item_class                     VARCHAR2(1)
+    ,item_class_name                VARCHAR2(8)
+    ,location_code                  VARCHAR2(8)
+    ,location_name                  VARCHAR2(14)
+    ,lot                            VARCHAR2(10)
+    ,difference_summary_code        VARCHAR2(6)
+    ,shipping_status                VARCHAR2(10)
+    ,order_number                   VARCHAR2(10)
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE
+    ,CONSTRAINT xxcos_rep_l_pick_chain_pro_pk PRIMARY KEY (record_id)
+     USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.record_id               IS 'レコードID';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.base_code               IS '拠点コード';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.base_name               IS '拠点名称';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.whse_code               IS '倉庫コード';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.whse_name               IS '倉庫名称';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.chain_code              IS 'チェーン店コード';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.chain_name              IS 'チェーン店名';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.center_code             IS 'センターコード';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.center_name             IS 'センター名';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.area_code               IS '地区コード';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.area_name               IS '地区名称';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.shipped_date            IS '出荷日';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.arrival_date            IS '着日';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.item_code               IS '商品コード';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.item_name               IS '商品名称';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.content                 IS '入数';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.case_num                IS 'ケース';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.indivi                  IS 'バラ';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.quantity                IS '数量';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.regular_sale_class_head IS '定番特売区分（ヘッダ）';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.regular_sale_class_line IS '定番特売区分（明細）';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.edi_received_date       IS 'EDI受信日';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.item_class              IS '商品区分';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.item_class_name         IS '商品区分名';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.location_code           IS 'ロケーションコード';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.location_name           IS 'ロケーション名称';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.lot                     IS '賞味期限';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.difference_summary_code IS '固有記号';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.shipping_status         IS '出荷情報ステータス';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.order_number            IS '受注番号';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.created_by              IS '作成者';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_chain_pro.program_update_date     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcos.xxcos_rep_lot_pick_chain_pro                         IS 'ロット別ピックリスト_チェーン_製品別トータル帳票ワークテーブル';
