@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistCO
 * 概要説明   : 自販機設置契約情報登録コントローラクラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2011-06-06 1.3  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 * 2012-06-12 1.4  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 * 2013-04-01 1.5  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
+* 2015-02-02 1.6  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.webui;
@@ -73,12 +74,14 @@ public class XxcsoContractRegistCO extends OAControllerImpl
     if ( pageContext.getParameter(XxcsoConstants.TOKEN_ACTION) != null)
     {
 // 2009-04-09 [ST障害T1_0327] Add Start
-      adjustLayout(pageContext, webBean);
-
-      OAMessageTextInputBean bean
-        = (OAMessageTextInputBean)webBean.findChildRecursive("OtherContent");
-      bean.setReadOnlyTextArea(true);
-      bean.setReadOnly(true);
+// 2015-02-02 [E_本稼動_12565] Del Start
+//      adjustLayout(pageContext, webBean);
+//
+//      OAMessageTextInputBean bean
+//        = (OAMessageTextInputBean)webBean.findChildRecursive("OtherContent");
+//      bean.setReadOnlyTextArea(true);
+//      bean.setReadOnly(true);
+// 2015-02-02 [E_本稼動_12565] Del End
 // 2009-04-09 [ST障害T1_0327] Add End
       return;
     }
@@ -125,12 +128,12 @@ public class XxcsoContractRegistCO extends OAControllerImpl
 
     // レイアウト調整
     adjustLayout(pageContext, webBean);
-
-    OAMessageTextInputBean bean
-      = (OAMessageTextInputBean)webBean.findChildRecursive("OtherContent");
-    bean.setReadOnlyTextArea(true);
-    bean.setReadOnly(true);
-    
+// 2015-02-02 [E_本稼動_12565] Del Start
+//    OAMessageTextInputBean bean
+//      = (OAMessageTextInputBean)webBean.findChildRecursive("OtherContent");
+//    bean.setReadOnlyTextArea(true);
+//    bean.setReadOnly(true);
+// 2015-02-02 [E_本稼動_12565] Del End
     XxcsoUtils.debug(pageContext, "[END]");
   }
 
