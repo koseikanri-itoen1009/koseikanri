@@ -1,0 +1,135 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : XXCOI_LOT_TRANSACTIONS
+ * Description     : ロット別取引明細
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/10/03    1.0   Y.Nagasue        新規作成
+ *
+ ************************************************************************/
+CREATE TABLE xxcoi.xxcoi_lot_transactions (
+     transaction_id                 NUMBER        NOT NULL
+    ,transaction_set_id             NUMBER
+    ,organization_id                NUMBER        NOT NULL
+    ,parent_item_id                 NUMBER        NOT NULL
+    ,child_item_id                  NUMBER
+    ,lot                            VARCHAR2(10)
+    ,difference_summary_code        VARCHAR2(6)
+    ,transaction_type_code          VARCHAR2(240) NOT NULL
+    ,transaction_month              VARCHAR2(6)   NOT NULL
+    ,transaction_date               DATE          NOT NULL
+    ,slip_num                       VARCHAR2(150)
+    ,case_in_qty                    NUMBER
+    ,case_qty                       NUMBER
+    ,singly_qty                     NUMBER
+    ,summary_qty                    NUMBER        NOT NULL
+    ,transaction_uom                VARCHAR2(3)
+    ,primary_quantity               NUMBER
+    ,base_code                      VARCHAR2(4)   NOT NULL
+    ,subinventory_code              VARCHAR2(10)  NOT NULL
+    ,location_code                  VARCHAR2(8)
+    ,transfer_organization_id       NUMBER
+    ,transfer_subinventory          VARCHAR2(10)
+    ,transfer_location_code         VARCHAR2(8)
+    ,source_code                    VARCHAR2(30)  NOT NULL
+    ,relation_key                   VARCHAR2(50)
+    ,reserve_transaction_type_code  VARCHAR2(240)
+    ,reason                         VARCHAR2(1000)
+    ,fix_user_code                  VARCHAR2(30)
+    ,fix_user_name                  VARCHAR2(360)
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcoi_lot_transactions_pk PRIMARY KEY (transaction_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_lot_transactions IS 'ロット別取引明細'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transaction_id                          IS '取引ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transaction_set_id                      IS '取引セットID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.organization_id                         IS '在庫組織ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.parent_item_id                          IS '親品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.child_item_id                           IS '子品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.lot                                     IS 'ロット'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.difference_summary_code                 IS '固有記号'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transaction_type_code                   IS '取引タイプコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transaction_month                       IS '取引年月'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transaction_date                        IS '取引日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.slip_num                                IS '伝票No'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.case_in_qty                             IS '入数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.case_qty                                IS 'ケース数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.singly_qty                              IS 'バラ数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.summary_qty                             IS '取引数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transaction_uom                         IS '基準単位'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.primary_quantity                        IS '基準単位数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.base_code                               IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.subinventory_code                       IS '保管場所コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.location_code                           IS 'ロケーションコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transfer_organization_id                IS '転送先在庫組織ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transfer_subinventory                   IS '転送先保管場所コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transfer_location_code                  IS '転送先ロケーションコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.source_code                             IS 'ソースコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.relation_key                            IS '紐付けキー'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.reserve_transaction_type_code           IS '引当時取引タイプコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.reason                                  IS '事由'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.fix_user_code                           IS '確定者コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.fix_user_name                           IS '確定者名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.created_by                              IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.creation_date                           IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.last_updated_by                         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.last_update_date                        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.last_update_login                       IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.request_id                              IS '要求ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.program_id                              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.program_update_date                     IS 'プログラム更新日'
+/

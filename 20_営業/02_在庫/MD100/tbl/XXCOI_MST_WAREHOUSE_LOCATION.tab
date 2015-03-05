@@ -1,0 +1,87 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : XXCOI_MST_WAREHOUSE_LOCATION
+ * Description     : 倉庫ロケーションマスタ
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/10/03    1.0   Y.Nagasue        新規作成
+ *
+ ************************************************************************/
+CREATE TABLE xxcoi.xxcoi_mst_warehouse_location (
+     warehouse_location_id          NUMBER        NOT NULL
+    ,organization_id                NUMBER        NOT NULL
+    ,base_code                      VARCHAR2(4)   NOT NULL
+    ,subinventory_code              VARCHAR2(10)  NOT NULL
+    ,location_type                  VARCHAR2(1)   NOT NULL
+    ,location_type_name             VARCHAR2(8)
+    ,location_code                  VARCHAR2(8)   NOT NULL
+    ,location_name                  VARCHAR2(14)
+    ,child_item_id                  NUMBER
+    ,safety_stock                   NUMBER
+    ,max_stock                      NUMBER
+    ,priority                       NUMBER
+    ,disable_date                   DATE
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcoi_warehouse_location_pk PRIMARY KEY (warehouse_location_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_mst_warehouse_location IS '倉庫ロケーションマスタ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.warehouse_location_id             IS '倉庫ロケーションマスタID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.organization_id                   IS '在庫組織ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.base_code                         IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.subinventory_code                 IS '保管場所コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.location_type                     IS 'ロケーションタイプ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.location_type_name                IS 'ロケーションタイプ名称'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.location_code                     IS 'ロケーションコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.location_name                     IS 'ロケーション名称'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.child_item_id                     IS '子品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.safety_stock                      IS '安全在庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.max_stock                         IS '最大在庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.priority                          IS '優先順位'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.disable_date                      IS '無効日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.created_by                        IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.creation_date                     IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.last_updated_by                   IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.last_update_date                  IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.last_update_login                 IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.request_id                        IS '要求ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.program_application_id            IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.program_id                        IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_warehouse_location.program_update_date               IS 'プログラム更新日'
+/

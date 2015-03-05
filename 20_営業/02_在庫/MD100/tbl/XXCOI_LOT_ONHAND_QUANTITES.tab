@@ -1,0 +1,82 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : XXCOI_LOT_ONHAND_QUANTITES
+ * Description     : ロット別手持数量
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/10/16    1.0   K.Nakamura       新規作成
+ *
+ ************************************************************************/
+CREATE TABLE xxcoi.xxcoi_lot_onhand_quantites (
+     organization_id                NUMBER        NOT NULL
+    ,base_code                      VARCHAR2(4)   NOT NULL
+    ,subinventory_code              VARCHAR2(10)  NOT NULL
+    ,location_code                  VARCHAR2(8)   NOT NULL
+    ,child_item_id                  NUMBER        NOT NULL
+    ,lot                            VARCHAR2(10)
+    ,difference_summary_code        VARCHAR2(6)
+    ,case_in_qty                    NUMBER
+    ,case_qty                       NUMBER
+    ,singly_qty                     NUMBER
+    ,summary_qty                    NUMBER        NOT NULL
+    ,production_date                VARCHAR2(10)
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE
+)
+/
+COMMENT ON TABLE xxcoi.xxcoi_lot_onhand_quantites IS 'ロット別手持数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.organization_id                     IS '在庫組織ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.base_code                           IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.subinventory_code                   IS '保管場所コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.location_code                       IS 'ロケーションコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.child_item_id                       IS '子品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.lot                                 IS 'ロット'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.difference_summary_code             IS '固有記号'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.case_in_qty                         IS '入数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.case_qty                            IS 'ケース数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.singly_qty                          IS 'バラ数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.summary_qty                         IS '取引数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.production_date                     IS '製造日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.created_by                          IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.creation_date                       IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.last_updated_by                     IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.last_update_date                    IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.last_update_login                   IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.request_id                          IS '要求ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.program_application_id              IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.program_id                          IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_lot_onhand_quantites.program_update_date                 IS 'プログラム更新日'
+/

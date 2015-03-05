@@ -1,0 +1,25 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : XXCOI_TMP_LOT_RESERVE_NA
+ * Description     : ロット別引当対象外一時表
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/10/24    1.0   K.Nakamura       新規作成
+ *
+ ************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_tmp_lot_reserve_na(
+      header_id                NUMBER
+     ,line_id                  NUMBER
+)   ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE xxcoi.xxcoi_tmp_lot_reserve_na IS 'ロット別引当対象外一時表'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_na.header_id                          IS 'ヘッダID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_na.line_id                            IS '明細No'
+/

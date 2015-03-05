@@ -1,0 +1,69 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : XXCOI_MST_LOT_HOLD_INFO
+ * Description     : ロット情報保持マスタ
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/10/06    1.0   S.Yamashita      新規作成
+ *
+ ************************************************************************/
+CREATE TABLE xxcoi.xxcoi_mst_lot_hold_info(
+    lot_hold_info_id           NUMBER
+    ,customer_id               NUMBER
+    ,parent_item_id            NUMBER
+    ,last_deliver_lot_e        VARCHAR2(10)
+    ,delivery_date_e           DATE
+    ,last_deliver_lot_s        VARCHAR2(10)
+    ,delivery_date_s           DATE
+    ,created_by                NUMBER(15,0)  NOT NULL
+    ,creation_date             DATE          NOT NULL
+    ,last_updated_by           NUMBER(15,0)  NOT NULL
+    ,last_update_date          DATE          NOT NULL
+    ,last_update_login         NUMBER(15,0)
+    ,request_id                NUMBER(15,0)
+    ,program_application_id    NUMBER(15,0)
+    ,program_id                NUMBER(15,0)
+    ,program_update_date       DATE
+  ,CONSTRAINT xxcoi_lot_hold_info_pk PRIMARY KEY (lot_hold_info_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_mst_lot_hold_info IS 'ロット情報保持マスタ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.lot_hold_info_id                   IS 'ロット情報保持マスタID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.customer_id                        IS '顧客ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.parent_item_id                     IS '親品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.last_deliver_lot_e                 IS '納品ロット_営業'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.delivery_date_e                    IS '納品日_営業'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.last_deliver_lot_s                 IS '納品ロット_生産'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.delivery_date_s                    IS '納品日_生産'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.created_by                         IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.creation_date                      IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.last_updated_by                    IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.last_update_date                   IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.last_update_login                  IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.request_id                         IS '要求ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.program_application_id             IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.program_id                         IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_mst_lot_hold_info.program_update_date                IS 'プログラム更新日'
+/

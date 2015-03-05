@@ -1,0 +1,151 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : xxcoi_tmp_lot_reserve_info
+ * Description     : ロット別引当情報一時表
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/10/24    1.0   K.Nakamura       新規作成
+ *
+ ************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_tmp_lot_reserve_info(
+     lot_reserve_info_id            NUMBER
+    ,slip_num                       VARCHAR2(12)
+    ,order_number                   VARCHAR2(10)
+    ,whse_code                      VARCHAR2(10)
+    ,whse_name                      VARCHAR2(50)
+    ,location_code                  VARCHAR2(8)
+    ,chain_code                     VARCHAR2(4)
+    ,chain_name                     VARCHAR2(40)
+    ,cust_fresh_con_code_chain      VARCHAR2(2)
+    ,shop_code                      VARCHAR2(10)
+    ,shop_name                      VARCHAR2(40)
+    ,customer_code                  VARCHAR2(9)
+    ,customer_name                  VARCHAR2(40)
+    ,cust_fresh_con_code_cust       VARCHAR2(2)
+    ,center_code                    VARCHAR2(10)
+    ,center_name                    VARCHAR2(40)
+    ,area_code                      VARCHAR2(8)
+    ,area_name                      VARCHAR2(40)
+    ,shipped_date                   DATE
+    ,arrival_date                   DATE
+    ,parent_item_id                 NUMBER
+    ,parent_item_code               VARCHAR2(7)
+    ,parent_item_name               VARCHAR2(20)
+    ,item_id                        NUMBER
+    ,item_code                      VARCHAR2(7)
+    ,lot                            VARCHAR2(10)
+    ,difference_summary_code        VARCHAR2(6)
+    ,case_in_qty                    NUMBER
+    ,case_qty                       NUMBER
+    ,singly_qty                     NUMBER
+    ,summary_qty                    NUMBER
+    ,regular_sale_class_line        VARCHAR2(2)
+    ,regular_sale_class_name_line   VARCHAR2(4)
+    ,edi_received_date              DATE
+    ,delivery_order_edi             VARCHAR2(7)
+    ,before_ordered_quantity        NUMBER
+    ,header_id                      NUMBER
+    ,line_id                        NUMBER
+    ,line_number                    NUMBER
+    ,line_type                      VARCHAR2(30)
+    ,customer_id                    NUMBER
+    ,reserve_transaction_type_code  VARCHAR2(240)
+    ,order_quantity_uom             VARCHAR2(3)
+    ,ordered_quantity               NUMBER
+)   ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE xxcoi.xxcoi_tmp_lot_reserve_info IS 'ロット別引当情報一時表2'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.lot_reserve_info_id                IS 'ロット別引当情報ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.slip_num                           IS '伝票No'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.order_number                       IS '受注番号'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.whse_code                          IS '保管場所コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.whse_name                          IS '保管場所名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.location_code                      IS 'ロケーションコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.chain_code                         IS 'チェーン店コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.chain_name                         IS 'チェーン店名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.cust_fresh_con_code_chain          IS '顧客別鮮度条件コード（チェーン店）'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.shop_code                          IS '店舗コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.shop_name                          IS '店舗名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.customer_code                      IS '顧客コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.customer_name                      IS '顧客名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.cust_fresh_con_code_cust           IS '顧客別鮮度条件コード（顧客）'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.center_code                        IS 'センターコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.center_name                        IS 'センター名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.area_code                          IS '地区コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.area_name                          IS '地区名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.shipped_date                       IS '出荷日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.arrival_date                       IS '着日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.parent_item_id                     IS '親品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.parent_item_code                   IS '親品目コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.parent_item_name                   IS '親品目名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.item_id                            IS '子品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.item_code                          IS '子品目コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.lot                                IS 'ロット'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.difference_summary_code            IS '固有記号'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.case_in_qty                        IS '入数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.case_qty                           IS 'ケース数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.singly_qty                         IS 'バラ数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.summary_qty                        IS '数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.regular_sale_class_line            IS '定番特売区分(明細)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.regular_sale_class_name_line       IS '定番特売区分名(明細)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.edi_received_date                  IS 'EDI受信日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.delivery_order_edi                 IS '配送順(EDI)'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.before_ordered_quantity            IS '訂正前受注数量'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.header_id                          IS '受注ヘッダID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.line_id                            IS '受注明細ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.line_number                        IS '受注明細番号'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.line_type                          IS '明細タイプ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.customer_id                        IS '顧客ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.reserve_transaction_type_code      IS '引当時取引タイプコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.order_quantity_uom                 IS '受注単位'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_info.ordered_quantity                   IS '受注数量'
+/

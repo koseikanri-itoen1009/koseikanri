@@ -1,0 +1,51 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : xxcoi_tmp_lot_tran_details
+ * Description     : ロット別取引明細情報一時表
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014-11-12    1.0   SCSK Y.Umino     新規作成
+ *
+ ************************************************************************/
+ CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_tmp_lot_tran_details (
+     organization_id                NUMBER
+    ,slip_num                       VARCHAR2(150)
+    ,parent_item_id                 NUMBER
+    ,child_item_id                  NUMBER
+    ,lot                            VARCHAR2(10)
+    ,difference_summary_code        VARCHAR2(6)
+    ,location_code                  VARCHAR2(8)
+    ,case_in_qty                    NUMBER
+    ,case_qty                       NUMBER
+    ,singly_qty                     NUMBER
+    ,summary_qty                    NUMBER
+     )
+ ON COMMIT DELETE ROWS
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.organization_id              IS '在庫組織ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.slip_num                     IS '伝票No';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.parent_item_id               IS '親品目ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.child_item_id                IS '子品目ID';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.lot                          IS 'ロット';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.difference_summary_code      IS '固有記号';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.location_code                IS 'ロケーションコード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.case_in_qty                  IS '入数';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.case_qty                     IS 'ケース数';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.singly_qty                   IS 'バラ数';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.summary_qty                  IS '取引数量';
+/

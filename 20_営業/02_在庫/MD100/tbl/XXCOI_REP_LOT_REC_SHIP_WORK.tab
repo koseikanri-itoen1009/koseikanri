@@ -1,0 +1,140 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : XXCOI_REP_LOT_REC_SHIP_WORK
+ * Description     : ロット別棚卸・受払確認表(倉庫)帳票ワークテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/11/17    1.0   Y.Nagasue        新規作成
+ *
+ ************************************************************************/
+CREATE TABLE xxcoi.xxcoi_rep_lot_rec_ship_work (
+     execute_type                   VARCHAR2(4)
+    ,practice_year                  VARCHAR2(2)
+    ,practice_month                 VARCHAR2(2)
+    ,practice_day                   VARCHAR2(2)
+    ,base_code                      VARCHAR2(4)
+    ,base_name                      VARCHAR2(20)
+    ,subinventory_code              VARCHAR2(10)
+    ,subinventory_name              VARCHAR2(50)
+    ,inv_cl_char                    VARCHAR2(4)
+    ,item_type                      VARCHAR2(1)
+    ,gun_code                       VARCHAR2(3)
+    ,child_item_code                VARCHAR2(7)
+    ,child_item_name                VARCHAR2(20)
+    ,taste_term                     VARCHAR2(10)
+    ,difference_summary_code        VARCHAR2(6)
+    ,location_code                  VARCHAR2(8)
+    ,location_name                  VARCHAR2(20)
+    ,month_begin_quantity           NUMBER
+    ,factory_stock                  NUMBER
+    ,change_stock                   NUMBER
+    ,truck_stock                    NUMBER
+    ,truck_ship                     NUMBER
+    ,sales_shipped                  NUMBER
+    ,support                        NUMBER
+    ,removed_goods                  NUMBER
+    ,change_ship                    NUMBER
+    ,factory_return                 NUMBER
+    ,location_move                  NUMBER
+    ,inv_adjust                     NUMBER
+    ,book_inventory_quantity        NUMBER
+    ,message                        VARCHAR2(240)
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE
+  )
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcoi.xxcoi_rep_lot_rec_ship_work IS 'ロット別棚卸・受払確認表(倉庫)帳票ワークテーブル'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.execute_type                     IS '実行区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.practice_year                    IS '対象年'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.practice_month                   IS '対象月'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.practice_day                     IS '対象日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.base_code                        IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.base_name                        IS '拠点名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.subinventory_code                IS '保管場所コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.subinventory_name                IS '保管場所名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.inv_cl_char                      IS '在庫確定印字文字'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.item_type                        IS '商品区分'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.gun_code                         IS '群コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.child_item_code                  IS '子商品コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.child_item_name                  IS '子商品名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.taste_term                       IS '賞味期限'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.difference_summary_code          IS '固有記号'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.location_code                    IS 'ロケーションコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.location_name                    IS 'ロケーション名'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.month_begin_quantity             IS '月首棚卸高'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.factory_stock                    IS '工場入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.change_stock                     IS '倉替入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.truck_stock                      IS '営業車より入庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.truck_ship                       IS '営業車へ出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.sales_shipped                    IS '売上出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.support                          IS '協賛見本'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.removed_goods                    IS '廃却出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.change_ship                      IS '倉替出庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.factory_return                   IS '工場返品'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.location_move                    IS 'ロケーション移動'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.inv_adjust                       IS '在庫調整'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.book_inventory_quantity          IS '帳簿在庫'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.message                          IS 'メッセージ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.created_by                       IS '作成者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.creation_date                    IS '作成日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.last_updated_by                  IS '最終更新者'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.last_update_date                 IS '最終更新日'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.last_update_login                IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.request_id                       IS '要求ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.program_application_id           IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.program_id                       IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_rep_lot_rec_ship_work.program_update_date              IS 'プログラム更新日'
+/
