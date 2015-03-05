@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2011-04-25 1.6  SCS桐生和幸   [E_本稼動_07224]SP専決参照権限変更対応
 * 2013-04-19 1.7  SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.8  SCSK桐生和幸  [E_本稼動_11397]売価1円対応
+* 2014-12-15 1.9  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -445,12 +446,62 @@ public class XxcsoSpDecisionPropertyUtils
     // その他条件リージョン
     /////////////////////////////////////
     initRow.setContractYearDateViewRender(         Boolean.FALSE );
-    initRow.setInstallSupportAmtViewRender(        Boolean.FALSE );
-    initRow.setInstallSupportAmt2ViewRender(       Boolean.FALSE );
-    initRow.setPaymentCycleViewRender(             Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    initRow.setInstallSupportAmtViewRender(        Boolean.FALSE );
+//    initRow.setInstallSupportAmt2ViewRender(       Boolean.FALSE );
+//    initRow.setPaymentCycleViewRender(             Boolean.FALSE );
+//    initRow.setElectricityTypeViewRender(          Boolean.FALSE );
+//    initRow.setElectricityAmountViewRender(        Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Del End
+    initRow.setConditionReasonViewRender(          Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Add Start
+    initRow.setContractYearMonthViewRender(        Boolean.FALSE );
+    initRow.setContractStartYearViewRender(        Boolean.FALSE );
+    initRow.setContractStartMonthViewRender(       Boolean.FALSE );
+    initRow.setContractEndYearViewRender(          Boolean.FALSE );
+    initRow.setContractEndMonthViewRender(         Boolean.FALSE );
+    initRow.setBiddingItemViewRender(              Boolean.FALSE );
+    initRow.setCancellBeforeMaturityViewRender(    Boolean.FALSE );
+    initRow.setAdAssetsTypeViewRender(             Boolean.FALSE );
+    initRow.setAdAssetsAmtViewRender(              Boolean.FALSE );
+    initRow.setAdAssetsThisTimeViewRender(         Boolean.FALSE );
+    initRow.setAdAssetsPaymentYearViewRender(      Boolean.FALSE );
+    initRow.setAdAssetsPaymentDateViewRender(      Boolean.FALSE );
+    /////////////////////////////////////
+    // 覚書情報リージョン
+    /////////////////////////////////////
+    initRow.setTaxTypeViewRender(                  Boolean.FALSE );
+    initRow.setInstallSuppTypeViewRender(          Boolean.FALSE );  // 設置協賛金リージョン
+    initRow.setInstallSuppPaymentTypeViewRender(   Boolean.FALSE );
+    initRow.setInstallSuppAmtViewRender(           Boolean.FALSE );
+    initRow.setInstallSuppThisTimeViewRender(      Boolean.FALSE );
+    initRow.setInstallSuppPaymentYearViewRender(   Boolean.FALSE );
+    initRow.setInstallSuppPaymentDateViewRender(   Boolean.FALSE );
+    initRow.setElectricTypeViewRender(             Boolean.FALSE );  // 電気代リージョン
+    initRow.setElectricPaymentTypeViewRender(      Boolean.FALSE );
     initRow.setElectricityTypeViewRender(          Boolean.FALSE );
     initRow.setElectricityAmountViewRender(        Boolean.FALSE );
-    initRow.setConditionReasonViewRender(          Boolean.FALSE );
+    initRow.setElectricPaymentChangeTypeViewRender( Boolean.FALSE );
+    initRow.setElectricPaymentCycleViewRender(     Boolean.FALSE );
+    initRow.setElectricClosingDateViewRender(      Boolean.FALSE );
+    initRow.setElectricTransMonthViewRender(       Boolean.FALSE );
+    initRow.setElectricTransDateViewRender(        Boolean.FALSE );
+    initRow.setElectricTransNameViewRender(        Boolean.FALSE );
+    initRow.setElectricTransNameAltViewRender(     Boolean.FALSE );
+    initRow.setIntroChgTypeViewRender(             Boolean.FALSE );  // 紹介手数料リージョン
+    initRow.setIntroChgPaymentTypeViewRender(      Boolean.FALSE );
+    initRow.setIntroChgAmtViewRender(              Boolean.FALSE );
+    initRow.setIntroChgThisTimeViewRender(         Boolean.FALSE );
+    initRow.setIntroChgPaymentYearViewRender(      Boolean.FALSE );
+    initRow.setIntroChgPaymentDateViewRender(      Boolean.FALSE );
+    initRow.setIntroChgPerSalesPriceViewRender(    Boolean.FALSE );
+    initRow.setIntroChgPerPieceViewRender(         Boolean.FALSE );
+    initRow.setIntroChgClosingDateViewRender(      Boolean.FALSE );
+    initRow.setIntroChgTransMonthViewRender(       Boolean.FALSE );
+    initRow.setIntroChgTransDateViewRender(        Boolean.FALSE );
+    initRow.setIntroChgTransNameViewRender(        Boolean.FALSE );
+    initRow.setIntroChgTransNameAltViewRender(     Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Add End
 
     /////////////////////////////////////
     // BM1リージョン
@@ -587,11 +638,13 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setBm3PaymentTypeRender(             Boolean.FALSE );
     }
 
-    /////////////////////////////////////
-    // 契約書への記載事項リージョン
-    /////////////////////////////////////
-    // すべて入力可能
-    initRow.setOtherContentViewRender(             Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    /////////////////////////////////////
+//    // 契約書への記載事項リージョン
+//    /////////////////////////////////////
+//    // すべて入力可能
+//    initRow.setOtherContentViewRender(             Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Del End
 
     /////////////////////////////////////
     // 概算年間損益リージョン
@@ -818,12 +871,62 @@ public class XxcsoSpDecisionPropertyUtils
     /////////////////////////////////////
     // すべて入力不可
     initRow.setContractYearDateRender(             Boolean.FALSE );
-    initRow.setInstallSupportAmtRender(            Boolean.FALSE );
-    initRow.setInstallSupportAmt2Render(           Boolean.FALSE );
-    initRow.setPaymentCycleRender(                 Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    initRow.setInstallSupportAmtRender(            Boolean.FALSE );
+//    initRow.setInstallSupportAmt2Render(           Boolean.FALSE );
+//    initRow.setPaymentCycleRender(                 Boolean.FALSE );
+//    initRow.setElectricityTypeRender(              Boolean.FALSE );
+//    initRow.setElectricityAmountRender(            Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Del End
+    initRow.setConditionReasonRender(              Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Add Start
+    initRow.setContractYearMonthRender(            Boolean.FALSE );
+    initRow.setContractStartYearRender(            Boolean.FALSE );
+    initRow.setContractStartMonthRender(           Boolean.FALSE );
+    initRow.setContractEndYearRender(              Boolean.FALSE );
+    initRow.setContractEndMonthRender(             Boolean.FALSE );
+    initRow.setBiddingItemRender(                  Boolean.FALSE );
+    initRow.setCancellBeforeMaturityRender(        Boolean.FALSE );
+    initRow.setAdAssetsTypeRender(                 Boolean.FALSE );
+    initRow.setAdAssetsAmtRender(                  Boolean.FALSE );
+    initRow.setAdAssetsThisTimeRender(             Boolean.FALSE );
+    initRow.setAdAssetsPaymentYearRender(          Boolean.FALSE );
+    initRow.setAdAssetsPaymentDateRender(          Boolean.FALSE );
+    /////////////////////////////////////
+    // 覚書情報リージョン
+    /////////////////////////////////////
+    initRow.setTaxTypeRender(                      Boolean.FALSE );
+    initRow.setInstallSuppTypeRender(              Boolean.FALSE );  // 設置協賛金リージョン
+    initRow.setInstallSuppPaymentTypeRender(       Boolean.FALSE );
+    initRow.setInstallSuppAmtRender(               Boolean.FALSE );
+    initRow.setInstallSuppThisTimeRender(          Boolean.FALSE );
+    initRow.setInstallSuppPaymentYearRender(       Boolean.FALSE );
+    initRow.setInstallSuppPaymentDateRender(       Boolean.FALSE );
+    initRow.setElectricTypeRender(                 Boolean.FALSE );  // 電気代リージョン
+    initRow.setElectricPaymentTypeRender(          Boolean.FALSE );
     initRow.setElectricityTypeRender(              Boolean.FALSE );
     initRow.setElectricityAmountRender(            Boolean.FALSE );
-    initRow.setConditionReasonRender(              Boolean.FALSE );
+    initRow.setElectricPaymentChangeTypeRender(    Boolean.FALSE );
+    initRow.setElectricPaymentCycleRender(         Boolean.FALSE );
+    initRow.setElectricClosingDateRender(          Boolean.FALSE );
+    initRow.setElectricTransMonthRender(           Boolean.FALSE );
+    initRow.setElectricTransDateRender(            Boolean.FALSE );
+    initRow.setElectricTransNameRender(            Boolean.FALSE );
+    initRow.setElectricTransNameAltRender(         Boolean.FALSE );
+    initRow.setIntroChgTypeRender(                 Boolean.FALSE );   // 紹介手数料リージョン
+    initRow.setIntroChgPaymentTypeRender(          Boolean.FALSE );
+    initRow.setIntroChgAmtRender(                  Boolean.FALSE );
+    initRow.setIntroChgThisTimeRender(             Boolean.FALSE );
+    initRow.setIntroChgPaymentYearRender(          Boolean.FALSE );
+    initRow.setIntroChgPaymentDateRender(          Boolean.FALSE );
+    initRow.setIntroChgPerSalesPriceRender(        Boolean.FALSE );
+    initRow.setIntroChgPerPieceRender(             Boolean.FALSE );
+    initRow.setIntroChgClosingDateRender(          Boolean.FALSE );
+    initRow.setIntroChgTransMonthRender(           Boolean.FALSE );
+    initRow.setIntroChgTransDateRender(            Boolean.FALSE );
+    initRow.setIntroChgTransNameRender(            Boolean.FALSE );
+    initRow.setIntroChgTransNameAltRender(         Boolean.FALSE );
+// 2014-12-15 [E_本稼動_12565] Add End
     
     /////////////////////////////////////
     // BM1リージョン
@@ -1238,23 +1341,140 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setAllCcAdvTblRNRender(                Boolean.FALSE );
     }
     
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    /////////////////////////////////////
+//    // 電気代区分により、表示／非表示を設定
+//    /////////////////////////////////////
+//    String elecType = headerRow.getElectricityType();
+//    if ( XxcsoSpDecisionConstants.ELEC_FIXED.equals(elecType)    ||
+//         XxcsoSpDecisionConstants.ELEC_VALIABLE.equals(elecType)
+//       )
+//    {
+//      initRow.setElecStartLabelRender(               Boolean.FALSE );
+//    }
+//    else
+//    {
+//      initRow.setElecStartRequiredLabelRender(       Boolean.FALSE );
+//      initRow.setElectricityAmountRender(            Boolean.FALSE );
+//      initRow.setElectricityAmountViewRender(        Boolean.FALSE );
+//      initRow.setElecAmountLabelRender(              Boolean.FALSE );
+//    }
+// 2014-12-15 [E_本稼動_12565] Del End
+    
+// 2014-12-15 [E_本稼動_12565] Add Start
     /////////////////////////////////////
-    // 電気代区分により、表示／非表示を設定
+    // 行政財産使用により、表示／非表示を設定
     /////////////////////////////////////
-    String elecType = headerRow.getElectricityType();
-    if ( XxcsoSpDecisionConstants.ELEC_FIXED.equals(elecType)    ||
-         XxcsoSpDecisionConstants.ELEC_VALIABLE.equals(elecType)
+    String adAssetsType = headerRow.getAdAssetsType();
+    if (     XxcsoSpDecisionConstants.CHECK_NO.equals(adAssetsType)
+          || adAssetsType == null
        )
     {
-      initRow.setElecStartLabelRender(               Boolean.FALSE );
+      initRow.setOtherConditionRlRN06Render(         Boolean.FALSE );
+      initRow.setOtherConditionRlRN07Render(         Boolean.FALSE );
+    }
+
+    /////////////////////////////////////
+    //  支払区分（設置協賛金）により、表示／非表示を設定
+    /////////////////////////////////////
+    String installSuppType = headerRow.getInstallSuppType();
+    if (    XxcsoSpDecisionConstants.CHECK_NO.equals(installSuppType)
+         || installSuppType == null
+       )
+    {
+      initRow.setInstallSuppPaymentTypeHdrRNRender(  Boolean.FALSE );
+    }
+
+    /////////////////////////////////////
+    // 支払条件（設置協賛金）により、表示／非表示を設定
+    /////////////////////////////////////
+    String installSuppPaymentType = headerRow.getInstallSuppPaymentType();
+    if (     XxcsoSpDecisionConstants.TOTAL_PAY.equals(installSuppPaymentType)
+          && installSuppPaymentType != null
+       )
+    {
+      initRow.setInstallSuppThisTimeLabelRender(     Boolean.FALSE );
+      initRow.setInstallSuppThisTimeRender(          Boolean.FALSE );
+      initRow.setInstallSuppThisTimeViewRender(      Boolean.FALSE );
+      initRow.setInstallSuppThisTimeEndLabelRender(  Boolean.FALSE );
+      initRow.setInstallSuppPaymentYearEndLabel1Render( Boolean.FALSE  );
     }
     else
     {
-      initRow.setElecStartRequiredLabelRender(       Boolean.FALSE );
-      initRow.setElectricityAmountRender(            Boolean.FALSE );
-      initRow.setElectricityAmountViewRender(        Boolean.FALSE );
-      initRow.setElecAmountLabelRender(              Boolean.FALSE );
+      initRow.setInstallSuppPaymentYearEndLabel2Render( Boolean.FALSE  );
     }
+
+    /////////////////////////////////////
+    // 支払区分（電気代）により、表示／非表示を設定
+    /////////////////////////////////////
+    String electricType = headerRow.getElectricType();
+    if (    XxcsoSpDecisionConstants.CHECK_NO.equals(electricType)
+         || electricType == null
+       )
+    {
+      initRow.setElectricPaymentTypeHdrRNRender(   Boolean.FALSE );
+    }
+
+    /////////////////////////////////////
+    // 支払条件（電気代）により、表示／非表示を設定
+    /////////////////////////////////////
+    String electricPaymentType = headerRow.getElectricPaymentType();
+    if (    XxcsoSpDecisionConstants.CONTRACT.equals(electricPaymentType)
+         || electricPaymentType == null
+       )
+    {
+      initRow.setElectricInfoRIRN02Render(         Boolean.FALSE );
+      initRow.setElectricInfoRIRN03Render(         Boolean.FALSE );
+      initRow.setElectricInfoRIRN04Render(         Boolean.FALSE );
+      initRow.setElectricInfoRIRN06Render(         Boolean.FALSE );
+    }
+    else
+    {
+      initRow.setElectricInfoRIRN05Render(         Boolean.FALSE );
+    }
+    /////////////////////////////////////
+    // 紹介手数料により、表示／非表示を設定
+    /////////////////////////////////////
+    String introChgType = headerRow.getIntroChgType();
+    if (    XxcsoSpDecisionConstants.CHECK_NO.equals(introChgType)
+         || introChgType == null
+       )
+    {
+      initRow.setIntroChgTypeHdrRNRender(          Boolean.FALSE );
+    }
+
+    /////////////////////////////////////
+    // 支払条件（紹介手数料）により、表示／非表示を設定
+    /////////////////////////////////////
+    String introChgPaymentType = headerRow.getIntroChgPaymentType();
+    if (    XxcsoSpDecisionConstants.SALES_BULK.equals(introChgPaymentType)
+         || introChgPaymentType == null
+       )
+    {
+      initRow.setIntroChgInfoRIRN02Render(         Boolean.FALSE );
+    }
+    else
+    {
+      initRow.setIntroChgInfoRIRN01Render(         Boolean.FALSE );
+      //販売金額に対する％の場合
+      if ( XxcsoSpDecisionConstants.SALES_PAR.equals(introChgPaymentType) )
+      {
+        initRow.setIntroChgPerPieceLabelRender(    Boolean.FALSE );
+        initRow.setIntroChgPerPieceViewRender(     Boolean.FALSE );
+        initRow.setIntroChgPerPieceRender(         Boolean.FALSE );
+        initRow.setIntroChgPerPieceEndLabelRender( Boolean.FALSE );
+      }
+      //1本につき何円の場合
+      else
+      {
+        initRow.setIntroChgPerSalesPriceLabelRender(    Boolean.FALSE );
+        initRow.setIntroChgPerSalesPriceViewRender(     Boolean.FALSE );
+        initRow.setIntroChgPerSalesPriceRender(         Boolean.FALSE );
+        initRow.setIntroChgPerSalesPriceEndLabelRender( Boolean.FALSE );
+      }
+    }
+
+// 2014-12-15 [E_本稼動_12565] Add End
     
     /////////////////////////////////////
     // 支払条件・明細書（BM1）により、表示／非表示を設定
@@ -1348,14 +1568,16 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setBm3InquiryBaseLayoutRender(         Boolean.FALSE );
     }
 
-    /////////////////////////////////////
-    // 電気代のスペーサの表示／非表示を設定
-    /////////////////////////////////////
-    String cntrctElecAmtView = headerRow.getElectricityAmountView();
-    if ( cntrctElecAmtView == null || "".equals(cntrctElecAmtView) )
-    {
-      initRow.setCntrctElecSpacer2Render(            Boolean.FALSE );
-    }
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    /////////////////////////////////////
+//    // 電気代のスペーサの表示／非表示を設定
+//    /////////////////////////////////////
+//    String cntrctElecAmtView = headerRow.getElectricityAmountView();
+//    if ( cntrctElecAmtView == null || "".equals(cntrctElecAmtView) )
+//    {
+//      initRow.setCntrctElecSpacer2Render(            Boolean.FALSE );
+//    }
+// 2014-12-15 [E_本稼動_12565] Del End
     
     /////////////////////////////////////
     // ボタンの表示／非表示を設定
@@ -1795,22 +2017,122 @@ public class XxcsoSpDecisionPropertyUtils
     // その他条件リージョン
     initRow.setContractYearDateRender(           Boolean.TRUE  );
     initRow.setContractYearDateViewRender(       Boolean.TRUE  );
-    initRow.setInstallSupportAmtRender(          Boolean.TRUE  );
-    initRow.setInstallSupportAmtViewRender(      Boolean.TRUE  );
-    initRow.setInstallSupportAmt2Render(         Boolean.TRUE  );
-    initRow.setInstallSupportAmt2ViewRender(     Boolean.TRUE  );
-    initRow.setPaymentCycleRender(               Boolean.TRUE  );
-    initRow.setPaymentCycleViewRender(           Boolean.TRUE  );
-    initRow.setElecStartLabelRender(             Boolean.TRUE  );
-    initRow.setElecStartRequiredLabelRender(     Boolean.TRUE  );
-    initRow.setElectricityTypeRender(            Boolean.TRUE  );
-    initRow.setElectricityTypeViewRender(        Boolean.TRUE  );
-    initRow.setElectricityAmountRender(          Boolean.TRUE  );
-    initRow.setElectricityAmountViewRender(      Boolean.TRUE  );
-    initRow.setElecAmountLabelRender(            Boolean.TRUE  );
-    initRow.setConditionReasonRender(            Boolean.TRUE  );
-    initRow.setConditionReasonViewRender(        Boolean.TRUE  );
-
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    initRow.setInstallSupportAmtRender(          Boolean.TRUE  );
+//    initRow.setInstallSupportAmtViewRender(      Boolean.TRUE  );
+//    initRow.setInstallSupportAmt2Render(         Boolean.TRUE  );
+//    initRow.setInstallSupportAmt2ViewRender(     Boolean.TRUE  );
+//    initRow.setPaymentCycleRender(               Boolean.TRUE  );
+//    initRow.setPaymentCycleViewRender(           Boolean.TRUE  );
+//    initRow.setElecStartLabelRender(             Boolean.TRUE  );
+//    initRow.setElecStartRequiredLabelRender(     Boolean.TRUE  );
+//    initRow.setElectricityTypeRender(            Boolean.TRUE  );
+//    initRow.setElectricityTypeViewRender(        Boolean.TRUE  );
+//    initRow.setElectricityAmountRender(          Boolean.TRUE  );
+//    initRow.setElectricityAmountViewRender(      Boolean.TRUE  );
+//    initRow.setElecAmountLabelRender(            Boolean.TRUE  );
+// 2014-12-15 [E_本稼動_12565] Del End
+    initRow.setTaxTypeRender(                    Boolean.TRUE  );
+    initRow.setTaxTypeViewRender(                Boolean.TRUE  );
+// 2014-12-15 [E_本稼動_12565] Add Start
+    initRow.setContractYearMonthRender(          Boolean.TRUE  );
+    initRow.setContractYearMonthViewRender(      Boolean.TRUE  );
+    initRow.setBiddingItemRender(                Boolean.TRUE  );  //入札案件
+    initRow.setBiddingItemViewRender(            Boolean.TRUE  );
+    initRow.setCancellBeforeMaturityRender(      Boolean.TRUE  );  //中途解約条項
+    initRow.setCancellBeforeMaturityViewRender(  Boolean.TRUE  );
+    initRow.setAdAssetsTypeRender(               Boolean.TRUE  );  //行政財産使用
+    initRow.setAdAssetsTypeViewRender(           Boolean.TRUE  );
+    initRow.setOtherConditionRlRN06Render(       Boolean.TRUE  );
+    initRow.setAdAssetsAmtRender(                Boolean.TRUE  );
+    initRow.setAdAssetsAmtViewRender(            Boolean.TRUE  );
+    initRow.setAdAssetsThisTimeRender(           Boolean.TRUE  );
+    initRow.setAdAssetsThisTimeViewRender(       Boolean.TRUE  );
+    initRow.setAdAssetsPaymentYearRender(        Boolean.TRUE  );
+    initRow.setAdAssetsPaymentYearViewRender(    Boolean.TRUE  );
+    initRow.setAdAssetsPaymentDateRender(        Boolean.TRUE  );
+    initRow.setAdAssetsPaymentDateViewRender(    Boolean.TRUE  );
+    initRow.setOtherConditionRlRN07Render(       Boolean.TRUE  );
+    // 覚書情報リージョン
+    initRow.setTaxTypeRender(                    Boolean.TRUE  );
+    initRow.setTaxTypeViewRender(                Boolean.TRUE  );
+    initRow.setInstallSuppTypeRender(            Boolean.TRUE  );  // 設置協賛金リージョン
+    initRow.setInstallSuppTypeViewRender(        Boolean.TRUE  );
+    initRow.setInstallSuppPaymentTypeHdrRNRender(Boolean.TRUE  );
+    initRow.setInstallSuppPaymentTypeRender(     Boolean.TRUE  );
+    initRow.setInstallSuppPaymentTypeViewRender( Boolean.TRUE  );
+    initRow.setInstallSuppAmtRender(             Boolean.TRUE  );
+    initRow.setInstallSuppAmtViewRender(         Boolean.TRUE  );
+    initRow.setInstallSuppThisTimeLabelRender(   Boolean.TRUE  );
+    initRow.setInstallSuppThisTimeRender(        Boolean.TRUE  );
+    initRow.setInstallSuppThisTimeViewRender(    Boolean.TRUE  );
+    initRow.setInstallSuppThisTimeEndLabelRender(Boolean.TRUE  );
+    initRow.setInstallSuppPaymentYearRender(     Boolean.TRUE  );
+    initRow.setInstallSuppPaymentYearViewRender( Boolean.TRUE  );
+    initRow.setInstallSuppPaymentYearEndLabel1Render( Boolean.TRUE  );
+    initRow.setInstallSuppPaymentYearEndLabel2Render( Boolean.TRUE  );
+    initRow.setInstallSuppPaymentDateRender(     Boolean.TRUE  );
+    initRow.setInstallSuppPaymentDateViewRender( Boolean.TRUE  );
+    initRow.setElectricTypeRender(               Boolean.TRUE  );  // 電気代リージョン
+    initRow.setElectricTypeViewRender(           Boolean.TRUE  );
+    initRow.setElectricPaymentTypeHdrRNRender(   Boolean.TRUE  );
+    initRow.setElectricPaymentTypeRender(        Boolean.TRUE  );
+    initRow.setElectricPaymentTypeViewRender(    Boolean.TRUE  );
+    initRow.setElectricPaymentCycleRender(       Boolean.TRUE  );
+    initRow.setElectricPaymentCycleViewRender(   Boolean.TRUE  );
+    initRow.setElectricClosingDateRender(        Boolean.TRUE  );
+    initRow.setElectricClosingDateViewRender(    Boolean.TRUE  );
+    initRow.setElectricTransMonthRender(         Boolean.TRUE  );
+    initRow.setElectricTransMonthViewRender(     Boolean.TRUE  );
+    initRow.setElectricTransDateRender(          Boolean.TRUE  );
+    initRow.setElectricTransDateViewRender(      Boolean.TRUE  );
+    initRow.setElectricTransNameRender(          Boolean.TRUE  );
+    initRow.setElectricTransNameViewRender(      Boolean.TRUE  );
+    initRow.setElectricTransNameAltRender(       Boolean.TRUE  );
+    initRow.setElectricTransNameAltViewRender(   Boolean.TRUE  );
+    initRow.setElectricInfoRIRN02Render(         Boolean.TRUE  );
+    initRow.setElectricInfoRIRN03Render(         Boolean.TRUE  );
+    initRow.setElectricInfoRIRN04Render(         Boolean.TRUE  );
+    initRow.setElectricInfoRIRN05Render(         Boolean.TRUE  );
+    initRow.setElectricInfoRIRN06Render(         Boolean.TRUE  );
+    initRow.setIntroChgTypeHdrRNRender(          Boolean.TRUE  );  //紹介手数料リージョン
+    initRow.setIntroChgTypeRender(               Boolean.TRUE  );
+    initRow.setIntroChgTypeViewRender(           Boolean.TRUE  );
+    initRow.setIntroChgPaymentTypeRender(        Boolean.TRUE  );
+    initRow.setIntroChgPaymentTypeViewRender(    Boolean.TRUE  );
+    initRow.setIntroChgAmtRender(                Boolean.TRUE  );
+    initRow.setIntroChgAmtViewRender(            Boolean.TRUE  );
+    initRow.setIntroChgThisTimeRender(           Boolean.TRUE  );
+    initRow.setIntroChgThisTimeViewRender(       Boolean.TRUE  );
+    initRow.setIntroChgPaymentYearRender(        Boolean.TRUE  );
+    initRow.setIntroChgPaymentYearViewRender(    Boolean.TRUE  );
+    initRow.setIntroChgPaymentDateRender(        Boolean.TRUE  );
+    initRow.setIntroChgPaymentDateViewRender(    Boolean.TRUE  );
+    initRow.setIntroChgPerSalesPriceRender(      Boolean.TRUE  );
+    initRow.setIntroChgPerSalesPriceViewRender(  Boolean.TRUE  );
+    initRow.setIntroChgPerPieceRender(           Boolean.TRUE  );
+    initRow.setIntroChgPerPieceViewRender(       Boolean.TRUE  );
+    initRow.setIntroChgClosingDateRender(        Boolean.TRUE  );
+    initRow.setIntroChgClosingDateViewRender(    Boolean.TRUE  );
+    initRow.setIntroChgTransMonthRender(         Boolean.TRUE  );
+    initRow.setIntroChgTransMonthViewRender(     Boolean.TRUE  );
+    initRow.setIntroChgTransDateRender(          Boolean.TRUE  );
+    initRow.setIntroChgTransDateViewRender(      Boolean.TRUE  );
+    initRow.setIntroChgTransNameRender(          Boolean.TRUE  );
+    initRow.setIntroChgTransNameViewRender(      Boolean.TRUE  );
+    initRow.setIntroChgTransNameAltRender(       Boolean.TRUE  );
+    initRow.setIntroChgTransNameAltViewRender(   Boolean.TRUE  );
+    initRow.setIntroChgPerPieceLabelRender(      Boolean.TRUE  );
+    initRow.setIntroChgPerPieceViewRender(       Boolean.TRUE  );
+    initRow.setIntroChgPerPieceRender(           Boolean.TRUE  );
+    initRow.setIntroChgPerPieceEndLabelRender(   Boolean.TRUE  );
+    initRow.setIntroChgPerSalesPriceLabelRender( Boolean.TRUE  );
+    initRow.setIntroChgPerSalesPriceViewRender(  Boolean.TRUE  );
+    initRow.setIntroChgPerSalesPriceRender(      Boolean.TRUE  );
+    initRow.setIntroChgPerSalesPriceEndLabelRender( Boolean.TRUE );
+    initRow.setIntroChgInfoRIRN01Render(         Boolean.TRUE  );
+    initRow.setIntroChgInfoRIRN02Render(         Boolean.TRUE  );
+// 2014-12-15 [E_本稼動_12565] Add End
     // BM1リージョン
     initRow.setBm1InfoHdrRNRender(               Boolean.TRUE  );
     initRow.setBm1SendTypeRender(                Boolean.TRUE  );
@@ -1925,11 +2247,13 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setBm3PaymentTypeViewRender(         Boolean.TRUE  );
     initRow.setBm3InquiryBaseLayoutRender(       Boolean.TRUE  );
 
-    // 契約書への記載事項リージョン
-    initRow.setReflectContractButtonRender(      Boolean.TRUE  );
-    initRow.setCntrctElecSpacer2Render(          Boolean.TRUE  );
-    initRow.setOtherContentRender(               Boolean.TRUE  );
-    initRow.setOtherContentViewRender(           Boolean.TRUE  );
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    // 契約書への記載事項リージョン
+//    initRow.setReflectContractButtonRender(      Boolean.TRUE  );
+//    initRow.setCntrctElecSpacer2Render(          Boolean.TRUE  );
+//    initRow.setOtherContentRender(               Boolean.TRUE  );
+//    initRow.setOtherContentViewRender(           Boolean.TRUE  );
+// 2014-12-15 [E_本稼動_12565] Del End
 
     // 概算年間損益リージョン
     initRow.setCalcProfitButtonRender(           Boolean.TRUE  );
