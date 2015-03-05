@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決初期化用ユーティリティクラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2009-08-04 1.2  SCS小川浩     [SCS障害0000908]コピー時の回送先再設定対応
 * 2013-04-19 1.3  SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.4  SCSK桐生和幸 [E_本稼動_11397]売価1円対応
+* 2014-12-15 1.5  SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -418,9 +419,11 @@ public class XxcsoSpDecisionInitUtils
     headerRow.setConditionBusinessType( headerRow2.getConditionBusinessType() );
     headerRow.setAllContainerType(      headerRow2.getAllContainerType()      );
     headerRow.setContractYearDate(      headerRow2.getContractYearDate()      );
-    headerRow.setInstallSupportAmt(     headerRow2.getInstallSupportAmt()     );
-    headerRow.setInstallSupportAmt2(    headerRow2.getInstallSupportAmt2()    );
-    headerRow.setPaymentCycle(          headerRow2.getPaymentCycle()          );
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    headerRow.setInstallSupportAmt(     headerRow2.getInstallSupportAmt()     );
+//    headerRow.setInstallSupportAmt2(    headerRow2.getInstallSupportAmt2()    );
+//    headerRow.setPaymentCycle(          headerRow2.getPaymentCycle()          );
+// 2014-12-15 [E_本稼動_12565] Del End
     headerRow.setElectricityType(       headerRow2.getElectricityType()       );
     headerRow.setElectricityAmount(     headerRow2.getElectricityAmount()     );
     headerRow.setConditionReason(       headerRow2.getConditionReason()       );
@@ -444,12 +447,55 @@ public class XxcsoSpDecisionInitUtils
     headerRow.setOperatingProfit(       headerRow2.getOperatingProfit()       );
     headerRow.setOperatingProfitRate(   headerRow2.getOperatingProfitRate()   );
     headerRow.setBreakEvenPoint(        headerRow2.getBreakEvenPoint()        );
-    headerRow.setContractYearDateView(  headerRow2.getContractYearDateView()  );
-    headerRow.setElectricityType(       headerRow2.getElectricityTypeView()   );
-    headerRow.setElectricityAmountView( headerRow2.getElectricityAmountView() );
-    headerRow.setInstallSupportAmtView( headerRow2.getInstallSupportAmtView() );
-    headerRow.setPaymentCycleView(      headerRow2.getPaymentCycleView()      );
-    headerRow.setInstallSupportAmt2View(headerRow2.getInstallSupportAmt2View());
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//    headerRow.setContractYearDateView(  headerRow2.getContractYearDateView()  );
+//    headerRow.setElectricityType(       headerRow2.getElectricityTypeView()   );
+//    headerRow.setElectricityAmountView( headerRow2.getElectricityAmountView() );
+//    headerRow.setInstallSupportAmtView( headerRow2.getInstallSupportAmtView() );
+//    headerRow.setPaymentCycleView(      headerRow2.getPaymentCycleView()      );
+//    headerRow.setInstallSupportAmt2View(headerRow2.getInstallSupportAmt2View());
+    headerRow.setContractYearMonth(     headerRow2.getContractYearMonth()     );
+    headerRow.setContractStartYear(     headerRow2.getContractStartYear()     );
+    headerRow.setContractStartMonth(    headerRow2.getContractStartMonth()    );
+    headerRow.setContractEndYear(       headerRow2.getContractEndYear()       );
+    headerRow.setContractEndMonth(      headerRow2.getContractEndMonth()      );
+    headerRow.setBiddingItem(           headerRow2.getBiddingItem()           );
+    headerRow.setCancellBeforeMaturity( headerRow2.getCancellBeforeMaturity() );
+    headerRow.setAdAssetsType(          headerRow2.getAdAssetsType()          );
+    headerRow.setAdAssetsAmt(           headerRow2.getAdAssetsAmt()           );
+    headerRow.setAdAssetsThisTime(      headerRow2.getAdAssetsThisTime()      );
+    headerRow.setAdAssetsPaymentYear(   headerRow2.getAdAssetsPaymentYear()   );
+    headerRow.setAdAssetsPaymentDate(   headerRow2.getAdAssetsPaymentDate()   );
+    headerRow.setTaxType(               headerRow2.getTaxType()               );
+    headerRow.setInstallSuppType(       headerRow2.getInstallSuppType()       );
+    headerRow.setInstallSuppPaymentType(headerRow2.getInstallSuppPaymentType());
+    headerRow.setInstallSuppAmt(        headerRow2.getInstallSuppAmt()        );
+    headerRow.setInstallSuppThisTime(   headerRow2.getInstallSuppThisTime()   );
+    headerRow.setInstallSuppPaymentYear(headerRow2.getInstallSuppPaymentYear());
+    headerRow.setInstallSuppPaymentDate(headerRow2.getInstallSuppPaymentDate());
+    headerRow.setElectricType(          headerRow2.getElectricType()          );
+    headerRow.setElectricPaymentType(   headerRow2.getElectricPaymentType()   );
+    headerRow.setElectricPaymentChangeType( headerRow2.getElectricPaymentChangeType() );
+    headerRow.setElectricPaymentCycle(  headerRow2.getElectricPaymentCycle()  );
+    headerRow.setElectricClosingDate(   headerRow2.getElectricClosingDate()   );
+    headerRow.setElectricTransMonth(    headerRow2.getElectricTransMonth()    );
+    headerRow.setElectricTransDate(     headerRow2.getElectricTransDate()     );
+    headerRow.setElectricTransName(     headerRow2.getElectricTransName()     );
+    headerRow.setElectricTransNameAlt(  headerRow2.getElectricTransNameAlt()  );
+    headerRow.setIntroChgType(          headerRow2.getIntroChgType()          );
+    headerRow.setIntroChgPaymentType(   headerRow2.getIntroChgPaymentType()   );
+    headerRow.setIntroChgAmt(           headerRow2.getIntroChgAmt()           );
+    headerRow.setIntroChgThisTime(      headerRow2.getIntroChgThisTime()      );
+    headerRow.setIntroChgPaymentYear(   headerRow2.getIntroChgPaymentYear()   );
+    headerRow.setIntroChgPaymentDate(   headerRow2.getIntroChgPaymentDate()   );
+    headerRow.setIntroChgPerSalesPrice( headerRow2.getIntroChgPerSalesPrice() );
+    headerRow.setIntroChgPerPiece(      headerRow2.getIntroChgPerPiece()      );
+    headerRow.setIntroChgClosingDate(   headerRow2.getIntroChgClosingDate()   );
+    headerRow.setIntroChgTransMonth(    headerRow2.getIntroChgTransMonth()    );
+    headerRow.setIntroChgTransDate(     headerRow2.getIntroChgTransDate()     );
+    headerRow.setIntroChgTransName(     headerRow2.getIntroChgTransName()     );
+    headerRow.setIntroChgTransNameAlt(  headerRow2.getIntroChgTransNameAlt()  );
+// 2014-12-15 [E_本稼動_12565] Mod End
     
     // 設置先行を作成
     installVo.first();
