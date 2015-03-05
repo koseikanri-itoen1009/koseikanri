@@ -9,7 +9,7 @@
 
 修正履歴
 2008/12/22  小川浩        新規作成-->
-<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+<package version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <attributeSet docName="PageLayoutRN" windowTitle="SP専決入力／更新／承認" title="SP専決入力／更新／承認"/>
    <attributeSet docName="RequestButton" prompt="発注依頼"/>
    <attributeSet docName="ConfirmButton" prompt="確認"/>
@@ -77,6 +77,7 @@
    <attributeSet docName="VdInfo3Layout" prompt="機種コード"/>
    <attributeSet docName="UnNumber" shortDesc="機種コード"/>
    <attributeSet docName="ConditionBusinessInfoHdrRN" text="取引条件"/>
+   <attributeSet docName="ConditionBusinessInfoHint" text="取引条件は必ず税込みで入力して下さい。"/>
    <attributeSet docName="SelectConditionBusinessHdrRN" text="* 取引条件選択"/>
    <attributeSet docName="ConditionBusinessType" shortDesc="取引条件"/>
    <attributeSet docName="SalesConditionHdrRN" text="売価別条件"/>
@@ -86,7 +87,7 @@
    <attributeSet docName="ScBmAmountPerColHdr" prompt="金額"/>
    <attributeSet docName="ScBmConvRatePerColHdr" prompt="定価換算率（％）"/>
    <attributeSet docName="ScBmPerGrpHdr" prompt="売価1本当り BM（総額）"/>
-   <attributeSet docName="ScBm1BmRateColHdr" prompt="率（％）"/>
+   <attributeSet docName="ScBm1BmRateColHdr" prompt="率（％）" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/IntroChgPaymentDate"/>
    <attributeSet docName="ScBm1BmAmountColHdr" prompt="金額"/>
    <attributeSet docName="ScBm1GrpHdr" prompt="BM1"/>
    <attributeSet docName="ScBm2BmRateColHdr" prompt="率（％）"/>
@@ -132,20 +133,13 @@
    <attributeSet docName="SelCcBm3BmAmountColHdr" prompt="金額"/>
    <attributeSet docName="SelCcBm3GrpHdr" prompt="BM3"/>
    <attributeSet docName="SelCcCalcButton" prompt="定価換算率計算"/>
+   <attributeSet docName="ConditionBusinessInfoLabel1" prompt="※紹介手数料が発生する場合はＢＭ２欄に条件入力してＳＰ自動出力の覚書を作成して下さい。"/>
+   <attributeSet docName="ConditionBusinessInfoLabel2" prompt="※上記以外のＢＭが発生する場合はＢＭ３欄に条件入力して法務部に覚書の作成を依頼して下さい。"/>
    <attributeSet docName="OtherConditionHdrRN" text="その他条件"/>
    <attributeSet docName="ContractYearDateStartLabel" prompt="契約年数"/>
    <attributeSet docName="ContractYearDate" shortDesc="契約年数"/>
-   <attributeSet docName="ContractYearDateEndLabel" prompt="年"/>
-   <attributeSet docName="InstallSupportAmtStartLabel" prompt="初回設置協賛金"/>
-   <attributeSet docName="InstallSupportAmt" shortDesc="初回設置協賛金"/>
-   <attributeSet docName="InstallSupportAmtLabel" prompt="円（税込）"/>
-   <attributeSet docName="InstallSupportAmt2StartLabel" prompt="2回目以降設置協賛金"/>
-   <attributeSet docName="InstallSupportAmt2" shortDesc="2回目以降設置協賛金"/>
-   <attributeSet docName="InstallSupportAmt2Label" prompt="円"/>
-   <attributeSet docName="PaymentCycle" prompt="支払サイクル"/>
-   <attributeSet docName="PaymentCycleLabel" prompt="年"/>
    <attributeSet docName="ElectricityStartLabel" prompt="電気代"/>
-   <attributeSet docName="ElectricityType" shortDesc="電気代種別"/>
+   <attributeSet docName="ElectricityType" shortDesc="電気代区分"/>
    <attributeSet docName="ElectricityAmount" shortDesc="電気代"/>
    <attributeSet docName="ElectricityAmountLabel" prompt="円／月"/>
    <attributeSet docName="ConditionReasonStartLabel1" prompt="特別条件の理由"/>
@@ -207,21 +201,6 @@
    <attributeSet docName="Bm3PaymentTypeLayout" prompt="支払方法・明細書"/>
    <attributeSet docName="Bm3PaymentType" shortDesc="支払方法・明細書"/>
    <attributeSet docName="Bm3InquiryBaseLayout" prompt="問合せ担当拠点"/>
-   <attributeSet docName="ContractEntryInfoHdrRN" text="契約書への記載事項"/>
-   <attributeSet docName="ContractYearDateViewStartLabel" prompt="契約年数"/>
-   <attributeSet docName="ContractYearDateViewEndLabel" prompt="年"/>
-   <attributeSet docName="PublishBaseViewStartLabel" prompt="担当拠点"/>
-   <attributeSet docName="ElectricityViewStartLabel" prompt="電気代"/>
-   <attributeSet docName="ElectricityViewEndLabel" prompt="円／月"/>
-   <attributeSet docName="TransferCommissionViewStartLabel" prompt="振込手数料負担"/>
-   <attributeSet docName="InstallSupportAmtViewStartLabel" prompt="初回設置協賛金"/>
-   <attributeSet docName="InstallSupportAmtViewEndLabel" prompt="円"/>
-   <attributeSet docName="PaymentCycleViewStartLabel" prompt="支払サイクル"/>
-   <attributeSet docName="PaymentCycleViewEndLabel" prompt="年"/>
-   <attributeSet docName="InstallSupportAmt2ViewStartLabel" prompt="2回目以降設置協賛金"/>
-   <attributeSet docName="InstallSupportAmt2ViewEndLabel" prompt="円"/>
-   <attributeSet docName="OtherContentStartLabel" prompt="特約事項"/>
-   <attributeSet docName="OtherContent" shortDesc="特約事項"/>
    <attributeSet docName="EstimateYearProfitInfoHdrRN" text="概算年間損益（千円）"/>
    <attributeSet docName="SalesMonth" prompt="月間売上"/>
    <attributeSet docName="SalesYear" prompt="年間売上"/>
@@ -277,4 +256,91 @@
    <attributeSet docName="ContainerConditionHdrRN" text="一律条件・容器別条件"/>
    <attributeSet docName="VdHint" text="申請区分：条件変更時は不要です。"/>
    <attributeSet docName="CardSaleClassColHdr" prompt="カード売区分"/>
+   <attributeSet docName="ContractStartYearStartLabel" prompt="契約期間"/>
+   <attributeSet docName="ContractYearMonth" shortDesc="契約月数"/>
+   <attributeSet docName="ContractYearMonthEndLabel" prompt="ヶ月"/>
+   <attributeSet docName="ContractStartYear" shortDesc="契約期間開始（年）"/>
+   <attributeSet docName="ContractStartMonth" shortDesc="契約期間開始（月）"/>
+   <attributeSet docName="ContractEndYear" shortDesc="契約期間終了（年）"/>
+   <attributeSet docName="ContractEndMonth" shortDesc="契約期間終了（月）"/>
+   <attributeSet docName="ContractStartEndSeparete" prompt="－"/>
+   <attributeSet docName="BiddingItemLabel" prompt="入札案件"/>
+   <attributeSet docName="BiddingItem" shortDesc="入札案件"/>
+   <attributeSet docName="CancellBeforeMaturityHint" text="公共入札案件はチェックしてください。"/>
+   <attributeSet docName="CancellBeforeMaturityLabel" prompt="中途解約条項"/>
+   <attributeSet docName="CancellBeforeMaturity" shortDesc="中途解約条項"/>
+   <attributeSet docName="AdAssetsTypeLabel" prompt="行政財産使用料"/>
+   <attributeSet docName="AdAssetsHint" text="行政財産使用料案件はチェックを入れて下さい。"/>
+   <attributeSet docName="AdAssetsType" shortDesc="支払区分（行政財産使用料）"/>
+   <attributeSet docName="AdAssetsAmt" shortDesc="総額（行政財産使用料）"/>
+   <attributeSet docName="AdAssetsThisTime" shortDesc="今回支払（行政財産使用料）"/>
+   <attributeSet docName="AdAssetsPaymentYear" shortDesc="支払年数（行政財産使用料）"/>
+   <attributeSet docName="AdAssetsPaymentDate" shortDesc="支払期日（行政財産使用料）"/>
+   <attributeSet docName="AdAssetsInfoLabel1" prompt="※行政財産使用料は税込みで入力して下さい。"/>
+   <attributeSet docName="AdAssetsInfoLabel2" prompt="※行政財産使用料の支払は年度毎にSP申請して下さい。"/>
+   <attributeSet docName="AdAssetsInfoLabel3" prompt="※同一顧客への振込み合計が１００万円を超える場合は稟議決裁が必要です。"/>
+   <attributeSet docName="AdAssetsInfoLabel4" prompt="※行政財産使用料の複数台一括契約は総金額÷総台数の金額にて入力して下さい。"/>
+   <attributeSet docName="AdAssetsInfoLabel5" prompt="※行政財産使用料は各拠点での支払申請が必要です。支払には契約書・覚書が必要です。"/>
+   <attributeSet docName="MemorandumInfoHdrRn" text="覚書情報"/>
+   <attributeSet docName="TaxType" prompt="税区分"/>
+   <attributeSet docName="TaxTypeHint" text="ここで選択した税区分は、以降の契約書（電気代のみ）・覚書（設置協賛金、電気代）の出力まで反映されます。"/>
+   <attributeSet docName="InstallSuppHdrRN" text="設置協賛金"/>
+   <attributeSet docName="InstallSuppTypeLabel" prompt="設置協賛金"/>
+   <attributeSet docName="InstallSuppPaymentType" shortDesc="支払条件（設置協賛金）"/>
+   <attributeSet docName="InstallSuppAmt" shortDesc="総額（設置協賛金）"/>
+   <attributeSet docName="InstallSuppThisTime" shortDesc="今回支払（設置協賛金）"/>
+   <attributeSet docName="InstallSuppPaymentDate" shortDesc="支払期日（設置協賛金）"/>
+   <attributeSet docName="InstallSuppPaymentYear" shortDesc="支払年数（設置協賛金）"/>
+   <attributeSet docName="InstallSuppTypeHint1" text="設置協賛金の支払は年度毎にSP申請して下さい。"/>
+   <attributeSet docName="InstallSuppInfoLabel1" prompt="※同一顧客への振込み合計が１００万円を超える場合は稟議決裁が必要です。"/>
+   <attributeSet docName="InstallSuppInfoLabel2" prompt="※設置協賛金・行政財産使用料の複数台一括契約は総金額÷総台数の金額にて入力して下さい。　"/>
+   <attributeSet docName="InstallSuppInfoLabel3" prompt="※設置協賛金は各拠点での支払申請が必要です。支払には契約書・覚書が必要です。"/>
+   <attributeSet docName="ElectricHdrRN" text="電気代"/>
+   <attributeSet docName="ElectricTypeLabel" prompt="電気代"/>
+   <attributeSet docName="ElectricPaymentType" shortDesc="支払条件（電気代）"/>
+   <attributeSet docName="ElectricPaymentTypeHint" text="契約先を選んだ場合、電気代は契約書へ出力され、覚書は出力されません。"/>
+   <attributeSet docName="ElectricPaymentChangeType" shortDesc="支払条件（変動電気代）"/>
+   <attributeSet docName="ElectricPaymentChangeTypeLabel" prompt="変動の場合"/>
+   <attributeSet docName="ElectricPaymentCycle" shortDesc="支払サイクル（電気代）"/>
+   <attributeSet docName="ElectricPaymentCycleLabel" prompt="支払サイクル"/>
+   <attributeSet docName="ElectricClosingDate" shortDesc="締日（電気代）"/>
+   <attributeSet docName="ElectricTransMonth" shortDesc="振込月（電気代）"/>
+   <attributeSet docName="ElectricTransDate" shortDesc="振込日（電気代）"/>
+   <attributeSet docName="ElectricTransNameAlt" shortDesc="契約先以外名カナ（電気代）"/>
+   <attributeSet docName="ElectricTransName" shortDesc="契約先以外名（電気代）"/>
+   <attributeSet docName="ElectricContractInfoLabel2" prompt="※定額の本社振込みの場合は、税区分で税抜きを選んでも計算結果は税込みになります。"/>
+   <attributeSet docName="ElectricContractOtherInfoLabel" prompt="※定額でも本社振込みにはなりません。"/>
+   <attributeSet docName="IntroChgHdrRN" text="紹介手数料"/>
+   <attributeSet docName="IntroChgHint" text="紹介手数料の覚書出力は契約先以外のみです。"/>
+   <attributeSet docName="IntroChgTypeLabel" prompt="紹介手数料"/>
+   <attributeSet docName="IntroChgPaymentType" shortDesc="支払条件（紹介手数料）"/>
+   <attributeSet docName="IntroChgAmt" shortDesc="総額（紹介手数料）"/>
+   <attributeSet docName="IntroChgThisTime" shortDesc="今回支払（紹介手数料）"/>
+   <attributeSet docName="IntroChgPaymentYear" shortDesc="支払年数（紹介手数料）"/>
+   <attributeSet docName="IntroChgPaymentDate" shortDesc="支払期日（紹介手数料）"/>
+   <attributeSet docName="IntroChgPerSalesPriceLabel" prompt="販売金額に対し"/>
+   <attributeSet docName="IntroChgPerSalesPrice" shortDesc="販売金額当り紹介手数料率"/>
+   <attributeSet docName="IntroChgPerPieceLabel" prompt="1本につき"/>
+   <attributeSet docName="IntroChgPerPiece" shortDesc="1本当り紹介手数料額"/>
+   <attributeSet docName="IntroChgClosingDate" shortDesc="締日（紹介手数料）"/>
+   <attributeSet docName="IntroChgTransMonth" shortDesc="振込月（紹介手数料）"/>
+   <attributeSet docName="IntroChgTransDate" shortDesc="振込日（紹介手数料）"/>
+   <attributeSet docName="IntroChgTransNameAlt" shortDesc="契約先以外名カナ（紹介手数料）"/>
+   <attributeSet docName="IntroChgTransName" shortDesc="契約先以外名（紹介手数料）"/>
+   <attributeSet docName="IntroChgInfoLabel" prompt="※ここでの入力は覚書のみ反映します。覚書は税込み表記になります。"/>
+   <attributeSet docName="EstimateYearProfitInfoHint" text="概算年間損益は必ず税込みで入力してください。"/>
+   <attributeSet docName="YearEndLabel1" prompt="年目"/>
+   <attributeSet docName="YearEndLabel2" prompt="年"/>
+   <attributeSet docName="MonthEndLabel1" prompt="月"/>
+   <attributeSet docName="PaymentDateLabel" prompt="支払期日"/>
+   <attributeSet docName="PaymentType" text="支払条件"/>
+   <attributeSet docName="AllAmtLabel" prompt="(総額)"/>
+   <attributeSet docName="ThisTimeLabel" prompt="(今回支払)"/>
+   <attributeSet docName="ClosingDateLabel" prompt="締め日"/>
+   <attributeSet docName="TransMonthLabel" prompt="振込日"/>
+   <attributeSet docName="EnLabel" prompt="円"/>
+   <attributeSet docName="PercentLabel" prompt="％"/>
+   <attributeSet docName="DayLabel" prompt="日"/>
+   <attributeSet docName="TransNameAltLabel" prompt="契約先以外カナ(半角)"/>
+   <attributeSet docName="TransNameLabel" prompt="契約先以外名(全角)"/>
 </package>
