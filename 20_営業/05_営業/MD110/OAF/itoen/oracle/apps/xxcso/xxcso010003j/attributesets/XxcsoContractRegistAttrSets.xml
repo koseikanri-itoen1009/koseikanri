@@ -10,8 +10,9 @@
 修正履歴
 2009/01/27  小川浩        新規作成
 2012/06/12  桐生和幸      E_本稼動_09602対応
-2014/02/04  SCSK菅原      E_本稼動_11397対応-->
-<package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+2014/02/04  SCSK菅原      E_本稼動_11397対応
+2015-02-06  SCSK山下翔太  E_本稼動_12565対応-->
+<package version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <attributeSet docName="PageLayoutRN" windowTitle="自販機設置契約情報登録" title="自販機設置契約情報登録"/>
    <attributeSet docName="CancelButton" prompt="戻る"/>
    <attributeSet docName="ApplyButton" prompt="適用"/>
@@ -189,7 +190,6 @@
    <attributeSet docName="Bm1BankTransferFeeDivLayout" prompt="BM1振込手数料負担"/>
    <attributeSet docName="Bm2BankTransferFeeDivLayout" prompt="BM2振込手数料負担"/>
    <attributeSet docName="Bm3BankTransferFeeDivLayout" prompt="BM3振込手数料負担"/>
-   <attributeSet docName="OtherContent" prompt="特約事項"/>
    <attributeSet docName="InqueryBaseCode" prompt="拠点コード"/>
    <attributeSet docName="InqueryBaseName" prompt="拠点名"/>
    <attributeSet docName="VendorNumber" prompt="送付先コード"/>
@@ -229,4 +229,52 @@
    <attributeSet docName="BankAccountHolderNameAlt" prompt="口座名義カナ"/>
    <attributeSet docName="RejectButton" prompt="契約取消"/>
    <attributeSet docName="CardSalesClassColHdr" prompt="カード売区分"/>
+   <attributeSet docName="InstSuppExistFlag" prompt="設置協賛金指定"/>
+   <attributeSet docName="InstSuppInfoHdrRN" text="&lt;設置協賛金情報>"/>
+   <attributeSet docName="InstSuppBankNameLayout" prompt="金融機関名"/>
+   <attributeSet docName="InstSuppBankNumber" shortDesc="金融機関番号"/>
+   <attributeSet docName="InstSuppBranchNameLayout" prompt="支店名"/>
+   <attributeSet docName="InstSuppBranchNumber" shortDesc="支店番号"/>
+   <attributeSet docName="InstSuppBranchName" shortDesc="支店名"/>
+   <attributeSet docName="InstSuppBankAccountType" shortDesc="口座種別"/>
+   <attributeSet docName="InstSuppBankAccountNumber" prompt="口座番号(半角)"/>
+   <attributeSet docName="InstSuppBankAccountNameKana" prompt="口座名義カナ(半角)"/>
+   <attributeSet docName="InstSuppBankAccountNameKanji" prompt="口座名義漢字(全角)"/>
+   <attributeSet docName="InstSuppBankTransferFeeDivLayout" prompt="振込手数料負担"/>
+   <attributeSet docName="InstSuppBankTransferFeeDiv" shortDesc="振込手数料負担"/>
+   <attributeSet docName="InstSuppBankAccountTypeLayout" prompt="口座種別"/>
+   <attributeSet docName="InstSuppBankAccountTypeBlank" prompt="口座種別"/>
+   <attributeSet docName="InstSuppBankName" shortDesc="金融機関名"/>
+   <attributeSet docName="IntroChgExistFlag" prompt="紹介手数料指定"/>
+   <attributeSet docName="IntroChgInfoHdrRN" text="&lt;紹介手数料情報>"/>
+   <attributeSet docName="IntroChgBankNameLayout" prompt="金融機関名"/>
+   <attributeSet docName="IntroChgBankNumber" shortDesc="金融機関番号"/>
+   <attributeSet docName="IntroChgBankName" shortDesc="金融機関名"/>
+   <attributeSet docName="IntroChgBranchNameLayout" prompt="支店名"/>
+   <attributeSet docName="IntroChgBranchNumber" shortDesc="支店番号"/>
+   <attributeSet docName="IntroChgBranchName" shortDesc="支店名"/>
+   <attributeSet docName="IntroChgBankAccountType" shortDesc="口座種別"/>
+   <attributeSet docName="IntroChgBankAccountNumber" prompt="口座番号(半角)"/>
+   <attributeSet docName="IntroChgBankAccountNameKanji" prompt="口座名義漢字(全角)"/>
+   <attributeSet docName="IntroChgBankAccountNameKana" prompt="口座名義カナ(半角)"/>
+   <attributeSet docName="IntroChgBankTransferFeeDivLayout" prompt="振込手数料負担"/>
+   <attributeSet docName="IntroChgBankTransferFeeDiv" shortDesc="振込手数料負担"/>
+   <attributeSet docName="IntroChgBankAccountTypeLayout" prompt="口座種別"/>
+   <attributeSet docName="IntroChgBankAccountTypeBlank" prompt="口座種別"/>
+   <attributeSet docName="ElectricExistFlag" prompt="電気代指定（契約先以外）"/>
+   <attributeSet docName="ElectricInfoHdrRN" text="&lt;電気代情報>"/>
+   <attributeSet docName="ElectricBankNameLayout" prompt="金融機関名"/>
+   <attributeSet docName="ElectricBankNumber" shortDesc="金融機関番号"/>
+   <attributeSet docName="ElectricBankName" shortDesc="金融機関名"/>
+   <attributeSet docName="ElectricBranchNameLayout" prompt="支店名"/>
+   <attributeSet docName="ElectricBranchNumber" shortDesc="支店番号"/>
+   <attributeSet docName="ElectricBranchName" shortDesc="支店名"/>
+   <attributeSet docName="ElectricBankAccountType" shortDesc="口座種別"/>
+   <attributeSet docName="ElectricBankAccountNumber" prompt="口座番号(半角)"/>
+   <attributeSet docName="ElectricBankAccountNameKanji" prompt="口座名義漢字(全角)"/>
+   <attributeSet docName="ElectricBankAccountNameKana" prompt="口座名義カナ(半角)"/>
+   <attributeSet docName="ElectricBankTransferFeeDivLayout" prompt="振込手数料負担"/>
+   <attributeSet docName="ElectricBankTransferFeeDiv" shortDesc="振込手数料負担"/>
+   <attributeSet docName="ElectricBankAccountTypeLayout" prompt="口座種別"/>
+   <attributeSet docName="ElectricBankAccountTypeBlank" prompt="口座種別"/>
 </package>
