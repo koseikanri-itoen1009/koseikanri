@@ -8,6 +8,7 @@
    RowClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionHeaderFullVORowImpl"
    ComponentClass="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionHeaderFullVOImpl"
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID, 
@@ -73,12 +74,14 @@ SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID,
         FROM    xxcso_employees_v2 xev
         WHERE   xev.employee_number = XxcsoSpDecisionHeadersVEO.APPLICATION_CODE
        ) full_name
-      ,XxcsoSpDecisionHeadersVEO.CONTRACT_YEAR_DATE contract_year_date_view
-      ,XxcsoSpDecisionHeadersVEO.ELECTRICITY_TYPE electricity_type_view
-      ,XxcsoSpDecisionHeadersVEO.ELECTRICITY_AMOUNT electricity_amount_view
-      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT install_support_amt_view
-      ,XxcsoSpDecisionHeadersVEO.PAYMENT_CYCLE payment_cycle_view
-      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT2 install_support_amt2_view
+-- 2014-12-15 [E_本稼動_12565] Del Start
+--      ,XxcsoSpDecisionHeadersVEO.CONTRACT_YEAR_DATE contract_year_date_view
+--      ,XxcsoSpDecisionHeadersVEO.ELECTRICITY_TYPE electricity_type_view
+--      ,XxcsoSpDecisionHeadersVEO.ELECTRICITY_AMOUNT electricity_amount_view
+--      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT install_support_amt_view
+--      ,XxcsoSpDecisionHeadersVEO.PAYMENT_CYCLE payment_cycle_view
+--      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPPORT_AMT2 install_support_amt2_view
+-- 2014-12-15 [E_本稼動_12565] Del End
       ,(
         SELECT   punv.un_number_id
         FROM     po_un_numbers_vl punv
@@ -93,12 +96,58 @@ SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID,
          AND     rownum                    = 1   --同一SPで複数の契約が作成可能の為
        ),'N') contract_exists
 -- 2013-04-19 [E_本稼動_09603] Add End
+-- 2014-12-15 [E_本稼動_12565] Add Start
+      ,XxcsoSpDecisionHeadersVEO.CONTRACT_YEAR_MONTH
+      ,XxcsoSpDecisionHeadersVEO.CONTRACT_START_YEAR
+      ,XxcsoSpDecisionHeadersVEO.CONTRACT_START_MONTH
+      ,XxcsoSpDecisionHeadersVEO.CONTRACT_END_YEAR
+      ,XxcsoSpDecisionHeadersVEO.CONTRACT_END_MONTH
+      ,XxcsoSpDecisionHeadersVEO.BIDDING_ITEM
+      ,XxcsoSpDecisionHeadersVEO.CANCELL_BEFORE_MATURITY
+      ,XxcsoSpDecisionHeadersVEO.AD_ASSETS_TYPE
+      ,XxcsoSpDecisionHeadersVEO.AD_ASSETS_AMT
+      ,XxcsoSpDecisionHeadersVEO.AD_ASSETS_THIS_TIME
+      ,XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAYMENT_YEAR
+      ,XxcsoSpDecisionHeadersVEO.AD_ASSETS_PAYMENT_DATE
+      ,XxcsoSpDecisionHeadersVEO.TAX_TYPE
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPP_TYPE
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPP_PAYMENT_TYPE
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPP_AMT
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPP_THIS_TIME
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPP_PAYMENT_YEAR
+      ,XxcsoSpDecisionHeadersVEO.INSTALL_SUPP_PAYMENT_DATE
+      ,DECODE(XxcsoSpDecisionHeadersVEO.ELECTRICITY_TYPE
+             ,'0', '0'
+             ,'1'
+       )  electric_type
+      ,XxcsoSpDecisionHeadersVEO.ELECTRIC_PAYMENT_TYPE
+      ,XxcsoSpDecisionHeadersVEO.ELECTRIC_PAYMENT_CHANGE_TYPE
+      ,XxcsoSpDecisionHeadersVEO.ELECTRIC_PAYMENT_CYCLE
+      ,XxcsoSpDecisionHeadersVEO.ELECTRIC_CLOSING_DATE
+      ,XxcsoSpDecisionHeadersVEO.ELECTRIC_TRANS_MONTH
+      ,XxcsoSpDecisionHeadersVEO.ELECTRIC_TRANS_DATE
+      ,XxcsoSpDecisionHeadersVEO.ELECTRIC_TRANS_NAME
+      ,XxcsoSpDecisionHeadersVEO.ELECTRIC_TRANS_NAME_ALT
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_TYPE
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_PAYMENT_TYPE
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_AMT
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_THIS_TIME
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_PAYMENT_YEAR
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_PAYMENT_DATE
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_PER_SALES_PRICE
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_PER_PIECE
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_CLOSING_DATE
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_TRANS_MONTH
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_TRANS_DATE
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_TRANS_NAME
+      ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_TRANS_NAME_ALT
+-- 2014-12-15 [E_本稼動_12565] Add End
 FROM XXCSO_SP_DECISION_HEADERS_V XxcsoSpDecisionHeadersVEO
 WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <EntityUsage
@@ -529,86 +578,9 @@ WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
-      Name="ContractYearDateView"
-      IsPersistent="false"
-      Precision="2"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="CONTRACT_YEAR_DATE_VIEW"
-      Expression="CONTRACT_YEAR_DATE_VIEW"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="40" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="ElectricityTypeView"
-      IsPersistent="false"
-      Precision="1"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="ELECTRICITY_TYPE_VIEW"
-      Expression="ELECTRICITY_TYPE_VIEW"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="1" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="ElectricityAmountView"
-      IsPersistent="false"
-      Precision="6"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="ELECTRICITY_AMOUNT_VIEW"
-      Expression="ELECTRICITY_AMOUNT_VIEW"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="7" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="InstallSupportAmtView"
-      IsPersistent="false"
-      Precision="10"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="INSTALL_SUPPORT_AMT_VIEW"
-      Expression="INSTALL_SUPPORT_AMT_VIEW"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="11" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="PaymentCycleView"
-      IsPersistent="false"
-      Precision="2"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="PAYMENT_CYCLE_VIEW"
-      Expression="PAYMENT_CYCLE_VIEW"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="40" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="InstallSupportAmt2View"
-      IsPersistent="false"
-      Precision="10"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="INSTALL_SUPPORT_AMT2_VIEW"
-      Expression="INSTALL_SUPPORT_AMT2_VIEW"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="11" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
       Name="UnNumberId"
       IsPersistent="false"
+      Precision="20"
       Type="oracle.jbo.domain.Number"
       ColumnType="NUMBER"
       AliasName="UN_NUMBER_ID"
@@ -630,6 +602,259 @@ WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
       <DesignTime>
          <Attr Name="_DisplaySize" Value="1" />
       </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractYearMonth"
+      EntityAttrName="ContractYearMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ContractYearMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractStartYear"
+      EntityAttrName="ContractStartYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ContractStartYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractStartMonth"
+      EntityAttrName="ContractStartMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ContractStartMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractEndYear"
+      EntityAttrName="ContractEndYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ContractEndYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractEndMonth"
+      EntityAttrName="ContractEndMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ContractEndMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BiddingItem"
+      EntityAttrName="BiddingItem"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="BiddingItem" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CancellBeforeMaturity"
+      EntityAttrName="CancellBeforeMaturity"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="CancellBeforeMaturity" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsType"
+      EntityAttrName="AdAssetsType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="AdAssetsType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsAmt"
+      EntityAttrName="AdAssetsAmt"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="AdAssetsAmt" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsThisTime"
+      EntityAttrName="AdAssetsThisTime"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="AdAssetsThisTime" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPaymentYear"
+      EntityAttrName="AdAssetsPaymentYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="AdAssetsPaymentYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="AdAssetsPaymentDate"
+      EntityAttrName="AdAssetsPaymentDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="AdAssetsPaymentDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaxType"
+      EntityAttrName="TaxType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="TaxType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppType"
+      EntityAttrName="InstallSuppType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallSuppType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppPaymentType"
+      EntityAttrName="InstallSuppPaymentType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallSuppPaymentType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppAmt"
+      EntityAttrName="InstallSuppAmt"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallSuppAmt" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppThisTime"
+      EntityAttrName="InstallSuppThisTime"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallSuppThisTime" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppPaymentYear"
+      EntityAttrName="InstallSuppPaymentYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallSuppPaymentYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppPaymentDate"
+      EntityAttrName="InstallSuppPaymentDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallSuppPaymentDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_TYPE"
+      Expression="ELECTRIC_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentType"
+      EntityAttrName="ElectricPaymentType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ElectricPaymentType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentChangeType"
+      EntityAttrName="ElectricPaymentChangeType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ElectricPaymentChangeType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentCycle"
+      EntityAttrName="ElectricPaymentCycle"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ElectricPaymentCycle" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricClosingDate"
+      EntityAttrName="ElectricClosingDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ElectricClosingDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransMonth"
+      EntityAttrName="ElectricTransMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ElectricTransMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransDate"
+      EntityAttrName="ElectricTransDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ElectricTransDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransName"
+      EntityAttrName="ElectricTransName"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ElectricTransName" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransNameAlt"
+      EntityAttrName="ElectricTransNameAlt"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ElectricTransNameAlt" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgType"
+      EntityAttrName="IntroChgType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgPaymentType"
+      EntityAttrName="IntroChgPaymentType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgPaymentType" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgAmt"
+      EntityAttrName="IntroChgAmt"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgAmt" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgThisTime"
+      EntityAttrName="IntroChgThisTime"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgThisTime" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgPaymentYear"
+      EntityAttrName="IntroChgPaymentYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgPaymentYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgPaymentDate"
+      EntityAttrName="IntroChgPaymentDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgPaymentDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgPerSalesPrice"
+      EntityAttrName="IntroChgPerSalesPrice"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgPerSalesPrice" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgPerPiece"
+      EntityAttrName="IntroChgPerPiece"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgPerPiece" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgClosingDate"
+      EntityAttrName="IntroChgClosingDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgClosingDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgTransMonth"
+      EntityAttrName="IntroChgTransMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgTransMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgTransDate"
+      EntityAttrName="IntroChgTransDate"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgTransDate" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgTransName"
+      EntityAttrName="IntroChgTransName"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgTransName" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgTransNameAlt"
+      EntityAttrName="IntroChgTransNameAlt"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="IntroChgTransNameAlt" >
    </ViewAttribute>
    <ViewLinkAccessor
       Name="XxcsoSpDecisionAllCcLineFullVO"
