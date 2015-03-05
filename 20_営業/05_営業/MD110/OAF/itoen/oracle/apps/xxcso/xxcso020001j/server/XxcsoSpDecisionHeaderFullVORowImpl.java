@@ -1,12 +1,13 @@
 /*============================================================================
 * ÉtÉ@ÉCÉãñº : XxcsoSpDecisionHeaderFullVORowImpl
 * äTóvê‡ñæ   : SPêÍåàÉwÉbÉ_ìoò^Å^çXêVópÉrÉÖÅ[çsÉNÉâÉX
-* ÉoÅ[ÉWÉáÉì : 1.0
+* ÉoÅ[ÉWÉáÉì : 1.1
 *============================================================================
 * èCê≥óöó
 * ì˙ït       Ver. íSìñé“       èCê≥ì‡óe
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCSè¨êÏç_     êVãKçÏê¨
+* 2014-12-30 1.1  SCSKãÀê∂òaçK  [E_ñ{â“ìÆ_12565]SPÅEå_ñÒèëâÊñ â¸èCëŒâû
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -82,24 +83,59 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   protected static final int PROGRAMUPDATEDATE = 54;
   protected static final int APPBASENAME = 55;
   protected static final int FULLNAME = 56;
-  protected static final int CONTRACTYEARDATEVIEW = 57;
-  protected static final int ELECTRICITYTYPEVIEW = 58;
-  protected static final int ELECTRICITYAMOUNTVIEW = 59;
-  protected static final int INSTALLSUPPORTAMTVIEW = 60;
-  protected static final int PAYMENTCYCLEVIEW = 61;
-  protected static final int INSTALLSUPPORTAMT2VIEW = 62;
-  protected static final int UNNUMBERID = 63;
-  protected static final int CONTRACTEXISTS = 64;
-  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 65;
-  protected static final int XXCSOSPDECISIONATTACHFULLVO = 66;
-  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 67;
-  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 68;
-  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 69;
-  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 70;
-  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 71;
-  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 72;
-  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 73;
-  protected static final int XXCSOSPDECISIONSENDFULLVO = 74;
+  protected static final int UNNUMBERID = 57;
+  protected static final int CONTRACTEXISTS = 58;
+  protected static final int CONTRACTYEARMONTH = 59;
+  protected static final int CONTRACTSTARTYEAR = 60;
+  protected static final int CONTRACTSTARTMONTH = 61;
+  protected static final int CONTRACTENDYEAR = 62;
+  protected static final int CONTRACTENDMONTH = 63;
+  protected static final int BIDDINGITEM = 64;
+  protected static final int CANCELLBEFOREMATURITY = 65;
+  protected static final int ADASSETSTYPE = 66;
+  protected static final int ADASSETSAMT = 67;
+  protected static final int ADASSETSTHISTIME = 68;
+  protected static final int ADASSETSPAYMENTYEAR = 69;
+  protected static final int ADASSETSPAYMENTDATE = 70;
+  protected static final int TAXTYPE = 71;
+  protected static final int INSTALLSUPPTYPE = 72;
+  protected static final int INSTALLSUPPPAYMENTTYPE = 73;
+  protected static final int INSTALLSUPPAMT = 74;
+  protected static final int INSTALLSUPPTHISTIME = 75;
+  protected static final int INSTALLSUPPPAYMENTYEAR = 76;
+  protected static final int INSTALLSUPPPAYMENTDATE = 77;
+  protected static final int ELECTRICTYPE = 78;
+  protected static final int ELECTRICPAYMENTTYPE = 79;
+  protected static final int ELECTRICPAYMENTCHANGETYPE = 80;
+  protected static final int ELECTRICPAYMENTCYCLE = 81;
+  protected static final int ELECTRICCLOSINGDATE = 82;
+  protected static final int ELECTRICTRANSMONTH = 83;
+  protected static final int ELECTRICTRANSDATE = 84;
+  protected static final int ELECTRICTRANSNAME = 85;
+  protected static final int ELECTRICTRANSNAMEALT = 86;
+  protected static final int INTROCHGTYPE = 87;
+  protected static final int INTROCHGPAYMENTTYPE = 88;
+  protected static final int INTROCHGAMT = 89;
+  protected static final int INTROCHGTHISTIME = 90;
+  protected static final int INTROCHGPAYMENTYEAR = 91;
+  protected static final int INTROCHGPAYMENTDATE = 92;
+  protected static final int INTROCHGPERSALESPRICE = 93;
+  protected static final int INTROCHGPERPIECE = 94;
+  protected static final int INTROCHGCLOSINGDATE = 95;
+  protected static final int INTROCHGTRANSMONTH = 96;
+  protected static final int INTROCHGTRANSDATE = 97;
+  protected static final int INTROCHGTRANSNAME = 98;
+  protected static final int INTROCHGTRANSNAMEALT = 99;
+  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 100;
+  protected static final int XXCSOSPDECISIONATTACHFULLVO = 101;
+  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 102;
+  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 103;
+  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 104;
+  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 105;
+  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 106;
+  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 107;
+  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 108;
+  protected static final int XXCSOSPDECISIONSENDFULLVO = 109;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -1230,22 +1266,92 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return getAppBaseName();
       case FULLNAME:
         return getFullName();
-      case CONTRACTYEARDATEVIEW:
-        return getContractYearDateView();
-      case ELECTRICITYTYPEVIEW:
-        return getElectricityTypeView();
-      case ELECTRICITYAMOUNTVIEW:
-        return getElectricityAmountView();
-      case INSTALLSUPPORTAMTVIEW:
-        return getInstallSupportAmtView();
-      case PAYMENTCYCLEVIEW:
-        return getPaymentCycleView();
-      case INSTALLSUPPORTAMT2VIEW:
-        return getInstallSupportAmt2View();
       case UNNUMBERID:
         return getUnNumberId();
       case CONTRACTEXISTS:
         return getContractExists();
+      case CONTRACTYEARMONTH:
+        return getContractYearMonth();
+      case CONTRACTSTARTYEAR:
+        return getContractStartYear();
+      case CONTRACTSTARTMONTH:
+        return getContractStartMonth();
+      case CONTRACTENDYEAR:
+        return getContractEndYear();
+      case CONTRACTENDMONTH:
+        return getContractEndMonth();
+      case BIDDINGITEM:
+        return getBiddingItem();
+      case CANCELLBEFOREMATURITY:
+        return getCancellBeforeMaturity();
+      case ADASSETSTYPE:
+        return getAdAssetsType();
+      case ADASSETSAMT:
+        return getAdAssetsAmt();
+      case ADASSETSTHISTIME:
+        return getAdAssetsThisTime();
+      case ADASSETSPAYMENTYEAR:
+        return getAdAssetsPaymentYear();
+      case ADASSETSPAYMENTDATE:
+        return getAdAssetsPaymentDate();
+      case TAXTYPE:
+        return getTaxType();
+      case INSTALLSUPPTYPE:
+        return getInstallSuppType();
+      case INSTALLSUPPPAYMENTTYPE:
+        return getInstallSuppPaymentType();
+      case INSTALLSUPPAMT:
+        return getInstallSuppAmt();
+      case INSTALLSUPPTHISTIME:
+        return getInstallSuppThisTime();
+      case INSTALLSUPPPAYMENTYEAR:
+        return getInstallSuppPaymentYear();
+      case INSTALLSUPPPAYMENTDATE:
+        return getInstallSuppPaymentDate();
+      case ELECTRICTYPE:
+        return getElectricType();
+      case ELECTRICPAYMENTTYPE:
+        return getElectricPaymentType();
+      case ELECTRICPAYMENTCHANGETYPE:
+        return getElectricPaymentChangeType();
+      case ELECTRICPAYMENTCYCLE:
+        return getElectricPaymentCycle();
+      case ELECTRICCLOSINGDATE:
+        return getElectricClosingDate();
+      case ELECTRICTRANSMONTH:
+        return getElectricTransMonth();
+      case ELECTRICTRANSDATE:
+        return getElectricTransDate();
+      case ELECTRICTRANSNAME:
+        return getElectricTransName();
+      case ELECTRICTRANSNAMEALT:
+        return getElectricTransNameAlt();
+      case INTROCHGTYPE:
+        return getIntroChgType();
+      case INTROCHGPAYMENTTYPE:
+        return getIntroChgPaymentType();
+      case INTROCHGAMT:
+        return getIntroChgAmt();
+      case INTROCHGTHISTIME:
+        return getIntroChgThisTime();
+      case INTROCHGPAYMENTYEAR:
+        return getIntroChgPaymentYear();
+      case INTROCHGPAYMENTDATE:
+        return getIntroChgPaymentDate();
+      case INTROCHGPERSALESPRICE:
+        return getIntroChgPerSalesPrice();
+      case INTROCHGPERPIECE:
+        return getIntroChgPerPiece();
+      case INTROCHGCLOSINGDATE:
+        return getIntroChgClosingDate();
+      case INTROCHGTRANSMONTH:
+        return getIntroChgTransMonth();
+      case INTROCHGTRANSDATE:
+        return getIntroChgTransDate();
+      case INTROCHGTRANSNAME:
+        return getIntroChgTransName();
+      case INTROCHGTRANSNAMEALT:
+        return getIntroChgTransNameAlt();
       case XXCSOSPDECISIONALLCCLINEFULLVO:
         return getXxcsoSpDecisionAllCcLineFullVO();
       case XXCSOSPDECISIONATTACHFULLVO:
@@ -1447,29 +1553,134 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
       case FULLNAME:
         setFullName((String)value);
         return;
-      case CONTRACTYEARDATEVIEW:
-        setContractYearDateView((String)value);
-        return;
-      case ELECTRICITYTYPEVIEW:
-        setElectricityTypeView((String)value);
-        return;
-      case ELECTRICITYAMOUNTVIEW:
-        setElectricityAmountView((String)value);
-        return;
-      case INSTALLSUPPORTAMTVIEW:
-        setInstallSupportAmtView((String)value);
-        return;
-      case PAYMENTCYCLEVIEW:
-        setPaymentCycleView((String)value);
-        return;
-      case INSTALLSUPPORTAMT2VIEW:
-        setInstallSupportAmt2View((String)value);
-        return;
       case UNNUMBERID:
         setUnNumberId((Number)value);
         return;
       case CONTRACTEXISTS:
         setContractExists((String)value);
+        return;
+      case CONTRACTYEARMONTH:
+        setContractYearMonth((String)value);
+        return;
+      case CONTRACTSTARTYEAR:
+        setContractStartYear((String)value);
+        return;
+      case CONTRACTSTARTMONTH:
+        setContractStartMonth((String)value);
+        return;
+      case CONTRACTENDYEAR:
+        setContractEndYear((String)value);
+        return;
+      case CONTRACTENDMONTH:
+        setContractEndMonth((String)value);
+        return;
+      case BIDDINGITEM:
+        setBiddingItem((String)value);
+        return;
+      case CANCELLBEFOREMATURITY:
+        setCancellBeforeMaturity((String)value);
+        return;
+      case ADASSETSTYPE:
+        setAdAssetsType((String)value);
+        return;
+      case ADASSETSAMT:
+        setAdAssetsAmt((String)value);
+        return;
+      case ADASSETSTHISTIME:
+        setAdAssetsThisTime((String)value);
+        return;
+      case ADASSETSPAYMENTYEAR:
+        setAdAssetsPaymentYear((String)value);
+        return;
+      case ADASSETSPAYMENTDATE:
+        setAdAssetsPaymentDate((Date)value);
+        return;
+      case TAXTYPE:
+        setTaxType((String)value);
+        return;
+      case INSTALLSUPPTYPE:
+        setInstallSuppType((String)value);
+        return;
+      case INSTALLSUPPPAYMENTTYPE:
+        setInstallSuppPaymentType((String)value);
+        return;
+      case INSTALLSUPPAMT:
+        setInstallSuppAmt((String)value);
+        return;
+      case INSTALLSUPPTHISTIME:
+        setInstallSuppThisTime((String)value);
+        return;
+      case INSTALLSUPPPAYMENTYEAR:
+        setInstallSuppPaymentYear((String)value);
+        return;
+      case INSTALLSUPPPAYMENTDATE:
+        setInstallSuppPaymentDate((Date)value);
+        return;
+      case ELECTRICTYPE:
+        setElectricType((String)value);
+        return;
+      case ELECTRICPAYMENTTYPE:
+        setElectricPaymentType((String)value);
+        return;
+      case ELECTRICPAYMENTCHANGETYPE:
+        setElectricPaymentChangeType((String)value);
+        return;
+      case ELECTRICPAYMENTCYCLE:
+        setElectricPaymentCycle((String)value);
+        return;
+      case ELECTRICCLOSINGDATE:
+        setElectricClosingDate((String)value);
+        return;
+      case ELECTRICTRANSMONTH:
+        setElectricTransMonth((String)value);
+        return;
+      case ELECTRICTRANSDATE:
+        setElectricTransDate((String)value);
+        return;
+      case ELECTRICTRANSNAME:
+        setElectricTransName((String)value);
+        return;
+      case ELECTRICTRANSNAMEALT:
+        setElectricTransNameAlt((String)value);
+        return;
+      case INTROCHGTYPE:
+        setIntroChgType((String)value);
+        return;
+      case INTROCHGPAYMENTTYPE:
+        setIntroChgPaymentType((String)value);
+        return;
+      case INTROCHGAMT:
+        setIntroChgAmt((String)value);
+        return;
+      case INTROCHGTHISTIME:
+        setIntroChgThisTime((String)value);
+        return;
+      case INTROCHGPAYMENTYEAR:
+        setIntroChgPaymentYear((String)value);
+        return;
+      case INTROCHGPAYMENTDATE:
+        setIntroChgPaymentDate((Date)value);
+        return;
+      case INTROCHGPERSALESPRICE:
+        setIntroChgPerSalesPrice((String)value);
+        return;
+      case INTROCHGPERPIECE:
+        setIntroChgPerPiece((String)value);
+        return;
+      case INTROCHGCLOSINGDATE:
+        setIntroChgClosingDate((String)value);
+        return;
+      case INTROCHGTRANSMONTH:
+        setIntroChgTransMonth((String)value);
+        return;
+      case INTROCHGTRANSDATE:
+        setIntroChgTransDate((String)value);
+        return;
+      case INTROCHGTRANSNAME:
+        setIntroChgTransName((String)value);
+        return;
+      case INTROCHGTRANSNAMEALT:
+        setIntroChgTransNameAlt((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -1603,119 +1814,23 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
     setAttributeInternal(FULLNAME, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute ContractYearDateView
-   */
-  public String getContractYearDateView()
-  {
-    return (String)getAttributeInternal(CONTRACTYEARDATEVIEW);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute ContractYearDateView
-   */
-  public void setContractYearDateView(String value)
-  {
-    setAttributeInternal(CONTRACTYEARDATEVIEW, value);
-  }
 
 
 
 
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute ElectricityTypeView
-   */
-  public String getElectricityTypeView()
-  {
-    return (String)getAttributeInternal(ELECTRICITYTYPEVIEW);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricityTypeView
-   */
-  public void setElectricityTypeView(String value)
-  {
-    setAttributeInternal(ELECTRICITYTYPEVIEW, value);
-  }
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute ElectricityAmountView
-   */
-  public String getElectricityAmountView()
-  {
-    return (String)getAttributeInternal(ELECTRICITYAMOUNTVIEW);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricityAmountView
-   */
-  public void setElectricityAmountView(String value)
-  {
-    setAttributeInternal(ELECTRICITYAMOUNTVIEW, value);
-  }
 
 
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute InstallSupportAmtView
-   */
-  public String getInstallSupportAmtView()
-  {
-    return (String)getAttributeInternal(INSTALLSUPPORTAMTVIEW);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSupportAmtView
-   */
-  public void setInstallSupportAmtView(String value)
-  {
-    setAttributeInternal(INSTALLSUPPORTAMTVIEW, value);
-  }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute PaymentCycleView
-   */
-  public String getPaymentCycleView()
-  {
-    return (String)getAttributeInternal(PAYMENTCYCLEVIEW);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute PaymentCycleView
-   */
-  public void setPaymentCycleView(String value)
-  {
-    setAttributeInternal(PAYMENTCYCLEVIEW, value);
-  }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute InstallSupportAmt2View
-   */
-  public String getInstallSupportAmt2View()
-  {
-    return (String)getAttributeInternal(INSTALLSUPPORTAMT2VIEW);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSupportAmt2View
-   */
-  public void setInstallSupportAmt2View(String value)
-  {
-    setAttributeInternal(INSTALLSUPPORTAMT2VIEW, value);
-  }
+
+
+
+
 
   /**
    * 
@@ -1752,6 +1867,768 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(CONTRACTEXISTS, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractYearMonth
+   */
+  public String getContractYearMonth()
+  {
+    return (String)getAttributeInternal(CONTRACTYEARMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractYearMonth
+   */
+  public void setContractYearMonth(String value)
+  {
+    setAttributeInternal(CONTRACTYEARMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractStartYear
+   */
+  public String getContractStartYear()
+  {
+    return (String)getAttributeInternal(CONTRACTSTARTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractStartYear
+   */
+  public void setContractStartYear(String value)
+  {
+    setAttributeInternal(CONTRACTSTARTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractStartMonth
+   */
+  public String getContractStartMonth()
+  {
+    return (String)getAttributeInternal(CONTRACTSTARTMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractStartMonth
+   */
+  public void setContractStartMonth(String value)
+  {
+    setAttributeInternal(CONTRACTSTARTMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractEndYear
+   */
+  public String getContractEndYear()
+  {
+    return (String)getAttributeInternal(CONTRACTENDYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractEndYear
+   */
+  public void setContractEndYear(String value)
+  {
+    setAttributeInternal(CONTRACTENDYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractEndMonth
+   */
+  public String getContractEndMonth()
+  {
+    return (String)getAttributeInternal(CONTRACTENDMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractEndMonth
+   */
+  public void setContractEndMonth(String value)
+  {
+    setAttributeInternal(CONTRACTENDMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BiddingItem
+   */
+  public String getBiddingItem()
+  {
+    return (String)getAttributeInternal(BIDDINGITEM);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BiddingItem
+   */
+  public void setBiddingItem(String value)
+  {
+    setAttributeInternal(BIDDINGITEM, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CancellBeforeMaturity
+   */
+  public String getCancellBeforeMaturity()
+  {
+    return (String)getAttributeInternal(CANCELLBEFOREMATURITY);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CancellBeforeMaturity
+   */
+  public void setCancellBeforeMaturity(String value)
+  {
+    setAttributeInternal(CANCELLBEFOREMATURITY, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsType
+   */
+  public String getAdAssetsType()
+  {
+    return (String)getAttributeInternal(ADASSETSTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsType
+   */
+  public void setAdAssetsType(String value)
+  {
+    setAttributeInternal(ADASSETSTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsAmt
+   */
+  public String getAdAssetsAmt()
+  {
+    return (String)getAttributeInternal(ADASSETSAMT);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsAmt
+   */
+  public void setAdAssetsAmt(String value)
+  {
+    setAttributeInternal(ADASSETSAMT, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsThisTime
+   */
+  public String getAdAssetsThisTime()
+  {
+    return (String)getAttributeInternal(ADASSETSTHISTIME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsThisTime
+   */
+  public void setAdAssetsThisTime(String value)
+  {
+    setAttributeInternal(ADASSETSTHISTIME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentYear
+   */
+  public String getAdAssetsPaymentYear()
+  {
+    return (String)getAttributeInternal(ADASSETSPAYMENTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentYear
+   */
+  public void setAdAssetsPaymentYear(String value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentDate
+   */
+  public Date getAdAssetsPaymentDate()
+  {
+    return (Date)getAttributeInternal(ADASSETSPAYMENTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentDate
+   */
+  public void setAdAssetsPaymentDate(Date value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute TaxType
+   */
+  public String getTaxType()
+  {
+    return (String)getAttributeInternal(TAXTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute TaxType
+   */
+  public void setTaxType(String value)
+  {
+    setAttributeInternal(TAXTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppType
+   */
+  public String getInstallSuppType()
+  {
+    return (String)getAttributeInternal(INSTALLSUPPTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppType
+   */
+  public void setInstallSuppType(String value)
+  {
+    setAttributeInternal(INSTALLSUPPTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentType
+   */
+  public String getInstallSuppPaymentType()
+  {
+    return (String)getAttributeInternal(INSTALLSUPPPAYMENTTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentType
+   */
+  public void setInstallSuppPaymentType(String value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppAmt
+   */
+  public String getInstallSuppAmt()
+  {
+    return (String)getAttributeInternal(INSTALLSUPPAMT);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppAmt
+   */
+  public void setInstallSuppAmt(String value)
+  {
+    setAttributeInternal(INSTALLSUPPAMT, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppThisTime
+   */
+  public String getInstallSuppThisTime()
+  {
+    return (String)getAttributeInternal(INSTALLSUPPTHISTIME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppThisTime
+   */
+  public void setInstallSuppThisTime(String value)
+  {
+    setAttributeInternal(INSTALLSUPPTHISTIME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentYear
+   */
+  public String getInstallSuppPaymentYear()
+  {
+    return (String)getAttributeInternal(INSTALLSUPPPAYMENTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentYear
+   */
+  public void setInstallSuppPaymentYear(String value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentDate
+   */
+  public Date getInstallSuppPaymentDate()
+  {
+    return (Date)getAttributeInternal(INSTALLSUPPPAYMENTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentDate
+   */
+  public void setInstallSuppPaymentDate(Date value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricType
+   */
+  public String getElectricType()
+  {
+    return (String)getAttributeInternal(ELECTRICTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricType
+   */
+  public void setElectricType(String value)
+  {
+    setAttributeInternal(ELECTRICTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentType
+   */
+  public String getElectricPaymentType()
+  {
+    return (String)getAttributeInternal(ELECTRICPAYMENTTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentType
+   */
+  public void setElectricPaymentType(String value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentChangeType
+   */
+  public String getElectricPaymentChangeType()
+  {
+    return (String)getAttributeInternal(ELECTRICPAYMENTCHANGETYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentChangeType
+   */
+  public void setElectricPaymentChangeType(String value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTCHANGETYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentCycle
+   */
+  public String getElectricPaymentCycle()
+  {
+    return (String)getAttributeInternal(ELECTRICPAYMENTCYCLE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentCycle
+   */
+  public void setElectricPaymentCycle(String value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTCYCLE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricClosingDate
+   */
+  public String getElectricClosingDate()
+  {
+    return (String)getAttributeInternal(ELECTRICCLOSINGDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricClosingDate
+   */
+  public void setElectricClosingDate(String value)
+  {
+    setAttributeInternal(ELECTRICCLOSINGDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransMonth
+   */
+  public String getElectricTransMonth()
+  {
+    return (String)getAttributeInternal(ELECTRICTRANSMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransMonth
+   */
+  public void setElectricTransMonth(String value)
+  {
+    setAttributeInternal(ELECTRICTRANSMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransDate
+   */
+  public String getElectricTransDate()
+  {
+    return (String)getAttributeInternal(ELECTRICTRANSDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransDate
+   */
+  public void setElectricTransDate(String value)
+  {
+    setAttributeInternal(ELECTRICTRANSDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransName
+   */
+  public String getElectricTransName()
+  {
+    return (String)getAttributeInternal(ELECTRICTRANSNAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransName
+   */
+  public void setElectricTransName(String value)
+  {
+    setAttributeInternal(ELECTRICTRANSNAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransNameAlt
+   */
+  public String getElectricTransNameAlt()
+  {
+    return (String)getAttributeInternal(ELECTRICTRANSNAMEALT);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransNameAlt
+   */
+  public void setElectricTransNameAlt(String value)
+  {
+    setAttributeInternal(ELECTRICTRANSNAMEALT, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgType
+   */
+  public String getIntroChgType()
+  {
+    return (String)getAttributeInternal(INTROCHGTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgType
+   */
+  public void setIntroChgType(String value)
+  {
+    setAttributeInternal(INTROCHGTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentType
+   */
+  public String getIntroChgPaymentType()
+  {
+    return (String)getAttributeInternal(INTROCHGPAYMENTTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentType
+   */
+  public void setIntroChgPaymentType(String value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgAmt
+   */
+  public String getIntroChgAmt()
+  {
+    return (String)getAttributeInternal(INTROCHGAMT);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgAmt
+   */
+  public void setIntroChgAmt(String value)
+  {
+    setAttributeInternal(INTROCHGAMT, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgThisTime
+   */
+  public String getIntroChgThisTime()
+  {
+    return (String)getAttributeInternal(INTROCHGTHISTIME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgThisTime
+   */
+  public void setIntroChgThisTime(String value)
+  {
+    setAttributeInternal(INTROCHGTHISTIME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentYear
+   */
+  public String getIntroChgPaymentYear()
+  {
+    return (String)getAttributeInternal(INTROCHGPAYMENTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentYear
+   */
+  public void setIntroChgPaymentYear(String value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentDate
+   */
+  public Date getIntroChgPaymentDate()
+  {
+    return (Date)getAttributeInternal(INTROCHGPAYMENTDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentDate
+   */
+  public void setIntroChgPaymentDate(Date value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerSalesPrice
+   */
+  public String getIntroChgPerSalesPrice()
+  {
+    return (String)getAttributeInternal(INTROCHGPERSALESPRICE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerSalesPrice
+   */
+  public void setIntroChgPerSalesPrice(String value)
+  {
+    setAttributeInternal(INTROCHGPERSALESPRICE, value);
+  }
+
+
+
+
+
+
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransName
+   */
+  public String getIntroChgTransName()
+  {
+    return (String)getAttributeInternal(INTROCHGTRANSNAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransName
+   */
+  public void setIntroChgTransName(String value)
+  {
+    setAttributeInternal(INTROCHGTRANSNAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransNameAlt
+   */
+  public String getIntroChgTransNameAlt()
+  {
+    return (String)getAttributeInternal(INTROCHGTRANSNAMEALT);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransNameAlt
+   */
+  public void setIntroChgTransNameAlt(String value)
+  {
+    setAttributeInternal(INTROCHGTRANSNAMEALT, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for INTRO_CHG_PER_PIECE using the alias name IntroChgPerPiece
+   */
+  public String getIntroChgPerPiece()
+  {
+    return (String)getAttributeInternal(INTROCHGPERPIECE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as attribute value for INTRO_CHG_PER_PIECE using the alias name IntroChgPerPiece
+   */
+  public void setIntroChgPerPiece(String value)
+  {
+    setAttributeInternal(INTROCHGPERPIECE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for INTRO_CHG_CLOSING_DATE using the alias name IntroChgClosingDate
+   */
+  public String getIntroChgClosingDate()
+  {
+    return (String)getAttributeInternal(INTROCHGCLOSINGDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as attribute value for INTRO_CHG_CLOSING_DATE using the alias name IntroChgClosingDate
+   */
+  public void setIntroChgClosingDate(String value)
+  {
+    setAttributeInternal(INTROCHGCLOSINGDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for INTRO_CHG_TRANS_MONTH using the alias name IntroChgTransMonth
+   */
+  public String getIntroChgTransMonth()
+  {
+    return (String)getAttributeInternal(INTROCHGTRANSMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as attribute value for INTRO_CHG_TRANS_MONTH using the alias name IntroChgTransMonth
+   */
+  public void setIntroChgTransMonth(String value)
+  {
+    setAttributeInternal(INTROCHGTRANSMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for INTRO_CHG_TRANS_DATE using the alias name IntroChgTransDate
+   */
+  public String getIntroChgTransDate()
+  {
+    return (String)getAttributeInternal(INTROCHGTRANSDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as attribute value for INTRO_CHG_TRANS_DATE using the alias name IntroChgTransDate
+   */
+  public void setIntroChgTransDate(String value)
+  {
+    setAttributeInternal(INTROCHGTRANSDATE, value);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
