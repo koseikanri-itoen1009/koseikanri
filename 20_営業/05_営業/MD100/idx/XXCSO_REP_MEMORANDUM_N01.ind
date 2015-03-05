@@ -1,0 +1,19 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * SEQUENCE Name  : xxcso_rep_memorandum_n01
+ * Description    : 
+ * Version        : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2015/02/18    1.0   K.Kiriu         êVãKçÏê¨
+ *
+ ****************************************************************************************/
+CREATE INDEX xxcso.xxcso_rep_memorandum_n01 ON xxcso.xxcso_rep_memorandum (
+  request_id  -- óvãÅID
+)
+TABLESPACE xxidx2
+;
