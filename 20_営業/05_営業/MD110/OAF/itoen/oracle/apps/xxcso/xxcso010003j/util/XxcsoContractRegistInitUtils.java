@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistInitUtils
 * 概要説明   : 自販機設置契約情報登録初期ユーティリティクラス
-* バージョン : 1.0
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 *                              [CT1-022]口座情報取得不正対応
 * 2009-02-25 1.1  SCS柳平直人  [CT1-029]コピー時送付先テーブルデータ不正対応
 * 2009-05-25 1.2  SCS柳平直人  [ST障害T1_1136]LOVPK項目設定対応
+* 2015-02-02 1.3  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -46,7 +47,13 @@ import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoLoginUserSummaryVOImpl;
 import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoLoginUserSummaryVORowImpl;
 import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoPageRenderVOImpl;
 import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSalesCondSummaryVOImpl;
-
+// 2015-02-02 [E_本稼動_12565] Add Start
+import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVOImpl;
+import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSpDecisionHeadersSummuryVOImpl;
+import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVORowImpl;
+import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSpDecisionHeadersSummuryVORowImpl;
+import oracle.jbo.domain.Number;
+// 2015-02-02 [E_本稼動_12565] Add End
 import oracle.apps.fnd.framework.server.OADBTransaction;
 
 /*******************************************************************************
@@ -80,6 +87,8 @@ public class XxcsoContractRegistInitUtils
    * @param spCust1Vo            BM1SP専決顧客テーブル情報ビューインスタンス
    * @param spCust2Vo            BM2SP専決顧客テーブル情報ビューインスタンス
    * @param spCust3Vo            BM3SP専決顧客テーブル情報ビューインスタンス
+   * @param contrOtherCustVo     契約先以外テーブル情報ビューインスタンス
+   * @param spDecHedSumVo        SP専決ヘッダサマリ情報ビューインスタンス
    *****************************************************************************
    */
   public static void initCreate(
@@ -103,6 +112,10 @@ public class XxcsoContractRegistInitUtils
    ,XxcsoBm1ContractSpCustFullVOImpl     spCust1Vo
    ,XxcsoBm2ContractSpCustFullVOImpl     spCust2Vo
    ,XxcsoBm3ContractSpCustFullVOImpl     spCust3Vo
+// 2015-02-02 [E_本稼動_12565] Add Start
+   ,XxcsoContractOtherCustFullVOImpl     contrOtherCustVo
+   ,XxcsoSpDecisionHeadersSummuryVOImpl  spDecHedSumVo
+// 2015-02-02 [E_本稼動_12565] Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -176,7 +189,9 @@ public class XxcsoContractRegistInitUtils
     mngRow.setBaseLeaderName(         createRow.getBaseLeaderName()           );
     mngRow.setContractYearDate(       createRow.getContractYearDate()         );
     mngRow.setBaseLeaderPositionName( createRow.getBaseLeaderPositionName()   );
-    mngRow.setOtherContent(           createRow.getOtherContent()             );
+// 2015-02-02 [E_本稼動_12565] Del Start
+//    mngRow.setOtherContent(           createRow.getOtherContent()             );
+// 2015-02-02 [E_本稼動_12565] Del End
     
     //////////////////////////////////////
     // 契約先テーブルの初期化
@@ -322,7 +337,75 @@ public class XxcsoContractRegistInitUtils
       bank3Row.setBankAccountNameKana(  initBmRow.getAccountHolderNameAlt()   );
       bank3Row.setBankAccountNameKanji( initBmRow.getAccountHolderName()      );
     }
+// 2015-02-02 [E_本稼動_12565] Add Start
+    //////////////////////////////////////
+    // 契約先以外テーブルの初期化
+    //////////////////////////////////////
+    if ( (createRow.getInstSuppType() != null
+           && createRow.getInstSuppType().equals(XxcsoContractRegistConstants.INST_SUPP_TYPE1))
+      || (createRow.getIntroChgType() != null
+           && createRow.getIntroChgType().equals(XxcsoContractRegistConstants.INTRO_CHG_TYPE1))
+      || (createRow.getElectricPaymentType() != null
+           &&createRow.getElectricPaymentType().equals(XxcsoContractRegistConstants.ELECTRIC_PAYMENT_TYPE2))
+    )
+    {
+      contrOtherCustVo.initQuery((oracle.jbo.domain.Number)null);
+      XxcsoContractOtherCustFullVORowImpl contrOtherCustRow
+        = (XxcsoContractOtherCustFullVORowImpl)contrOtherCustVo.createRow();
+      contrOtherCustVo.insertRow(contrOtherCustRow);
 
+      // SP専決ヘッダサマリVOの初期化
+      spDecHedSumVo.first();
+      XxcsoSpDecisionHeadersSummuryVORowImpl spDecHedSumRow
+        = (XxcsoSpDecisionHeadersSummuryVORowImpl) spDecHedSumVo.first();
+
+      // チェックボックスがチェックの場合は初期値を設定
+      // 設置協賛金リージョン
+      if(createRow.getInstSuppType() != null
+            && createRow.getInstSuppType().equals(XxcsoContractRegistConstants.INST_SUPP_TYPE1))
+      {
+        // 振込手数料負担
+        if(contrOtherCustRow.getInstallSuppBkChgBearer() == null)
+        {
+          contrOtherCustRow.setInstallSuppBkChgBearer("I");
+        }
+        // 口座種別
+        if(contrOtherCustRow.getInstallSuppBkAcctType() == null)
+        {
+          contrOtherCustRow.setInstallSuppBkAcctType("1");
+        }
+      }
+      // 紹介手数料リージョン
+      if(createRow.getIntroChgType() != null
+           && createRow.getIntroChgType().equals(XxcsoContractRegistConstants.INTRO_CHG_TYPE1))
+      {
+        // 振込手数料負担
+        if(contrOtherCustRow.getIntroChgBkChgBearer() == null){
+          contrOtherCustRow.setIntroChgBkChgBearer("I");
+        }
+        // 口座種別
+        if(contrOtherCustRow.getIntroChgBkAcctType() == null)
+        {
+          contrOtherCustRow.setIntroChgBkAcctType("1");
+        }
+      }
+      // 電気代リージョン
+      if( createRow.getElectricPaymentType() != null
+           && createRow.getElectricPaymentType().equals(XxcsoContractRegistConstants.ELECTRIC_PAYMENT_TYPE2))
+      {
+        // 振込手数料負担
+        if(contrOtherCustRow.getElectricBkChgBearer() == null)
+        {
+          contrOtherCustRow.setElectricBkChgBearer("I");
+        }
+        // 口座種別
+        if(contrOtherCustRow.getElectricBkAcctType() == null)
+        {
+          contrOtherCustRow.setElectricBkAcctType("1");
+        }
+      }
+    }
+// 2015-02-02 [E_本稼動_12565] Add End
     XxcsoUtils.debug(txn, "[END]");
   }
 
@@ -347,6 +430,8 @@ public class XxcsoContractRegistInitUtils
    * @param spCust1Vo            BM1SP専決顧客テーブル情報ビューインスタンス
    * @param spCust2Vo            BM2SP専決顧客テーブル情報ビューインスタンス
    * @param spCust3Vo            BM3SP専決顧客テーブル情報ビューインスタンス
+   * @param contrOtherCustVo     契約先以外テーブル情報ビューインスタンス
+   * @param spDecHedSumVo        SP専決ヘッダサマリ情報ビューインスタンス
    *****************************************************************************
    */
   public static void initUpdate(
@@ -371,6 +456,10 @@ public class XxcsoContractRegistInitUtils
    ,XxcsoBm1ContractSpCustFullVOImpl     spCust1Vo
    ,XxcsoBm2ContractSpCustFullVOImpl     spCust2Vo
    ,XxcsoBm3ContractSpCustFullVOImpl     spCust3Vo
+// 2015-02-02 [E_本稼動_12565] Add Start
+   ,XxcsoContractOtherCustFullVOImpl     contrOtherCustVo
+   ,XxcsoSpDecisionHeadersSummuryVOImpl  spDecHedSumVo
+// 2015-02-02 [E_本稼動_12565] Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -429,6 +518,70 @@ public class XxcsoContractRegistInitUtils
     bank3Vo.first();
 
     XxcsoUtils.debug(txn, "[END]");
+// 2015-02-02 [E_本稼動_12565] Add Start
+    //////////////////////////////////////
+    // 契約先以外テーブルの初期化
+    //////////////////////////////////////
+    contrOtherCustVo.initQuery(mngRow.getContractOtherCustsId());
+    XxcsoContractOtherCustFullVORowImpl contrOtherCustRow
+      = (XxcsoContractOtherCustFullVORowImpl) contrOtherCustVo.first();
+
+    // SP専決ヘッダサマリVOの初期化
+    spDecHedSumVo.first();
+    XxcsoSpDecisionHeadersSummuryVORowImpl spDecHedSumRow
+      = (XxcsoSpDecisionHeadersSummuryVORowImpl) spDecHedSumVo.first();
+    
+    // 契約先以外テーブルのデータが存在する場合
+    if ( contrOtherCustRow != null )
+    {
+      // // チェックボックスがチェックかつ、該当項目がNULLの場合は初期値を設定
+      // 設置協賛金リージョン
+      if( createRow.getInstSuppType() != null
+           && createRow.getInstSuppType().equals(XxcsoContractRegistConstants.INST_SUPP_TYPE1))
+      {
+        // 振込手数料負担
+        if(contrOtherCustRow.getInstallSuppBkChgBearer() == null)
+        {
+          contrOtherCustRow.setInstallSuppBkChgBearer("I");
+        }
+        // 口座種別
+        if(contrOtherCustRow.getInstallSuppBkAcctType() == null)
+        {
+          contrOtherCustRow.setInstallSuppBkAcctType("1");
+        }
+      }
+      // 紹介手数料リージョン
+      if( createRow.getIntroChgType() != null
+           && createRow.getIntroChgType().equals(XxcsoContractRegistConstants.INTRO_CHG_TYPE1))
+      {
+        // 振込手数料負担
+        if(contrOtherCustRow.getIntroChgBkChgBearer() == null){
+          contrOtherCustRow.setIntroChgBkChgBearer("I");
+        }
+        // 口座種別
+        if(contrOtherCustRow.getIntroChgBkAcctType() == null)
+        {
+          contrOtherCustRow.setIntroChgBkAcctType("1");
+        }
+      }
+      // 電気代リージョン
+      if( createRow.getElectricPaymentType() != null
+           && createRow.getElectricPaymentType().equals(XxcsoContractRegistConstants.ELECTRIC_PAYMENT_TYPE2))
+      {
+        // 振込手数料負担
+        if(contrOtherCustRow.getElectricBkChgBearer() == null)
+        {
+          contrOtherCustRow.setElectricBkChgBearer("I");
+        }
+        // 口座種別
+        if(contrOtherCustRow.getElectricBkAcctType() == null)
+        {
+          contrOtherCustRow.setElectricBkAcctType("1");
+        }
+      }
+    }
+// 2015-02-02 [E_本稼動_12565] Add End
+    XxcsoUtils.debug(txn, "[END]");
   }
 
   /*****************************************************************************
@@ -460,6 +613,9 @@ public class XxcsoContractRegistInitUtils
    * @param bank1Vo2             コピー用BM1銀行口座アドオンテーブル情報ビューインスタンス
    * @param bank1Vo2             コピー用BM2銀行口座アドオンテーブル情報ビューインスタンス
    * @param bank3Vo2             コピー用BM3銀行口座アドオンテーブル情報ビューインスタンス
+   * @param contrOtherCustVo      契約先以外テーブル情報ビューインスタンス
+   * @param spDecHedSumVo         SP専決ヘッダサマリ情報ビューインスタンス
+   * @param contrOtherCustVo2     コピー用契約先以外テーブル情報ビューインスタンス
    *****************************************************************************
    */
   public static void initCopy(
@@ -491,6 +647,11 @@ public class XxcsoContractRegistInitUtils
    ,XxcsoBm1BankAccountFullVOImpl        bank1Vo2
    ,XxcsoBm2BankAccountFullVOImpl        bank2Vo2
    ,XxcsoBm3BankAccountFullVOImpl        bank3Vo2
+// 2015-02-02 [E_本稼動_12565] Add Start
+   ,XxcsoContractOtherCustFullVOImpl     contrOtherCustVo
+   ,XxcsoSpDecisionHeadersSummuryVOImpl  spDecHedSumVo
+   ,XxcsoContractOtherCustFullVOImpl     contrOtherCustVo2
+// 2015-02-02 [E_本稼動_12565] Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -568,7 +729,9 @@ public class XxcsoContractRegistInitUtils
     mngRow.setBaseLeaderName(         mngRow2.getBaseLeaderName()             );
     mngRow.setContractYearDate(       mngRow2.getContractYearDate()           );
     mngRow.setBaseLeaderPositionName( mngRow2.getBaseLeaderPositionName()     );
-    mngRow.setOtherContent(           mngRow2.getOtherContent()               );
+// 2015-02-02 [E_本稼動_12565] Del Start
+//    mngRow.setOtherContent(           mngRow2.getOtherContent()               );
+// 2015-02-02 [E_本稼動_12565] Del End
 
     //////////////////////////////////////
     // 契約先テーブルの初期化
@@ -734,9 +897,109 @@ public class XxcsoContractRegistInitUtils
       bank3Row.setBankAccountNameKana(  bank3Row2.getBankAccountNameKana()    );
       bank3Row.setBankAccountNameKanji( bank3Row2.getBankAccountNameKanji()   );
     }
+    
+// 2015-02-02 [E_本稼動_12565] Add Start
+    //////////////////////////////////////
+    // コピー用契約先以外テーブルの初期化
+    //////////////////////////////////////
+    contrOtherCustVo2.initQuery(mngRow2.getContractOtherCustsId());
+    XxcsoContractOtherCustFullVORowImpl contrOtherCustRow2 =
+      (XxcsoContractOtherCustFullVORowImpl) contrOtherCustVo2.first();
 
+    //////////////////////////////////////
+    // 契約先以外テーブルの初期化
+    //////////////////////////////////////
+    if ( contrOtherCustRow2 != null)
+    {
+      contrOtherCustVo.initQuery((oracle.jbo.domain.Number)null);
+      XxcsoContractOtherCustFullVORowImpl contrOtherCustRow
+        = (XxcsoContractOtherCustFullVORowImpl)contrOtherCustVo.createRow();
+      contrOtherCustVo.insertRow(contrOtherCustRow);
+      contrOtherCustRow.setInstallSuppBkChgBearer(   contrOtherCustRow2.getInstallSuppBkChgBearer()   );
+      contrOtherCustRow.setInstallSuppBkNumber(      contrOtherCustRow2.getInstallSuppBkNumber()      );
+      contrOtherCustRow.setInstallSuppBranchNumber(  contrOtherCustRow2.getInstallSuppBranchNumber()  );
+      contrOtherCustRow.setInstSuppBankName(         contrOtherCustRow2.getInstSuppBankName()         );
+      contrOtherCustRow.setInstSuppBankBranchName(   contrOtherCustRow2.getInstSuppBankBranchName()   );
+      contrOtherCustRow.setInstallSuppBkAcctType(    contrOtherCustRow2.getInstallSuppBkAcctType()    );
+      contrOtherCustRow.setInstallSuppBkAcctNumber(  contrOtherCustRow2.getInstallSuppBkAcctNumber()  );
+      contrOtherCustRow.setInstallSuppBkAcctNameAlt( contrOtherCustRow2.getInstallSuppBkAcctNameAlt() );
+      contrOtherCustRow.setInstallSuppBkAcctName(    contrOtherCustRow2.getInstallSuppBkAcctName()    );
+      contrOtherCustRow.setIntroChgBkChgBearer(      contrOtherCustRow2.getIntroChgBkChgBearer()      );
+      contrOtherCustRow.setIntroChgBkNumber(         contrOtherCustRow2.getIntroChgBkNumber()         );
+      contrOtherCustRow.setIntroChgBranchNumber(     contrOtherCustRow2.getIntroChgBranchNumber()     );
+      contrOtherCustRow.setIntroChgBankName(         contrOtherCustRow2.getIntroChgBankName()         );
+      contrOtherCustRow.setIntroChgBankBranchName(   contrOtherCustRow2.getIntroChgBankBranchName()   );
+      contrOtherCustRow.setIntroChgBkAcctType(       contrOtherCustRow2.getIntroChgBkAcctType()       );
+      contrOtherCustRow.setIntroChgBkAcctNumber(     contrOtherCustRow2.getIntroChgBkAcctNumber()     );
+      contrOtherCustRow.setIntroChgBkAcctNameAlt(    contrOtherCustRow2.getIntroChgBkAcctNameAlt()    );
+      contrOtherCustRow.setIntroChgBkAcctName(       contrOtherCustRow2.getIntroChgBkAcctName()       );
+      contrOtherCustRow.setElectricBkChgBearer(      contrOtherCustRow2.getElectricBkChgBearer()      );
+      contrOtherCustRow.setElectricBkNumber(         contrOtherCustRow2.getElectricBkNumber()         );
+      contrOtherCustRow.setElectricBranchNumber(     contrOtherCustRow2.getElectricBranchNumber()     );
+      contrOtherCustRow.setElectricBankName(         contrOtherCustRow2.getElectricBankName()         );
+      contrOtherCustRow.setElectricBankBranchName(   contrOtherCustRow2.getElectricBankBranchName()   );
+      contrOtherCustRow.setElectricBkAcctType(       contrOtherCustRow2.getElectricBkAcctType()       );
+      contrOtherCustRow.setElectricBkAcctNumber(     contrOtherCustRow2.getElectricBkAcctNumber()     );
+      contrOtherCustRow.setElectricBkAcctNameAlt(    contrOtherCustRow2.getElectricBkAcctNameAlt()    );
+      contrOtherCustRow.setElectricBkAcctName(       contrOtherCustRow2.getElectricBkAcctName()       );
+
+      // SP専決ヘッダサマリVOの初期化
+      spDecHedSumVo.first();
+      XxcsoSpDecisionHeadersSummuryVORowImpl spDecHedSumRow
+        = (XxcsoSpDecisionHeadersSummuryVORowImpl) spDecHedSumVo.first();
+
+      // // 契約先以外テーブルのデータが存在する場合
+      if ( contrOtherCustRow != null )
+      {
+        // チェックボックスがチェックかつ、該当項目がNULLの場合は初期値を設定
+        // 設置協賛金リージョン
+        if( createRow.getInstSuppType() != null
+             && createRow.getInstSuppType().equals(XxcsoContractRegistConstants.INST_SUPP_TYPE1))
+        {
+          // 振込手数料負担
+          if(contrOtherCustRow.getInstallSuppBkChgBearer() == null)
+          {
+            contrOtherCustRow.setInstallSuppBkChgBearer("I");
+          }
+          // 口座種別
+          if(contrOtherCustRow.getInstallSuppBkAcctType() == null)
+          {
+            contrOtherCustRow.setInstallSuppBkAcctType("1");
+          }
+        }
+        // 紹介手数料リージョン
+        if( createRow.getIntroChgType() != null
+             && createRow.getIntroChgType().equals(XxcsoContractRegistConstants.INTRO_CHG_TYPE1))
+        {
+          // 振込手数料負担
+          if(contrOtherCustRow.getIntroChgBkChgBearer() == null){
+            contrOtherCustRow.setIntroChgBkChgBearer("I");
+          }
+          // 口座種別
+          if(contrOtherCustRow.getIntroChgBkAcctType() == null)
+          {
+            contrOtherCustRow.setIntroChgBkAcctType("1");
+          }
+        }
+        // 電気代リージョン
+        if( createRow.getElectricPaymentType() != null
+             && createRow.getElectricPaymentType().equals(XxcsoContractRegistConstants.ELECTRIC_PAYMENT_TYPE2))
+        {
+          // 振込手数料負担
+          if(contrOtherCustRow.getElectricBkChgBearer() == null)
+          {
+            contrOtherCustRow.setElectricBkChgBearer("I");
+          }
+          // 口座種別
+          if(contrOtherCustRow.getElectricBkAcctType() == null)
+          {
+            contrOtherCustRow.setElectricBkAcctType("1");
+          }
+        }
+      }
+    }
+// 2015-02-02 [E_本稼動_12565] Add End
     XxcsoUtils.debug(txn, "[END]");
   }
-
 
 }
