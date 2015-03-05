@@ -134,7 +134,6 @@ SELECT XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID
          )
        ) base_leader_name
       ,xsdh.sp_decision_number
-      ,xsdh.other_content
       ,xsdh.contract_year_date
       ,xxcso_010003j_pkg.get_base_leader_pos_name(
          XxcsoContractManagementsEO.PUBLISH_DEPT_CODE
@@ -165,6 +164,9 @@ SELECT XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID
                        )
                )
        )  AS latest_contract_number
+-- 2015-01-19 [E_–{‰Ò“®_12565] Add Start
+      ,XxcsoContractManagementsEO.contract_other_custs_id AS contract_other_custs_id
+-- 2015-01-19 [E_–{‰Ò“®_12565] Add End
 FROM   XXCSO_CONTRACT_MANAGEMENTS XxcsoContractManagementsEO
       ,xxcso_employees_v2         xev
       ,xxcso_locations_v2         xlv
@@ -181,7 +183,7 @@ AND   xcasv.cust_account_id           = xsdc.customer_id
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <EntityUsage
@@ -540,19 +542,6 @@ AND   xcasv.cust_account_id           = xsdc.customer_id
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
-      Name="OtherContent"
-      IsPersistent="false"
-      Precision="500"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="OTHER_CONTENT"
-      Expression="OTHER_CONTENT"
-      SQLType="VARCHAR" >
-      <DesignTime>
-         <Attr Name="_DisplaySize" Value="500" />
-      </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
       Name="ContractYearDate"
       IsPersistent="false"
       Precision="2"
@@ -602,6 +591,18 @@ AND   xcasv.cust_account_id           = xsdc.customer_id
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="12" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractOtherCustsId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="CONTRACT_OTHER_CUSTS_ID"
+      Expression="CONTRACT_OTHER_CUSTS_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
    <ViewLinkAccessor
