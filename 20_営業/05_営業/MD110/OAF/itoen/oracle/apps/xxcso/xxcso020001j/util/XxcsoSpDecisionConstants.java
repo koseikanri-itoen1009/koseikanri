@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2010-03-04 1.8  SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2014-01-31 1.9  SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 * 2014-03-13 1.10 SCSK桐生和幸 [E_本稼動_11670]税率変更警告メッセージ出力対応
+* 2014-12-15 1.11 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -280,6 +281,37 @@ public class XxcsoSpDecisionConstants
   public static final String CARD_SALE_CLASS_CARD = "1";
 // 2014-01-31 [E_本稼動_11397] Add End
 
+// 2014-12-15 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 行政財産使用料・設置協賛金・電気代・紹介手数料
+   *****************************************************************************
+   */
+  public static final String CHECK_NO  = "0";  //チェック無し
+  public static final String CHECK_YES = "1";  //チェック有り
+  /*****************************************************************************
+   * 支払条件（設置協賛金）
+   *****************************************************************************
+   */
+  public static final String ONE_YEAR_PAY  = "1";  //1年払い
+  public static final String TOTAL_PAY     = "2";  //総額払い
+
+  /*****************************************************************************
+   * 支払条件（電気代）
+   *****************************************************************************
+   */
+  public static final String CONTRACT       = "1";  //契約先
+  public static final String CONTRACT_OTHER = "2";  //契約先以外
+
+  /*****************************************************************************
+   * 支払条件（紹介手数料）
+   *****************************************************************************
+   */
+  public static final String SALES_BULK  = "1";  //売上に応じない一括支払の場合
+  public static final String SALES_PAR   = "2";  //販売金額に対する％の場合
+  public static final String SALES_AMT   = "3";  //1本につき何円の場合
+
+// 2014-12-15 [E_本稼動_12565] Add End
+
   /*****************************************************************************
    * オペレーションモード
    *****************************************************************************
@@ -474,6 +506,10 @@ public class XxcsoSpDecisionConstants
     TOKEN_VALUE_COND_BIZ_REGION       = "取引条件";
   public static final String
     TOKEN_VALUE_OTHER_COND_REGION     = "その他条件";
+// 2014-12-15 [E_本稼動_12565] Add Start
+  public static final String
+    TOKEN_VALUE_MEMO_RANDUM_INFO_REGION = "覚書情報";
+// 2014-12-15 [E_本稼動_12565] Add End
   public static final String
     TOKEN_VALUE_CNTRCT_CONTENT_REGION = "契約書への記載事項";
   public static final String
@@ -526,4 +562,54 @@ public class XxcsoSpDecisionConstants
   public static final String
     TOKEN_VALUE_COMPARE_TAX_CODE       = "税比較関数の実行";
 // 2014-03-13 [E_本稼動_11670] Add End
+// 2014-12-15 [E_本稼動_12565] Add Start
+  public static final String
+    TOKEN_VALUE_CONTRACT_YEAR_MONTH    = "契約月数";
+  public static final String
+    TOKEN_VALUE_CONTRACT_START_YEAR    = "契約期間開始（年）";
+  public static final String
+    TOKEN_VALUE_CONTRACT_START_MONTH   = "契約期間開始（月）";
+  public static final String
+    TOKEN_VALUE_CONTRACT_END_YEAR      = "契約期間終了（年）";
+  public static final String
+    TOKEN_VALUE_CONTRACT_END_MONTHR    = "契約期間終了（月）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_AMT          = "総額（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_THIS_TIME    = "今回支払（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAYMENT_YEAR = "支払年数（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_ASSETS_PAYMENT_DATE = "支払期日（行政財産使用料）";
+  public static final String
+    TOKEN_VALUE_AD_INSTALL_SUPP_AMT    = "総額（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_THIS_TIME = "今回支払（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAYMENT_YEAR = "支払年数（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_INSTALL_SUPP_PAYMENT_DATE = "支払期日（設置協賛金）";
+  public static final String
+    TOKEN_VALUE_ELECTRIC_TRANS_NAME       = "契約先以外名（電気代）";
+  public static final String
+    TOKEN_VALUE_ELECTRIC_TRANS_NAME_ALT   = "契約先以外名カナ（電気代）";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG_AMT             = "総額（紹介手数料）";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG_THIS_TIME       = "今回支払（紹介手数料）";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG_PAYMENT_YEAR    = "支払年数（紹介手数料）";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG_PAYMENT_DATE    = "支払期日（紹介手数料）";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG_PER_SALES_PRICE = "販売金額に対し（紹介手数料）";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG_PER_PIECE       = "１本につき（紹介手数料）";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG_TRANS_NAME      = "契約先以外名（紹介手数料）";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG_TRANS_NAME_ALT  = "契約先以外名カナ（紹介手数料）";
+  public static final String
+     TOKEN_VALUE_CONTRACT_END_CHK         = "契約終了期間の検証";
+// 2014-12-15 [E_本稼動_12565] Add End
 }
