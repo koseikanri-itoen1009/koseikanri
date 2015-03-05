@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
  * Package Name     : XXCFO019A02C(body)
  * Description      : 電子帳簿仕訳の情報系システム連携
  * MD.050           : MD050_CFO_019_A02_電子帳簿仕訳の情報系システム連携
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,8 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
  *                                                        [障害No19、20:管理テーブル登録条件修正]
  *                                                        [障害No22:抽出項目「資産管理キー在庫管理キー値」の編集内容変更]
  *  2012-12-18    1.2   T.Ishiwata      性能改善対応
+ *  2014-12-08    1.3   K.Oomata        【E_本稼動_12291対応】
+ *                                       処理対象仕訳データから仕訳カテゴリ「ICS残高移行」を除外。
  *
  *****************************************************************************************/
 --
@@ -104,6 +106,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
 --2012/10/03 Add Start
   cv_gl_ctg_inv_cost          CONSTANT VARCHAR2(100) := 'XXCOI1_GL_CATEGORY_INV_COST';           -- 仕訳カテゴリ_在庫原価振替
 --2012/10/03 Add End
+-- 2014/12/08 Ver.1.3 Add K.Oomata Start
+  cv_not_proc_category        CONSTANT VARCHAR2(100) := 'XXCFO1_ELECTRIC_BOOK_NOT_PROC_CATEGORY';  -- XXCFO:電子帳簿仕訳抽出対象外仕訳カテゴリ
+-- 2014/12/08 Ver.1.3 Add K.Oomata End
   --メッセージ
   cv_msg_cfo_10025            CONSTANT VARCHAR2(20)  := 'APP-XXCFO1-10025';   --取得対象データ無しエラーメッセージ
   cv_msg_cfo_00001            CONSTANT VARCHAR2(20)  := 'APP-XXCFO1-00001';   --プロファイル名取得エラーメッセージ
@@ -253,6 +258,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
 --2012/10/03 Add Start
   gv_gl_ctg_inv_cost          VARCHAR2(100);              --仕訳カテゴリ_在庫原価振替
 --2012/10/03 Add End
+-- 2014/12/08 Ver.1.3 Add K.Oomata Start
+  gv_not_proc_category        VARCHAR2(100);              --XXCFO:電子帳簿仕訳抽出対象外仕訳カテゴリ
+-- 2014/12/08 Ver.1.3 Add K.Oomata End
   gv_file_data                VARCHAR2(30000);
   gn_item_cnt                 NUMBER;             --チェック項目件数
   gv_0file_flg                VARCHAR2(1) DEFAULT 'N'; --0Byteファイル上書きフラグ
@@ -384,6 +392,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
         AND  gjl.code_combination_id   = gcc.code_combination_id
         AND  gjh.je_category           = gjc.je_category_name
         AND  gjc.language              = cv_lang
+-- 2014/12/08 Ver.1.3 Add K.Oomata Start
+        AND  gjc.user_je_category_name <> gv_not_proc_category
+-- 2014/12/08 Ver.1.3 Add K.Oomata End
         AND  gjh.je_source             = gjs.je_source_name
         AND  gjs.language              = cv_lang
         AND  gjh.je_batch_id = gjb.je_batch_id
@@ -639,6 +650,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
         AND  gjl.code_combination_id   = gcc.code_combination_id
         AND  gjh.je_category           = gjc.je_category_name
         AND  gjc.language              = cv_lang
+-- 2014/12/08 Ver.1.3 Add K.Oomata Start
+        AND  gjc.user_je_category_name <> gv_not_proc_category
+-- 2014/12/08 Ver.1.3 Add K.Oomata End
         AND  gjh.je_source             = gjs.je_source_name
         AND  gjs.language              = cv_lang
         AND  gjh.je_batch_id = gjb.je_batch_id
@@ -769,6 +783,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
         AND  gjl.code_combination_id   = gcc.code_combination_id
         AND  gjh.je_category           = gjc.je_category_name
         AND  gjc.language              = cv_lang
+-- 2014/12/08 Ver.1.3 Add K.Oomata Start
+        AND  gjc.user_je_category_name <> gv_not_proc_category
+-- 2014/12/08 Ver.1.3 Add K.Oomata End
         AND  gjh.je_source             = gjs.je_source_name
         AND  gjs.language              = cv_lang
         AND  gjh.je_batch_id           = gjb.je_batch_id
@@ -900,6 +917,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
         AND  gjl.code_combination_id   = gcc.code_combination_id
         AND  gjh.je_category           = gjc.je_category_name
         AND  gjc.language              = cv_lang
+-- 2014/12/08 Ver.1.3 Add K.Oomata Start
+        AND  gjc.user_je_category_name <> gv_not_proc_category
+-- 2014/12/08 Ver.1.3 Add K.Oomata End
         AND  gjh.je_source             = gjs.je_source_name
         AND  gjs.language              = cv_lang
         AND  gjh.je_batch_id = gjb.je_batch_id
@@ -1328,6 +1348,23 @@ CREATE OR REPLACE PACKAGE BODY XXCFO019A02C AS
       RAISE global_api_expt;
     END IF;
 --2012/10/03 Add End
+-- 2014/12/08 Ver.1.3 Add K.Oomata Start
+    --
+    --XXCFO:電子帳簿仕訳抽出対象外仕訳カテゴリ
+    gv_not_proc_category  := FND_PROFILE.VALUE( cv_not_proc_category );
+    --
+    IF ( gv_not_proc_category IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfo   -- 'XXCFO'
+                                                    ,cv_msg_cfo_00001 -- プロファイル名取得エラー
+                                                    ,cv_tkn_prof_name
+                                                    ,cv_not_proc_category
+                                                   )
+                           ,1
+                           ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2014/12/08 Ver.1.3 Add K.Oomata End
 --
     --==================================
     -- ディレクトリパス取得
