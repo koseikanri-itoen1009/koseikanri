@@ -1,8 +1,8 @@
 <?xml version = '1.0' encoding = 'UTF-8'?>
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
-<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <content>
-      <!--**Attention * For KROWN:124532, You must not use multi-byte character in this file. * If you use it example prompt, use attributesets.  DESCRIPTION Regist CONTRACT_MANAGEMENT information page.  @param ExecuteMode      1 : For Detail                         2 : For Copy                      NULL : For Create @param TransactionKey1  XXCSO_SP_DECISION_HEADERS.SP_DECISION_HEADER_ID @param TransactionKey2  XXCSO_CONTRACT_MANAGEMENT.CONTRACT_MANAGEMENT_ID  @see itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO.java @see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.xml @see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAMImpl.java  HISTORY 2009/01/27  H.Ogawa        Initialcode drop. 2009/05/15  N.Yanagitaira  T1_0230 2009/05/25  N.Yanagitaira  T1_1136 2012/06/12  K.Kiriu        E_本稼動_09602 2012/02/07  D.Sugahara     E_本稼動_11397-->
+      <!--**Attention * For KROWN:124532, You must not use multi-byte character in this file. * If you use it example prompt, use attributesets.  DESCRIPTION Regist CONTRACT_MANAGEMENT information page.  @param ExecuteMode      1 : For Detail                         2 : For Copy                      NULL : For Create @param TransactionKey1  XXCSO_SP_DECISION_HEADERS.SP_DECISION_HEADER_ID @param TransactionKey2  XXCSO_CONTRACT_MANAGEMENT.CONTRACT_MANAGEMENT_ID  @see itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO.java @see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.xml @see itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAMImpl.java  HISTORY 2009/01/27  H.Ogawa        Initialcode drop. 2009/05/15  N.Yanagitaira  T1_0230 2009/05/25  N.Yanagitaira  T1_1136 2012/06/12  K.Kiriu        E_本稼動_09602 2012/02/07  D.Sugahara     E_本稼動_11397 2015-02-02  S.Yamashita     E_本稼動_12565-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso010003j.webui.XxcsoContractRegistCO" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PageLayoutRN" comment="">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -497,12 +497,6 @@
                                     </oa:tableLayout>
                                  </ui:contents>
                               </oa:messageLayout>
-                           </ui:contents>
-                        </oa:messageComponentLayout>
-                        <oa:spacer id="PeriodInfoSpacer01" height="20"/>
-                        <oa:messageComponentLayout id="PeriodInfoMclRN02">
-                           <ui:contents>
-                              <oa:messageTextInput id="OtherContent" viewName="XxcsoContractManagementFullVO1" viewAttr="OtherContent" maximumLength="500" columns="70" rows="5" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/OtherContent"/>
                            </ui:contents>
                         </oa:messageComponentLayout>
                      </ui:contents>
@@ -1058,6 +1052,246 @@
                         </oa:stackLayout>
                      </ui:contents>
                   </oa:header>
+                  <oa:header id="InstSuppInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppInfoHdrRN">
+                     <ui:contents>
+                        <oa:messageCheckBox id="InstSuppExistFlag" checkedValue="Y" unCheckedValue="N" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppExistFlag" styleClass="OraDataText" readOnly="true" viewName="XxcsoPageRenderVO1" viewAttr="InstSuppExistFlag" text="設置協賛金指定"/>
+                        <oa:formValue id="InstSuppType" viewName="XxcsoSpDecisionHeadersSummuryVO1" viewAttr="InstallSuppType" dataType="NUMBER"/>
+                        <oa:stackLayout id="InstSuppEnabledSlRN" rendered="${oa.XxcsoPageRenderVO1.InstSuppEnabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="InstSuppBankMclRN">
+                                 <ui:contents>
+                                    <oa:messageLayout id="InstSuppBankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankTransferFeeDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="InstSuppBankTransferFeeDivView" dataType="VARCHAR2" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" viewAttr="InstallSuppBkChgBearer" viewName="XxcsoContractOtherCustFullVO1" defaultValue="伊藤園"/>
+                                          <oa:messageChoice id="InstSuppBankTransferFeeDiv" dataType="VARCHAR2" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkChgBearer" defaultValue="伊藤園"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="InstSuppBankNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="InstSuppBankNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="InstSuppBankNumberView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankNumber" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="InstSuppBankNumber" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankNumber" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractBankLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="BankLovInstSuppBankNumberMap" lovItem="BankNumber" criteriaFrom="InstSuppBankNumber" resultTo="InstSuppBankNumber"/>
+                                                      <lovMap id="BankLovInstSuppBankNameMap" lovItem="BankName" resultTo="InstSuppBankNameValue"/>
+                                                      <lovMap id="BankLovInstSuppBranchNumberMap" lovItem="BankNum" resultTo="InstSuppBranchNumberValue"/>
+                                                      <lovMap id="BankLovInstSuppBranchNameMap" lovItem="BankBranchName" resultTo="InstSuppBranchNameValue"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="InstSuppBankNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="InstSuppBankName" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstSuppBankName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankName" styleClass="OraDataText"/>
+                                                <oa:formValue id="InstSuppBankNameValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstSuppBankName"/>
+                                                <oa:formValue id="InstSuppBranchNumberValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBranchNumber" dataType="VARCHAR2"/>
+                                                <oa:formValue id="InstSuppBranchNameValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstSuppBankBranchName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="InstSuppBranchNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBranchNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="InstSuppBranchNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="InstSuppBranchNumber" dataType="VARCHAR2" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBranchNumber" columns="5" styleClass="OraDataText" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBranchNumber"/>
+                                                <oa:spacer id="InstSuppBranchNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="InstSuppBranchName" dataType="VARCHAR2" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBranchName" styleClass="OraDataText" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstSuppBankBranchName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="InstSuppBankAccountTypeLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountTypeLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="InstSuppBankAccountTypeView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkAcctType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountType" readOnly="true" styleClass="OraDataText" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                                          <oa:messageChoice id="InstSuppBankAccountType" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkAcctType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountType" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="InstSuppBankAccountNumberView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkAcctNumber" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNumber" columns="25" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="InstSuppBankAccountNumber" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkAcctNumber" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNumber" columns="25" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="InstSuppBankAccountNameKanaView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkAcctNameAlt" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNameKana" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="InstSuppBankAccountNameKana" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkAcctNameAlt" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNameKana" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="InstSuppBankAccountNameKanjiView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkAcctName" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNameKanji" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="InstSuppBankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="InstallSuppBkAcctName" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNameKanji" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                        <oa:stackLayout id="InstSuppDisabledSlRN" rendered="${oa.XxcsoPageRenderVO1.InstSuppDisabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="InstSuppBankMclRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="InstSuppBankTransferFeeDivBlank" required="no" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankTransferFeeDivLayout"/>
+                                    <oa:messageStyledText id="InstSuppBankNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankNameLayout" required="no"/>
+                                    <oa:messageStyledText id="InstSuppBranchNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBranchNameLayout"/>
+                                    <oa:messageStyledText id="InstSuppBankAccountNameKanaBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNameKana" required="no"/>
+                                    <oa:messageStyledText id="InstSuppBankAccountTypeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountTypeBlank" required="no"/>
+                                    <oa:messageStyledText id="InstSuppBankAccountNumberBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNumber" required="no"/>
+                                    <oa:messageStyledText id="InstSuppBankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstSuppBankAccountNameKanji" required="no"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="IntroChgInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgInfoHdrRN">
+                     <ui:contents>
+                        <oa:messageCheckBox id="IntroChgExistFlag" checkedValue="Y" unCheckedValue="N" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgExistFlag" styleClass="OraDataText" readOnly="true" viewName="XxcsoPageRenderVO1" viewAttr="IntroChgExistFlag" text="設置協賛金指定"/>
+                        <oa:formValue id="IntroChgType" viewName="XxcsoSpDecisionHeadersSummuryVO1" viewAttr="IntroChgType" dataType="NUMBER"/>
+                        <oa:stackLayout id="IntroChgEnabledSlRN" rendered="${oa.XxcsoPageRenderVO1.IntroChgEnabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="IntroChgBankMclRN">
+                                 <ui:contents>
+                                    <oa:messageLayout id="IntroChgBankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankTransferFeeDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="IntroChgBankTransferFeeDivView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkChgBearer" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="IntroChgBankTransferFeeDiv" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkChgBearer" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="IntroChgBankNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="IntroChgBankNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="IntroChgBankNumberView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankNumber" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="IntroChgBankNumber" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankNumber" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractBankLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="BankLovIntroChgBankNumberMap" lovItem="BankNumber" criteriaFrom="IntroChgBankNumber" resultTo="IntroChgBankNumber"/>
+                                                      <lovMap id="BankLovIntroChgBankNameMap" lovItem="BankName" resultTo="IntroChgBankNameValue"/>
+                                                      <lovMap id="BankLovIntroChgBranchNumberMap" lovItem="BankNum" resultTo="IntroChgBranchNumberValue"/>
+                                                      <lovMap id="BankLovIntroChgBranchNameMap" lovItem="BankBranchName" resultTo="IntroChgBranchNameValue"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="IntroChgBankNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="IntroChgBankName" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBankName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankName" styleClass="OraDataText"/>
+                                                <oa:formValue id="IntroChgBankNameValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBankName"/>
+                                                <oa:formValue id="IntroChgBranchNumberValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBranchNumber"/>
+                                                <oa:formValue id="IntroChgBranchNameValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBankBranchName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="IntroChgBranchNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBranchNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="IntroChgBranchNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="IntroChgBranchNumber" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBranchNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBranchNumber" columns="5" styleClass="OraDataText"/>
+                                                <oa:spacer id="IntroChgBranchNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="IntroChgBranchName" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBankBranchName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBranchName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="IntroChgBankAccountTypeLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountTypeLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="IntroChgBankAccountTypeView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkAcctType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountType" readOnly="true" styleClass="OraDataText" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                                          <oa:messageChoice id="IntroChgBankAccountType" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkAcctType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountType" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="IntroChgBankAccountNumberView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkAcctNumber" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNumber" columns="25" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="IntroChgBankAccountNumber" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkAcctNumber" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNumber" columns="25" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="IntroChgBankAccountNameKanaView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkAcctNameAlt" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNameKana" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="IntroChgBankAccountNameKana" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkAcctNameAlt" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNameKana" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="IntroChgBankAccountNameKanjiView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkAcctName" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNameKanji" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="IntroChgBankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="IntroChgBkAcctName" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNameKanji" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                        <oa:stackLayout id="IntroChgDisabledSlRN" rendered="${oa.XxcsoPageRenderVO1.IntroChgDisabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="IntroChgBankMclRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="IntroChgBankTransferFeeDivBlank" required="no" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankTransferFeeDivLayout"/>
+                                    <oa:messageStyledText id="IntroChgBankNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankNameLayout" required="no"/>
+                                    <oa:messageStyledText id="IntroChgBranchNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBranchNameLayout"/>
+                                    <oa:messageStyledText id="IntroChgBankAccountNameKanaBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNameKana" required="no"/>
+                                    <oa:messageStyledText id="IntroChgBankAccountTypeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountTypeBlank" required="no"/>
+                                    <oa:messageStyledText id="IntroChgBankAccountNumberBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNumber" required="no"/>
+                                    <oa:messageStyledText id="IntroChgBankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/IntroChgBankAccountNameKanji" required="no"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="ElectricInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricInfoHdrRN">
+                     <ui:contents>
+                        <oa:messageCheckBox id="ElectricExistFlag" checkedValue="Y" unCheckedValue="N" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricExistFlag" styleClass="OraDataText" readOnly="true" viewName="XxcsoPageRenderVO1" viewAttr="ElectricExistFlag" text="設置協賛金指定"/>
+                        <oa:formValue id="ElectricType" viewName="XxcsoSpDecisionHeadersSummuryVO1" viewAttr="ElectricPaymentType" dataType="NUMBER"/>
+                        <oa:stackLayout id="ElectricEnabledSlRN" rendered="${oa.XxcsoPageRenderVO1.ElectricEnabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="ElectricBankMclRN">
+                                 <ui:contents>
+                                    <oa:messageLayout id="ElectricBankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankTransferFeeDivLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="ElectricBankTransferFeeDivView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkChgBearer" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                          <oa:messageChoice id="ElectricBankTransferFeeDiv" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkChgBearer" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankTransferFeeDiv" pickListViewName="XxcsoTransferFeeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="ElectricBankNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="ElectricBankNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectricBankNumberView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankNumber" columns="5" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                                <oa:messageLovInput id="ElectricBankNumber" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankNumber" columns="5" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso010003j/lov/webui/XxcsoContractBankLovRN" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
+                                                   <lovMappings>
+                                                      <lovMap id="BankLovElectricBankNumberMap" lovItem="BankNumber" criteriaFrom="ElectricBankNumber" resultTo="ElectricBankNumber"/>
+                                                      <lovMap id="BankLovElectricBankNameMap" lovItem="BankName" resultTo="ElectricBankNameValue"/>
+                                                      <lovMap id="BankLovElectricBranchNumberMap" lovItem="BankNum" resultTo="ElectricBranchNumberValue"/>
+                                                      <lovMap id="BankLovElectricBranchNameMap" lovItem="BankBranchName" resultTo="ElectricBranchNameValue"/>
+                                                   </lovMappings>
+                                                </oa:messageLovInput>
+                                                <oa:spacer id="ElectricBankNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="ElectricBankName" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBankName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankName" styleClass="OraDataText"/>
+                                                <oa:formValue id="ElectricBankNameValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBankName"/>
+                                                <oa:formValue id="ElectricBranchNumberValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBranchNumber"/>
+                                                <oa:formValue id="ElectricBranchNameValue" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBankBranchName"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="ElectricBranchNameLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBranchNameLayout">
+                                       <ui:contents>
+                                          <oa:rowLayout id="ElectricBranchNameRlRN">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectricBranchNumber" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBranchNumber" maximumLength="4" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBranchNumber" columns="5" styleClass="OraDataText"/>
+                                                <oa:spacer id="ElectricBranchNameSpacer01" width="10"/>
+                                                <oa:messageStyledText id="ElectricBranchName" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBankBranchName" maximumLength="60" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBranchName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageLayout id="ElectricBankAccountTypeLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountTypeLayout">
+                                       <ui:contents>
+                                          <oa:messageChoice id="ElectricBankAccountTypeView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkAcctType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountType" readOnly="true" styleClass="OraDataText" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
+                                          <oa:messageChoice id="ElectricBankAccountType" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkAcctType" pickListViewName="XxcsoKozaListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountType" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                       </ui:contents>
+                                    </oa:messageLayout>
+                                    <oa:messageStyledText id="ElectricBankAccountNumberView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkAcctNumber" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNumber" columns="25" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="ElectricBankAccountNumber" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkAcctNumber" maximumLength="7" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNumber" columns="25" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="ElectricBankAccountNameKanaView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkAcctNameAlt" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNameKana" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="ElectricBankAccountNameKana" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkAcctNameAlt" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNameKana" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="ElectricBankAccountNameKanjiView" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkAcctName" maximumLength="100" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNameKanji" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
+                                    <oa:messageTextInput id="ElectricBankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoContractOtherCustFullVO1" viewAttr="ElectricBkAcctName" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNameKanji" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                        <oa:stackLayout id="ElectricDisabledSlRN" rendered="${oa.XxcsoPageRenderVO1.ElectricDisabled}">
+                           <ui:contents>
+                              <oa:messageComponentLayout id="ElectricBankMclRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="ElectricBankTransferFeeDivBlank" required="no" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankTransferFeeDivLayout"/>
+                                    <oa:messageStyledText id="ElectricBankNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankNameLayout" required="no"/>
+                                    <oa:messageStyledText id="ElectricBranchNameBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBranchNameLayout"/>
+                                    <oa:messageStyledText id="ElectricBankAccountNameKanaBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNameKana" required="no"/>
+                                    <oa:messageStyledText id="ElectricBankAccountTypeBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountTypeBlank" required="no"/>
+                                    <oa:messageStyledText id="ElectricBankAccountNumberBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNumber" required="no"/>
+                                    <oa:messageStyledText id="ElectricBankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ElectricBankAccountNameKanji" required="no"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                           </ui:contents>
+                        </oa:stackLayout>
+                     </ui:contents>
+                  </oa:header>
                   <oa:header id="InstallInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/InstallInfoHdrRN">
                      <ui:contents>
                         <oa:messageComponentLayout id="InstallInfoMclRN">
@@ -1082,7 +1316,7 @@
                                     <oa:messageCheckBox id="OwnerChangeFlagView" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/OwnerChangeFlag" viewName="XxcsoPageRenderVO1" viewAttr="OwnerChangeFlag" checkedValue="Y" unCheckedValue="N" readOnly="true" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}"/>
                                     <oa:messageCheckBox id="OwnerChangeFlag" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/OwnerChangeFlag" viewName="XxcsoPageRenderVO1" viewAttr="OwnerChangeFlag" checkedValue="Y" unCheckedValue="N" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}">
                                        <ui:primaryClientAction>
-                                          <ui:firePartialAction event="OwnerChangeFlagChange"/>
+                                          <ui:firePartialAction event="OwnerChangeFlagChange" id="firePartialAction1"/>
                                        </ui:primaryClientAction>
                                     </oa:messageCheckBox>
                                  </ui:contents>
