@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionSearchCO
 * 概要説明   : SP専決登録画面コントローラクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-12-10 1.0  SCS小川浩    新規作成
 * 2009-03-23 1.1  SCS柳平直人  [ST障害T1_0163]課題No.115取り込み
 * 2009-08-24 1.2  SCS阿部大輔  [SCS障害0001104]申請区分チェック対応
+* 2015-01-30 1.3  SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.webui;
@@ -490,15 +491,62 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
       // レンダリングのみ
     }
 
-    if ( "ElectricityTypeChange".equals(event) )
+// 2015-01-30 [E_本稼動_12565] Del Start
+//    if ( "ElectricityTypeChange".equals(event) )
+//    {
+//      // 電気代区分変更イベント
+//// 2009-03-23 [ST障害T1_0163] Mod Start
+////      // レンダリングのみ
+////      am.invokeMethod("handleElectricityTypeChange");
+//// 2009-03-23 [ST障害T1_0163] Mod End
+//    }
+// 2015-01-30 [E_本稼動_12565] Del End
+
+// 2015-01-30 [E_本稼動_12565] Add Start
+    if ( "AdAssetsTypeChange".equals(event) )
     {
-      // 電気代区分変更イベント
-// 2009-03-23 [ST障害T1_0163] Mod Start
-//      // レンダリングのみ
-      am.invokeMethod("handleElectricityTypeChange");
-// 2009-03-23 [ST障害T1_0163] Mod End
+      // 行政財産使用変更イベント
+      am.invokeMethod("handleAdAssetsTypeChange");
     }
-    
+
+    if ( "InstallSuppTypeChange".equals(event) )
+    {
+      // 支払区分（設置協賛金）変更イベント
+      am.invokeMethod("handleInstallSuppTypeChange");
+    }
+
+    if ( "InstallSuppPaymentTypeChange".equals(event) )
+    {
+      // 支払方法（設置協賛金）変更イベント
+      am.invokeMethod("handleInstallSuppPaymentTypeChange");
+    }
+
+    if ( "ElectricTypeChange".equals(event) )
+    {
+      // 支払区分（電気代区分）変更更イベント
+      am.invokeMethod("handleElectricTypeChange");
+    }
+
+    if ( "ElectricPaymentTypeChange".equals(event) )
+    {
+      // 支払方法（電気代）変更イベント
+      am.invokeMethod("handleElectricPaymentTypeChange");
+    }
+
+    if ( "IntroChgTypeChange".equals(event) )
+    {
+      // 支払区分（紹介手数料）変更イベント
+      am.invokeMethod("handleIntroChgTypeChange");
+    }
+
+    if ( "IntroChgPaymentTypeChange".equals(event) )
+    {
+      // 支払方法（紹介手数料）変更イベント
+      am.invokeMethod("handleIntroChgPaymentTypeChange");
+    }
+
+// 2015-01-30 [E_本稼動_12565] Add End
+
     if ( "BusinessConditionTypeChange".equals(event) )
     {
       // 業態（小分類）変更イベント
