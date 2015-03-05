@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.18
+* バージョン : 1.19
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -26,6 +26,7 @@
 * 2011-04-04 1.16 SCS吉元強樹  [E_本稼動_02498]SP専決回送先承認者必須チェック対応
 * 2013-04-19 1.17 SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.18 SCSK桐生和幸 [E_本稼動_11397]売価1円対応
+* 2014-12-15 1.19 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1229,95 +1230,110 @@ public class XxcsoSpDecisionValidateUtils
          ,0
          ,2
          ,true
-         ,true
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//         ,true
+         ,false
+// 2014-12-15 [E_本稼動_12565] Mod End
          ,submitFlag
          ,0
         );
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    /////////////////////////////////////
+//    // その他条件：初回設置協賛金
+//    /////////////////////////////////////
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_INST_SUP_AMT;
+//    errorList
+//      = utils.checkStringToNumber(
+//          errorList
+//         ,headerRow.getInstallSupportAmt()
+//         ,token1
+//         ,0
+//         ,8
+//         ,true
+//         ,false
+//         ,false
+//         ,0
+//        );
 
-    /////////////////////////////////////
-    // その他条件：初回設置協賛金
-    /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_INST_SUP_AMT;
-    errorList
-      = utils.checkStringToNumber(
-          errorList
-         ,headerRow.getInstallSupportAmt()
-         ,token1
-         ,0
-         ,8
-         ,true
-         ,false
-         ,false
-         ,0
-        );
+//    /////////////////////////////////////
+//    // その他条件：2回目以降設置協賛金
+//    /////////////////////////////////////
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_INST_SUP_AMT2;
+//    errorList
+//      = utils.checkStringToNumber(
+//          errorList
+//         ,headerRow.getInstallSupportAmt2()
+//         ,token1
+//         ,0
+//         ,8
+//         ,true
+//         ,false
+//         ,false
+//         ,0
+//        );
 
-    /////////////////////////////////////
-    // その他条件：2回目以降設置協賛金
-    /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_INST_SUP_AMT2;
-    errorList
-      = utils.checkStringToNumber(
-          errorList
-         ,headerRow.getInstallSupportAmt2()
-         ,token1
-         ,0
-         ,8
-         ,true
-         ,false
-         ,false
-         ,0
-        );
-
-    /////////////////////////////////////
-    // その他条件：支払サイクル
-    /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_PAYMENT_CYCLE;
-    errorList
-      = utils.checkStringToNumber(
-          errorList
-         ,headerRow.getPaymentCycle()
-         ,token1
-         ,0
-         ,2
-         ,true
-         ,false
-         ,false
-         ,0
-        );
+//    /////////////////////////////////////
+//    // その他条件：支払サイクル
+//    /////////////////////////////////////
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_PAYMENT_CYCLE;
+//    errorList
+//      = utils.checkStringToNumber(
+//          errorList
+//         ,headerRow.getPaymentCycle()
+//         ,token1
+//         ,0
+//         ,2
+//         ,true
+//         ,false
+//         ,false
+//         ,0
+//        );
     
-    /////////////////////////////////////
-    // その他条件：電気代
-    /////////////////////////////////////
-    boolean requiredFlag = false;
-// 2009-03-23 [ST障害T1_0163] Add Start
-    boolean zeroCheckFlag = false;
-// 2009-03-23 [ST障害T1_0163] Add End
-    if ( XxcsoSpDecisionConstants.ELEC_FIXED.equals(electricityType) ||
-         XxcsoSpDecisionConstants.ELEC_VALIABLE.equals(electricityType)
-       )
-    {
-      requiredFlag = true;
-// 2009-03-23 [ST障害T1_0163] Add Start
-      zeroCheckFlag = true;
-// 2009-03-23 [ST障害T1_0163] Add End
-    }
-    if ( ! submitFlag )
-    {
-      requiredFlag = false;
-// 2009-03-23 [ST障害T1_0163] Add Start
-      zeroCheckFlag = false;
-// 2009-03-23 [ST障害T1_0163] Add End
-    }
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRICITY_AMOUNT;
-// 2009-03-23 [ST障害T1_0163] Mod Start
+//    /////////////////////////////////////
+//    // その他条件：電気代
+//    /////////////////////////////////////
+//    boolean requiredFlag = false;
+//// 2009-03-23 [ST障害T1_0163] Add Start
+//    boolean zeroCheckFlag = false;
+//// 2009-03-23 [ST障害T1_0163] Add End
+//    if ( XxcsoSpDecisionConstants.ELEC_FIXED.equals(electricityType) ||
+//         XxcsoSpDecisionConstants.ELEC_VALIABLE.equals(electricityType)
+//       )
+//    {
+//      requiredFlag = true;
+//// 2009-03-23 [ST障害T1_0163] Add Start
+//      zeroCheckFlag = true;
+//// 2009-03-23 [ST障害T1_0163] Add End
+//    }
+//    if ( ! submitFlag )
+//    {
+//      requiredFlag = false;
+//// 2009-03-23 [ST障害T1_0163] Add Start
+//      zeroCheckFlag = false;
+//// 2009-03-23 [ST障害T1_0163] Add End
+//    }
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRICITY_AMOUNT;
+//// 2009-03-23 [ST障害T1_0163] Mod Start
+////    errorList
+////      = utils.checkStringToNumber(
+////          errorList
+////         ,headerRow.getElectricityAmount()
+////         ,token1
+////         ,0
+////         ,5
+////         ,true
+////         ,false
+////         ,requiredFlag
+////         ,0
+////        );
 //    errorList
 //      = utils.checkStringToNumber(
 //          errorList
@@ -1326,30 +1342,321 @@ public class XxcsoSpDecisionValidateUtils
 //         ,0
 //         ,5
 //         ,true
-//         ,false
+//         ,zeroCheckFlag
 //         ,requiredFlag
 //         ,0
 //        );
+//// 2009-03-23 [ST障害T1_0163] Mod End
+// 2014-12-15 [E_本稼動_12565] Del End
+// 2014-12-15 [E_本稼動_12565] Add Start
+    /////////////////////////////////////
+    // その他条件：契約月数
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_YEAR_MONTH;
     errorList
       = utils.checkStringToNumber(
           errorList
-         ,headerRow.getElectricityAmount()
+         ,headerRow.getContractYearMonth()
          ,token1
          ,0
-         ,5
+         ,2
          ,true
-         ,zeroCheckFlag
-         ,requiredFlag
+         ,false
+         ,submitFlag
          ,0
         );
-// 2009-03-23 [ST障害T1_0163] Mod End
-    
+
+    /////////////////////////////////////
+    // その他条件：契約期間開始（年)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_START_YEAR;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getContractStartYear()
+         ,token1
+         ,0
+         ,4
+         ,true
+         ,true
+         ,submitFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：契約期間開始（月)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_START_MONTH;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getContractStartMonth()
+         ,token1
+         ,0
+         ,2
+         ,true
+         ,true
+         ,submitFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：契約期間終了（年)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_END_YEAR;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getContractEndYear()
+         ,token1
+         ,0
+         ,4
+         ,true
+         ,true
+         ,submitFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：契約期間終了（月)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_END_MONTHR;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getContractEndMonth()
+         ,token1
+         ,0
+         ,2
+         ,true
+         ,true
+         ,submitFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：契約年数と契約期間の整合性
+    /////////////////////////////////////
+    if ( ( submitFlag ) && ( errorList.size() == 0 ) )
+    {
+      // 契約月数が11以下であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_YEAR_MONTH;
+
+      int contractYear      = Integer.valueOf( headerRow.getContractYearDate() ).intValue();
+      int contractYearMonth = Integer.valueOf( headerRow.getContractYearMonth() ).intValue();
+      int culYearMonth      = contractYear + contractYearMonth;
+
+      if ( contractYearMonth > 11 )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00718
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 契約年数と契約月数をあわせて0であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_YEAR;
+
+      if ( culYearMonth == 0 )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00730
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 契約期間開始（年）が西暦であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_START_YEAR;
+
+      if ( ! isYear( headerRow.getContractStartYear() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00720
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 契約期間開始（月）が12以下であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_START_MONTH;
+
+      if ( ! isMonth( headerRow.getContractStartMonth() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00719
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 契約期間終了（年）が西暦であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_END_YEAR;
+
+      if ( ! isYear( headerRow.getContractEndYear() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00720
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 契約期間終了（月）が12以下であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_END_MONTHR;
+
+      if ( ! isMonth( headerRow.getContractEndMonth() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00719
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      if ( errorList.size() == 0 )
+      {
+        // 契約年月と契約開始、終了の整合性チェック
+        String contractEnd = validateContractEnd(
+                              txn
+                             ,headerRow.getContractYearDate()
+                             ,headerRow.getContractYearMonth()
+                             ,headerRow.getContractStartYear()
+                             ,headerRow.getContractStartMonth()
+                             ,headerRow.getContractEndYear()
+                             ,headerRow.getContractEndMonth()
+                            );
+
+        if ( ! "0".equals(contractEnd) )
+        {
+          errorList.add(
+              XxcsoMessage.createErrorMessage(
+               XxcsoConstants.APP_XXCSO1_00721
+               ,XxcsoConstants.TOKEN_RESULTS
+               ,contractEnd
+              )
+          );
+        }
+      }
+    }
+
+    String adAssetsType = headerRow.getAdAssetsType();
+
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(adAssetsType) )
+    {
+      /////////////////////////////////////
+      // その他条件：総額（行政財産使用料）
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_AMT;
+      errorList
+        = utils.checkStringToNumber(
+            errorList
+           ,headerRow.getAdAssetsAmt()
+           ,token1
+           ,0
+           ,8
+           ,true
+           ,true
+           ,submitFlag
+           ,0
+          );
+      /////////////////////////////////////
+      // その他条件：今回支払（行政財産使用料）
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_THIS_TIME;
+      errorList
+        = utils.checkStringToNumber(
+            errorList
+           ,headerRow.getAdAssetsThisTime()
+           ,token1
+           ,0
+           ,8
+           ,true
+           ,true
+           ,submitFlag
+           ,0
+          );
+      /////////////////////////////////////
+      // その他条件：支払年数（行政財産使用料）
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_YEAR;
+      errorList
+        = utils.checkStringToNumber(
+            errorList
+           ,headerRow.getAdAssetsPaymentYear()
+           ,token1
+           ,0
+           ,2
+           ,true
+           ,true
+           ,submitFlag
+           ,0
+          );
+
+      /////////////////////////////////////
+      // その他条件：支払期日（行政財産使用料）
+      /////////////////////////////////////
+      if ( submitFlag )
+      {
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_ASSETS_PAYMENT_DATE;
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,headerRow.getAdAssetsPaymentDate()
+             ,token1
+             ,0
+            );
+      }
+    }
+
+// 2014-12-15 [E_本稼動_12565] Add End
     XxcsoUtils.debug(txn, "[END]");
 
     return errorList;
   }
 
-
+  
   /*****************************************************************************
    * その他条件の検証
    * @param txn         OADBTransactionインスタンス
@@ -1396,6 +1703,443 @@ public class XxcsoSpDecisionValidateUtils
     return errorList;
   }
 
+// 2014-12-15 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 覚書情報の検証
+   * @param txn         OADBTransactionインスタンス
+   * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
+   * @param submitFlag  提出用フラグ
+   * @return List       エラーリスト
+   *****************************************************************************
+   */
+  public static List validateMemorandumInfo(
+    OADBTransaction                     txn
+   ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
+   ,boolean                             submitFlag
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+    
+    List errorList = new ArrayList();
+    String token1 = null;
+    
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
+
+    String installSuppType   = headerRow.getInstallSuppType();
+    String electricType      = headerRow.getElectricType();
+    String introChgType      = headerRow.getIntroChgType();
+
+    // 設置協賛金
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(installSuppType) )
+    {
+      /////////////////////////////////////
+      // 覚書情報：総額（設置協賛金）
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_INSTALL_SUPP_AMT;
+      errorList
+        = utils.checkStringToNumber(
+            errorList
+           ,headerRow.getInstallSuppAmt()
+           ,token1
+           ,0
+           ,8
+           ,true
+           ,true
+           ,submitFlag
+           ,0
+          );
+
+      String installSuppPaymentType = headerRow.getInstallSuppPaymentType();
+
+      if ( XxcsoSpDecisionConstants.ONE_YEAR_PAY.equals(installSuppPaymentType) )
+      {
+        /////////////////////////////////////
+        // 覚書情報：今回支払（設置協賛金）
+        /////////////////////////////////////
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_THIS_TIME;
+        errorList
+          = utils.checkStringToNumber(
+              errorList
+             ,headerRow.getInstallSuppThisTime()
+             ,token1
+             ,0
+             ,8
+             ,true
+             ,true
+             ,submitFlag
+             ,0
+            );
+      }
+
+      /////////////////////////////////////
+      // 覚書情報：支払年数（設置協賛金）
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAYMENT_YEAR;
+      errorList
+        = utils.checkStringToNumber(
+            errorList
+           ,headerRow.getInstallSuppPaymentYear()
+           ,token1
+           ,0
+           ,2
+           ,true
+           ,true
+           ,submitFlag
+           ,0
+          );
+
+      /////////////////////////////////////
+      // 覚書情報：支払期日（設置協賛金）
+      /////////////////////////////////////
+      if ( submitFlag )
+      {
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALL_SUPP_PAYMENT_DATE;
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,headerRow.getInstallSuppPaymentDate()
+             ,token1
+             ,0
+            );
+      }
+    }
+
+    // 電気代
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(electricType) )
+    {
+      /////////////////////////////////////
+      // 覚書情報：電気代
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRICITY_AMT_MONTH;
+      errorList
+        = utils.checkStringToNumber(
+            errorList
+           ,headerRow.getElectricityAmount()
+           ,token1
+           ,0
+           ,5
+           ,true
+           ,true
+           ,submitFlag
+           ,0
+          );
+
+      String  electricPaymentType  = headerRow.getElectricPaymentType();
+
+      if ( XxcsoSpDecisionConstants.CONTRACT_OTHER.equals(electricPaymentType) )
+      {
+        /////////////////////////////////////
+        // 覚書情報：契約先以外名（電気代）
+        /////////////////////////////////////
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRIC_TRANS_NAME;
+        if ( submitFlag )
+        {
+          errorList
+            = utils.requiredCheck(
+                errorList
+               ,headerRow.getElectricTransName()
+               ,token1
+               ,0
+              );
+        }
+        errorList
+          = utils.checkIllegalString(
+              errorList
+             ,headerRow.getElectricTransName()
+             ,token1
+             ,0
+            );
+        if ( ! isDoubleByte(
+                 txn
+                ,headerRow.getElectricTransName()
+               )
+           )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00565
+               ,XxcsoConstants.TOKEN_REGION
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRIC_TRANS_NAME
+              );
+          errorList.add(error);
+        }
+
+        /////////////////////////////////////
+        // 覚書情報：契約先以外名カナ（電気代）
+        /////////////////////////////////////
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRIC_TRANS_NAME_ALT;
+        if ( submitFlag )
+        {
+          errorList
+            = utils.requiredCheck(
+                errorList
+               ,headerRow.getElectricTransNameAlt()
+               ,token1
+               ,0
+              );
+        }
+        errorList
+          = utils.checkIllegalString(
+              errorList
+             ,headerRow.getElectricTransNameAlt()
+             ,token1
+             ,0
+            );
+        if ( ! isSingleByteKana(
+                 txn
+                ,headerRow.getElectricTransNameAlt()
+               )
+           )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00573
+               ,XxcsoConstants.TOKEN_REGION
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRIC_TRANS_NAME_ALT
+              );
+          errorList.add(error);
+        }
+      }
+    }
+
+    // 紹介手数料
+    if ( XxcsoSpDecisionConstants.CHECK_YES.equals(introChgType) )
+    {
+
+      String introChgPaymentType = headerRow.getIntroChgPaymentType();
+
+      if ( XxcsoSpDecisionConstants.SALES_BULK.equals(introChgPaymentType) )
+      {
+        /////////////////////////////////////
+        // 覚書情報：総額（紹介手数料）
+        /////////////////////////////////////
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_AMT;
+        errorList
+          = utils.checkStringToNumber(
+              errorList
+             ,headerRow.getIntroChgAmt()
+             ,token1
+             ,0
+             ,8
+             ,true
+             ,true
+             ,submitFlag
+             ,0
+            );
+
+        /////////////////////////////////////
+        // 覚書情報：今回支払（紹介手数料）
+        /////////////////////////////////////
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_THIS_TIME;
+        errorList
+          = utils.checkStringToNumber(
+              errorList
+             ,headerRow.getIntroChgThisTime()
+             ,token1
+             ,0
+             ,8
+             ,true
+             ,true
+             ,submitFlag
+             ,0
+            );
+
+        /////////////////////////////////////
+        // 覚書情報：支払年数（紹介手数料）
+        /////////////////////////////////////
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_PAYMENT_YEAR;
+        errorList
+          = utils.checkStringToNumber(
+              errorList
+             ,headerRow.getIntroChgPaymentYear()
+             ,token1
+             ,0
+             ,2
+             ,true
+             ,true
+             ,submitFlag
+             ,0
+            );
+
+        /////////////////////////////////////
+        // 覚書情報：支払期日（紹介手数料）
+        /////////////////////////////////////
+        if ( submitFlag )
+        {
+          token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                  + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                  + XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_PAYMENT_DATE;
+          errorList
+            = utils.requiredCheck(
+                errorList
+               ,headerRow.getIntroChgPaymentDate()
+               ,token1
+               ,0
+              );
+        }
+      }
+      else
+      {
+        if ( XxcsoSpDecisionConstants.SALES_PAR.equals(introChgPaymentType) )
+        {
+          /////////////////////////////////////
+          // 覚書情報：販売金額当り紹介手数料率
+          /////////////////////////////////////
+          token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                  + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                  + XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_PER_SALES_PRICE;
+          errorList
+            = utils.checkStringToNumber(
+                errorList
+               ,headerRow.getIntroChgPerSalesPrice()
+               ,token1
+               ,2
+               ,3
+               ,true
+               ,true
+               ,submitFlag
+               ,0
+              );
+
+        }
+        else if (  XxcsoSpDecisionConstants.SALES_AMT.equals(introChgPaymentType) )
+        {
+          /////////////////////////////////////
+          // 覚書情報：1本当り紹介手数料額
+          /////////////////////////////////////
+          token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                  + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                  + XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_PER_PIECE;
+          errorList
+            = utils.checkStringToNumber(
+                errorList
+               ,headerRow.getIntroChgPerPiece()
+               ,token1
+               ,0
+               ,8
+               ,true
+               ,true
+               ,submitFlag
+               ,0
+              );
+        }
+      }
+      /////////////////////////////////////
+      // 覚書情報：契約先以外名（紹介手数料）
+      /////////////////////////////////////
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_TRANS_NAME;
+      if ( submitFlag )
+      {
+        errorList
+          = utils.requiredCheck(
+              errorList
+             ,headerRow.getIntroChgTransName()
+             ,token1
+             ,0
+            );
+      }
+      errorList
+        = utils.checkIllegalString(
+            errorList
+           ,headerRow.getIntroChgTransName()
+           ,token1
+           ,0
+          );
+      if ( ! isDoubleByte(
+               txn
+              ,headerRow.getIntroChgTransName()
+             )
+         )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00565
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_TRANS_NAME
+            );
+        errorList.add(error);
+      }
+
+        /////////////////////////////////////
+        // 覚書情報：契約先以外名カナ（紹介手数料）
+        /////////////////////////////////////
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_TRANS_NAME_ALT;
+        if ( submitFlag )
+        {
+          errorList
+            = utils.requiredCheck(
+                errorList
+               ,headerRow.getIntroChgTransNameAlt()
+               ,token1
+               ,0
+              );
+        }
+        errorList
+          = utils.checkIllegalString(
+              errorList
+             ,headerRow.getIntroChgTransNameAlt()
+             ,token1
+             ,0
+            );
+        if ( ! isSingleByteKana(
+                 txn
+                ,headerRow.getIntroChgTransNameAlt()
+               )
+           )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00573
+               ,XxcsoConstants.TOKEN_REGION
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_INTRO_CHG_TRANS_NAME_ALT
+              );
+          errorList.add(error);
+        }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return errorList;
+  }
+// 2014-12-15 [E_本稼動_12565] Add End
   
   /*****************************************************************************
    * BM1の検証
@@ -2541,53 +3285,53 @@ public class XxcsoSpDecisionValidateUtils
   }
 
 
-
-  /*****************************************************************************
-   * 契約書への記載事項の検証
-   * @param txn         OADBTransactionインスタンス
-   * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
-   * @param submitFlag  提出用フラグ
-   * @return List       エラーリスト
-   *****************************************************************************
-   */
-  public static List validateContractContent(
-    OADBTransaction                     txn
-   ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
-   ,boolean                             submitFlag
-  )
-  {
-    XxcsoUtils.debug(txn, "[START]");
-    
-    List errorList = new ArrayList();
-    String token1 = null;
-    
-    /////////////////////////////////////
-    // 各行を取得
-    /////////////////////////////////////
-    XxcsoSpDecisionHeaderFullVORowImpl headerRow
-      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
-
-    XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
-
-    /////////////////////////////////////
-    // 契約書への記載事項：特約事項
-    /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_CONTENT_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_CONTENT;
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,headerRow.getOtherContent()
-         ,token1
-         ,0
-        );
-
-    XxcsoUtils.debug(txn, "[END]");
-
-    return errorList;
-  }
-
+// 2014-12-15 [E_本稼動_12565] Del Start
+//  /*****************************************************************************
+//   * 契約書への記載事項の検証
+//   * @param txn         OADBTransactionインスタンス
+//   * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
+//   * @param submitFlag  提出用フラグ
+//   * @return List       エラーリスト
+//   *****************************************************************************
+//   */
+//  public static List validateContractContent(
+//    OADBTransaction                     txn
+//   ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
+//   ,boolean                             submitFlag
+//  )
+//  {
+//    XxcsoUtils.debug(txn, "[START]");
+//    
+//    List errorList = new ArrayList();
+//    String token1 = null;
+//    
+//    /////////////////////////////////////
+//    // 各行を取得
+//    /////////////////////////////////////
+//    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+//      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+//
+//    XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
+//
+//    /////////////////////////////////////
+//    // 契約書への記載事項：特約事項
+//    /////////////////////////////////////
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_CNTRCT_CONTENT_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_CONTENT;
+//    errorList
+//      = utils.checkIllegalString(
+//          errorList
+//         ,headerRow.getOtherContent()
+//         ,token1
+//         ,0
+//        );
+//
+//    XxcsoUtils.debug(txn, "[END]");
+//
+//    return errorList;
+//  }
+// 2014-12-15 [E_本稼動_12565] Del End
   
 
   /*****************************************************************************
@@ -2646,21 +3390,33 @@ public class XxcsoSpDecisionValidateUtils
          ,0
          ,2
          ,true
-         ,true
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//         ,true
+         ,false
+// 2014-12-15 [E_本稼動_12565] Mod End
          ,submitFlag
          ,0
         );
 
+
     /////////////////////////////////////
-    // その他条件：初回設置協賛金
+    // 覚書情報：総額（設置協賛金）
     /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+// 2014-12-15 [E_本稼動_12565] Mod Start
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+// 2014-12-15 [E_本稼動_12565] Mod End
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_INST_SUP_AMT;
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_INST_SUP_AMT;
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_AD_INSTALL_SUPP_AMT;
+// 2014-12-15 [E_本稼動_12565] Mod Start
     errorList
       = utils.checkStringToNumber(
           errorList
-         ,headerRow.getInstallSupportAmt()
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//         ,headerRow.getInstallSupportAmt()
+         ,headerRow.getInstallSuppAmt()
+// 2014-12-15 [E_本稼動_12565] Mod Start
          ,token1
          ,0
          ,8
@@ -2671,9 +3427,12 @@ public class XxcsoSpDecisionValidateUtils
         );
 
     /////////////////////////////////////
-    // その他条件：電気代
+    // 覚書情報：電気代
     /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_MEMO_RANDUM_INFO_REGION
+// 2014-12-15 [E_本稼動_12565] Mod End
             + XxcsoConstants.TOKEN_VALUE_DELIMITER1
             + XxcsoSpDecisionConstants.TOKEN_VALUE_ELECTRICITY_AMOUNT;
     errorList
@@ -3135,7 +3894,10 @@ public class XxcsoSpDecisionValidateUtils
             txn.createCallableStatement(sql.toString(), 0);
 
       stmt.registerOutParameter(1, OracleTypes.NUMBER);
-      stmt.setString(2, headerRow.getInstallSupportAmt());
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//      stmt.setString(2, headerRow.getInstallSupportAmt());
+      stmt.setString(2, headerRow.getInstallSuppAmt());
+// 2014-12-15 [E_本稼動_12565] Mod End
 
       stmt.execute();
 
@@ -6148,4 +6910,170 @@ public class XxcsoSpDecisionValidateUtils
     return errorList;
   }
 // 2013-04-19 [E_本稼動_09603] Add End
+// 2014-12-15 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 月の検証
+   * @param  Month              チェック対象の値
+   * @return boolean            結果 true  : チェックOK
+   *                                 false : チェックNG
+   *****************************************************************************
+   */
+  private static boolean isMonth(
+    String            month
+  )
+  {
+
+    if ( month == null )
+    {
+      return true;
+    }
+
+    int inputMonth = Integer.valueOf( month ).intValue();
+
+    if ( inputMonth > 12 )
+    {
+      return false;
+    }
+    return true;
+  }
+
+  /*****************************************************************************
+   * 西暦の検証
+   * @param  year               チェック対象の値
+   * @return boolean            結果 true  : チェックOK
+   *                                 false : チェックNG
+   *****************************************************************************
+   */
+  private static boolean isYear(
+    String            year
+  )
+  {
+
+    if ( year == null )
+    {
+      return true;
+    }
+
+    if ( year.length() < 4 )
+    {
+      return false;
+    }
+    return true;
+  }
+
+  /*****************************************************************************
+   * 契約終了期間の検証
+   * @param txn                 OADBTransactionインスタンス
+   * @param ContractStartYear   契約期間開始（年）
+   * @param ContractStartMonth  契約期間開始（月）
+   * @param ContractYearDate    契約年数
+   * @param ContractYearMonth   契約月数
+   * @return String             契約終了期間
+   *****************************************************************************
+   */
+  private static String validateContractEnd(
+     OADBTransaction   txn
+    ,String            contractYearDate
+    ,String            contractYearMonth
+    ,String            contractStartYear
+    ,String            contractStartMonth
+    ,String            contractEndYear
+    ,String            contractEndMonth
+  
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    OracleCallableStatement stmt = null;
+    String returnValue = "0";
+
+    if (    ( contractYearDate   == null && ! "0".equals(contractYearDate) )
+         || ( contractYearMonth  == null && ! "0".equals(contractYearMonth) )
+         || ( contractStartYear  == null && ! "0".equals(contractStartYear) )
+         || ( contractStartMonth == null && ! "0".equals(contractStartMonth) )
+         || ( contractEndYear    == null && ! "0".equals(contractEndYear) )
+         || ( contractEndMonth   == null && ! "0".equals(contractEndMonth) )
+       )
+    {
+      return returnValue;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+ 
+      sql.append("BEGIN");
+      sql.append("  xxcso_020001j_pkg.get_contract_end_period(");
+      sql.append("    iv_contract_year_date   => :1" );
+      sql.append("   ,iv_contract_year_month  => :2" );
+      sql.append("   ,iv_contract_start_year  => :3" );
+      sql.append("   ,iv_contract_start_month => :4" );
+      sql.append("   ,iv_contract_end_year    => :5" );
+      sql.append("   ,iv_contract_end_month   => :6" );
+      sql.append("   ,ov_contract_end         => :7" );
+      sql.append("   ,ov_errbuf               => :8" );
+      sql.append("   ,ov_retcode              => :9" );
+      sql.append("   ,ov_errmsg               => :10");
+      sql.append("  );");
+      sql.append("END;");
+
+      XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.setString(1, contractYearDate);
+      stmt.setString(2, contractYearMonth);
+      stmt.setString(3, contractStartYear);
+      stmt.setString(4, contractStartMonth);
+      stmt.setString(5, contractEndYear);
+      stmt.setString(6, contractEndMonth);
+      stmt.registerOutParameter(7,  OracleTypes.VARCHAR);
+      stmt.registerOutParameter(8,  OracleTypes.VARCHAR);
+      stmt.registerOutParameter(9,  OracleTypes.VARCHAR);
+      stmt.registerOutParameter(10, OracleTypes.VARCHAR);
+
+      stmt.execute();
+
+      String contractEnd  = stmt.getString(7);
+      String errBuf       = stmt.getString(8);
+      String retCode      = stmt.getString(9);
+      String errMsg       = stmt.getString(10);
+
+      if ( ! "0".equals(retCode) )
+      {
+        returnValue = contractEnd;
+      }
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRACT_END_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return returnValue;
+  }
+// 2014-12-15 [E_本稼動_12565] Add End
 }
