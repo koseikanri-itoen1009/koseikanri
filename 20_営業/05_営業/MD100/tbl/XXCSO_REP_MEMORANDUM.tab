@@ -1,0 +1,168 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * TABLE Name     : xxcso_rep_memorandum
+ * Description    : 覚書帳票ワークテーブル
+ * Version        : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2015/02/18    1.0   K.Kiriu         新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcso.xxcso_rep_memorandum
+(
+  contract_number                VARCHAR2(12),
+  contract_other_custs_id        NUMBER,
+  contract_name                  VARCHAR2(660),
+  contract_effect_date           DATE,
+  install_name                   VARCHAR2(480),
+  install_address                VARCHAR2(690),
+  tax_type_name                  VARCHAR2(6),
+  install_supp_preamble          VARCHAR2(1650),
+  install_supp_amt               NUMBER,
+  install_supp_payment_date      DATE,
+  install_supp_bk_chg_bearer     VARCHAR2(10),
+  install_supp_bk_number         VARCHAR2(30),
+  install_supp_bk_name           VARCHAR2(90),
+  install_supp_branch_number     VARCHAR2(25),
+  install_supp_branch_name       VARCHAR2(90),
+  install_supp_bk_acct_type      VARCHAR2(90),
+  install_supp_bk_acct_number    VARCHAR2(90),
+  install_supp_bk_acct_name_alt  VARCHAR2(150),
+  install_supp_bk_acct_name      VARCHAR2(320),
+  intro_chg_preamble             VARCHAR2(1650),
+  intro_chg_amt                  NUMBER,
+  intro_chg_payment_date         DATE,
+  intro_chg_closing_date         VARCHAR2(2),
+  intro_chg_trans_month          VARCHAR2(6),
+  intro_chg_trans_date           VARCHAR2(2),
+  intro_chg_trans_name           VARCHAR2(480),
+  intro_chg_trans_name_alt       VARCHAR2(320),
+  intro_chg_bk_chg_bearer        VARCHAR2(10),
+  intro_chg_bk_number            VARCHAR2(30),
+  intro_chg_bk_name              VARCHAR2(90),
+  intro_chg_branch_number        VARCHAR2(25),
+  intro_chg_branch_name          VARCHAR2(90),
+  intro_chg_bk_acct_type         VARCHAR2(90),
+  intro_chg_bk_acct_number       VARCHAR2(90),
+  intro_chg_bk_acct_name_alt     VARCHAR2(150),
+  intro_chg_bk_acct_name         VARCHAR2(320),
+  electric_preamble              VARCHAR2(1650),
+  electric_amt                   NUMBER,
+  electric_closing_date          VARCHAR2(2),
+  electric_trans_month           VARCHAR2(6),
+  electric_trans_date            VARCHAR2(2),
+  electric_trans_name            VARCHAR2(480),
+  electric_trans_name_alt        VARCHAR2(320),
+  electric_bk_chg_bearer         VARCHAR2(10),
+  electric_bk_number             VARCHAR2(30),
+  electric_bk_name               VARCHAR2(90),
+  electric_branch_number         VARCHAR2(25),
+  electric_branch_name           VARCHAR2(90),
+  electric_bk_acct_type          VARCHAR2(90),
+  electric_bk_acct_number        VARCHAR2(90),
+  electric_bk_acct_name_alt      VARCHAR2(150),
+  electric_bk_acct_name          VARCHAR2(320),
+  install_supp_org_addr          VARCHAR2(660),
+  install_supp_org_name          VARCHAR2(60),
+  install_supp_org_boss_pos      VARCHAR2(150),
+  install_supp_org_boss          VARCHAR2(301),
+  intro_chg_org_addr             VARCHAR2(660),
+  intro_chg_org_name             VARCHAR2(60),
+  intro_chg_org_boss_pos         VARCHAR2(150),
+  intro_chg_org_boss             VARCHAR2(301),
+  electric_org_addr              VARCHAR2(660),
+  electric_org_name              VARCHAR2(60),
+  electric_org_boss_pos          VARCHAR2(150),
+  electric_org_boss              VARCHAR2(301),
+  created_by                     NUMBER(15,0)        NOT NULL,
+  creation_date                  DATE                NOT NULL,
+  last_updated_by                NUMBER(15,0)        NOT NULL,
+  last_update_date               DATE                NOT NULL,
+  last_update_login              NUMBER(15,0),
+  request_id                     NUMBER(15,0),
+  program_application_id         NUMBER(15,0),
+  program_id                     NUMBER(15,0),
+  program_update_date            DATE
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_rep_memorandum IS '覚書帳票ワークテーブルテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.contract_number               IS '契約書番号';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.contract_other_custs_id       IS '契約先以外ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.contract_name                 IS '契約者名';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.contract_effect_date          IS '契約書発効日';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_name                  IS '設置先名';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_address               IS '設置先住所';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.tax_type_name                 IS '税区分名';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_preamble         IS '前文（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_amt              IS '設置協賛金';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_payment_date     IS '支払期日（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_bk_chg_bearer    IS '振込手数料負担（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_bk_number        IS '銀行番号（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_bk_name          IS '金融機関名（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_branch_number    IS '支店番号（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_branch_name      IS '支店名（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_bk_acct_type     IS '口座種別（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_bk_acct_number   IS '口座番号（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_bk_acct_name_alt IS '口座名義カナ（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_bk_acct_name     IS '口座名義漢字（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_preamble            IS '前文（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_amt                 IS '紹介手数料';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_payment_date        IS '支払期日（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_closing_date        IS '締日（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_trans_month         IS '振込月（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_trans_date          IS '振込日（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_trans_name          IS '契約先以外名（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_trans_name_alt      IS '契約先以外名カナ（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_bk_chg_bearer       IS '振込手数料負担（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_bk_number           IS '銀行番号（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_bk_name             IS '金融機関名（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_branch_number       IS '支店番号（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_branch_name         IS '支店名（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_bk_acct_type        IS '口座種別（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_bk_acct_number      IS '口座番号（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_bk_acct_name_alt    IS '口座名義カナ（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_bk_acct_name        IS '口座名義漢字（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_preamble             IS '前文（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_amt                  IS '電気代';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_closing_date         IS '締日（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_trans_month          IS '振込月（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_trans_date           IS '振込日（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_trans_name           IS '契約先以外名（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_trans_name_alt       IS '契約先以外名カナ（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_bk_chg_bearer        IS '振込手数料負担（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_bk_number            IS '銀行番号（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_bk_name              IS '金融機関名（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_branch_number        IS '支店番号（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_branch_name          IS '支店名（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_bk_acct_type         IS '口座種別（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_bk_acct_number       IS '口座番号（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_bk_acct_name_alt     IS '口座名義カナ（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_bk_acct_name         IS '口座名義漢字（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_org_addr         IS '発行元所属住所（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_org_name         IS '発行元所属名（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_org_boss_pos     IS '発行元所属長職位名（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.install_supp_org_boss         IS '発行元所属長名（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_org_addr            IS '発行元所属住所（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_org_name            IS '発行元所属名（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_org_boss_pos        IS '発行元所属長職位名（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.intro_chg_org_boss            IS '発行元所属長名（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_org_addr             IS '発行元所属住所（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_org_name             IS '発行元所属名（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_org_boss_pos         IS '発行元所属長職位名（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.electric_org_boss             IS '発行元所属長名（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.created_by                    IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.creation_date                 IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.last_updated_by               IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.last_update_date              IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.last_update_login             IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.request_id                    IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.program_application_id        IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.program_id                    IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_rep_memorandum.program_update_date           IS 'プログラム更新日';
