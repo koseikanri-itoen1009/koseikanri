@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractCreateInitVOImpl
 * 概要説明   : 新規作成時契約管理初期情報取得ビュー行オブジェクトクラス
-* バージョン : 1.0
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-01-27 1.0  SCS小川浩    新規作成
 * 2009-02-16 1.1  SCS柳平直人  [CT1-008]BM指定チェックボックス不正対応
 * 2009-02-17 1.1  SCS柳平直人  [CT1-012]設置先名取得誤りを修正
+* 2015-02-02 1.2  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -52,7 +53,9 @@ public class XxcsoContractCreateInitVORowImpl extends OAViewRowImpl
   protected static final int BASELEADERNAME = 22;
   protected static final int CONTRACTYEARDATE = 23;
   protected static final int BASELEADERPOSITIONNAME = 24;
-  protected static final int OTHERCONTENT = 25;
+  protected static final int INSTSUPPTYPE = 25;
+  protected static final int INTROCHGTYPE = 26;
+  protected static final int ELECTRICPAYMENTTYPE = 27;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -170,8 +173,12 @@ public class XxcsoContractCreateInitVORowImpl extends OAViewRowImpl
         return getContractYearDate();
       case BASELEADERPOSITIONNAME:
         return getBaseLeaderPositionName();
-      case OTHERCONTENT:
-        return getOtherContent();
+      case INSTSUPPTYPE:
+        return getInstSuppType();
+      case INTROCHGTYPE:
+        return getIntroChgType();
+      case ELECTRICPAYMENTTYPE:
+        return getElectricPaymentType();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -257,8 +264,14 @@ public class XxcsoContractCreateInitVORowImpl extends OAViewRowImpl
       case BASELEADERPOSITIONNAME:
         setBaseLeaderPositionName((String)value);
         return;
-      case OTHERCONTENT:
-        setOtherContent((String)value);
+      case INSTSUPPTYPE:
+        setInstSuppType((String)value);
+        return;
+      case INTROCHGTYPE:
+        setIntroChgType((String)value);
+        return;
+      case ELECTRICPAYMENTTYPE:
+        setElectricPaymentType((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -576,23 +589,7 @@ public class XxcsoContractCreateInitVORowImpl extends OAViewRowImpl
     setAttributeInternal(BASELEADERPOSITIONNAME, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute OtherContent
-   */
-  public String getOtherContent()
-  {
-    return (String)getAttributeInternal(OTHERCONTENT);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute OtherContent
-   */
-  public void setOtherContent(String value)
-  {
-    setAttributeInternal(OTHERCONTENT, value);
-  }
 
   /**
    * 
@@ -700,5 +697,59 @@ public class XxcsoContractCreateInitVORowImpl extends OAViewRowImpl
   public void setContractYearDate(Number value)
   {
     setAttributeInternal(CONTRACTYEARDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstSuppType
+   */
+  public String getInstSuppType()
+  {
+    return (String)getAttributeInternal(INSTSUPPTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstSuppType
+   */
+  public void setInstSuppType(String value)
+  {
+    setAttributeInternal(INSTSUPPTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgType
+   */
+  public String getIntroChgType()
+  {
+    return (String)getAttributeInternal(INTROCHGTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgType
+   */
+  public void setIntroChgType(String value)
+  {
+    setAttributeInternal(INTROCHGTYPE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentType
+   */
+  public String getElectricPaymentType()
+  {
+    return (String)getAttributeInternal(ELECTRICPAYMENTTYPE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentType
+   */
+  public void setElectricPaymentType(String value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTTYPE, value);
   }
 }
