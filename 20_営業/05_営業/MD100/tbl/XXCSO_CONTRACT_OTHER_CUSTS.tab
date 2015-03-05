@@ -1,0 +1,85 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * TABLE Name     : xxcso_contract_other_custs
+ * Description    : 契約先以外テーブル
+ * Version        : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2015/02/18    1.0   S.Yamashita      新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcso.xxcso_contract_other_custs
+(
+     contract_other_custs_id        NUMBER        NOT NULL,
+     install_supp_bk_chg_bearer     VARCHAR2(1),
+     install_supp_bk_number         VARCHAR2(30),
+     install_supp_branch_number     VARCHAR2(25),
+     install_supp_bk_acct_type      VARCHAR2(25),
+     install_supp_bk_acct_number    VARCHAR2(30),
+     install_supp_bk_acct_name_alt  VARCHAR2(150),
+     install_supp_bk_acct_name      VARCHAR2(240),
+     intro_chg_bk_chg_bearer        VARCHAR2(1),
+     intro_chg_bk_number            VARCHAR2(30),
+     intro_chg_branch_number        VARCHAR2(25),
+     intro_chg_bk_acct_type         VARCHAR2(25),
+     intro_chg_bk_acct_number       VARCHAR2(30),
+     intro_chg_bk_acct_name_alt     VARCHAR2(150),
+     intro_chg_bk_acct_name         VARCHAR2(240),
+     electric_bk_chg_bearer         VARCHAR2(1),
+     electric_bk_number             VARCHAR2(30),
+     electric_branch_number         VARCHAR2(25),
+     electric_bk_acct_type          VARCHAR2(25),
+     electric_bk_acct_number        VARCHAR2(30),
+     electric_bk_acct_name_alt      VARCHAR2(150),
+     electric_bk_acct_name          VARCHAR2(240),
+     created_by                     NUMBER(15)    NOT NULL,
+     creation_date                  DATE          NOT NULL,
+     last_updated_by                NUMBER(15)    NOT NULL,
+     last_update_date               DATE          NOT NULL,
+     last_update_login              NUMBER(15),
+     request_id                     NUMBER(15),
+     program_application_id         NUMBER(15),
+     program_id                     NUMBER(15),
+     program_update_date            DATE,
+  CONSTRAINT xxcso_contract_other_custs_pk PRIMARY KEY ( contract_other_custs_id )
+  USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 20 PCTUSED 40 INITRANS 16 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_contract_other_custs IS '契約先以外テーブル';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.contract_other_custs_id             IS '契約先以外ID';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.install_supp_bk_chg_bearer          IS '振込手数料負担（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.install_supp_bk_number              IS '銀行番号（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.install_supp_branch_number          IS '支店番号（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.install_supp_bk_acct_type           IS '口座種別（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.install_supp_bk_acct_number         IS '口座番号（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.install_supp_bk_acct_name_alt       IS '口座名義カナ（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.install_supp_bk_acct_name           IS '口座名義漢字（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.intro_chg_bk_chg_bearer             IS '振込手数料負担（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.intro_chg_bk_number                 IS '銀行番号（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.intro_chg_branch_number             IS '支店番号（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.intro_chg_bk_acct_type              IS '口座種別（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.intro_chg_bk_acct_number            IS '口座番号（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.intro_chg_bk_acct_name_alt          IS '口座名義カナ（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.intro_chg_bk_acct_name              IS '口座名義漢字（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.electric_bk_chg_bearer              IS '振込手数料負担（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.electric_bk_number                  IS '銀行番号（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.electric_branch_number              IS '支店番号（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.electric_bk_acct_type               IS '口座種別（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.electric_bk_acct_number             IS '口座番号（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.electric_bk_acct_name_alt           IS '口座名義カナ（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.electric_bk_acct_name               IS '口座名義漢字（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.created_by                          IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.creation_date                       IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.last_updated_by                     IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.last_update_date                    IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.last_update_login                   IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.request_id                          IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.program_application_id              IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.program_id                          IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_contract_other_custs.program_update_date                 IS 'プログラム更新日';
