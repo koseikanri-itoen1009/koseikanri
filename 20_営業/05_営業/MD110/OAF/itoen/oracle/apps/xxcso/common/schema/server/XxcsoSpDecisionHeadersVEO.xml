@@ -15,7 +15,7 @@
    CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_superClass" Value="oracle.apps.fnd.framework.server.OAPlsqlEntityImpl" />
       <AttrArray Name="_publishEvents">
       </AttrArray>
@@ -688,6 +688,483 @@
          <Attr Name="_DisplaySize" Value="7" />
       </DesignTime>
    </Attribute>
+   <Attribute
+      Name="ContractYearMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONTRACT_YEAR_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ContractStartYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONTRACT_START_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ContractStartMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONTRACT_START_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ContractEndYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONTRACT_END_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ContractEndMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONTRACT_END_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="BiddingItem"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="BIDDING_ITEM"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CancellBeforeMaturity"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="CANCELL_BEFORE_MATURITY"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AdAssetsType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="AD_ASSETS_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AdAssetsAmt"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="AD_ASSETS_AMT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AdAssetsThisTime"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="AD_ASSETS_THIS_TIME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AdAssetsPaymentYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="AD_ASSETS_PAYMENT_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="AdAssetsPaymentDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="AD_ASSETS_PAYMENT_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="TaxType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="TAX_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppPaymentType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_PAYMENT_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppAmt"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_AMT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppThisTime"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_THIS_TIME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppPaymentYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_PAYMENT_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppPaymentDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="INSTALL_SUPP_PAYMENT_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricPaymentType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_PAYMENT_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricPaymentChangeType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_PAYMENT_CHANGE_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricPaymentCycle"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_PAYMENT_CYCLE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricClosingDate"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_CLOSING_DATE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricTransMonth"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_TRANS_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricTransDate"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_TRANS_DATE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricTransName"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_TRANS_NAME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricTransNameAlt"
+      Precision="320"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_TRANS_NAME_ALT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="320" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgPaymentType"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_PAYMENT_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgAmt"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_AMT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgThisTime"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_THIS_TIME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgPaymentYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_PAYMENT_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgPaymentDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="INTRO_CHG_PAYMENT_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgPerSalesPrice"
+      Precision="23"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_PER_SALES_PRICE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgPerPiece"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_PER_PIECE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgClosingDate"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_CLOSING_DATE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgTransMonth"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_TRANS_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgTransDate"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_TRANS_DATE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgTransName"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_TRANS_NAME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgTransNameAlt"
+      Precision="320"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_TRANS_NAME_ALT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="320" />
+      </DesignTime>
+   </Attribute>
    <AccessorAttribute
       Name="XxcsoSpDecisionAttachesEO"
       Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderAttachAO"
@@ -720,4 +1197,14 @@
       Type="oracle.jbo.RowIterator"
       IsUpdateable="false" >
    </AccessorAttribute>
+   <Key
+      Name="XxcsospdecisionheadersveoPrimaryKey" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionHeadersVEO.SpDecisionHeaderId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSOSPDECISIONHEADERSVEO_PRIM" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
 </Entity>
