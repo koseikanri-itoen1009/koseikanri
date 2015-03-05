@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoContractManagementFullVORowImpl
 * 概要説明   : 契約管理テーブル情報ビュー行オブジェクトクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS小川浩    新規作成
+* 2015-02-02 1.1  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -69,11 +70,11 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
   protected static final int LOCATIONADDRESS = 40;
   protected static final int BASELEADERNAME = 41;
   protected static final int SPDECISIONNUMBER = 42;
-  protected static final int OTHERCONTENT = 43;
-  protected static final int CONTRACTYEARDATE = 44;
-  protected static final int BASELEADERPOSITIONNAME = 45;
-  protected static final int INSTANCEID = 46;
-  protected static final int LATESTCONTRACTNUMBER = 47;
+  protected static final int CONTRACTYEARDATE = 43;
+  protected static final int BASELEADERPOSITIONNAME = 44;
+  protected static final int INSTANCEID = 45;
+  protected static final int LATESTCONTRACTNUMBER = 46;
+  protected static final int CONTRACTOTHERCUSTSID = 47;
   protected static final int XXCSOBM1DESTINATIONFULLVO = 48;
   protected static final int XXCSOBM2DESTINATIONFULLVO = 49;
   protected static final int XXCSOBM3DESTINATIONFULLVO = 50;
@@ -744,272 +745,6 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
   }
   //  Generated method. Do not modify.
 
-  protected Object getAttrInvokeAccessor(int index, AttributeDefImpl attrDef) throws Exception
-  {
-    switch (index)
-      {
-      case CONTRACTMANAGEMENTID:
-        return getContractManagementId();
-      case CONTRACTNUMBER:
-        return getContractNumber();
-      case CONTRACTFORMAT:
-        return getContractFormat();
-      case STATUS:
-        return getStatus();
-      case EMPLOYEENUMBER:
-        return getEmployeeNumber();
-      case SPDECISIONHEADERID:
-        return getSpDecisionHeaderId();
-      case CONTRACTEFFECTDATE:
-        return getContractEffectDate();
-      case TRANSFERMONTHCODE:
-        return getTransferMonthCode();
-      case TRANSFERDAYCODE:
-        return getTransferDayCode();
-      case CLOSEDAYCODE:
-        return getCloseDayCode();
-      case CONTRACTPERIOD:
-        return getContractPeriod();
-      case CANCELLATIONOFFERCODE:
-        return getCancellationOfferCode();
-      case CONTRACTCUSTOMERID:
-        return getContractCustomerId();
-      case INSTALLACCOUNTID:
-        return getInstallAccountId();
-      case INSTALLACCOUNTNUMBER:
-        return getInstallAccountNumber();
-      case INSTALLPARTYNAME:
-        return getInstallPartyName();
-      case INSTALLPOSTALCODE:
-        return getInstallPostalCode();
-      case INSTALLSTATE:
-        return getInstallState();
-      case INSTALLCITY:
-        return getInstallCity();
-      case INSTALLADDRESS1:
-        return getInstallAddress1();
-      case INSTALLADDRESS2:
-        return getInstallAddress2();
-      case INSTALLDATE:
-        return getInstallDate();
-      case INSTALLLOCATION:
-        return getInstallLocation();
-      case PUBLISHDEPTCODE:
-        return getPublishDeptCode();
-      case INSTALLCODE:
-        return getInstallCode();
-      case COOPERATEFLAG:
-        return getCooperateFlag();
-      case BATCHPROCSTATUS:
-        return getBatchProcStatus();
-      case CREATEDBY:
-        return getCreatedBy();
-      case CREATIONDATE:
-        return getCreationDate();
-      case LASTUPDATEDBY:
-        return getLastUpdatedBy();
-      case LASTUPDATEDATE:
-        return getLastUpdateDate();
-      case LASTUPDATELOGIN:
-        return getLastUpdateLogin();
-      case REQUESTID:
-        return getRequestId();
-      case PROGRAMAPPLICATIONID:
-        return getProgramApplicationId();
-      case PROGRAMID:
-        return getProgramId();
-      case PROGRAMUPDATEDATE:
-        return getProgramUpdateDate();
-      case FULLNAME:
-        return getFullName();
-      case BASECODE:
-        return getBaseCode();
-      case BASENAME:
-        return getBaseName();
-      case PUBLISHDEPTNAME:
-        return getPublishDeptName();
-      case LOCATIONADDRESS:
-        return getLocationAddress();
-      case BASELEADERNAME:
-        return getBaseLeaderName();
-      case SPDECISIONNUMBER:
-        return getSpDecisionNumber();
-      case OTHERCONTENT:
-        return getOtherContent();
-      case CONTRACTYEARDATE:
-        return getContractYearDate();
-      case BASELEADERPOSITIONNAME:
-        return getBaseLeaderPositionName();
-      case INSTANCEID:
-        return getInstanceId();
-      case LATESTCONTRACTNUMBER:
-        return getLatestContractNumber();
-      case XXCSOBM1DESTINATIONFULLVO:
-        return getXxcsoBm1DestinationFullVO();
-      case XXCSOBM2DESTINATIONFULLVO:
-        return getXxcsoBm2DestinationFullVO();
-      case XXCSOBM3DESTINATIONFULLVO:
-        return getXxcsoBm3DestinationFullVO();
-      default:
-        return super.getAttrInvokeAccessor(index, attrDef);
-      }
-  }
-  //  Generated method. Do not modify.
-
-  protected void setAttrInvokeAccessor(int index, Object value, AttributeDefImpl attrDef) throws Exception
-  {
-    switch (index)
-      {
-      case CONTRACTMANAGEMENTID:
-        setContractManagementId((Number)value);
-        return;
-      case CONTRACTNUMBER:
-        setContractNumber((String)value);
-        return;
-      case CONTRACTFORMAT:
-        setContractFormat((String)value);
-        return;
-      case STATUS:
-        setStatus((String)value);
-        return;
-      case EMPLOYEENUMBER:
-        setEmployeeNumber((String)value);
-        return;
-      case SPDECISIONHEADERID:
-        setSpDecisionHeaderId((Number)value);
-        return;
-      case CONTRACTEFFECTDATE:
-        setContractEffectDate((Date)value);
-        return;
-      case TRANSFERMONTHCODE:
-        setTransferMonthCode((String)value);
-        return;
-      case TRANSFERDAYCODE:
-        setTransferDayCode((String)value);
-        return;
-      case CLOSEDAYCODE:
-        setCloseDayCode((String)value);
-        return;
-      case CONTRACTPERIOD:
-        setContractPeriod((Number)value);
-        return;
-      case CANCELLATIONOFFERCODE:
-        setCancellationOfferCode((String)value);
-        return;
-      case CONTRACTCUSTOMERID:
-        setContractCustomerId((Number)value);
-        return;
-      case INSTALLACCOUNTID:
-        setInstallAccountId((Number)value);
-        return;
-      case INSTALLACCOUNTNUMBER:
-        setInstallAccountNumber((String)value);
-        return;
-      case INSTALLPARTYNAME:
-        setInstallPartyName((String)value);
-        return;
-      case INSTALLPOSTALCODE:
-        setInstallPostalCode((String)value);
-        return;
-      case INSTALLSTATE:
-        setInstallState((String)value);
-        return;
-      case INSTALLCITY:
-        setInstallCity((String)value);
-        return;
-      case INSTALLADDRESS1:
-        setInstallAddress1((String)value);
-        return;
-      case INSTALLADDRESS2:
-        setInstallAddress2((String)value);
-        return;
-      case INSTALLDATE:
-        setInstallDate((Date)value);
-        return;
-      case INSTALLLOCATION:
-        setInstallLocation((String)value);
-        return;
-      case PUBLISHDEPTCODE:
-        setPublishDeptCode((String)value);
-        return;
-      case INSTALLCODE:
-        setInstallCode((String)value);
-        return;
-      case COOPERATEFLAG:
-        setCooperateFlag((String)value);
-        return;
-      case BATCHPROCSTATUS:
-        setBatchProcStatus((String)value);
-        return;
-      case CREATEDBY:
-        setCreatedBy((Number)value);
-        return;
-      case CREATIONDATE:
-        setCreationDate((Date)value);
-        return;
-      case LASTUPDATEDBY:
-        setLastUpdatedBy((Number)value);
-        return;
-      case LASTUPDATEDATE:
-        setLastUpdateDate((Date)value);
-        return;
-      case LASTUPDATELOGIN:
-        setLastUpdateLogin((Number)value);
-        return;
-      case REQUESTID:
-        setRequestId((Number)value);
-        return;
-      case PROGRAMAPPLICATIONID:
-        setProgramApplicationId((Number)value);
-        return;
-      case PROGRAMID:
-        setProgramId((Number)value);
-        return;
-      case PROGRAMUPDATEDATE:
-        setProgramUpdateDate((Date)value);
-        return;
-      case FULLNAME:
-        setFullName((String)value);
-        return;
-      case BASECODE:
-        setBaseCode((String)value);
-        return;
-      case BASENAME:
-        setBaseName((String)value);
-        return;
-      case PUBLISHDEPTNAME:
-        setPublishDeptName((String)value);
-        return;
-      case LOCATIONADDRESS:
-        setLocationAddress((String)value);
-        return;
-      case BASELEADERNAME:
-        setBaseLeaderName((String)value);
-        return;
-      case SPDECISIONNUMBER:
-        setSpDecisionNumber((String)value);
-        return;
-      case OTHERCONTENT:
-        setOtherContent((String)value);
-        return;
-      case CONTRACTYEARDATE:
-        setContractYearDate((Number)value);
-        return;
-      case BASELEADERPOSITIONNAME:
-        setBaseLeaderPositionName((String)value);
-        return;
-      case INSTANCEID:
-        setInstanceId((Number)value);
-        return;
-      case LATESTCONTRACTNUMBER:
-        setLatestContractNumber((String)value);
-        return;
-      default:
-        super.setAttrInvokeAccessor(index, value, attrDef);
-        return;
-      }
-  }
-
   /**
    * 
    * Gets the associated <code>RowIterator</code> using master-detail link XxcsoBm1DestinationFullVO
@@ -1174,23 +909,7 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
     setAttributeInternal(SPDECISIONNUMBER, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute OtherContent
-   */
-  public String getOtherContent()
-  {
-    return (String)getAttributeInternal(OTHERCONTENT);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute OtherContent
-   */
-  public void setOtherContent(String value)
-  {
-    setAttributeInternal(OTHERCONTENT, value);
-  }
 
   /**
    * 
@@ -1264,6 +983,288 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
     setAttributeInternal(LATESTCONTRACTNUMBER, value);
   }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractOtherCustsId
+   */
+  public Number getContractOtherCustsId()
+  {
+    return (Number)getAttributeInternal(CONTRACTOTHERCUSTSID);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractOtherCustsId
+   */
+  public void setContractOtherCustsId(Number value)
+  {
+    setAttributeInternal(CONTRACTOTHERCUSTSID, value);
+  }
+
+  protected Object getAttrInvokeAccessor(int index, AttributeDefImpl attrDef) throws Exception
+  {
+    switch (index)
+      {
+      case CONTRACTMANAGEMENTID:
+        return getContractManagementId();
+      case CONTRACTNUMBER:
+        return getContractNumber();
+      case CONTRACTFORMAT:
+        return getContractFormat();
+      case STATUS:
+        return getStatus();
+      case EMPLOYEENUMBER:
+        return getEmployeeNumber();
+      case SPDECISIONHEADERID:
+        return getSpDecisionHeaderId();
+      case CONTRACTEFFECTDATE:
+        return getContractEffectDate();
+      case TRANSFERMONTHCODE:
+        return getTransferMonthCode();
+      case TRANSFERDAYCODE:
+        return getTransferDayCode();
+      case CLOSEDAYCODE:
+        return getCloseDayCode();
+      case CONTRACTPERIOD:
+        return getContractPeriod();
+      case CANCELLATIONOFFERCODE:
+        return getCancellationOfferCode();
+      case CONTRACTCUSTOMERID:
+        return getContractCustomerId();
+      case INSTALLACCOUNTID:
+        return getInstallAccountId();
+      case INSTALLACCOUNTNUMBER:
+        return getInstallAccountNumber();
+      case INSTALLPARTYNAME:
+        return getInstallPartyName();
+      case INSTALLPOSTALCODE:
+        return getInstallPostalCode();
+      case INSTALLSTATE:
+        return getInstallState();
+      case INSTALLCITY:
+        return getInstallCity();
+      case INSTALLADDRESS1:
+        return getInstallAddress1();
+      case INSTALLADDRESS2:
+        return getInstallAddress2();
+      case INSTALLDATE:
+        return getInstallDate();
+      case INSTALLLOCATION:
+        return getInstallLocation();
+      case PUBLISHDEPTCODE:
+        return getPublishDeptCode();
+      case INSTALLCODE:
+        return getInstallCode();
+      case COOPERATEFLAG:
+        return getCooperateFlag();
+      case BATCHPROCSTATUS:
+        return getBatchProcStatus();
+      case CREATEDBY:
+        return getCreatedBy();
+      case CREATIONDATE:
+        return getCreationDate();
+      case LASTUPDATEDBY:
+        return getLastUpdatedBy();
+      case LASTUPDATEDATE:
+        return getLastUpdateDate();
+      case LASTUPDATELOGIN:
+        return getLastUpdateLogin();
+      case REQUESTID:
+        return getRequestId();
+      case PROGRAMAPPLICATIONID:
+        return getProgramApplicationId();
+      case PROGRAMID:
+        return getProgramId();
+      case PROGRAMUPDATEDATE:
+        return getProgramUpdateDate();
+      case FULLNAME:
+        return getFullName();
+      case BASECODE:
+        return getBaseCode();
+      case BASENAME:
+        return getBaseName();
+      case PUBLISHDEPTNAME:
+        return getPublishDeptName();
+      case LOCATIONADDRESS:
+        return getLocationAddress();
+      case BASELEADERNAME:
+        return getBaseLeaderName();
+      case SPDECISIONNUMBER:
+        return getSpDecisionNumber();
+      case CONTRACTYEARDATE:
+        return getContractYearDate();
+      case BASELEADERPOSITIONNAME:
+        return getBaseLeaderPositionName();
+      case INSTANCEID:
+        return getInstanceId();
+      case LATESTCONTRACTNUMBER:
+        return getLatestContractNumber();
+      case CONTRACTOTHERCUSTSID:
+        return getContractOtherCustsId();
+      case XXCSOBM1DESTINATIONFULLVO:
+        return getXxcsoBm1DestinationFullVO();
+      case XXCSOBM2DESTINATIONFULLVO:
+        return getXxcsoBm2DestinationFullVO();
+      case XXCSOBM3DESTINATIONFULLVO:
+        return getXxcsoBm3DestinationFullVO();
+      default:
+        return super.getAttrInvokeAccessor(index, attrDef);
+      }
+  }
+  //  Generated method. Do not modify.
+
+  protected void setAttrInvokeAccessor(int index, Object value, AttributeDefImpl attrDef) throws Exception
+  {
+    switch (index)
+      {
+      case CONTRACTMANAGEMENTID:
+        setContractManagementId((Number)value);
+        return;
+      case CONTRACTNUMBER:
+        setContractNumber((String)value);
+        return;
+      case CONTRACTFORMAT:
+        setContractFormat((String)value);
+        return;
+      case STATUS:
+        setStatus((String)value);
+        return;
+      case EMPLOYEENUMBER:
+        setEmployeeNumber((String)value);
+        return;
+      case SPDECISIONHEADERID:
+        setSpDecisionHeaderId((Number)value);
+        return;
+      case CONTRACTEFFECTDATE:
+        setContractEffectDate((Date)value);
+        return;
+      case TRANSFERMONTHCODE:
+        setTransferMonthCode((String)value);
+        return;
+      case TRANSFERDAYCODE:
+        setTransferDayCode((String)value);
+        return;
+      case CLOSEDAYCODE:
+        setCloseDayCode((String)value);
+        return;
+      case CONTRACTPERIOD:
+        setContractPeriod((Number)value);
+        return;
+      case CANCELLATIONOFFERCODE:
+        setCancellationOfferCode((String)value);
+        return;
+      case CONTRACTCUSTOMERID:
+        setContractCustomerId((Number)value);
+        return;
+      case INSTALLACCOUNTID:
+        setInstallAccountId((Number)value);
+        return;
+      case INSTALLACCOUNTNUMBER:
+        setInstallAccountNumber((String)value);
+        return;
+      case INSTALLPARTYNAME:
+        setInstallPartyName((String)value);
+        return;
+      case INSTALLPOSTALCODE:
+        setInstallPostalCode((String)value);
+        return;
+      case INSTALLSTATE:
+        setInstallState((String)value);
+        return;
+      case INSTALLCITY:
+        setInstallCity((String)value);
+        return;
+      case INSTALLADDRESS1:
+        setInstallAddress1((String)value);
+        return;
+      case INSTALLADDRESS2:
+        setInstallAddress2((String)value);
+        return;
+      case INSTALLDATE:
+        setInstallDate((Date)value);
+        return;
+      case INSTALLLOCATION:
+        setInstallLocation((String)value);
+        return;
+      case PUBLISHDEPTCODE:
+        setPublishDeptCode((String)value);
+        return;
+      case INSTALLCODE:
+        setInstallCode((String)value);
+        return;
+      case COOPERATEFLAG:
+        setCooperateFlag((String)value);
+        return;
+      case BATCHPROCSTATUS:
+        setBatchProcStatus((String)value);
+        return;
+      case CREATEDBY:
+        setCreatedBy((Number)value);
+        return;
+      case CREATIONDATE:
+        setCreationDate((Date)value);
+        return;
+      case LASTUPDATEDBY:
+        setLastUpdatedBy((Number)value);
+        return;
+      case LASTUPDATEDATE:
+        setLastUpdateDate((Date)value);
+        return;
+      case LASTUPDATELOGIN:
+        setLastUpdateLogin((Number)value);
+        return;
+      case REQUESTID:
+        setRequestId((Number)value);
+        return;
+      case PROGRAMAPPLICATIONID:
+        setProgramApplicationId((Number)value);
+        return;
+      case PROGRAMID:
+        setProgramId((Number)value);
+        return;
+      case PROGRAMUPDATEDATE:
+        setProgramUpdateDate((Date)value);
+        return;
+      case FULLNAME:
+        setFullName((String)value);
+        return;
+      case BASECODE:
+        setBaseCode((String)value);
+        return;
+      case BASENAME:
+        setBaseName((String)value);
+        return;
+      case PUBLISHDEPTNAME:
+        setPublishDeptName((String)value);
+        return;
+      case LOCATIONADDRESS:
+        setLocationAddress((String)value);
+        return;
+      case BASELEADERNAME:
+        setBaseLeaderName((String)value);
+        return;
+      case SPDECISIONNUMBER:
+        setSpDecisionNumber((String)value);
+        return;
+      case CONTRACTYEARDATE:
+        setContractYearDate((Number)value);
+        return;
+      case BASELEADERPOSITIONNAME:
+        setBaseLeaderPositionName((String)value);
+        return;
+      case INSTANCEID:
+        setInstanceId((Number)value);
+        return;
+      case LATESTCONTRACTNUMBER:
+        setLatestContractNumber((String)value);
+        return;
+      case CONTRACTOTHERCUSTSID:
+        setContractOtherCustsId((Number)value);
+        return;
+      default:
+        super.setAttrInvokeAccessor(index, value, attrDef);
+        return;
+      }
+  }
 
 }
