@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(SPEC)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  chk_account_many          P    -     アカウント複数チェック
  *  chk_cust_site_uses        P    -     顧客使用目的チェック
  *  chk_validate_db           P    -     ＤＢ更新判定チェック
+ *  get_contract_end_period   F    V     契約終了期間取得
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -53,6 +54,7 @@ AS
  *  2010/01/12    1.4   D.Abe            [E_本稼動_00823]顧客マスタの整合性チェック対応
  *  2010/01/15    1.5   D.Abe            [E_本稼動_00950]ＤＢ更新判定チェック対応
  *  2010/03/01    1.6   D.Abe            [E_本稼動_01678]現金支払対応
+ *  2014/12/15    1.7   K.Kiriu          [E_本稼動_12565]SP・契約書画面改修対応
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -262,9 +264,11 @@ AS
   PROCEDURE conv_number_separate(
     iv_sele_number                 IN  VARCHAR2
    ,iv_contract_year_date          IN  VARCHAR2
-   ,iv_install_support_amt         IN  VARCHAR2
-   ,iv_install_support_amt2        IN  VARCHAR2
-   ,iv_payment_cycle               IN  VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Del Start
+--   ,iv_install_support_amt         IN  VARCHAR2
+--   ,iv_install_support_amt2        IN  VARCHAR2
+--   ,iv_payment_cycle               IN  VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Del End
    ,iv_electricity_amount          IN  VARCHAR2
    ,iv_sales_month                 IN  VARCHAR2
    ,iv_bm_rate                     IN  VARCHAR2
@@ -272,11 +276,29 @@ AS
    ,iv_lease_charge_month          IN  VARCHAR2
    ,iv_contruction_charge          IN  VARCHAR2
    ,iv_electricity_amt_month       IN  VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Add Start
+   ,iv_contract_year_month         IN  VARCHAR2
+   ,iv_contract_start_month        IN  VARCHAR2
+   ,iv_contract_end_month          IN  VARCHAR2
+   ,iv_ad_assets_amt               IN  VARCHAR2
+   ,iv_ad_assets_this_time         IN  VARCHAR2
+   ,iv_ad_assets_payment_year      IN  VARCHAR2
+   ,iv_install_supp_amt            IN  VARCHAR2
+   ,iv_install_supp_this_time      IN  VARCHAR2
+   ,iv_install_supp_payment_year   IN  VARCHAR2
+   ,iv_intro_chg_amt               IN  VARCHAR2
+   ,iv_intro_chg_this_time         IN  VARCHAR2
+   ,iv_intro_chg_payment_year      IN  VARCHAR2
+   ,iv_intro_chg_per_sales_price   IN  VARCHAR2
+   ,iv_intro_chg_per_piece         IN  VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Add End
    ,ov_sele_number                 OUT VARCHAR2
    ,ov_contract_year_date          OUT VARCHAR2
-   ,ov_install_support_amt         OUT VARCHAR2
-   ,ov_install_support_amt2        OUT VARCHAR2
-   ,ov_payment_cycle               OUT VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Del Start
+--   ,ov_install_support_amt         OUT VARCHAR2
+--   ,ov_install_support_amt2        OUT VARCHAR2
+--   ,ov_payment_cycle               OUT VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Del End
    ,ov_electricity_amount          OUT VARCHAR2
    ,ov_sales_month                 OUT VARCHAR2
    ,ov_bm_rate                     OUT VARCHAR2
@@ -284,6 +306,22 @@ AS
    ,ov_lease_charge_month          OUT VARCHAR2
    ,ov_contruction_charge          OUT VARCHAR2
    ,ov_electricity_amt_month       OUT VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Add Start
+   ,ov_contract_year_month         OUT VARCHAR2
+   ,ov_contract_start_month        OUT VARCHAR2
+   ,ov_contract_end_month          OUT VARCHAR2
+   ,ov_ad_assets_amt               OUT VARCHAR2
+   ,ov_ad_assets_this_time         OUT VARCHAR2
+   ,ov_ad_assets_payment_year      OUT VARCHAR2
+   ,ov_install_supp_amt            OUT VARCHAR2
+   ,ov_install_supp_this_time      OUT VARCHAR2
+   ,ov_install_supp_payment_year   OUT VARCHAR2
+   ,ov_intro_chg_amt               OUT VARCHAR2
+   ,ov_intro_chg_this_time         OUT VARCHAR2
+   ,ov_intro_chg_payment_year      OUT VARCHAR2
+   ,ov_intro_chg_per_sales_price   OUT VARCHAR2
+   ,ov_intro_chg_per_piece         OUT VARCHAR2
+-- 20141215_K.Kiriu E_本稼動_12565 Add End
   );
 --
   -- 数値セパレート変換（明細）
@@ -355,5 +393,21 @@ AS
   );
 --
 -- 20100115_D.Abe E_本稼動_00950 Mod END
+-- 20141215_K.Kiriu E_本稼動_12565 Add START
+  -- 契約終了期間取得
+  PROCEDURE get_contract_end_period(
+    iv_contract_year_date         IN  VARCHAR2
+   ,iv_contract_year_month        IN  VARCHAR2
+   ,iv_contract_start_year        IN  VARCHAR2
+   ,iv_contract_start_month       IN  VARCHAR2
+   ,iv_contract_end_year          IN  VARCHAR2
+   ,iv_contract_end_month         IN  VARCHAR2
+   ,ov_contract_end               OUT VARCHAR2
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  );
+--
+-- 20141215_K.Kiriu E_本稼動_12565 Add END
 END xxcso_020001j_pkg;
 /
