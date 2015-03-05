@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistConstants
 * 概要説明   : 自販機設置契約情報登録共通固定値クラス
-* バージョン : 1.9
+* バージョン : 2.0
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2011-06-06 1.7  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 * 2012-06-12 1.8  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 * 2013-04-01 1.9  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
+* 2015-02-06 2.0  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -28,7 +29,7 @@ package itoen.oracle.apps.xxcso.xxcso010003j.util;
  * @version 1.1
  *******************************************************************************
  */
-public class XxcsoContractRegistConstants 
+public class XxcsoContractRegistConstants
 {
 
   /*****************************************************************************
@@ -60,6 +61,20 @@ public class XxcsoContractRegistConstants
    ,"Bm3BankNameLayout"
    ,"Bm3BranchNameLayout"
    ,"Bm3BankAccountTypeLayout"
+// 2015-02-06 [E_本稼動_12565] Add Start
+   ,"InstSuppBankTransferFeeDivLayout"
+   ,"InstSuppBankNameLayout"
+   ,"InstSuppBranchNameLayout"
+   ,"InstSuppBankAccountTypeLayout"
+   ,"IntroChgBankTransferFeeDivLayout"
+   ,"IntroChgBankNameLayout"
+   ,"IntroChgBranchNameLayout"
+   ,"IntroChgBankAccountTypeLayout"
+   ,"ElectricBankTransferFeeDivLayout"
+   ,"ElectricBankNameLayout"
+   ,"ElectricBranchNameLayout"
+   ,"ElectricBankAccountTypeLayout"
+// 2015-02-06 [E_本稼動_12565] Add End
    ,"OwnerChangeLayout"
    ,"PublishBaseLayout"
    ,"InstallCodeLayout"
@@ -185,6 +200,29 @@ public class XxcsoContractRegistConstants
   public static final String BM_EXIST_FLAG_ON     = "Y";
   public static final String BM_EXIST_FLAG_OFF    = "N";
 
+// 2015-02-06 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 設置協賛金指定チェックフラグ
+   *****************************************************************************
+   */
+  public static final String INST_SUPP_EXIST_FLAG_ON     = "Y";
+  public static final String INST_SUPP_EXIST_FLAG_OFF    = "N";
+
+  /*****************************************************************************
+   * 紹介手数料指定チェックフラグ
+   *****************************************************************************
+   */
+  public static final String INTRO_CHG_EXIST_FLAG_ON     = "Y";
+  public static final String INTRO_CHG_EXIST_FLAG_OFF    = "N";
+
+  /*****************************************************************************
+   * 電気代指定チェックフラグ
+   *****************************************************************************
+   */
+  public static final String ELECTRIC_EXIST_FLAG_ON     = "Y";
+  public static final String ELECTRIC_EXIST_FLAG_OFF    = "N";
+// 2015-02-06 [E_本稼動_12565] Add End
+
   /*****************************************************************************
    * オーナー変更チェックフラグ
    *****************************************************************************
@@ -215,6 +253,29 @@ public class XxcsoContractRegistConstants
   public static final String BM_PAYMENT_TYPE4         = "4";
 // 2010-03-01 [E_本稼動_01678] Add End
   public static final String BM_PAYMENT_TYPE5         = "5";
+
+// 2015-02-06 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 支払区分（設置協賛金）
+   *****************************************************************************
+   */
+  public static final String INST_SUPP_TYPE0         = "0";
+  public static final String INST_SUPP_TYPE1         = "1";
+
+/*****************************************************************************
+   * 支払区分（紹介手数料）
+   *****************************************************************************
+   */
+  public static final String INTRO_CHG_TYPE0         = "0";
+  public static final String INTRO_CHG_TYPE1         = "1";
+
+/*****************************************************************************
+   * 支払条件（電気代）
+   *****************************************************************************
+   */
+  public static final String ELECTRIC_PAYMENT_TYPE1  = "1";
+  public static final String ELECTRIC_PAYMENT_TYPE2  = "2";
+// 2015-02-06 [E_本稼動_12565] Add End
 
 // 2009-04-08 [ST障害T1_0364] Add Start
   /*****************************************************************************
@@ -249,6 +310,14 @@ public class XxcsoContractRegistConstants
     TOKEN_VALUE_BM2_DEST                = "ＢＭ２指定情報";
   public static final String
     TOKEN_VALUE_BM3_DEST                = "ＢＭ３指定情報";
+// 2015-02-06 [E_本稼動_12565] Add Start
+  public static final String
+    TOKEN_VALUE_INST_SUPP               = "設置協賛金情報";
+  public static final String
+    TOKEN_VALUE_INTRO_CHG               = "紹介手数料情報";
+  public static final String
+    TOKEN_VALUE_ELECTRIC                = "電気代情報";
+// 2015-02-06 [E_本稼動_12565] Add End
   public static final String
     TOKEN_VALUE_INSTALL_INFO            = "設置先情報";
   public static final String
