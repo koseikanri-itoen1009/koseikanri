@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoContractOtherCustFullVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT XxcsoContractOtherCustsEO.contract_other_custs_id, 
+       XxcsoContractOtherCustsEO.install_supp_bk_chg_bearer, 
+       XxcsoContractOtherCustsEO.install_supp_bk_number, 
+       XxcsoContractOtherCustsEO.install_supp_branch_number, 
+       InstSupp.inst_bank_name,
+       InstSupp.inst_bank_branch_name,
+       XxcsoContractOtherCustsEO.install_supp_bk_acct_type, 
+       XxcsoContractOtherCustsEO.install_supp_bk_acct_number, 
+       XxcsoContractOtherCustsEO.install_supp_bk_acct_name_alt, 
+       XxcsoContractOtherCustsEO.install_supp_bk_acct_name, 
+       XxcsoContractOtherCustsEO.intro_chg_bk_chg_bearer, 
+       XxcsoContractOtherCustsEO.intro_chg_bk_number, 
+       XxcsoContractOtherCustsEO.intro_chg_branch_number, 
+       IntroChg.intro_bank_name,
+       IntroChg.intro_bank_branch_name,
+       XxcsoContractOtherCustsEO.intro_chg_bk_acct_type, 
+       XxcsoContractOtherCustsEO.intro_chg_bk_acct_number, 
+       XxcsoContractOtherCustsEO.intro_chg_bk_acct_name_alt, 
+       XxcsoContractOtherCustsEO.intro_chg_bk_acct_name, 
+       XxcsoContractOtherCustsEO.electric_bk_chg_bearer, 
+       XxcsoContractOtherCustsEO.electric_bk_number,
+       XxcsoContractOtherCustsEO.electric_branch_number, 
+       Electric.electric_bank_name,
+       Electric.electric_bank_branch_name,
+       XxcsoContractOtherCustsEO.electric_bk_acct_type, 
+       XxcsoContractOtherCustsEO.electric_bk_acct_number, 
+       XxcsoContractOtherCustsEO.electric_bk_acct_name_alt, 
+       XxcsoContractOtherCustsEO.electric_bk_acct_name, 
+       XxcsoContractOtherCustsEO.created_by, 
+       XxcsoContractOtherCustsEO.creation_date, 
+       XxcsoContractOtherCustsEO.last_updated_by, 
+       XxcsoContractOtherCustsEO.last_update_date, 
+       XxcsoContractOtherCustsEO.last_update_login, 
+       XxcsoContractOtherCustsEO.request_id, 
+       XxcsoContractOtherCustsEO.program_application_id, 
+       XxcsoContractOtherCustsEO.program_id, 
+       XxcsoContractOtherCustsEO.program_update_date
+FROM xxcso_contract_other_custs XxcsoContractOtherCustsEO
+    ,(SELECT xcoc.contract_other_custs_id AS inst_other_cust_id
+            ,abb.bank_name                AS inst_bank_name
+            ,abb.bank_branch_name         AS inst_bank_branch_name
+      FROM   xxcso_contract_other_custs xcoc
+            ,ap_bank_branches abb
+      WHERE  xcoc.install_supp_bk_number = abb.bank_number(+)
+      AND    xcoc.install_supp_branch_number = abb.bank_num(+)
+     ) InstSupp
+    ,(SELECT xcoc.contract_other_custs_id AS intro_other_cust_id
+            ,abb.bank_name                AS intro_bank_name
+            ,abb.bank_branch_name         AS intro_bank_branch_name
+      FROM   xxcso_contract_other_custs xcoc
+            ,ap_bank_branches abb
+      WHERE  xcoc.intro_chg_bk_number = abb.bank_number(+)
+      AND    xcoc.intro_chg_branch_number = abb.bank_num(+)
+     ) IntroChg
+    ,(SELECT xcoc.contract_other_custs_id AS electric_other_cust_id
+            ,abb.bank_name                AS electric_bank_name
+            ,abb.bank_branch_name         AS electric_bank_branch_name
+      FROM   xxcso_contract_other_custs xcoc
+            ,ap_bank_branches abb
+      WHERE  xcoc.electric_bk_number = abb.bank_number(+)
+      AND    xcoc.electric_branch_number = abb.bank_num(+)
+     ) Electric
+WHERE XxcsoContractOtherCustsEO.contract_other_custs_id = :1
+AND XxcsoContractOtherCustsEO.contract_other_custs_id = InstSupp.inst_other_cust_id
+AND InstSupp.inst_other_cust_id = IntroChg.intro_other_cust_id
+AND IntroChg.intro_other_cust_id = Electric.electric_other_cust_id
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoContractOtherCustsEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="ContractOtherCustsId"
+      IsNotNull="true"
+      EntityAttrName="ContractOtherCustsId"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="CONTRACT_OTHER_CUSTS_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppBkChgBearer"
+      Precision="1"
+      EntityAttrName="InstallSuppBkChgBearer"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INSTALL_SUPP_BK_CHG_BEARER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppBkNumber"
+      Precision="30"
+      EntityAttrName="InstallSuppBkNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INSTALL_SUPP_BK_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppBranchNumber"
+      Precision="25"
+      EntityAttrName="InstallSuppBranchNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INSTALL_SUPP_BRANCH_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstSuppBankName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_SUPP_BANK_NAME"
+      Expression="NULL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstSuppBankBranchName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INST_SUPP_BANK_BRANCH_NAME"
+      Expression="NULL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppBkAcctType"
+      Precision="25"
+      EntityAttrName="InstallSuppBkAcctType"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INSTALL_SUPP_BK_ACCT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppBkAcctNumber"
+      Precision="30"
+      EntityAttrName="InstallSuppBkAcctNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INSTALL_SUPP_BK_ACCT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppBkAcctNameAlt"
+      Precision="150"
+      EntityAttrName="InstallSuppBkAcctNameAlt"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INSTALL_SUPP_BK_ACCT_NAME_ALT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppBkAcctName"
+      Precision="240"
+      EntityAttrName="InstallSuppBkAcctName"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INSTALL_SUPP_BK_ACCT_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBkChgBearer"
+      Precision="1"
+      EntityAttrName="IntroChgBkChgBearer"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INTRO_CHG_BK_CHG_BEARER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBkNumber"
+      Precision="30"
+      EntityAttrName="IntroChgBkNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INTRO_CHG_BK_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBranchNumber"
+      Precision="25"
+      EntityAttrName="IntroChgBranchNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INTRO_CHG_BRANCH_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBankName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INTRO_CHG_BANK_NAME"
+      Expression="NULL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBankBranchName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INTRO_CHG_BANK_BRANCH_NAME"
+      Expression="NULL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBkAcctType"
+      Precision="25"
+      EntityAttrName="IntroChgBkAcctType"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INTRO_CHG_BK_ACCT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBkAcctNumber"
+      Precision="30"
+      EntityAttrName="IntroChgBkAcctNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INTRO_CHG_BK_ACCT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBkAcctNameAlt"
+      Precision="150"
+      EntityAttrName="IntroChgBkAcctNameAlt"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INTRO_CHG_BK_ACCT_NAME_ALT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgBkAcctName"
+      Precision="240"
+      EntityAttrName="IntroChgBkAcctName"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="INTRO_CHG_BK_ACCT_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBkChgBearer"
+      Precision="1"
+      EntityAttrName="ElectricBkChgBearer"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="ELECTRIC_BK_CHG_BEARER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBkNumber"
+      Precision="30"
+      EntityAttrName="ElectricBkNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="ELECTRIC_BK_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBranchNumber"
+      Precision="25"
+      EntityAttrName="ElectricBranchNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="ELECTRIC_BRANCH_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBankName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_BANK_NAME"
+      Expression="NULL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBankBranchName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_BANK_BRANCH_NAME"
+      Expression="NULL"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBkAcctType"
+      Precision="25"
+      EntityAttrName="ElectricBkAcctType"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="ELECTRIC_BK_ACCT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBkAcctNumber"
+      Precision="30"
+      EntityAttrName="ElectricBkAcctNumber"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="ELECTRIC_BK_ACCT_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBkAcctNameAlt"
+      Precision="150"
+      EntityAttrName="ElectricBkAcctNameAlt"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="ELECTRIC_BK_ACCT_NAME_ALT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricBkAcctName"
+      Precision="240"
+      EntityAttrName="ElectricBkAcctName"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="ELECTRIC_BK_ACCT_NAME" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="CreatedBy"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="CREATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreationDate"
+      IsNotNull="true"
+      EntityAttrName="CreationDate"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="CREATION_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdatedBy"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="LAST_UPDATED_BY" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      EntityAttrName="LastUpdateDate"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="LAST_UPDATE_DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="LastUpdateLogin"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="LAST_UPDATE_LOGIN" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="RequestId"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="REQUEST_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramApplicationId"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="PROGRAM_APPLICATION_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      EntityAttrName="ProgramId"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="PROGRAM_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ProgramUpdateDate"
+      EntityAttrName="ProgramUpdateDate"
+      EntityUsage="XxcsoContractOtherCustsEO"
+      AliasName="PROGRAM_UPDATE_DATE" >
+   </ViewAttribute>
+</ViewObject>
