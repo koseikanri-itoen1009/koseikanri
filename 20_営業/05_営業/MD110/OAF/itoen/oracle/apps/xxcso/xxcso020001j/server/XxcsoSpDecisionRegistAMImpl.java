@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.14
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2010-11-11 1.12 SCS桐生和幸   [E_本稼動_01954]変動電気代のみの顧客対応
 * 2013-04-19 1.13 SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.14 SCSK桐生和幸  [E_本稼動_11397]売価1円対応
+* 2014-12-15 1.15 SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -1969,6 +1970,205 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   }
 // 2009-03-23 [ST障害T1_0163] Add End
 
+// 2014-12-15 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 行政財産使用変更イベント処理
+   *****************************************************************************
+   */
+  public void handleAdAssetsTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectAdAssetsType(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 支払区分（設置協賛金）変更イベント処理
+   *****************************************************************************
+   */
+  public void handleInstallSuppTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectInstallSuppType(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 支払方法（設置協賛金）変更イベント処理
+   *****************************************************************************
+   */
+  public void handleInstallSuppPaymentTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectInstallSuppPaymentType(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 支払区分（電気代区分）変更イベント処理
+   *****************************************************************************
+   */
+  public void handleElectricTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectElectricType(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 支払方法（電気代）変更イベント処理
+   *****************************************************************************
+   */
+  public void handleElectricPaymentTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectElectricPaymentType(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 支払区分（紹介手数料）変更イベント処理
+   *****************************************************************************
+   */
+  public void handleIntroChgTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectIntroChgType(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 支払方法（紹介手数料）変更イベント処理
+   *****************************************************************************
+   */
+  public void handleIntroChgPaymentTypeChange()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    // インスタンス取得
+    XxcsoSpDecisionHeaderFullVOImpl headerVo
+      = getXxcsoSpDecisionHeaderFullVO1();
+    if ( headerVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+
+    XxcsoSpDecisionReflectUtils.reflectIntroChgPaymentType(
+      headerVo
+    );
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+// 2014-12-15 [E_本稼動_12565] Add End
+
   /*****************************************************************************
    * 情報反映ボタン押下処理
    *****************************************************************************
@@ -2021,13 +2221,13 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     {
       OAException.raiseBundledOAException(errorList);
     }
-    
-    XxcsoSpDecisionReflectUtils.reflectContent(
-      headerVo
-     ,installVo
-     ,bm1Vo
-    );
-    
+// 2014-12-15 [E_本稼動_12565] Del Start    
+//    XxcsoSpDecisionReflectUtils.reflectContent(
+//      headerVo
+//     ,installVo
+//     ,bm1Vo
+//    );
+// 2014-12-15 [E_本稼動_12565] Del End
     XxcsoUtils.debug(txn, "[END]");
   }
 
@@ -2562,7 +2762,132 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       "XXCSO1_SP_RULE_BOTTLE"
      ,"attribute4"
     );
-    
+
+// 2014-12-15 [E_本稼動_12565] Add Start
+    // 中途解約条項
+    XxcsoLookupListVOImpl cancellBeforeMaturityListVo
+      = getXxcsoCancellBeforeMaturityListVO();
+    if ( cancellBeforeMaturityListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoCancellBeforeMaturityListVO");
+    }
+
+    cancellBeforeMaturityListVo.initQuery(
+      "XXCSO1_SP_PRESENCE_OR_ABSENCE"
+     ,"lookup_code"
+    );
+
+    // 税区分
+    XxcsoLookupListVOImpl taxTypeVO
+      = getXxcsoTaxTypeVO();
+    if ( taxTypeVO == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoTaxTypeVO");
+    }
+
+    taxTypeVO.initQuery(
+      "XXCSO1_SP_TAX_DIVISION"
+     ,"lookup_code"
+    );
+
+    // 支払方法（設置協賛金）
+    XxcsoLookupListVOImpl installSuppPaymentTypeVO
+      = getXxcsoInstallSuppPaymentTypeVO();
+    if ( installSuppPaymentTypeVO == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoInstallSuppPaymentTypeVO");
+    }
+
+    installSuppPaymentTypeVO.initQuery(
+      "XXCSO1_SP_INST_SUPP_PAY_TYPE"
+     ,"lookup_code"
+    );
+
+    // 支払方法（電気代）
+    XxcsoLookupListVOImpl electricPaymentTypeV0
+      = getXxcsoElectricPaymentTypeVO();
+    if ( electricPaymentTypeV0 == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricPaymentTypeVO");
+    }
+
+    electricPaymentTypeV0.initQuery(
+      "XXCSO1_SP_ELECTRIC_PAY_TYPE"
+     ,"lookup_code"
+    );
+
+    // 支払方法（変動電気代）
+    XxcsoLookupListVOImpl electricPaymentChageTypeV0
+      = getXxcsoElectricPaymentChangeTypeVO();
+    if ( electricPaymentChageTypeV0 == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricPaymentChageTypeVO");
+    }
+
+    electricPaymentChageTypeV0.initQuery(
+      "XXCSO1_SP_ELEC_PAY_CNG_TYPE"
+     ,"lookup_code"
+    );
+
+    // 支払サイクル（電気代）
+    XxcsoLookupListVOImpl electricPaymentCycleVO
+      = getXxcsoElectricPaymentCycleVO();
+    if ( electricPaymentCycleVO == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricPaymentChageTypeVO");
+    }
+
+    electricPaymentCycleVO.initQuery(
+      "XXCSO1_SP_ELEC_PAY_CYCLE"
+     ,"lookup_code"
+    );
+
+    // 締日(電気代)、振込日(電気代)、締日(紹介手数料)、振込日(紹介手数料)
+    XxcsoLookupListVOImpl daysListVo = getXxcsoDaysListVO();
+    if ( daysListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoDaysListVO");
+    }
+
+    daysListVo.initQuery(
+      "XXCSO1_DAYS_TYPE"
+     ,"TO_NUMBER(lookup_code)"
+    );
+
+    // 振込月(電気代)、振込月（紹介手数料）
+    XxcsoLookupListVOImpl monthsListVo = getXxcsoMonthsListVO();
+    if ( monthsListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoMonthsListVO");
+    }
+
+    monthsListVo.initQuery(
+      "XXCSO1_MONTHS_TYPE"
+     ,"lookup_code"
+    );
+    // 支払方法（紹介手数料）
+    XxcsoLookupListVOImpl introChgPaymentTypeVO
+      = getXxcsoIntroChgPaymentTypeVO();
+    if ( introChgPaymentTypeVO == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoIntroChgPaymentTypeVO");
+    }
+
+    introChgPaymentTypeVO.initQuery(
+      "XXCSO1_SP_INTRO_CHG_PAY_TYPE"
+     ,"lookup_code"
+    );
+// 2014-12-15 [E_本稼動_12565] Add End
+
     // 電気代
     XxcsoLookupListVOImpl electricityListVo
       = getXxcsoElectricityTypeListVO();
@@ -2574,6 +2899,9 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
     electricityListVo.initQuery(
       "XXCSO1_SP_ELECTRIC_BILL_TYPE"
+// 2014-12-15 [E_本稼動_12565] Add Start
+     ,"lookup_code <> '0'"
+// 2014-12-15 [E_本稼動_12565] Add End
      ,"lookup_code"
     );
 
@@ -3564,26 +3892,46 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         selCcVo.first();
       }
     }
-    
-    /////////////////////////////////////
-    // 検証処理：その他条件
-    /////////////////////////////////////
-    errorList.addAll(
-      XxcsoSpDecisionValidateUtils.validateOtherCondition(
-        txn
-       ,headerVo
-       ,submitFlag
-      )
-    );
 
-    errorList.addAll(
+// 2014-12-15 [E_本稼動_12565] Add Start
+    String OperationMode = requestRow.getOperationMode();
+
+    // 発注依頼ボタン以外の場合
+    if ( OperationMode != XxcsoSpDecisionConstants.OPERATION_REQUEST )
+    {
+// 2014-12-15 [E_本稼動_12565] Add End
+
+      /////////////////////////////////////
+      // 検証処理：その他条件
+      /////////////////////////////////////
+      errorList.addAll(
+        XxcsoSpDecisionValidateUtils.validateOtherCondition(
+          txn
+         ,headerVo
+         ,submitFlag
+        )
+      );
+
+      errorList.addAll(
       XxcsoSpDecisionValidateUtils.validateConditionReason(
         txn
        ,headerVo
        ,submitFlag
-      )
-    );
-
+        )
+      );
+// 2014-12-15 [E_本稼動_12565] Add Start
+      /////////////////////////////////////
+      // 検証処理：覚書情報
+      /////////////////////////////////////
+      errorList.addAll(
+        XxcsoSpDecisionValidateUtils.validateMemorandumInfo(
+          txn
+         ,headerVo
+         ,submitFlag
+        )
+      );
+    }
+// 2014-12-15 [E_本稼動_12565] Add End
     /////////////////////////////////////
     // 検証処理：BM1
     /////////////////////////////////////
@@ -3903,16 +4251,18 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     //  }
     //}
     // 2009-10-14 [IE554,IE573] Add End
-    /////////////////////////////////////
-    // 検証処理：契約書への記載事項
-    /////////////////////////////////////
-    errorList.addAll(
-      XxcsoSpDecisionValidateUtils.validateContractContent(
-        txn
-       ,headerVo
-       ,submitFlag
-      )
-    );
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    /////////////////////////////////////
+//    // 検証処理：契約書への記載事項
+//    /////////////////////////////////////
+//    errorList.addAll(
+//      XxcsoSpDecisionValidateUtils.validateContractContent(
+//        txn
+//       ,headerVo
+//       ,submitFlag
+//      )
+//    );
+// 2014-12-15 [E_本稼動_12565] Del End
 
     /////////////////////////////////////
     // 検証処理：概算年間損益
@@ -3976,7 +4326,18 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     }
 // 2010-01-15 [E_本稼動_00950] Add End
 // 2010-03-01 [E_本稼動_01678] Add Start
-    String OperationMode = requestRow.getOperationMode();
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    String OperationMode = requestRow.getOperationMode();
+// 2014-12-15 [E_本稼動_12565] Del End
+// 2014-12-15 [E_本稼動_12565] Add Start
+    // 支払区分（電気代）が無しの場合
+    if (XxcsoSpDecisionConstants.CHECK_NO.equals(headerRow.getElectricType()))
+    {
+      // 電気代区分に0(無し)を設定
+      headerRow.setElectricityType(XxcsoSpDecisionConstants.ELEC_NONE);
+    }
+// 2014-12-15 [E_本稼動_12565] Add End
+
     // 提出、承認、確認ボタンの場合
     if (
         OperationMode == XxcsoSpDecisionConstants.OPERATION_SUBMIT ||
@@ -4799,6 +5160,98 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoLookupListVOImpl)findViewObject("XxcsoCardSaleClassListVO");
   }
+
+  /**
+   * 
+   * Container's getter for XxcsoCancellBeforeMaturityListVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoCancellBeforeMaturityListVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoCancellBeforeMaturityListVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoTaxTypeVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoTaxTypeVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoTaxTypeVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoInstallSuppPaymentTypeVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoInstallSuppPaymentTypeVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoInstallSuppPaymentTypeVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoElectricTypeVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoElectricTypeVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoElectricTypeVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoElectricPaymentTypeVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoElectricPaymentTypeVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoElectricPaymentTypeVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoIntroChgPaymentTypeVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoIntroChgPaymentTypeVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoIntroChgPaymentTypeVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoElectricPaymentChangeTypeVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoElectricPaymentChangeTypeVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoElectricPaymentChangeTypeVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoElectricPaymentCycleVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoElectricPaymentCycleVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoElectricPaymentCycleVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoDaysListVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoDaysListVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoDaysListVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoMonthsListVO
+   */
+  public XxcsoLookupListVOImpl getXxcsoMonthsListVO()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoMonthsListVO");
+  }
+
+
 
 
 
