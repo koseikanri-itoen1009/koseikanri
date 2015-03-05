@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : 自販機設置契約情報登録表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-02-16 1.1  SCS柳平直人  [CT1-008]BM指定チェックボックス不正対応
 * 2010-02-09 1.2  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 * 2012-06-12 1.3  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
+* 2015-02-02 1.4  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -231,6 +232,67 @@ public class XxcsoContractRegistPropertyUtils
       pageRdrRow.setBm3Disabled(Boolean.TRUE);
     }
 
+//2015-02-02 [E_本稼動_12565] Add Start
+    // /////////////////////
+    // 設置協賛金指定チェックボックス
+    // /////////////////////
+    if ( isInstSuppCheck(createRow.getInstSuppType() ))
+    {
+      pageRdrRow.setInstSuppExistFlag(
+        XxcsoContractRegistConstants.INST_SUPP_EXIST_FLAG_ON
+      );
+      pageRdrRow.setInstSuppEnabled( Boolean.TRUE);
+      pageRdrRow.setInstSuppDisabled(Boolean.FALSE);
+    }
+    else
+    {
+      pageRdrRow.setInstSuppExistFlag(
+        XxcsoContractRegistConstants.INST_SUPP_EXIST_FLAG_OFF
+      );
+      pageRdrRow.setInstSuppEnabled( Boolean.FALSE);
+      pageRdrRow.setInstSuppDisabled(Boolean.TRUE);
+    }
+
+    // /////////////////////
+    // 紹介手数料指定チェックボックス
+    // /////////////////////
+    if ( isIntroChgCheck(createRow.getIntroChgType()) )
+    {
+      pageRdrRow.setIntroChgExistFlag(
+        XxcsoContractRegistConstants.INTRO_CHG_EXIST_FLAG_ON
+      );
+      pageRdrRow.setIntroChgEnabled( Boolean.TRUE);
+      pageRdrRow.setIntroChgDisabled(Boolean.FALSE);
+    }
+    else
+    {
+      pageRdrRow.setIntroChgExistFlag(
+        XxcsoContractRegistConstants.INTRO_CHG_EXIST_FLAG_OFF
+      );
+      pageRdrRow.setIntroChgEnabled( Boolean.FALSE);
+      pageRdrRow.setIntroChgDisabled(Boolean.TRUE);
+    }
+
+    // /////////////////////
+    // 電気代指定チェックボックス
+    // /////////////////////
+    if ( isElectricCheck(createRow.getElectricPaymentType()) )
+    {
+      pageRdrRow.setElectricExistFlag(
+        XxcsoContractRegistConstants.ELECTRIC_EXIST_FLAG_ON
+      );
+      pageRdrRow.setElectricEnabled( Boolean.TRUE);
+      pageRdrRow.setElectricDisabled(Boolean.FALSE);
+    }
+    else
+    {
+      pageRdrRow.setElectricExistFlag(
+        XxcsoContractRegistConstants.ELECTRIC_EXIST_FLAG_OFF
+      );
+      pageRdrRow.setElectricEnabled( Boolean.FALSE);
+      pageRdrRow.setElectricDisabled(Boolean.TRUE);
+    }
+//2015-02-02 [E_本稼動_12565] Add End
     // /////////////////////
     // オーナー変更チェックボックス設定
     // /////////////////////
@@ -433,6 +495,84 @@ public class XxcsoContractRegistPropertyUtils
     }
     return retVal;
   }
+  
+//2015-02-02 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 設置協賛金チェックボックスチェック判定
+   * @param  instSuppType 支払区分（設置協賛金）
+   * @return boolean       true:チェックをON false:チェックをOFF
+   *****************************************************************************
+   */
+  private static boolean isInstSuppCheck(
+    String instSuppType)
+  {
+    boolean retVal = false;
+
+    if ( instSuppType != null)
+    {
+      if (XxcsoContractRegistConstants.INST_SUPP_TYPE0.equals(instSuppType))
+      {
+        retVal = false;
+      }
+      else
+      {
+        retVal = true;
+      }
+    }
+    return retVal;
+  }
+
+  /*****************************************************************************
+   * 紹介手数料チェックボックスチェック判定
+   * @param  introChgType 支払区分（紹介手数料）
+   * @return boolean       true:チェックをON false:チェックをOFF
+   *****************************************************************************
+   */
+  private static boolean isIntroChgCheck(
+    String introChgType)
+  {
+    boolean retVal = false;
+
+    if ( introChgType != null)
+    {
+      if (XxcsoContractRegistConstants.INTRO_CHG_TYPE0.equals(introChgType))
+      {
+        retVal = false;
+      }
+      else
+      {
+        retVal = true;
+      }
+    }
+    return retVal;
+  }
+
+  /*****************************************************************************
+   * 電気代チェックボックスチェック判定
+   * @param  electricPaymentType 支払条件（電気代）
+   * @return boolean       true:チェックをON false:チェックをOFF
+   *****************************************************************************
+   */
+  private static boolean isElectricCheck(
+    String electricPaymentType)
+  {
+    boolean retVal = false;
+
+    if ( electricPaymentType != null)
+    {
+      if (XxcsoContractRegistConstants.ELECTRIC_PAYMENT_TYPE1.equals(electricPaymentType))
+      {
+        retVal = false;
+      }
+      else
+      {
+        retVal = true;
+      }
+    }
+    return retVal;
+  }
+//2015-02-02 [E_本稼動_12565] Add End
+
 
 // 2010-02-09 [E_本稼動_01538] Mod Start
   /*****************************************************************************
