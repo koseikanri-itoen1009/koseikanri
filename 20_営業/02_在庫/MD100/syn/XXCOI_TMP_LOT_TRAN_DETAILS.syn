@@ -1,0 +1,15 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Synonym Name : XXCOI_TMP_LOT_TRAN_DETAILS
+ * Description  : ロット別取引明細情報一時表（シノニム）
+ * Version      : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014-11-12    1.0   SCSK Y.Umino     新規作成
+ *
+ ************************************************************************/
+  CREATE OR REPLACE SYNONYM "APPS"."XXCOI_TMP_LOT_TRAN_DETAILS" FOR "XXCOI"."XXCOI_TMP_LOT_TRAN_DETAILS";

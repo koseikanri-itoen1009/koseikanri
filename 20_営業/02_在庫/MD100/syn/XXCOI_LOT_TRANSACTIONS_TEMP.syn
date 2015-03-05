@@ -1,0 +1,15 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Table Name      : XXCOI_LOT_TRANSACTIONS_TEMP
+ * Description     : ロット別取引TEMP（シノニム）
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2014/09/26    1.0   Y.Nagasue        新規作成
+ *
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM APPS.xxcoi_lot_transactions_temp FOR XXCOI.xxcoi_lot_transactions_temp;
