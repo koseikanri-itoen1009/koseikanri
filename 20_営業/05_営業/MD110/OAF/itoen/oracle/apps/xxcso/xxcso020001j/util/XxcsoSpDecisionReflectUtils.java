@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionReflectUtils
 * 概要説明   : SP専決反映ユーティリティクラス
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2009-10-14 1.4  SCS阿部大輔   [共通課題IE554,IE573]住所対応
 * 2010-05-26 1.5  SCS阿部大輔   [E_本稼動_02799]文字数対応
 * 2013-04-19 1.6  SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
+* 2014-12-15 1.7  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -46,6 +47,9 @@ import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBmFormatVORowI
 import java.sql.CallableStatement;
 import java.sql.Types;
 import java.sql.SQLException;
+// 2014-12-15 [E_本稼動_12565] Add Start
+import oracle.jbo.domain.Date;
+// 2014-12-15 [E_本稼動_12565] Add End
 
 /*******************************************************************************
  * SP専決書の各種値の反映を行うためのユーティリティクラスです。
@@ -797,60 +801,61 @@ public class XxcsoSpDecisionReflectUtils
   }
 
 
-
-  /*****************************************************************************
-   * 契約書への記載事項反映
-   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
-   * @param installVo    設置先登録／更新用ビューインスタンス
-   * @param bm1Vo        BM1登録／更新用ビューインスタンス
-   *****************************************************************************
-   */
-  public static void reflectContent(
-    XxcsoSpDecisionHeaderFullVOImpl    headerVo
-   ,XxcsoSpDecisionInstCustFullVOImpl  installVo
-   ,XxcsoSpDecisionBm1CustFullVOImpl   bm1Vo
-  )
-  {
-    /////////////////////////////////////
-    // 各行を取得
-    /////////////////////////////////////
-    XxcsoSpDecisionHeaderFullVORowImpl headerRow
-      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
-    XxcsoSpDecisionInstCustFullVORowImpl installRow
-      = (XxcsoSpDecisionInstCustFullVORowImpl)installVo.first();
-    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
-      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
-
-    headerRow.setContractYearDateView(
-      headerRow.getContractYearDate()
-    );
-    installRow.setPublishBaseCodeView(
-      installRow.getPublishBaseCode()
-    );
-    installRow.setPublishBaseNameView(
-      installRow.getPublishBaseName()
-    );
-    headerRow.setElectricityTypeView(
-      headerRow.getElectricityType()
-    );
-    headerRow.setElectricityAmountView(
-      headerRow.getElectricityAmount()
-    );
-    bm1Row.setTransferCommissionTypeView(
-      bm1Row.getTransferCommissionType()
-    );
-    headerRow.setInstallSupportAmtView(
-      headerRow.getInstallSupportAmt()
-    );
-    headerRow.setPaymentCycleView(
-      headerRow.getPaymentCycle()
-    );
-    headerRow.setInstallSupportAmt2View(
-      headerRow.getInstallSupportAmt2()
-    );
-  }
-
+// 2014-12-15 [E_本稼動_12565] Del Start
+//  /*****************************************************************************
+//   * 契約書への記載事項反映
+//   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+//   * @param installVo    設置先登録／更新用ビューインスタンス
+//   * @param bm1Vo        BM1登録／更新用ビューインスタンス
+//   *****************************************************************************
+//   */
+//  public static void reflectContent(
+//    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+//   ,XxcsoSpDecisionInstCustFullVOImpl  installVo
+//   ,XxcsoSpDecisionBm1CustFullVOImpl   bm1Vo
+//  )
+//  {
+//    /////////////////////////////////////
+//    // 各行を取得
+//    /////////////////////////////////////
+//    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+//      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+//    XxcsoSpDecisionInstCustFullVORowImpl installRow
+//      = (XxcsoSpDecisionInstCustFullVORowImpl)installVo.first();
+//    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
+//      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
+//    headerRow.setContractYearDateView(
+//      headerRow.getContractYearDate()
+//    );
+//    installRow.setPublishBaseCodeView(
+//      installRow.getPublishBaseCode()
+//    );
+//    installRow.setPublishBaseNameView(
+//      installRow.getPublishBaseName()
+//    );
+//    headerRow.setElectricityTypeView(
+//      headerRow.getElectricityType()
+//    );
+//    headerRow.setElectricityAmountView(
+//      headerRow.getElectricityAmount()
+//    );
+//    bm1Row.setTransferCommissionTypeView(
+//      bm1Row.getTransferCommissionType()
+//    );
+//    headerRow.setInstallSupportAmtView(
+//      headerRow.getInstallSupportAmt()
+//    );
+//    headerRow.setPaymentCycleView(
+//      headerRow.getPaymentCycle()
+//    );
+//    headerRow.setInstallSupportAmt2View(
+//      headerRow.getInstallSupportAmt2()
+//    );
+//// 2014-12-15 [E_本稼動_12565] Del Start
+//  }
+//
 // 2009-03-23 [ST障害T1_0163] Add Start
+// 2014-12-15 [E_本稼動_12565] Del End
   /*****************************************************************************
    * 電気代区分変更時情報反映
    * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
@@ -876,6 +881,363 @@ public class XxcsoSpDecisionReflectUtils
     }
   }
 // 2009-03-23 [ST障害T1_0163] Add End
+
+// 2014-12-15 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 行政財産使用変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectAdAssetsType(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String adAssetsType = headerRow.getAdAssetsType();
+    if ( XxcsoSpDecisionConstants.CHECK_NO.equals(adAssetsType) )
+    {
+      if ( isDiffer(headerRow.getAdAssetsAmt(), null) )
+      {
+        headerRow.setAdAssetsAmt(null);
+      }
+
+      if ( isDiffer(headerRow.getAdAssetsThisTime(), null) )
+      {
+        headerRow.setAdAssetsThisTime(null);
+      }
+
+      if ( isDiffer(headerRow.getAdAssetsPaymentYear(), null) )
+      {
+        headerRow.setAdAssetsPaymentYear(null);
+      }
+
+      if ( isDiffer(headerRow.getAdAssetsPaymentDate(), null) )
+      {
+        headerRow.setAdAssetsPaymentDate(null);
+      }
+    }
+  }
+
+  /*****************************************************************************
+   * 支払区分（設置協賛金）変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectInstallSuppType(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String installSuppType = headerRow.getInstallSuppType();
+    if ( XxcsoSpDecisionConstants.CHECK_NO.equals(installSuppType) )
+    {
+      if ( isDiffer(headerRow.getInstallSuppPaymentType(), null) )
+      {
+        headerRow.setInstallSuppPaymentType(null);
+      }
+
+      if ( isDiffer(headerRow.getInstallSuppAmt(), null) )
+      {
+        headerRow.setInstallSuppAmt(null);
+      }
+
+      if ( isDiffer(headerRow.getInstallSuppThisTime(), null) )
+      {
+        headerRow.setInstallSuppThisTime(null);
+      }
+
+      if ( isDiffer(headerRow.getInstallSuppPaymentYear(), null) )
+      {
+        headerRow.setInstallSuppPaymentYear(null);
+      }
+
+      if ( isDiffer(headerRow.getInstallSuppPaymentDate(), null) )
+      {
+        headerRow.setInstallSuppPaymentDate(null);
+      }
+    }
+  }
+
+  /*****************************************************************************
+   * 支払方法（設置協賛金）変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectInstallSuppPaymentType(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String installSuppPaymentType = headerRow.getInstallSuppPaymentType();
+    if ( XxcsoSpDecisionConstants.TOTAL_PAY.equals(installSuppPaymentType) )
+    {
+      if ( isDiffer(headerRow.getInstallSuppThisTime(), null) )
+      {
+        headerRow.setInstallSuppThisTime(null);
+      }
+    }
+  }
+
+  /*****************************************************************************
+   * 支払区分（電気代区分）変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectElectricType(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String electricType = headerRow.getElectricType();
+    if ( XxcsoSpDecisionConstants.CHECK_NO.equals(electricType) )
+    {
+      if ( isDiffer(headerRow.getElectricityType(), null) )
+      {
+        headerRow.setElectricityType(null);
+      }
+      if ( isDiffer(headerRow.getElectricityAmount(), null) )
+      {
+        headerRow.setElectricityAmount(null);
+      }
+      if ( isDiffer(headerRow.getElectricPaymentChangeType(), null) )
+      {
+        headerRow.setElectricPaymentChangeType(null);
+      }
+      if ( isDiffer(headerRow.getElectricPaymentType(), null) )
+      {
+        headerRow.setElectricPaymentType(null);
+      }
+      if ( isDiffer(headerRow.getElectricPaymentCycle(), null) )
+      {
+        headerRow.setElectricPaymentCycle(null);
+      }
+      if ( isDiffer(headerRow.getElectricClosingDate(), null) )
+      {
+        headerRow.setElectricClosingDate(null);
+      }
+      if ( isDiffer(headerRow.getElectricTransMonth(), null) )
+      {
+        headerRow.setElectricTransMonth(null);
+      }
+      if ( isDiffer(headerRow.getElectricTransDate(), null) )
+      {
+        headerRow.setElectricTransDate(null);
+      }
+      if ( isDiffer(headerRow.getElectricTransName(), null) )
+      {
+        headerRow.setElectricTransName(null);
+      }
+      if ( isDiffer(headerRow.getElectricTransNameAlt(), null) )
+      {
+        headerRow.setElectricTransNameAlt(null);
+      }
+    }
+  }
+
+  /*****************************************************************************
+   * 支払方法（電気代）変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectElectricPaymentType(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String electricPaymentType = headerRow.getElectricPaymentType();
+    if ( XxcsoSpDecisionConstants.CONTRACT.equals(electricPaymentType) )
+    {
+      if ( isDiffer(headerRow.getElectricClosingDate(), null) )
+      {
+        headerRow.setElectricClosingDate(null);
+      }
+      if ( isDiffer(headerRow.getElectricTransMonth(), null) )
+      {
+        headerRow.setElectricTransMonth(null);
+      }
+      if ( isDiffer(headerRow.getElectricTransDate(), null) )
+      {
+        headerRow.setElectricTransDate(null);
+      }
+      if ( isDiffer(headerRow.getElectricTransName(), null) )
+      {
+        headerRow.setElectricTransName(null);
+      }
+      if ( isDiffer(headerRow.getElectricTransNameAlt(), null) )
+      {
+        headerRow.setElectricTransNameAlt(null);
+      }
+    }
+  }
+
+  /*****************************************************************************
+   * 支払区分（紹介手数料）変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectIntroChgType(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String introChgType = headerRow.getIntroChgType();
+    if ( XxcsoSpDecisionConstants.CHECK_NO.equals(introChgType) )
+    {
+      if ( isDiffer(headerRow.getIntroChgPaymentType(), null) )
+      {
+        headerRow.setIntroChgPaymentType(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgAmt(), null) )
+      {
+        headerRow.setIntroChgAmt(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgThisTime(), null) )
+      {
+        headerRow.setIntroChgThisTime(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgPaymentYear(), null) )
+      {
+        headerRow.setIntroChgPaymentYear(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgPaymentDate(), null) )
+      {
+        headerRow.setIntroChgPaymentDate(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgPerSalesPrice(), null) )
+      {
+        headerRow.setIntroChgPerSalesPrice(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgPerPiece(), null) )
+      {
+        headerRow.setIntroChgPerPiece(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgClosingDate(), null) )
+      {
+        headerRow.setIntroChgClosingDate(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgTransMonth(), null) )
+      {
+        headerRow.setIntroChgTransMonth(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgTransDate(), null) )
+      {
+        headerRow.setIntroChgTransDate(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgTransName(), null) )
+      {
+        headerRow.setIntroChgTransName(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgTransNameAlt(), null) )
+      {
+        headerRow.setIntroChgTransNameAlt(null);
+      }
+    }
+  }
+
+  /*****************************************************************************
+   * 支払方法（紹介手数料）変更時情報反映
+   * @param headerVo     SP専決ヘッダ登録／更新用ビューインスタンス
+   *****************************************************************************
+   */
+  public static void reflectIntroChgPaymentType(
+    XxcsoSpDecisionHeaderFullVOImpl    headerVo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+
+    String introChgPaymentType = headerRow.getIntroChgPaymentType();
+    if ( XxcsoSpDecisionConstants.SALES_BULK.equals(introChgPaymentType) )
+    {
+      if ( isDiffer(headerRow.getIntroChgPerSalesPrice(), null) )
+      {
+        headerRow.setIntroChgPerSalesPrice(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgPerPiece(), null) )
+      {
+        headerRow.setIntroChgPerPiece(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgClosingDate(), null) )
+      {
+        headerRow.setIntroChgClosingDate(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgTransMonth(), null) )
+      {
+        headerRow.setIntroChgTransMonth(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgTransDate(), null) )
+      {
+        headerRow.setIntroChgTransDate(null);
+      }
+    } else
+    {
+      if ( isDiffer(headerRow.getIntroChgAmt(), null) )
+      {
+        headerRow.setIntroChgAmt(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgThisTime(), null) )
+      {
+        headerRow.setIntroChgThisTime(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgPaymentYear(), null) )
+      {
+        headerRow.setIntroChgPaymentYear(null);
+      }
+      if ( isDiffer(headerRow.getIntroChgPaymentDate(), null) )
+      {
+        headerRow.setIntroChgPaymentDate(null);
+      }
+
+      if ( XxcsoSpDecisionConstants.SALES_PAR.equals(introChgPaymentType) )
+      {
+        if ( isDiffer(headerRow.getIntroChgPerPiece(), null) )
+        {
+          headerRow.setIntroChgPerPiece(null);
+        }
+      } else
+      {
+        if ( isDiffer(headerRow.getIntroChgPerSalesPrice(), null) )
+        {
+          headerRow.setIntroChgPerSalesPrice(null);
+        }
+      }
+    }
+  }
+
+// 2014-12-15 [E_本稼動_12565] Add End
 
   /*****************************************************************************
    * 全反映
@@ -1665,9 +2027,11 @@ public class XxcsoSpDecisionReflectUtils
     ////////////////////////////
     String seleNumber          = headerRow.getSeleNumber();
     String contractYearDate    = headerRow.getContractYearDate();
-    String installSupportAmt   = headerRow.getInstallSupportAmt();
-    String installSupportAmt2  = headerRow.getInstallSupportAmt2();
-    String paymentCycle        = headerRow.getPaymentCycle();
+// 2014-12-15 [E_本稼動_12565] Del Start
+//    String installSupportAmt   = headerRow.getInstallSupportAmt();
+//    String installSupportAmt2  = headerRow.getInstallSupportAmt2();
+//    String paymentCycle        = headerRow.getPaymentCycle();
+// 2014-12-15 [E_本稼動_12565] Del End
     String electricityAmount   = headerRow.getElectricityAmount();
     String salesMonth          = headerRow.getSalesMonth();
     String bmRate              = headerRow.getBmRate();
@@ -1675,17 +2039,41 @@ public class XxcsoSpDecisionReflectUtils
     String leaseChargeMonth    = headerRow.getLeaseChargeMonth();
     String constructionCharge  = headerRow.getConstructionCharge();
     String electricityAmtMonth = headerRow.getElectricityAmtMonth();
+// 2014-12-15 [E_本稼動_12565] Add Start
+    String  contractYearMonth      = headerRow.getContractYearMonth();
+    String  contractStartMonth     = headerRow.getContractStartMonth();
+    String  contractEndMonth       = headerRow.getContractEndMonth();
+    String  adAssetsAmt            = headerRow.getAdAssetsAmt();
+    String  adAssetsThisTime       = headerRow.getAdAssetsThisTime();
+    String  adAssetsPaymentYear    = headerRow.getAdAssetsPaymentYear();
+    String  installSuppAmt         = headerRow.getInstallSuppAmt();
+    String  installSuppThisTime    = headerRow.getInstallSuppThisTime();
+    String  installSuppPaymentYear = headerRow.getInstallSuppPaymentYear();
+    String  introChgAmt            = headerRow.getIntroChgAmt();
+    String  introChgThisTime       = headerRow.getIntroChgThisTime();
+    String  introChgPaymentYear    = headerRow.getIntroChgPaymentYear();
+    String  introChgPerSalesPrice  = headerRow.getIntroChgPerSalesPrice();
+    String  introChgPerPiece       = headerRow.getIntroChgPerPiece();
+// 2014-12-15 [E_本稼動_12565] Add Start
 
     CallableStatement stmt = null;
     
     try
     {
-      StringBuffer sql = new StringBuffer(100);
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//      StringBuffer sql = new StringBuffer(100);
+      StringBuffer sql = new StringBuffer(200);
+// 2014-12-15 [E_本稼動_12565] Mod End
       sql.append("BEGIN");
       sql.append("  xxcso_020001j_pkg.conv_number_separate(");
       sql.append("    :1,  :2,  :3,  :4,  :5,  :6,  :7 , :8,  :9,  :10,");
       sql.append("    :11, :12, :13, :14, :15, :16, :17, :18, :19, :20,");
-      sql.append("    :21, :22, :23, :24");
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//      sql.append("    :21, :22, :23, :24");
+      sql.append("    :21, :22, :23, :24, :25, :26, :27, :28, :29, :30,");
+      sql.append("    :31, :32, :33, :34, :35, :36, :37, :38, :39, :40,");
+      sql.append("    :41, :42, :43, :44, :45, :46" );
+// 2014-12-15 [E_本稼動_12565] Mod End
       sql.append("  );");
       sql.append("END;");
 
@@ -1693,44 +2081,116 @@ public class XxcsoSpDecisionReflectUtils
 
       stmt.setString(1,  seleNumber);
       stmt.setString(2,  contractYearDate);
-      stmt.setString(3,  installSupportAmt);
-      stmt.setString(4,  installSupportAmt2);
-      stmt.setString(5,  paymentCycle);
-      stmt.setString(6,  electricityAmount);
-      stmt.setString(7,  salesMonth);
-      stmt.setString(8,  bmRate);
-      stmt.setString(9,  vdSalesCharge);
-      stmt.setString(10, leaseChargeMonth);
-      stmt.setString(11, constructionCharge);
-      stmt.setString(12, electricityAmtMonth);
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//      stmt.setString(3,  installSupportAmt);
+//      stmt.setString(4,  installSupportAmt2);
+//      stmt.setString(5,  paymentCycle);
+//      stmt.setString(6,  electricityAmount);
+//      stmt.setString(7,  salesMonth);
+//      stmt.setString(8,  bmRate);
+//      stmt.setString(9,  vdSalesCharge);
+//      stmt.setString(10, leaseChargeMonth);
+//      stmt.setString(11, constructionCharge);
+//      stmt.setString(12, electricityAmtMonth);
 
-      stmt.registerOutParameter(13, Types.VARCHAR);
-      stmt.registerOutParameter(14, Types.VARCHAR);
-      stmt.registerOutParameter(15, Types.VARCHAR);
-      stmt.registerOutParameter(16, Types.VARCHAR);
-      stmt.registerOutParameter(17, Types.VARCHAR);
-      stmt.registerOutParameter(18, Types.VARCHAR);
-      stmt.registerOutParameter(19, Types.VARCHAR);
-      stmt.registerOutParameter(20, Types.VARCHAR);
-      stmt.registerOutParameter(21, Types.VARCHAR);
-      stmt.registerOutParameter(22, Types.VARCHAR);
-      stmt.registerOutParameter(23, Types.VARCHAR);
+//      stmt.registerOutParameter(13, Types.VARCHAR);
+//      stmt.registerOutParameter(14, Types.VARCHAR);
+//      stmt.registerOutParameter(15, Types.VARCHAR);
+//      stmt.registerOutParameter(16, Types.VARCHAR);
+//      stmt.registerOutParameter(17, Types.VARCHAR);
+//      stmt.registerOutParameter(18, Types.VARCHAR);
+//      stmt.registerOutParameter(19, Types.VARCHAR);
+//      stmt.registerOutParameter(20, Types.VARCHAR);
+//      stmt.registerOutParameter(21, Types.VARCHAR);
+//      stmt.registerOutParameter(22, Types.VARCHAR);
+//      stmt.registerOutParameter(23, Types.VARCHAR);
+//      stmt.registerOutParameter(24, Types.VARCHAR);
+      stmt.setString(3,  electricityAmount);
+      stmt.setString(4,  salesMonth);
+      stmt.setString(5,  bmRate);
+      stmt.setString(6,  vdSalesCharge);
+      stmt.setString(7,  leaseChargeMonth);
+      stmt.setString(8,  constructionCharge);
+      stmt.setString(9,  electricityAmtMonth);
+      stmt.setString(10, contractYearMonth);
+      stmt.setString(11, contractStartMonth);
+      stmt.setString(12, contractEndMonth);
+      stmt.setString(13, adAssetsAmt);
+      stmt.setString(14, adAssetsThisTime);
+      stmt.setString(15, adAssetsPaymentYear);
+      stmt.setString(16, installSuppAmt);
+      stmt.setString(17, installSuppThisTime);
+      stmt.setString(18, installSuppPaymentYear);
+      stmt.setString(19, introChgAmt);
+      stmt.setString(20, introChgThisTime);
+      stmt.setString(21, introChgPaymentYear);
+      stmt.setString(22, introChgPerSalesPrice);
+      stmt.setString(23, introChgPerPiece);
+
       stmt.registerOutParameter(24, Types.VARCHAR);
+      stmt.registerOutParameter(25, Types.VARCHAR);
+      stmt.registerOutParameter(26, Types.VARCHAR);
+      stmt.registerOutParameter(27, Types.VARCHAR);
+      stmt.registerOutParameter(28, Types.VARCHAR);
+      stmt.registerOutParameter(29, Types.VARCHAR);
+      stmt.registerOutParameter(30, Types.VARCHAR);
+      stmt.registerOutParameter(31, Types.VARCHAR);
+      stmt.registerOutParameter(32, Types.VARCHAR);
+      stmt.registerOutParameter(33, Types.VARCHAR);
+      stmt.registerOutParameter(34, Types.VARCHAR);
+      stmt.registerOutParameter(35, Types.VARCHAR);
+      stmt.registerOutParameter(36, Types.VARCHAR);
+      stmt.registerOutParameter(37, Types.VARCHAR);
+      stmt.registerOutParameter(38, Types.VARCHAR);
+      stmt.registerOutParameter(39, Types.VARCHAR);
+      stmt.registerOutParameter(40, Types.VARCHAR);
+      stmt.registerOutParameter(41, Types.VARCHAR);
+      stmt.registerOutParameter(42, Types.VARCHAR);
+      stmt.registerOutParameter(43, Types.VARCHAR);
+      stmt.registerOutParameter(44, Types.VARCHAR);
+      stmt.registerOutParameter(45, Types.VARCHAR);
+      stmt.registerOutParameter(46, Types.VARCHAR);
+// 2014-12-15 [E_本稼動_12565] Mod End
 
       stmt.execute();
 
-      String cnvSeleNumber          = stmt.getString(13);
-      String cnvContractYearDate    = stmt.getString(14);
-      String cnvInstallSupportAmt   = stmt.getString(15);
-      String cnvInstallSupportAmt2  = stmt.getString(16);
-      String cnvPaymentCycle        = stmt.getString(17);
-      String cnvElectricityAmount   = stmt.getString(18);
-      String cnvSalesMonth          = stmt.getString(19);
-      String cnvBmRate              = stmt.getString(20);
-      String cnvVdSalesCharge       = stmt.getString(21);
-      String cnvLeaseChargeMonth    = stmt.getString(22);
-      String cnvConstructionCharge  = stmt.getString(23);
-      String cnvElectricityAmtMonth = stmt.getString(24);
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//      String cnvSeleNumber          = stmt.getString(13);
+//      String cnvContractYearDate    = stmt.getString(14);
+//      String cnvInstallSupportAmt   = stmt.getString(15);
+//      String cnvInstallSupportAmt2  = stmt.getString(16);
+//      String cnvPaymentCycle        = stmt.getString(17);
+//      String cnvElectricityAmount   = stmt.getString(18);
+//      String cnvSalesMonth          = stmt.getString(19);
+//      String cnvBmRate              = stmt.getString(20);
+//      String cnvVdSalesCharge       = stmt.getString(21);
+//      String cnvLeaseChargeMonth    = stmt.getString(22);
+//      String cnvConstructionCharge  = stmt.getString(23);
+//      String cnvElectricityAmtMonth = stmt.getString(24);
+      String cnvSeleNumber             = stmt.getString(24);
+      String cnvContractYearDate       = stmt.getString(25);
+      String cnvElectricityAmount      = stmt.getString(26);
+      String cnvSalesMonth             = stmt.getString(27);
+      String cnvBmRate                 = stmt.getString(28);
+      String cnvVdSalesCharge          = stmt.getString(29);
+      String cnvLeaseChargeMonth       = stmt.getString(30);
+      String cnvConstructionCharge     = stmt.getString(31);
+      String cnvElectricityAmtMonth    = stmt.getString(32);
+      String cnvContractYearMonth      = stmt.getString(33);
+      String cnvContractStartMonth     = stmt.getString(34);
+      String cnvContractEndMonth       = stmt.getString(35);
+      String cnvAdAssetsAmt            = stmt.getString(36);
+      String cnvAdAssetsThisTime       = stmt.getString(37);
+      String cnvAdAssetsPaymentYear    = stmt.getString(38);
+      String cnvInstallSuppAmt         = stmt.getString(39);
+      String cnvInstallSuppThisTime    = stmt.getString(40);
+      String cnvInstallSuppPaymentYear = stmt.getString(41);
+      String cnvIntroChgAmt            = stmt.getString(42);
+      String cnvIntroChgThisTime       = stmt.getString(43);
+      String cnvIntroChgPaymentYear    = stmt.getString(44);
+      String cnvIntroChgPerSalesPrice  = stmt.getString(45);
+      String cnvIntroChgPerPiece       = stmt.getString(46);
+// 2014-12-15 [E_本稼動_12565] Mod End
 
       if ( isDiffer(seleNumber, cnvSeleNumber) )
       {
@@ -1740,18 +2200,20 @@ public class XxcsoSpDecisionReflectUtils
       {
         headerRow.setContractYearDate(cnvContractYearDate);
       }
-      if ( isDiffer(installSupportAmt, cnvInstallSupportAmt) )
-      {
-        headerRow.setInstallSupportAmt(cnvInstallSupportAmt);
-      }
-      if ( isDiffer(installSupportAmt2, cnvInstallSupportAmt2) )
-      {
-        headerRow.setInstallSupportAmt2(cnvInstallSupportAmt2);
-      }
-      if ( isDiffer(paymentCycle, cnvPaymentCycle) )
-      {
-        headerRow.setPaymentCycle(cnvPaymentCycle);
-      }
+// 2014-12-15 [E_本稼動_12565] Del Start
+//      if ( isDiffer(installSupportAmt, cnvInstallSupportAmt) )
+//      {
+//        headerRow.setInstallSupportAmt(cnvInstallSupportAmt);
+//      }
+//      if ( isDiffer(installSupportAmt2, cnvInstallSupportAmt2) )
+//      {
+//        headerRow.setInstallSupportAmt2(cnvInstallSupportAmt2);
+//      }
+//      if ( isDiffer(paymentCycle, cnvPaymentCycle) )
+//      {
+//        headerRow.setPaymentCycle(cnvPaymentCycle);
+//      }
+// 2014-12-15 [E_本稼動_12565] Del End
       if ( isDiffer(electricityAmount, cnvElectricityAmount) )
       {
         headerRow.setElectricityAmount(cnvElectricityAmount);
@@ -1780,6 +2242,64 @@ public class XxcsoSpDecisionReflectUtils
       {
         headerRow.setElectricityAmtMonth(cnvElectricityAmtMonth);
       }
+// 2014-12-15 [E_本稼動_12565] Add Start
+      if ( isDiffer(contractYearMonth, cnvContractYearMonth) )
+      {
+        headerRow.setContractYearMonth(cnvContractYearMonth);
+      }
+      if ( isDiffer(contractStartMonth, cnvContractStartMonth) )
+      {
+        headerRow.setContractStartMonth(cnvContractStartMonth);
+      }
+      if ( isDiffer(contractEndMonth, cnvContractEndMonth) )
+      {
+        headerRow.setContractEndMonth(cnvContractEndMonth);
+      }
+      if ( isDiffer(adAssetsAmt, cnvAdAssetsAmt) )
+      {
+        headerRow.setAdAssetsAmt(cnvAdAssetsAmt);
+      }
+     if ( isDiffer(adAssetsThisTime, cnvAdAssetsThisTime) )
+      {
+        headerRow.setAdAssetsThisTime(cnvAdAssetsThisTime);
+      }
+     if ( isDiffer(adAssetsPaymentYear, cnvAdAssetsPaymentYear) )
+      {
+        headerRow.setAdAssetsPaymentYear(cnvAdAssetsPaymentYear);
+      }
+     if ( isDiffer(installSuppAmt, cnvInstallSuppAmt) )
+      {
+        headerRow.setInstallSuppAmt(cnvInstallSuppAmt);
+      }
+     if ( isDiffer(installSuppThisTime, cnvInstallSuppThisTime) )
+      {
+        headerRow.setInstallSuppThisTime(cnvInstallSuppThisTime);
+      }
+     if ( isDiffer(installSuppPaymentYear, cnvInstallSuppPaymentYear) )
+      {
+        headerRow.setInstallSuppPaymentYear(cnvInstallSuppPaymentYear);
+      }
+     if ( isDiffer(introChgAmt, cnvIntroChgAmt) )
+      {
+        headerRow.setIntroChgAmt(cnvIntroChgAmt);
+      }
+     if ( isDiffer(introChgThisTime, cnvIntroChgThisTime) )
+      {
+        headerRow.setIntroChgThisTime(cnvIntroChgThisTime);
+      }
+     if ( isDiffer(introChgPaymentYear, cnvIntroChgPaymentYear) )
+      {
+        headerRow.setIntroChgPaymentYear(cnvIntroChgPaymentYear);
+      }
+     if ( isDiffer(introChgPerSalesPrice, cnvIntroChgPerSalesPrice) )
+      {
+        headerRow.setIntroChgPerSalesPrice(cnvIntroChgPerSalesPrice);
+      }
+     if ( isDiffer(introChgPerPiece, cnvIntroChgPerPiece) )
+      {
+        headerRow.setIntroChgPerPiece(cnvIntroChgPerPiece);
+      }
+// 2014-12-15 [E_本稼動_12565] Add End
 
       stmt.close();
       sql.delete(0, sql.length());
@@ -2193,4 +2713,41 @@ public class XxcsoSpDecisionReflectUtils
 
     return diff;
   }
+
+// 2014-12-15 [E_本稼動_12565] Add Start
+  /*****************************************************************************
+   * 差分確認（Date）
+   * @param org          オリジナル
+   * @param copy         設定値
+   *****************************************************************************
+   */
+  public static boolean isDiffer(
+    Date  org
+   ,Date  copy
+  )
+  {
+    boolean diff = true;
+    
+    if ( org == null )
+    {
+      if ( copy == null )
+      {
+        diff = false;
+      }
+    }
+    else
+    {
+      if ( copy != null )
+      {
+        if ( org.compareTo(copy) == 0 )
+        {
+          diff = false;
+        }
+      }
+    }
+
+    return diff;
+  }
+// 2014-12-15 [E_本稼動_12565] Add Start
+
 }
