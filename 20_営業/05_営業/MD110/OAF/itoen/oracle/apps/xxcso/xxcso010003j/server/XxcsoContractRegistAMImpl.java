@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 1.9
+* バージョン : 2.0
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2011-06-06 1.7  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 * 2012-06-12 1.8  SCS桐生和幸  [E_本稼動_09602]契約取消ボタン追加対応
 * 2013-04-01 1.9  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
+* 2015-02-09 2.0  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -48,7 +49,6 @@ import oracle.jdbc.OracleCallableStatement;
 import oracle.jdbc.OracleTypes;
 
 import oracle.sql.NUMBER;
-
 
 /*******************************************************************************
  * 自販機設置契約情報の保存／確定を行うためのアプリケーション・モジュールクラス。
@@ -232,7 +232,23 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoBm3ContractSpCustFullVO1");
     }
 
+// 2015-02-09 [E_本稼動_12565] Add Start
+    XxcsoContractOtherCustFullVOImpl contrOtherCustVo
+      = getXxcsoContractOtherCustFullVO1();
+    if ( contrOtherCustVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO1");
+    }
 
+    XxcsoSpDecisionHeadersSummuryVOImpl spDecHedSumVo
+      = getXxcsoSpDecisionHeadersSummuryVO1();
+    if ( spDecHedSumVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoSpDecisionHeadersSummuryVO1");
+    }
+// 2015-02-09 [E_本稼動_12565] Add End
     XxcsoContractRegistInitUtils.initCreate(
       txn
      ,spDecisionHeaderId
@@ -254,6 +270,10 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,spCust1Vo
      ,spCust2Vo
      ,spCust3Vo
+// 2015-02-09 [E_本稼動_12565] Add Start
+     ,contrOtherCustVo
+     ,spDecHedSumVo
+// 2015-02-09 [E_本稼動_12565] Add End
     );
     
     XxcsoUtils.debug(txn, "[END]");
@@ -418,7 +438,23 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       throw
         XxcsoMessage.createInstanceLostError("XxcsoBm3ContractSpCustFullVO1");
     }
+// 2015-02-09 [E_本稼動_12565] Add Start
+    XxcsoContractOtherCustFullVOImpl contrOtherCustVo
+      = getXxcsoContractOtherCustFullVO1();
+    if ( contrOtherCustVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO1");
+    }
 
+    XxcsoSpDecisionHeadersSummuryVOImpl spDecHedSumVo
+      = getXxcsoSpDecisionHeadersSummuryVO1();
+    if ( spDecHedSumVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoSpDecisionHeadersSummuryVO1");
+    }
+// 2015-02-09 [E_本稼動_12565] Add End
     XxcsoContractRegistInitUtils.initUpdate(
       txn
      ,contractManagementId
@@ -441,6 +477,10 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,spCust1Vo
      ,spCust2Vo
      ,spCust3Vo
+// 2015-02-09 [E_本稼動_12565] Add Start
+     ,contrOtherCustVo
+     ,spDecHedSumVo
+// 2015-02-09 [E_本稼動_12565] Add End
     );
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -659,7 +699,31 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       throw
         XxcsoMessage.createInstanceLostError("XxcsoBm3BankAccountFullVO2");
     }
+// 2015-02-09 [E_本稼動_12565] Add Start
+    XxcsoContractOtherCustFullVOImpl contrOtherCustVo
+      = getXxcsoContractOtherCustFullVO1();
+    if ( contrOtherCustVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO1");
+    }
 
+    XxcsoSpDecisionHeadersSummuryVOImpl spDecHedSumVo
+      = getXxcsoSpDecisionHeadersSummuryVO1();
+    if ( spDecHedSumVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoSpDecisionHeadersSummuryVO1");
+    }
+
+    XxcsoContractOtherCustFullVOImpl contrOtherCustVo2
+      = getXxcsoContractOtherCustFullVO2();
+    if ( contrOtherCustVo2 == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO2");
+    }
+// 2015-02-09 [E_本稼動_12565] Add End
     XxcsoContractRegistInitUtils.initCopy(
       txn
      ,contractManagementId
@@ -689,6 +753,11 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,bank1Vo2
      ,bank2Vo2
      ,bank3Vo2
+// 2015-02-09 [E_本稼動_12565] Add Start
+     ,contrOtherCustVo
+     ,spDecHedSumVo
+     ,contrOtherCustVo2
+// 2015-02-09 [E_本稼動_12565] Add End
     );
 
     XxcsoUtils.debug(txn, "[END]");
@@ -894,9 +963,7 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     OADBTransaction txn = getOADBTransaction();
 
     XxcsoUtils.debug(txn, "[START]");
-
     this.validateAll(false);
-
     mMessage = this.validateBmAccountInfo();
 
     XxcsoUtils.debug(txn, "[END]");
@@ -911,9 +978,7 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     OADBTransaction txn = getOADBTransaction();
 
     XxcsoUtils.debug(txn, "[START]");
-
     this.validateAll(true);
-
     mMessage = this.validateBmAccountInfo();
 
     XxcsoUtils.debug(txn, "[END]");
@@ -988,6 +1053,15 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoBm3BankAccountFullVO1");
     }
 // 2010-03-01 [E_本稼動_01678] Add End
+// 2015-02-09 [E_本稼動_12565] Add Start
+    XxcsoContractOtherCustFullVOImpl contrOtherCustVo
+      = getXxcsoContractOtherCustFullVO1();
+    if ( contrOtherCustVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO1");
+    }
+// 2015-02-09 [E_本稼動_12565] Add End
 
     XxcsoContractManagementFullVORowImpl mngRow
       = (XxcsoContractManagementFullVORowImpl) mngVo.first();
@@ -1278,6 +1352,15 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoBm3BankAccountFullVO1");
     }
 // 2010-03-01 [E_本稼動_01678] Add End
+// 2015-02-09 [E_本稼動_12565] Add Start
+    XxcsoContractOtherCustFullVOImpl contrOtherCustVo
+      = getXxcsoContractOtherCustFullVO1();
+    if ( contrOtherCustVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO1");
+    }
+// 2015-02-09 [E_本稼動_12565] Add End
 
     XxcsoContractManagementFullVORowImpl mngRow
       = (XxcsoContractManagementFullVORowImpl) mngVo.first();
@@ -1694,7 +1777,15 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       throw
         XxcsoMessage.createInstanceLostError("XxcsoBm3ContractSpCustFullVO1");
     }
-
+// 2015-02-09 [E_本稼動_12565] Add Start
+    XxcsoContractOtherCustFullVOImpl contrOtherCustVo
+      = getXxcsoContractOtherCustFullVO1();
+    if ( contrOtherCustVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO1");
+    }
+// 2015-02-09 [E_本稼動_12565] Add End
     /////////////////////////////////////
     // 検証処理：契約者（甲）情報
     /////////////////////////////////////
@@ -1777,7 +1868,20 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
        ,fixedFlag
       )
     );
-
+// 2015-02-09 [E_本稼動_12565] Add Start
+    /////////////////////////////////////
+    // 検証処理：設置協賛金情報・紹介手数料・電気代
+    /////////////////////////////////////
+    errorList.addAll(
+      XxcsoContractRegistValidateUtils.validateInstIntroElectric(
+        txn
+       ,pageRenderVo
+       ,mngVo
+       ,contrOtherCustVo
+       ,fixedFlag
+      )
+    );
+// 2015-02-09 [E_本稼動_12565] Add End
     /////////////////////////////////////
     // 検証処理：設置先情報
     /////////////////////////////////////
@@ -3489,6 +3593,95 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoLoginUserAuthorityVOImpl)findViewObject("XxcsoLoginUserAuthorityVO1");
   }
+
+  /**
+   * 
+   * Container's getter for getXxcsoSpDecisionHeadersSummuryVO1
+   */
+  public XxcsoSpDecisionHeadersSummuryVOImpl getXxcsoSpDecisionHeadersSummuryVO1()
+  {
+    return (XxcsoSpDecisionHeadersSummuryVOImpl)findViewObject("XxcsoSpDecisionHeadersSummuryVO1");
+  }
+
+
+
+
+
+  /**
+   * 
+   * Container's getter for XxcsoSpDecisionHeadersSummuryVO2
+   */
+  public XxcsoSpDecisionHeadersSummuryVOImpl getXxcsoSpDecisionHeadersSummuryVO2()
+  {
+    return (XxcsoSpDecisionHeadersSummuryVOImpl)findViewObject("XxcsoSpDecisionHeadersSummuryVO2");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoContractOtherCustFullVO1
+   */
+  public XxcsoContractOtherCustFullVOImpl getXxcsoContractOtherCustFullVO1()
+  {
+    return (XxcsoContractOtherCustFullVOImpl)findViewObject("XxcsoContractOtherCustFullVO1");
+  }
+
+
+
+
+  /**
+   * 
+   * Container's getter for XxcsoContractOtherCustFullVO2
+   */
+  public XxcsoContractOtherCustFullVOImpl getXxcsoContractOtherCustFullVO2()
+  {
+    return (XxcsoContractOtherCustFullVOImpl)findViewObject("XxcsoContractOtherCustFullVO2");
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 }
