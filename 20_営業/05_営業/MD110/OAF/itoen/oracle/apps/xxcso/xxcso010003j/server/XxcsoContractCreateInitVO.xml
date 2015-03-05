@@ -8,6 +8,7 @@
    RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCreateInitVORowImpl"
    ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractCreateInitVOImpl"
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT  xsdh.sp_decision_header_id           AS sp_decision_header_id
@@ -41,7 +42,12 @@ SELECT  xsdh.sp_decision_header_id           AS sp_decision_header_id
        ,xxcso_010003j_pkg.get_base_leader_pos_name(
           xcasv.sale_base_code
         )                                    AS base_leader_position_name
-       ,xsdh.other_content
+-- 2015-02-06 [E_–{‰Ò“®_12565] Mod Start
+--     ,xsdh.other_content
+       ,xsdh.install_supp_type               AS install_supp_type
+       ,xsdh.intro_chg_type                  AS intro_chg_type
+       ,xsdh.electric_payment_type           AS electric_payment_type
+-- 2015-02-06 [E_–{‰Ò“®_12565] Mod End
 FROM    xxcso_sp_decision_headers  xsdh
        ,xxcso_sp_decision_custs    inst
        ,xxcso_cust_acct_sites_v    xcasv
@@ -68,7 +74,7 @@ AND     xlv.dept_code(+)                  = xcasv.sale_base_code
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
@@ -370,13 +376,33 @@ AND     xlv.dept_code(+)                  = xcasv.sale_base_code
       SQLType="VARCHAR" >
    </ViewAttribute>
    <ViewAttribute
-      Name="OtherContent"
+      Name="InstSuppType"
       IsPersistent="false"
-      Precision="500"
+      Precision="1"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
-      AliasName="OTHERCONTENT"
-      Expression="OtherContent"
+      AliasName="INSTSUPPTYPE"
+      Expression="InstSuppType"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="INTROCHGTYPE"
+      Expression="IntroChgType"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRICPAYMENTTYPE"
+      Expression="ElectricPaymentType"
       SQLType="VARCHAR" >
    </ViewAttribute>
 </ViewObject>
