@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_rep_auto_sale_cont
  * Description     : 自動販売機設置契約書帳票ワークテーブル
  * MD.070          : 
- * Version         : 1.6
+ * Version         : 1.7
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -21,6 +21,8 @@
  *                                    項目サイズの変更（口座番号：30byte⇒35byte）
  *  2014/02/03    1.6  S.Niki       【E_本稼動_11397】
  *                                    条件内容13～17を追加
+ *  2015/02/18    1.7  S.Yamashita  【E_本稼動_12580】
+ *                                    税区分名を追加
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
 (
@@ -79,6 +81,9 @@ CREATE TABLE xxcso.xxcso_rep_auto_sale_cont
   install_support_amt             NUMBER(8),
   electricity_information         VARCHAR2(50),
   transfer_commission_info        VARCHAR2(100),
+/* 2015/02/18 Ver1.7 S.Yamashita ADD START */
+  tax_type_name                   VARCHAR2(10),
+/* 2015/02/18 Ver1.7 S.Yamashita ADD END */
   created_by                      NUMBER(15)        NOT NULL,
   creation_date                   DATE              NOT NULL,
   last_updated_by                 NUMBER(15)        NOT NULL,
@@ -143,6 +148,9 @@ COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.condition_contents_17          
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.install_support_amt                    IS '設置協賛金';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.electricity_information                IS '電気代情報';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.transfer_commission_info               IS '振り込み手数料情報';
+/* 2015/02/18 Ver1.7 S.Yamashita ADD START */
+COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.tax_type_name                          IS '税区分名';
+/* 2015/02/18 Ver1.7 S.Yamashita ADD END */
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.created_by                             IS '作成者';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.creation_date                          IS '作成日';
 COMMENT ON COLUMN xxcso.xxcso_rep_auto_sale_cont.last_updated_by                        IS '最終更新者';
