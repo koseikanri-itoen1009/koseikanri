@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2010-03-04    1.16  Kazuyo.Hosoi     E_本稼動_01678対応
  *  2011-12-26    1.17  T.Ishiwata       E_本稼動_08363対応
  *  2013-04-11    1.18  K.Nakamura       E_本稼動_09603対応
+ *  2015-02-25    1.19  H.Wajima         E_本稼働_12565対応
  *
  *****************************************************************************************/
   --
@@ -208,6 +209,9 @@ AS
   cv_tkn_number_16 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00506'; -- 成功件数メッセージ
   cv_tkn_number_17 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00507'; -- エラー件数メッセージ
   cv_tkn_number_18 CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90007'; -- エラー終了メッセージ
+  /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+  cv_tkn_number_19 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00722'; -- 消費税率取得エラーメッセージ
+  /* 2015.02.25 H.Wajima E_本稼動_12565 END */
   --
   -- トークンコード
   cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM';
@@ -320,6 +324,10 @@ AS
   cv_debug_msg85 CONSTANT VARCHAR2(200) := 'account_holder_name = ';
   cv_debug_msg86 CONSTANT VARCHAR2(200) := 'account_holder_name_alt = ';
   /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
+  /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+  cv_debug_msg87 CONSTANT VARCHAR2(200) := 'electric_payment_type   = ';
+  cv_debug_msg88 CONSTANT VARCHAR2(200) := 'tax_type                = ';
+  /* 2015.02.25 H.Wajima E_本稼動_12565 END */
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -333,6 +341,9 @@ AS
   gt_account_holder_name     ap_bank_accounts.account_holder_name%TYPE;            -- 口座名義人
   gt_account_holder_name_alt ap_bank_accounts.account_holder_name_alt%TYPE;        -- 口座名義人（カナ）
   /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
+  /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+  gt_tax_rate                xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;              -- 消費税率
+  /* 2015.02.25 H.Wajima E_本稼動_12565 END */
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -549,6 +560,27 @@ AS
     -- *** DEBUG_LOG END ***
     /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
     --
+    /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+    -- ================================
+    -- 消費税率取得
+    -- ================================
+    BEGIN
+      SELECT  xqatrv.ap_tax_rate tax_rate
+      INTO    gt_tax_rate
+      FROM    xxcso_qt_ap_tax_rate_v xqatrv
+      WHERE   xqatrv.start_date  <= cd_process_date
+      AND     NVL( xqatrv.end_date, cd_process_date ) >= cd_process_date
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_19         -- メッセージコード
+               );
+        --
+        RAISE global_api_expt;
+    END;
+    /* 2015.02.25 H.Wajima E_本稼動_12565 END */
   EXCEPTION
     --
     --#################################  固定例外処理部 START   ####################################
@@ -2277,6 +2309,10 @@ AS
     cv_cond_business_type_03 CONSTANT xxcso_sp_decision_headers.condition_business_type%TYPE := '3';   -- 一律・容器別条件
     cv_cond_business_type_04 CONSTANT xxcso_sp_decision_headers.condition_business_type%TYPE := '4';   -- 一律・容器別条件[寄付金登録用]
     cv_electricity_type_1    CONSTANT xxcso_sp_decision_headers.electricity_type%TYPE        := '1';   -- 定額
+    /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+    cv_electric_pay_type_1   CONSTANT xxcso_sp_decision_headers.electric_payment_type%TYPE   := '1';   -- 契約先
+    cv_tax_type_2            CONSTANT xxcso_sp_decision_headers.tax_type%TYPE                := '2';   -- 税抜き
+    /* 2015.02.25 H.Wajima E_本稼動_12565 END */
     cv_sp_container_type_all CONSTANT xxcso_sp_decision_lines.sp_container_type%TYPE         := 'ALL'; -- 全容器
     cv_electricity_amount_01 CONSTANT xxcso_sp_decision_headers.electricity_amount%TYPE      := '1';   -- 定額
     cv_calc_type_01          CONSTANT xxcok_mst_bm_contract.calc_type%TYPE                   := '10';  -- 売価別条件
@@ -2299,7 +2335,12 @@ AS
     -- *** ローカル変数 ***
     ln_sp_decision_count  NUMBER := 0;
     lt_electricity_type   xxcso_sp_decision_headers.electricity_type%TYPE;
-    lt_electricity_amount xxcso_sp_decision_headers.electricity_amount%TYPE;
+    /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+    --lt_electricity_amount xxcso_sp_decision_headers.electricity_amount%TYPE;
+    lt_electricity_amount xxcok_mst_bm_contract.bm1_amt%TYPE;
+    lt_electric_payment_type xxcso_sp_decision_headers.electric_payment_type%TYPE;
+    lt_tax_type              xxcso_sp_decision_headers.tax_type%TYPE;
+    /* 2015.02.25 H.Wajima E_本稼動_12565 END */
     lv_mst_bm_flag        VARCHAR2(1);
     ln_rowid              ROWID;
     lv_no_data_found_flag VARCHAR2(1);
@@ -2313,6 +2354,10 @@ AS
       SELECT sdh.condition_business_type condition_business_type -- 取引条件区分
             ,sdh.electricity_type        electricity_type        -- 電気代区分
             ,sdh.electricity_amount      electricity_amount      -- 電気代
+            /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+            ,sdh.electric_payment_type   electric_payment_type   -- 支払条件（電気代）
+            ,sdh.tax_type                tax_type                -- 税区分
+            /* 2015.02.25 H.Wajima E_本稼動_12565 END */
             ,sdl.sp_container_type       sp_container_type       -- ＳＰ容器区分
             ,sdl.sales_price             sales_price             -- 売価
             ,sdl.discount_amt            discount_amt            -- 値引額
@@ -2410,7 +2455,17 @@ AS
     FOR lt_sp_decision_rec IN sp_decision_cur LOOP
       ln_sp_decision_count  := ln_sp_decision_count + cn_number_one;
       lt_electricity_type   := lt_sp_decision_rec.electricity_type;
-      lt_electricity_amount := lt_sp_decision_rec.electricity_amount;
+      /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+      --lt_electricity_amount := lt_sp_decision_rec.electricity_amount;
+      lt_electric_payment_type := lt_sp_decision_rec.electric_payment_type;
+      lt_tax_type              := lt_sp_decision_rec.tax_type;
+      -- 税区分が税抜きの場合、電気代＊消費税の計算を行う
+      IF (lt_tax_type = cv_tax_type_2) THEN
+        lt_electricity_amount  := TRUNC(lt_sp_decision_rec.electricity_amount * gt_tax_rate);
+      ELSE
+        lt_electricity_amount  := lt_sp_decision_rec.electricity_amount;
+      END IF;
+      /* 2015.02.25 H.Wajima E_本稼動_12565 END */
       --
       -- *** DEBUG_LOG START ***
       -- ＳＰ専決情報をログ出力
@@ -2420,6 +2475,10 @@ AS
                    cv_debug_msg62 || lt_sp_decision_rec.condition_business_type || CHR(10) ||
                    cv_debug_msg63 || lt_sp_decision_rec.electricity_type        || CHR(10) ||
                    cv_debug_msg64 || lt_sp_decision_rec.electricity_amount      || CHR(10) ||
+                   /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+                   cv_debug_msg87 || lt_sp_decision_rec.electric_payment_type   || CHR(10) ||
+                   cv_debug_msg88 || lt_sp_decision_rec.tax_type                || CHR(10) ||
+                   /* 2015.02.25 H.Wajima E_本稼動_12565 END */
                    cv_debug_msg65 || lt_sp_decision_rec.sp_container_type       || CHR(10) ||
                    cv_debug_msg66 || lt_sp_decision_rec.sales_price             || CHR(10) ||
                    cv_debug_msg67 || lt_sp_decision_rec.bm1_bm_rate             || CHR(10) ||
@@ -2693,8 +2752,13 @@ AS
     -- ========================================
     -- 販手条件マスタ存在チェック(電気代区分別)
     -- ========================================
-    IF (lt_electricity_type =  cv_electricity_type_1) THEN
-      -- 電気代区分が1(定額)の場合
+    /* 2015.02.25 H.Wajima E_本稼動_12565 START */
+    --IF (lt_electricity_type =  cv_electricity_type_1) THEN
+    --  -- 電気代区分が1(定額)の場合
+    -- 電気代区分が1（定額） かつ、 支払条件（電気代）が1（契約先）の場合
+    IF (lt_electricity_type =  cv_electricity_type_1) 
+      AND (lt_electric_payment_type = cv_electric_pay_type_1) THEN
+    /* 2015.02.25 H.Wajima E_本稼動_12565 END */
       BEGIN
         SELECT ROWID row_id
         INTO   ln_rowid
