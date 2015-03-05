@@ -1,0 +1,528 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE Entity SYSTEM "jbo_03_01.dtd">
+
+<Entity
+   Name="XxcsoContractOtherCustsEO"
+   DBObjectType="synonym"
+   DBObjectName="XXCSO_CONTRACT_OTHER_CUSTS"
+   AliasName="XxcsoContractOtherCustsEO"
+   BindingStyle="Oracle"
+   UseGlueCode="false"
+   CodeGenFlag="5"
+   RowClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEOImpl"
+   DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
+   CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
+      <AttrArray Name="_publishEvents">
+      </AttrArray>
+   </DesignTime>
+   <Attribute
+      Name="ContractOtherCustsId"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CONTRACT_OTHER_CUSTS_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS"
+      PrimaryKey="true" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppBkChgBearer"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_BK_CHG_BEARER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppBkNumber"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_BK_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppBranchNumber"
+      Precision="25"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_BRANCH_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="25" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppBkAcctType"
+      Precision="25"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_BK_ACCT_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="25" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppBkAcctNumber"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_BK_ACCT_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppBkAcctNameAlt"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_BK_ACCT_NAME_ALT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallSuppBkAcctName"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnName="INSTALL_SUPP_BK_ACCT_NAME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgBkChgBearer"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_BK_CHG_BEARER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgBkNumber"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_BK_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgBranchNumber"
+      Precision="25"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_BRANCH_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="25" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgBkAcctType"
+      Precision="25"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_BK_ACCT_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="25" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgBkAcctNumber"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_BK_ACCT_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgBkAcctNameAlt"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_BK_ACCT_NAME_ALT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="IntroChgBkAcctName"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnName="INTRO_CHG_BK_ACCT_NAME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricBkChgBearer"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_BK_CHG_BEARER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricBkNumber"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_BK_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricBranchNumber"
+      Precision="25"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_BRANCH_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="25" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricBkAcctType"
+      Precision="25"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_BK_ACCT_TYPE"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="25" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricBkAcctNumber"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_BK_ACCT_NUMBER"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricBkAcctNameAlt"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_BK_ACCT_NAME_ALT"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ElectricBkAcctName"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnName="ELECTRIC_BK_ACCT_NAME"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="CREATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="CreationDate"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="CREATION_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdatedBy"
+      IsNotNull="true"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATED_BY"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateDate"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="LAST_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="LastUpdateLogin"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="LAST_UPDATE_LOGIN"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="RequestId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="REQUEST_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramApplicationId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="PROGRAM_APPLICATION_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramId"
+      Precision="15"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnName="PROGRAM_ID"
+      ColumnType="NUMBER"
+      SQLType="NUMERIC"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ProgramUpdateDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="PROGRAM_UPDATE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_CONTRACT_OTHER_CUSTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
+   <AccessorAttribute
+      Name="ContractOtherCustsIdXxcsoContractManagementsEO"
+      Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractMngOtherCustsAO"
+      AssociationEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractMngOtherCustsAO.ContractOtherCustsIdXxcsoContractManagementsEO"
+      AssociationOtherEnd="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractMngOtherCustsAO.XxcsoContractOtherCustsEO"
+      Type="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEOImpl" >
+   </AccessorAttribute>
+   <Key
+      Name="SysC00477143" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.CreationDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00477143" />
+         <Attr Name="_checkCondition" Value="&#34;CREATION_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00412440" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.CreatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00412440" />
+         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00477142" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.CreatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00477142" />
+         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00412441" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.CreationDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00412441" />
+         <Attr Name="_checkCondition" Value="&#34;CREATION_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00412443" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.LastUpdateDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00412443" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00477144" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00477144" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00412442" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00412442" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="XxcsoContractOtherCustsPk" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.ContractOtherCustsId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSO_CONTRACT_OTHER_CUSTS_PK" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00477145" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.LastUpdateDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00477145" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00412439" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.ContractOtherCustsId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00412439" />
+         <Attr Name="_checkCondition" Value="&#34;CONTRACT_OTHER_CUSTS_ID&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00477141" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEO.ContractOtherCustsId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00477141" />
+         <Attr Name="_checkCondition" Value="&#34;CONTRACT_OTHER_CUSTS_ID&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+</Entity>
