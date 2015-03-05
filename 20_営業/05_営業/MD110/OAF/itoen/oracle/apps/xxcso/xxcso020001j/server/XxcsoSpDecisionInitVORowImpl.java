@@ -1,13 +1,14 @@
 /*============================================================================
 * ÉtÉ@ÉCÉãñº : XxcsoSpDecisionInitVORowImpl
 * äTóvê‡ñæ   : SPêÍåàèâä˙âªópÉrÉÖÅ[çsÉNÉâÉX
-* ÉoÅ[ÉWÉáÉì : 1.1
+* ÉoÅ[ÉWÉáÉì : 1.2
 *============================================================================
 * èCê≥óöó
 * ì˙ït       Ver. íSìñé“       èCê≥ì‡óe
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCSè¨êÏç_     êVãKçÏê¨
 * 2011-04-25 1.1  SCSãÀê∂òaçK   [E_ñ{â“ìÆ_07224]SPêÍåàéQè∆å†å¿ïœçXëŒâû
+* 2014-12-30 1.2  SCSKãÀê∂òaçK  [E_ñ{â“ìÆ_12565]SPÅEå_ñÒèëâÊñ â¸èCëŒâû
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -261,6 +262,108 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   protected static final int ELECTRICITYAMTMONTHRENDER = 233;
   protected static final int ATTACHACTIONFLRNRENDER = 234;
   protected static final int ACTPOBASECODE = 235;
+  protected static final int CONTRACTYEARMONTHRENDER = 236;
+  protected static final int CONTRACTYEARMONTHVIEWRENDER = 237;
+  protected static final int CONTRACTSTARTYEARRENDER = 238;
+  protected static final int CONTRACTSTARTYEARVIEWRENDER = 239;
+  protected static final int CONTRACTSTARTMONTHRENDER = 240;
+  protected static final int CONTRACTSTARTMONTHVIEWRENDER = 241;
+  protected static final int CONTRACTENDYEARRENDER = 242;
+  protected static final int CONTRACTENDYEARVIEWRENDER = 243;
+  protected static final int CONTRACTENDMONTHRENDER = 244;
+  protected static final int CONTRACTENDMONTHVIEWRENDER = 245;
+  protected static final int BIDDINGITEMRENDER = 246;
+  protected static final int BIDDINGITEMVIEWRENDER = 247;
+  protected static final int CANCELLBEFOREMATURITYRENDER = 248;
+  protected static final int CANCELLBEFOREMATURITYVIEWRENDER = 249;
+  protected static final int ADASSETSTYPERENDER = 250;
+  protected static final int ADASSETSTYPEVIEWRENDER = 251;
+  protected static final int OTHERCONDITIONRLRN06RENDER = 252;
+  protected static final int ADASSETSAMTRENDER = 253;
+  protected static final int ADASSETSAMTVIEWRENDER = 254;
+  protected static final int ADASSETSTHISTIMERENDER = 255;
+  protected static final int ADASSETSTHISTIMEVIEWRENDER = 256;
+  protected static final int ADASSETSPAYMENTYEARRENDER = 257;
+  protected static final int ADASSETSPAYMENTYEARVIEWRENDER = 258;
+  protected static final int ADASSETSPAYMENTDATERENDER = 259;
+  protected static final int ADASSETSPAYMENTDATEVIEWRENDER = 260;
+  protected static final int OTHERCONDITIONRLRN07RENDER = 261;
+  protected static final int TAXTYPERENDER = 262;
+  protected static final int TAXTYPEVIEWRENDER = 263;
+  protected static final int INSTALLSUPPTYPERENDER = 264;
+  protected static final int INSTALLSUPPTYPEVIEWRENDER = 265;
+  protected static final int INSTALLSUPPPAYMENTTYPERENDER = 266;
+  protected static final int INSTALLSUPPPAYMENTTYPEVIEWRENDER = 267;
+  protected static final int INSTALLSUPPAMTRENDER = 268;
+  protected static final int INSTALLSUPPAMTVIEWRENDER = 269;
+  protected static final int INSTALLSUPPTHISTIMERENDER = 270;
+  protected static final int INSTALLSUPPTHISTIMEVIEWRENDER = 271;
+  protected static final int INSTALLSUPPPAYMENTYEARRENDER = 272;
+  protected static final int INSTALLSUPPPAYMENTYEARVIEWRENDER = 273;
+  protected static final int INSTALLSUPPPAYMENTDATERENDER = 274;
+  protected static final int INSTALLSUPPPAYMENTDATEVIEWRENDER = 275;
+  protected static final int ELECTRICTYPERENDER = 276;
+  protected static final int ELECTRICTYPEVIEWRENDER = 277;
+  protected static final int ELECTRICPAYMENTTYPERENDER = 278;
+  protected static final int ELECTRICPAYMENTTYPEVIEWRENDER = 279;
+  protected static final int ELECTRICPAYMENTCHANGETYPERENDER = 280;
+  protected static final int ELECTRICPAYMENTCHANGETYPEVIEWRENDER = 281;
+  protected static final int ELECTRICPAYMENTCYCLERENDER = 282;
+  protected static final int ELECTRICPAYMENTCYCLEVIEWRENDER = 283;
+  protected static final int ELECTRICCLOSINGDATERENDER = 284;
+  protected static final int ELECTRICCLOSINGDATEVIEWRENDER = 285;
+  protected static final int ELECTRICTRANSMONTHRENDER = 286;
+  protected static final int ELECTRICTRANSMONTHVIEWRENDER = 287;
+  protected static final int ELECTRICTRANSDATERENDER = 288;
+  protected static final int ELECTRICTRANSDATEVIEWRENDER = 289;
+  protected static final int ELECTRICTRANSNAMERENDER = 290;
+  protected static final int ELECTRICTRANSNAMEVIEWRENDER = 291;
+  protected static final int ELECTRICTRANSNAMEALTRENDER = 292;
+  protected static final int ELECTRICTRANSNAMEALTVIEWRENDER = 293;
+  protected static final int INTROCHGTYPERENDER = 294;
+  protected static final int INTROCHGTYPEVIEWRENDER = 295;
+  protected static final int INTROCHGTYPEHDRRNRENDER = 296;
+  protected static final int INTROCHGPAYMENTTYPERENDER = 297;
+  protected static final int INTROCHGPAYMENTTYPEVIEWRENDER = 298;
+  protected static final int INTROCHGAMTRENDER = 299;
+  protected static final int INTROCHGAMTVIEWRENDER = 300;
+  protected static final int INTROCHGTHISTIMERENDER = 301;
+  protected static final int INTROCHGTHISTIMEVIEWRENDER = 302;
+  protected static final int INTROCHGPAYMENTYEARRENDER = 303;
+  protected static final int INTROCHGPAYMENTYEARVIEWRENDER = 304;
+  protected static final int INTROCHGPAYMENTDATERENDER = 305;
+  protected static final int INTROCHGPAYMENTDATEVIEWRENDER = 306;
+  protected static final int INTROCHGPERSALESPRICERENDER = 307;
+  protected static final int INTROCHGPERSALESPRICEVIEWRENDER = 308;
+  protected static final int INTROCHGPERPIECERENDER = 309;
+  protected static final int INTROCHGPERPIECEVIEWRENDER = 310;
+  protected static final int INTROCHGCLOSINGDATERENDER = 311;
+  protected static final int INTROCHGCLOSINGDATEVIEWRENDER = 312;
+  protected static final int INTROCHGTRANSMONTHRENDER = 313;
+  protected static final int INTROCHGTRANSMONTHVIEWRENDER = 314;
+  protected static final int INTROCHGTRANSDATERENDER = 315;
+  protected static final int INTROCHGTRANSDATEVIEWRENDER = 316;
+  protected static final int INTROCHGTRANSNAMERENDER = 317;
+  protected static final int INTROCHGTRANSNAMEVIEWRENDER = 318;
+  protected static final int INTROCHGTRANSNAMEALTRENDER = 319;
+  protected static final int INTROCHGTRANSNAMEALTVIEWRENDER = 320;
+  protected static final int INSTALLSUPPPAYMENTTYPEHDRRNRENDER = 321;
+  protected static final int INSTALLSUPPTHISTIMELABELRENDER = 322;
+  protected static final int INSTALLSUPPTHISTIMEENDLABELRENDER = 323;
+  protected static final int INSTALLSUPPPAYMENTYEARENDLABEL1RENDER = 324;
+  protected static final int INSTALLSUPPPAYMENTYEARENDLABEL2RENDER = 325;
+  protected static final int ELECTRICPAYMENTTYPEHDRRNRENDER = 326;
+  protected static final int ELECTRICINFORIRN02RENDER = 327;
+  protected static final int ELECTRICINFORIRN03RENDER = 328;
+  protected static final int ELECTRICINFORIRN04RENDER = 329;
+  protected static final int ELECTRICINFORIRN05RENDER = 330;
+  protected static final int ELECTRICINFORIRN06RENDER = 331;
+  protected static final int INTROCHGINFORIRN01RENDER = 332;
+  protected static final int INTROCHGINFORIRN02RENDER = 333;
+  protected static final int INTROCHGPERSALESPRICELABELRENDER = 334;
+  protected static final int INTROCHGPERPIECELABELRENDER = 335;
+  protected static final int INTROCHGPERSALESPRICEENDLABELRENDER = 336;
+  protected static final int INTROCHGPERPIECEENDLABELRENDER = 337;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -836,6 +939,210 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return getAttachActionFlRNRender();
       case ACTPOBASECODE:
         return getActPoBaseCode();
+      case CONTRACTYEARMONTHRENDER:
+        return getContractYearMonthRender();
+      case CONTRACTYEARMONTHVIEWRENDER:
+        return getContractYearMonthViewRender();
+      case CONTRACTSTARTYEARRENDER:
+        return getContractStartYearRender();
+      case CONTRACTSTARTYEARVIEWRENDER:
+        return getContractStartYearViewRender();
+      case CONTRACTSTARTMONTHRENDER:
+        return getContractStartMonthRender();
+      case CONTRACTSTARTMONTHVIEWRENDER:
+        return getContractStartMonthViewRender();
+      case CONTRACTENDYEARRENDER:
+        return getContractEndYearRender();
+      case CONTRACTENDYEARVIEWRENDER:
+        return getContractEndYearViewRender();
+      case CONTRACTENDMONTHRENDER:
+        return getContractEndMonthRender();
+      case CONTRACTENDMONTHVIEWRENDER:
+        return getContractEndMonthViewRender();
+      case BIDDINGITEMRENDER:
+        return getBiddingItemRender();
+      case BIDDINGITEMVIEWRENDER:
+        return getBiddingItemViewRender();
+      case CANCELLBEFOREMATURITYRENDER:
+        return getCancellBeforeMaturityRender();
+      case CANCELLBEFOREMATURITYVIEWRENDER:
+        return getCancellBeforeMaturityViewRender();
+      case ADASSETSTYPERENDER:
+        return getAdAssetsTypeRender();
+      case ADASSETSTYPEVIEWRENDER:
+        return getAdAssetsTypeViewRender();
+      case OTHERCONDITIONRLRN06RENDER:
+        return getOtherConditionRlRN06Render();
+      case ADASSETSAMTRENDER:
+        return getAdAssetsAmtRender();
+      case ADASSETSAMTVIEWRENDER:
+        return getAdAssetsAmtViewRender();
+      case ADASSETSTHISTIMERENDER:
+        return getAdAssetsThisTimeRender();
+      case ADASSETSTHISTIMEVIEWRENDER:
+        return getAdAssetsThisTimeViewRender();
+      case ADASSETSPAYMENTYEARRENDER:
+        return getAdAssetsPaymentYearRender();
+      case ADASSETSPAYMENTYEARVIEWRENDER:
+        return getAdAssetsPaymentYearViewRender();
+      case ADASSETSPAYMENTDATERENDER:
+        return getAdAssetsPaymentDateRender();
+      case ADASSETSPAYMENTDATEVIEWRENDER:
+        return getAdAssetsPaymentDateViewRender();
+      case OTHERCONDITIONRLRN07RENDER:
+        return getOtherConditionRlRN07Render();
+      case TAXTYPERENDER:
+        return getTaxTypeRender();
+      case TAXTYPEVIEWRENDER:
+        return getTaxTypeViewRender();
+      case INSTALLSUPPTYPERENDER:
+        return getInstallSuppTypeRender();
+      case INSTALLSUPPTYPEVIEWRENDER:
+        return getInstallSuppTypeViewRender();
+      case INSTALLSUPPPAYMENTTYPERENDER:
+        return getInstallSuppPaymentTypeRender();
+      case INSTALLSUPPPAYMENTTYPEVIEWRENDER:
+        return getInstallSuppPaymentTypeViewRender();
+      case INSTALLSUPPAMTRENDER:
+        return getInstallSuppAmtRender();
+      case INSTALLSUPPAMTVIEWRENDER:
+        return getInstallSuppAmtViewRender();
+      case INSTALLSUPPTHISTIMERENDER:
+        return getInstallSuppThisTimeRender();
+      case INSTALLSUPPTHISTIMEVIEWRENDER:
+        return getInstallSuppThisTimeViewRender();
+      case INSTALLSUPPPAYMENTYEARRENDER:
+        return getInstallSuppPaymentYearRender();
+      case INSTALLSUPPPAYMENTYEARVIEWRENDER:
+        return getInstallSuppPaymentYearViewRender();
+      case INSTALLSUPPPAYMENTDATERENDER:
+        return getInstallSuppPaymentDateRender();
+      case INSTALLSUPPPAYMENTDATEVIEWRENDER:
+        return getInstallSuppPaymentDateViewRender();
+      case ELECTRICTYPERENDER:
+        return getElectricTypeRender();
+      case ELECTRICTYPEVIEWRENDER:
+        return getElectricTypeViewRender();
+      case ELECTRICPAYMENTTYPERENDER:
+        return getElectricPaymentTypeRender();
+      case ELECTRICPAYMENTTYPEVIEWRENDER:
+        return getElectricPaymentTypeViewRender();
+      case ELECTRICPAYMENTCHANGETYPERENDER:
+        return getElectricPaymentChangeTypeRender();
+      case ELECTRICPAYMENTCHANGETYPEVIEWRENDER:
+        return getElectricPaymentChangeTypeViewRender();
+      case ELECTRICPAYMENTCYCLERENDER:
+        return getElectricPaymentCycleRender();
+      case ELECTRICPAYMENTCYCLEVIEWRENDER:
+        return getElectricPaymentCycleViewRender();
+      case ELECTRICCLOSINGDATERENDER:
+        return getElectricClosingDateRender();
+      case ELECTRICCLOSINGDATEVIEWRENDER:
+        return getElectricClosingDateViewRender();
+      case ELECTRICTRANSMONTHRENDER:
+        return getElectricTransMonthRender();
+      case ELECTRICTRANSMONTHVIEWRENDER:
+        return getElectricTransMonthViewRender();
+      case ELECTRICTRANSDATERENDER:
+        return getElectricTransDateRender();
+      case ELECTRICTRANSDATEVIEWRENDER:
+        return getElectricTransDateViewRender();
+      case ELECTRICTRANSNAMERENDER:
+        return getElectricTransNameRender();
+      case ELECTRICTRANSNAMEVIEWRENDER:
+        return getElectricTransNameViewRender();
+      case ELECTRICTRANSNAMEALTRENDER:
+        return getElectricTransNameAltRender();
+      case ELECTRICTRANSNAMEALTVIEWRENDER:
+        return getElectricTransNameAltViewRender();
+      case INTROCHGTYPERENDER:
+        return getIntroChgTypeRender();
+      case INTROCHGTYPEVIEWRENDER:
+        return getIntroChgTypeViewRender();
+      case INTROCHGTYPEHDRRNRENDER:
+        return getIntroChgTypeHdrRNRender();
+      case INTROCHGPAYMENTTYPERENDER:
+        return getIntroChgPaymentTypeRender();
+      case INTROCHGPAYMENTTYPEVIEWRENDER:
+        return getIntroChgPaymentTypeViewRender();
+      case INTROCHGAMTRENDER:
+        return getIntroChgAmtRender();
+      case INTROCHGAMTVIEWRENDER:
+        return getIntroChgAmtViewRender();
+      case INTROCHGTHISTIMERENDER:
+        return getIntroChgThisTimeRender();
+      case INTROCHGTHISTIMEVIEWRENDER:
+        return getIntroChgThisTimeViewRender();
+      case INTROCHGPAYMENTYEARRENDER:
+        return getIntroChgPaymentYearRender();
+      case INTROCHGPAYMENTYEARVIEWRENDER:
+        return getIntroChgPaymentYearViewRender();
+      case INTROCHGPAYMENTDATERENDER:
+        return getIntroChgPaymentDateRender();
+      case INTROCHGPAYMENTDATEVIEWRENDER:
+        return getIntroChgPaymentDateViewRender();
+      case INTROCHGPERSALESPRICERENDER:
+        return getIntroChgPerSalesPriceRender();
+      case INTROCHGPERSALESPRICEVIEWRENDER:
+        return getIntroChgPerSalesPriceViewRender();
+      case INTROCHGPERPIECERENDER:
+        return getIntroChgPerPieceRender();
+      case INTROCHGPERPIECEVIEWRENDER:
+        return getIntroChgPerPieceViewRender();
+      case INTROCHGCLOSINGDATERENDER:
+        return getIntroChgClosingDateRender();
+      case INTROCHGCLOSINGDATEVIEWRENDER:
+        return getIntroChgClosingDateViewRender();
+      case INTROCHGTRANSMONTHRENDER:
+        return getIntroChgTransMonthRender();
+      case INTROCHGTRANSMONTHVIEWRENDER:
+        return getIntroChgTransMonthViewRender();
+      case INTROCHGTRANSDATERENDER:
+        return getIntroChgTransDateRender();
+      case INTROCHGTRANSDATEVIEWRENDER:
+        return getIntroChgTransDateViewRender();
+      case INTROCHGTRANSNAMERENDER:
+        return getIntroChgTransNameRender();
+      case INTROCHGTRANSNAMEVIEWRENDER:
+        return getIntroChgTransNameViewRender();
+      case INTROCHGTRANSNAMEALTRENDER:
+        return getIntroChgTransNameAltRender();
+      case INTROCHGTRANSNAMEALTVIEWRENDER:
+        return getIntroChgTransNameAltViewRender();
+      case INSTALLSUPPPAYMENTTYPEHDRRNRENDER:
+        return getInstallSuppPaymentTypeHdrRNRender();
+      case INSTALLSUPPTHISTIMELABELRENDER:
+        return getInstallSuppThisTimeLabelRender();
+      case INSTALLSUPPTHISTIMEENDLABELRENDER:
+        return getInstallSuppThisTimeEndLabelRender();
+      case INSTALLSUPPPAYMENTYEARENDLABEL1RENDER:
+        return getInstallSuppPaymentYearEndLabel1Render();
+      case INSTALLSUPPPAYMENTYEARENDLABEL2RENDER:
+        return getInstallSuppPaymentYearEndLabel2Render();
+      case ELECTRICPAYMENTTYPEHDRRNRENDER:
+        return getElectricPaymentTypeHdrRNRender();
+      case ELECTRICINFORIRN02RENDER:
+        return getElectricInfoRIRN02Render();
+      case ELECTRICINFORIRN03RENDER:
+        return getElectricInfoRIRN03Render();
+      case ELECTRICINFORIRN04RENDER:
+        return getElectricInfoRIRN04Render();
+      case ELECTRICINFORIRN05RENDER:
+        return getElectricInfoRIRN05Render();
+      case ELECTRICINFORIRN06RENDER:
+        return getElectricInfoRIRN06Render();
+      case INTROCHGINFORIRN01RENDER:
+        return getIntroChgInfoRIRN01Render();
+      case INTROCHGINFORIRN02RENDER:
+        return getIntroChgInfoRIRN02Render();
+      case INTROCHGPERSALESPRICELABELRENDER:
+        return getIntroChgPerSalesPriceLabelRender();
+      case INTROCHGPERPIECELABELRENDER:
+        return getIntroChgPerPieceLabelRender();
+      case INTROCHGPERSALESPRICEENDLABELRENDER:
+        return getIntroChgPerSalesPriceEndLabelRender();
+      case INTROCHGPERPIECEENDLABELRENDER:
+        return getIntroChgPerPieceEndLabelRender();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -1553,6 +1860,312 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return;
       case ACTPOBASECODE:
         setActPoBaseCode((String)value);
+        return;
+      case CONTRACTYEARMONTHRENDER:
+        setContractYearMonthRender((Boolean)value);
+        return;
+      case CONTRACTYEARMONTHVIEWRENDER:
+        setContractYearMonthViewRender((Boolean)value);
+        return;
+      case CONTRACTSTARTYEARRENDER:
+        setContractStartYearRender((Boolean)value);
+        return;
+      case CONTRACTSTARTYEARVIEWRENDER:
+        setContractStartYearViewRender((Boolean)value);
+        return;
+      case CONTRACTSTARTMONTHRENDER:
+        setContractStartMonthRender((Boolean)value);
+        return;
+      case CONTRACTSTARTMONTHVIEWRENDER:
+        setContractStartMonthViewRender((Boolean)value);
+        return;
+      case CONTRACTENDYEARRENDER:
+        setContractEndYearRender((Boolean)value);
+        return;
+      case CONTRACTENDYEARVIEWRENDER:
+        setContractEndYearViewRender((Boolean)value);
+        return;
+      case CONTRACTENDMONTHRENDER:
+        setContractEndMonthRender((Boolean)value);
+        return;
+      case CONTRACTENDMONTHVIEWRENDER:
+        setContractEndMonthViewRender((Boolean)value);
+        return;
+      case BIDDINGITEMRENDER:
+        setBiddingItemRender((Boolean)value);
+        return;
+      case BIDDINGITEMVIEWRENDER:
+        setBiddingItemViewRender((Boolean)value);
+        return;
+      case CANCELLBEFOREMATURITYRENDER:
+        setCancellBeforeMaturityRender((Boolean)value);
+        return;
+      case CANCELLBEFOREMATURITYVIEWRENDER:
+        setCancellBeforeMaturityViewRender((Boolean)value);
+        return;
+      case ADASSETSTYPERENDER:
+        setAdAssetsTypeRender((Boolean)value);
+        return;
+      case ADASSETSTYPEVIEWRENDER:
+        setAdAssetsTypeViewRender((Boolean)value);
+        return;
+      case OTHERCONDITIONRLRN06RENDER:
+        setOtherConditionRlRN06Render((Boolean)value);
+        return;
+      case ADASSETSAMTRENDER:
+        setAdAssetsAmtRender((Boolean)value);
+        return;
+      case ADASSETSAMTVIEWRENDER:
+        setAdAssetsAmtViewRender((Boolean)value);
+        return;
+      case ADASSETSTHISTIMERENDER:
+        setAdAssetsThisTimeRender((Boolean)value);
+        return;
+      case ADASSETSTHISTIMEVIEWRENDER:
+        setAdAssetsThisTimeViewRender((Boolean)value);
+        return;
+      case ADASSETSPAYMENTYEARRENDER:
+        setAdAssetsPaymentYearRender((Boolean)value);
+        return;
+      case ADASSETSPAYMENTYEARVIEWRENDER:
+        setAdAssetsPaymentYearViewRender((Boolean)value);
+        return;
+      case ADASSETSPAYMENTDATERENDER:
+        setAdAssetsPaymentDateRender((Boolean)value);
+        return;
+      case ADASSETSPAYMENTDATEVIEWRENDER:
+        setAdAssetsPaymentDateViewRender((Boolean)value);
+        return;
+      case OTHERCONDITIONRLRN07RENDER:
+        setOtherConditionRlRN07Render((Boolean)value);
+        return;
+      case TAXTYPERENDER:
+        setTaxTypeRender((Boolean)value);
+        return;
+      case TAXTYPEVIEWRENDER:
+        setTaxTypeViewRender((Boolean)value);
+        return;
+      case INSTALLSUPPTYPERENDER:
+        setInstallSuppTypeRender((Boolean)value);
+        return;
+      case INSTALLSUPPTYPEVIEWRENDER:
+        setInstallSuppTypeViewRender((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTTYPERENDER:
+        setInstallSuppPaymentTypeRender((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTTYPEVIEWRENDER:
+        setInstallSuppPaymentTypeViewRender((Boolean)value);
+        return;
+      case INSTALLSUPPAMTRENDER:
+        setInstallSuppAmtRender((Boolean)value);
+        return;
+      case INSTALLSUPPAMTVIEWRENDER:
+        setInstallSuppAmtViewRender((Boolean)value);
+        return;
+      case INSTALLSUPPTHISTIMERENDER:
+        setInstallSuppThisTimeRender((Boolean)value);
+        return;
+      case INSTALLSUPPTHISTIMEVIEWRENDER:
+        setInstallSuppThisTimeViewRender((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTYEARRENDER:
+        setInstallSuppPaymentYearRender((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTYEARVIEWRENDER:
+        setInstallSuppPaymentYearViewRender((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTDATERENDER:
+        setInstallSuppPaymentDateRender((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTDATEVIEWRENDER:
+        setInstallSuppPaymentDateViewRender((Boolean)value);
+        return;
+      case ELECTRICTYPERENDER:
+        setElectricTypeRender((Boolean)value);
+        return;
+      case ELECTRICTYPEVIEWRENDER:
+        setElectricTypeViewRender((Boolean)value);
+        return;
+      case ELECTRICPAYMENTTYPERENDER:
+        setElectricPaymentTypeRender((Boolean)value);
+        return;
+      case ELECTRICPAYMENTTYPEVIEWRENDER:
+        setElectricPaymentTypeViewRender((Boolean)value);
+        return;
+      case ELECTRICPAYMENTCHANGETYPERENDER:
+        setElectricPaymentChangeTypeRender((Boolean)value);
+        return;
+      case ELECTRICPAYMENTCHANGETYPEVIEWRENDER:
+        setElectricPaymentChangeTypeViewRender((Boolean)value);
+        return;
+      case ELECTRICPAYMENTCYCLERENDER:
+        setElectricPaymentCycleRender((Boolean)value);
+        return;
+      case ELECTRICPAYMENTCYCLEVIEWRENDER:
+        setElectricPaymentCycleViewRender((Boolean)value);
+        return;
+      case ELECTRICCLOSINGDATERENDER:
+        setElectricClosingDateRender((Boolean)value);
+        return;
+      case ELECTRICCLOSINGDATEVIEWRENDER:
+        setElectricClosingDateViewRender((Boolean)value);
+        return;
+      case ELECTRICTRANSMONTHRENDER:
+        setElectricTransMonthRender((Boolean)value);
+        return;
+      case ELECTRICTRANSMONTHVIEWRENDER:
+        setElectricTransMonthViewRender((Boolean)value);
+        return;
+      case ELECTRICTRANSDATERENDER:
+        setElectricTransDateRender((Boolean)value);
+        return;
+      case ELECTRICTRANSDATEVIEWRENDER:
+        setElectricTransDateViewRender((Boolean)value);
+        return;
+      case ELECTRICTRANSNAMERENDER:
+        setElectricTransNameRender((Boolean)value);
+        return;
+      case ELECTRICTRANSNAMEVIEWRENDER:
+        setElectricTransNameViewRender((Boolean)value);
+        return;
+      case ELECTRICTRANSNAMEALTRENDER:
+        setElectricTransNameAltRender((Boolean)value);
+        return;
+      case ELECTRICTRANSNAMEALTVIEWRENDER:
+        setElectricTransNameAltViewRender((Boolean)value);
+        return;
+      case INTROCHGTYPERENDER:
+        setIntroChgTypeRender((Boolean)value);
+        return;
+      case INTROCHGTYPEVIEWRENDER:
+        setIntroChgTypeViewRender((Boolean)value);
+        return;
+      case INTROCHGTYPEHDRRNRENDER:
+        setIntroChgTypeHdrRNRender((Boolean)value);
+        return;
+      case INTROCHGPAYMENTTYPERENDER:
+        setIntroChgPaymentTypeRender((Boolean)value);
+        return;
+      case INTROCHGPAYMENTTYPEVIEWRENDER:
+        setIntroChgPaymentTypeViewRender((Boolean)value);
+        return;
+      case INTROCHGAMTRENDER:
+        setIntroChgAmtRender((Boolean)value);
+        return;
+      case INTROCHGAMTVIEWRENDER:
+        setIntroChgAmtViewRender((Boolean)value);
+        return;
+      case INTROCHGTHISTIMERENDER:
+        setIntroChgThisTimeRender((Boolean)value);
+        return;
+      case INTROCHGTHISTIMEVIEWRENDER:
+        setIntroChgThisTimeViewRender((Boolean)value);
+        return;
+      case INTROCHGPAYMENTYEARRENDER:
+        setIntroChgPaymentYearRender((Boolean)value);
+        return;
+      case INTROCHGPAYMENTYEARVIEWRENDER:
+        setIntroChgPaymentYearViewRender((Boolean)value);
+        return;
+      case INTROCHGPAYMENTDATERENDER:
+        setIntroChgPaymentDateRender((Boolean)value);
+        return;
+      case INTROCHGPAYMENTDATEVIEWRENDER:
+        setIntroChgPaymentDateViewRender((Boolean)value);
+        return;
+      case INTROCHGPERSALESPRICERENDER:
+        setIntroChgPerSalesPriceRender((Boolean)value);
+        return;
+      case INTROCHGPERSALESPRICEVIEWRENDER:
+        setIntroChgPerSalesPriceViewRender((Boolean)value);
+        return;
+      case INTROCHGPERPIECERENDER:
+        setIntroChgPerPieceRender((Boolean)value);
+        return;
+      case INTROCHGPERPIECEVIEWRENDER:
+        setIntroChgPerPieceViewRender((Boolean)value);
+        return;
+      case INTROCHGCLOSINGDATERENDER:
+        setIntroChgClosingDateRender((Boolean)value);
+        return;
+      case INTROCHGCLOSINGDATEVIEWRENDER:
+        setIntroChgClosingDateViewRender((Boolean)value);
+        return;
+      case INTROCHGTRANSMONTHRENDER:
+        setIntroChgTransMonthRender((Boolean)value);
+        return;
+      case INTROCHGTRANSMONTHVIEWRENDER:
+        setIntroChgTransMonthViewRender((Boolean)value);
+        return;
+      case INTROCHGTRANSDATERENDER:
+        setIntroChgTransDateRender((Boolean)value);
+        return;
+      case INTROCHGTRANSDATEVIEWRENDER:
+        setIntroChgTransDateViewRender((Boolean)value);
+        return;
+      case INTROCHGTRANSNAMERENDER:
+        setIntroChgTransNameRender((Boolean)value);
+        return;
+      case INTROCHGTRANSNAMEVIEWRENDER:
+        setIntroChgTransNameViewRender((Boolean)value);
+        return;
+      case INTROCHGTRANSNAMEALTRENDER:
+        setIntroChgTransNameAltRender((Boolean)value);
+        return;
+      case INTROCHGTRANSNAMEALTVIEWRENDER:
+        setIntroChgTransNameAltViewRender((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTTYPEHDRRNRENDER:
+        setInstallSuppPaymentTypeHdrRNRender((Boolean)value);
+        return;
+      case INSTALLSUPPTHISTIMELABELRENDER:
+        setInstallSuppThisTimeLabelRender((Boolean)value);
+        return;
+      case INSTALLSUPPTHISTIMEENDLABELRENDER:
+        setInstallSuppThisTimeEndLabelRender((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTYEARENDLABEL1RENDER:
+        setInstallSuppPaymentYearEndLabel1Render((Boolean)value);
+        return;
+      case INSTALLSUPPPAYMENTYEARENDLABEL2RENDER:
+        setInstallSuppPaymentYearEndLabel2Render((Boolean)value);
+        return;
+      case ELECTRICPAYMENTTYPEHDRRNRENDER:
+        setElectricPaymentTypeHdrRNRender((Boolean)value);
+        return;
+      case ELECTRICINFORIRN02RENDER:
+        setElectricInfoRIRN02Render((Boolean)value);
+        return;
+      case ELECTRICINFORIRN03RENDER:
+        setElectricInfoRIRN03Render((Boolean)value);
+        return;
+      case ELECTRICINFORIRN04RENDER:
+        setElectricInfoRIRN04Render((Boolean)value);
+        return;
+      case ELECTRICINFORIRN05RENDER:
+        setElectricInfoRIRN05Render((Boolean)value);
+        return;
+      case ELECTRICINFORIRN06RENDER:
+        setElectricInfoRIRN06Render((Boolean)value);
+        return;
+      case INTROCHGINFORIRN01RENDER:
+        setIntroChgInfoRIRN01Render((Boolean)value);
+        return;
+      case INTROCHGINFORIRN02RENDER:
+        setIntroChgInfoRIRN02Render((Boolean)value);
+        return;
+      case INTROCHGPERSALESPRICELABELRENDER:
+        setIntroChgPerSalesPriceLabelRender((Boolean)value);
+        return;
+      case INTROCHGPERPIECELABELRENDER:
+        setIntroChgPerPieceLabelRender((Boolean)value);
+        return;
+      case INTROCHGPERSALESPRICEENDLABELRENDER:
+        setIntroChgPerSalesPriceEndLabelRender((Boolean)value);
+        return;
+      case INTROCHGPERPIECEENDLABELRENDER:
+        setIntroChgPerPieceEndLabelRender((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -5767,6 +6380,1904 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(ACTPOBASECODE, value);
   }
+
+
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractStartYearRender
+   */
+  public Boolean getContractStartYearRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTSTARTYEARRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractStartYearRender
+   */
+  public void setContractStartYearRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTSTARTYEARRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractStartYearViewRender
+   */
+  public Boolean getContractStartYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTSTARTYEARVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractStartYearViewRender
+   */
+  public void setContractStartYearViewRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTSTARTYEARVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractStartMonthRender
+   */
+  public Boolean getContractStartMonthRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTSTARTMONTHRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractStartMonthRender
+   */
+  public void setContractStartMonthRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTSTARTMONTHRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractStartMonthViewRender
+   */
+  public Boolean getContractStartMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTSTARTMONTHVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractStartMonthViewRender
+   */
+  public void setContractStartMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTSTARTMONTHVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractEndYearRender
+   */
+  public Boolean getContractEndYearRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTENDYEARRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractEndYearRender
+   */
+  public void setContractEndYearRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTENDYEARRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractEndYearViewRender
+   */
+  public Boolean getContractEndYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTENDYEARVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractEndYearViewRender
+   */
+  public void setContractEndYearViewRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTENDYEARVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractEndMonthRender
+   */
+  public Boolean getContractEndMonthRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTENDMONTHRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractEndMonthRender
+   */
+  public void setContractEndMonthRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTENDMONTHRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractEndMonthViewRender
+   */
+  public Boolean getContractEndMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTENDMONTHVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractEndMonthViewRender
+   */
+  public void setContractEndMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTENDMONTHVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BiddingItemRender
+   */
+  public Boolean getBiddingItemRender()
+  {
+    return (Boolean)getAttributeInternal(BIDDINGITEMRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BiddingItemRender
+   */
+  public void setBiddingItemRender(Boolean value)
+  {
+    setAttributeInternal(BIDDINGITEMRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BiddingItemViewRender
+   */
+  public Boolean getBiddingItemViewRender()
+  {
+    return (Boolean)getAttributeInternal(BIDDINGITEMVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BiddingItemViewRender
+   */
+  public void setBiddingItemViewRender(Boolean value)
+  {
+    setAttributeInternal(BIDDINGITEMVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CancellBeforeMaturityRender
+   */
+  public Boolean getCancellBeforeMaturityRender()
+  {
+    return (Boolean)getAttributeInternal(CANCELLBEFOREMATURITYRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CancellBeforeMaturityRender
+   */
+  public void setCancellBeforeMaturityRender(Boolean value)
+  {
+    setAttributeInternal(CANCELLBEFOREMATURITYRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CancellBeforeMaturityViewRender
+   */
+  public Boolean getCancellBeforeMaturityViewRender()
+  {
+    return (Boolean)getAttributeInternal(CANCELLBEFOREMATURITYVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CancellBeforeMaturityViewRender
+   */
+  public void setCancellBeforeMaturityViewRender(Boolean value)
+  {
+    setAttributeInternal(CANCELLBEFOREMATURITYVIEWRENDER, value);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractYearMonthViewRender
+   */
+  public Boolean getContractYearMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTYEARMONTHVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractYearMonthViewRender
+   */
+  public void setContractYearMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTYEARMONTHVIEWRENDER, value);
+  }
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsTypeViewRender
+   */
+  public Boolean getAdAssetsTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsTypeViewRender
+   */
+  public void setAdAssetsTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute OtherConditionRlRN06Render
+   */
+  public Boolean getOtherConditionRlRN06Render()
+  {
+    return (Boolean)getAttributeInternal(OTHERCONDITIONRLRN06RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute OtherConditionRlRN06Render
+   */
+  public void setOtherConditionRlRN06Render(Boolean value)
+  {
+    setAttributeInternal(OTHERCONDITIONRLRN06RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsTypeRender
+   */
+  public Boolean getAdAssetsTypeRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsTypeRender
+   */
+  public void setAdAssetsTypeRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsAmtRender
+   */
+  public Boolean getAdAssetsAmtRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSAMTRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsAmtRender
+   */
+  public void setAdAssetsAmtRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSAMTRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsAmtViewRender
+   */
+  public Boolean getAdAssetsAmtViewRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSAMTVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsAmtViewRender
+   */
+  public void setAdAssetsAmtViewRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSAMTVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsThisTimeRender
+   */
+  public Boolean getAdAssetsThisTimeRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSTHISTIMERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsThisTimeRender
+   */
+  public void setAdAssetsThisTimeRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSTHISTIMERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsThisTimeViewRender
+   */
+  public Boolean getAdAssetsThisTimeViewRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSTHISTIMEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsThisTimeViewRender
+   */
+  public void setAdAssetsThisTimeViewRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSTHISTIMEVIEWRENDER, value);
+  }
+
+
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentDateRender
+   */
+  public Boolean getAdAssetsPaymentDateRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentDateRender
+   */
+  public void setAdAssetsPaymentDateRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentDateViewRender
+   */
+  public Boolean getAdAssetsPaymentDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentDateViewRender
+   */
+  public void setAdAssetsPaymentDateViewRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractYearMonthRender
+   */
+  public Boolean getContractYearMonthRender()
+  {
+    return (Boolean)getAttributeInternal(CONTRACTYEARMONTHRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractYearMonthRender
+   */
+  public void setContractYearMonthRender(Boolean value)
+  {
+    setAttributeInternal(CONTRACTYEARMONTHRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentYearRender
+   */
+  public Boolean getAdAssetsPaymentYearRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTYEARRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentYearRender
+   */
+  public void setAdAssetsPaymentYearRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTYEARRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute AdAssetsPaymentYearViewRender
+   */
+  public Boolean getAdAssetsPaymentYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(ADASSETSPAYMENTYEARVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute AdAssetsPaymentYearViewRender
+   */
+  public void setAdAssetsPaymentYearViewRender(Boolean value)
+  {
+    setAttributeInternal(ADASSETSPAYMENTYEARVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute OtherConditionRlRN07Render
+   */
+  public Boolean getOtherConditionRlRN07Render()
+  {
+    return (Boolean)getAttributeInternal(OTHERCONDITIONRLRN07RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute OtherConditionRlRN07Render
+   */
+  public void setOtherConditionRlRN07Render(Boolean value)
+  {
+    setAttributeInternal(OTHERCONDITIONRLRN07RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute TaxTypeRender
+   */
+  public Boolean getTaxTypeRender()
+  {
+    return (Boolean)getAttributeInternal(TAXTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute TaxTypeRender
+   */
+  public void setTaxTypeRender(Boolean value)
+  {
+    setAttributeInternal(TAXTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute TaxTypeViewRender
+   */
+  public Boolean getTaxTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(TAXTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute TaxTypeViewRender
+   */
+  public void setTaxTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(TAXTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppTypeRender
+   */
+  public Boolean getInstallSuppTypeRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppTypeRender
+   */
+  public void setInstallSuppTypeRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppTypeViewRender
+   */
+  public Boolean getInstallSuppTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppTypeViewRender
+   */
+  public void setInstallSuppTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentTypeRender
+   */
+  public Boolean getInstallSuppPaymentTypeRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentTypeRender
+   */
+  public void setInstallSuppPaymentTypeRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentTypeViewRender
+   */
+  public Boolean getInstallSuppPaymentTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentTypeViewRender
+   */
+  public void setInstallSuppPaymentTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppAmtRender
+   */
+  public Boolean getInstallSuppAmtRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPAMTRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppAmtRender
+   */
+  public void setInstallSuppAmtRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPAMTRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppAmtViewRender
+   */
+  public Boolean getInstallSuppAmtViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPAMTVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppAmtViewRender
+   */
+  public void setInstallSuppAmtViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPAMTVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppThisTimeRender
+   */
+  public Boolean getInstallSuppThisTimeRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPTHISTIMERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppThisTimeRender
+   */
+  public void setInstallSuppThisTimeRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPTHISTIMERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppThisTimeViewRender
+   */
+  public Boolean getInstallSuppThisTimeViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPTHISTIMEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppThisTimeViewRender
+   */
+  public void setInstallSuppThisTimeViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPTHISTIMEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentYearRender
+   */
+  public Boolean getInstallSuppPaymentYearRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTYEARRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentYearRender
+   */
+  public void setInstallSuppPaymentYearRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTYEARRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentYearViewRender
+   */
+  public Boolean getInstallSuppPaymentYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTYEARVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentYearViewRender
+   */
+  public void setInstallSuppPaymentYearViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTYEARVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentDateRender
+   */
+  public Boolean getInstallSuppPaymentDateRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentDateRender
+   */
+  public void setInstallSuppPaymentDateRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentDateViewRender
+   */
+  public Boolean getInstallSuppPaymentDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentDateViewRender
+   */
+  public void setInstallSuppPaymentDateViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentTypeRender
+   */
+  public Boolean getElectricPaymentTypeRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICPAYMENTTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentTypeRender
+   */
+  public void setElectricPaymentTypeRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentTypeViewRender
+   */
+  public Boolean getElectricPaymentTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICPAYMENTTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentTypeViewRender
+   */
+  public void setElectricPaymentTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentCycleRender
+   */
+  public Boolean getElectricPaymentCycleRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICPAYMENTCYCLERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentCycleRender
+   */
+  public void setElectricPaymentCycleRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTCYCLERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentCycleViewRender
+   */
+  public Boolean getElectricPaymentCycleViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICPAYMENTCYCLEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentCycleViewRender
+   */
+  public void setElectricPaymentCycleViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTCYCLEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricClosingDateRender
+   */
+  public Boolean getElectricClosingDateRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICCLOSINGDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricClosingDateRender
+   */
+  public void setElectricClosingDateRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICCLOSINGDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricClosingDateViewRender
+   */
+  public Boolean getElectricClosingDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICCLOSINGDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricClosingDateViewRender
+   */
+  public void setElectricClosingDateViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICCLOSINGDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransMonthRender
+   */
+  public Boolean getElectricTransMonthRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTRANSMONTHRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransMonthRender
+   */
+  public void setElectricTransMonthRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTRANSMONTHRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransMonthViewRender
+   */
+  public Boolean getElectricTransMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTRANSMONTHVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransMonthViewRender
+   */
+  public void setElectricTransMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTRANSMONTHVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransDateRender
+   */
+  public Boolean getElectricTransDateRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTRANSDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransDateRender
+   */
+  public void setElectricTransDateRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTRANSDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransDateViewRender
+   */
+  public Boolean getElectricTransDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTRANSDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransDateViewRender
+   */
+  public void setElectricTransDateViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTRANSDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransNameRender
+   */
+  public Boolean getElectricTransNameRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTRANSNAMERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransNameRender
+   */
+  public void setElectricTransNameRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTRANSNAMERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransNameViewRender
+   */
+  public Boolean getElectricTransNameViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTRANSNAMEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransNameViewRender
+   */
+  public void setElectricTransNameViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTRANSNAMEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransNameAltRender
+   */
+  public Boolean getElectricTransNameAltRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTRANSNAMEALTRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransNameAltRender
+   */
+  public void setElectricTransNameAltRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTRANSNAMEALTRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTransNameAltViewRender
+   */
+  public Boolean getElectricTransNameAltViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTRANSNAMEALTVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTransNameAltViewRender
+   */
+  public void setElectricTransNameAltViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTRANSNAMEALTVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTypeRender
+   */
+  public Boolean getIntroChgTypeRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTypeRender
+   */
+  public void setIntroChgTypeRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTypeViewRender
+   */
+  public Boolean getIntroChgTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTypeViewRender
+   */
+  public void setIntroChgTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentTypeRender
+   */
+  public Boolean getIntroChgPaymentTypeRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPAYMENTTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentTypeRender
+   */
+  public void setIntroChgPaymentTypeRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentTypeViewRender
+   */
+  public Boolean getIntroChgPaymentTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPAYMENTTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentTypeViewRender
+   */
+  public void setIntroChgPaymentTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgAmtRender
+   */
+  public Boolean getIntroChgAmtRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGAMTRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgAmtRender
+   */
+  public void setIntroChgAmtRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGAMTRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgAmtViewRender
+   */
+  public Boolean getIntroChgAmtViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGAMTVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgAmtViewRender
+   */
+  public void setIntroChgAmtViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGAMTVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgThisTimeRender
+   */
+  public Boolean getIntroChgThisTimeRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTHISTIMERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgThisTimeRender
+   */
+  public void setIntroChgThisTimeRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTHISTIMERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgThisTimeViewRender
+   */
+  public Boolean getIntroChgThisTimeViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTHISTIMEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgThisTimeViewRender
+   */
+  public void setIntroChgThisTimeViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTHISTIMEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentYearRender
+   */
+  public Boolean getIntroChgPaymentYearRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPAYMENTYEARRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentYearRender
+   */
+  public void setIntroChgPaymentYearRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTYEARRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentYearViewRender
+   */
+  public Boolean getIntroChgPaymentYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPAYMENTYEARVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentYearViewRender
+   */
+  public void setIntroChgPaymentYearViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTYEARVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentDateRender
+   */
+  public Boolean getIntroChgPaymentDateRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPAYMENTDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentDateRender
+   */
+  public void setIntroChgPaymentDateRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPaymentDateViewRender
+   */
+  public Boolean getIntroChgPaymentDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPAYMENTDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPaymentDateViewRender
+   */
+  public void setIntroChgPaymentDateViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPAYMENTDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerSalesPriceRender
+   */
+  public Boolean getIntroChgPerSalesPriceRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPERSALESPRICERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerSalesPriceRender
+   */
+  public void setIntroChgPerSalesPriceRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPERSALESPRICERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerSalesPriceViewRender
+   */
+  public Boolean getIntroChgPerSalesPriceViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPERSALESPRICEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerSalesPriceViewRender
+   */
+  public void setIntroChgPerSalesPriceViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPERSALESPRICEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerPieceRender
+   */
+  public Boolean getIntroChgPerPieceRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPERPIECERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerPieceRender
+   */
+  public void setIntroChgPerPieceRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPERPIECERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerPieceViewRender
+   */
+  public Boolean getIntroChgPerPieceViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPERPIECEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerPieceViewRender
+   */
+  public void setIntroChgPerPieceViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPERPIECEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgClosingDateRender
+   */
+  public Boolean getIntroChgClosingDateRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGCLOSINGDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgClosingDateRender
+   */
+  public void setIntroChgClosingDateRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGCLOSINGDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgClosingDateViewRender
+   */
+  public Boolean getIntroChgClosingDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGCLOSINGDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgClosingDateViewRender
+   */
+  public void setIntroChgClosingDateViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGCLOSINGDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransMonthRender
+   */
+  public Boolean getIntroChgTransMonthRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTRANSMONTHRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransMonthRender
+   */
+  public void setIntroChgTransMonthRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTRANSMONTHRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransMonthViewRender
+   */
+  public Boolean getIntroChgTransMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTRANSMONTHVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransMonthViewRender
+   */
+  public void setIntroChgTransMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTRANSMONTHVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransDateRender
+   */
+  public Boolean getIntroChgTransDateRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTRANSDATERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransDateRender
+   */
+  public void setIntroChgTransDateRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTRANSDATERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransDateViewRender
+   */
+  public Boolean getIntroChgTransDateViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTRANSDATEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransDateViewRender
+   */
+  public void setIntroChgTransDateViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTRANSDATEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransNameRender
+   */
+  public Boolean getIntroChgTransNameRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTRANSNAMERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransNameRender
+   */
+  public void setIntroChgTransNameRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTRANSNAMERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransNameViewRender
+   */
+  public Boolean getIntroChgTransNameViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTRANSNAMEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransNameViewRender
+   */
+  public void setIntroChgTransNameViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTRANSNAMEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransNameAltRender
+   */
+  public Boolean getIntroChgTransNameAltRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTRANSNAMEALTRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransNameAltRender
+   */
+  public void setIntroChgTransNameAltRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTRANSNAMEALTRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTransNameAltViewRender
+   */
+  public Boolean getIntroChgTransNameAltViewRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTRANSNAMEALTVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTransNameAltViewRender
+   */
+  public void setIntroChgTransNameAltViewRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTRANSNAMEALTVIEWRENDER, value);
+  }
+
+
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentTypeHdrRNRender
+   */
+  public Boolean getInstallSuppPaymentTypeHdrRNRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTTYPEHDRRNRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentTypeHdrRNRender
+   */
+  public void setInstallSuppPaymentTypeHdrRNRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTTYPEHDRRNRENDER, value);
+  }
+
+
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTypeRender
+   */
+  public Boolean getElectricTypeRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTypeRender
+   */
+  public void setElectricTypeRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricTypeViewRender
+   */
+  public Boolean getElectricTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICTYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricTypeViewRender
+   */
+  public void setElectricTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICTYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentChangeTypeRender
+   */
+  public Boolean getElectricPaymentChangeTypeRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICPAYMENTCHANGETYPERENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentChangeTypeRender
+   */
+  public void setElectricPaymentChangeTypeRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTCHANGETYPERENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentChangeTypeViewRender
+   */
+  public Boolean getElectricPaymentChangeTypeViewRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICPAYMENTCHANGETYPEVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentChangeTypeViewRender
+   */
+  public void setElectricPaymentChangeTypeViewRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTCHANGETYPEVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppThisTimeLabelRender
+   */
+  public Boolean getInstallSuppThisTimeLabelRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPTHISTIMELABELRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppThisTimeLabelRender
+   */
+  public void setInstallSuppThisTimeLabelRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPTHISTIMELABELRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricInfoRIRN02Render
+   */
+  public Boolean getElectricInfoRIRN02Render()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICINFORIRN02RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricInfoRIRN02Render
+   */
+  public void setElectricInfoRIRN02Render(Boolean value)
+  {
+    setAttributeInternal(ELECTRICINFORIRN02RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricInfoRIRN03Render
+   */
+  public Boolean getElectricInfoRIRN03Render()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICINFORIRN03RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricInfoRIRN03Render
+   */
+  public void setElectricInfoRIRN03Render(Boolean value)
+  {
+    setAttributeInternal(ELECTRICINFORIRN03RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricInfoRIRN04Render
+   */
+  public Boolean getElectricInfoRIRN04Render()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICINFORIRN04RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricInfoRIRN04Render
+   */
+  public void setElectricInfoRIRN04Render(Boolean value)
+  {
+    setAttributeInternal(ELECTRICINFORIRN04RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricInfoRIRN05Render
+   */
+  public Boolean getElectricInfoRIRN05Render()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICINFORIRN05RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricInfoRIRN05Render
+   */
+  public void setElectricInfoRIRN05Render(Boolean value)
+  {
+    setAttributeInternal(ELECTRICINFORIRN05RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricInfoRIRN06Render
+   */
+  public Boolean getElectricInfoRIRN06Render()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICINFORIRN06RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricInfoRIRN06Render
+   */
+  public void setElectricInfoRIRN06Render(Boolean value)
+  {
+    setAttributeInternal(ELECTRICINFORIRN06RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgInfoRIRN01Render
+   */
+  public Boolean getIntroChgInfoRIRN01Render()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGINFORIRN01RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgInfoRIRN01Render
+   */
+  public void setIntroChgInfoRIRN01Render(Boolean value)
+  {
+    setAttributeInternal(INTROCHGINFORIRN01RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgInfoRIRN02Render
+   */
+  public Boolean getIntroChgInfoRIRN02Render()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGINFORIRN02RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgInfoRIRN02Render
+   */
+  public void setIntroChgInfoRIRN02Render(Boolean value)
+  {
+    setAttributeInternal(INTROCHGINFORIRN02RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerSalesPriceLabelRender
+   */
+  public Boolean getIntroChgPerSalesPriceLabelRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPERSALESPRICELABELRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerSalesPriceLabelRender
+   */
+  public void setIntroChgPerSalesPriceLabelRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPERSALESPRICELABELRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerPieceLabelRender
+   */
+  public Boolean getIntroChgPerPieceLabelRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPERPIECELABELRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerPieceLabelRender
+   */
+  public void setIntroChgPerPieceLabelRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPERPIECELABELRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerSalesPriceEndLabelRender
+   */
+  public Boolean getIntroChgPerSalesPriceEndLabelRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPERSALESPRICEENDLABELRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerSalesPriceEndLabelRender
+   */
+  public void setIntroChgPerSalesPriceEndLabelRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPERSALESPRICEENDLABELRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgPerPieceEndLabelRender
+   */
+  public Boolean getIntroChgPerPieceEndLabelRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGPERPIECEENDLABELRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgPerPieceEndLabelRender
+   */
+  public void setIntroChgPerPieceEndLabelRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGPERPIECEENDLABELRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgTypeHdrRNRender
+   */
+  public Boolean getIntroChgTypeHdrRNRender()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGTYPEHDRRNRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgTypeHdrRNRender
+   */
+  public void setIntroChgTypeHdrRNRender(Boolean value)
+  {
+    setAttributeInternal(INTROCHGTYPEHDRRNRENDER, value);
+  }
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricPaymentTypeHdrRNRender
+   */
+  public Boolean getElectricPaymentTypeHdrRNRender()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICPAYMENTTYPEHDRRNRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricPaymentTypeHdrRNRender
+   */
+  public void setElectricPaymentTypeHdrRNRender(Boolean value)
+  {
+    setAttributeInternal(ELECTRICPAYMENTTYPEHDRRNRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppThisTimeEndLabelRender
+   */
+  public Boolean getInstallSuppThisTimeEndLabelRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPTHISTIMEENDLABELRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppThisTimeEndLabelRender
+   */
+  public void setInstallSuppThisTimeEndLabelRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPTHISTIMEENDLABELRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentYearEndLabel1Render
+   */
+  public Boolean getInstallSuppPaymentYearEndLabel1Render()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTYEARENDLABEL1RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentYearEndLabel1Render
+   */
+  public void setInstallSuppPaymentYearEndLabel1Render(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTYEARENDLABEL1RENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallSuppPaymentYearEndLabel2Render
+   */
+  public Boolean getInstallSuppPaymentYearEndLabel2Render()
+  {
+    return (Boolean)getAttributeInternal(INSTALLSUPPPAYMENTYEARENDLABEL2RENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallSuppPaymentYearEndLabel2Render
+   */
+  public void setInstallSuppPaymentYearEndLabel2Render(Boolean value)
+  {
+    setAttributeInternal(INSTALLSUPPPAYMENTYEARENDLABEL2RENDER, value);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
