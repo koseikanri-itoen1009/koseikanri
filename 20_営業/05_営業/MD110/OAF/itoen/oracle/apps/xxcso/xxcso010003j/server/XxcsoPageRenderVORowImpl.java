@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoPageRenderVORowImpl
 * 概要説明   : ページ属性設定用ビュー行オブジェクトクラス
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-28 1.0  SCS柳平直人  新規作成
 * 2012-06-12 1.1  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
+* 2015-02-02 1.2  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -47,6 +48,15 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
   protected static final int OWNERCHANGERENDER = 19;
   protected static final int PAYCONDINFOVIEWRENDER = 20;
   protected static final int REJECTBUTTONRENDER = 21;
+  protected static final int INSTSUPPEXISTFLAG = 22;
+  protected static final int INTROCHGEXISTFLAG = 23;
+  protected static final int ELECTRICEXISTFLAG = 24;
+  protected static final int INSTSUPPENABLED = 25;
+  protected static final int INTROCHGENABLED = 26;
+  protected static final int ELECTRICENABLED = 27;
+  protected static final int INSTSUPPDISABLED = 28;
+  protected static final int INTROCHGDISABLED = 29;
+  protected static final int ELECTRICDISABLED = 30;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -122,6 +132,24 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
         return getPayCondInfoViewRender();
       case REJECTBUTTONRENDER:
         return getRejectButtonRender();
+      case INSTSUPPEXISTFLAG:
+        return getInstSuppExistFlag();
+      case INTROCHGEXISTFLAG:
+        return getIntroChgExistFlag();
+      case ELECTRICEXISTFLAG:
+        return getElectricExistFlag();
+      case INSTSUPPENABLED:
+        return getInstSuppEnabled();
+      case INTROCHGENABLED:
+        return getIntroChgEnabled();
+      case ELECTRICENABLED:
+        return getElectricEnabled();
+      case INSTSUPPDISABLED:
+        return getInstSuppDisabled();
+      case INTROCHGDISABLED:
+        return getIntroChgDisabled();
+      case ELECTRICDISABLED:
+        return getElectricDisabled();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -197,6 +225,33 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
         return;
       case REJECTBUTTONRENDER:
         setRejectButtonRender((Boolean)value);
+        return;
+      case INSTSUPPEXISTFLAG:
+        setInstSuppExistFlag((String)value);
+        return;
+      case INTROCHGEXISTFLAG:
+        setIntroChgExistFlag((String)value);
+        return;
+      case ELECTRICEXISTFLAG:
+        setElectricExistFlag((String)value);
+        return;
+      case INSTSUPPENABLED:
+        setInstSuppEnabled((Boolean)value);
+        return;
+      case INTROCHGENABLED:
+        setIntroChgEnabled((Boolean)value);
+        return;
+      case ELECTRICENABLED:
+        setElectricEnabled((Boolean)value);
+        return;
+      case INSTSUPPDISABLED:
+        setInstSuppDisabled((Boolean)value);
+        return;
+      case INTROCHGDISABLED:
+        setIntroChgDisabled((Boolean)value);
+        return;
+      case ELECTRICDISABLED:
+        setElectricDisabled((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -589,6 +644,176 @@ public class XxcsoPageRenderVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(REJECTBUTTONRENDER, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstSuppExistFlag
+   */
+  public String getInstSuppExistFlag()
+  {
+    return (String)getAttributeInternal(INSTSUPPEXISTFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstSuppExistFlag
+   */
+  public void setInstSuppExistFlag(String value)
+  {
+    setAttributeInternal(INSTSUPPEXISTFLAG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgExistFlag
+   */
+  public String getIntroChgExistFlag()
+  {
+    return (String)getAttributeInternal(INTROCHGEXISTFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgExistFlag
+   */
+  public void setIntroChgExistFlag(String value)
+  {
+    setAttributeInternal(INTROCHGEXISTFLAG, value);
+  }
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstSuppEnabled
+   */
+  public Boolean getInstSuppEnabled()
+  {
+    return (Boolean)getAttributeInternal(INSTSUPPENABLED);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstSuppEnabled
+   */
+  public void setInstSuppEnabled(Boolean value)
+  {
+    setAttributeInternal(INSTSUPPENABLED, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgEnabled
+   */
+  public Boolean getIntroChgEnabled()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGENABLED);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgEnabled
+   */
+  public void setIntroChgEnabled(Boolean value)
+  {
+    setAttributeInternal(INTROCHGENABLED, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricEnabled
+   */
+  public Boolean getElectricEnabled()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICENABLED);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricEnabled
+   */
+  public void setElectricEnabled(Boolean value)
+  {
+    setAttributeInternal(ELECTRICENABLED, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstSuppDisabled
+   */
+  public Boolean getInstSuppDisabled()
+  {
+    return (Boolean)getAttributeInternal(INSTSUPPDISABLED);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstSuppDisabled
+   */
+  public void setInstSuppDisabled(Boolean value)
+  {
+    setAttributeInternal(INSTSUPPDISABLED, value);
+  }
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricDisabled
+   */
+  public Boolean getElectricDisabled()
+  {
+    return (Boolean)getAttributeInternal(ELECTRICDISABLED);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricDisabled
+   */
+  public void setElectricDisabled(Boolean value)
+  {
+    setAttributeInternal(ELECTRICDISABLED, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute IntroChgDisabled
+   */
+  public Boolean getIntroChgDisabled()
+  {
+    return (Boolean)getAttributeInternal(INTROCHGDISABLED);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute IntroChgDisabled
+   */
+  public void setIntroChgDisabled(Boolean value)
+  {
+    setAttributeInternal(INTROCHGDISABLED, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ElectricExistFlag
+   */
+  public String getElectricExistFlag()
+  {
+    return (String)getAttributeInternal(ELECTRICEXISTFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ElectricExistFlag
+   */
+  public void setElectricExistFlag(String value)
+  {
+    setAttributeInternal(ELECTRICEXISTFLAG, value);
+  }
+
+
+
+
 
 
 
