@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決計算ユーティリティクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS小川浩     新規作成
+* 2014-12-15 1.1  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -855,6 +856,17 @@ public class XxcsoSpDecisionCalculateUtils
     XxcsoSpDecisionHeaderFullVORowImpl headerRow
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
 
+// 2014-12-15 [E_本稼動_12565] Add Start
+    // 契約年数の設定
+    int    cnvContractYearDate = Integer.valueOf( headerRow.getContractYearDate() ).intValue();
+    String contractYearDate    = headerRow.getContractYearDate();
+
+    if ( cnvContractYearDate == 0 )
+    {
+      contractYearDate = "1";
+    }
+// 2014-12-15 [E_本稼動_12565] Add End
+
     OracleCallableStatement stmt = null;
     
     try
@@ -901,8 +913,12 @@ public class XxcsoSpDecisionCalculateUtils
       stmt.setString(3,  headerRow.getBmRate());
       stmt.setString(4,  headerRow.getLeaseChargeMonth());
       stmt.setString(5,  headerRow.getConstructionCharge());
-      stmt.setString(6,  headerRow.getContractYearDate());
-      stmt.setString(7,  headerRow.getInstallSupportAmt());
+// 2014-12-15 [E_本稼動_12565] Mod Start
+//      stmt.setString(6,  headerRow.getContractYearDate());
+//      stmt.setString(7,  headerRow.getInstallSupportAmt());
+      stmt.setString(6,  contractYearDate);
+      stmt.setString(7,  headerRow.getInstallSuppAmt());
+// 2014-12-15 [E_本稼動_12565] Mod End
       stmt.setString(8,  headerRow.getElectricityAmount());
       stmt.setString(9,  headerRow.getElectricityAmtMonth());
       stmt.registerOutParameter(10,  OracleTypes.VARCHAR);
