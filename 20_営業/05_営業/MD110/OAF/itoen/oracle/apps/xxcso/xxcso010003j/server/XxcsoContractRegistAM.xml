@@ -7,7 +7,7 @@
    LoadComponentsLazily="true" >
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_deployType" Value="0" />
    </DesignTime>
    <ViewUsage
@@ -150,6 +150,22 @@
       Name="XxcsoLoginUserAuthorityVO1"
       ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoLoginUserAuthorityVO" >
    </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionHeadersSummuryVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSpDecisionHeadersSummuryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoSpDecisionHeadersSummuryVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSpDecisionHeadersSummuryVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractOtherCustFullVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoContractOtherCustFullVO2"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVO" >
+   </ViewUsage>
    <ViewLinkUsage
       Name="XxcsoContractMngBm1DestVL1"
       ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractMngBm1DestVL"
@@ -157,7 +173,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1DestinationFullVO1" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -167,7 +183,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2DestinationFullVO1" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -177,7 +193,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3DestinationFullVO1" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -187,7 +203,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1BankAccountFullVO1" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -197,7 +213,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2BankAccountFullVO1" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -207,7 +223,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3BankAccountFullVO1" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -217,7 +233,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1DestinationFullVO2" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -227,7 +243,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2DestinationFullVO2" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -237,7 +253,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3DestinationFullVO2" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -247,7 +263,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm1BankAccountFullVO2" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -257,7 +273,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm2BankAccountFullVO2" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
    <ViewLinkUsage
@@ -267,7 +283,7 @@
       DstViewUsageName="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractRegistAM.XxcsoBm3BankAccountFullVO2" >
       <DesignTime>
          <Attr Name="_isCodegen" Value="true" />
-         <Attr Name="_version" Value="9.0.3.14.00" />
+         <Attr Name="_version" Value="9.0.3.14.01" />
       </DesignTime>
    </ViewLinkUsage>
 </AppModule>
