@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoContractManagementsEOImpl
 * 概要説明   : 契約管理テーブルエンティティクラス
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-22 1.0  SCS小川浩  新規作成
 * 2010-02-09 1.1  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
+* 2015-02-02 1.2  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -77,7 +78,24 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
   protected static final int PROGRAMAPPLICATIONID = 33;
   protected static final int PROGRAMID = 34;
   protected static final int PROGRAMUPDATEDATE = 35;
-  protected static final int XXCSODESTINATIONSEO = 36;
+  protected static final int CONTRACTOTHERCUSTSID = 36;
+  protected static final int XXCSODESTINATIONSEO = 37;
+  protected static final int XXCSOCONTRACTOTHERCUSTSEO = 38;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -119,6 +137,21 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
     }
     return mDefinitionObject;
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -255,12 +288,10 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
 
     setContractManagementId(contractManagementId);
     setContractNumber(contractNumber);
-
     super.insertRow();
 
     XxcsoUtils.debug(txn, "[END]");
   }
-
   
   /*****************************************************************************
    * レコード更新処理です。
@@ -1040,6 +1071,24 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
   }
   //  Generated method. Do not modify.
 
+  /**
+   * 
+   * Gets the attribute value for ContractOtherCustsId, using the alias name ContractOtherCustsId
+   */
+  public Number getContractOtherCustsId()
+  {
+    return (Number)getAttributeInternal(CONTRACTOTHERCUSTSID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for ContractOtherCustsId
+   */
+  public void setContractOtherCustsId(Number value)
+  {
+    setAttributeInternal(CONTRACTOTHERCUSTSID, value);
+  }
+
   protected Object getAttrInvokeAccessor(int index, AttributeDefImpl attrDef) throws Exception
   {
     switch (index)
@@ -1116,8 +1165,12 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
         return getProgramId();
       case PROGRAMUPDATEDATE:
         return getProgramUpdateDate();
+      case CONTRACTOTHERCUSTSID:
+        return getContractOtherCustsId();
       case XXCSODESTINATIONSEO:
         return getXxcsoDestinationsEO();
+      case XXCSOCONTRACTOTHERCUSTSEO:
+        return getXxcsoContractOtherCustsEO();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -1236,6 +1289,9 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
       case PROGRAMUPDATEDATE:
         setProgramUpdateDate((Date)value);
         return;
+      case CONTRACTOTHERCUSTSID:
+        setContractOtherCustsId((Number)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -1252,6 +1308,28 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
     return (RowIterator)getAttributeInternal(XXCSODESTINATIONSEO);
   }
 
+
+
+
+
+  /**
+   * 
+   * Gets the associated entity XxcsoContractOtherCustsEOImpl
+   */
+  public XxcsoContractOtherCustsEOImpl getXxcsoContractOtherCustsEO()
+  {
+    return (XxcsoContractOtherCustsEOImpl)getAttributeInternal(XXCSOCONTRACTOTHERCUSTSEO);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the associated entity XxcsoContractOtherCustsEOImpl
+   */
+  public void setXxcsoContractOtherCustsEO(XxcsoContractOtherCustsEOImpl value)
+  {
+    setAttributeInternal(XXCSOCONTRACTOTHERCUSTSEO, value);
+  }
+
   /**
    * 
    * Creates a Key object based on given key constituents
@@ -1260,6 +1338,22 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
   {
     return new Key(new Object[] {contractManagementId});
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
