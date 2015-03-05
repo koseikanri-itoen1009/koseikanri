@@ -17,7 +17,7 @@ FROM   DUAL
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
@@ -220,6 +220,87 @@ FROM   DUAL
       Type="java.lang.Boolean"
       ColumnType="$none$"
       AliasName="REJECT_BUTTON_RENDER"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstSuppExistFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="INST_SUPP_EXIST_FLAG"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgExistFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="INTRO_CHG_EXIST_FLAG"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricExistFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="$none$"
+      AliasName="ELECTRIC_EXIST_FLAG"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstSuppEnabled"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="INST_SUPP_ENABLED"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgEnabled"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="INTRO_CHG_ENABLED"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricEnabled"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="ELECTRIC_ENABLED"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstSuppDisabled"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="INST_SUPP_DISABLED"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgDisabled"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="INTRO_CHG_DISABLED"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricDisabled"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="ELECTRIC_DISABLED"
       SQLType="BIT" >
    </ViewAttribute>
 </ViewObject>
