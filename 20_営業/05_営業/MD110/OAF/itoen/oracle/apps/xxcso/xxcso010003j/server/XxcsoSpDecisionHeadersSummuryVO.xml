@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoSpDecisionHeadersSummuryVO"
+   SelectList="XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID, 
+       XxcsoSpDecisionHeadersVEO.SP_DECISION_NUMBER, 
+
+       XxcsoSpDecisionHeadersVEO.INSTALL_SUPP_TYPE, 
+       
+XxcsoSpDecisionHeadersVEO.ELECTRIC_PAYMENT_TYPE, 
+       XxcsoSpDecisionHeadersVEO.INTRO_CHG_TYPE"
+   FromList="XXCSO_SP_DECISION_HEADERS_V XxcsoSpDecisionHeadersVEO"
+   BindingStyle="Oracle"
+   CustomQuery="false"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSpDecisionHeadersSummuryVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSpDecisionHeadersSummuryVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <EntityUsage
+      Name="XxcsoSpDecisionHeadersVEO"
+      Entity="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecisionHeadersVEO" >
+      <DesignTime>
+         <Attr Name="_queryClause" Value="false" />
+      </DesignTime>
+   </EntityUsage>
+   <ViewAttribute
+      Name="SpDecisionHeaderId"
+      IsNotNull="true"
+      EntityAttrName="SpDecisionHeaderId"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SP_DECISION_HEADER_ID" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SpDecisionNumber"
+      Precision="30"
+      EntityAttrName="SpDecisionNumber"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="SP_DECISION_NUMBER" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallSuppType"
+      Precision="1"
+      EntityAttrName="InstallSuppType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="INSTALL_SUPP_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentType"
+      Precision="1"
+      EntityAttrName="ElectricPaymentType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ELECTRIC_PAYMENT_TYPE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="IntroChgType"
+      Precision="1"
+      EntityAttrName="IntroChgType"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="INTRO_CHG_TYPE" >
+   </ViewAttribute>
+</ViewObject>
