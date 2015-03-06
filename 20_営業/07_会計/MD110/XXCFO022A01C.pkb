@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,7 +41,13 @@ AS
  *                                           NULLのデータが存在するため
  *  2015-02-10    1.3   Y.Shoji          システムテスト障害#44対応
  *                                       ・請求書単位の仕入先サイトコードを仕入先コードに修正。
- *
+ *  2015-02-26    1.4   Y.Shoji          受入（ユーザ仕訳確認）発生障害#23対応
+ *                                         ・仕訳金額がマイナスの場合に繰越す処理の変更対応
+ *                                           （請求書の種類を「CREDIT」でAP請求書を作成し、繰り越さない）
+ *                                         ・繰越情報登録(A-5)の処理を削除
+ *                                         ・仕入実績アドオン登録(A-9)の処理を削除
+ *                                         ・処理済フラグ更新(A-10)の処理を削除
+ *                                         ・処理済データ削除(A-11)の処理を削除
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -596,247 +602,249 @@ AS
 --
   END check_period_name;
 --
-  /**********************************************************************************
-   * Procedure Name   : ins_offset_info
-   * Description      : 繰越情報登録(A-5)
-   ***********************************************************************************/
-  PROCEDURE ins_offset_info(
-    ov_errbuf           OUT VARCHAR2,      -- エラー・メッセージ           --# 固定 #
-    ov_retcode          OUT VARCHAR2,      -- リターン・コード             --# 固定 #
-    ov_errmsg           OUT VARCHAR2)      -- ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_offset_info'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
-    lv_out_msg               VARCHAR2(5000);
-    ln_cnt                   NUMBER;
-    lt_txns_id               xxpo_rcv_and_rtn_txns.txns_id%TYPE;
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    -- ===============================
-    -- 相殺金額情報テーブル登録
-    -- ===============================
-    ln_cnt := 1;
-    << insert_loop >>
-    FOR ln_cnt IN g_ap_invoice_tab.FIRST..g_ap_invoice_tab.LAST LOOP
-      BEGIN
-        INSERT INTO xxcfo_offset_amount_info(
-           data_type                  -- データ区分
-          ,vendor_code                -- 仕入先コード
-          ,vendor_site_code           -- 仕入先サイトコード
-          ,vendor_site_id             -- 仕入先サイトID
-          ,dept_code                  -- 部門コード
-          ,item_kbn                   -- 品目区分
-          ,target_month               -- 対象年月
-          ,trn_id                     -- 取引ID
-          ,trans_qty                  -- 取引数量
-          ,tax_rate                   -- 消費税率
-          ,order_amount_net           -- 仕入金額（税抜）
-          ,payment_tax                -- 支払消費税額
-          ,commission_net             -- 口銭金額（税抜）
-          ,commission_tax             -- 口銭消費税金額
-          ,assessment                 -- 賦課金額
-          ,invoice_net_amount         -- 支払金額（税抜）
-          ,invoice_amount             -- 支払金額（税込み）
-          ,proc_flag                  -- 処理済フラグ
-          ,proc_date                  -- 処理日時
-          ,created_by
-          ,creation_date
-          ,last_updated_by
-          ,last_update_date
-          ,last_update_login
-          ,request_id
-          ,program_application_id
-          ,program_id
-          ,program_update_date
-        )VALUES(
-           cv_data_type_1                                   -- データ区分 1:仕入繰越
-          ,g_ap_invoice_tab(ln_cnt).vendor_code             -- 仕入先コード
-          ,g_ap_invoice_tab(ln_cnt).vendor_site_code        -- 仕入先サイトコード
-          ,g_ap_invoice_tab(ln_cnt).vendor_site_id          -- 仕入先サイトID
-          ,g_ap_invoice_tab(ln_cnt).department_code         -- 部門コード
-          ,g_ap_invoice_tab(ln_cnt).item_class_code         -- 品目区分
-          ,gv_period_name                                   -- 対象年月(INパラ会計期間)
-          ,g_ap_invoice_tab(ln_cnt).txns_id                 -- 取引ID
-          ,g_ap_invoice_tab(ln_cnt).trans_qty               -- 取引数量
-          ,g_ap_invoice_tab(ln_cnt).tax_rate                -- 消費税率
-          ,g_ap_invoice_tab(ln_cnt).order_amount_net        -- 仕入金額（税抜）
-          ,g_ap_invoice_tab(ln_cnt).payment_tax             -- 支払消費税額
-          ,g_ap_invoice_tab(ln_cnt).commission_net          -- 口銭金額（税抜）
-          ,g_ap_invoice_tab(ln_cnt).commission_tax          -- 口銭消費税金額
-          ,g_ap_invoice_tab(ln_cnt).assessment              -- 賦課金額
-          ,g_ap_invoice_tab(ln_cnt).payment_amount_net      -- 支払金額（税抜）
-          ,g_ap_invoice_tab(ln_cnt).payment_amount          -- 支払金額（税込み）
-          ,cv_flag_n                                        -- 処理済フラグ(N:未実施)
-          ,NULL                                             -- 処理日時
-          ,cn_created_by
-          ,cd_creation_date
-          ,cn_last_updated_by
-          ,cd_last_update_date
-          ,cn_last_update_login
-          ,cn_request_id
-          ,cn_program_application_id
-          ,cn_program_id
-          ,cd_program_update_date
-        );
-      EXCEPTION
-        WHEN OTHERS THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
-                    , iv_name         => cv_msg_cfo_10040
-                    , iv_token_name1  => cv_tkn_data                             -- データ
-                    , iv_token_value1 => cv_msg_out_data_01                      -- 相殺金額情報
-                    , iv_token_name2  => cv_tkn_vendor_site_code                 -- 仕入先サイトコード
-                    , iv_token_value2 => g_ap_invoice_tab(ln_cnt).vendor_site_code
-                    , iv_token_name3  => cv_tkn_department                       -- 部門
-                    , iv_token_value3 => g_ap_invoice_tab(ln_cnt).department_code
-                    , iv_token_name4  => cv_tkn_item_kbn                         -- 品目区分
-                    , iv_token_value4 => g_ap_invoice_tab(ln_cnt).item_class_code
-                    );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-      END;
---
-      -- ===============================
-      -- 生産取引データ更新（請求書番号）
-      -- ===============================
-      -- 受入返品実績アドオンに対して行ロックを取得
-      BEGIN
-        SELECT xrrt.txns_id
-        INTO   lt_txns_id
-        FROM   xxpo_rcv_and_rtn_txns xrrt
-        WHERE  xrrt.txns_id      = g_ap_invoice_tab(ln_cnt).txns_id
-        FOR UPDATE NOWAIT
-        ;
-      EXCEPTION
-        WHEN global_lock_expt THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
-                    , iv_name         => cv_msg_cfo_00019                        -- ロックエラー
-                    , iv_token_name1  => cv_tkn_table                            -- テーブル
-                    , iv_token_value1 => cv_msg_out_data_02                      -- 受入返品実績
-                    );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-      END;
---
-      -- 繰越データには一律で請求書番号に「-1」をセット
-      BEGIN
-        UPDATE xxpo_rcv_and_rtn_txns xrart  -- 受入返品実績(アドオン)
-        SET    xrart.invoice_num  = cv_dummy_invoice_num                         -- 繰越データの請求書番号: -1
-              ,xrart.last_updated_by        = cn_last_updated_by
-              ,xrart.last_update_date       = cd_last_update_date
-              ,xrart.last_update_login      = cn_last_update_login
-              ,xrart.request_id             = cn_request_id
-              ,xrart.program_application_id = cn_program_application_id
-              ,xrart.program_id             = cn_program_id
-              ,xrart.program_update_date    = cd_program_update_date
-        WHERE  xrart.txns_id      = g_ap_invoice_tab(ln_cnt).txns_id
-        ;
-      EXCEPTION
-        WHEN OTHERS THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
-                    , iv_name         => cv_msg_cfo_10042
-                    , iv_token_name1  => cv_tkn_data                             -- データ
-                    , iv_token_value1 => cv_msg_out_data_02                      -- 受入返品実績
-                    , iv_token_name2  => cv_tkn_item                             -- アイテム
-                    , iv_token_value2 => cv_msg_out_item_01                      -- 取引ID
-                    , iv_token_name3  => cv_tkn_key                              -- キー
-                    , iv_token_value3 => g_ap_invoice_tab(ln_cnt).txns_id
-                    );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-      END;
---
-      -- 繰越件数カウント
-      gn_transfer_cnt := gn_transfer_cnt + 1;
---
-    END LOOP insert_loop;
---
-    -- ===============================
-    -- 繰越データのメッセージ出力
-    -- ===============================
-    -- 支払先と金額情報をメッセージ出力する
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_short_name_cfo
-                    , iv_name         => cv_msg_cfo_10041
-                    , iv_token_name1  => cv_tkn_key                -- 仕入先コード
-                    , iv_token_value1 => gv_vendor_code_hdr
-                    , iv_token_name2  => cv_tkn_key2               -- 仕入先サイトコード
-                    , iv_token_value2 => gv_vendor_site_code_hdr
-                    , iv_token_name3  => cv_tkn_key3               -- 部門コード
-                    , iv_token_value3 => gv_department_code_hdr
-                    , iv_token_name4  => cv_tkn_val                -- 繰越金額
-                    , iv_token_value4 => gn_payment_amount_all
-                  );
-    FND_FILE.PUT_LINE(
-        which  => FND_FILE.OUTPUT
-      , buff   => lv_out_msg
-    );
---
-    --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
-    WHEN global_process_expt THEN
-      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;                                            --# 任意 #
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END ins_offset_info;
---
+-- 2015-02-26 Ver1.4 Del Start
+--  /**********************************************************************************
+--   * Procedure Name   : ins_offset_info
+--   * Description      : 繰越情報登録(A-5)
+--   ***********************************************************************************/
+--  PROCEDURE ins_offset_info(
+--    ov_errbuf           OUT VARCHAR2,      -- エラー・メッセージ           --# 固定 #
+--    ov_retcode          OUT VARCHAR2,      -- リターン・コード             --# 固定 #
+--    ov_errmsg           OUT VARCHAR2)      -- ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_offset_info'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+--    lv_out_msg               VARCHAR2(5000);
+--    ln_cnt                   NUMBER;
+--    lt_txns_id               xxpo_rcv_and_rtn_txns.txns_id%TYPE;
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+----
+--    -- ===============================
+--    -- 相殺金額情報テーブル登録
+--    -- ===============================
+--    ln_cnt := 1;
+--    << insert_loop >>
+--    FOR ln_cnt IN g_ap_invoice_tab.FIRST..g_ap_invoice_tab.LAST LOOP
+--      BEGIN
+--        INSERT INTO xxcfo_offset_amount_info(
+--           data_type                  -- データ区分
+--          ,vendor_code                -- 仕入先コード
+--          ,vendor_site_code           -- 仕入先サイトコード
+--          ,vendor_site_id             -- 仕入先サイトID
+--          ,dept_code                  -- 部門コード
+--          ,item_kbn                   -- 品目区分
+--          ,target_month               -- 対象年月
+--          ,trn_id                     -- 取引ID
+--          ,trans_qty                  -- 取引数量
+--          ,tax_rate                   -- 消費税率
+--          ,order_amount_net           -- 仕入金額（税抜）
+--          ,payment_tax                -- 支払消費税額
+--          ,commission_net             -- 口銭金額（税抜）
+--          ,commission_tax             -- 口銭消費税金額
+--          ,assessment                 -- 賦課金額
+--          ,invoice_net_amount         -- 支払金額（税抜）
+--          ,invoice_amount             -- 支払金額（税込み）
+--          ,proc_flag                  -- 処理済フラグ
+--          ,proc_date                  -- 処理日時
+--          ,created_by
+--          ,creation_date
+--          ,last_updated_by
+--          ,last_update_date
+--          ,last_update_login
+--          ,request_id
+--          ,program_application_id
+--          ,program_id
+--          ,program_update_date
+--        )VALUES(
+--           cv_data_type_1                                   -- データ区分 1:仕入繰越
+--          ,g_ap_invoice_tab(ln_cnt).vendor_code             -- 仕入先コード
+--          ,g_ap_invoice_tab(ln_cnt).vendor_site_code        -- 仕入先サイトコード
+--          ,g_ap_invoice_tab(ln_cnt).vendor_site_id          -- 仕入先サイトID
+--          ,g_ap_invoice_tab(ln_cnt).department_code         -- 部門コード
+--          ,g_ap_invoice_tab(ln_cnt).item_class_code         -- 品目区分
+--          ,gv_period_name                                   -- 対象年月(INパラ会計期間)
+--          ,g_ap_invoice_tab(ln_cnt).txns_id                 -- 取引ID
+--          ,g_ap_invoice_tab(ln_cnt).trans_qty               -- 取引数量
+--          ,g_ap_invoice_tab(ln_cnt).tax_rate                -- 消費税率
+--          ,g_ap_invoice_tab(ln_cnt).order_amount_net        -- 仕入金額（税抜）
+--          ,g_ap_invoice_tab(ln_cnt).payment_tax             -- 支払消費税額
+--          ,g_ap_invoice_tab(ln_cnt).commission_net          -- 口銭金額（税抜）
+--          ,g_ap_invoice_tab(ln_cnt).commission_tax          -- 口銭消費税金額
+--          ,g_ap_invoice_tab(ln_cnt).assessment              -- 賦課金額
+--          ,g_ap_invoice_tab(ln_cnt).payment_amount_net      -- 支払金額（税抜）
+--          ,g_ap_invoice_tab(ln_cnt).payment_amount          -- 支払金額（税込み）
+--          ,cv_flag_n                                        -- 処理済フラグ(N:未実施)
+--          ,NULL                                             -- 処理日時
+--          ,cn_created_by
+--          ,cd_creation_date
+--          ,cn_last_updated_by
+--          ,cd_last_update_date
+--          ,cn_last_update_login
+--          ,cn_request_id
+--          ,cn_program_application_id
+--          ,cn_program_id
+--          ,cd_program_update_date
+--        );
+--      EXCEPTION
+--        WHEN OTHERS THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
+--                    , iv_name         => cv_msg_cfo_10040
+--                    , iv_token_name1  => cv_tkn_data                             -- データ
+--                    , iv_token_value1 => cv_msg_out_data_01                      -- 相殺金額情報
+--                    , iv_token_name2  => cv_tkn_vendor_site_code                 -- 仕入先サイトコード
+--                    , iv_token_value2 => g_ap_invoice_tab(ln_cnt).vendor_site_code
+--                    , iv_token_name3  => cv_tkn_department                       -- 部門
+--                    , iv_token_value3 => g_ap_invoice_tab(ln_cnt).department_code
+--                    , iv_token_name4  => cv_tkn_item_kbn                         -- 品目区分
+--                    , iv_token_value4 => g_ap_invoice_tab(ln_cnt).item_class_code
+--                    );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--      END;
+----
+--      -- ===============================
+--      -- 生産取引データ更新（請求書番号）
+--      -- ===============================
+--      -- 受入返品実績アドオンに対して行ロックを取得
+--      BEGIN
+--        SELECT xrrt.txns_id
+--        INTO   lt_txns_id
+--        FROM   xxpo_rcv_and_rtn_txns xrrt
+--        WHERE  xrrt.txns_id      = g_ap_invoice_tab(ln_cnt).txns_id
+--        FOR UPDATE NOWAIT
+--        ;
+--      EXCEPTION
+--        WHEN global_lock_expt THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
+--                    , iv_name         => cv_msg_cfo_00019                        -- ロックエラー
+--                    , iv_token_name1  => cv_tkn_table                            -- テーブル
+--                    , iv_token_value1 => cv_msg_out_data_02                      -- 受入返品実績
+--                    );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--      END;
+----
+--      -- 繰越データには一律で請求書番号に「-1」をセット
+--      BEGIN
+--        UPDATE xxpo_rcv_and_rtn_txns xrart  -- 受入返品実績(アドオン)
+--        SET    xrart.invoice_num  = cv_dummy_invoice_num                         -- 繰越データの請求書番号: -1
+--              ,xrart.last_updated_by        = cn_last_updated_by
+--              ,xrart.last_update_date       = cd_last_update_date
+--              ,xrart.last_update_login      = cn_last_update_login
+--              ,xrart.request_id             = cn_request_id
+--              ,xrart.program_application_id = cn_program_application_id
+--              ,xrart.program_id             = cn_program_id
+--              ,xrart.program_update_date    = cd_program_update_date
+--        WHERE  xrart.txns_id      = g_ap_invoice_tab(ln_cnt).txns_id
+--        ;
+--      EXCEPTION
+--        WHEN OTHERS THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
+--                    , iv_name         => cv_msg_cfo_10042
+--                    , iv_token_name1  => cv_tkn_data                             -- データ
+--                    , iv_token_value1 => cv_msg_out_data_02                      -- 受入返品実績
+--                    , iv_token_name2  => cv_tkn_item                             -- アイテム
+--                    , iv_token_value2 => cv_msg_out_item_01                      -- 取引ID
+--                    , iv_token_name3  => cv_tkn_key                              -- キー
+--                    , iv_token_value3 => g_ap_invoice_tab(ln_cnt).txns_id
+--                    );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--      END;
+----
+--      -- 繰越件数カウント
+--      gn_transfer_cnt := gn_transfer_cnt + 1;
+----
+--    END LOOP insert_loop;
+----
+--    -- ===============================
+--    -- 繰越データのメッセージ出力
+--    -- ===============================
+--    -- 支払先と金額情報をメッセージ出力する
+--    lv_out_msg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_appl_short_name_cfo
+--                    , iv_name         => cv_msg_cfo_10041
+--                    , iv_token_name1  => cv_tkn_key                -- 仕入先コード
+--                    , iv_token_value1 => gv_vendor_code_hdr
+--                    , iv_token_name2  => cv_tkn_key2               -- 仕入先サイトコード
+--                    , iv_token_value2 => gv_vendor_site_code_hdr
+--                    , iv_token_name3  => cv_tkn_key3               -- 部門コード
+--                    , iv_token_value3 => gv_department_code_hdr
+--                    , iv_token_name4  => cv_tkn_val                -- 繰越金額
+--                    , iv_token_value4 => gn_payment_amount_all
+--                  );
+--    FND_FILE.PUT_LINE(
+--        which  => FND_FILE.OUTPUT
+--      , buff   => lv_out_msg
+--    );
+----
+--    --==============================================================
+--    --メッセージ出力をする必要がある場合は処理を記述
+--    --==============================================================
+----
+--  EXCEPTION
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;                                            --# 任意 #
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END ins_offset_info;
+----
+-- 2015-02-26 Ver1.4 Del End
   /**********************************************************************************
    * Procedure Name   : ins_ap_invoice_headers
    * Description      : AP請求書ヘッダOIF登録(A-6)
@@ -875,6 +883,9 @@ AS
     lv_account_title            VARCHAR2(100)     DEFAULT NULL;     -- (ヘッダ)勘定科目
     lv_account_subsidiary       VARCHAR2(100)     DEFAULT NULL;     -- (ヘッダ)補助科目
     lv_description              VARCHAR2(100)     DEFAULT NULL;     -- (ヘッダ)摘要
+-- 2015-02-26 Ver1.4 Add Start
+    lv_invoice_type             VARCHAR2(100)     DEFAULT NULL;     -- (ヘッダ)請求書タイプ
+-- 2015-02-26 Ver1.4 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -904,6 +915,9 @@ AS
     lv_account_title                := NULL;
     lv_account_subsidiary           := NULL;
     lv_description                  := NULL;
+-- 2015-02-26 Ver1.4 Add Start
+    lv_invoice_type                 := NULL;
+-- 2015-02-26 Ver1.4 Add End
 --
     -- ===============================
     -- 仕入先マスタの情報を取得
@@ -995,6 +1009,16 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2015-02-26 Ver1.4 Add Start
+    -- 支払金額（税込）がプラスの場合、請求書の種類は'STANDARD'
+    IF (gn_payment_amount_all > 0) THEN
+      lv_invoice_type := cv_type_standard;
+    -- 支払金額（税込）がマイナスの場合、請求書の種類は'CREDIT'
+    ELSIF (gn_payment_amount_all < 0) THEN
+      lv_invoice_type := cv_type_credit;
+    END IF;
+--
+-- 2015-02-26 Ver1.4 Add End
     -- ===============================
     -- AP請求書OIF登録
     -- ===============================
@@ -1027,8 +1051,11 @@ AS
       VALUES (
         ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
       , gv_invoice_num                          -- 請求書番号(直前で取得)
-      , cv_type_standard                        -- 請求書タイプ
-      , gd_target_date_to                       -- 請求日付(	)
+-- 2015-02-26 Ver1.4 Mod Start
+--      , cv_type_standard                        -- 請求書タイプ
+      , lv_invoice_type                         -- 請求書タイプ
+-- 2015-02-26 Ver1.4 Mod End
+      , gd_target_date_to                       -- 請求日付
       , lv_sales_vendor_code                    -- 仕入先コード
       , lv_sales_vendor_site_code               -- 仕入先サイトコード
       , gn_payment_amount_all                   -- 請求書単位：支払金額（税込）
@@ -2043,291 +2070,293 @@ AS
 --
   END upd_inv_trn_data;
 --
-  /**********************************************************************************
-   * Procedure Name   : ins_rcv_result
-   * Description      : 仕入実績アドオン登録(A-9)
-   ***********************************************************************************/
-  PROCEDURE ins_rcv_result(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_rcv_result'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    -- ============================
-    -- 仕入実績アドオンデータ登録
-    -- ============================
-    BEGIN
-      INSERT INTO xxcfo_rcv_result(
-         rcv_month                            -- 仕入年月
-        ,vendor_code                          -- 仕入先コード
-        ,vendor_site_code                     -- 仕入先サイトコード
-        ,bumon_code                           -- 部門コード
-        ,invoice_number                       -- 請求書番号
-        ,item_kbn                             -- 品目区分
-        ,invoice_amount                       -- 支払金額（税込）
-        --WHOカラム
-        ,created_by
-        ,creation_date
-        ,last_updated_by
-        ,last_update_date
-        ,last_update_login
-        ,request_id
-        ,program_application_id
-        ,program_id
-        ,program_update_date
-      )VALUES(
-         TO_CHAR(gd_target_date_to,'YYYYMM')  -- 仕入年月
-        ,gv_vendor_code_hdr                   -- 仕入先コード
-        ,gv_vendor_site_code_hdr              -- 仕入先サイトコード
-        ,gv_department_code_hdr               -- 部門コード
-        ,gv_invoice_num                       -- 請求書番号
-        ,gv_item_class_code_hdr               -- 品目区分
-        ,gn_payment_amount_all                -- 支払金額（税込）
-        --WHOカラム
-        ,cn_created_by
-        ,cd_creation_date
-        ,cn_last_updated_by
-        ,cd_last_update_date
-        ,cn_last_update_login
-        ,cn_request_id
-        ,cn_program_application_id
-        ,cn_program_id
-        ,cd_program_update_date
-       );
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                    iv_application  => cv_appl_short_name_cfo         -- 'XXCFO'
-                  , iv_name         => cv_msg_cfo_10040
-                  , iv_token_name1  => cv_tkn_data                    -- データ
-                  , iv_token_value1 => cv_msg_out_data_10             -- 仕入実績アドオン
-                  , iv_token_name2  => cv_tkn_vendor_site_code        -- 仕入先サイトコード
-                  , iv_token_value2 => gv_vendor_site_code_hdr
-                  , iv_token_name3  => cv_tkn_department              -- 部門
-                  , iv_token_value3 => gv_department_code_hdr
-                  , iv_token_name4  => cv_tkn_item_kbn                -- 品目区分
-                  , iv_token_value4 => gv_item_class_code_hdr
-                  );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-    END;
-    --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 処理部共通例外ハンドラ ***
-    WHEN global_process_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END ins_rcv_result;
---
-  /**********************************************************************************
-   * Procedure Name   : upd_proc_flag
-   * Description      : 処理済フラグ更新(A-10)
-   ***********************************************************************************/
-  PROCEDURE upd_proc_flag(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_proc_flag'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
---
-    -- *** ローカルTABLE型 ***
-    TYPE l_vendor_site_code_ttype IS TABLE OF xxcfo_offset_amount_info.vendor_site_code%TYPE INDEX BY BINARY_INTEGER;
-    lt_vendor_site_code    l_vendor_site_code_ttype;
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    -- ====================================================
-    -- 繰越分として処理したデータに、処理済フラグを立てる
-    -- ====================================================
-    -- 相殺金額情報に対して行ロックを取得
-    BEGIN
-      SELECT xoai.vendor_site_code
-      BULK COLLECT INTO lt_vendor_site_code
-      FROM   xxcfo_offset_amount_info xoai                            -- 相殺金額情報
-      -- 2015-02-10 Ver1.3 Mod Start
---      WHERE  xoai.vendor_site_code       = gv_vendor_site_code_hdr    -- 仕入先サイトコード
-      WHERE  xoai.vendor_code            = gv_vendor_code_hdr         -- 仕入先コード
-      -- 2015-02-10 Ver1.3 Mod End
-      AND    xoai.dept_code              = gv_department_code_hdr     -- 部門コード
-      AND    xoai.item_kbn               = gv_item_class_code_hdr     -- 品目区分
-      AND    xoai.data_type              = cv_data_type_1             -- データタイプ（1:仕入繰越）
-      AND    xoai.proc_flag              = cv_flag_n                  -- 処理済フラグ（N）
-      AND    xoai.target_month           <> gv_period_name            -- 本処理で作成したデータ以外
-      FOR UPDATE NOWAIT
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        NULL;
-      --
-      WHEN global_lock_expt THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                    iv_application  => cv_appl_short_name_cfo         -- 'XXCFO'
-                  , iv_name         => cv_msg_cfo_00019               -- ロックエラー
-                  , iv_token_name1  => cv_tkn_table                   -- テーブル
-                  , iv_token_value1 => cv_msg_out_data_01             -- 相殺金額情報
-                  );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-    END;
---
-    -- 処理済フラグ更新
-    BEGIN
-      UPDATE xxcfo_offset_amount_info xoai                            -- 相殺金額情報
-      SET    xoai.proc_flag  = cv_flag_y
-            ,xoai.proc_date  = SYSDATE
-      -- 2015-02-10 Ver1.3 Mod Start
---      WHERE  xoai.vendor_site_code       = gv_vendor_site_code_hdr    -- 仕入先サイトコード
-      WHERE  xoai.vendor_code            = gv_vendor_code_hdr         -- 仕入先コード
-      -- 2015-02-10 Ver1.3 Mod End
-      AND    xoai.dept_code              = gv_department_code_hdr     -- 部門コード
-      AND    xoai.item_kbn               = gv_item_class_code_hdr     -- 品目区分
-      AND    xoai.data_type              = cv_data_type_1             -- データタイプ（1:仕入繰越）
-      AND    xoai.proc_flag              = cv_flag_n                  -- 処理済フラグ（N）
-      AND    xoai.target_month           <> gv_period_name            -- 本処理で作成したデータ以外
-      ;
---
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        NULL;
-      --
-      WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                    iv_application  => cv_appl_short_name_cfo         -- 'XXCFO'
-                  , iv_name         => cv_msg_cfo_10040
-                  , iv_token_name1  => cv_tkn_data                    -- データ
-                  , iv_token_value1 => cv_msg_out_data_01             -- 相殺金額情報
-                  , iv_token_name2  => cv_tkn_vendor_site_code        -- 仕入先サイトコード
-                  , iv_token_value2 => gv_vendor_site_code_hdr
-                  , iv_token_name3  => cv_tkn_department              -- 部門
-                  , iv_token_value3 => gv_department_code_hdr
-                  , iv_token_name4  => cv_tkn_item_kbn                -- 品目区分
-                  , iv_token_value4 => gv_item_class_code_hdr
-                  );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-    END;
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 処理部共通例外ハンドラ ***
-    WHEN global_process_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END upd_proc_flag;
---
+-- 2015-02-26 Ver1.4 Del Start
+--  /**********************************************************************************
+--   * Procedure Name   : ins_rcv_result
+--   * Description      : 仕入実績アドオン登録(A-9)
+--   ***********************************************************************************/
+--  PROCEDURE ins_rcv_result(
+--    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_rcv_result'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+----
+--    -- ============================
+--    -- 仕入実績アドオンデータ登録
+--    -- ============================
+--    BEGIN
+--      INSERT INTO xxcfo_rcv_result(
+--         rcv_month                            -- 仕入年月
+--        ,vendor_code                          -- 仕入先コード
+--        ,vendor_site_code                     -- 仕入先サイトコード
+--        ,bumon_code                           -- 部門コード
+--        ,invoice_number                       -- 請求書番号
+--        ,item_kbn                             -- 品目区分
+--        ,invoice_amount                       -- 支払金額（税込）
+--        --WHOカラム
+--        ,created_by
+--        ,creation_date
+--        ,last_updated_by
+--        ,last_update_date
+--        ,last_update_login
+--        ,request_id
+--        ,program_application_id
+--        ,program_id
+--        ,program_update_date
+--      )VALUES(
+--         TO_CHAR(gd_target_date_to,'YYYYMM')  -- 仕入年月
+--        ,gv_vendor_code_hdr                   -- 仕入先コード
+--        ,gv_vendor_site_code_hdr              -- 仕入先サイトコード
+--        ,gv_department_code_hdr               -- 部門コード
+--        ,gv_invoice_num                       -- 請求書番号
+--        ,gv_item_class_code_hdr               -- 品目区分
+--        ,gn_payment_amount_all                -- 支払金額（税込）
+--        --WHOカラム
+--        ,cn_created_by
+--        ,cd_creation_date
+--        ,cn_last_updated_by
+--        ,cd_last_update_date
+--        ,cn_last_update_login
+--        ,cn_request_id
+--        ,cn_program_application_id
+--        ,cn_program_id
+--        ,cd_program_update_date
+--       );
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                    iv_application  => cv_appl_short_name_cfo         -- 'XXCFO'
+--                  , iv_name         => cv_msg_cfo_10040
+--                  , iv_token_name1  => cv_tkn_data                    -- データ
+--                  , iv_token_value1 => cv_msg_out_data_10             -- 仕入実績アドオン
+--                  , iv_token_name2  => cv_tkn_vendor_site_code        -- 仕入先サイトコード
+--                  , iv_token_value2 => gv_vendor_site_code_hdr
+--                  , iv_token_name3  => cv_tkn_department              -- 部門
+--                  , iv_token_value3 => gv_department_code_hdr
+--                  , iv_token_name4  => cv_tkn_item_kbn                -- 品目区分
+--                  , iv_token_value4 => gv_item_class_code_hdr
+--                  );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--    END;
+--    --==============================================================
+--    --メッセージ出力をする必要がある場合は処理を記述
+--    --==============================================================
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 処理部共通例外ハンドラ ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END ins_rcv_result;
+----
+--  /**********************************************************************************
+--   * Procedure Name   : upd_proc_flag
+--   * Description      : 処理済フラグ更新(A-10)
+--   ***********************************************************************************/
+--  PROCEDURE upd_proc_flag(
+--    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_proc_flag'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+----
+--    -- *** ローカルTABLE型 ***
+--    TYPE l_vendor_site_code_ttype IS TABLE OF xxcfo_offset_amount_info.vendor_site_code%TYPE INDEX BY BINARY_INTEGER;
+--    lt_vendor_site_code    l_vendor_site_code_ttype;
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+----
+--    -- ====================================================
+--    -- 繰越分として処理したデータに、処理済フラグを立てる
+--    -- ====================================================
+--    -- 相殺金額情報に対して行ロックを取得
+--    BEGIN
+--      SELECT xoai.vendor_site_code
+--      BULK COLLECT INTO lt_vendor_site_code
+--      FROM   xxcfo_offset_amount_info xoai                            -- 相殺金額情報
+--      -- 2015-02-10 Ver1.3 Mod Start
+----      WHERE  xoai.vendor_site_code       = gv_vendor_site_code_hdr    -- 仕入先サイトコード
+--      WHERE  xoai.vendor_code            = gv_vendor_code_hdr         -- 仕入先コード
+--      -- 2015-02-10 Ver1.3 Mod End
+--      AND    xoai.dept_code              = gv_department_code_hdr     -- 部門コード
+--      AND    xoai.item_kbn               = gv_item_class_code_hdr     -- 品目区分
+--      AND    xoai.data_type              = cv_data_type_1             -- データタイプ（1:仕入繰越）
+--      AND    xoai.proc_flag              = cv_flag_n                  -- 処理済フラグ（N）
+--      AND    xoai.target_month           <> gv_period_name            -- 本処理で作成したデータ以外
+--      FOR UPDATE NOWAIT
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        NULL;
+--      --
+--      WHEN global_lock_expt THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                    iv_application  => cv_appl_short_name_cfo         -- 'XXCFO'
+--                  , iv_name         => cv_msg_cfo_00019               -- ロックエラー
+--                  , iv_token_name1  => cv_tkn_table                   -- テーブル
+--                  , iv_token_value1 => cv_msg_out_data_01             -- 相殺金額情報
+--                  );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--    END;
+----
+--    -- 処理済フラグ更新
+--    BEGIN
+--      UPDATE xxcfo_offset_amount_info xoai                            -- 相殺金額情報
+--      SET    xoai.proc_flag  = cv_flag_y
+--            ,xoai.proc_date  = SYSDATE
+--      -- 2015-02-10 Ver1.3 Mod Start
+----      WHERE  xoai.vendor_site_code       = gv_vendor_site_code_hdr    -- 仕入先サイトコード
+--      WHERE  xoai.vendor_code            = gv_vendor_code_hdr         -- 仕入先コード
+--      -- 2015-02-10 Ver1.3 Mod End
+--      AND    xoai.dept_code              = gv_department_code_hdr     -- 部門コード
+--      AND    xoai.item_kbn               = gv_item_class_code_hdr     -- 品目区分
+--      AND    xoai.data_type              = cv_data_type_1             -- データタイプ（1:仕入繰越）
+--      AND    xoai.proc_flag              = cv_flag_n                  -- 処理済フラグ（N）
+--      AND    xoai.target_month           <> gv_period_name            -- 本処理で作成したデータ以外
+--      ;
+----
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        NULL;
+--      --
+--      WHEN OTHERS THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                    iv_application  => cv_appl_short_name_cfo         -- 'XXCFO'
+--                  , iv_name         => cv_msg_cfo_10040
+--                  , iv_token_name1  => cv_tkn_data                    -- データ
+--                  , iv_token_value1 => cv_msg_out_data_01             -- 相殺金額情報
+--                  , iv_token_name2  => cv_tkn_vendor_site_code        -- 仕入先サイトコード
+--                  , iv_token_value2 => gv_vendor_site_code_hdr
+--                  , iv_token_name3  => cv_tkn_department              -- 部門
+--                  , iv_token_value3 => gv_department_code_hdr
+--                  , iv_token_name4  => cv_tkn_item_kbn                -- 品目区分
+--                  , iv_token_value4 => gv_item_class_code_hdr
+--                  );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--    END;
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 処理部共通例外ハンドラ ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END upd_proc_flag;
+----
+-- 2015-02-26 Ver1.4 Del End
   /**********************************************************************************
    * Procedure Name   : get_ap_invoice_data
    * Description      : AP請求書OIF情報抽出(A-3,4)
@@ -2825,25 +2854,27 @@ AS
                   ,xrart.fukakin_rate_or_unit_price
                   ,xrart.kobiki_rate
            --
-         UNION ALL
-           -- 抽出④（前月繰越分）
-           SELECT  xoai.vendor_code                AS vendor_code               -- 仕入先コード
-                  ,xoai.vendor_site_code           AS vendor_site_code          -- 仕入先サイトコード
-                  ,xoai.vendor_site_id             AS vendor_site_id            -- 仕入先サイトID
-                  ,xoai.dept_code                  AS department_code           -- 部門コード
-                  ,xoai.item_kbn                   AS item_class_code           -- 品目区分
-                  ,xoai.target_month               AS target_period             -- 対象年月
-                  ,xoai.trn_id                     AS txns_id                   -- 取引ID
-                  ,xoai.trans_qty                  AS trans_qty                 -- 取引数量
-                  ,xoai.tax_rate                   AS tax_rate                  -- 消費税率
-                  ,xoai.order_amount_net           AS order_amount_net          -- 仕入金額（税抜）
-                  ,xoai.payment_tax                AS payment_tax               -- 支払消費税金額
-                  ,xoai.commission_net             AS commission_net            -- 口銭金額（税抜）
-                  ,xoai.commission_tax             AS commission_tax            -- 口銭消費税金額
-                  ,xoai.assessment                 AS assessment                -- 賦課金額
-           FROM    xxcfo_offset_amount_info        xoai                         -- 相殺金額情報テーブル
-           WHERE   xoai.data_type                  = cv_data_type_1             -- 1:仕入繰越
-           AND     xoai.proc_flag                  = cv_flag_n                  -- N:未処理
+-- 2015-02-26 Ver1.4 Del Start
+--         UNION ALL
+--           -- 抽出④（前月繰越分）
+--           SELECT  xoai.vendor_code                AS vendor_code               -- 仕入先コード
+--                  ,xoai.vendor_site_code           AS vendor_site_code          -- 仕入先サイトコード
+--                  ,xoai.vendor_site_id             AS vendor_site_id            -- 仕入先サイトID
+--                  ,xoai.dept_code                  AS department_code           -- 部門コード
+--                  ,xoai.item_kbn                   AS item_class_code           -- 品目区分
+--                  ,xoai.target_month               AS target_period             -- 対象年月
+--                  ,xoai.trn_id                     AS txns_id                   -- 取引ID
+--                  ,xoai.trans_qty                  AS trans_qty                 -- 取引数量
+--                  ,xoai.tax_rate                   AS tax_rate                  -- 消費税率
+--                  ,xoai.order_amount_net           AS order_amount_net          -- 仕入金額（税抜）
+--                  ,xoai.payment_tax                AS payment_tax               -- 支払消費税金額
+--                  ,xoai.commission_net             AS commission_net            -- 口銭金額（税抜）
+--                  ,xoai.commission_tax             AS commission_tax            -- 口銭消費税金額
+--                  ,xoai.assessment                 AS assessment                -- 賦課金額
+--           FROM    xxcfo_offset_amount_info        xoai                         -- 相殺金額情報テーブル
+--           WHERE   xoai.data_type                  = cv_data_type_1             -- 1:仕入繰越
+--           AND     xoai.proc_flag                  = cv_flag_n                  -- N:未処理
+-- 2015-02-26 Ver1.4 Del End
           ) trn
       ORDER BY  vendor_code                     -- 仕入先コード
                -- 2015-02-10 Ver1.3 Del Start
@@ -2905,23 +2936,26 @@ AS
           RAISE global_process_expt;
         END IF;
 --
-        -- 請求書単位で支払金額がマイナスの場合は、翌月に繰越す処理を実施
-        IF (lv_proc_type = cv_proc_type_1) THEN
+-- 2015-02-26 Ver1.4 Mod Start
+--        -- 請求書単位で支払金額がマイナスの場合は、翌月に繰越す処理を実施
+--        IF (lv_proc_type = cv_proc_type_1) THEN
+----
+--          -- ===============================
+--          -- 繰越情報登録(A-5)
+--          -- ===============================
+--          ins_offset_info(
+--            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+--            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+--            ov_errmsg                => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+--            );
+----
+--          IF (lv_retcode <> cv_status_normal) THEN
+--            RAISE global_process_expt;
+--          END IF;
 --
-          -- ===============================
-          -- 繰越情報登録(A-5)
-          -- ===============================
-          ins_offset_info(
-            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-            ov_errmsg                => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
-            );
---
-          IF (lv_retcode <> cv_status_normal) THEN
-            RAISE global_process_expt;
-          END IF;
---
-        ELSIF (lv_proc_type = cv_proc_type_2) THEN
+--        ELSIF (lv_proc_type = cv_proc_type_2) THEN
+        IF (lv_proc_type = cv_proc_type_1 OR lv_proc_type = cv_proc_type_2) THEN
+-- 2015-02-26 Ver1.4 Mod End
           -- ===============================
           -- AP請求書ヘッダOIF登録(A-6)
           -- ===============================
@@ -2958,32 +2992,36 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-          -- ===============================
-          -- 仕入実績アドオン登録(A-9)
-          -- ===============================
-          ins_rcv_result(
-            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-          IF (lv_retcode <> cv_status_normal) THEN
-            RAISE global_process_expt;
-          END IF;
---
+-- 2015-02-26 Ver1.4 Del Start
+--          -- ===============================
+--          -- 仕入実績アドオン登録(A-9)
+--          -- ===============================
+--          ins_rcv_result(
+--            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+--            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+--            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--          IF (lv_retcode <> cv_status_normal) THEN
+--            RAISE global_process_expt;
+--          END IF;
+----
+-- 2015-02-26 Ver1.4 Del End
         END IF;
 --
-        -- ===============================
-        -- 処理済フラグ更新(A-10)
-        -- ===============================
-        upd_proc_flag(
-          ov_errbuf                => lv_errbuf,          -- エラー・メッセージ           --# 固定 #
-          ov_retcode               => lv_retcode,         -- リターン・コード             --# 固定 #
-          ov_errmsg                => lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
---
-        IF (lv_retcode <> cv_status_normal) THEN
-          RAISE global_process_expt;
-        END IF;
---
+-- 2015-02-26 Ver1.4 Del Start
+--        -- ===============================
+--        -- 処理済フラグ更新(A-10)
+--        -- ===============================
+--        upd_proc_flag(
+--          ov_errbuf                => lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+--          ov_retcode               => lv_retcode,         -- リターン・コード             --# 固定 #
+--          ov_errmsg                => lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--        IF (lv_retcode <> cv_status_normal) THEN
+--          RAISE global_process_expt;
+--        END IF;
+----
+-- 2015-02-26 Ver1.4 Del End
         -- 最終レコードの場合、ループを抜ける
         IF (get_ap_invoice_cur%NOTFOUND) THEN
           EXIT;
@@ -3114,93 +3152,95 @@ AS
 --
   END get_ap_invoice_data;
 --
-  /**********************************************************************************
-   * Procedure Name   : del_offset_data
-   * Description      : 処理済データ削除(A-11)
-   ***********************************************************************************/
-  PROCEDURE del_offset_data(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_offset_data'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    -- ===============================
-    -- 過去の処理済データを削除
-    -- ===============================
-    BEGIN
-      DELETE FROM xxcfo_offset_amount_info xoai            -- 相殺金額情報テーブル
-      WHERE  xoai.data_type     = cv_data_type_1
-      AND    xoai.proc_flag     = cv_flag_y
-      AND    xoai.proc_date     < gd_target_date_to
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        NULL;
-    END;
---
-    --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END del_offset_data;
---
+-- 2015-02-26 Ver1.4 Del Start
+--  /**********************************************************************************
+--   * Procedure Name   : del_offset_data
+--   * Description      : 処理済データ削除(A-11)
+--   ***********************************************************************************/
+--  PROCEDURE del_offset_data(
+--    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_offset_data'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+----
+--    -- ===============================
+--    -- 過去の処理済データを削除
+--    -- ===============================
+--    BEGIN
+--      DELETE FROM xxcfo_offset_amount_info xoai            -- 相殺金額情報テーブル
+--      WHERE  xoai.data_type     = cv_data_type_1
+--      AND    xoai.proc_flag     = cv_flag_y
+--      AND    xoai.proc_date     < gd_target_date_to
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        NULL;
+--    END;
+----
+--    --==============================================================
+--    --メッセージ出力をする必要がある場合は処理を記述
+--    --==============================================================
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END del_offset_data;
+----
+-- 2015-02-26 Ver1.4 Del End
   /**********************************************************************************
    * Procedure Name   : ins_mfg_if_control
    * Description      : 連携管理テーブル登録(A-12)
@@ -3403,18 +3443,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- ===============================
-    -- 処理済データ削除(A-11)
-    -- ===============================
-    del_offset_data(
-      ov_errbuf                => lv_errbuf,            -- エラー・メッセージ           --# 固定 #
-      ov_retcode               => lv_retcode,           -- リターン・コード             --# 固定 #
-      ov_errmsg                => lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
---
-    IF (lv_retcode <> cv_status_normal) THEN
-      RAISE global_process_expt;
-    END IF;
---
+-- 2015-02-26 Ver1.4 Del Start
+--    -- ===============================
+--    -- 処理済データ削除(A-11)
+--    -- ===============================
+--    del_offset_data(
+--      ov_errbuf                => lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+--      ov_retcode               => lv_retcode,           -- リターン・コード             --# 固定 #
+--      ov_errmsg                => lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--    IF (lv_retcode <> cv_status_normal) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+-- 2015-02-26 Ver1.4 Del End
     -- ===============================
     -- 連携管理テーブル登録(A-12)
     -- ===============================
