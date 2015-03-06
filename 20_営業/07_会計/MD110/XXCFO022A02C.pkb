@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A02C(body)
  * Description      : AP仕入請求情報生成（有償支給）
  * MD.050           : AP仕入請求情報生成（有償支給）<MD050_CFO_022_A02>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,10 @@ AS
  *                                       ・仕訳OIFの「仕訳明細摘要」に設定する値を修正。
  *  2015-02-10    1.2   Y.Shoji          システムテスト障害対応#44対応
  *                                       ・請求書単位の仕入先サイトコードを仕入先コードに修正。
+ *  2015-02-25    1.3   Y.Shoji          受入（ユーザ仕訳確認）発生障害#22対応
+ *                                         ・仕訳金額がマイナスの場合の処理を変更対応
+ *                                          （請求書の種類を「STANDARD」でAP請求書を作成し、繰り越さない。）
+ *                                         ・処理済データ削除(A-7)の処理を削除
  *
  *****************************************************************************************/
 --
@@ -598,6 +602,9 @@ AS
     lv_account_title            VARCHAR2(100)     DEFAULT NULL;     -- (ヘッダ)勘定科目
     lv_account_subsidiary       VARCHAR2(100)     DEFAULT NULL;     -- (ヘッダ)補助科目
     lv_description              VARCHAR2(100)     DEFAULT NULL;     -- (ヘッダ)摘要
+-- 2015.02.25 Ver1.3 Add Start
+    lv_invoice_type             VARCHAR2(20)      DEFAULT NULL;     -- 請求書タイプ
+-- 2015.02.25 Ver1.3 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -717,13 +724,26 @@ AS
     END IF;
 --
     -- 「当月相殺金額」が存在する場合
-    IF (gn_this_month_amount > 0) THEN
+-- 2015.02.25 Ver1.3 Mod Start
+--    IF (gn_this_month_amount > 0) THEN
+    IF (gn_this_month_amount <> 0) THEN
+-- 2015.02.25 Ver1.3 Mod End
       -- ===============================
       -- 請求書番号（伝票番号）取得
       -- ===============================
       -- 請求書番号を採番する
       gv_invoice_num_this := cv_mfg || LPAD(xxcfo_invoice_mfg_s1.nextval, 8, 0);
 --
+-- 2015.02.25 Ver1.3 Add Start
+      -- 「当月相殺金額」がプラスの場合、請求書の種類は'CREDIT'
+      IF (gn_this_month_amount > 0) THEN
+        lv_invoice_type := cv_type_credit;
+      -- 「当月相殺金額」がマイナスの場合、請求書の種類は'STANDARD'
+      ELSIF (gn_this_month_amount < 0) THEN
+        lv_invoice_type := cv_type_standard;
+      END IF;
+--
+-- 2015.02.25 Ver1.3 Add End
       -- ===============================
       -- AP請求書OIF登録
       -- ===============================
@@ -756,7 +776,10 @@ AS
         VALUES (
           ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
         , gv_invoice_num_this                     -- 請求書番号(直前で取得)
-        , cv_type_credit                          -- 請求書タイプ
+-- 2015.02.25 Ver1.3 Mod Start
+--        , cv_type_credit                          -- 請求書タイプ
+        , lv_invoice_type                         -- 請求書タイプ
+-- 2015.02.25 Ver1.3 Mod End
         , gd_target_date_to                       -- 請求日付(対象月の月末)
         , lv_sales_vendor_code                    -- 仕入先コード
         , lv_sales_vendor_site_code               -- 仕入先サイトコード
@@ -954,7 +977,10 @@ AS
       RAISE global_api_expt;
     END IF;
 --
-    IF (gn_this_month_amount > 0) THEN
+-- 2015.02.25 Ver1.3 Mod Start
+--    IF (gn_this_month_amount > 0) THEN
+    IF (gn_this_month_amount <> 0) THEN
+-- 2015.02.25 Ver1.3 Mod End
       -- 本体レコードの登録（当月相殺分）
       BEGIN
         INSERT INTO ap_invoice_lines_interface (
@@ -1375,94 +1401,96 @@ AS
 --
   END get_fee_payment_data;
 --
-  /**********************************************************************************
-   * Procedure Name   : del_offset_data
-   * Description      : 処理済データ削除(A-7)
-   ***********************************************************************************/
-  PROCEDURE del_offset_data(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_offset_data'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-  cv_yyyymm_format              CONSTANT VARCHAR2(30) := 'YYYYMM';
---
-    -- *** ローカル変数 ***
-  ln_check_month                NUMBER DEFAULT 0;
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    -- 削除条件に使用する数値を算出
-    ln_check_month := TO_NUMBER( TO_CHAR( ADD_MONTHS(gd_target_date_from,cn_minus) ,cv_yyyymm_format) );
-    -- ======================================
-    -- 仕入実績アドオンの処理済データを削除
-    -- ======================================
-    BEGIN
-      DELETE FROM xxcfo_rcv_result xrr                     -- 仕入実績アドオン
-      WHERE  TO_NUMBER(xrr.rcv_month) < ln_check_month
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        NULL;
-    END;
---
-    --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END del_offset_data;
+-- 2015.02.25 Ver1.3 Del Start
+--  /**********************************************************************************
+--   * Procedure Name   : del_offset_data
+--   * Description      : 処理済データ削除(A-7)
+--   ***********************************************************************************/
+--  PROCEDURE del_offset_data(
+--    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_offset_data'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+--  cv_yyyymm_format              CONSTANT VARCHAR2(30) := 'YYYYMM';
+----
+--    -- *** ローカル変数 ***
+--  ln_check_month                NUMBER DEFAULT 0;
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+----
+--    -- 削除条件に使用する数値を算出
+--    ln_check_month := TO_NUMBER( TO_CHAR( ADD_MONTHS(gd_target_date_from,cn_minus) ,cv_yyyymm_format) );
+--    -- ======================================
+--    -- 仕入実績アドオンの処理済データを削除
+--    -- ======================================
+--    BEGIN
+--      DELETE FROM xxcfo_rcv_result xrr                     -- 仕入実績アドオン
+--      WHERE  TO_NUMBER(xrr.rcv_month) < ln_check_month
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        NULL;
+--    END;
+----
+--    --==============================================================
+--    --メッセージ出力をする必要がある場合は処理を記述
+--    --==============================================================
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END del_offset_data;
+-- 2015.02.25 Ver1.3 Del End
 --
   /**********************************************************************************
    * Procedure Name   : ins_mfg_if_control
@@ -1666,18 +1694,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- ===============================
-    -- 処理済データ削除(A-7)
-    -- ===============================
-    del_offset_data(
-      ov_errbuf                => lv_errbuf,            -- エラー・メッセージ           --# 固定 #
-      ov_retcode               => lv_retcode,           -- リターン・コード             --# 固定 #
-      ov_errmsg                => lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
---
-    IF (lv_retcode <> cv_status_normal) THEN
-      RAISE global_process_expt;
-    END IF;
---
+-- 2015.02.25 Ver1.3 Del Start
+--    -- ===============================
+--    -- 処理済データ削除(A-7)
+--    -- ===============================
+--    del_offset_data(
+--      ov_errbuf                => lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+--      ov_retcode               => lv_retcode,           -- リターン・コード             --# 固定 #
+--      ov_errmsg                => lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--    IF (lv_retcode <> cv_status_normal) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+-- 2015.02.25 Ver1.3 Del End
     -- ===============================
     -- 連携管理テーブル登録(A-8)
     -- ===============================
