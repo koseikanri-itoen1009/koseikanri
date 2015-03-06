@@ -1,1 +1,0 @@
-CREATE OR REPLACE SYNONYM apps.xxcfo_offset_amount_info FOR xxcfo.xxcfo_offset_amount_info;
