@@ -19,6 +19,7 @@ AS
  *  ins_ap_invoice_lines   AP請求書明細OIF登録(A-6)
  *  del_offset_data        処理済データ削除(A-7)
  *  ins_mfg_if_control     連携管理テーブル登録(A-8)
+ *  ins_ap_invoice_tmp     OIF一時表データ登録(A-10)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -37,6 +38,8 @@ AS
  *                                         ・仕訳金額がマイナスの場合の処理を変更対応
  *                                          （請求書の種類を「STANDARD」でAP請求書を作成し、繰り越さない。）
  *                                         ・処理済データ削除(A-7)の処理を削除
+ *  2015-03-09    1.4   Y.Shoji          E_本稼動_12865 相良会計変更対応
+ *                                         ・仕入先マスタの支払条件を考慮して相殺仕訳を発生させるように仕様変更
  *
  *****************************************************************************************/
 --
@@ -141,6 +144,9 @@ AS
   cv_profile_name_06          CONSTANT VARCHAR2(50)  := 'ORG_ID';                    -- 組織ID (営業)
   cv_profile_name_07          CONSTANT VARCHAR2(50)  := 'XXCFO1_MFG_ORG_ID';         -- 生産ORG_ID
   cv_profile_name_08          CONSTANT VARCHAR2(50)  := 'XXCMN_MASTER_ORG_ID';       -- 品目マスタ組織ID
+-- 2015-03-09 Ver1.4 Add Start
+  cv_profile_name_09          CONSTANT VARCHAR2(50)  := 'XXCFO1_TERMS_PAYMENT_99';   -- 支払条件_指定値
+-- 2015-03-09 Ver1.4 Add End
 --
   -- 参照タイプ
   cv_lookup_type_01           CONSTANT VARCHAR2(50)  := 'XXCMN_CONSUMPTION_TAX_RATE';   -- 参照タイプ：消費税率マスタ
@@ -169,6 +175,11 @@ AS
   cv_msg_out_data_04          CONSTANT VARCHAR2(30)  := 'APP-XXCFO1-11144';          -- AP請求書OIF明細_本体
   cv_msg_out_data_05          CONSTANT VARCHAR2(30)  := 'APP-XXCFO1-11149';          -- 生産取引データ
   cv_msg_out_data_06          CONSTANT VARCHAR2(30)  := 'APP-XXCFO1-11173';          -- 仕訳OIF
+-- 2015-03-09 Ver1.4 Add Start
+  cv_msg_out_data_07          CONSTANT VARCHAR2(30)  := 'APP-XXCFO1-11174';          -- 支払条件
+  cv_msg_out_data_08          CONSTANT VARCHAR2(30)  := 'APP-XXCFO1-11175';          -- AP請求書ヘッダーOIF一時表
+  cv_msg_out_data_09          CONSTANT VARCHAR2(30)  := 'APP-XXCFO1-11176';          -- AP請求書明細OIF一時表
+-- 2015-03-09 Ver1.4 Add End
   --
   cv_msg_out_item_01          CONSTANT VARCHAR2(20)  := 'APP-XXCFO1-11150';          -- 仕入先サイトID
   cv_msg_out_item_02          CONSTANT VARCHAR2(20)  := 'APP-XXCFO1-11151';          -- 本体CCID
@@ -190,6 +201,9 @@ AS
   cv_m_format                 CONSTANT VARCHAR2(30)  := 'YYYY-MM';
   cv_e_time                   CONSTANT VARCHAR2(10)  := ' 23:59:59';
   cv_fdy                      CONSTANT VARCHAR2(02)  := '01';           -- 月初日付
+-- 2015-03-09 Ver1.4 Add Start
+  cn_months_2                 CONSTANT NUMBER        := 2;              -- 2ヶ月後算出用
+-- 2015-03-09 Ver1.4 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -217,11 +231,18 @@ AS
   gv_invoice_source_mfg       VARCHAR2(100) DEFAULT NULL;    -- XXCFO:請求書ソース（工場）
   gv_detail_type_item         VARCHAR2(100) DEFAULT NULL;    -- XXCFO:AP-OIF明細タイプ_明細
   gv_detail_type_tax          VARCHAR2(100) DEFAULT NULL;    -- XXCFO:AP-OIF明細タイプ_税金
+--  2015-03-09 Ver1.4 Add Start
+  gv_terms_payment_99         VARCHAR2(100) DEFAULT NULL;    -- XXCFO:支払条件_指定値
+--  2015-03-09 Ver1.4 Add End
   gd_process_date             DATE          DEFAULT NULL;    -- 業務日付
 --
   gd_target_date_from         DATE          DEFAULT NULL;    -- 抽出対象日付FROM
   gd_target_date_to           DATE          DEFAULT NULL;    -- 抽出対象日付TO
   gd_target_date_last         DATE          DEFAULT NULL;    -- 会計期間_最終日
+-- 2015-03-09 Ver1.4 Add Start
+  gd_target_date_last2        DATE          DEFAULT NULL;    -- 2ヶ月先の会計期間の最終日
+  gd_due_date                 DATE          DEFAULT NULL;    -- 支払予定日/計上日
+-- 2015-03-09 Ver1.4 Add End
 --
   gn_payment_amount_all       NUMBER        DEFAULT NULL;    -- 請求書単位：支払金額（税込）
   gv_vendor_code_hdr          VARCHAR2(100) DEFAULT NULL;    -- 請求書単位：仕入先コード（生産）
@@ -239,6 +260,9 @@ AS
   gn_sales_accts_pay_ccid     NUMBER        DEFAULT NULL;    -- 負債勘定CCID（営業）
 --
   gn_transfer_cnt             NUMBER;                        -- 繰越処理件数
+-- 2015-03-09 Ver1.4 Add Start
+  gn_transfer_in_cnt          NUMBER;                        -- 繰越データ取込件数
+-- 2015-03-09 Ver1.4 Add End
 --
   gv_period_name              VARCHAR2(7);                   -- INパラ会計期間
   gv_period_name_prev         VARCHAR2(7);                   -- INパラ会計期間 -1
@@ -434,11 +458,29 @@ AS
       RAISE global_api_expt;
     END IF ;
 --
+-- 2015-03-09 Ver1.4 Add Start
+    -- 支払条件_指定値
+    gv_terms_payment_99 := FND_PROFILE.VALUE( cv_profile_name_09 ) ;
+    IF ( gv_terms_payment_99 IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+                      iv_application    => cv_appl_short_name_cmn  -- アプリケーション短縮名：XXCMN 共通
+                    , iv_name           => cv_msg_cmn_10002        -- メッセージ：APP-XXCMN-10002 プロファイル取得エラー
+                    , iv_token_name1    => cv_tkn_profile          -- トークン：NG_PROFILE
+                    , iv_token_value1   => cv_profile_name_09
+                          ),1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF ;
+--
+-- 2015-03-09 Ver1.4 Add End
     -- 入力パラメータの会計期間から、抽出対象日付FROM-TOを算出
     gd_target_date_from  := TO_DATE(REPLACE(iv_period_name,'-') || cv_fdy,cv_d_format);
     gd_target_date_to    := LAST_DAY(TO_DATE(REPLACE(iv_period_name,'-') || cv_fdy || cv_e_time,cv_dt_format));
     -- 入力パラメータの会計期間から、仕訳OIF登録用に格納
     gd_target_date_last  := LAST_DAY(TO_DATE(REPLACE(iv_period_name,'-') || cv_fdy || cv_e_time,cv_dt_format));
+-- 2015-03-09 Ver1.4 Add Start
+    gd_target_date_last2 := LAST_DAY(ADD_MONTHS(TO_DATE(REPLACE(iv_period_name,'-') || cv_fdy || cv_e_time,cv_dt_format),cn_months_2));
+-- 2015-03-09 Ver1.4 Add End
     --
     gv_period_name       := iv_period_name;
     gv_period_name_prev  := TO_CHAR(ADD_MONTHS(gd_target_date_from,cn_minus) ,cv_m_format);
@@ -590,6 +632,12 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_comment_01               CONSTANT VARCHAR2(100) := '月分：'; -- AP請求書 摘要欄
+-- 2015-03-09 Ver1.4 Add Start
+    cv_date_format_mm           CONSTANT VARCHAR2(100) := 'MM';             -- 日付書式：MM
+    cv_payment_terms            CONSTANT VARCHAR2(100) := 'PAYMENT TERMS';  -- カレンダタイプ：PAYMENT_TERMS
+    cv_sql_ap                   CONSTANT VARCHAR2(100) := 'SQLAP';          -- アプリ名称：SQLAP
+    cn_sequence_num_1           CONSTANT NUMBER        := 1;                -- 支払条件明細No：1
+-- 2015-03-09 Ver1.4 Add End
 --
     -- *** ローカル変数 ***
     lv_sales_vendor_code        VARCHAR2(100)     DEFAULT NULL;     -- 仕入先コード（営業）
@@ -605,6 +653,9 @@ AS
 -- 2015.02.25 Ver1.3 Add Start
     lv_invoice_type             VARCHAR2(20)      DEFAULT NULL;     -- 請求書タイプ
 -- 2015.02.25 Ver1.3 Add End
+-- 2015-03-09 Ver1.4 Add Start
+    lv_period_name              VARCHAR2(15)      DEFAULT NULL;     -- 特別カレンダ：システム名
+-- 2015-03-09 Ver1.4 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -634,6 +685,10 @@ AS
     lv_account_title                := NULL;
     lv_account_subsidiary           := NULL;
     lv_description                  := NULL;
+-- 2015-03-09 Ver1.4 Add Start
+    lv_invoice_type                 := NULL;
+    lv_period_name                  := NULL;
+-- 2015-03-09 Ver1.4 Add End
 --
     -- ===============================
     -- 仕入先マスタの情報を取得
@@ -669,6 +724,48 @@ AS
         RAISE global_process_expt;
     END;
 --
+-- 2015-03-09 Ver1.4 Add Start
+    -- 特別カレンダのシステム名を取得
+    lv_period_name := REPLACE(SUBSTR(gv_period_name,3,5),'-') || '-' || SUBSTR(gv_period_name,3,2);
+--
+    -- ===============================
+    -- 仕入先の支払予定日/計上日を取得
+    -- ===============================
+    BEGIN
+      SELECT /*+ INDEX(AP_OTHER_PERIODS_U1) */
+             aop.due_date          dd     -- 支払予定日/計上日
+      INTO   gd_due_date
+      FROM   po_vendor_sites_all   pvsa   -- 支払先サイト
+            ,apps.ap_terms_lines   atl    -- 支払条件明細
+            ,apps.ap_other_periods aop    -- 特別カレンダ
+            ,fnd_application       fa     -- アプリケーション
+      WHERE pvsa.terms_id              = atl.term_id
+      AND   atl.calendar               = aop.period_type
+      AND   aop.application_id         = fa.application_id
+      AND   pvsa.vendor_site_code      = lv_sales_vendor_site_code   -- 支払先サイトコード（営業）
+      AND   atl.sequence_num           = cn_sequence_num_1           -- 明細No：1
+      AND   aop.module                 = cv_payment_terms            -- PAYMENT TERMS
+      AND   aop.period_name            = lv_period_name              -- システム名
+      AND   fa.application_short_name  = cv_sql_ap                   -- アプリ名称
+      ;
+    --
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg    := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_appl_short_name_cfo
+                        , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
+                        , iv_token_name1  => cv_tkn_data
+                        , iv_token_value1 => cv_msg_out_data_07            -- 支払条件
+                        , iv_token_name2  => cv_tkn_item
+                        , iv_token_value2 => cv_msg_out_item_01            -- 仕入先サイトID
+                        , iv_token_name3  => cv_tkn_key
+                        , iv_token_value3 => gn_vendor_site_id_hdr
+                        );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+--
+-- 2015-03-09 Ver1.4 Add End
     -- ===============================
     -- 共通関数（勘定科目生成機能）
     -- ===============================
@@ -744,97 +841,270 @@ AS
       END IF;
 --
 -- 2015.02.25 Ver1.3 Add End
-      -- ===============================
-      -- AP請求書OIF登録
-      -- ===============================
-      BEGIN
-        INSERT INTO ap_invoices_interface (
-          invoice_id                              -- シーケンス
-        , invoice_num                             -- 伝票番号
-        , invoice_type_lookup_code                -- 請求書の種類
-        , invoice_date                            -- 請求日付
-        , vendor_num                              -- 仕入先コード
-        , vendor_site_code                        -- 仕入先サイトコード
-        , invoice_amount                          -- 請求金額
-        , description                             -- 摘要
-        , last_update_date                        -- 最終更新日
-        , last_updated_by                         -- 最終更新者
-        , last_update_login                       -- 最終ログインID
-        , creation_date                           -- 作成者
-        , created_by                              -- 作成日
-        , attribute_category                      -- DFFコンテキスト
-        , attribute2                              -- 請求書番号
-        , attribute3                              -- 起票部門
-        , attribute4                              -- 伝票入力者
-        , source                                  -- ソース
-        , pay_group_lookup_code                   -- 支払グループ
-        , gl_date                                 -- 仕訳計上日
-        , accts_pay_code_combination_id           -- 負債勘定CCID
-        , org_id                                  -- 組織ID
-        , terms_date                              -- 支払起算日
-        )
-        VALUES (
-          ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
-        , gv_invoice_num_this                     -- 請求書番号(直前で取得)
--- 2015.02.25 Ver1.3 Mod Start
---        , cv_type_credit                          -- 請求書タイプ
-        , lv_invoice_type                         -- 請求書タイプ
--- 2015.02.25 Ver1.3 Mod End
-        , gd_target_date_to                       -- 請求日付(対象月の月末)
-        , lv_sales_vendor_code                    -- 仕入先コード
-        , lv_sales_vendor_site_code               -- 仕入先サイトコード
-        , gn_this_month_amount * cn_minus         -- 請求書単位：当月相殺金額
-        -- 2015-01-27 Ver1.1 Mod Start
---        , lv_description || gv_period_name || cv_comment_01
---          || lv_mfg_vendor_code || gv_mfg_vendor_name
-        , lv_mfg_vendor_code || cv_underbar || lv_description || cv_underbar || gv_period_name 
-          || cv_comment_01|| gv_mfg_vendor_name
-        -- 2015-01-27 Ver1.1 Mod End
-                                                  -- 「仕入先コード（生産）」＋摘要：「摘要」＋
-                                                  -- 「入力パラメータの会計年月」＋「仕入先名（生産）」
-        , cd_last_update_date                     -- 最終更新日
-        , cn_last_updated_by                      -- 最終更新者
-        , cn_last_update_login                    -- 最終ログインID
-        , cd_creation_date                        -- 作成日
-        , cn_created_by                           -- 作成者
-        , gn_org_id_sales                         -- 組織ID(initで取得)
-        , gv_invoice_num_this                     -- 請求書番号(直前で取得)
-        , gv_department_code_hdr                  -- 拠点コード
-        , NULL                                    -- 伝票入力者(従業員No)
-        , gv_invoice_source_mfg                   -- 請求書ソース(initで取得)
-        , NULL                                    -- 支払グループ
-        , gd_target_date_to                       -- 仕訳計上日(対象月の月末)
-        , gn_sales_accts_pay_ccid                 -- 負債勘定科目CCID
-        , gn_org_id_sales                         -- 組織ID(initで取得)
-        , gd_target_date_to                       -- 支払起算日(対象月の月末)
-        );
-      EXCEPTION
-        WHEN OTHERS THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
-                    , iv_name         => cv_msg_cfo_10040
-                    , iv_token_name1  => cv_tkn_data                             -- データ
-                    , iv_token_value1 => cv_msg_out_data_03                      -- AP請求書OIFヘッダー
-                    , iv_token_name2  => cv_tkn_vendor_site_code                 -- 仕入先サイトコード
-                    , iv_token_value2 => gv_vendor_code_hdr
-                    , iv_token_name3  => cv_tkn_department                       -- 部門
-                    , iv_token_value3 => gv_department_code_hdr
-                    , iv_token_name4  => cv_tkn_item_kbn                         -- 品目区分
-                    , iv_token_value4 => gv_item_class_code_hdr
-                    );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-      END;
+-- 2015-03-09 Ver1.4 Mod Start
+--      -- ===============================
+--      -- AP請求書OIF登録
+--      -- ===============================
+--      BEGIN
+--        INSERT INTO ap_invoices_interface (
+--          invoice_id                              -- シーケンス
+--        , invoice_num                             -- 伝票番号
+--        , invoice_type_lookup_code                -- 請求書の種類
+--        , invoice_date                            -- 請求日付
+--        , vendor_num                              -- 仕入先コード
+--        , vendor_site_code                        -- 仕入先サイトコード
+--        , invoice_amount                          -- 請求金額
+--        , description                             -- 摘要
+--        , last_update_date                        -- 最終更新日
+--        , last_updated_by                         -- 最終更新者
+--        , last_update_login                       -- 最終ログインID
+--        , creation_date                           -- 作成者
+--        , created_by                              -- 作成日
+--        , attribute_category                      -- DFFコンテキスト
+--        , attribute2                              -- 請求書番号
+--        , attribute3                              -- 起票部門
+--        , attribute4                              -- 伝票入力者
+--        , source                                  -- ソース
+--        , pay_group_lookup_code                   -- 支払グループ
+--        , gl_date                                 -- 仕訳計上日
+--        , accts_pay_code_combination_id           -- 負債勘定CCID
+--        , org_id                                  -- 組織ID
+--        , terms_date                              -- 支払起算日
+--        )
+--        VALUES (
+--          ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
+--        , gv_invoice_num_this                     -- 請求書番号(直前で取得)
+---- 2015.02.25 Ver1.3 Mod Start
+----        , cv_type_credit                          -- 請求書タイプ
+--        , lv_invoice_type                         -- 請求書タイプ
+---- 2015.02.25 Ver1.3 Mod End
+--        , gd_target_date_to                       -- 請求日付(対象月の月末)
+--        , lv_sales_vendor_code                    -- 仕入先コード
+--        , lv_sales_vendor_site_code               -- 仕入先サイトコード
+--        , gn_this_month_amount * cn_minus         -- 請求書単位：当月相殺金額
+--        -- 2015-01-27 Ver1.1 Mod Start
+----        , lv_description || gv_period_name || cv_comment_01
+----          || lv_mfg_vendor_code || gv_mfg_vendor_name
+--        , lv_mfg_vendor_code || cv_underbar || lv_description || cv_underbar || gv_period_name 
+--          || cv_comment_01|| gv_mfg_vendor_name
+--        -- 2015-01-27 Ver1.1 Mod End
+--                                                  -- 「仕入先コード（生産）」＋摘要：「摘要」＋
+--                                                  -- 「入力パラメータの会計年月」＋「仕入先名（生産）」
+--        , cd_last_update_date                     -- 最終更新日
+--        , cn_last_updated_by                      -- 最終更新者
+--        , cn_last_update_login                    -- 最終ログインID
+--        , cd_creation_date                        -- 作成日
+--        , cn_created_by                           -- 作成者
+--        , gn_org_id_sales                         -- 組織ID(initで取得)
+--        , gv_invoice_num_this                     -- 請求書番号(直前で取得)
+--        , gv_department_code_hdr                  -- 拠点コード
+--        , NULL                                    -- 伝票入力者(従業員No)
+--        , gv_invoice_source_mfg                   -- 請求書ソース(initで取得)
+--        , NULL                                    -- 支払グループ
+--        , gd_target_date_to                       -- 仕訳計上日(対象月の月末)
+--        , gn_sales_accts_pay_ccid                 -- 負債勘定科目CCID
+--        , gn_org_id_sales                         -- 組織ID(initで取得)
+--        , gd_target_date_to                       -- 支払起算日(対象月の月末)
+--        );
+--      EXCEPTION
+--        WHEN OTHERS THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
+--                    , iv_name         => cv_msg_cfo_10040
+--                    , iv_token_name1  => cv_tkn_data                             -- データ
+--                    , iv_token_value1 => cv_msg_out_data_03                      -- AP請求書OIFヘッダー
+--                    , iv_token_name2  => cv_tkn_vendor_site_code                 -- 仕入先サイトコード
+--                    , iv_token_value2 => gv_vendor_code_hdr
+--                    , iv_token_name3  => cv_tkn_department                       -- 部門
+--                    , iv_token_value3 => gv_department_code_hdr
+--                    , iv_token_name4  => cv_tkn_item_kbn                         -- 品目区分
+--                    , iv_token_value4 => gv_item_class_code_hdr
+--                    );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--      END;
+--      -- invoice_idを保持
+--      SELECT ap_invoices_interface_s.CURRVAL
+--      INTO   gn_invoice_id_02
+--      FROM   DUAL;
+--      --
+--    END IF;
+----
+--    -- 正常件数カウント
+--    gn_normal_cnt := gn_normal_cnt +1;
+--
+      -- 支払予定日が2ヶ月先の会計期間の最終日以前の場合
+      IF (gd_due_date <= gd_target_date_last2) THEN
+        -- ===============================
+        -- AP請求書OIF登録
+        -- ===============================
+        BEGIN
+          INSERT INTO ap_invoices_interface (
+            invoice_id                              -- 請求書ID
+          , invoice_num                             -- 伝票番号
+          , invoice_type_lookup_code                -- 請求書の種類
+          , invoice_date                            -- 請求日付
+          , vendor_num                              -- 仕入先コード
+          , vendor_site_code                        -- 仕入先サイトコード
+          , invoice_amount                          -- 請求金額
+          , description                             -- 摘要
+          , last_update_date                        -- 最終更新日
+          , last_updated_by                         -- 最終更新者
+          , last_update_login                       -- 最終ログインID
+          , creation_date                           -- 作成者
+          , created_by                              -- 作成日
+          , attribute_category                      -- DFFコンテキスト
+          , attribute2                              -- 請求書番号
+          , attribute3                              -- 起票部門
+          , attribute4                              -- 伝票入力者
+          , source                                  -- ソース
+          , pay_group_lookup_code                   -- 支払グループ
+          , terms_name                              -- 支払条件
+          , gl_date                                 -- 仕訳計上日
+          , accts_pay_code_combination_id           -- 負債勘定CCID
+          , org_id                                  -- 組織ID
+          , terms_date                              -- 支払起算日
+          )
+          VALUES (
+            ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
+          , gv_invoice_num_this                     -- 請求書番号(直前で取得)
+          , lv_invoice_type                         -- 請求書タイプ
+          , gd_due_date                             -- 請求日付(支払予定日)
+          , lv_sales_vendor_code                    -- 仕入先コード
+          , lv_sales_vendor_site_code               -- 仕入先サイトコード
+          , gn_this_month_amount * cn_minus         -- 請求書単位：当月相殺金額
+          , lv_mfg_vendor_code || cv_underbar || lv_description || cv_underbar || gv_period_name 
+            || cv_comment_01|| gv_mfg_vendor_name
+                                                    -- 「仕入先コード（生産）」＋「_」＋「摘要」＋「_」
+                                                    -- 「月分：」＋「仕入先名（生産）」
+          , cd_last_update_date                     -- 最終更新日
+          , cn_last_updated_by                      -- 最終更新者
+          , cn_last_update_login                    -- 最終ログインID
+          , cd_creation_date                        -- 作成日
+          , cn_created_by                           -- 作成者
+          , gn_org_id_sales                         -- 組織ID(initで取得)
+          , gv_invoice_num_this                     -- 請求書番号(直前で取得)
+          , gv_department_code_hdr                  -- 拠点コード
+          , NULL                                    -- 伝票入力者(従業員No)
+          , gv_invoice_source_mfg                   -- 請求書ソース(initで取得)
+          , NULL                                    -- 支払グループ
+          , gv_terms_payment_99                     -- 支払条件
+          , gd_due_date                             -- 仕訳計上日(支払予定日)
+          , gn_sales_accts_pay_ccid                 -- 負債勘定科目CCID
+          , gn_org_id_sales                         -- 組織ID(initで取得)
+          , gd_due_date                             -- 支払起算日(支払予定日)
+          );
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
+                      , iv_name         => cv_msg_cfo_10040
+                      , iv_token_name1  => cv_tkn_data                             -- データ
+                      , iv_token_value1 => cv_msg_out_data_03                      -- AP請求書OIFヘッダー
+                      , iv_token_name2  => cv_tkn_vendor_site_code                 -- 仕入先サイトコード
+                      , iv_token_value2 => gv_vendor_code_hdr
+                      , iv_token_name3  => cv_tkn_department                       -- 部門
+                      , iv_token_value3 => gv_department_code_hdr
+                      , iv_token_name4  => cv_tkn_item_kbn                         -- 品目区分
+                      , iv_token_value4 => gv_item_class_code_hdr
+                      );
+            lv_errbuf := lv_errmsg;
+            RAISE global_process_expt;
+        END;
+        --
+--
+        -- 正常件数カウント
+        gn_normal_cnt := gn_normal_cnt +1;
+--
+      -- 支払予定日が2ヶ月先の会計期間の最終日より後の場合
+      ELSE
+        -- ===============================
+        -- AP請求書ヘッダーOIF一時表登録
+        -- ===============================
+        BEGIN
+          INSERT INTO xxcfo_ap_inv_int_tmp (
+            invoice_id                              -- 請求書ID
+          , invoice_num                             -- 伝票番号
+          , invoice_type_lookup_code                -- 請求書の種類
+          , invoice_date                            -- 請求日付
+          , vendor_num                              -- 仕入先コード
+          , vendor_site_code                        -- 仕入先サイトコード
+          , invoice_amount                          -- 請求金額
+          , description                             -- 摘要
+          , last_update_date                        -- 最終更新日
+          , last_updated_by                         -- 最終更新者
+          , last_update_login                       -- 最終ログインID
+          , creation_date                           -- 作成者
+          , created_by                              -- 作成日
+          , attribute_category                      -- DFFコンテキスト
+          , attribute2                              -- 請求書番号
+          , attribute3                              -- 起票部門
+          , attribute4                              -- 伝票入力者
+          , source                                  -- ソース
+          , pay_group_lookup_code                   -- 支払グループ
+          , terms_name                              -- 支払条件
+          , gl_date                                 -- 仕訳計上日
+          , accts_pay_code_combination_id           -- 負債勘定CCID
+          , org_id                                  -- 組織ID
+          , terms_date                              -- 支払起算日
+          )
+          VALUES (
+            ap_invoices_interface_s.NEXTVAL         -- AP請求書OIFヘッダー用シーケンス番号(一意)
+          , gv_invoice_num_this                     -- 請求書番号(直前で取得)
+          , lv_invoice_type                         -- 請求書タイプ
+          , gd_due_date                             -- 請求日付(支払予定日)
+          , lv_sales_vendor_code                    -- 仕入先コード
+          , lv_sales_vendor_site_code               -- 仕入先サイトコード
+          , gn_this_month_amount * cn_minus         -- 請求書単位：当月相殺金額
+          , lv_mfg_vendor_code || cv_underbar || lv_description || cv_underbar || gv_period_name 
+            || cv_comment_01|| gv_mfg_vendor_name
+                                                    -- 「仕入先コード（生産）」＋「_」＋「摘要」＋「_」
+                                                    -- 「月分：」＋「仕入先名（生産）」
+          , cd_last_update_date                     -- 最終更新日
+          , cn_last_updated_by                      -- 最終更新者
+          , cn_last_update_login                    -- 最終ログインID
+          , cd_creation_date                        -- 作成日
+          , cn_created_by                           -- 作成者
+          , gn_org_id_sales                         -- 組織ID(initで取得)
+          , gv_invoice_num_this                     -- 請求書番号(直前で取得)
+          , gv_department_code_hdr                  -- 拠点コード
+          , NULL                                    -- 伝票入力者(従業員No)
+          , gv_invoice_source_mfg                   -- 請求書ソース(initで取得)
+          , NULL                                    -- 支払グループ
+          , gv_terms_payment_99                     -- 支払条件
+          , gd_due_date                             -- 仕訳計上日(支払予定日)
+          , gn_sales_accts_pay_ccid                 -- 負債勘定科目CCID
+          , gn_org_id_sales                         -- 組織ID(initで取得)
+          , gd_due_date                             -- 支払起算日(支払予定日)
+          );
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name_cfo                  -- 'XXCFO'
+                      , iv_name         => cv_msg_cfo_10040
+                      , iv_token_name1  => cv_tkn_data                             -- データ
+                      , iv_token_value1 => cv_msg_out_data_08                      -- AP請求書ヘッダーOIF一時表
+                      , iv_token_name2  => cv_tkn_vendor_site_code                 -- 仕入先サイトコード
+                      , iv_token_value2 => gv_vendor_code_hdr
+                      , iv_token_name3  => cv_tkn_department                       -- 部門
+                      , iv_token_value3 => gv_department_code_hdr
+                      , iv_token_name4  => cv_tkn_item_kbn                         -- 品目区分
+                      , iv_token_value4 => gv_item_class_code_hdr
+                      );
+            lv_errbuf := lv_errmsg;
+            RAISE global_process_expt;
+        END;
+--
+        -- 繰越処理件数カウント
+        gn_transfer_cnt := gn_transfer_cnt +1;
+--
+      END IF;
+--
       -- invoice_idを保持
-      SELECT ap_invoices_interface_s.CURRVAL
-      INTO   gn_invoice_id_02
-      FROM   DUAL;
-      --
+      gn_invoice_id_02 := ap_invoices_interface_s.CURRVAL;
     END IF;
 --
-    -- 正常件数カウント
-    gn_normal_cnt := gn_normal_cnt +1;
---
+-- 2015-03-09 Ver1.4 Mod End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -981,67 +1251,188 @@ AS
 --    IF (gn_this_month_amount > 0) THEN
     IF (gn_this_month_amount <> 0) THEN
 -- 2015.02.25 Ver1.3 Mod End
-      -- 本体レコードの登録（当月相殺分）
-      BEGIN
-        INSERT INTO ap_invoice_lines_interface (
-          invoice_id                                        -- 請求書ID
-        , invoice_line_id                                   -- 請求書明細ID
-        , line_number                                       -- 明細行番号
-        , line_type_lookup_code                             -- 明細タイプ
-        , amount                                            -- 明細金額
-        , description                                       -- 摘要
-        , tax_code                                          -- 税コード
-        , dist_code_combination_id                          -- CCID
-        , last_updated_by                                   -- 最終更新者
-        , last_update_date                                  -- 最終更新日
-        , last_update_login                                 -- 最終ログインID
-        , created_by                                        -- 作成者
-        , creation_date                                     -- 作成日
-        , attribute_category                                -- DFFコンテキスト
-        , org_id                                            -- 組織ID
-        )
-        VALUES (
-          gn_invoice_id_02                                  -- 直前に作成したAP請求書OIFヘッダーの請求ID
-        , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
-        , cn_detail_num                                     -- ヘッダー内での連番 （1固定）
-        , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
-        , gn_this_month_amount * cn_minus                   -- 前月相殺金額
-        -- 2015.01.27 Ver1.1 Mod Start
---        , lv_description || gv_period_name || cv_comment_01
---          || gv_vendor_code_hdr || gv_mfg_vendor_name       
-        , gv_vendor_code_hdr || cv_underbar || lv_description || cv_underbar || gv_period_name
-          || cv_comment_01 || gv_mfg_vendor_name
-        -- 2015.01.27 Ver1.1 Mod End
-                                                            -- 「仕入先コード（生産）」＋摘要：「摘要」
-                                                            -- ＋「入力パラメータの会計年月」＋「仕入先名（生産）」
-        , cv_tax_code_0000                                  -- 請求書税コード
-        , lv_line_ccid                                      -- CCID
-        , cn_last_updated_by                                -- 最終更新者
-        , cd_last_update_date                               -- 最終更新日
-        , cn_last_update_login                              -- 最終ログインID
-        , cn_created_by                                     -- 作成者
-        , cd_creation_date                                  -- 作成日
-        , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
-        , gn_org_id_sales                                   -- 組織ID
-        );
-      EXCEPTION
-        WHEN OTHERS THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_short_name_cfo              -- 'XXCFO'
-                    , iv_name         => cv_msg_cfo_10040
-                    , iv_token_name1  => cv_tkn_data                         -- データ
-                    , iv_token_value1 => cv_msg_out_data_04                  -- AP請求書OIF明細_本体
-                    , iv_token_name2  => cv_tkn_vendor_site_code             -- 仕入先サイトコード
-                    , iv_token_value2 => gv_vendor_code_hdr
-                    , iv_token_name3  => cv_tkn_department                   -- 部門
-                    , iv_token_value3 => gv_department_code_hdr
-                    , iv_token_name4  => cv_tkn_item_kbn                     -- 品目区分
-                    , iv_token_value4 => gv_item_class_code_hdr
-                    );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-      END;
-    END iF;
+-- 2015-03-09 Ver1.4 Mod Start
+--      -- 本体レコードの登録（当月相殺分）
+--      BEGIN
+--        INSERT INTO ap_invoice_lines_interface (
+--          invoice_id                                        -- 請求書ID
+--        , invoice_line_id                                   -- 請求書明細ID
+--        , line_number                                       -- 明細行番号
+--        , line_type_lookup_code                             -- 明細タイプ
+--        , amount                                            -- 明細金額
+--        , description                                       -- 摘要
+--        , tax_code                                          -- 税コード
+--        , dist_code_combination_id                          -- CCID
+--        , last_updated_by                                   -- 最終更新者
+--        , last_update_date                                  -- 最終更新日
+--        , last_update_login                                 -- 最終ログインID
+--        , created_by                                        -- 作成者
+--        , creation_date                                     -- 作成日
+--        , attribute_category                                -- DFFコンテキスト
+--        , org_id                                            -- 組織ID
+--        )
+--        VALUES (
+--          gn_invoice_id_02                                  -- 直前に作成したAP請求書OIFヘッダーの請求ID
+--        , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
+--        , cn_detail_num                                     -- ヘッダー内での連番 （1固定）
+--        , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
+--        , gn_this_month_amount * cn_minus                   -- 前月相殺金額
+--        -- 2015.01.27 Ver1.1 Mod Start
+----        , lv_description || gv_period_name || cv_comment_01
+----          || gv_vendor_code_hdr || gv_mfg_vendor_name       
+--        , gv_vendor_code_hdr || cv_underbar || lv_description || cv_underbar || gv_period_name
+--          || cv_comment_01 || gv_mfg_vendor_name
+--        -- 2015.01.27 Ver1.1 Mod End
+--                                                            -- 「仕入先コード（生産）」＋摘要：「摘要」
+--                                                            -- ＋「入力パラメータの会計年月」＋「仕入先名（生産）」
+--        , cv_tax_code_0000                                  -- 請求書税コード
+--        , lv_line_ccid                                      -- CCID
+--        , cn_last_updated_by                                -- 最終更新者
+--        , cd_last_update_date                               -- 最終更新日
+--        , cn_last_update_login                              -- 最終ログインID
+--        , cn_created_by                                     -- 作成者
+--        , cd_creation_date                                  -- 作成日
+--        , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
+--        , gn_org_id_sales                                   -- 組織ID
+--        );
+--      EXCEPTION
+--        WHEN OTHERS THEN
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_appl_short_name_cfo              -- 'XXCFO'
+--                    , iv_name         => cv_msg_cfo_10040
+--                    , iv_token_name1  => cv_tkn_data                         -- データ
+--                    , iv_token_value1 => cv_msg_out_data_04                  -- AP請求書OIF明細_本体
+--                    , iv_token_name2  => cv_tkn_vendor_site_code             -- 仕入先サイトコード
+--                    , iv_token_value2 => gv_vendor_code_hdr
+--                    , iv_token_name3  => cv_tkn_department                   -- 部門
+--                    , iv_token_value3 => gv_department_code_hdr
+--                    , iv_token_name4  => cv_tkn_item_kbn                     -- 品目区分
+--                    , iv_token_value4 => gv_item_class_code_hdr
+--                    );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--      END;
+--    END iF;
+      -- 支払予定日が2ヶ月先の会計期間の最終日以前の場合
+      IF (gd_due_date <= gd_target_date_last2) THEN
+        -- 本体レコードの登録
+        BEGIN
+          INSERT INTO ap_invoice_lines_interface (
+            invoice_id                                        -- 請求書ID
+          , invoice_line_id                                   -- 請求書明細ID
+          , line_number                                       -- 明細行番号
+          , line_type_lookup_code                             -- 明細タイプ
+          , amount                                            -- 明細金額
+          , description                                       -- 摘要
+          , tax_code                                          -- 税コード
+          , dist_code_combination_id                          -- CCID
+          , last_updated_by                                   -- 最終更新者
+          , last_update_date                                  -- 最終更新日
+          , last_update_login                                 -- 最終ログインID
+          , created_by                                        -- 作成者
+          , creation_date                                     -- 作成日
+          , attribute_category                                -- DFFコンテキスト
+          , org_id                                            -- 組織ID
+          )
+          VALUES (
+            gn_invoice_id_02                                  -- 直前に作成したAP請求書OIFヘッダーの請求ID
+          , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
+          , cn_detail_num                                     -- ヘッダー内での連番 （1固定）
+          , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
+          , gn_this_month_amount * cn_minus                   -- 前月相殺金額   
+          , gv_vendor_code_hdr || cv_underbar || lv_description || cv_underbar || gv_period_name
+            || cv_comment_01 || gv_mfg_vendor_name
+                                                              -- 「仕入先コード（生産）」＋摘要：「摘要」
+                                                              -- ＋「入力パラメータの会計年月」＋「仕入先名（生産）」
+          , cv_tax_code_0000                                  -- 請求書税コード
+          , lv_line_ccid                                      -- CCID
+          , cn_last_updated_by                                -- 最終更新者
+          , cd_last_update_date                               -- 最終更新日
+          , cn_last_update_login                              -- 最終ログインID
+          , cn_created_by                                     -- 作成者
+          , cd_creation_date                                  -- 作成日
+          , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
+          , gn_org_id_sales                                   -- 組織ID
+          );
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name_cfo              -- 'XXCFO'
+                      , iv_name         => cv_msg_cfo_10040
+                      , iv_token_name1  => cv_tkn_data                         -- データ
+                      , iv_token_value1 => cv_msg_out_data_04                  -- AP請求書OIF明細_本体
+                      , iv_token_name2  => cv_tkn_vendor_site_code             -- 仕入先サイトコード
+                      , iv_token_value2 => gv_vendor_code_hdr
+                      , iv_token_name3  => cv_tkn_department                   -- 部門
+                      , iv_token_value3 => gv_department_code_hdr
+                      , iv_token_name4  => cv_tkn_item_kbn                     -- 品目区分
+                      , iv_token_value4 => gv_item_class_code_hdr
+                      );
+            lv_errbuf := lv_errmsg;
+            RAISE global_process_expt;
+        END;
+--
+      -- 支払予定日が2ヶ月先の会計期間の最終日より後の場合
+      ELSE
+        -- AP請求書明細OIF一時表に本体レコードを登録
+        BEGIN
+          INSERT INTO xxcfo_ap_inv_line_int_tmp (
+            invoice_id                                        -- 請求書ID
+          , invoice_line_id                                   -- 請求書明細ID
+          , line_number                                       -- 明細行番号
+          , line_type_lookup_code                             -- 明細タイプ
+          , amount                                            -- 明細金額
+          , description                                       -- 摘要
+          , tax_code                                          -- 税コード
+          , dist_code_combination_id                          -- CCID
+          , last_updated_by                                   -- 最終更新者
+          , last_update_date                                  -- 最終更新日
+          , last_update_login                                 -- 最終ログインID
+          , created_by                                        -- 作成者
+          , creation_date                                     -- 作成日
+          , attribute_category                                -- DFFコンテキスト
+          , org_id                                            -- 組織ID
+          )
+          VALUES (
+            gn_invoice_id_02                                  -- 直前に作成したAP請求書OIFヘッダーの請求ID
+          , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
+          , cn_detail_num                                     -- ヘッダー内での連番 （1固定）
+          , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
+          , gn_this_month_amount * cn_minus                   -- 前月相殺金額   
+          , gv_vendor_code_hdr || cv_underbar || lv_description || cv_underbar || gv_period_name
+            || cv_comment_01 || gv_mfg_vendor_name
+                                                              -- 「仕入先コード（生産）」＋摘要：「摘要」
+                                                              -- ＋「入力パラメータの会計年月」＋「仕入先名（生産）」
+          , cv_tax_code_0000                                  -- 請求書税コード
+          , lv_line_ccid                                      -- CCID
+          , cn_last_updated_by                                -- 最終更新者
+          , cd_last_update_date                               -- 最終更新日
+          , cn_last_update_login                              -- 最終ログインID
+          , cn_created_by                                     -- 作成者
+          , cd_creation_date                                  -- 作成日
+          , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
+          , gn_org_id_sales                                   -- 組織ID
+          );
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name_cfo              -- 'XXCFO'
+                      , iv_name         => cv_msg_cfo_10040
+                      , iv_token_name1  => cv_tkn_data                         -- データ
+                      , iv_token_value1 => cv_msg_out_data_09                  -- AP請求書明細OIF一時表
+                      , iv_token_name2  => cv_tkn_vendor_site_code             -- 仕入先サイトコード
+                      , iv_token_value2 => gv_vendor_code_hdr
+                      , iv_token_name3  => cv_tkn_department                   -- 部門
+                      , iv_token_value3 => gv_department_code_hdr
+                      , iv_token_name4  => cv_tkn_item_kbn                     -- 品目区分
+                      , iv_token_value4 => gv_item_class_code_hdr
+                      );
+            lv_errbuf := lv_errmsg;
+            RAISE global_process_expt;
+        END;
+      END IF;
+    END IF;
+-- 2015-03-09 Ver1.4 Mod End
 --
   EXCEPTION
 --
@@ -1599,6 +1990,216 @@ AS
 --
   END ins_mfg_if_control;
 --
+-- 2015-03-09 Ver1.4 Add Start
+  /**********************************************************************************
+   * Procedure Name   : ins_ap_invoice_tmp
+   * Description      : OIF一時表データ登録(A-10)
+   ***********************************************************************************/
+  PROCEDURE ins_ap_invoice_tmp(
+    iv_period_name      IN  VARCHAR2,      -- 1.会計期間
+    ov_errbuf           OUT VARCHAR2,      -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,      -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)      -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_ap_invoice_tmp'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    CURSOR get_invoice_id_cur
+    IS
+      SELECT xaiit.invoice_id       AS invoice_id            -- 請求書ID
+      FROM   xxcfo_ap_inv_int_tmp   xaiit                    -- AP請求書ヘッダーOIF一時表
+      WHERE  xaiit.terms_date <= gd_target_date_last2
+    ;
+--
+    -- *** ローカル・レコード ***
+    get_invoice_id_rec get_invoice_id_cur%ROWTYPE;
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- =====================================
+    -- 登録対象のデータを抽出
+    -- =====================================
+    <<tmp_loop>>
+    OPEN get_invoice_id_cur;
+    LOOP
+      FETCH get_invoice_id_cur INTO get_invoice_id_rec;
+--
+      -- 登録対象がなくなった場合、処理終了
+      EXIT WHEN get_invoice_id_cur%NOTFOUND;
+--
+      -- =====================================
+      -- 登録対象のデータを登録
+      -- =====================================
+      -- ヘッダーデータ登録
+      INSERT INTO ap_invoices_interface(
+        invoice_id                                    -- 請求書ID
+       ,invoice_num                                   -- 伝票番号
+       ,invoice_type_lookup_code                      -- 請求書の種類
+       ,invoice_date                                  -- 請求日付
+       ,vendor_num                                    -- 仕入先コード
+       ,vendor_site_code                              -- 仕入先サイトコード
+       ,invoice_amount                                -- 請求金額
+       ,description                                   -- 摘要
+       ,last_update_date                              -- 最終更新日
+       ,last_updated_by                               -- 最終更新者
+       ,last_update_login                             -- 最終ログインID
+       ,creation_date                                 -- 作成者
+       ,created_by                                    -- 作成日
+       ,attribute_category                            -- DFFコンテキスト
+       ,attribute2                                    -- 請求書番号
+       ,attribute3                                    -- 起票部門
+       ,attribute4                                    -- 伝票入力者
+       ,source                                        -- ソース
+       ,pay_group_lookup_code                         -- 支払グループ
+       ,terms_name                                    -- 支払条件
+       ,gl_date                                       -- 仕訳計上日
+       ,accts_pay_code_combination_id                 -- 負債勘定CCID
+       ,org_id                                        -- 組織ID
+       ,terms_date                                    -- 支払起算日
+      )
+      SELECT
+        xaiit.invoice_id                              -- 請求書ID
+       ,xaiit.invoice_num                             -- 伝票番号
+       ,xaiit.invoice_type_lookup_code                -- 請求書の種類
+       ,xaiit.invoice_date                            -- 請求日付
+       ,xaiit.vendor_num                              -- 仕入先コード
+       ,xaiit.vendor_site_code                        -- 仕入先サイトコード
+       ,xaiit.invoice_amount                          -- 請求金額
+       ,xaiit.description                             -- 摘要
+       ,xaiit.last_update_date                        -- 最終更新日
+       ,xaiit.last_updated_by                         -- 最終更新者
+       ,xaiit.last_update_login                       -- 最終ログインI
+       ,xaiit.creation_date                           -- 作成者
+       ,xaiit.created_by                              -- 作成日
+       ,xaiit.attribute_category                      -- DFFコンテキス
+       ,xaiit.attribute2                              -- 請求書番号
+       ,xaiit.attribute3                              -- 起票部門
+       ,xaiit.attribute4                              -- 伝票入力者
+       ,xaiit.source                                  -- ソース
+       ,xaiit.pay_group_lookup_code                   -- 支払グループ
+       ,xaiit.terms_name                              -- 支払条件
+       ,xaiit.gl_date                                 -- 仕訳計上日
+       ,xaiit.accts_pay_code_combination_id           -- 負債勘定CCID
+       ,xaiit.org_id                                  -- 組織ID
+       ,xaiit.terms_date                              -- 支払起算日
+      FROM   xxcfo_ap_inv_int_tmp        xaiit        -- AP請求書ヘッダーOIF一時表
+      WHERE  xaiit.invoice_id = get_invoice_id_rec.invoice_id
+      ;
+--
+      -- 明細データ登録
+      INSERT INTO ap_invoice_lines_interface(
+        invoice_id                                     -- 請求書ID
+       ,invoice_line_id                                -- 請求書明細ID
+       ,line_number                                    -- 明細行番号
+       ,line_type_lookup_code                          -- 明細タイプ
+       ,amount                                         -- 明細金額
+       ,description                                    -- 摘要
+       ,tax_code                                       -- 税コード
+       ,dist_code_combination_id                       -- CCID
+       ,last_updated_by                                -- 最終更新者
+       ,last_update_date                               -- 最終更新日
+       ,last_update_login                              -- 最終ログインID
+       ,created_by                                     -- 作成者
+       ,creation_date                                  -- 作成日
+       ,attribute_category                             -- DFFコンテキスト
+       ,org_id                                         -- 組織ID
+      )
+      SELECT
+        xailit.invoice_id                              -- 請求書ID
+       ,xailit.invoice_line_id                         -- 請求書明細ID
+       ,xailit.line_number                             -- 明細行番号
+       ,xailit.line_type_lookup_code                   -- 明細タイプ
+       ,xailit.amount                                  -- 明細金額
+       ,xailit.description                             -- 摘要
+       ,xailit.tax_code                                -- 税コード
+       ,xailit.dist_code_combination_id                -- CCID
+       ,xailit.last_updated_by                         -- 最終更新者
+       ,xailit.last_update_date                        -- 最終更新日
+       ,xailit.last_update_login                       -- 最終ログインID
+       ,xailit.created_by                              -- 作成者
+       ,xailit.creation_date                           -- 作成日
+       ,xailit.attribute_category                      -- DFFコンテキスト
+       ,xailit.org_id                                  -- 組織ID
+      FROM   xxcfo_ap_inv_line_int_tmp   xailit        -- AP請求書明細OIF一時表
+      WHERE  xailit.invoice_id = get_invoice_id_rec.invoice_id
+      ;
+--
+      -- =====================================
+      -- 登録済のデータを削除
+      -- =====================================
+      -- ヘッダーデータ削除
+      DELETE xxcfo_ap_inv_int_tmp        xaiit
+      WHERE  xaiit.invoice_id = get_invoice_id_rec.invoice_id
+      ;
+--
+      -- 明細データ削除
+      DELETE xxcfo_ap_inv_line_int_tmp   xailit
+      WHERE  xailit.invoice_id = get_invoice_id_rec.invoice_id
+      ;
+--
+      -- 繰越データ取込件数カウント
+      gn_transfer_in_cnt := gn_transfer_in_cnt +1;
+--
+    END LOOP tmp_loop;
+--
+    CLOSE get_invoice_id_cur;
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルクローズ
+      IF ( get_invoice_id_cur%ISOPEN ) THEN
+        CLOSE get_invoice_id_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_ap_invoice_tmp;
+--
+-- 2015-03-09 Ver1.4 Add End
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -1649,6 +2250,9 @@ AS
     gn_normal_cnt   := 0;
     gn_error_cnt    := 0;
     gn_transfer_cnt := 0;
+-- 2015-03-09 Ver1.4 Add Start
+    gn_transfer_in_cnt :=0;
+-- 2015-03-09 Ver1.4 Add Start
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -1708,6 +2312,21 @@ AS
 --    END IF;
 ----
 -- 2015.02.25 Ver1.3 Del End
+-- 2015-03-09 Ver1.4 Add Start
+    -- ===============================
+    -- OIF一時表データ登録(A-10)
+    -- ===============================
+    ins_ap_invoice_tmp(
+      iv_period_name           => iv_period_name,       -- 1.会計期間
+      ov_errbuf                => lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+      ov_retcode               => lv_retcode,           -- リターン・コード             --# 固定 #
+      ov_errmsg                => lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2015-03-09 Ver1.4 Add End
     -- ===============================
     -- 連携管理テーブル登録(A-8)
     -- ===============================
@@ -1773,6 +2392,11 @@ AS
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
+-- 2015-03-09 Ver1.4 Add Start
+    cv_appl_xxcfo_name CONSTANT VARCHAR2(10)  := 'XXCFO';            -- アドオン：会計・アドオン領域
+    cv_transfer_msg    CONSTANT VARCHAR2(100) := 'APP-XXCFO1-10037'; -- 繰越件数メッセージ
+    cv_transfer_in_msg CONSTANT VARCHAR2(100) := 'APP-XXCFO1-10054'; -- 繰越データ取込件数メッセージ
+-- 2015-03-09 Ver1.4 Add End
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -1815,6 +2439,9 @@ AS
       gn_normal_cnt   := 0;
       gn_transfer_cnt := 0;
       gn_error_cnt    := 1;
+-- 2015-03-09 Ver1.4 Add Start
+      gn_transfer_in_cnt := 0;
+-- 2015-03-09 Ver1.4 Add End
     END IF;
 --
     --エラー出力
@@ -1868,6 +2495,32 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+-- 2015-03-09 Ver1.4 Add Start
+    --
+    -- 繰越件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_xxcfo_name
+                    ,iv_name         => cv_transfer_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_transfer_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    -- 繰越データ取込件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_xxcfo_name
+                    ,iv_name         => cv_transfer_in_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_transfer_in_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- 2015-03-09 Ver1.4 Add End
     --
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
