@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A01C(body)
  * Description      : 受払その他実績仕訳IF作成
  * MD.050           : 受払その他実績仕訳IF作成<MD050_CFO_020_A01>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,9 @@ AS
  *                                       ・「抽出カーソル_その他」の抽出条件変更
  *  2015-02-06    1.3   SCSK Y.Shoji     システムテスト障害#42 対応
  *                                       ・「抽出カーソル_その他」の抽出条件から取引区分：511（目視品目払出）を削除
+ *  2015-02-23    1.4   SCSK Y.Shoji     E_本稼動_12865対応
+ *                                       ・「抽出カーソル_その他」の抽出条件にその他受入を追加
+ *                                       ・仕訳OIF用情報抽出(A-3)で金額が0の場合、仕訳を作成しない
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -106,6 +109,9 @@ AS
   ct_msg_name_ccp_90000       CONSTANT fnd_new_messages.message_name%TYPE  := 'APP-XXCCP1-90000';        -- 対象件数メッセージ
   ct_msg_name_ccp_90001       CONSTANT fnd_new_messages.message_name%TYPE  := 'APP-XXCCP1-90001';        -- 成功件数メッセージ
   ct_msg_name_ccp_90002       CONSTANT fnd_new_messages.message_name%TYPE  := 'APP-XXCCP1-90002';        -- エラー件数メッセージ
+-- 2015-02-23 Ver1.4 Add Start
+  ct_msg_name_ccp_90003       CONSTANT fnd_new_messages.message_name%TYPE  := 'APP-XXCCP1-90003';        -- 正常終了メッセージ
+-- 2015-02-23 Ver1.4 Add End
   ct_msg_name_ccp_90004       CONSTANT fnd_new_messages.message_name%TYPE  := 'APP-XXCCP1-90004';        -- 正常終了メッセージ
   ct_msg_name_ccp_90005       CONSTANT fnd_new_messages.message_name%TYPE  := 'APP-XXCCP1-90005';        -- 警告終了メッセージ
   ct_msg_name_ccp_90006       CONSTANT fnd_new_messages.message_name%TYPE  := 'APP-XXCCP1-90006';        -- エラー終了全ロールバック
@@ -1290,7 +1296,12 @@ AS
     -- *********************************************************
     CURSOR get_adji_cur_01
     IS
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT
+    SELECT /*+ LEADING(itc)
+               USE_NL(xrpm ilm iwm iaj ijm iimb xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+-- 2015-02-23 Ver1.4 Mod End
+           ROUND(
              NVL(itc.trans_qty, 0) *
              TO_NUMBER(xrpm.rcv_pay_div) *
              CASE
@@ -1356,7 +1367,12 @@ AS
     -------------------------------------------------
     -- 在庫調整
     -------------------------------------------------
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT
+    SELECT /*+ LEADING(itc)
+               USE_NL(xrpm ilm iwm iaj ijm iimb xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+           ROUND(
+-- 2015-02-23 Ver1.4 Mod End
              NVL(itc.trans_qty, 0) *
               TO_NUMBER(xrpm.rcv_pay_div) *
              CASE
@@ -1411,7 +1427,12 @@ AS
     -- 受注出荷情報（見本）
     -------------------------------------------------
     UNION ALL
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT ROUND(
+    SELECT /*+ LEADING(itp)
+               USE_NL(xrpm otta ooha xoha xola wdd iimb iwm ilm xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+           ROUND(
+-- 2015-02-23 Ver1.4 Mod End
              NVL(itp.trans_qty, 0) *
              TO_NUMBER(xrpm.rcv_pay_div) *
              CASE
@@ -1487,7 +1508,12 @@ AS
     -------------------------------------------------
     -- 在庫調整
     -------------------------------------------------
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT ROUND(
+    SELECT /*+ LEADING(itc)
+               USE_NL(xrpm ilm iwm iaj ijm iimb xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+           ROUND(
+-- 2015-02-23 Ver1.4 Mod End
              NVL(itc.trans_qty, 0) *
               TO_NUMBER(xrpm.rcv_pay_div) *
              CASE
@@ -1542,7 +1568,12 @@ AS
     -- 受注出荷情報（廃却）
     -------------------------------------------------
     UNION ALL
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT ROUND(
+    SELECT /*+ LEADING(itp)
+               USE_NL(xrpm otta ooha xoha xola wdd iimb iwm ilm xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+           ROUND(
+-- 2015-02-23 Ver1.4 Mod End
              NVL(itp.trans_qty, 0) *
              TO_NUMBER(xrpm.rcv_pay_div) *
              CASE
@@ -1615,7 +1646,12 @@ AS
     -- *********************************************************
     CURSOR get_adji_cur_04
     IS
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT ROUND(
+    SELECT /*+ LEADING(itc)
+               USE_NL(xrpm ilm iwm iaj ijm iimb xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+           ROUND(
+-- 2015-02-23 Ver1.4 Mod End
              NVL(itc.trans_qty, 0) *
              TO_NUMBER(xrpm.rcv_pay_div) *
              CASE
@@ -1675,7 +1711,12 @@ AS
     -- *********************************************************
     CURSOR get_adji_cur_05
     IS
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT ROUND(
+    SELECT /*+ LEADING(itc)
+               USE_NL(xrpm ilm iwm iaj ijm iimb xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+           ROUND(
+-- 2015-02-23 Ver1.4 Mod End
              NVL(itc.trans_qty, 0) *
              TO_NUMBER(xrpm.rcv_pay_div) *
              CASE
@@ -1706,9 +1747,11 @@ AS
     -- 2015-02-06 Ver1.3 Mod Start
 --    AND    xrpm.dealings_div          IN (ct_dealings_div_502
 --                                         ,ct_dealings_div_511)   -- その他払出
-    AND    xrpm.dealings_div           = ct_dealings_div_502     -- その他払出
+    AND    xrpm.dealings_div           = ct_dealings_div_502     -- その他払出・その他受入
     -- 2015-02-06 Ver1.3 Mod End
-    AND    xrpm.rcv_pay_div            = ct_rcv_pay_div_minus1   -- 受払区分：払出
+    -- 2015-02-23 Ver1.4 Del Start
+--    AND    xrpm.rcv_pay_div            = ct_rcv_pay_div_minus1   -- 受払区分：払出
+    -- 2015-02-23 Ver1.4 Del End
     -- 2015-01-29 Ver1.1 Mod End
     AND    itc.trans_date             >= gd_target_date_from
     AND    itc.trans_date             <= gd_target_date_to
@@ -1743,7 +1786,12 @@ AS
     -- *********************************************************
     CURSOR get_adji_cur_06
     IS
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT ROUND(
+    SELECT /*+ LEADING(itc)
+               USE_NL(xrpm ilm iwm iaj ijm iimb xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+           ROUND(
+-- 2015-02-23 Ver1.4 Mod End
              CASE
                -- 2015.01.09 Ver1.1 Mod Start
                -- 【不要のため削除】棚卸増は、払出項目(棚卸減耗)に出力する為、数量の符号を変換する
@@ -1824,7 +1872,12 @@ AS
     -- *********************************************************
     CURSOR get_adji_cur_07
     IS
-    SELECT ROUND(
+-- 2015-02-23 Ver1.4 Mod Start
+--    SELECT ROUND(
+    SELECT /*+ LEADING(itc)
+               USE_NL(xrpm ilm iwm iaj ijm iimb xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsupv) */
+           ROUND(
+-- 2015-02-23 Ver1.4 Mod End
              NVL(itc.trans_qty, 0) *
              TO_NUMBER(xrpm.rcv_pay_div) *
              CASE
@@ -1965,426 +2018,91 @@ AS
     <<main_loop>>
     FOR ln_cnt IN 1..cur_01_tab.COUNT LOOP
 --
-      -- ===============================
-      -- 仕訳OIF登録(A-4)
-      -- ===============================
-      -- 勘定科目情報取得(A-4)
-      get_siwake_mst(
-        it_item_class_code       => cur_01_tab(ln_cnt).item_class_code   --   1.品目区分
-       ,it_prod_class_code       => cur_01_tab(ln_cnt).prod_class_code   --   2.商品区分
-       ,it_reason_code           => cur_01_tab(ln_cnt).reason_code       --   3.事由コード
-       ,it_whse_code             => NULL                                 --   4.倉庫コード
-       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+-- 2015-02-23 Ver1.4 Mod Start
+--      -- ===============================
+--      -- 仕訳OIF登録(A-4)
+--      -- ===============================
+--      -- 勘定科目情報取得(A-4)
+--      get_siwake_mst(
+--        it_item_class_code       => cur_01_tab(ln_cnt).item_class_code   --   1.品目区分
+--       ,it_prod_class_code       => cur_01_tab(ln_cnt).prod_class_code   --   2.商品区分
+--       ,it_reason_code           => cur_01_tab(ln_cnt).reason_code       --   3.事由コード
+--       ,it_whse_code             => NULL                                 --   4.倉庫コード
+--       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録データ設定(A-4)
+--      set_gl_interface(
+--        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+--       ,iv_period_name           => iv_period_name                       --   2.会計期間
+--       ,it_item_class_code       => cur_01_tab(ln_cnt).item_class_code   --   3.品目区分
+--       ,it_prod_class_code       => cur_01_tab(ln_cnt).prod_class_code   --   4.商品区分
+--       ,it_reason_code           => cur_01_tab(ln_cnt).reason_code       --   5.事由コード
+--       ,in_amt                   => cur_01_tab(ln_cnt).amt               --   6.金額
+--       ,it_inv_adji_desc         => cur_01_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+--       ,it_whse_code             => NULL                                 --   8.倉庫コード
+--       ,it_whse_name             => NULL                                 --   9.倉庫名
+--       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+--       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録(A-4)
+--      ins_gl_interface(
+--        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- ===============================
+--      -- 生産取引データ更新(A-5)
+--      -- ===============================
+--      upd_mfg_tran(
+--        it_journal_id            => cur_01_tab(ln_cnt).journal_id -- 1. ジャーナルID
+--       ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+--       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 初期化
+--      lt_siwake_rec := NULL;
+--      lt_gl_if_tab.DELETE;
+----
+--      -- 正常件数カウント
+--      gn_normal_cnt := gn_normal_cnt + 1;
 --
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録データ設定(A-4)
-      set_gl_interface(
-        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
-       ,iv_period_name           => iv_period_name                       --   2.会計期間
-       ,it_item_class_code       => cur_01_tab(ln_cnt).item_class_code   --   3.品目区分
-       ,it_prod_class_code       => cur_01_tab(ln_cnt).prod_class_code   --   4.商品区分
-       ,it_reason_code           => cur_01_tab(ln_cnt).reason_code       --   5.事由コード
-       ,in_amt                   => cur_01_tab(ln_cnt).amt               --   6.金額
-       ,it_inv_adji_desc         => cur_01_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
-       ,it_whse_code             => NULL                                 --   8.倉庫コード
-       ,it_whse_name             => NULL                                 --   9.倉庫名
-       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
-       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録(A-4)
-      ins_gl_interface(
-        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- ===============================
-      -- 生産取引データ更新(A-5)
-      -- ===============================
-      upd_mfg_tran(
-        it_journal_id            => cur_01_tab(ln_cnt).journal_id -- 1. ジャーナルID
-       ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
-       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 初期化
-      lt_siwake_rec := NULL;
-      lt_gl_if_tab.DELETE;
---
-      -- 正常件数カウント
-      gn_normal_cnt := gn_normal_cnt + 1;
---
-    END LOOP main_loop;
---
-    -- *********************************************************
-    -- 見本
-    -- *********************************************************
-    <<main_loop>>
-    FOR ln_cnt IN 1..cur_02_tab.COUNT LOOP
---
-      -- ===============================
-      -- 仕訳OIF登録(A-4)
-      -- ===============================
-      -- 勘定科目情報取得(A-4)
-      get_siwake_mst(
-        it_item_class_code       => cur_02_tab(ln_cnt).item_class_code   --   1.品目区分
-       ,it_prod_class_code       => cur_02_tab(ln_cnt).prod_class_code   --   2.商品区分
-       ,it_reason_code           => cur_02_tab(ln_cnt).reason_code       --   3.事由コード
-       ,it_whse_code             => NULL                                 --   4.倉庫コード
-       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録データ設定(A-4)
-      set_gl_interface(
-        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
-       ,iv_period_name           => iv_period_name                       --   2.会計期間
-       ,it_item_class_code       => cur_02_tab(ln_cnt).item_class_code   --   3.品目区分
-       ,it_prod_class_code       => cur_02_tab(ln_cnt).prod_class_code   --   4.商品区分
-       ,it_reason_code           => cur_02_tab(ln_cnt).reason_code       --   5.事由コード
-       ,in_amt                   => cur_02_tab(ln_cnt).amt               --   6.金額
-       ,it_inv_adji_desc         => cur_02_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
-       ,it_whse_code             => NULL                                 --   8.倉庫コード
-       ,it_whse_name             => NULL                                 --   9.倉庫名
-       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
-       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録(A-4)
-      ins_gl_interface(
-        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- ===============================
-      -- 生産取引データ更新(A-5)
-      -- ===============================
-      upd_mfg_tran(
-        it_journal_id            => cur_02_tab(ln_cnt).journal_id -- 1. ジャーナルID
-       ,iv_tran_name             => cur_02_tab(ln_cnt).tran_name  -- 2. トランザクション名
-       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 初期化
-      lt_siwake_rec := NULL;
-      lt_gl_if_tab.DELETE;
---
-      -- 正常件数カウント
-      gn_normal_cnt := gn_normal_cnt + 1;
---
-    END LOOP main_loop;
---
-    -- *********************************************************
-    -- 廃却
-    -- *********************************************************
-    <<main_loop>>
-    FOR ln_cnt IN 1..cur_03_tab.COUNT LOOP
---
-      -- ===============================
-      -- 仕訳OIF登録(A-4)
-      -- ===============================
-      -- 勘定科目情報取得(A-4)
-      get_siwake_mst(
-        it_item_class_code       => cur_03_tab(ln_cnt).item_class_code   --   1.品目区分
-       ,it_prod_class_code       => cur_03_tab(ln_cnt).prod_class_code   --   2.商品区分
-       ,it_reason_code           => cur_03_tab(ln_cnt).reason_code       --   3.事由コード
-       ,it_whse_code             => NULL                                 --   4.倉庫コード
-       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録データ設定(A-4)
-      set_gl_interface(
-        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
-       ,iv_period_name           => iv_period_name                       --   2.会計期間
-       ,it_item_class_code       => cur_03_tab(ln_cnt).item_class_code   --   3.品目区分
-       ,it_prod_class_code       => cur_03_tab(ln_cnt).prod_class_code   --   4.商品区分
-       ,it_reason_code           => cur_03_tab(ln_cnt).reason_code       --   5.事由コード
-       ,in_amt                   => cur_03_tab(ln_cnt).amt               --   6.金額
-       ,it_inv_adji_desc         => cur_03_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
-       ,it_whse_code             => NULL                                 --   8.倉庫コード
-       ,it_whse_name             => NULL                                 --   9.倉庫名
-       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
-       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録(A-4)
-      ins_gl_interface(
-        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- ===============================
-      -- 生産取引データ更新(A-5)
-      -- ===============================
-      upd_mfg_tran(
-        it_journal_id            => cur_03_tab(ln_cnt).journal_id -- 1. ジャーナルID
-       ,iv_tran_name             => cur_03_tab(ln_cnt).tran_name  -- 2. トランザクション名
-       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 初期化
-      lt_siwake_rec := NULL;
-      lt_gl_if_tab.DELETE;
---
-      -- 正常件数カウント
-      gn_normal_cnt := gn_normal_cnt + 1;
---
-    END LOOP main_loop;
---
-    -- *********************************************************
-    -- 総務払出
-    -- *********************************************************
-    <<main_loop>>
-    FOR ln_cnt IN 1..cur_04_tab.COUNT LOOP
---
-      -- ===============================
-      -- 仕訳OIF登録(A-4)
-      -- ===============================
-      -- 勘定科目情報取得(A-4)
-      get_siwake_mst(
-        it_item_class_code       => cur_04_tab(ln_cnt).item_class_code   --   1.品目区分
-       ,it_prod_class_code       => cur_04_tab(ln_cnt).prod_class_code   --   2.商品区分
-       ,it_reason_code           => cur_04_tab(ln_cnt).reason_code       --   3.事由コード
-       ,it_whse_code             => NULL                                 --   4.倉庫コード
-       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録データ設定(A-4)
-      set_gl_interface(
-        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
-       ,iv_period_name           => iv_period_name                       --   2.会計期間
-       ,it_item_class_code       => cur_04_tab(ln_cnt).item_class_code   --   3.品目区分
-       ,it_prod_class_code       => cur_04_tab(ln_cnt).prod_class_code   --   4.商品区分
-       ,it_reason_code           => cur_04_tab(ln_cnt).reason_code       --   5.事由コード
-       ,in_amt                   => cur_04_tab(ln_cnt).amt               --   6.金額
-       ,it_inv_adji_desc         => cur_04_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
-       ,it_whse_code             => NULL                                 --   8.倉庫コード
-       ,it_whse_name             => NULL                                 --   9.倉庫名
-       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
-       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録(A-4)
-      ins_gl_interface(
-        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- ===============================
-      -- 生産取引データ更新(A-5)
-      -- ===============================
-      upd_mfg_tran(
-        it_journal_id            => cur_04_tab(ln_cnt).journal_id -- 1. ジャーナルID
-       ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
-       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 初期化
-      lt_siwake_rec := NULL;
-      lt_gl_if_tab.DELETE;
---
-      -- 正常件数カウント
-      gn_normal_cnt := gn_normal_cnt + 1;
---
-    END LOOP main_loop;
---
-    -- *********************************************************
-    -- その他
-    -- *********************************************************
-    <<main_loop>>
-    FOR ln_cnt IN 1..cur_05_tab.COUNT LOOP
---
-      -- ===============================
-      -- 仕訳OIF登録(A-4)
-      -- ===============================
-      -- 勘定科目情報取得(A-4)
-      get_siwake_mst(
-        it_item_class_code       => cur_05_tab(ln_cnt).item_class_code   --   1.品目区分
-       ,it_prod_class_code       => cur_05_tab(ln_cnt).prod_class_code   --   2.商品区分
-       ,it_reason_code           => cur_05_tab(ln_cnt).reason_code       --   3.事由コード
-       ,it_whse_code             => NULL                                 --   4.倉庫コード
-       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録データ設定(A-4)
-      set_gl_interface(
-        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
-       ,iv_period_name           => iv_period_name                       --   2.会計期間
-       ,it_item_class_code       => cur_05_tab(ln_cnt).item_class_code   --   3.品目区分
-       ,it_prod_class_code       => cur_05_tab(ln_cnt).prod_class_code   --   4.商品区分
-       ,it_reason_code           => cur_05_tab(ln_cnt).reason_code       --   5.事由コード
-       ,in_amt                   => cur_05_tab(ln_cnt).amt               --   6.金額
-       ,it_inv_adji_desc         => cur_05_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
-       ,it_whse_code             => NULL                                 --   8.倉庫コード
-       ,it_whse_name             => NULL                                 --   9.倉庫名
-       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
-       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録(A-4)
-      ins_gl_interface(
-        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- ===============================
-      -- 生産取引データ更新(A-5)
-      -- ===============================
-      upd_mfg_tran(
-        it_journal_id            => cur_05_tab(ln_cnt).journal_id -- 1. ジャーナルID
-       ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
-       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 初期化
-      lt_siwake_rec := NULL;
-      lt_gl_if_tab.DELETE;
---
-      -- 正常件数カウント
-      gn_normal_cnt := gn_normal_cnt + 1;
---
-    END LOOP main_loop;
---
-    -- *********************************************************
-    -- 棚卸減耗費
-    -- *********************************************************
-    <<main_loop>>
-    FOR ln_cnt IN 1..cur_06_tab.COUNT LOOP
---
-      ln_sum_amt := ln_sum_amt + cur_06_tab(ln_cnt).amt; -- 金額加算
-      lt_journal_id_tab(lt_journal_id_tab.COUNT + 1) := cur_06_tab(ln_cnt).journal_id; -- 生産取引更新キー設定
---
-      IF ( (ln_cnt = cur_06_tab.COUNT) -- 最終レコード
-           -- 品目区分、商品区分、事由、倉庫ブレイク時
-        OR (cur_06_tab(ln_cnt).item_class_code <> cur_06_tab(ln_cnt + 1).item_class_code)
-        OR (cur_06_tab(ln_cnt).prod_class_code <> cur_06_tab(ln_cnt + 1).prod_class_code)
-        OR (cur_06_tab(ln_cnt).reason_code     <> cur_06_tab(ln_cnt + 1).reason_code)
-        OR (cur_06_tab(ln_cnt).whse_code       <> cur_06_tab(ln_cnt + 1).whse_code)
-      ) THEN
+      -- 金額が0ではない場合
+      IF (cur_01_tab(ln_cnt).amt <> 0) THEN
 --
         -- ===============================
         -- 仕訳OIF登録(A-4)
         -- ===============================
         -- 勘定科目情報取得(A-4)
         get_siwake_mst(
-          it_item_class_code       => cur_06_tab(ln_cnt).item_class_code   --   1.品目区分
-         ,it_prod_class_code       => cur_06_tab(ln_cnt).prod_class_code   --   2.商品区分
-         ,it_reason_code           => cur_06_tab(ln_cnt).reason_code       --   3.事由コード
-         ,it_whse_code             => cur_06_tab(ln_cnt).whse_code         --   4.倉庫コード
+          it_item_class_code       => cur_01_tab(ln_cnt).item_class_code   --   1.品目区分
+         ,it_prod_class_code       => cur_01_tab(ln_cnt).prod_class_code   --   2.商品区分
+         ,it_reason_code           => cur_01_tab(ln_cnt).reason_code       --   3.事由コード
+         ,it_whse_code             => NULL                                 --   4.倉庫コード
          ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
          ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
          ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
@@ -2396,15 +2114,15 @@ AS
 --
         -- 仕訳OIF登録データ設定(A-4)
         set_gl_interface(
-          iv_mode                  => cv_mode_2                            --   1.処理モード 1:伝票別,2:倉庫別
+          iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
          ,iv_period_name           => iv_period_name                       --   2.会計期間
-         ,it_item_class_code       => cur_06_tab(ln_cnt).item_class_code   --   3.品目区分
-         ,it_prod_class_code       => cur_06_tab(ln_cnt).prod_class_code   --   4.商品区分
-         ,it_reason_code           => cur_06_tab(ln_cnt).reason_code       --   5.事由コード
-         ,in_amt                   => ln_sum_amt                           --   6.金額
-         ,it_inv_adji_desc         => NULL                                 --   7.在庫調整摘要
-         ,it_whse_code             => cur_06_tab(ln_cnt).whse_code         --   8.倉庫コード
-         ,it_whse_name             => cur_06_tab(ln_cnt).whse_name         --   9.倉庫名
+         ,it_item_class_code       => cur_01_tab(ln_cnt).item_class_code   --   3.品目区分
+         ,it_prod_class_code       => cur_01_tab(ln_cnt).prod_class_code   --   4.商品区分
+         ,it_reason_code           => cur_01_tab(ln_cnt).reason_code       --   5.事由コード
+         ,in_amt                   => cur_01_tab(ln_cnt).amt               --   6.金額
+         ,it_inv_adji_desc         => cur_01_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+         ,it_whse_code             => NULL                                 --   8.倉庫コード
+         ,it_whse_name             => NULL                                 --   9.倉庫名
          ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
          ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
          ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
@@ -2430,15 +2148,851 @@ AS
         -- 生産取引データ更新(A-5)
         -- ===============================
         upd_mfg_tran(
-          it_journal_id_tab        => lt_journal_id_tab             -- 1. ジャーナルID
+          it_journal_id            => cur_01_tab(ln_cnt).journal_id -- 1. ジャーナルID
          ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
          ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
-         ,ov_errbuf                => lv_errbuf          -- エラー・メッセージ           --# 固定 #
-         ,ov_retcode               => lv_retcode         -- リターン・コード             --# 固定 #
-         ,ov_errmsg                => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
 --
         IF (lv_retcode <> cv_status_normal) THEN
           RAISE global_process_expt;
+        END IF;
+--
+        -- 初期化
+        lt_siwake_rec := NULL;
+        lt_gl_if_tab.DELETE;
+--
+        -- 正常件数カウント
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0の場合
+      ELSE
+        -- スキップ件数カウント
+        gn_warn_cnt := gn_warn_cnt + 1;
+      END IF;
+--
+-- 2015-02-23 Ver1.4 Mod End
+    END LOOP main_loop;
+--
+    -- *********************************************************
+    -- 見本
+    -- *********************************************************
+    <<main_loop>>
+    FOR ln_cnt IN 1..cur_02_tab.COUNT LOOP
+--
+-- 2015-02-23 Ver1.4 Mod Start
+--      -- ===============================
+--      -- 仕訳OIF登録(A-4)
+--      -- ===============================
+--      -- 勘定科目情報取得(A-4)
+--      get_siwake_mst(
+--        it_item_class_code       => cur_02_tab(ln_cnt).item_class_code   --   1.品目区分
+--       ,it_prod_class_code       => cur_02_tab(ln_cnt).prod_class_code   --   2.商品区分
+--       ,it_reason_code           => cur_02_tab(ln_cnt).reason_code       --   3.事由コード
+--       ,it_whse_code             => NULL                                 --   4.倉庫コード
+--       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録データ設定(A-4)
+--      set_gl_interface(
+--        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+--       ,iv_period_name           => iv_period_name                       --   2.会計期間
+--       ,it_item_class_code       => cur_02_tab(ln_cnt).item_class_code   --   3.品目区分
+--       ,it_prod_class_code       => cur_02_tab(ln_cnt).prod_class_code   --   4.商品区分
+--       ,it_reason_code           => cur_02_tab(ln_cnt).reason_code       --   5.事由コード
+--       ,in_amt                   => cur_02_tab(ln_cnt).amt               --   6.金額
+--       ,it_inv_adji_desc         => cur_02_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+--       ,it_whse_code             => NULL                                 --   8.倉庫コード
+--       ,it_whse_name             => NULL                                 --   9.倉庫名
+--       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+--       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録(A-4)
+--      ins_gl_interface(
+--        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- ===============================
+--      -- 生産取引データ更新(A-5)
+--      -- ===============================
+--      upd_mfg_tran(
+--        it_journal_id            => cur_02_tab(ln_cnt).journal_id -- 1. ジャーナルID
+--       ,iv_tran_name             => cur_02_tab(ln_cnt).tran_name  -- 2. トランザクション名
+--       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 初期化
+--      lt_siwake_rec := NULL;
+--      lt_gl_if_tab.DELETE;
+----
+--      -- 正常件数カウント
+--      gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0ではない場合
+      IF (cur_02_tab(ln_cnt).amt <> 0) THEN
+--
+        -- ===============================
+        -- 仕訳OIF登録(A-4)
+        -- ===============================
+        -- 勘定科目情報取得(A-4)
+        get_siwake_mst(
+          it_item_class_code       => cur_02_tab(ln_cnt).item_class_code   --   1.品目区分
+         ,it_prod_class_code       => cur_02_tab(ln_cnt).prod_class_code   --   2.商品区分
+         ,it_reason_code           => cur_02_tab(ln_cnt).reason_code       --   3.事由コード
+         ,it_whse_code             => NULL                                 --   4.倉庫コード
+         ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録データ設定(A-4)
+        set_gl_interface(
+          iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+         ,iv_period_name           => iv_period_name                       --   2.会計期間
+         ,it_item_class_code       => cur_02_tab(ln_cnt).item_class_code   --   3.品目区分
+         ,it_prod_class_code       => cur_02_tab(ln_cnt).prod_class_code   --   4.商品区分
+         ,it_reason_code           => cur_02_tab(ln_cnt).reason_code       --   5.事由コード
+         ,in_amt                   => cur_02_tab(ln_cnt).amt               --   6.金額
+         ,it_inv_adji_desc         => cur_02_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+         ,it_whse_code             => NULL                                 --   8.倉庫コード
+         ,it_whse_name             => NULL                                 --   9.倉庫名
+         ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+         ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録(A-4)
+        ins_gl_interface(
+          it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ===============================
+        -- 生産取引データ更新(A-5)
+        -- ===============================
+        upd_mfg_tran(
+          it_journal_id            => cur_02_tab(ln_cnt).journal_id -- 1. ジャーナルID
+         ,iv_tran_name             => cur_02_tab(ln_cnt).tran_name  -- 2. トランザクション名
+         ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 初期化
+        lt_siwake_rec := NULL;
+        lt_gl_if_tab.DELETE;
+--
+        -- 正常件数カウント
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0の場合
+      ELSE
+        -- スキップ件数カウント
+        gn_warn_cnt := gn_warn_cnt + 1;
+      END IF;
+--
+-- 2015-02-23 Ver1.4 Mod End
+    END LOOP main_loop;
+--
+    -- *********************************************************
+    -- 廃却
+    -- *********************************************************
+    <<main_loop>>
+    FOR ln_cnt IN 1..cur_03_tab.COUNT LOOP
+--
+-- 2015-02-23 Ver1.4 Mod Start
+--      -- ===============================
+--      -- 仕訳OIF登録(A-4)
+--      -- ===============================
+--      -- 勘定科目情報取得(A-4)
+--      get_siwake_mst(
+--        it_item_class_code       => cur_03_tab(ln_cnt).item_class_code   --   1.品目区分
+--       ,it_prod_class_code       => cur_03_tab(ln_cnt).prod_class_code   --   2.商品区分
+--       ,it_reason_code           => cur_03_tab(ln_cnt).reason_code       --   3.事由コード
+--       ,it_whse_code             => NULL                                 --   4.倉庫コード
+--       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録データ設定(A-4)
+--      set_gl_interface(
+--        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+--       ,iv_period_name           => iv_period_name                       --   2.会計期間
+--       ,it_item_class_code       => cur_03_tab(ln_cnt).item_class_code   --   3.品目区分
+--       ,it_prod_class_code       => cur_03_tab(ln_cnt).prod_class_code   --   4.商品区分
+--       ,it_reason_code           => cur_03_tab(ln_cnt).reason_code       --   5.事由コード
+--       ,in_amt                   => cur_03_tab(ln_cnt).amt               --   6.金額
+--       ,it_inv_adji_desc         => cur_03_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+--       ,it_whse_code             => NULL                                 --   8.倉庫コード
+--       ,it_whse_name             => NULL                                 --   9.倉庫名
+--       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+--       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録(A-4)
+--      ins_gl_interface(
+--        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- ===============================
+--      -- 生産取引データ更新(A-5)
+--      -- ===============================
+--      upd_mfg_tran(
+--        it_journal_id            => cur_03_tab(ln_cnt).journal_id -- 1. ジャーナルID
+--       ,iv_tran_name             => cur_03_tab(ln_cnt).tran_name  -- 2. トランザクション名
+--       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 初期化
+--      lt_siwake_rec := NULL;
+--      lt_gl_if_tab.DELETE;
+----
+--      -- 正常件数カウント
+--      gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0ではない場合
+      IF (cur_03_tab(ln_cnt).amt <> 0) THEN
+--
+        -- ===============================
+        -- 仕訳OIF登録(A-4)
+        -- ===============================
+        -- 勘定科目情報取得(A-4)
+        get_siwake_mst(
+          it_item_class_code       => cur_03_tab(ln_cnt).item_class_code   --   1.品目区分
+         ,it_prod_class_code       => cur_03_tab(ln_cnt).prod_class_code   --   2.商品区分
+         ,it_reason_code           => cur_03_tab(ln_cnt).reason_code       --   3.事由コード
+         ,it_whse_code             => NULL                                 --   4.倉庫コード
+         ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録データ設定(A-4)
+        set_gl_interface(
+          iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+         ,iv_period_name           => iv_period_name                       --   2.会計期間
+         ,it_item_class_code       => cur_03_tab(ln_cnt).item_class_code   --   3.品目区分
+         ,it_prod_class_code       => cur_03_tab(ln_cnt).prod_class_code   --   4.商品区分
+         ,it_reason_code           => cur_03_tab(ln_cnt).reason_code       --   5.事由コード
+         ,in_amt                   => cur_03_tab(ln_cnt).amt               --   6.金額
+         ,it_inv_adji_desc         => cur_03_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+         ,it_whse_code             => NULL                                 --   8.倉庫コード
+         ,it_whse_name             => NULL                                 --   9.倉庫名
+         ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+         ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録(A-4)
+        ins_gl_interface(
+          it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ===============================
+        -- 生産取引データ更新(A-5)
+        -- ===============================
+        upd_mfg_tran(
+          it_journal_id            => cur_03_tab(ln_cnt).journal_id -- 1. ジャーナルID
+         ,iv_tran_name             => cur_03_tab(ln_cnt).tran_name  -- 2. トランザクション名
+         ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 初期化
+        lt_siwake_rec := NULL;
+        lt_gl_if_tab.DELETE;
+--
+        -- 正常件数カウント
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0の場合
+      ELSE
+        -- スキップ件数カウント
+        gn_warn_cnt := gn_warn_cnt + 1;
+      END IF;
+--
+-- 2015-02-23 Ver1.4 Mod End
+    END LOOP main_loop;
+--
+    -- *********************************************************
+    -- 総務払出
+    -- *********************************************************
+    <<main_loop>>
+    FOR ln_cnt IN 1..cur_04_tab.COUNT LOOP
+--
+-- 2015-02-23 Ver1.4 Mod Start
+--      -- ===============================
+--      -- 仕訳OIF登録(A-4)
+--      -- ===============================
+--      -- 勘定科目情報取得(A-4)
+--      get_siwake_mst(
+--        it_item_class_code       => cur_04_tab(ln_cnt).item_class_code   --   1.品目区分
+--       ,it_prod_class_code       => cur_04_tab(ln_cnt).prod_class_code   --   2.商品区分
+--       ,it_reason_code           => cur_04_tab(ln_cnt).reason_code       --   3.事由コード
+--       ,it_whse_code             => NULL                                 --   4.倉庫コード
+--       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録データ設定(A-4)
+--      set_gl_interface(
+--        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+--       ,iv_period_name           => iv_period_name                       --   2.会計期間
+--       ,it_item_class_code       => cur_04_tab(ln_cnt).item_class_code   --   3.品目区分
+--       ,it_prod_class_code       => cur_04_tab(ln_cnt).prod_class_code   --   4.商品区分
+--       ,it_reason_code           => cur_04_tab(ln_cnt).reason_code       --   5.事由コード
+--       ,in_amt                   => cur_04_tab(ln_cnt).amt               --   6.金額
+--       ,it_inv_adji_desc         => cur_04_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+--       ,it_whse_code             => NULL                                 --   8.倉庫コード
+--       ,it_whse_name             => NULL                                 --   9.倉庫名
+--       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+--       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録(A-4)
+--      ins_gl_interface(
+--        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- ===============================
+--      -- 生産取引データ更新(A-5)
+--      -- ===============================
+--      upd_mfg_tran(
+--        it_journal_id            => cur_04_tab(ln_cnt).journal_id -- 1. ジャーナルID
+--       ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+--       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 初期化
+--      lt_siwake_rec := NULL;
+--      lt_gl_if_tab.DELETE;
+----
+--      -- 正常件数カウント
+--      gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0ではない場合
+      IF (cur_04_tab(ln_cnt).amt <> 0) THEN
+--
+        -- ===============================
+        -- 仕訳OIF登録(A-4)
+        -- ===============================
+        -- 勘定科目情報取得(A-4)
+        get_siwake_mst(
+          it_item_class_code       => cur_04_tab(ln_cnt).item_class_code   --   1.品目区分
+         ,it_prod_class_code       => cur_04_tab(ln_cnt).prod_class_code   --   2.商品区分
+         ,it_reason_code           => cur_04_tab(ln_cnt).reason_code       --   3.事由コード
+         ,it_whse_code             => NULL                                 --   4.倉庫コード
+         ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録データ設定(A-4)
+        set_gl_interface(
+          iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+         ,iv_period_name           => iv_period_name                       --   2.会計期間
+         ,it_item_class_code       => cur_04_tab(ln_cnt).item_class_code   --   3.品目区分
+         ,it_prod_class_code       => cur_04_tab(ln_cnt).prod_class_code   --   4.商品区分
+         ,it_reason_code           => cur_04_tab(ln_cnt).reason_code       --   5.事由コード
+         ,in_amt                   => cur_04_tab(ln_cnt).amt               --   6.金額
+         ,it_inv_adji_desc         => cur_04_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+         ,it_whse_code             => NULL                                 --   8.倉庫コード
+         ,it_whse_name             => NULL                                 --   9.倉庫名
+         ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+         ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録(A-4)
+        ins_gl_interface(
+          it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ===============================
+        -- 生産取引データ更新(A-5)
+        -- ===============================
+        upd_mfg_tran(
+          it_journal_id            => cur_04_tab(ln_cnt).journal_id -- 1. ジャーナルID
+         ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+         ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 初期化
+        lt_siwake_rec := NULL;
+        lt_gl_if_tab.DELETE;
+--
+        -- 正常件数カウント
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0の場合
+      ELSE
+        -- スキップ件数カウント
+        gn_warn_cnt := gn_warn_cnt + 1;
+      END IF;
+--
+-- 2015-02-23 Ver1.4 Mod End
+    END LOOP main_loop;
+--
+    -- *********************************************************
+    -- その他
+    -- *********************************************************
+    <<main_loop>>
+    FOR ln_cnt IN 1..cur_05_tab.COUNT LOOP
+--
+-- 2015-02-23 Ver1.4 Mod Start
+--      -- ===============================
+--      -- 仕訳OIF登録(A-4)
+--      -- ===============================
+--      -- 勘定科目情報取得(A-4)
+--      get_siwake_mst(
+--        it_item_class_code       => cur_05_tab(ln_cnt).item_class_code   --   1.品目区分
+--       ,it_prod_class_code       => cur_05_tab(ln_cnt).prod_class_code   --   2.商品区分
+--       ,it_reason_code           => cur_05_tab(ln_cnt).reason_code       --   3.事由コード
+--       ,it_whse_code             => NULL                                 --   4.倉庫コード
+--       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録データ設定(A-4)
+--      set_gl_interface(
+--        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+--       ,iv_period_name           => iv_period_name                       --   2.会計期間
+--       ,it_item_class_code       => cur_05_tab(ln_cnt).item_class_code   --   3.品目区分
+--       ,it_prod_class_code       => cur_05_tab(ln_cnt).prod_class_code   --   4.商品区分
+--       ,it_reason_code           => cur_05_tab(ln_cnt).reason_code       --   5.事由コード
+--       ,in_amt                   => cur_05_tab(ln_cnt).amt               --   6.金額
+--       ,it_inv_adji_desc         => cur_05_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+--       ,it_whse_code             => NULL                                 --   8.倉庫コード
+--       ,it_whse_name             => NULL                                 --   9.倉庫名
+--       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+--       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録(A-4)
+--      ins_gl_interface(
+--        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- ===============================
+--      -- 生産取引データ更新(A-5)
+--      -- ===============================
+--      upd_mfg_tran(
+--        it_journal_id            => cur_05_tab(ln_cnt).journal_id -- 1. ジャーナルID
+--       ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+--       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 初期化
+--      lt_siwake_rec := NULL;
+--      lt_gl_if_tab.DELETE;
+----
+--      -- 正常件数カウント
+--      gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0ではない場合
+      IF ( cur_05_tab(ln_cnt).amt <> 0 ) THEN
+--
+        -- ===============================
+        -- 仕訳OIF登録(A-4)
+        -- ===============================
+        -- 勘定科目情報取得(A-4)
+        get_siwake_mst(
+          it_item_class_code       => cur_05_tab(ln_cnt).item_class_code   --   1.品目区分
+         ,it_prod_class_code       => cur_05_tab(ln_cnt).prod_class_code   --   2.商品区分
+         ,it_reason_code           => cur_05_tab(ln_cnt).reason_code       --   3.事由コード
+         ,it_whse_code             => NULL                                 --   4.倉庫コード
+         ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録データ設定(A-4)
+        set_gl_interface(
+          iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+         ,iv_period_name           => iv_period_name                       --   2.会計期間
+         ,it_item_class_code       => cur_05_tab(ln_cnt).item_class_code   --   3.品目区分
+         ,it_prod_class_code       => cur_05_tab(ln_cnt).prod_class_code   --   4.商品区分
+         ,it_reason_code           => cur_05_tab(ln_cnt).reason_code       --   5.事由コード
+         ,in_amt                   => cur_05_tab(ln_cnt).amt               --   6.金額
+         ,it_inv_adji_desc         => cur_05_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+         ,it_whse_code             => NULL                                 --   8.倉庫コード
+         ,it_whse_name             => NULL                                 --   9.倉庫名
+         ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+         ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録(A-4)
+        ins_gl_interface(
+          it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ===============================
+        -- 生産取引データ更新(A-5)
+        -- ===============================
+        upd_mfg_tran(
+          it_journal_id            => cur_05_tab(ln_cnt).journal_id -- 1. ジャーナルID
+         ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+         ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 初期化
+        lt_siwake_rec := NULL;
+        lt_gl_if_tab.DELETE;
+--
+        -- 正常件数カウント
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0の場合
+      ELSE
+        -- スキップ件数カウント
+        gn_warn_cnt := gn_warn_cnt + 1;
+      END IF;
+--
+-- 2015-02-23 Ver1.4 Mod End
+    END LOOP main_loop;
+--
+    -- *********************************************************
+    -- 棚卸減耗費
+    -- *********************************************************
+    <<main_loop>>
+    FOR ln_cnt IN 1..cur_06_tab.COUNT LOOP
+--
+      ln_sum_amt := ln_sum_amt + cur_06_tab(ln_cnt).amt; -- 金額加算
+      lt_journal_id_tab(lt_journal_id_tab.COUNT + 1) := cur_06_tab(ln_cnt).journal_id; -- 生産取引更新キー設定
+--
+      IF ( (ln_cnt = cur_06_tab.COUNT) -- 最終レコード
+           -- 品目区分、商品区分、事由、倉庫ブレイク時
+        OR (cur_06_tab(ln_cnt).item_class_code <> cur_06_tab(ln_cnt + 1).item_class_code)
+        OR (cur_06_tab(ln_cnt).prod_class_code <> cur_06_tab(ln_cnt + 1).prod_class_code)
+        OR (cur_06_tab(ln_cnt).reason_code     <> cur_06_tab(ln_cnt + 1).reason_code)
+        OR (cur_06_tab(ln_cnt).whse_code       <> cur_06_tab(ln_cnt + 1).whse_code)
+      ) THEN
+--
+-- 2015-02-23 Ver1.4 Mod Start
+--        -- ===============================
+--        -- 仕訳OIF登録(A-4)
+--        -- ===============================
+--        -- 勘定科目情報取得(A-4)
+--        get_siwake_mst(
+--          it_item_class_code       => cur_06_tab(ln_cnt).item_class_code   --   1.品目区分
+--         ,it_prod_class_code       => cur_06_tab(ln_cnt).prod_class_code   --   2.商品区分
+--         ,it_reason_code           => cur_06_tab(ln_cnt).reason_code       --   3.事由コード
+--         ,it_whse_code             => cur_06_tab(ln_cnt).whse_code         --   4.倉庫コード
+--         ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+--         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--        IF (lv_retcode <> cv_status_normal) THEN
+--          RAISE global_process_expt;
+--        END IF;
+----
+--        -- 仕訳OIF登録データ設定(A-4)
+--        set_gl_interface(
+--          iv_mode                  => cv_mode_2                            --   1.処理モード 1:伝票別,2:倉庫別
+--         ,iv_period_name           => iv_period_name                       --   2.会計期間
+--         ,it_item_class_code       => cur_06_tab(ln_cnt).item_class_code   --   3.品目区分
+--         ,it_prod_class_code       => cur_06_tab(ln_cnt).prod_class_code   --   4.商品区分
+--         ,it_reason_code           => cur_06_tab(ln_cnt).reason_code       --   5.事由コード
+--         ,in_amt                   => ln_sum_amt                           --   6.金額
+--         ,it_inv_adji_desc         => NULL                                 --   7.在庫調整摘要
+--         ,it_whse_code             => cur_06_tab(ln_cnt).whse_code         --   8.倉庫コード
+--         ,it_whse_name             => cur_06_tab(ln_cnt).whse_name         --   9.倉庫名
+--         ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+--         ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+--         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--        IF (lv_retcode <> cv_status_normal) THEN
+--          RAISE global_process_expt;
+--        END IF;
+----
+--        -- 仕訳OIF登録(A-4)
+--        ins_gl_interface(
+--          it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+--         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--        IF (lv_retcode <> cv_status_normal) THEN
+--          RAISE global_process_expt;
+--        END IF;
+----
+--        -- ===============================
+--        -- 生産取引データ更新(A-5)
+--        -- ===============================
+--        upd_mfg_tran(
+--          it_journal_id_tab        => lt_journal_id_tab             -- 1. ジャーナルID
+--         ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+--         ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+--         ,ov_errbuf                => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+--         ,ov_retcode               => lv_retcode         -- リターン・コード             --# 固定 #
+--         ,ov_errmsg                => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--        IF (lv_retcode <> cv_status_normal) THEN
+--          RAISE global_process_expt;
+--        END IF;
+----
+--        -- 初期化
+--        ln_sum_amt := 0;
+--        lt_journal_id_tab.DELETE;
+--        lt_siwake_rec := NULL;
+--        lt_gl_if_tab.DELETE;
+----
+--        -- 正常件数カウント
+--        gn_normal_cnt := gn_normal_cnt + 1;
+--
+        -- 金額が0ではない場合
+        IF (ln_sum_amt <> 0) THEN
+          -- ===============================
+          -- 仕訳OIF登録(A-4)
+          -- ===============================
+          -- 勘定科目情報取得(A-4)
+          get_siwake_mst(
+            it_item_class_code       => cur_06_tab(ln_cnt).item_class_code   --   1.品目区分
+           ,it_prod_class_code       => cur_06_tab(ln_cnt).prod_class_code   --   2.商品区分
+           ,it_reason_code           => cur_06_tab(ln_cnt).reason_code       --   3.事由コード
+           ,it_whse_code             => cur_06_tab(ln_cnt).whse_code         --   4.倉庫コード
+           ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+           ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+           ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+          -- 仕訳OIF登録データ設定(A-4)
+          set_gl_interface(
+            iv_mode                  => cv_mode_2                            --   1.処理モード 1:伝票別,2:倉庫別
+           ,iv_period_name           => iv_period_name                       --   2.会計期間
+           ,it_item_class_code       => cur_06_tab(ln_cnt).item_class_code   --   3.品目区分
+           ,it_prod_class_code       => cur_06_tab(ln_cnt).prod_class_code   --   4.商品区分
+           ,it_reason_code           => cur_06_tab(ln_cnt).reason_code       --   5.事由コード
+           ,in_amt                   => ln_sum_amt                           --   6.金額
+           ,it_inv_adji_desc         => NULL                                 --   7.在庫調整摘要
+           ,it_whse_code             => cur_06_tab(ln_cnt).whse_code         --   8.倉庫コード
+           ,it_whse_name             => cur_06_tab(ln_cnt).whse_name         --   9.倉庫名
+           ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+           ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+           ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+           ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+          -- 仕訳OIF登録(A-4)
+          ins_gl_interface(
+            it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+           ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+           ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+          -- ===============================
+          -- 生産取引データ更新(A-5)
+          -- ===============================
+          upd_mfg_tran(
+            it_journal_id_tab        => lt_journal_id_tab             -- 1. ジャーナルID
+           ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+           ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+           ,ov_errbuf                => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode               => lv_retcode         -- リターン・コード             --# 固定 #
+           ,ov_errmsg                => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+          -- 正常件数カウント
+          gn_normal_cnt := gn_normal_cnt + 1;
+--
+        -- 金額が0の場合
+        ELSE
+          -- スキップ件数カウント
+          gn_warn_cnt := gn_warn_cnt + 1;
         END IF;
 --
         -- 初期化
@@ -2447,8 +3001,7 @@ AS
         lt_siwake_rec := NULL;
         lt_gl_if_tab.DELETE;
 --
-        -- 正常件数カウント
-        gn_normal_cnt := gn_normal_cnt + 1;
+-- 2015-02-23 Ver1.4 Mod End
       END IF;
 --
     END LOOP main_loop;
@@ -2459,78 +3012,160 @@ AS
     <<main_loop>>
     FOR ln_cnt IN 1..cur_07_tab.COUNT LOOP
 --
-      -- ===============================
-      -- 仕訳OIF登録(A-4)
-      -- ===============================
-      -- 勘定科目情報取得(A-4)
-      get_siwake_mst(
-        it_item_class_code       => cur_07_tab(ln_cnt).item_class_code   --   1.品目区分
-       ,it_prod_class_code       => cur_07_tab(ln_cnt).prod_class_code   --   2.商品区分
-       ,it_reason_code           => cur_07_tab(ln_cnt).reason_code       --   3.事由コード
-       ,it_whse_code             => NULL                                 --   4.倉庫コード
-       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+-- 2015-02-23 Ver1.4 Mod Start
+--      -- ===============================
+--      -- 仕訳OIF登録(A-4)
+--      -- ===============================
+--      -- 勘定科目情報取得(A-4)
+--      get_siwake_mst(
+--        it_item_class_code       => cur_07_tab(ln_cnt).item_class_code   --   1.品目区分
+--       ,it_prod_class_code       => cur_07_tab(ln_cnt).prod_class_code   --   2.商品区分
+--       ,it_reason_code           => cur_07_tab(ln_cnt).reason_code       --   3.事由コード
+--       ,it_whse_code             => NULL                                 --   4.倉庫コード
+--       ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録データ設定(A-4)
+--      set_gl_interface(
+--        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+--       ,iv_period_name           => iv_period_name                       --   2.会計期間
+--       ,it_item_class_code       => cur_07_tab(ln_cnt).item_class_code   --   3.品目区分
+--       ,it_prod_class_code       => cur_07_tab(ln_cnt).prod_class_code   --   4.商品区分
+--       ,it_reason_code           => cur_07_tab(ln_cnt).reason_code       --   5.事由コード
+--       ,in_amt                   => cur_07_tab(ln_cnt).amt               --   6.金額
+--       ,it_inv_adji_desc         => cur_07_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+--       ,it_whse_code             => NULL                                 --   8.倉庫コード
+--       ,it_whse_name             => NULL                                 --   9.倉庫名
+--       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+--       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 仕訳OIF登録(A-4)
+--      ins_gl_interface(
+--        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- ===============================
+--      -- 生産取引データ更新(A-5)
+--      -- ===============================
+--      upd_mfg_tran(
+--        it_journal_id            => cur_07_tab(ln_cnt).journal_id -- 1. ジャーナルID
+--       ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+--       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+--       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+--       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--      IF (lv_retcode <> cv_status_normal) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 初期化
+--      lt_siwake_rec := NULL;
+--      lt_gl_if_tab.DELETE;
+----
+--      -- 正常件数カウント
+--      gn_normal_cnt := gn_normal_cnt + 1;
 --
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
+      -- 金額が0ではない場合
+      IF (cur_07_tab(ln_cnt).amt <> 0) THEN
+        -- ===============================
+        -- 仕訳OIF登録(A-4)
+        -- ===============================
+        -- 勘定科目情報取得(A-4)
+        get_siwake_mst(
+          it_item_class_code       => cur_07_tab(ln_cnt).item_class_code   --   1.品目区分
+         ,it_prod_class_code       => cur_07_tab(ln_cnt).prod_class_code   --   2.商品区分
+         ,it_reason_code           => cur_07_tab(ln_cnt).reason_code       --   3.事由コード
+         ,it_whse_code             => NULL                                 --   4.倉庫コード
+         ,ot_siwake_rec            => lt_siwake_rec                        --   1.仕訳情報
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録データ設定(A-4)
+        set_gl_interface(
+          iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
+         ,iv_period_name           => iv_period_name                       --   2.会計期間
+         ,it_item_class_code       => cur_07_tab(ln_cnt).item_class_code   --   3.品目区分
+         ,it_prod_class_code       => cur_07_tab(ln_cnt).prod_class_code   --   4.商品区分
+         ,it_reason_code           => cur_07_tab(ln_cnt).reason_code       --   5.事由コード
+         ,in_amt                   => cur_07_tab(ln_cnt).amt               --   6.金額
+         ,it_inv_adji_desc         => cur_07_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
+         ,it_whse_code             => NULL                                 --   8.倉庫コード
+         ,it_whse_name             => NULL                                 --   9.倉庫名
+         ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
+         ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 仕訳OIF登録(A-4)
+        ins_gl_interface(
+          it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ===============================
+        -- 生産取引データ更新(A-5)
+        -- ===============================
+        upd_mfg_tran(
+          it_journal_id            => cur_07_tab(ln_cnt).journal_id -- 1. ジャーナルID
+         ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
+         ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
+         ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
+         ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- 初期化
+        lt_siwake_rec := NULL;
+        lt_gl_if_tab.DELETE;
+--
+        -- 正常件数カウント
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+      -- 金額が0の場合
+      ELSE
+        -- スキップ件数カウント
+        gn_warn_cnt := gn_warn_cnt + 1;
       END IF;
 --
-      -- 仕訳OIF登録データ設定(A-4)
-      set_gl_interface(
-        iv_mode                  => cv_mode_1                            --   1.処理モード 1:伝票別,2:倉庫別
-       ,iv_period_name           => iv_period_name                       --   2.会計期間
-       ,it_item_class_code       => cur_07_tab(ln_cnt).item_class_code   --   3.品目区分
-       ,it_prod_class_code       => cur_07_tab(ln_cnt).prod_class_code   --   4.商品区分
-       ,it_reason_code           => cur_07_tab(ln_cnt).reason_code       --   5.事由コード
-       ,in_amt                   => cur_07_tab(ln_cnt).amt               --   6.金額
-       ,it_inv_adji_desc         => cur_07_tab(ln_cnt).inv_adji_desc     --   7.在庫調整摘要
-       ,it_whse_code             => NULL                                 --   8.倉庫コード
-       ,it_whse_name             => NULL                                 --   9.倉庫名
-       ,it_siwake_rec            => lt_siwake_rec                        --   10.仕訳情報
-       ,ot_gl_if_tab             => lt_gl_if_tab                         --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 仕訳OIF登録(A-4)
-      ins_gl_interface(
-        it_gl_if_tab             => lt_gl_if_tab      --   1.仕訳OIFテーブル型
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- ===============================
-      -- 生産取引データ更新(A-5)
-      -- ===============================
-      upd_mfg_tran(
-        it_journal_id            => cur_07_tab(ln_cnt).journal_id -- 1. ジャーナルID
-       ,iv_tran_name             => cv_ic_jrnl_mst                -- 2. トランザクション名
-       ,it_xxcfo_gl_je_key       => lt_siwake_rec.xxcfo_gl_je_key -- 3. 仕訳単位：属性8(仕訳キー)
-       ,ov_errbuf                => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode               => lv_retcode        -- リターン・コード             --# 固定 #
-       ,ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-      IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
-      END IF;
---
-      -- 初期化
-      lt_siwake_rec := NULL;
-      lt_gl_if_tab.DELETE;
---
-      -- 正常件数カウント
-      gn_normal_cnt := gn_normal_cnt + 1;
---
+-- 2015-02-23 Ver1.4 Mod End
     END LOOP main_loop;
 --
   EXCEPTION
@@ -2934,6 +3569,20 @@ AS
       ,buff   => gt_out_msg
     );
 --
+--  2015-02-23 Ver1.4 Add Start
+    --スキップ件数出力
+    gt_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_name_xxccp
+                    ,iv_name         => ct_msg_name_ccp_90003
+                    ,iv_token_name1  => cv_tkn_count
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gt_out_msg
+    );
+--
+-- 2015-02-23 Ver1.4 Add End
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := ct_msg_name_ccp_90004;
