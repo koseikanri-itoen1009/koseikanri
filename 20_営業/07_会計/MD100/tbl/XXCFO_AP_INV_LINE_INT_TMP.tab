@@ -1,0 +1,64 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2015. All rights reserved.
+ *
+ * Table Name  : XXCFO_AP_INV_LINE_INT_TMP
+ * Description : AP請求書明細OIF一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2015-03-02    1.0   Y.Shoji          新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE XXCFO.XXCFO_AP_INV_LINE_INT_TMP (
+          invoice_id                              NUMBER(15)     NOT NULL
+        , invoice_line_id                         NUMBER(15)
+        , line_number                             NUMBER(15)
+        , line_type_lookup_code                   VARCHAR2(25)
+        , amount                                  NUMBER
+        , description                             VARCHAR2(240)
+        , tax_code                                VARCHAR2(15)
+        , dist_code_combination_id                NUMBER(15)
+        , last_updated_by                         NUMBER(15)
+        , last_update_date                        DATE
+        , last_update_login                       NUMBER(15)
+        , created_by                              NUMBER(15)
+        , creation_date                           DATE
+        , attribute_category                      VARCHAR2(150)
+        , org_id                                  NUMBER(15)
+)
+/
+COMMENT ON TABLE xxcfo.xxcfo_ap_inv_line_int_tmp IS 'AP請求書明細OIF一時表'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.invoice_id                      IS '請求書ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.invoice_line_id                 IS '請求書明細ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.line_number                     IS '明細行番号'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.line_type_lookup_code           IS '明細タイプ'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.amount                          IS '明細金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.description                     IS '摘要'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.tax_code                        IS '税コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.dist_code_combination_id        IS 'CCID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.last_updated_by                 IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.last_update_date                IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.last_update_login               IS '最終ログインID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.created_by                      IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.creation_date                   IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.attribute_category              IS 'DFFコンテキスト'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_ap_inv_line_int_tmp.org_id                          IS '組織ID'
+/
