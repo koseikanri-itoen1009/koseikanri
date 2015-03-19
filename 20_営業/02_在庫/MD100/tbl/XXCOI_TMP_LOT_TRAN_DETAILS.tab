@@ -3,13 +3,14 @@
  *
  * Table Name      : xxcoi_tmp_lot_tran_details
  * Description     : ロット別取引明細情報一時表
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2014-11-12    1.0   SCSK Y.Umino     新規作成
+ *  2015-03-10    1.1   SCSK K.Nakamura  E_本稼動_12237 倉庫管理システム追加対応
  *
  ************************************************************************/
  CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_tmp_lot_tran_details (
@@ -25,7 +26,10 @@
     ,singly_qty                     NUMBER
     ,summary_qty                    NUMBER
      )
- ON COMMIT DELETE ROWS
+-- Mod Ver1.1 Start
+-- ON COMMIT DELETE ROWS
+ ON COMMIT PRESERVE ROWS
+-- Mod Ver1.1 End
 /
 COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_tran_details.organization_id              IS '在庫組織ID';
 /
