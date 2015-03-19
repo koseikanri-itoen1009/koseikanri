@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *                                        顧客導出（受注アドオン）、品目コード導出（親／子）、
  *                                        ロット情報保持マスタ反映、ロット別手持数量反映、
  *                                        鮮度条件基準日算出、引当可能数算出、鮮度条件基準日算出(ファンクション型)
+ *  2015/03/05    1.13  Y.Nagasue        [E_本稼動_12237]倉庫管理システム対応 ST・受入テスト課題対応
  *
  *****************************************************************************************/
 --
@@ -3961,21 +3962,6 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-/*
-    -- ケース数、バラ数の符号チェック
-    -- 符号が異なる場合はエラー
-    IF ( (lt_case_qty >= 0 AND lt_singly_qty >= 0) OR (lt_case_qty <= 0 AND lt_singly_qty <= 0) ) THEN
-      NULL;
-    ELSE
-     lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_msg_kbn_coi
-                     ,iv_name         => cv_err_msg_xxcoi1_10478
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
-*/
---
     -- (入数＊ケース数)＋バラ数が取引数量と異なる場合はエラー
     ln_trx_num_chk := ( lt_case_in_qty * lt_case_qty ) + lt_singly_qty;
     IF ( lt_summary_qty <> ln_trx_num_chk ) THEN
@@ -4601,6 +4587,7 @@ AS
    ,iv_loc_code              IN  VARCHAR2 -- ロケーションコード
    ,iv_tran_subinv_code      IN  VARCHAR2 -- 転送先保管場所コード
    ,iv_tran_loc_code         IN  VARCHAR2 -- 転送先ロケーションコード
+   ,iv_sign_div              IN  VARCHAR2 -- 符号区分
    ,iv_source_code           IN  VARCHAR2 -- ソースコード
    ,iv_relation_key          IN  VARCHAR2 -- 紐付けキー
    ,iv_reason                IN  VARCHAR2 -- 事由
@@ -4674,6 +4661,7 @@ AS
     lt_loc_code              xxcoi_lot_transactions.location_code%TYPE;                 -- ロケーションコード
     lt_tran_subinv_code      xxcoi_lot_transactions.transfer_subinventory%TYPE;         -- 転送先保管場所コード
     lt_tran_loc_code         xxcoi_lot_transactions.transfer_location_code%TYPE;        -- 転送先ロケーションコード
+    lt_sign_div              xxcoi_lot_transactions.sign_div%TYPE;                      -- 符号区分
     lt_source_code           xxcoi_lot_transactions.source_code%TYPE;                   -- ソースコード
     lt_relation_key          xxcoi_lot_transactions.relation_key%TYPE;                  -- 紐付けキー
     lt_reason                xxcoi_lot_transactions.reason%TYPE;                        -- 事由
@@ -4749,6 +4737,7 @@ AS
     lt_loc_code              := NULL; -- ロケーションコード
     lt_tran_subinv_code      := NULL; -- 転送先保管場所コード
     lt_tran_loc_code         := NULL; -- 転送先ロケーションコード
+    lt_sign_div              := NULL; -- 符号区分
     lt_source_code           := NULL; -- ソースコード
     lt_relation_key          := NULL; -- 紐付けキー
     lt_reason                := NULL; -- 事由
@@ -4969,6 +4958,7 @@ AS
     lt_loc_code              := iv_loc_code;               -- ロケーションコード
     lt_tran_subinv_code      := iv_tran_subinv_code;       -- 転送先保管場所コード
     lt_tran_loc_code         := iv_tran_loc_code;          -- 転送先ロケーションコード
+    lt_sign_div              := iv_sign_div;               -- 符号区分
     lt_source_code           := iv_source_code;            -- ソースコード
     lt_relation_key          := iv_relation_key;           -- 紐付けキー
     lt_reason                := iv_reason;                 -- 事由
@@ -5221,6 +5211,7 @@ AS
      ,transfer_organization_id                             -- 転送先在庫組織ID
      ,transfer_subinventory                                -- 転送先保管場所コード
      ,transfer_location_code                               -- 転送先ロケーションコード
+     ,sign_div                                             -- 符号区分
      ,source_code                                          -- ソースコード
      ,relation_key                                         -- 紐付けキー
      ,reserve_transaction_type_code                        -- 引当時取引タイプコード
@@ -5260,6 +5251,7 @@ AS
      ,DECODE( lt_tran_subinv_code, NULL, NULL, lt_org_id ) -- 転送先在庫組織ID
      ,lt_tran_subinv_code                                  -- 転送先保管場所コード
      ,lt_tran_loc_code                                     -- 転送先ロケーションコード
+     ,lt_sign_div                                          -- 符号区分
      ,lt_source_code                                       -- ソースコード
      ,lt_relation_key                                      -- 紐付けキー
      ,lt_reserve_trx_type_code                             -- 引当時取引タイプコード
@@ -6331,15 +6323,29 @@ AS
     cv_err_msg_xxcoi1_10586   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10586'; -- ケース数
     cv_err_msg_xxcoi1_10587   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10587'; -- バラ数
     cv_err_msg_xxcoi1_10607   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10607'; -- 製造日取得エラー
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ====================================
+    cv_err_msg_xxcoi1_00032   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-00032'; -- プロファイル取得エラー
+    cv_err_msg_xxcoi1_10664   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10664'; -- 手持数量未存在エラーメッセージ
+    cv_err_msg_xxcoi1_10665   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10665'; -- 引当済数超過エラーメッセージ
+-- == 2015/03/05 Ver1.13 Y.Nagasue END   ====================================
 --
     cv_msg_tkn_in_param_name  CONSTANT VARCHAR2(13)  := 'IN_PARAM_NAME';    -- トークン：入力パラメータ
     cv_msg_tkn_item_id        CONSTANT VARCHAR2(13)  := 'ITEM_ID';          -- トークン：品目ID
     cv_msg_tkn_diff_sum_code  CONSTANT VARCHAR2(13)  := 'DIFF_SUM_CODE';    -- トークン：固有記号
     cv_msg_tkn_lot            CONSTANT VARCHAR2(13)  := 'LOT';              -- トークン：ロット
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ====================================
+    cv_msg_tkn_pro_tok        CONSTANT VARCHAR2(13)  := 'PRO_TOK';          -- トークン：プロファイル
+-- == 2015/03/05 Ver1.13 Y.Nagasue END   ====================================
 --
     cv_insert_flag_y          CONSTANT VARCHAR2(1)   := 'Y';                -- insertフラグ：'Y'
     cv_insert_flag_n          CONSTANT VARCHAR2(1)   := 'N';                -- insertフラグ：'N'
     cv_lot_no_dafault         CONSTANT VARCHAR2(10)  := 'DEFAULTLOT';       -- ロット番号：'DEFAULTLOT'
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ====================================
+    cv_org_id                 CONSTANT VARCHAR2(10)  := 'ORG_ID';           -- MO:営業単位
+    cv_shipping_status_10     CONSTANT VARCHAR2(2)   := '10';               -- 出荷情報ステータス：10（引当未）
+    cv_shipping_status_20     CONSTANT VARCHAR2(2)   := '20';               -- 出荷情報ステータス：20（引当済）
+    cv_shipping_status_25     CONSTANT VARCHAR2(2)   := '25';               -- 出荷情報ステータス：25（出荷仮確定）
+-- == 2015/03/05 Ver1.13 Y.Nagasue END   ====================================
 --
     cv_date_fmt               CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';       -- 日付型YYYY/MM/DD
 --
@@ -6354,6 +6360,12 @@ AS
     lv_insert_flag     VARCHAR2(1);                                 -- INSERTフラグ
     ln_case_qty_minus  NUMBER;                                      -- ケース数（取り崩し計算用）
     lt_expiration_day  xxcmn_item_mst_b.expiration_day%TYPE;        -- 賞味期間
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ===================================
+    lt_org_id              fnd_profile_option_values.profile_option_value%TYPE; -- 営業単位
+    ln_reserve_case_qty    NUMBER;                                              -- 引当ケース数
+    ln_reserve_singly_qty  NUMBER;                                              -- 引当バラ数
+    ln_reserve_summary_qty NUMBER;                                              -- 引当取引数量
+-- == 2015/03/05 Ver1.13 Y.Nagasue END   ===================================
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -6384,6 +6396,12 @@ AS
     lt_product_date     := NULL;  -- 製造年月日
     ln_case_qty_minus   := NULL;  -- ケース数（取り崩し計算用）
     lv_insert_flag      := cv_insert_flag_n; -- INSERTフラグ
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ===================================
+    lt_org_id              := NULL; -- 営業単位
+    ln_reserve_case_qty    := 0;    -- 引当ケース数
+    ln_reserve_singly_qty  := 0;    -- 引当バラ数
+    ln_reserve_summary_qty := 0;    -- 引当取引数量
+-- == 2015/03/05 Ver1.13 Y.Nagasue END   ===================================
 --
     -- ======================================
     -- １：初期処理
@@ -6490,6 +6508,22 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ===================================
+    -- プロファイル「MO:営業単位」を取得
+    lt_org_id := FND_PROFILE.VALUE(cv_org_id);
+    IF ( lt_org_id IS NULL ) THEN
+      -- プロファイル値取得エラー
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00032
+                     ,iv_token_name1  => cv_msg_tkn_pro_tok
+                     ,iv_token_value1 => cv_org_id
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+-- == 2015/03/05 Ver1.13 Y.Nagasue END   ===================================
+--
     -- WHOカラムの取得
     -- 固定グローバル変数を使用するため割愛
 --
@@ -6527,44 +6561,55 @@ AS
     -- INSERTフラグがYの場合のみ登録します
     IF ( lv_insert_flag = cv_insert_flag_y ) THEN
       -- 入力パラメータチェック
-      -- 入力パラメータ「ケース数」がマイナスの場合
-      IF ( in_case_qty < 0 ) THEN
-        -- 入力パラメータマイナスエラー
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ====================================
+--      -- 入力パラメータ「ケース数」がマイナスの場合
+--      IF ( in_case_qty < 0 ) THEN
+--        -- 入力パラメータマイナスエラー
+--        lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_msg_kbn_coi
+--                       ,iv_name         => cv_err_msg_xxcoi1_10583
+--                       ,iv_token_name1  => cv_msg_tkn_in_param_name
+--                       ,iv_token_value1 => cv_err_msg_xxcoi1_10586 -- ケース数
+--                      );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 入力パラメータ「バラ数」がマイナスの場合
+--      IF ( in_singly_qty < 0 ) THEN
+--        -- 入力パラメータマイナスエラー
+--        lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_msg_kbn_coi
+--                       ,iv_name         => cv_err_msg_xxcoi1_10583
+--                       ,iv_token_name1  => cv_msg_tkn_in_param_name
+--                       ,iv_token_value1 => cv_err_msg_xxcoi1_10587 -- バラ数
+--                      );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--      END IF;
+----
+--      -- 入力パラメータ「取引数量」がマイナスの場合
+--      IF ( in_summary_qty < 0 ) THEN
+--        -- 入力パラメータマイナスエラー
+--        lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_msg_kbn_coi
+--                       ,iv_name         => cv_err_msg_xxcoi1_10583
+--                       ,iv_token_name1  => cv_msg_tkn_in_param_name
+--                       ,iv_token_value1 => cv_err_msg_xxcoi1_10501 -- 取引数量
+--                      );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--      END IF;
+      -- 新規データ作成時にケース数、バラ数、取引数量のいずれかがマイナスの場合はエラー
+      IF ( in_case_qty < 0 OR in_singly_qty < 0 OR in_summary_qty < 0 ) THEN
         lv_errmsg  := xxccp_common_pkg.get_msg(
                         iv_application  => cv_msg_kbn_coi
-                       ,iv_name         => cv_err_msg_xxcoi1_10583
-                       ,iv_token_name1  => cv_msg_tkn_in_param_name
-                       ,iv_token_value1 => cv_err_msg_xxcoi1_10586 -- ケース数
+                       ,iv_name         => cv_err_msg_xxcoi1_10664
                       );
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
       END IF;
---
-      -- 入力パラメータ「バラ数」がマイナスの場合
-      IF ( in_singly_qty < 0 ) THEN
-        -- 入力パラメータマイナスエラー
-        lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_msg_kbn_coi
-                       ,iv_name         => cv_err_msg_xxcoi1_10583
-                       ,iv_token_name1  => cv_msg_tkn_in_param_name
-                       ,iv_token_value1 => cv_err_msg_xxcoi1_10587 -- バラ数
-                      );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-      END IF;
---
-      -- 入力パラメータ「取引数量」がマイナスの場合
-      IF ( in_summary_qty < 0 ) THEN
-        -- 入力パラメータマイナスエラー
-        lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_msg_kbn_coi
-                       ,iv_name         => cv_err_msg_xxcoi1_10583
-                       ,iv_token_name1  => cv_msg_tkn_in_param_name
-                       ,iv_token_value1 => cv_err_msg_xxcoi1_10501 -- 取引数量
-                      );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-      END IF;
+-- == 2015/03/05 Ver1.13 Y.Nagasue END   ====================================
 --
       BEGIN
         -- 製造日を取得
@@ -6713,6 +6758,43 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
       END IF;
+--
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ====================================
+      -- 引当情報取得
+      SELECT NVL(SUM(xlri.case_qty), 0)    case_qty_sum    -- ケース数（合計）
+            ,NVL(SUM(xlri.singly_qty), 0)  singly_qty_sum  -- バラ数（合計）
+            ,NVL(SUM(xlri.summary_qty), 0) summary_qty_sum -- 取引数量（合計）
+      INTO   ln_reserve_case_qty
+            ,ln_reserve_singly_qty
+            ,ln_reserve_summary_qty
+      FROM   xxcoi_lot_reserve_info  xlri                  -- ロット別引当情報
+      WHERE  xlri.shipping_status    IN ( cv_shipping_status_10, cv_shipping_status_20, cv_shipping_status_25 ) -- 出荷情報ステータス
+        AND  xlri.org_id             = lt_org_id           -- 営業単位
+        AND  xlri.base_code          = iv_base_code        -- 拠点コード
+        AND  xlri.whse_code          = iv_subinv_code      -- 保管場所コード
+        AND  xlri.location_code      = iv_loc_code         -- ロケーションコード
+        AND  xlri.item_id            = in_child_item_id    -- 子品目ID
+        AND  (xlri.lot               = iv_lot
+           OR (xlri.lot IS NULL AND iv_lot IS NULL))       -- ロット（賞味期限）
+        AND  (xlri.difference_summary_code  = iv_diff_sum_code
+           OR (xlri.difference_summary_code IS NULL AND iv_diff_sum_code IS NULL))  
+                                                           -- 固有記号
+      ;
+--
+      -- 引当情報、算出後の数量を使用し、ケース数または総数量が
+      -- 「引当情報 > 算出後の手持数量 」の場合はエラー
+      IF ( ( ln_reserve_case_qty > lt_case_qty_sum )
+        OR ( ln_reserve_summary_qty > lt_summary_qty_sum )
+      ) THEN 
+        -- エラーメッセージの取得
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_msg_kbn_coi
+                       ,iv_name         => cv_err_msg_xxcoi1_10665
+                      );
+        RAISE global_process_expt;
+      END IF;
+--
+-- == 2015/03/05 Ver1.13 Y.Nagasue END    ====================================
 --
       -- 算出後のケース数、バラ数、取引数量が全て0の場合は、テーブルから削除
       IF ( lt_case_qty_sum    = 0
@@ -7172,13 +7254,20 @@ AS
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
-        -- ロット別手持数量取得エラー
-        lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_msg_kbn_coi
-                       ,iv_name         => cv_err_msg_xxcoi1_10592
-                      );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
+-- == 2015/03/05 Ver1.13 Y.Nagasue START ====================================
+--        -- ロット別手持数量取得エラー
+--        lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_msg_kbn_coi
+--                       ,iv_name         => cv_err_msg_xxcoi1_10592
+--                      );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+        -- ロット別手持数量を取得できなかった場合は、0をセット
+        lt_case_in_qty := 0;
+        lt_case_qty    := 0;
+        lt_singly_qty  := 0;
+        lt_summary_qty := 0;
+-- == 2015/03/05 Ver1.13 Y.Nagasue END   ====================================
     END;
 --
     -- ======================================
