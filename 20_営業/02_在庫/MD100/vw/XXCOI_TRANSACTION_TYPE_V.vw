@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2014/10/29    1.0   Y.Umino          新規作成
+ *  2015/03/10    1.1   Y.Nagasue        [E_本稼動_12237]倉庫管理システム追加対応
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcoi_transaction_type_v
@@ -29,7 +30,10 @@ AS
         (SELECT flvmb.lookup_code
          FROM fnd_lookup_values  flvmb
          WHERE flvmb.lookup_type = 'XXCOI1_TRANSACTION_TYPE_NAME'
-           AND flvmb.lookup_code IN ('10','20','70')
+-- Mod Ver1.1 Y.Nagasue
+--           AND flvmb.lookup_code IN ('10','20','70')
+           AND flvmb.lookup_code IN ('10','20','70','390')
+-- Mod Ver1.1 Y.Nagasue
            AND flvmb.language = 'JA'
            AND flvmb.enabled_flag = 'Y'
            AND xxccp_common_pkg2.get_process_date BETWEEN flvmb.start_date_active AND NVL( flvmb.end_date_active, xxccp_common_pkg2.get_process_date )
@@ -42,7 +46,10 @@ AS
        , flvmc.meaning      AS meaning
   FROM fnd_lookup_values flvmc
   WHERE flvmc.lookup_type = 'XXCOI1_TRANSACTION_TYPE_NAME'
-    AND flvmc.lookup_code IN ('90','100','110','120','130','140','150','160','170','180','190','200','320','330','340','350','360','370','390','400','410')
+-- Mod Ver1.1 Y.Nagasue
+--    AND flvmc.lookup_code IN ('90','100','110','120','130','140','150','160','170','180','190','200','320','330','340','350','360','370','390','400','410')
+    AND flvmc.lookup_code IN ('90','100','110','120','130','140','150','160','170','180','190','200','320','330','340','350','360','370','400','410')
+-- Mod Ver1.1 Y.Nagasue
     AND flvmc.language = 'JA'
     AND flvmc.enabled_flag = 'Y'
     AND xxccp_common_pkg2.get_process_date BETWEEN flvmc.start_date_active AND NVL( flvmc.end_date_active, xxccp_common_pkg2.get_process_date ) 
