@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *                                        顧客導出（受注アドオン）、品目コード導出（親／子）、
  *                                        ロット情報保持マスタ反映、ロット別手持数量反映、
  *                                        鮮度条件基準日算出、引当可能数算出、鮮度条件基準日算出(ファンクション型)
+ *  2015/03/05    1.6   Y.Nagasue        [E_本稼動_12237]倉庫管理システム追加対応(仕様部修正なし)
  *
  *****************************************************************************************/
 --
@@ -566,6 +567,7 @@ AS
    ,iv_loc_code              IN  VARCHAR2 -- ロケーションコード
    ,iv_tran_subinv_code      IN  VARCHAR2 -- 転送先保管場所コード
    ,iv_tran_loc_code         IN  VARCHAR2 -- 転送先ロケーションコード
+   ,iv_sign_div              IN  VARCHAR2 -- 符号区分
    ,iv_source_code           IN  VARCHAR2 -- ソースコード
    ,iv_relation_key          IN  VARCHAR2 -- 紐付けキー
    ,iv_reason                IN  VARCHAR2 -- 事由
