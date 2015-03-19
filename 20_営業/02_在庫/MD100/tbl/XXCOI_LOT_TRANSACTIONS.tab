@@ -3,13 +3,14 @@
  *
  * Table Name      : XXCOI_LOT_TRANSACTIONS
  * Description     : ロット別取引明細
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2014/10/03    1.0   Y.Nagasue        新規作成
+ *  2015/03/10    1.1   Y.Nagasue        [E_本稼動_12237]倉庫管理システム追加対応
  *
  ************************************************************************/
 CREATE TABLE xxcoi.xxcoi_lot_transactions (
@@ -36,6 +37,9 @@ CREATE TABLE xxcoi.xxcoi_lot_transactions (
     ,transfer_organization_id       NUMBER
     ,transfer_subinventory          VARCHAR2(10)
     ,transfer_location_code         VARCHAR2(8)
+-- Add Ver1.1 Y.Nagasue
+    ,sign_div                       VARCHAR2(1)
+-- Add Ver1.1 Y.Nagasue
     ,source_code                    VARCHAR2(30)  NOT NULL
     ,relation_key                   VARCHAR2(50)
     ,reserve_transaction_type_code  VARCHAR2(240)
@@ -103,6 +107,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transfer_subinventory            
 /
 COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.transfer_location_code                  IS '転送先ロケーションコード'
 /
+-- Add Ver1.1 Y.Nagasue
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.sign_div                                IS '符号区分'
+/
+-- Add Ver1.1 Y.Nagasue
 COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.source_code                             IS 'ソースコード'
 /
 COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.relation_key                            IS '紐付けキー'
