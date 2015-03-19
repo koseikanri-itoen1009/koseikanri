@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/10/01    1.0   K.Nakamura       新規作成
+ *  2015/03/06    1.1   K.Nakamura       E_本稼動_12237 倉庫管理システム追加対応
  *
  *****************************************************************************************/
 --
@@ -103,7 +104,10 @@ AS
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
-  cv_pkg_name               CONSTANT VARCHAR2(20) := 'XXCOI016A06C'; -- パッケージ名
+  cv_pkg_name               CONSTANT VARCHAR2(20) := 'XXCOI016A06C'; -- パッケージ名  -- 返品・訂正・過去データ用
+-- Add Ver1.1 Start
+  cv_pkg_name2              CONSTANT VARCHAR2(20) := 'XXCOI016B06C'; -- パッケージ名2 -- 引当用
+-- Add Ver1.1 End
   -- アプリケーション短縮名
   cv_application            CONSTANT VARCHAR2(5)  := 'XXCOI';        -- アプリケーションXXCOI
   cv_application_xxcos      CONSTANT VARCHAR2(5)  := 'XXCOS';        -- アプリケーションXXCOS
@@ -112,6 +116,10 @@ AS
   cv_organization_code      CONSTANT VARCHAR2(30) := 'XXCOI1_ORGANIZATION_CODE';      -- XXCOI:在庫組織コード
   cv_lot_reverse_mark       CONSTANT VARCHAR2(30) := 'XXCOI1_LOT_REVERSE_MARK';       -- XXCOI:ロット逆転記号
   cv_edi_order_source       CONSTANT VARCHAR2(30) := 'XXCOS1_EDI_ORDER_SOURCE';       -- XXCOS:EDI受注ソース
+-- Add Ver1.1 Start
+  cv_period_xxcoi016a06c1   CONSTANT VARCHAR2(30) := 'XXCOI1_PERIOD_XXCOI016A06C1';   -- XXCOI:引当データ取得期間
+  cv_period_xxcoi016a06c5   CONSTANT VARCHAR2(30) := 'XXCOI1_PERIOD_XXCOI016A06C5';   -- XXCOI:返品・訂正・過去データ取得期間
+-- Add Ver1.1 End
   -- クイックコード（タイプ）
   cv_priority_flag          CONSTANT VARCHAR2(30) := 'XXCOI1_PRIORITY_FLAG';          -- 優先ロケーション使用
   cv_lot_reversal_flag      CONSTANT VARCHAR2(30) := 'XXCOI1_LOT_REVERSAL_FLAG';      -- ロット逆転可否
@@ -306,6 +314,8 @@ AS
   cv_tran_type_code_350     CONSTANT VARCHAR2(3)  := '350'; -- 顧客協賛見本出庫振戻
   cv_tran_type_code_360     CONSTANT VARCHAR2(3)  := '360'; -- 顧客広告宣伝費A自社商品
   cv_tran_type_code_370     CONSTANT VARCHAR2(3)  := '370'; -- 顧客広告宣伝費A自社商品振戻
+  -- 符号区分
+  cv_sign_div_0             CONSTANT VARCHAR2(1)  := '0';   -- 出庫
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -366,6 +376,10 @@ AS
   gt_org_id                 fnd_profile_option_values.profile_option_value%TYPE       DEFAULT NULL;  -- MO:営業単位
   gt_lot_reverse_mark       fnd_profile_option_values.profile_option_value%TYPE       DEFAULT NULL;  -- XXCOI:ロット逆転記号
   gt_order_source_id        oe_order_sources.order_source_id%TYPE                     DEFAULT NULL;  -- EDI受注ソースID
+-- Add Ver1.1 Start
+  gt_period_xxcoi016a06c1   fnd_profile_option_values.profile_option_value%TYPE       DEFAULT NULL;  -- XXCOI:引当データ取得期間
+  gt_period_xxcoi016a06c5   fnd_profile_option_values.profile_option_value%TYPE       DEFAULT NULL;  -- XXCOI:返品・訂正・過去データ取得期間
+-- Add Ver1.1 End
   gt_teiban_name            fnd_lookup_values.meaning%TYPE                            DEFAULT NULL;  -- 定番特売区分：定番
   gt_tokubai_name           fnd_lookup_values.meaning%TYPE                            DEFAULT NULL;  -- 定番特売区分：特売
   gt_shipping_status_10     fnd_lookup_values.meaning%TYPE                            DEFAULT NULL;  -- 出荷情報ステータス：引当未
@@ -502,6 +516,17 @@ AS
                  WHERE  xtlrs.subinventory_code = xlri.whse_code )
     ORDER BY xlri.order_number
   ;
+-- Add Ver1.1 Start
+  -- 出荷確定更新カーソル
+  CURSOR g_kbn_4_2_cur
+  IS
+    SELECT xlri.lot_reserve_info_id AS lot_reserve_info_id
+         , xlri.lot_tran_kbn        AS lot_tran_kbn
+    FROM   xxcoi_lot_reserve_info   xlri
+    WHERE  xlri.parent_shipping_status = cv_shipping_status_25
+    AND    xlri.arrival_date           < gd_delivery_date_from + 1
+  ;
+-- Add Ver1.1 End
   -- 出荷確定対象取得カーソル
   CURSOR g_kbn_4_cur
   IS
@@ -527,9 +552,13 @@ AS
          , xlri.customer_id                   AS customer_id
          , xlri.reserve_transaction_type_code AS reserve_transaction_type_code
          , xlri.ordered_quantity              AS ordered_quantity
-         , xlri.lot_tran_kbn                  AS lot_tran_kbn
     FROM   xxcoi_lot_reserve_info             xlri
-    WHERE  xlri.parent_shipping_status = cv_shipping_status_25
+-- Mod Ver1.1 Start
+--    WHERE  xlri.parent_shipping_status = cv_shipping_status_25
+    WHERE  xlri.parent_shipping_status = cv_shipping_status_30
+    AND    xlri.lot_tran_kbn           = cv_lot_tran_kbn_1
+    AND    xlri.request_id             = cn_request_id
+-- Mod Ver1.1 End
     AND    xlri.arrival_date           < gd_delivery_date_from + 1
   ;
 --
@@ -1567,6 +1596,68 @@ AS
         RAISE global_api_expt;
     END;
 --
+-- Add Ver1.1 Start
+    --==============================================================
+    --    引当データ取得期間
+    --==============================================================
+    BEGIN
+      gt_period_xxcoi016a06c1 := TO_NUMBER(FND_PROFILE.VALUE(cv_period_xxcoi016a06c1));
+    EXCEPTION
+      -- プロファイル値が数値以外の場合
+      WHEN VALUE_ERROR THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                       , iv_name         => cv_msg_xxcoi_00032
+                       , iv_token_name1  => cv_tkn_pro_tok
+                       , iv_token_value1 => cv_period_xxcoi016a06c1
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+    --
+    IF ( gt_period_xxcoi016a06c1 IS NULL ) THEN
+      -- プロファイル値取得エラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_application
+                     ,iv_name         => cv_msg_xxcoi_00032
+                     ,iv_token_name1  => cv_tkn_pro_tok
+                     ,iv_token_value1 => cv_period_xxcoi016a06c1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --==============================================================
+    --    返品・訂正・過去データ取得期間
+    --==============================================================
+    BEGIN
+      gt_period_xxcoi016a06c5 := TO_NUMBER(FND_PROFILE.VALUE(cv_period_xxcoi016a06c5));
+    EXCEPTION
+      -- プロファイル値が数値以外の場合
+      WHEN VALUE_ERROR THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                       , iv_name         => cv_msg_xxcoi_00032
+                       , iv_token_name1  => cv_tkn_pro_tok
+                       , iv_token_value1 => cv_period_xxcoi016a06c5
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+    --
+    IF ( gt_period_xxcoi016a06c5 IS NULL ) THEN
+      -- プロファイル値取得エラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_application
+                     ,iv_name         => cv_msg_xxcoi_00032
+                     ,iv_token_name1  => cv_tkn_pro_tok
+                     ,iv_token_value1 => cv_period_xxcoi016a06c5
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Add Ver1.1 End
+--
     --==============================================================
     -- 6．定番特売区分名取得
     --==============================================================
@@ -1715,7 +1806,6 @@ AS
       AND    hca.party_id            = hp.party_id
       AND    hca.customer_class_code IN ( cv_customer_class_code_10, cv_customer_class_code_12 )
       AND    xca.delivery_base_code  = gv_login_base_code
-      AND    xca.chain_store_code    = NVL(iv_login_chain_store_code, xca.chain_store_code)
       AND    hca.account_number      = gv_login_customer_code
       ;
     END IF;
@@ -2340,7 +2430,8 @@ AS
     -- 引当対象データ取得カーソル
     CURSOR l_kbn_1_cur
     IS
-      SELECT ooha.header_id                                AS header_id                 -- 受注ヘッダID
+      SELECT /*+ LEADING(ooha oola) */
+             ooha.header_id                                AS header_id                 -- 受注ヘッダID
            , ottt1.name                                    AS header_name               -- 受注タイプ名称
            , ooha.cust_po_number                           AS slip_num                  -- 伝票No
            , TO_CHAR(ooha.order_number)                    AS order_number              -- 受注番号
@@ -2454,6 +2545,10 @@ AS
                        WHERE  xtlrn.header_id = ooha.header_id
                        AND    xtlrn.line_id   = oola.line_id )
       AND    ooha.header_id                  > gt_max_header_id
+-- Add Ver1.1 Start
+      AND    ooha.ordered_date              >= ADD_MONTHS(gd_process_date, (gt_period_xxcoi016a06c1 * -1)) - 1
+      AND    ooha.ordered_date              <  gd_process_date + 1
+-- Add Ver1.1 End
       AND    oola.request_date              >= gd_delivery_date_from
       AND    oola.request_date              <  gd_delivery_date_to + 1
       AND ( ( gv_login_chain_store_code IS NULL )
@@ -2694,7 +2789,8 @@ AS
     -- 引当以外データ取得カーソル
     CURSOR l_kbn_4_cur
     IS
-      SELECT ooha.header_id                                AS header_id                 -- 受注ヘッダID
+      SELECT /*+ LEADING(ooha oola) */
+             ooha.header_id                                AS header_id                 -- 受注ヘッダID
            , ottt1.name                                    AS header_name               -- 受注タイプ名称
            , ooha.cust_po_number                           AS slip_num                  -- 伝票No
            , TO_CHAR(ooha.order_number)                    AS order_number              -- 受注番号
@@ -2808,6 +2904,10 @@ AS
                        WHERE  xtlrn.header_id = ooha.header_id
                        AND    xtlrn.line_id   = oola.line_id )
       AND    ooha.header_id                 > gt_max_header_id
+-- Add Ver1.1 Start
+      AND    ooha.ordered_date              >= ADD_MONTHS(gd_process_date, (gt_period_xxcoi016a06c5 * -1)) - 1
+      AND    ooha.ordered_date              <  gd_process_date + 1
+-- Add Ver1.1 End
       AND    oola.request_date              >= gd_delivery_date_from
       AND    oola.request_date              <  gd_delivery_date_to + 1
       AND ( ( gv_login_chain_store_code IS NULL )
@@ -4296,6 +4396,7 @@ AS
       , iv_loc_code              => it_kbn_4_rec.location_code                                 -- ロケーションコード
       , iv_tran_subinv_code      => NULL                                                       -- 転送先保管場所コード
       , iv_tran_loc_code         => NULL                                                       -- 転送先ロケーションコード
+      , iv_sign_div              => cv_sign_div_0                                              -- 符号区分
       , iv_source_code           => cv_pkg_name                                                -- ソースコード
       , iv_relation_key          => it_kbn_4_rec.header_id || cv_under || it_kbn_4_rec.line_id -- 紐付けキー
       , iv_reason                => NULL                                                       -- 事由
@@ -5186,30 +5287,96 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    --==============================================================
-    -- 1．受注ヘッダID取得
-    --==============================================================
-    SELECT MAX(ooha.header_id)  AS header_id
-    INTO   lt_transaction_id
-    FROM   oe_order_headers_all ooha
-    WHERE  ooha.header_id > gt_max_header_id
-    AND    ooha.org_id    = gt_org_id
-    ;
-    --==============================================================
-    -- 2．データ連携制御テーブル更新
-    --==============================================================
-    UPDATE xxcoi_cooperation_control xcc
-    SET    xcc.last_cooperation_date  = gd_process_date           -- 業務日付
-         , xcc.transaction_id         = lt_transaction_id         -- 受注ヘッダID
-         , xcc.last_updated_by        = cn_last_updated_by        -- 最終更新者
-         , xcc.last_update_date       = cd_last_update_date       -- 最終更新日
-         , xcc.last_update_login      = cn_last_update_login      -- 最終更新ログイン
-         , xcc.request_id             = cn_request_id             -- 要求ID
-         , xcc.program_application_id = cn_program_application_id -- プログラムアプリケーションID
-         , xcc.program_id             = cn_program_id             -- プログラムID
-         , xcc.program_update_date    = cd_program_update_date    -- プログラム更新日
-    WHERE  xcc.program_short_name     = cv_pkg_name
-    ;
+-- Mod Ver1.1 Start
+--    --==============================================================
+--    -- 1．受注ヘッダID取得
+--    --==============================================================
+--    SELECT MAX(ooha.header_id)  AS header_id
+--    INTO   lt_transaction_id
+--    FROM   oe_order_headers_all ooha
+--    WHERE  ooha.header_id > gt_max_header_id
+--    AND    ooha.org_id     = gt_org_id
+--    ;
+--    --==============================================================
+--    -- 2．データ連携制御テーブル更新
+--    --==============================================================
+--    UPDATE xxcoi_cooperation_control xcc
+--    SET    xcc.last_cooperation_date  = gd_process_date           -- 業務日付
+--         , xcc.transaction_id         = lt_transaction_id         -- 受注ヘッダID
+--         , xcc.last_updated_by        = cn_last_updated_by        -- 最終更新者
+--         , xcc.last_update_date       = cd_last_update_date       -- 最終更新日
+--         , xcc.last_update_login      = cn_last_update_login      -- 最終更新ログイン
+--         , xcc.request_id             = cn_request_id             -- 要求ID
+--         , xcc.program_application_id = cn_program_application_id -- プログラムアプリケーションID
+--         , xcc.program_id             = cn_program_id             -- プログラムID
+--         , xcc.program_update_date    = cd_program_update_date    -- プログラム更新日
+--    WHERE  xcc.program_short_name     = cv_pkg_name
+--    ;
+    -- 出荷確定の場合
+    IF ( gv_kbn = cv_kbn_4 ) THEN
+      --==============================================================
+      -- 1．受注ヘッダID取得
+      --==============================================================
+      SELECT MIN(ooha.header_id)  AS header_id
+      INTO   lt_transaction_id
+      FROM   oe_order_headers_all ooha
+           , oe_order_lines_all   oola
+      WHERE  ooha.header_id     = oola.header_id
+      AND    ooha.org_id        = gt_org_id
+      AND    ooha.ordered_date >= ADD_MONTHS(gd_process_date, (gt_period_xxcoi016a06c1 * -1))
+      AND    ooha.ordered_date <  gd_process_date + 1
+      AND    oola.request_date >= gd_process_date + 1
+      ;
+      --==============================================================
+      -- 2．データ連携制御テーブル更新
+      --==============================================================
+      UPDATE xxcoi_cooperation_control xcc
+      SET    xcc.last_cooperation_date  = gd_process_date           -- 業務日付
+           , xcc.transaction_id         = CASE WHEN ( lt_transaction_id IS NOT NULL )
+                                               THEN lt_transaction_id - 1
+                                               ELSE xcc.transaction_id
+                                          END                       -- 受注ヘッダID
+           , xcc.last_updated_by        = cn_last_updated_by        -- 最終更新者
+           , xcc.last_update_date       = cd_last_update_date       -- 最終更新日
+           , xcc.last_update_login      = cn_last_update_login      -- 最終更新ログイン
+           , xcc.request_id             = cn_request_id             -- 要求ID
+           , xcc.program_application_id = cn_program_application_id -- プログラムアプリケーションID
+           , xcc.program_id             = cn_program_id             -- プログラムID
+           , xcc.program_update_date    = cd_program_update_date    -- プログラム更新日
+      WHERE  xcc.program_short_name     = cv_pkg_name2
+      ;
+    -- 返品・訂正・過去データの場合
+    ELSIF ( gv_kbn = cv_kbn_5 ) THEN
+      --==============================================================
+      -- 1．受注ヘッダID取得
+      --==============================================================
+      SELECT MIN(ooha.header_id)  AS header_id
+      INTO   lt_transaction_id
+      FROM   oe_order_headers_all ooha
+      WHERE  ooha.org_id         = gt_org_id
+      AND    ooha.ordered_date  >= ADD_MONTHS(gd_process_date, (gt_period_xxcoi016a06c5 * -1))
+      AND    ooha.ordered_date  <  gd_process_date + 1
+      ;
+      --==============================================================
+      -- 2．データ連携制御テーブル更新
+      --==============================================================
+      UPDATE xxcoi_cooperation_control xcc
+      SET    xcc.last_cooperation_date  = gd_process_date           -- 業務日付
+           , xcc.transaction_id         = CASE WHEN ( lt_transaction_id IS NOT NULL )
+                                               THEN lt_transaction_id - 1
+                                               ELSE xcc.transaction_id
+                                          END                       -- 受注ヘッダID
+           , xcc.last_updated_by        = cn_last_updated_by        -- 最終更新者
+           , xcc.last_update_date       = cd_last_update_date       -- 最終更新日
+           , xcc.last_update_login      = cn_last_update_login      -- 最終更新ログイン
+           , xcc.request_id             = cn_request_id             -- 要求ID
+           , xcc.program_application_id = cn_program_application_id -- プログラムアプリケーションID
+           , xcc.program_id             = cn_program_id             -- プログラムID
+           , xcc.program_update_date    = cd_program_update_date    -- プログラム更新日
+      WHERE  xcc.program_short_name     = cv_pkg_name
+      ;
+    END IF;
+-- Mod Ver1.1 End
 --
   EXCEPTION
 --
@@ -5354,26 +5521,44 @@ AS
       --==============================================================
       -- 1．受注ヘッダID取得
       --==============================================================
-      SELECT MAX(xlri.header_id)    AS header_id
-      INTO   gt_max_header_id
-      FROM   xxcoi_lot_reserve_info xlri
-      WHERE  xlri.parent_shipping_status = cv_shipping_status_30
-      AND    xlri.base_code              = gv_login_base_code
-      AND    xlri.arrival_date           < gd_delivery_date_from
-      AND    xlri.header_id IS NOT NULL
-      ;
-      --
-      IF ( gt_max_header_id IS NULL ) THEN
-        -- 受注ヘッダID取得エラーメッセージ
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application
-                       , iv_name         => cv_msg_xxcoi_10539
-                       , iv_token_name1  => cv_tkn_base_code
-                       , iv_token_value1 => gv_login_base_code
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-      END IF;
+-- Mod Ver1.1 Start
+--      SELECT MAX(xlri.header_id)    AS header_id
+--      INTO   gt_max_header_id
+--      FROM   xxcoi_lot_reserve_info xlri
+--      WHERE  xlri.parent_shipping_status = cv_shipping_status_30
+--      AND    xlri.base_code              = gv_login_base_code
+--      AND    xlri.arrival_date           < gd_delivery_date_from
+--      AND    xlri.header_id IS NOT NULL
+--      ;
+--      --
+--      IF ( gt_max_header_id IS NULL ) THEN
+--        -- 受注ヘッダID取得エラーメッセージ
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_application
+--                       , iv_name         => cv_msg_xxcoi_10539
+--                       , iv_token_name1  => cv_tkn_base_code
+--                       , iv_token_value1 => gv_login_base_code
+--                     );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--      END IF;
+      BEGIN
+        SELECT xcc.transaction_id        AS transaction_id
+        INTO   gt_max_header_id
+        FROM   xxcoi_cooperation_control xcc
+        WHERE  xcc.program_short_name = cv_pkg_name2
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 受注ヘッダID取得エラーメッセージ
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                         , iv_name         => cv_msg_xxcoi_10539
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+-- Mod Ver1.1 End
       --
       --==============================================================
       -- 2．引当対象外データ取得登録
@@ -5642,82 +5827,143 @@ AS
 --
     -- 出荷確定の場合
     ELSIF ( gv_kbn = cv_kbn_4 ) THEN
-      -- 出荷確定ループ
-      << kbn_4_loop >>
-      FOR l_kbn_4_rec IN g_kbn_4_cur LOOP
+-- Mod Ver1.1 Start
+--      -- 出荷確定ループ
+--      << kbn_4_loop >>
+--      FOR l_kbn_4_rec IN g_kbn_4_cur LOOP
+--        -- 対象件数設定
+--        gn_target_cnt := gn_target_cnt + 1;
+      -- 出荷確定更新ループ
+      << kbn_4_2_loop >>
+      FOR l_kbn_4_2_rec IN g_kbn_4_2_cur LOOP
         -- 対象件数設定
         gn_target_cnt := gn_target_cnt + 1;
-        -- 未作成の場合
-        IF ( l_kbn_4_rec.lot_tran_kbn = cv_lot_tran_kbn_0 ) THEN
-          -- ===============================================
-          -- ロット別取引明細登録処理(A-9)
-          -- ===============================================
-          ins_lot_transactions(
-              it_kbn_4_rec => l_kbn_4_rec -- 出荷確定レコード
-            , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
-            , ov_retcode   => lv_retcode  -- リターン・コード
-            , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
-          );
-          --
-          IF ( lv_retcode = cv_status_error ) THEN
-            RAISE global_process_expt;
-          END IF;
-          --
-          -- ===============================================
-          -- ロット別手持数量反映処理(A-10)
-          -- ===============================================
-          ref_lot_onhand(
-              it_kbn_4_rec => l_kbn_4_rec -- 出荷確定レコード
-            , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
-            , ov_retcode   => lv_retcode  -- リターン・コード
-            , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
-          );
-          --
-          IF ( lv_retcode = cv_status_error ) THEN
-            RAISE global_process_expt;
-          END IF;
-          --
-        END IF;
+        --
         -- ===============================================
         -- ロット別引当情報更新処理(A-14)
         -- ===============================================
         upd_lot_reserve_info(
-            iv_lot_tran_kbn        => l_kbn_4_rec.lot_tran_kbn        -- ロット別取引明細作成区分
-          , in_lot_reserve_info_id => l_kbn_4_rec.lot_reserve_info_id -- ロット別引当情報ID
-          , ov_errbuf              => lv_errbuf                       -- エラー・メッセージ
-          , ov_retcode             => lv_retcode                      -- リターン・コード
-          , ov_errmsg              => lv_errmsg                       -- ユーザー・エラー・メッセージ
+            iv_lot_tran_kbn        => l_kbn_4_2_rec.lot_tran_kbn        -- ロット別取引明細作成区分
+          , in_lot_reserve_info_id => l_kbn_4_2_rec.lot_reserve_info_id -- ロット別引当情報ID
+          , ov_errbuf              => lv_errbuf                         -- エラー・メッセージ
+          , ov_retcode             => lv_retcode                        -- リターン・コード
+          , ov_errmsg              => lv_errmsg                         -- ユーザー・エラー・メッセージ
         );
+      END LOOP kbn_4_2_loop;
+-- Mod Ver1.1 End
+      --
+      -- 出荷確定ループ
+      << kbn_4_loop >>
+      FOR l_kbn_4_rec IN g_kbn_4_cur LOOP
+-- Del Ver1.1 Start
+--        -- 未作成の場合
+--        IF ( l_kbn_4_rec.lot_tran_kbn = cv_lot_tran_kbn_0 ) THEN
+-- Del Ver1.1 End
+        -- ===============================================
+        -- ロット別取引明細登録処理(A-9)
+        -- ===============================================
+        ins_lot_transactions(
+            it_kbn_4_rec => l_kbn_4_rec -- 出荷確定レコード
+          , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
+          , ov_retcode   => lv_retcode  -- リターン・コード
+          , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+        -- ===============================================
+        -- ロット別手持数量反映処理(A-10)
+        -- ===============================================
+        ref_lot_onhand(
+            it_kbn_4_rec => l_kbn_4_rec -- 出荷確定レコード
+          , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
+          , ov_retcode   => lv_retcode  -- リターン・コード
+          , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+-- Mod Ver1.1 Start
+--          --
+--        END IF;
+--        -- ===============================================
+--        -- ロット別引当情報更新処理(A-14)
+--        -- ===============================================
+--        upd_lot_reserve_info(
+--            iv_lot_tran_kbn        => l_kbn_4_rec.lot_tran_kbn        -- ロット別取引明細作成区分
+--          , in_lot_reserve_info_id => l_kbn_4_rec.lot_reserve_info_id -- ロット別引当情報ID
+--          , ov_errbuf              => lv_errbuf                       -- エラー・メッセージ
+--          , ov_retcode             => lv_retcode                      -- リターン・コード
+--          , ov_errmsg              => lv_errmsg                       -- ユーザー・エラー・メッセージ
+--        );
+-- Mod Ver1.1 End
         -- 正常時
         gn_normal_cnt := gn_normal_cnt + 1;
       END LOOP kbn_4_loop;
+-- Add Ver1.1 Start
+      -- ===============================================
+      -- データ連携制御テーブル更新処理(A-18)
+      -- ===============================================
+      upd_xcc(
+          ov_errbuf  => lv_errbuf  -- エラー・メッセージ
+        , ov_retcode => lv_retcode -- リターン・コード
+        , ov_errmsg  => lv_errmsg  -- ユーザー・エラー・メッセージ 
+      );
+      --
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+-- Add Ver1.1 End
 --
     -- 返品・訂正・過去データ
     ELSIF ( gv_kbn = cv_kbn_5 ) THEN
       --==============================================================
       -- 1．受注ヘッダID取得
       --==============================================================
+-- Mod Ver1.1 Start
+--      -- 拠点コードがNULLの場合（定期実行）
+--      IF ( gv_login_base_code IS NULL ) THEN
+--        BEGIN
+--          SELECT xcc.transaction_id        AS transaction_id
+--          INTO   gt_max_header_id
+--          FROM   xxcoi_cooperation_control xcc
+--          WHERE  xcc.program_short_name = cv_pkg_name
+--          ;
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+--            -- 受注ヘッダID取得エラーメッセージ
+--            lv_errmsg := xxccp_common_pkg.get_msg(
+--                             iv_application  => cv_application
+--                           , iv_name         => cv_msg_xxcoi_10539
+--                           , iv_token_name1  => cv_tkn_base_code
+--                           , iv_token_value1 => gv_login_base_code
+--                         );
+--            lv_errbuf := lv_errmsg;
+--            RAISE global_process_expt;
+--        END;
+      BEGIN
+        SELECT xcc.transaction_id        AS transaction_id
+        INTO   gt_max_header_id
+        FROM   xxcoi_cooperation_control xcc
+        WHERE  xcc.program_short_name = cv_pkg_name
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 受注ヘッダID取得エラーメッセージ
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                         , iv_name         => cv_msg_xxcoi_10539
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+      --
       -- 拠点コードがNULLの場合（定期実行）
       IF ( gv_login_base_code IS NULL ) THEN
-        BEGIN
-          SELECT xcc.transaction_id        AS transaction_id
-          INTO   gt_max_header_id
-          FROM   xxcoi_cooperation_control xcc
-          WHERE  xcc.program_short_name = cv_pkg_name
-          ;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- 受注ヘッダID取得エラーメッセージ
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_application
-                           , iv_name         => cv_msg_xxcoi_10539
-                           , iv_token_name1  => cv_tkn_base_code
-                           , iv_token_value1 => gv_login_base_code
-                         );
-            lv_errbuf := lv_errmsg;
-            RAISE global_process_expt;
-        END;
-        --
+-- Mod Ver1.1 End
         -- ロット別引当保管場所一時表登録
         INSERT INTO xxcoi_tmp_lot_reserve_subinv(
           subinventory_code -- 保管場所コード
@@ -5737,28 +5983,30 @@ AS
             which  => FND_FILE.LOG
           , buff   => 'A-3 ロット別引当保管場所一時表登録件数：' || gn_debug_cnt
         );
-      -- 拠点コードがNOT NULLの場合（随時実行）
-      ELSE
-        SELECT MAX(xlri.header_id)    AS header_id
-        INTO   gt_max_header_id
-        FROM   xxcoi_lot_reserve_info xlri
-        WHERE  xlri.parent_shipping_status = cv_shipping_status_30
-        AND    xlri.base_code              = gv_login_base_code
-        AND    xlri.arrival_date           < gd_delivery_date_from
-        AND    xlri.header_id IS NOT NULL
-        ;
-        --
-        IF ( gt_max_header_id IS NULL ) THEN
-          -- 受注ヘッダID取得エラーメッセージ
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_application
-                         , iv_name         => cv_msg_xxcoi_10539
-                         , iv_token_name1  => cv_tkn_base_code
-                         , iv_token_value1 => gv_login_base_code
-                       );
-          lv_errbuf := lv_errmsg;
-          RAISE global_process_expt;
-        END IF;
+-- Del Ver1.1 Start
+--      -- 拠点コードがNOT NULLの場合（随時実行）
+--      ELSE
+--        SELECT MAX(xlri.header_id)    AS header_id
+--        INTO   gt_max_header_id
+--        FROM   xxcoi_lot_reserve_info xlri
+--        WHERE  xlri.parent_shipping_status = cv_shipping_status_30
+--        AND    xlri.base_code              = gv_login_base_code
+--        AND    xlri.arrival_date           < gd_delivery_date_from
+--        AND    xlri.header_id IS NOT NULL
+--        ;
+--        --
+--        IF ( gt_max_header_id IS NULL ) THEN
+--          -- 受注ヘッダID取得エラーメッセージ
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_application
+--                         , iv_name         => cv_msg_xxcoi_10539
+--                         , iv_token_name1  => cv_tkn_base_code
+--                         , iv_token_value1 => gv_login_base_code
+--                       );
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_process_expt;
+--        END IF;
+-- Del Ver1.1 End
       END IF;
       --
       --==============================================================
@@ -5984,6 +6232,11 @@ AS
       ELSIF ( g_kbn_4_cur%ISOPEN ) THEN
         CLOSE g_kbn_4_cur;
       END IF;
+-- Mod Ver1.1 Start
+      IF ( g_kbn_4_2_cur%ISOPEN ) THEN
+        CLOSE g_kbn_4_2_cur;
+      END IF;
+-- Mod Ver1.1 End
 --
 --####################################  固定部 END   ##########################################
 --
