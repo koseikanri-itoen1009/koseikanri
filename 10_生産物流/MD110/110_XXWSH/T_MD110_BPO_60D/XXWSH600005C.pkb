@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/12/02    1.9  SCS    菅原大輔   本番#148対応
  *  2009/08/18    1.10 SCS    伊藤ひとみ 本番#1581対応(営業システム:特別横持マスタ対応)
  *  2014/12/24    1.11 SCSK   鈴木康徳   E_本稼動_12237    倉庫管理システム対応（ロット情報保持マスタ反映処理を追加）
+ *  2015/03/19    1.12 SCSK   仁木重人   E_本稼動_12237 不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -228,13 +229,18 @@ AS
                                                              -- 在庫組織コード取得エラーメッセージ
   gv_inv_org_id_err           CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00006'; 
                                                              -- 在庫組織ID取得エラーメッセージ
-  gv_process_date_err         CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00011'; 
-                                                             -- 業務日付取得エラーメッセージ
+-- 2015/03/19 V1.12 Del START
+--  gv_process_date_err         CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00011'; 
+--                                                             -- 業務日付取得エラーメッセージ
+-- 2015/03/19 V1.12 Del END
   gv_customer_id_err          CONSTANT VARCHAR2(15) := 'APP-XXWSH-13187';
                                                              -- 顧客導出（受注アドオン）取得エラー
   gv_item_pc_err              CONSTANT VARCHAR2(15) := 'APP-XXWSH-13188';
                                                              -- 品目情報取得エラー
-  gv_item_tst_err             CONSTANT VARCHAR2(15) := 'APP-XXWSH-10025';
+-- 2015/03/19 V1.12 Mod START
+--  gv_item_tst_err             CONSTANT VARCHAR2(15) := 'APP-XXWSH-10025';
+  gv_item_tst_err             CONSTANT VARCHAR2(15) := 'APP-XXWSH-13190';
+-- 2015/03/19 V1.12 Mod END
                                                              -- 賞味期限取得エラー
   gv_lot_mst_upd_err          CONSTANT VARCHAR2(15) := 'APP-XXWSH-13189';
                                                              -- ロット情報保持マスタ反映エラー
@@ -245,8 +251,10 @@ AS
   gv_param3_token             CONSTANT VARCHAR2(6)  := 'PARAM3';      -- 参照値トークン
   gv_param4_token             CONSTANT VARCHAR2(6)  := 'PARAM4';      -- 参照値トークン
   gv_param5_token             CONSTANT VARCHAR2(6)  := 'PARAM5';      -- 参照値トークン
-  gv_param_data               CONSTANT VARCHAR2(6)  := 'DATA';      -- 参照値トークン
-
+-- 2015/03/19 V1.12 Mod START
+--  gv_param_data               CONSTANT VARCHAR2(6)  := 'DATA';      -- 参照値トークン
+  gv_order_line_id            CONSTANT VARCHAR2(13) := 'ORDER_LINE_ID'; -- 受注明細IDトークン
+-- 2015/03/19 V1.12 Mod END
 -- 2014/12/24 E_本稼動_12237 V1.11 Add END
   gv_cnst_tkn_para            CONSTANT VARCHAR2(100) := 'PARAMETER';
                                                              -- 入力パラメータ名
@@ -302,8 +310,10 @@ AS
 -- 2009/08/18 H.Itou Add End
 --
 -- 2014/12/24 E_本稼動_12237 V1.11 Add START
-  -- 賞味期限
-  gv_item_tst                 CONSTANT VARCHAR2(8)  := '賞味期限';
+-- 2015/03/19 V1.12 Del START
+--  -- 賞味期限
+--  gv_item_tst                 CONSTANT VARCHAR2(8)  := '賞味期限';
+-- 2015/03/19 V1.12 Del END
   -- プロファイル名
   gv_xxcoi1_organization_code CONSTANT VARCHAR2(50) := 'XXCOI1_ORGANIZATION_CODE'; -- XXCOI:在庫組織コード
 -- 2014/12/24 E_本稼動_12237 V1.11 Add END
@@ -1051,7 +1061,10 @@ AS
                     ,iv_token_name1  => gv_tkn_pro_tok              -- プロファイル名
                     ,iv_token_value1 => gv_xxcoi1_organization_code
                    );
-      RAISE global_process_expt;
+-- 2015/03/19 V1.12 Mod START
+--      RAISE global_process_expt;
+      RAISE global_api_expt;
+-- 2015/03/19 V1.12 Mod END
     END IF;
 --
     --==============================================================
@@ -1067,20 +1080,25 @@ AS
                     ,iv_token_name1  => gv_tkn_org_code_tok -- 在庫組織コード
                     ,iv_token_value1 => gt_inv_org_code
                    );
-      RAISE global_process_expt;
+-- 2015/03/19 V1.12 Mod START
+--      RAISE global_process_expt;
+      RAISE global_api_expt;
+-- 2015/03/19 V1.12 Mod END
     END IF;
 --
-    --==============================================================
-    -- 業務日付取得
-    --==============================================================
-    gd_process_date := xxccp_common_pkg2.get_process_date;
-    IF ( gd_process_date IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => gv_cons_msg_kbn_wsh
-                    ,iv_name         => gv_process_date_err
-                   );
-      RAISE global_process_expt;
-    END IF;
+-- 2015/03/19 V1.12 Del START
+--    --==============================================================
+--    -- 業務日付取得
+--    --==============================================================
+--    gd_process_date := xxccp_common_pkg2.get_process_date;
+--    IF ( gd_process_date IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => gv_cons_msg_kbn_wsh
+--                    ,iv_name         => gv_process_date_err
+--                   );
+--      RAISE global_process_expt;
+--    END IF;
+-- 2015/03/19 V1.12 Del End
 --
 -- 2014/12/24 E_本稼動_12237 V1.11 Add END
 --
@@ -3473,6 +3491,13 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- 2015/03/19 V1.12 Add START
+    -- 引当数がNULLまたは0の場合は処理スキップ
+    IF (NVL(gr_chk_line_data_tab(gn_cnt_line).reserved_quantity ,0) = 0)
+    THEN
+      RAISE skip_expt;
+    END IF;
+-- 2015/03/19 V1.12 Add END
     -- ローカル変数初期化
     lt_deliver_to_id  := NULL;
     lt_customer_id    := NULL;
@@ -3545,7 +3570,9 @@ AS
       END IF;
 --
       -- 納品ロット情報（賞味期限）取得
-      BEGIN
+-- 2015/03/19 V1.12 Del START
+--      BEGIN
+-- 2015/03/19 V1.12 Del END
         SELECT TO_CHAR( MAX( info.taste_term ), 'YYYY/MM/DD' )
         INTO   lt_deliver_lot
         FROM(
@@ -3563,23 +3590,30 @@ AS
           lv_errmsg := xxcmn_common_pkg.get_msg(
                   gv_cons_msg_kbn_wsh, -- 'XXWSH'
                   gv_item_tst_err,     -- 賞味期限取得エラー
-                  gv_param_data,       -- トークン'DATA'
-                  gv_item_tst);        -- 賞味期限
+-- 2015/03/19 V1.12 Mod START
+--                  gv_param_data,       -- トークン'DATA'
+--                  gv_item_tst);        -- 賞味期限
+                  gv_order_line_id,    -- トークン'ORDER_LINE_ID'
+                  lt_order_line_id     -- 受注明細ID
+                  );
+-- 2015/03/19 V1.12 Mod END
           lv_errbuf := lv_errmsg;
           RAISE global_api_expt;
         END IF;
 --
-      EXCEPTION
-        WHEN OTHERS THEN
-          lv_errmsg := xxcmn_common_pkg.get_msg(
-                  gv_cons_msg_kbn_wsh, -- 'XXWSH'
-                  gv_item_tst_err,     -- 賞味期限取得エラー
-                  gv_param_data,       -- トークン'DATA'
-                  gv_item_tst);        -- 賞味期限
-          lv_errbuf := lv_errmsg;
---
-          RAISE global_api_expt;
-      END;
+-- 2015/03/19 V1.12 Del START
+--      EXCEPTION
+--        WHEN OTHERS THEN
+--          lv_errmsg := xxcmn_common_pkg.get_msg(
+--                  gv_cons_msg_kbn_wsh, -- 'XXWSH'
+--                  gv_item_tst_err,     -- 賞味期限取得エラー
+--                  gv_param_data,       -- トークン'DATA'
+--                  gv_item_tst);        -- 賞味期限
+--          lv_errbuf := lv_errmsg;
+----
+--          RAISE global_api_expt;
+--      END;
+-- 2015/03/19 V1.12 Del END
 --
       -- 在庫共通関数「ロット情報保持マスタ反映」より、出荷情報をロット情報保持マスタへ反映
       -- 取消以外の場合
@@ -3636,6 +3670,11 @@ AS
     END IF;
   EXCEPTION
 --
+-- 2015/03/19 V1.12 Add START
+    WHEN skip_expt THEN
+      -- 何も処理せずにスキップ
+      NULL;
+-- 2015/03/19 V1.12 Add End
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
