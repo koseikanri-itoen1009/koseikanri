@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009/08/18    1.10 SCS    伊藤ひとみ 本番#1581対応(営業システム:特別横持マスタ対応)
  *  2014/12/24    1.11 SCSK   鈴木康徳   E_本稼動_12237    倉庫管理システム対応（ロット情報保持マスタ反映処理を追加）
  *  2015/03/19    1.12 SCSK   仁木重人   E_本稼動_12237 不具合対応
+ *  2015/03/29    1.13 SCSK   仁木重人   E_本稼動_12237 不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -225,10 +226,12 @@ AS
                                                              -- 処理失敗
 -- 2009/08/18 H.Itou Add End
 -- 2014/12/24 E_本稼動_12237 V1.11 Add START
-  gv_inv_org_code_err         CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';
-                                                             -- 在庫組織コード取得エラーメッセージ
-  gv_inv_org_id_err           CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00006'; 
-                                                             -- 在庫組織ID取得エラーメッセージ
+-- 2015/03/29 V1.13 Del START
+--  gv_inv_org_code_err         CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';
+--                                                             -- 在庫組織コード取得エラーメッセージ
+--  gv_inv_org_id_err           CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00006'; 
+--                                                             -- 在庫組織ID取得エラーメッセージ
+-- 2015/03/29 V1.13 Del END
 -- 2015/03/19 V1.12 Del START
 --  gv_process_date_err         CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00011'; 
 --                                                             -- 業務日付取得エラーメッセージ
@@ -277,8 +280,10 @@ AS
                                                              -- 処理名
 -- 2009/08/18 H.Itou Add End
 -- 2014/12/24 E_本稼動_12237 V1.11 Add START
-  gv_tkn_pro_tok               CONSTANT VARCHAR2(20) := 'PRO_TOK';        -- プロファイル名
-  gv_tkn_org_code_tok          CONSTANT VARCHAR2(20) := 'ORG_CODE_TOK';   -- 在庫組織コード
+-- 2015/03/29 V1.13 Del START
+--  gv_tkn_pro_tok               CONSTANT VARCHAR2(20) := 'PRO_TOK';        -- プロファイル名
+--  gv_tkn_org_code_tok          CONSTANT VARCHAR2(20) := 'ORG_CODE_TOK';   -- 在庫組織コード
+-- 2015/03/29 V1.13 Del END
 -- 2014/12/24 E_本稼動_12237 V1.11 Add END
   -- トークン
   gv_tkn_item_div_security    CONSTANT VARCHAR2(100) := 'XXCMN：商品区分(セキュリティ)';
@@ -315,7 +320,10 @@ AS
 --  gv_item_tst                 CONSTANT VARCHAR2(8)  := '賞味期限';
 -- 2015/03/19 V1.12 Del END
   -- プロファイル名
-  gv_xxcoi1_organization_code CONSTANT VARCHAR2(50) := 'XXCOI1_ORGANIZATION_CODE'; -- XXCOI:在庫組織コード
+-- 2015/03/29 V1.13 Mod START
+--  gv_xxcoi1_organization_code CONSTANT VARCHAR2(50) := 'XXCOI1_ORGANIZATION_CODE'; -- XXCOI:在庫組織コード
+  gv_xxcmn_master_org_id      CONSTANT VARCHAR2(50)  := 'XXCMN_MASTER_ORG_ID'; -- XXCMN:マスタ組織
+-- 2015/03/29 V1.13 Mod END
 -- 2014/12/24 E_本稼動_12237 V1.11 Add END
 --
   -- ===============================
@@ -461,8 +469,10 @@ AS
   gt_system_date             DATE;                                       -- システム日付
 --
 -- 2014/12/24 E_本稼動_12237 V1.11 Add START
-  gd_process_date            DATE;   -- 業務日付
-  gt_inv_org_code            mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
+-- 2015/03/29 V1.13 Del START
+--  gd_process_date            DATE;   -- 業務日付
+--  gt_inv_org_code            mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
+-- 2015/03/29 V1.13 Del END
   gt_inv_org_id              mtl_parameters.organization_id%TYPE;    -- 在庫組織ID
   gn_ins_upd_lot_info_cnt    NUMBER;                                 -- ロット情報保持マスタ登録更新件数
 -- 2014/12/24 E_本稼動_12237 V1.11 Add END
@@ -1050,41 +1060,55 @@ AS
     END IF;
     --
 -- 2014/12/24 E_本稼動_12237 V1.11 Add START
-    --==============================================================
-    -- 在庫組織コード取得
-    --==============================================================
-    gt_inv_org_code := FND_PROFILE.VALUE( gv_xxcoi1_organization_code );
-    IF ( gt_inv_org_code IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => gv_cons_msg_kbn_wsh
-                    ,iv_name         => gv_inv_org_code_err
-                    ,iv_token_name1  => gv_tkn_pro_tok              -- プロファイル名
-                    ,iv_token_value1 => gv_xxcoi1_organization_code
-                   );
--- 2015/03/19 V1.12 Mod START
---      RAISE global_process_expt;
-      RAISE global_api_expt;
--- 2015/03/19 V1.12 Mod END
-    END IF;
+-- 2015/03/29 V1.13 Del START
+--    --==============================================================
+--    -- 在庫組織コード取得
+--    --==============================================================
+--    gt_inv_org_code := FND_PROFILE.VALUE( gv_xxcoi1_organization_code );
+--    IF ( gt_inv_org_code IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => gv_cons_msg_kbn_wsh
+--                    ,iv_name         => gv_inv_org_code_err
+--                    ,iv_token_name1  => gv_tkn_pro_tok              -- プロファイル名
+--                    ,iv_token_value1 => gv_xxcoi1_organization_code
+--                   );
+---- 2015/03/19 V1.12 Mod START
+----      RAISE global_process_expt;
+--      RAISE global_api_expt;
+---- 2015/03/19 V1.12 Mod END
+--    END IF;
+-- 2015/03/29 V1.13 Del END
 --
     --==============================================================
     -- 在庫組織ID取得
     --==============================================================
-    gt_inv_org_id := xxcoi_common_pkg.get_organization_id(
-                       iv_organization_code => gt_inv_org_code
-                 );
+-- 2015/03/29 V1.13 Mod START
+--    gt_inv_org_id := xxcoi_common_pkg.get_organization_id(
+--                       iv_organization_code => gt_inv_org_code
+--                 );
+--    IF ( gt_inv_org_id IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => gv_cons_msg_kbn_wsh
+--                    ,iv_name         => gv_inv_org_id_err
+--                    ,iv_token_name1  => gv_tkn_org_code_tok -- 在庫組織コード
+--                    ,iv_token_value1 => gt_inv_org_code
+--                   );
+---- 2015/03/19 V1.12 Mod START
+----      RAISE global_process_expt;
+--      RAISE global_api_expt;
+---- 2015/03/19 V1.12 Mod END
+--    END IF;
+    gt_inv_org_id := FND_PROFILE.VALUE( gv_xxcmn_master_org_id );
     IF ( gt_inv_org_id IS NULL ) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => gv_cons_msg_kbn_wsh
-                    ,iv_name         => gv_inv_org_id_err
-                    ,iv_token_name1  => gv_tkn_org_code_tok -- 在庫組織コード
-                    ,iv_token_value1 => gt_inv_org_code
+                    ,iv_name         => gv_profile_err
+                    ,iv_token_name1  => gv_cnst_tkn_prof    -- プロファイル名
+                    ,iv_token_value1 => gv_xxcmn_master_org_id
                    );
--- 2015/03/19 V1.12 Mod START
---      RAISE global_process_expt;
       RAISE global_api_expt;
--- 2015/03/19 V1.12 Mod END
     END IF;
+-- 2015/03/29 V1.13 Mod END
 --
 -- 2015/03/19 V1.12 Del START
 --    --==============================================================
@@ -3493,10 +3517,20 @@ AS
 --
 -- 2015/03/19 V1.12 Add START
     -- 引当数がNULLまたは0の場合は処理スキップ
-    IF (NVL(gr_chk_line_data_tab(gn_cnt_line).reserved_quantity ,0) = 0)
+-- 2015/03/29 V1.13 Mod START
+--    IF (NVL(gr_chk_line_data_tab(gn_cnt_line).reserved_quantity ,0) = 0)
+--    THEN
+--      RAISE skip_expt;
+--    END IF;
+    IF ( (gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order)
+          AND (NVL(gr_chk_line_data_tab(gn_cnt_line).reserved_quantity ,0) = 0) )
+      OR
+       ( (gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order_cncl)
+      AND (NVL(gr_chk_line_data_tab_cncl(gn_cnt_line_cncl).reserved_quantity ,0) = 0) )
     THEN
       RAISE skip_expt;
     END IF;
+-- 2015/03/29 V1.13 Mod END
 -- 2015/03/19 V1.12 Add END
     -- ローカル変数初期化
     lt_deliver_to_id  := NULL;
@@ -4132,7 +4166,11 @@ AS
               -- D-14  ロット情報保持マスタ 更新処理
               -- ===============================================
               -- データ区分が'1'（出荷依頼）の場合のみ処理実行
-              IF gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order THEN
+-- 2015/03/29 V1.13 Mod START
+--              IF gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order THEN
+              IF (gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_order)
+                AND (gr_chk_line_data_tab(gn_cnt_line).item_class_code = gv_cons_item_product) THEN
+-- 2015/03/29 V1.13 Mod END
                 ins_upd_lot_hold_info(
                   ln_cnt,             --
                   lv_errbuf,          -- エラー・メッセージ           --# 固定 #
@@ -4181,21 +4219,27 @@ AS
           <<cncl_line_loop>>
           FOR i IN gr_chk_line_data_tab_cncl.FIRST .. gr_chk_line_data_tab_cncl.LAST LOOP
             gn_cnt_line_cncl := gn_cnt_line_cncl + 1;
-            -- ===============================================
-            -- D-14  ロット情報保持マスタ 更新処理
-            -- ===============================================
-            ins_upd_lot_hold_info(
-              ln_cnt,             --
-              lv_errbuf,          -- エラー・メッセージ           --# 固定 #
-              lv_retcode,         -- リターン・コード             --# 固定 #
-              lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
-            );
-            IF (lv_retcode = gv_status_error) THEN
-              --(エラー処理)
-              RAISE global_process_expt;
-            ELSIF (lv_retcode = gv_status_warn) THEN
-              ov_retcode := lv_retcode;
+-- 2015/03/29 V1.13 Add START
+            IF (gr_chk_line_data_tab_cncl(gn_cnt_line_cncl).item_class_code = gv_cons_item_product) THEN
+-- 2015/03/29 V1.13 Add END
+              -- ===============================================
+              -- D-14  ロット情報保持マスタ 更新処理
+              -- ===============================================
+              ins_upd_lot_hold_info(
+                ln_cnt,             --
+                lv_errbuf,          -- エラー・メッセージ           --# 固定 #
+                lv_retcode,         -- リターン・コード             --# 固定 #
+                lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+              IF (lv_retcode = gv_status_error) THEN
+                --(エラー処理)
+                RAISE global_process_expt;
+              ELSIF (lv_retcode = gv_status_warn) THEN
+                ov_retcode := lv_retcode;
+              END IF;
+-- 2015/03/29 V1.13 Add START
             END IF;
+-- 2015/03/29 V1.13 Add END
           END LOOP cncl_line_loop;
         END IF;
       --
