@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.66
+ * Version          : 1.67
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -169,6 +169,7 @@ AS
  *  2010/04/16    1.64 SCS    伊藤ひとみ E_本稼動_02302    指示なし実績のとき、入力拠点に報告部署をセットする。
  *  2011/06/09    1.65 SCS    H.Sasaki   E_本稼動_05234,07582    出荷先、品目チェックを追加
  *  2014/12/25    1.66 SCSK   山下翔太   E_本稼動_12237    倉庫管理システム対応（ロット情報保持マスタ反映処理を追加）
+ *  2015/03/27    1.67 SCSK   中村健一   E_本稼動_12237    倉庫管理システム対応（不具合対応）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -350,10 +351,10 @@ AS
   -- 重複エラー
   gv_msg_93a_616                 CONSTANT VARCHAR2(15) := 'APP-XXCMN-10616';
 -- 2010/03/11 M.Hokkanji End
--- 2011/06/09 E_本稼動_06875 V1.66 Added START
+-- 2011/06/09 E_本稼動_06875 V1.65 Added START
   gv_msg_93a_182                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13182';
   gv_msg_93a_183                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13183';
--- 2011/06/09 E_本稼動_06875 V1.66 Added END
+-- 2011/06/09 E_本稼動_06875 V1.65 Added END
 -- 2014/12/25 E_本稼動_12237 V1.66 Add START
   -- 顧客導出（受注アドオン）取得エラー
   gv_msg_93a_187                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13187';
@@ -20238,7 +20239,10 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
     -- 在庫共通関数「品目コード導出（親／子）」より、親品目の品目情報を取得
     xxcoi_common_pkg.get_parent_child_item_info(
        id_date           => gd_process_date,        -- 日付
-       in_inv_org_id     => gt_inv_org_id,          -- 在庫組織ID
+-- 2015/03/27 E_本稼動_12237 V1.67 MOD START
+--       in_inv_org_id     => gt_inv_org_id,          -- 在庫組織ID
+       in_inv_org_id     => TO_NUMBER(gv_master_org_id), -- 在庫組織ID（マスタ組織ID）
+-- 2015/03/27 E_本稼動_12237 V1.67 MOD END
        in_parent_item_id => NULL,                   -- 親品目ID
        in_child_item_id  => lt_child_item_id,       -- 子品目ID（出荷品目ID）
        ot_item_info_tab  => lt_item_info_tab,       -- 品目情報
@@ -20979,8 +20983,13 @@ debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
           IF ((gr_interface_info_rec(i).err_flg = gv_flg_off) AND      --エラーflag：'0'(正常)
              (gr_interface_info_rec(i).reserve_flg = gv_flg_off))      --保留flag  ：'0'(正常)
           THEN
-            -- 顧客区分が10（顧客）の場合
-            IF ( gr_interface_info_rec(in_idx).customer_class_code = gv_cust_class_10 ) THEN
+-- 2015/03/27 E_本稼動_12237 V1.67 MOD START
+--            -- 顧客区分が10（顧客）の場合
+--            IF ( gr_interface_info_rec(in_idx).customer_class_code = gv_cust_class_10 ) THEN
+            -- 顧客区分が10（顧客）かつ品目区分が5（製品）の場合
+            IF (  ( gr_interface_info_rec(i).customer_class_code = gv_cust_class_10 )
+              AND ( gr_interface_info_rec(i).item_kbn_cd = gv_item_kbn_cd_5 ) ) THEN
+-- 2015/03/27 E_本稼動_12237 V1.67 MOD END
               -- 出荷の場合は、ロット情報保持マスタ登録更新処理を実行
               IF ( gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_210  --210 拠点出荷確定報告
                 OR  gr_interface_info_rec(i).eos_data_type = gv_eos_data_cd_215 )--215 庭先出荷確定報告
