@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshShipLotInputAMImpl
 * 概要説明   : 入出荷実績ロット入力画面アプリケーションモジュール
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2008-10-17 1.6  伊藤ひとみ   統合テスト指摘346 入庫実績の場合も在庫クローズチェックを行う。
 * 2009-03-04 1.7  飯田　甫     本番障害#1234対応
 * 2014-11-11 1.8  桐生和幸     E_本稼働_12237対応
+* 2015-03-27 1.9  桐生和幸     E_本稼働_12237緊急対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920001j.server;
@@ -1883,6 +1884,9 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
     Number resultDeliverToId = (Number)lineRow.getAttribute("ResultDeliverToId"); // 出荷先_実績ID
     Number invItemId         = (Number)lineRow.getAttribute("InvItemId");         // 出荷品目ID
     Date   arrivalDate       = (Date)  lineRow.getAttribute("ArrivalDate");       // 着荷日
+// 2015-03-27 K.kiriu Add Start
+    String itemClassCode     = (String)lineRow.getAttribute("ItemClassCode");     // 品目区分
+// 2015-03-27 K.kiriu Add End
     Number custId            = new Number();
     Number parentItemId      = new Number();
     String lotInfoCreateFlg  = XxcmnConstants.STRING_N;                           // ロット情報保持マスタ作成フラグ
@@ -1893,6 +1897,11 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
       // 呼出画面区分が1:出荷依頼入力画面の場合のみ
       if (XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn))
       {
+// 2015-03-27 K.kiriu Add Start
+        // 品目区分が5:製品のみ
+        if (XxwshConstants.ITEM_TYPE_PROD.equals(itemClassCode))
+        {
+// 2015-03-27 K.kiriu Add End
           // ************************************** // 
           // *  直送データの判定(顧客ID取得)処理  * //
           // ************************************** //
@@ -1916,8 +1925,11 @@ public class XxwshShipLotInputAMImpl extends XxcmnOAApplicationModuleImpl
                              invItemId      // 出荷品目ID
                            );
           }
+// 2015-03-27 K.kiriu Add Start
+        }
+// 2015-03-27 K.kiriu Add End
       }
-      // 直送顧客のみ実施
+      // 直送顧客、且つ、製品のみ実施
       if (lotInfoCreateFlg.equals(XxcmnConstants.STRING_Y))
       {
         // 実績ロットVO取得
