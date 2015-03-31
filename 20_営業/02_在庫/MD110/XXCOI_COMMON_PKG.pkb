@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *                                        ロット情報保持マスタ反映、ロット別手持数量反映、
  *                                        鮮度条件基準日算出、引当可能数算出、鮮度条件基準日算出(ファンクション型)
  *  2015/03/05    1.13  Y.Nagasue        [E_本稼動_12237]倉庫管理システム対応 ST・受入テスト課題対応
+ *  2015/03/30    1.14  K.Nakamura       [E_本稼動_12237]倉庫管理システム対応（不具合対応）
  *
  *****************************************************************************************/
 --
@@ -5955,12 +5956,16 @@ AS
           -- 更新判定
           -- 納品日_生産がNULL
           IF ( lt_delivery_date_s IS NULL
-          -- 納品日_生産 < INパラメータ.納品日
-            OR lt_delivery_date_s < id_delivery_date
-          -- 納品日_生産=INパラメータ.納品日かつ納品ロット_生産＜INパラメータ.納品ロット
-            OR ( ( lt_delivery_date_s = id_delivery_date )
-              AND ( TO_DATE( lt_last_deliver_lot_s, cv_yyyymmdd ) < TO_DATE( iv_deliver_lot, cv_yyyymmdd ) )
-            )
+-- == 2015/03/30 Ver1.14 K.Nakamura START ===================================
+--          -- 納品日_生産 < INパラメータ.納品日
+--            OR lt_delivery_date_s < id_delivery_date
+--          -- 納品日_生産=INパラメータ.納品日かつ納品ロット_生産＜INパラメータ.納品ロット
+--            OR ( ( lt_delivery_date_s = id_delivery_date )
+--              AND ( TO_DATE( lt_last_deliver_lot_s, cv_yyyymmdd ) < TO_DATE( iv_deliver_lot, cv_yyyymmdd ) )
+--            )
+          -- 納品日_生産<=INパラメータ.納品日
+            OR ( lt_delivery_date_s <= id_delivery_date )
+-- == 2015/03/30 Ver1.14 K.Nakamura END   ===================================
           ) THEN
             -- 取消以外の場合で更新対象の場合、INパラメータの値でロット情報保持マスタ更新
             UPDATE xxcoi_mst_lot_hold_info xmlhi
