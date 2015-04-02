@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2014/04/25    1.10  仁木 重人        障害E_本稼動_11616対応 項目追加
  *  2014/06/19    1.11  仁木 重人        障害E_本稼動_12020対応 保管場所チェック不具合修正
  *                                                              業態小分類チェック修正
+ *  2015/03/18    1.12  仁木 重人        障害E_本稼動_12955対応 請求書発行サイクルのチェック追加
  *
  *****************************************************************************************/
 --
@@ -188,6 +189,9 @@ AS
 --  cv_bz_low_type_err_msg      CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00383';                --業態(小分類)妥当性チェックエラー
 -- Ver1.11 del end
 -- Ver1.10 add end
+-- Ver1.12 add start
+  cv_invoice_cycle_err_msg    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00384';                --請求書発行サイクルチェックエラー
+-- Ver1.12 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -400,6 +404,13 @@ AS
   cv_center_no_stock          CONSTANT VARCHAR2(2)   := '24';                              --店舗納品・無し
   cv_hokan_bunrui_3           CONSTANT VARCHAR2(1)   := '3';                               --保管場所分類
   cv_dummy_0                  CONSTANT VARCHAR2(1)   := '0';                               --NULLダミー値(文字)
+-- Ver1.12 add start
+  cv_invoice_form_4           CONSTANT VARCHAR2(10)  := '4';                               --請求書出力形式：業者委託
+  cv_invoice_cycle_1          CONSTANT VARCHAR2(10)  := '1';                               --請求書発行サイクル：第一営業日
+  cv_a_flag                   CONSTANT VARCHAR2(1)   := 'A';                               --ステータス(有効)
+  cv_bill_to                  CONSTANT VARCHAR2(7)   := 'BILL_TO';                         --使用目的・請求先
+  cv_other_to                 CONSTANT VARCHAR2(8)   := 'OTHER_TO';                        --使用目的・その他
+-- Ver1.12 add end
   --値(数値)
   cn_rate_min                 CONSTANT NUMBER        := 0;                                 --消化計算用掛率最小値
   cn_rate_max                 CONSTANT NUMBER        := 999;                               --消化計算用掛率最大値
@@ -680,6 +691,13 @@ AS
     lb_cs_code_chk_flg          BOOLEAN         DEFAULT TRUE;    --チェーン店コード(EDI)チェックフラグ
     lb_conc_day_chk_flg         BOOLEAN         DEFAULT TRUE;    --消化計算締め日チェックフラグ
 -- Ver1.10 add end
+-- Ver1.12 add start
+    lt_invoice_form_bef         hz_cust_site_uses.attribute7%TYPE;              --現在値・請求書出力形式
+    lt_invoice_form_aft         hz_cust_site_uses.attribute7%TYPE;              --更新値・請求書出力形式
+    lt_invoice_cycle_bef        hz_cust_site_uses.attribute8%TYPE;              --現在値・請求書発行サイクル
+    lt_invoice_cycle_aft        hz_cust_site_uses.attribute8%TYPE;              --更新値・請求書発行サイクル
+    lb_invoice_chk_flg          BOOLEAN         DEFAULT TRUE;                   --請求書関連チェックフラグ
+-- Ver1.12 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -1299,6 +1317,26 @@ AS
     --出荷元保管場所相関チェックカーソル型
     check_ss_code_rel_rec  check_ss_code_rel_cur%ROWTYPE;
 -- Ver1.10 add end
+-- Ver1.12 add start
+    -- 顧客使用目的現在値取得カーソル
+    CURSOR get_hcsu_info_cur(
+      iv_customer_code IN VARCHAR2
+    )
+    IS
+      SELECT hcsu.attribute7  AS invoice_form     --請求書出力形式
+            ,hcsu.attribute8  AS invoice_cycle    --請求書発行サイクル
+      FROM   hz_cust_accounts     hca
+            ,hz_cust_acct_sites   hcas
+            ,hz_cust_site_uses    hcsu
+      WHERE  hca.cust_account_id    = hcas.cust_account_id
+        AND  hcas.cust_acct_site_id = hcsu.cust_acct_site_id
+        AND  hcsu.site_use_code     = cv_bill_to
+        AND  hcsu.status            = cv_a_flag
+        AND  hca.account_number     = iv_customer_code
+      ;
+    -- 顧客使用目的現在値取得カーソルレコード型
+    get_hcsu_info_rec  get_hcsu_info_cur%ROWTYPE;
+-- Ver1.12 add end
 --
   BEGIN
 --
@@ -2745,6 +2783,9 @@ AS
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
               ,buff   => gv_out_msg);
+-- Ver1.12 add start
+            lb_invoice_chk_flg := FALSE;
+-- Ver1.12 add end
           END IF;
           --請求書発行サイクル型・桁数チェック
           xxccp_common_pkg2.upload_item_check( cv_invoice_cycle  --請求書発行サイクル
@@ -2779,6 +2820,9 @@ AS
                which  => FND_FILE.LOG
               ,buff   => lv_item_errmsg
             );
+-- Ver1.12 add start
+            lb_invoice_chk_flg := FALSE;
+-- Ver1.12 add end
           END IF;
         END IF;
 --
@@ -2814,6 +2858,9 @@ AS
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
               ,buff   => gv_out_msg);
+-- Ver1.12 add start
+            lb_invoice_chk_flg := FALSE;
+-- Ver1.12 add end
           END IF;
           --請求書出力形式型・桁数チェック
           xxccp_common_pkg2.upload_item_check( cv_invoice_ksk    --請求書出力形式
@@ -2848,9 +2895,76 @@ AS
                which  => FND_FILE.LOG
               ,buff   => lv_item_errmsg
             );
+-- Ver1.12 add start
+            lb_invoice_chk_flg := FALSE;
+-- Ver1.12 add end
           END IF;
         END IF;
 --
+-- Ver1.12 add start
+        --請求書関連の妥当性チェックOKかつ、
+        --顧客区分が'10','12','14'の場合、現在値を取得
+        IF (lb_invoice_chk_flg = TRUE)
+          AND (lv_cust_customer_class IN ( cv_kokyaku_kbn
+                                         , cv_uesama_kbn
+                                         , cv_urikake_kbn ) )
+        THEN
+          --顧客使用目的の現在値を取得
+          << get_hcsu_info_loop >>
+          FOR get_hcsu_info_rec IN get_hcsu_info_cur( lv_customer_code )
+          LOOP
+            lt_invoice_form_bef   := get_hcsu_info_rec.invoice_form;
+            lt_invoice_cycle_bef  := get_hcsu_info_rec.invoice_cycle;
+          END LOOP get_hcsu_info_loop;
+--
+          --請求書出力形式の更新値を取得
+          IF (lv_invoice_form = cv_null_bar)
+          THEN
+            lt_invoice_form_aft := NULL;
+          ELSIF (lv_invoice_form IS NULL)
+          THEN
+            lt_invoice_form_aft := lt_invoice_form_bef;
+          ELSE
+            lt_invoice_form_aft := lv_invoice_form;
+          END IF;
+--
+          ---請求書発行サイクルの更新値を取得
+          IF (lv_invoice_cycle = cv_null_bar)
+          THEN
+            lt_invoice_cycle_aft := NULL;
+          ELSIF (lv_invoice_cycle IS NULL)
+          THEN
+            lt_invoice_cycle_aft := lt_invoice_cycle_bef;
+          ELSE
+            lt_invoice_cycle_aft := lv_invoice_cycle;
+          END IF;
+--
+          --請求書発行サイクルチェック
+          --請求書出力形式が'4'かつ請求書発行サイクルが'1'以外の場合エラー
+          IF (lt_invoice_form_aft = cv_invoice_form_4)
+            AND (NVL(lt_invoice_cycle_aft ,cv_dummy_0) <> cv_invoice_cycle_1)
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --請求書発行サイクルチェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_invoice_cycle_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+--
+        END IF;
+-- Ver1.12 add end
         --支払条件取得
         lv_payment_term_id := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
@@ -8722,6 +8836,12 @@ AS
       lt_conclusion_day3_aft      := NULL;  --更新値・消化計算締め日3
       lv_store_cust_code          := NULL;  --ローカル変数・店舗営業用顧客コード
       lt_store_cust_code_aft      := NULL;  --更新値・店舗営業用顧客コード
+-- Ver1.12 add start
+      lt_invoice_form_bef         := NULL;  --現在値・請求書出力形式
+      lt_invoice_form_aft         := NULL;  --更新値・請求書出力形式
+      lt_invoice_cycle_bef        := NULL;  --現在値・請求書発行サイクル
+      lt_invoice_cycle_aft        := NULL;  --更新値・請求書発行サイクル
+-- Ver1.12 add end
       --妥当性チェックフラグ
       lb_bz_low_type_chk_flg      := TRUE;  --業態(小分類)チェックフラグ
       lb_sell_trans_chk_flg       := TRUE;  --売上実績振替チェックフラグ
@@ -8731,6 +8851,9 @@ AS
       lb_cs_code_chk_flg          := TRUE;  --チェーン店コード(EDI)チェックフラグ
       lb_conc_day_chk_flg         := TRUE;  --消化計算締め日チェックフラグ
 -- Ver1.10 add end
+-- Ver1.12 add start
+      lb_invoice_chk_flg          := TRUE;  --請求書関連チェックフラグ
+-- Ver1.12 add end
     END LOOP cust_data_wk_loop;
 --
     --データエラー時メッセージ設定（コンカレント出力）
@@ -8804,8 +8927,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_bill_to               CONSTANT VARCHAR2(7)     := 'BILL_TO';               --使用目的・請求先
-    cv_other_to              CONSTANT VARCHAR2(8)     := 'OTHER_TO';              --使用目的・その他
+-- Ver1.12 del start
+--    cv_bill_to               CONSTANT VARCHAR2(7)     := 'BILL_TO';               --使用目的・請求先
+--    cv_other_to              CONSTANT VARCHAR2(8)     := 'OTHER_TO';              --使用目的・その他
+-- Ver1.12 del end
 -- 2009/10/23 Ver1.2 delete start by Yutaka.Kuboshima
 --    cv_aff_dept              CONSTANT VARCHAR2(15)    := 'XX03_DEPARTMENT';       --AFF部門マスタ参照タイプ
 -- 2009/10/23 Ver1.2 delete end by Yutaka.Kuboshima
@@ -8833,7 +8958,9 @@ AS
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
 --
 -- 2010/01/27 Ver1.4 E_本稼動_01280 add start by Yutaka.Kuboshima
-    cv_a_flag                CONSTANT VARCHAR2(1)     := 'A';                     --ステータス(有効)
+-- Ver1.12 del start
+--    cv_a_flag                CONSTANT VARCHAR2(1)     := 'A';                     --ステータス(有効)
+-- Ver1.12 del end
 -- 2010/01/27 Ver1.4 E_本稼動_01280 add start by Yutaka.Kuboshima
 --
     -- *** ローカル変数 ***
