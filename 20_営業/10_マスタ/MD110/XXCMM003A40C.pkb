@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A40C(body)
  * Description      : 顧客一括登録ワークテーブルに取込済のデータから顧客レコードを登録します。
  * MD.050           : 顧客一括登録 MD050_CMM_003_A40
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2010/11/05    1.1   Shigeto.Niki     E_本稼動_05492対応  担当営業員登録時のチェック追加
  *  2012/12/14    1.2   K.Furuyama       E_本稼動_09963対応  顧客区分：13、14追加
  *  2013/04/18    1.3   K.Nakamura       E_本稼動_09963追加対応  支払方法、カード会社区分追加
+ *  2015/03/10    1.4   S.Niki           E_本稼動_12955対応  請求書発行サイクルのチェック追加
  *
  *****************************************************************************************/
 --
@@ -154,6 +155,9 @@ AS
 -- Ver1.3 K.Nakamura del end
   cv_msg_xxcmm_10346     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10346';                                  -- データ存在チェックエラー
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
+-- Ver1.4 SCSK S.Niki add start
+  cv_msg_xxcmm_10356     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10356';                                  -- 請求書発行サイクルチェックエラー
+-- Ver1.4 SCSK S.Niki add end
   -- トークン名
   cv_tkn_file_id         CONSTANT VARCHAR2(20)  := 'FILE_ID';                                           -- ファイルID
   cv_tkn_up_name         CONSTANT VARCHAR2(20)  := 'UPLOAD_NAME';                                       -- ファイルアップロード名称
@@ -388,6 +392,10 @@ AS
   cv_dev_status_normal   CONSTANT VARCHAR2(10)  := 'NORMAL';                                            -- 正常
   cv_dev_status_warn     CONSTANT VARCHAR2(10)  := 'WARNING';                                           -- 警告
 -- Ver1.3 K.Nakamura add end
+-- Ver1.4 SCSK S.Niki add start
+  cv_output_form_4       CONSTANT VARCHAR2(10)  := '4';                                                 -- 請求書出力形式：業者委託
+  cv_prt_cycle_1         CONSTANT VARCHAR2(10)  := '1';                                                 -- 請求書発行サイクル：第一営業日
+-- Ver1.4 SCSK S.Niki add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2966,6 +2974,36 @@ AS
           lv_check_flag := cv_status_error;
         END IF;
       END IF;
+-- Ver1.4 SCSK S.Niki add start
+      --==============================================================
+      -- A-4.38-2 請求書発行サイクルチェック
+      --==============================================================
+      lv_step := 'A-4.38-2';
+      -- フォーマットパターン「504:売掛管理」の場合
+      IF ( gv_format = cv_file_format_ur ) THEN
+        IF (i_wk_cust_rec.output_form = cv_output_form_4)
+          AND (i_wk_cust_rec.prt_cycle <> cv_prt_cycle_1) THEN
+          lv_check_status := cv_status_error;
+          lv_check_flag   := cv_status_error;
+          ov_retcode      := cv_status_error;
+          --請求書発行サイクルチェックエラー
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_10356                    -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input_line_no                  -- トークンコード3
+                        ,iv_token_value1 => i_wk_cust_rec.line_no                 -- トークン値3
+                       );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => gv_out_msg);
+          --
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+        END IF;
+      END IF;
+-- Ver1.4 SCSK S.Niki add end
       --==============================================================
       -- A-4.39 支払条件チェック
       --==============================================================
