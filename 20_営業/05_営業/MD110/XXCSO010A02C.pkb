@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *  2011-12-26    1.17  T.Ishiwata       E_本稼動_08363対応
  *  2013-04-11    1.18  K.Nakamura       E_本稼動_09603対応
  *  2015-02-25    1.19  H.Wajima         E_本稼働_12565対応
+ *  2015-04-02    1.20  K.Kiriu          E_本稼働_12565本番障害対応
  *
  *****************************************************************************************/
   --
@@ -2757,7 +2758,10 @@ AS
     --  -- 電気代区分が1(定額)の場合
     -- 電気代区分が1（定額） かつ、 支払条件（電気代）が1（契約先）の場合
     IF (lt_electricity_type =  cv_electricity_type_1) 
-      AND (lt_electric_payment_type = cv_electric_pay_type_1) THEN
+    /* 2015.04.02 K.Kiriu E_本稼動_12565 START */
+--      AND (lt_electric_payment_type = cv_electric_pay_type_1) THEN
+      AND (NVL(lt_electric_payment_type, cv_electric_pay_type_1) = cv_electric_pay_type_1) THEN
+    /* 2015.04.02 K.Kiriu E_本稼動_12565 END */
     /* 2015.02.25 H.Wajima E_本稼動_12565 END */
       BEGIN
         SELECT ROWID row_id
