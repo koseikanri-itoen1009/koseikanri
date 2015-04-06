@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/10/01    1.0   K.Nakamura       新規作成
  *  2015/03/06    1.1   K.Nakamura       E_本稼動_12237 倉庫管理システム追加対応
+ *  2015/04/03    1.2   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
  *
  *****************************************************************************************/
 --
@@ -3912,6 +3913,10 @@ AS
     lt_after_uom_code          mtl_units_of_measure_tl.uom_code%TYPE     DEFAULT NULL;  -- 換算後単位コード
     ln_after_quantity          NUMBER                                    DEFAULT 0;     -- 換算後数量
     ln_order_summary_qty       NUMBER                                    DEFAULT 0;     -- 換算後数量総数
+-- Add Ver1.2 Start
+    ln_order_summary_qty2      NUMBER                                    DEFAULT 0;     -- 換算後数量総数2
+    ln_subinv_cnt2             NUMBER                                    DEFAULT 0;     -- 保管場所チェック件数
+-- Add Ver1.2 End
     -- *** ローカルカーソル ***
     -- 受注カーソル
     CURSOR l_order_cur( in_order_number NUMBER )
@@ -4051,6 +4056,19 @@ AS
       AND    xlri.parent_item_id = in_parent_item_id
       AND    xlri.whse_code      = iv_subinventory
     ;
+-- Add Ver1.2 Start
+    -- 引当親品目総数取得カーソル2
+    CURSOR l_reserve_item2_cur( in_header_id     NUMBER
+                             , in_parent_item_id NUMBER
+                             , iv_subinventory   VARCHAR2 )
+    IS
+      SELECT NVL(SUM(xlri.summary_qty), 0)  AS summary_qty  -- 引当総数
+      FROM   xxcoi_lot_reserve_info         xlri
+      WHERE  xlri.header_id      = in_header_id
+      AND    xlri.parent_item_id = in_parent_item_id
+      AND    xlri.whse_code      = iv_subinventory
+    ;
+-- Add Ver1.2 End
     -- ロット別引当情報更新用カーソル
     CURSOR l_upd_reserve_cur( in_header_id NUMBER
                             , in_line_id   NUMBER )
@@ -4063,6 +4081,9 @@ AS
     l_reserve_rec          l_reserve_cur%ROWTYPE;
     l_parent_item_rec      l_parent_item_cur%ROWTYPE;
     l_reserve_item_rec     l_reserve_item_cur%ROWTYPE;
+-- Add Ver1.2 Start
+    l_reserve_item2_rec    l_reserve_item2_cur%ROWTYPE;
+-- Add Ver1.2 End
 --
   BEGIN
 --
@@ -4184,18 +4205,103 @@ AS
           --==============================================================
           -- 受注と引当の総数が相違する場合
           IF ( ln_order_summary_qty <> l_reserve_item_rec.summary_qty ) THEN
-            -- 修正あり
-            lb_chk_flag := TRUE;
-            --
-            -- 倉庫管理対象で無ければ削除のみ
-            SELECT COUNT(1)                     AS cnt
-            INTO   ln_subinv_cnt
-            FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
-            WHERE  xtlrs.subinventory_code = lt_subinventory
-            ;
-            IF ( ln_subinv_cnt = 0 ) THEN
-              l_order_rec.flow_status_code := cv_cancelled;
+-- Mod Ver1.2 Start
+--            -- 修正あり
+--            lb_chk_flag := TRUE;
+--            --
+--            -- 倉庫管理対象で無ければ削除のみ
+--            SELECT COUNT(1)                     AS cnt
+--            INTO   ln_subinv_cnt
+--            FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+--            WHERE  xtlrs.subinventory_code = lt_subinventory
+--            ;
+--            IF ( ln_subinv_cnt = 0 ) THEN
+--              l_order_rec.flow_status_code := cv_cancelled;
+--            END IF;
+            -- 保管場所指定の場合
+            IF ( gv_subinventory_code IS NOT NULL ) THEN
+              -- 指定された保管場所と一致する場合、修正あり警告
+              IF ( gv_subinventory_code = lt_subinventory ) THEN
+                -- 修正あり
+                lb_chk_flag := TRUE;
+              -- 指定された保管場所と一致しない場合
+              ELSE
+                -- 初期化
+                ln_order_summary_qty2 := 0;
+                -- 受注親品目総数取得ループ
+                << parent_item_loop2 >>
+                FOR l_parent_item_rec IN l_parent_item_cur( in_order_number      => TO_NUMBER(l_order_rec.order_number)
+                                                          , in_inventory_item_id => lt_parent_item_id
+                                                          , iv_subinventory      => gv_subinventory_code ) LOOP
+                  -- 初期化
+                  ln_after_quantity    := 0;
+                  -- 単位換算取得
+                  xxcos_common_pkg.get_uom_cnv(
+                      iv_before_uom_code    => l_parent_item_rec.order_quantity_uom -- 換算前単位コード
+                    , in_before_quantity    => l_parent_item_rec.ordered_quantity   -- 換算前数量
+                    , iov_item_code         => l_order_rec.parent_item_code         -- 品目コード
+                    , iov_organization_code => gt_organization_code                 -- 在庫組織コード
+                    , ion_inventory_item_id => lt_parent_item_id                    -- 品目ＩＤ
+                    , ion_organization_id   => gt_organization_id                   -- 在庫組織ＩＤ
+                    , iov_after_uom_code    => lt_after_uom_code                    -- 換算後単位コード
+                    , on_after_quantity     => ln_after_quantity                    -- 換算後数量
+                    , on_content            => ln_dummy                             -- 入数
+                    , ov_errbuf             => lv_errbuf                            -- エラー・メッセージエラー       #固定#
+                    , ov_retcode            => lv_retcode                           -- リターン・コード               #固定#
+                    , ov_errmsg             => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
+                  );
+                  -- リターンコードが正常以外の場合、エラー
+                  IF ( lv_retcode <> cv_status_normal ) THEN
+                    lv_errmsg := xxccp_common_pkg.get_msg(
+                                     iv_application  => cv_application
+                                   , iv_name         => cv_msg_xxcoi_10545
+                                   , iv_token_name1  => cv_tkn_common_pkg
+                                   , iv_token_value1 => cv_msg_xxcoi_10552
+                                   , iv_token_name2  => cv_tkn_errmsg
+                                   , iv_token_value2 => lv_errmsg
+                                 );
+                    lv_errbuf := lv_errmsg;
+                    RAISE global_api_expt;
+                  END IF;
+                  --
+                  -- 親品目コードの総数合算
+                  ln_order_summary_qty2 := ln_order_summary_qty2 + ln_after_quantity;
+                  --
+                END LOOP parent_item_loop2;
+                --
+                -- 引当親品目総数取得2
+                OPEN l_reserve_item2_cur( in_header_id      => l_order_rec.header_id
+                                        , in_parent_item_id => lt_parent_item_id
+                                        , iv_subinventory   => gv_subinventory_code );
+                FETCH l_reserve_item2_cur INTO l_reserve_item2_rec;
+                CLOSE l_reserve_item2_cur;
+                --
+                -- 受注数量があり、指定された保管場所で受注と引当が違う
+                IF ( ( ( l_reserve_item_rec.summary_qty > 0 ) OR ( l_reserve_item2_rec.summary_qty > 0 ) )
+                  AND  ( ln_order_summary_qty2 <> l_reserve_item2_rec.summary_qty ) ) THEN
+                  -- 修正あり
+                  lb_chk_flag := TRUE;
+                END IF;
+              END IF;
+            -- 保管場所指定なしの場合
+            ELSE
+              ln_subinv_cnt := 0;
+              -- 倉庫管理対象のチェック
+              SELECT COUNT(1)                     AS cnt
+              INTO   ln_subinv_cnt
+              FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+              WHERE  xtlrs.subinventory_code = lt_subinventory
+              ;
+              -- 倉庫管理対象で無ければ削除のみ（倉庫管理対象を変更された場合を考慮）
+              IF ( ln_subinv_cnt = 0 ) THEN
+                l_order_rec.flow_status_code := cv_cancelled;
+              -- 倉庫管理対象の場合、修正あり警告
+              ELSE
+                -- 修正あり
+                lb_chk_flag := TRUE;
+              END IF;
             END IF;
+-- Mod Ver1.2 End
           END IF;
         END IF;
         --
@@ -4221,6 +4327,24 @@ AS
             gb_warn_flag := TRUE;
           -- 仮確定後訂正の場合
           ELSIF ( gv_kbn = cv_kbn_6 ) THEN
+-- Mod Ver1.2 Start
+            -- 保管場所指定の場合
+            IF ( gv_subinventory_code IS NOT NULL ) THEN
+              -- 倉庫管理対象のチェック
+              SELECT COUNT(1)                     AS cnt
+              INTO   ln_subinv_cnt2
+              FROM   mtl_secondary_inventories    msi
+              WHERE  msi.attribute14     = cv_flag_y
+              AND    NVL(msi.disable_date, gd_process_date + 1) > gd_process_date
+              AND    msi.organization_id = gt_organization_id
+              AND    msi.secondary_inventory_name = lt_subinventory
+              ;
+              -- 倉庫管理対象で無ければ削除のみ（倉庫管理対象を変更された場合を考慮）
+              IF ( ln_subinv_cnt2 = 0 ) THEN
+                l_order_rec.flow_status_code := cv_cancelled;
+              END IF;
+            END IF;
+-- Mod Ver1.2 End
             -- ロット別取引TEMP登録処理
             ins_lot_tran_temp(
                 iv_tran_kbn           => cv_tran_kbn_1                  -- 取引区分
@@ -4281,7 +4405,10 @@ AS
           ELSIF  ( NVL(ln_order_summary_qty, 0) <> NVL(l_reserve_item_rec.summary_qty, 0) ) THEN
             FND_FILE.PUT_LINE(
                 which  => FND_FILE.LOG
-              , buff   => '受注数量：' || ln_order_summary_qty  || ' ' || l_reserve_item_rec.summary_qty
+-- Mod Ver1.2 Start
+--              , buff   => '受注数量：' || ln_order_summary_qty  || ' ' || l_reserve_item_rec.summary_qty
+              , buff   => '受注数量：' || ln_order_summary_qty  || ' ' || l_reserve_item_rec.summary_qty || ' ' || ln_order_summary_qty2 || ' ' || NVL(l_reserve_item2_rec.summary_qty, 0)
+-- Mod Ver1.2 End
             );
           END IF;
         ELSE
@@ -4330,6 +4457,11 @@ AS
       IF ( l_reserve_item_cur%ISOPEN ) THEN
         CLOSE l_reserve_item_cur;
       END IF;
+-- Add Ver1.2 Start
+      IF ( l_reserve_item2_cur%ISOPEN ) THEN
+        CLOSE l_reserve_item2_cur;
+      END IF;
+-- Add Ver1.2 End
       IF ( l_upd_reserve_cur%ISOPEN ) THEN
         CLOSE l_upd_reserve_cur;
       END IF;
