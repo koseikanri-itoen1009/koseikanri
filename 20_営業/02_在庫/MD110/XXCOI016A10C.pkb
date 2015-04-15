@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A10C(body)
  * Description      : ロット別受払データ作成(月次)
  * MD.050           : MD050_COI_016_A10_ロット別受払データ作成(月次).doc
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/10/27    1.0   Y.Nagasue        新規作成
+ *  2015/04/07    1.1   S.Yamashita      E_本稼動_12237（倉庫管理不具合対応）
  *
  *****************************************************************************************/
 --
@@ -1516,31 +1517,37 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- 変数初期化
-    ln_data_cre_judge := 0; -- 繰越データ作成判定
+-- 2015/04/07 E_本稼動_12237 V1.1 DEL START
+--    -- 変数初期化
+--    ln_data_cre_judge := 0; -- 繰越データ作成判定
 --
-    --==============================================================
-    -- 初回起動の判定
-    --==============================================================
-    -- 定期実行の場合のみ件数取得
+--    --==============================================================
+--    -- 初回起動の判定
+--    --==============================================================
+--    -- 定期実行の場合のみ件数取得
+--    IF ( gt_startup_flg = ct_data_type_1 ) THEN
+--      SELECT COUNT(1)
+--      INTO   ln_data_cre_judge
+--      FROM   xxcoi_lot_reception_monthly xlrm
+--      WHERE  xlrm.practice_month = TO_CHAR( gd_proc_date, cv_yyyymm ) -- 業務日付の年月
+--      AND    ROWNUM              = 1
+--      ;
+--    -- 随時実行の場合、繰越データ作成判定を1とし、後続の処理を行わない
+--    ELSE
+--      ln_data_cre_judge := 1;
+--    END IF;
+--
+--    --==============================================================
+--    -- データ抽出、繰越データ作成
+--    --==============================================================
+--    -- 繰越データ作成判定が0の場合のみ実施
+--    IF ( ln_data_cre_judge = 0 ) THEN
+--
+-- 2015/04/07 E_本稼動_12237 V1.1 DEL END
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD START
+    -- 定期実行の場合のみ繰越処理を行う
     IF ( gt_startup_flg = ct_data_type_1 ) THEN
-      SELECT COUNT(1)
-      INTO   ln_data_cre_judge
-      FROM   xxcoi_lot_reception_monthly xlrm
-      WHERE  xlrm.practice_month = TO_CHAR( gd_proc_date, cv_yyyymm ) -- 業務日付の年月
-      AND    ROWNUM              = 1
-      ;
-    -- 随時実行の場合、繰越データ作成判定を1とし、後続の処理を行わない
-    ELSE
-      ln_data_cre_judge := 1;
-    END IF;
---
-    --==============================================================
-    -- データ抽出、繰越データ作成
-    --==============================================================
-    -- 繰越データ作成判定が0の場合のみ実施
-    IF ( ln_data_cre_judge = 0 ) THEN
---
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD END
       -- カーソルオープン
       OPEN get_pre_mounth_data_cur(
         iv_practice_month => TO_CHAR( ADD_MONTHS( gd_proc_date, -1 ), cv_yyyymm ) -- 業務日付の前月
@@ -1554,118 +1561,165 @@ AS
 --
         -- 取得件数カウントアップ
         gn_target_cnt := gn_target_cnt + 1;
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD START
+        -- 変数初期化
+        ln_data_cre_judge := 0; -- 繰越データ作成判定
 --
-        -- 繰越データ作成
-        INSERT INTO xxcoi_lot_reception_monthly(
-          base_code                                         -- 拠点コード
-         ,organization_id                                   -- 在庫組織ID
-         ,subinventory_code                                 -- 保管場所コード
-         ,subinventory_type                                 -- 保管場所区分
-         ,location_code                                     -- ロケーションコード
-         ,practice_month                                    -- 年月
-         ,practice_date                                     -- 年月日
-         ,parent_item_id                                    -- 親品目ID
-         ,child_item_id                                     -- 子品目ID
-         ,lot                                               -- ロット
-         ,difference_summary_code                           -- 固有記号
-         ,month_begin_quantity                              -- 月首棚卸高
-         ,factory_stock                                     -- 工場入庫
-         ,factory_stock_b                                   -- 工場入庫振戻
-         ,change_stock                                      -- 倉替入庫
-         ,others_stock                                      -- 入出庫＿その他入庫
-         ,truck_stock                                       -- 営業車より入庫
-         ,truck_ship                                        -- 営業車へ出庫
-         ,sales_shipped                                     -- 売上出庫
-         ,sales_shipped_b                                   -- 売上出庫振戻
-         ,return_goods                                      -- 返品
-         ,return_goods_b                                    -- 返品振戻
-         ,customer_sample_ship                              -- 顧客見本出庫
-         ,customer_sample_ship_b                            -- 顧客見本出庫振戻
-         ,customer_support_ss                               -- 顧客協賛見本出庫
-         ,customer_support_ss_b                             -- 顧客協賛見本出庫振戻
-         ,ccm_sample_ship                                   -- 顧客広告宣伝費A自社商品
-         ,ccm_sample_ship_b                                 -- 顧客広告宣伝費A自社商品振戻
-         ,vd_supplement_stock                               -- 消化VD補充入庫
-         ,vd_supplement_ship                                -- 消化VD補充出庫
-         ,removed_goods                                     -- 廃却
-         ,removed_goods_b                                   -- 廃却振戻
-         ,change_ship                                       -- 倉替出庫
-         ,others_ship                                       -- 入出庫＿その他出庫
-         ,factory_change                                    -- 工場倉替
-         ,factory_change_b                                  -- 工場倉替振戻
-         ,factory_return                                    -- 工場返品
-         ,factory_return_b                                  -- 工場返品振戻
-         ,location_decrease                                 -- ロケーション移動増
-         ,location_increase                                 -- ロケーション移動減
-         ,adjust_decrease                                   -- 在庫調整増
-         ,adjust_increase                                   -- 在庫調整減
-         ,book_inventory_quantity                           -- 帳簿在庫数
-         ,data_type                                         -- データ区分
-         ,created_by                                        -- 作成者
-         ,creation_date                                     -- 作成日
-         ,last_updated_by                                   -- 最終更新者
-         ,last_update_date                                  -- 最終更新日
-         ,last_update_login                                 -- 最終更新ログイン
-         ,request_id                                        -- 要求ID
-         ,program_application_id                            -- コンカレント・プログラム・アプリケーションID
-         ,program_id                                        -- コンカレント・プログラムID
-         ,program_update_date                               -- プログラム更新日
-        )VALUES(
-          l_get_pre_mounth_data_rec.base_code               -- 拠点コード
-         ,gt_org_id                                         -- 在庫組織ID
-         ,l_get_pre_mounth_data_rec.subinventory_code       -- 保管場所コード
-         ,l_get_pre_mounth_data_rec.subinventory_type       -- 保管場所区分
-         ,l_get_pre_mounth_data_rec.location_code           -- ロケーションコード
-         ,TO_CHAR( gd_proc_date, cv_yyyymm )                -- 年月
-         ,LAST_DAY( gd_proc_date )                          -- 年月日
-         ,l_get_pre_mounth_data_rec.parent_item_id          -- 親品目ID
-         ,l_get_pre_mounth_data_rec.child_item_id           -- 子品目ID
-         ,l_get_pre_mounth_data_rec.lot                     -- ロット
-         ,l_get_pre_mounth_data_rec.difference_summary_code -- 固有記号
-         ,l_get_pre_mounth_data_rec.book_inventory_quantity -- 月首棚卸高
-         ,0                                                 -- 工場入庫
-         ,0                                                 -- 工場入庫振戻
-         ,0                                                 -- 倉替入庫
-         ,0                                                 -- 入出庫＿その他入庫
-         ,0                                                 -- 営業車より入庫
-         ,0                                                 -- 営業車へ出庫
-         ,0                                                 -- 売上出庫
-         ,0                                                 -- 売上出庫振戻
-         ,0                                                 -- 返品
-         ,0                                                 -- 返品振戻
-         ,0                                                 -- 顧客見本出庫
-         ,0                                                 -- 顧客見本出庫振戻
-         ,0                                                 -- 顧客協賛見本出庫
-         ,0                                                 -- 顧客協賛見本出庫振戻
-         ,0                                                 -- 顧客広告宣伝費A自社商品
-         ,0                                                 -- 顧客広告宣伝費A自社商品振戻
-         ,0                                                 -- 消化VD補充入庫
-         ,0                                                 -- 消化VD補充出庫
-         ,0                                                 -- 廃却
-         ,0                                                 -- 廃却振戻
-         ,0                                                 -- 倉替出庫
-         ,0                                                 -- 入出庫＿その他出庫
-         ,0                                                 -- 工場倉替
-         ,0                                                 -- 工場倉替振戻
-         ,0                                                 -- 工場返品
-         ,0                                                 -- 工場返品振戻
-         ,0                                                 -- ロケーション移動増
-         ,0                                                 -- ロケーション移動減
-         ,0                                                 -- 在庫調整増
-         ,0                                                 -- 在庫調整減
-         ,l_get_pre_mounth_data_rec.book_inventory_quantity -- 帳簿在庫数
-         ,gt_startup_flg                                    -- データ区分
-         ,cn_created_by                                     -- 作成者
-         ,cd_creation_date                                  -- 作成日
-         ,cn_last_updated_by                                -- 最終更新者
-         ,cd_last_update_date                               -- 最終更新日
-         ,cn_last_update_login                              -- 最終更新ログイン
-         ,cn_request_id                                     -- 要求ID
-         ,cn_program_application_id                         -- コンカレント・プログラム・アプリケーションID
-         ,cn_program_id                                     -- コンカレント・プログラムID
-         ,cd_program_update_date                            -- プログラム更新日
-        );
+        -- 年月＝業務日付月の当月データが存在するかチェック
+        SELECT COUNT(1) AS cnt
+        INTO   ln_data_cre_judge
+        FROM   xxcoi_lot_reception_monthly xlrm  -- ロット別受払(月次)
+        WHERE  xlrm.practice_month          = TO_CHAR( gd_proc_date, cv_yyyymm ) -- 年月
+        AND    xlrm.base_code               = l_get_pre_mounth_data_rec.base_code            -- 拠点コード
+        AND    xlrm.subinventory_code       = l_get_pre_mounth_data_rec.subinventory_code    -- 保管場所コード
+        AND    xlrm.location_code           = l_get_pre_mounth_data_rec.location_code        -- ロケーションコード
+        AND    xlrm.parent_item_id          = l_get_pre_mounth_data_rec.parent_item_id       -- 親品目ID
+        AND    xlrm.child_item_id           = l_get_pre_mounth_data_rec.child_item_id        -- 子品目ID
+        AND    xlrm.lot                     = l_get_pre_mounth_data_rec.lot                  -- ロット
+        AND    xlrm.difference_summary_code = l_get_pre_mounth_data_rec.difference_summary_code -- 固有記号
+        AND    ROWNUM = 1
+        ;
 --
+        -- 年月＝業務日付月の当月データが存在しない場合
+        IF ( ln_data_cre_judge = 0 ) THEN
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD END
+--
+          -- 繰越データ作成
+          INSERT INTO xxcoi_lot_reception_monthly(
+            base_code                                         -- 拠点コード
+           ,organization_id                                   -- 在庫組織ID
+           ,subinventory_code                                 -- 保管場所コード
+           ,subinventory_type                                 -- 保管場所区分
+           ,location_code                                     -- ロケーションコード
+           ,practice_month                                    -- 年月
+           ,practice_date                                     -- 年月日
+           ,parent_item_id                                    -- 親品目ID
+           ,child_item_id                                     -- 子品目ID
+           ,lot                                               -- ロット
+           ,difference_summary_code                           -- 固有記号
+           ,month_begin_quantity                              -- 月首棚卸高
+           ,factory_stock                                     -- 工場入庫
+           ,factory_stock_b                                   -- 工場入庫振戻
+           ,change_stock                                      -- 倉替入庫
+           ,others_stock                                      -- 入出庫＿その他入庫
+           ,truck_stock                                       -- 営業車より入庫
+           ,truck_ship                                        -- 営業車へ出庫
+           ,sales_shipped                                     -- 売上出庫
+           ,sales_shipped_b                                   -- 売上出庫振戻
+           ,return_goods                                      -- 返品
+           ,return_goods_b                                    -- 返品振戻
+           ,customer_sample_ship                              -- 顧客見本出庫
+           ,customer_sample_ship_b                            -- 顧客見本出庫振戻
+           ,customer_support_ss                               -- 顧客協賛見本出庫
+           ,customer_support_ss_b                             -- 顧客協賛見本出庫振戻
+           ,ccm_sample_ship                                   -- 顧客広告宣伝費A自社商品
+           ,ccm_sample_ship_b                                 -- 顧客広告宣伝費A自社商品振戻
+           ,vd_supplement_stock                               -- 消化VD補充入庫
+           ,vd_supplement_ship                                -- 消化VD補充出庫
+           ,removed_goods                                     -- 廃却
+           ,removed_goods_b                                   -- 廃却振戻
+           ,change_ship                                       -- 倉替出庫
+           ,others_ship                                       -- 入出庫＿その他出庫
+           ,factory_change                                    -- 工場倉替
+           ,factory_change_b                                  -- 工場倉替振戻
+           ,factory_return                                    -- 工場返品
+           ,factory_return_b                                  -- 工場返品振戻
+           ,location_decrease                                 -- ロケーション移動増
+           ,location_increase                                 -- ロケーション移動減
+           ,adjust_decrease                                   -- 在庫調整増
+           ,adjust_increase                                   -- 在庫調整減
+           ,book_inventory_quantity                           -- 帳簿在庫数
+           ,data_type                                         -- データ区分
+           ,created_by                                        -- 作成者
+           ,creation_date                                     -- 作成日
+           ,last_updated_by                                   -- 最終更新者
+           ,last_update_date                                  -- 最終更新日
+           ,last_update_login                                 -- 最終更新ログイン
+           ,request_id                                        -- 要求ID
+           ,program_application_id                            -- コンカレント・プログラム・アプリケーションID
+           ,program_id                                        -- コンカレント・プログラムID
+           ,program_update_date                               -- プログラム更新日
+          )VALUES(
+            l_get_pre_mounth_data_rec.base_code               -- 拠点コード
+           ,gt_org_id                                         -- 在庫組織ID
+           ,l_get_pre_mounth_data_rec.subinventory_code       -- 保管場所コード
+           ,l_get_pre_mounth_data_rec.subinventory_type       -- 保管場所区分
+           ,l_get_pre_mounth_data_rec.location_code           -- ロケーションコード
+           ,TO_CHAR( gd_proc_date, cv_yyyymm )                -- 年月
+           ,LAST_DAY( gd_proc_date )                          -- 年月日
+           ,l_get_pre_mounth_data_rec.parent_item_id          -- 親品目ID
+           ,l_get_pre_mounth_data_rec.child_item_id           -- 子品目ID
+           ,l_get_pre_mounth_data_rec.lot                     -- ロット
+           ,l_get_pre_mounth_data_rec.difference_summary_code -- 固有記号
+           ,l_get_pre_mounth_data_rec.book_inventory_quantity -- 月首棚卸高
+           ,0                                                 -- 工場入庫
+           ,0                                                 -- 工場入庫振戻
+           ,0                                                 -- 倉替入庫
+           ,0                                                 -- 入出庫＿その他入庫
+           ,0                                                 -- 営業車より入庫
+           ,0                                                 -- 営業車へ出庫
+           ,0                                                 -- 売上出庫
+           ,0                                                 -- 売上出庫振戻
+           ,0                                                 -- 返品
+           ,0                                                 -- 返品振戻
+           ,0                                                 -- 顧客見本出庫
+           ,0                                                 -- 顧客見本出庫振戻
+           ,0                                                 -- 顧客協賛見本出庫
+           ,0                                                 -- 顧客協賛見本出庫振戻
+           ,0                                                 -- 顧客広告宣伝費A自社商品
+           ,0                                                 -- 顧客広告宣伝費A自社商品振戻
+           ,0                                                 -- 消化VD補充入庫
+           ,0                                                 -- 消化VD補充出庫
+           ,0                                                 -- 廃却
+           ,0                                                 -- 廃却振戻
+           ,0                                                 -- 倉替出庫
+           ,0                                                 -- 入出庫＿その他出庫
+           ,0                                                 -- 工場倉替
+           ,0                                                 -- 工場倉替振戻
+           ,0                                                 -- 工場返品
+           ,0                                                 -- 工場返品振戻
+           ,0                                                 -- ロケーション移動増
+           ,0                                                 -- ロケーション移動減
+           ,0                                                 -- 在庫調整増
+           ,0                                                 -- 在庫調整減
+           ,l_get_pre_mounth_data_rec.book_inventory_quantity -- 帳簿在庫数
+           ,gt_startup_flg                                    -- データ区分
+           ,cn_created_by                                     -- 作成者
+           ,cd_creation_date                                  -- 作成日
+           ,cn_last_updated_by                                -- 最終更新者
+           ,cd_last_update_date                               -- 最終更新日
+           ,cn_last_update_login                              -- 最終更新ログイン
+           ,cn_request_id                                     -- 要求ID
+           ,cn_program_application_id                         -- コンカレント・プログラム・アプリケーションID
+           ,cn_program_id                                     -- コンカレント・プログラムID
+           ,cd_program_update_date                            -- プログラム更新日
+          );
+--
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD START
+        -- 年月＝業務日付月の当月データが存在する場合は更新
+        ELSE
+          UPDATE xxcoi_lot_reception_monthly -- ロット別受払(月次)
+          SET    month_begin_quantity     = l_get_pre_mounth_data_rec.book_inventory_quantity     -- 月首在庫数
+                ,book_inventory_quantity  = book_inventory_quantity
+                                              + l_get_pre_mounth_data_rec.book_inventory_quantity -- 帳簿在庫数
+                ,last_updated_by          = cn_last_updated_by             -- 最終更新者
+                ,last_update_date         = cd_last_update_date            -- 最終更新日
+                ,last_update_login        = cn_last_update_login           -- 最終更新ログイン
+                ,request_id               = cn_request_id                  -- 要求ID
+                ,program_application_id   = cn_program_application_id      -- アプリケーションID
+                ,program_id               = cn_program_id                  -- プログラムID
+                ,program_update_date      = cd_program_update_date         -- プログラム更新日
+          WHERE  practice_month           = TO_CHAR( gd_proc_date, cv_yyyymm )           -- 年月
+          AND    base_code                = l_get_pre_mounth_data_rec.base_code          -- 拠点コード
+          AND    subinventory_code        = l_get_pre_mounth_data_rec.subinventory_code  -- 保管場所コード
+          AND    location_code            = l_get_pre_mounth_data_rec.location_code      -- ロケーションコード
+          AND    parent_item_id           = l_get_pre_mounth_data_rec.parent_item_id     -- 親品目ID
+          AND    child_item_id            = l_get_pre_mounth_data_rec.child_item_id      -- 子品目ID
+          AND    lot                      = l_get_pre_mounth_data_rec.lot                -- ロット
+          AND    difference_summary_code  = l_get_pre_mounth_data_rec.difference_summary_code  -- 固有記号
+          ;
+        END IF;
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD END
         -- 成功件数カウントアップ
         gn_normal_cnt := gn_normal_cnt + 1;
 --
