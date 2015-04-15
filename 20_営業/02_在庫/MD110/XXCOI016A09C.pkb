@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A09C(spec)
  * Description      : ロット別受払データ作成(日次、累計)
  * MD.050           : MD050_COI_016_A09_ロット別受払データ作成(日次、累計).doc
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/11/04    1.0   Y.Nagasue        新規作成
+ *  2015/04/07    1.1   S.Yamashita      E_本稼動_12237（倉庫管理不具合対応）
  *
  *****************************************************************************************/
 --
@@ -1862,51 +1863,76 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- 変数初期化
-    ln_data_cre_judge := 0;
+-- 2015/04/07 E_本稼動_12237 V1.1 DEL START
+--    -- 変数初期化
+--    ln_data_cre_judge := 0;
 --
     --==============================================================
     -- 初回起動の判定
     --==============================================================
-    -- 日次実行の場合
-    IF ( gv_startup_flg = cv_startup_flg_1 ) THEN
-      SELECT COUNT(1)
-      INTO   ln_data_cre_judge
-      FROM   xxcoi_lot_reception_daily xlrd
-      WHERE  xlrd.practice_date = gd_proc_date -- 業務日付
-      AND    ROWNUM = 1
-      ;
-    -- 累計実行の場合
-    ELSE
-      SELECT COUNT(1)
-      INTO   ln_data_cre_judge
-      FROM   xxcoi_lot_reception_sum xlrs
-      WHERE  xlrs.practice_month = TO_CHAR( gd_proc_date, cv_yyyymm ) -- 業務日付の年月
-      AND    ROWNUM = 1
-      ;
-    END IF;
+--    -- 日次実行の場合
+--    IF ( gv_startup_flg = cv_startup_flg_1 ) THEN
+--      SELECT COUNT(1)
+--      INTO   ln_data_cre_judge
+--      FROM   xxcoi_lot_reception_daily xlrd
+--      WHERE  xlrd.practice_date = gd_proc_date -- 業務日付
+--      AND    ROWNUM = 1
+--      ;
+--    -- 累計実行の場合
+--    ELSE
+--      SELECT COUNT(1)
+--      INTO   ln_data_cre_judge
+--      FROM   xxcoi_lot_reception_sum xlrs
+--      WHERE  xlrs.practice_month = TO_CHAR( gd_proc_date, cv_yyyymm ) -- 業務日付の年月
+--      AND    ROWNUM = 1
+--      ;
+--    END IF;
+-- 2015/04/07 E_本稼動_12237 V1.1 DEL END
 --
     --==============================================================
     -- 繰越データ作成
     --==============================================================
-    -- 繰越データ作成判定が0の場合のみ実行
-    IF ( ln_data_cre_judge = 0 ) THEN
-      -- 日次実行
-      IF ( gv_startup_flg = cv_startup_flg_1 ) THEN
-        -- 日次繰越データ作成用カーソルオープン
-        OPEN pre_date_cur(
-          id_practice_date => gt_pre_exe_date -- 前回処理日
-        );
+-- 2015/04/07 E_本稼動_12237 V1.1 DEL START
+--    -- 繰越データ作成判定が0の場合のみ実行
+--    IF ( ln_data_cre_judge = 0 ) THEN
+-- 2015/04/07 E_本稼動_12237 V1.1 DEL END
+    -- 日次実行
+    IF ( gv_startup_flg = cv_startup_flg_1 ) THEN
+      -- 日次繰越データ作成用カーソルオープン
+      OPEN pre_date_cur(
+        id_practice_date => gt_pre_exe_date -- 前回処理日
+      );
 --
-        <<pre_date_loop>>
-        LOOP
-          -- データフェッチ
-          FETCH pre_date_cur INTO l_pre_date_rec;
-          EXIT WHEN pre_date_cur%NOTFOUND;
+      <<pre_date_loop>>
+      LOOP
+        -- データフェッチ
+        FETCH pre_date_cur INTO l_pre_date_rec;
+        EXIT WHEN pre_date_cur%NOTFOUND;
 --
-          -- 取得件数カウントアップ
-          gn_target_cnt := gn_target_cnt + 1;
+        -- 取得件数カウントアップ
+        gn_target_cnt := gn_target_cnt + 1;
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD START
+        -- 変数初期化
+        ln_data_cre_judge := 0;
 --
+        -- 年月日＝業務日付の当日データが存在するかチェック
+        SELECT COUNT(1) AS cnt
+        INTO   ln_data_cre_judge
+        FROM   xxcoi_lot_reception_daily xlrd  -- ロット別受払(日次)
+        WHERE  xlrd.practice_date           = gd_proc_date                  -- 年月日
+        AND    xlrd.base_code               = l_pre_date_rec.base_code      -- 拠点コード
+        AND    xlrd.subinventory_code       = l_pre_date_rec.subinv_code    -- 保管場所コード
+        AND    xlrd.location_code           = l_pre_date_rec.location_code  -- ロケーションコード
+        AND    xlrd.parent_item_id          = l_pre_date_rec.parent_item_id -- 親品目ID
+        AND    xlrd.child_item_id           = l_pre_date_rec.child_item_id  -- 子品目ID
+        AND    xlrd.lot                     = l_pre_date_rec.lot            -- ロット
+        AND    xlrd.difference_summary_code = l_pre_date_rec.diff_sum_code  -- 固有記号
+        AND    ROWNUM = 1
+        ;
+--
+        -- 年月日＝業務日付の当日データが存在しない場合
+        IF ( ln_data_cre_judge = 0 ) THEN
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD END
           -- 繰越データ作成
           INSERT INTO xxcoi_lot_reception_daily(
             base_code                     -- 拠点コード
@@ -2014,31 +2040,78 @@ AS
            ,cd_program_update_date        -- プログラム更新日
           );
 --
-          -- 成功件数カウントアップ
-          gn_normal_cnt := gn_normal_cnt + 1;
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD START
+        -- 年月日＝業務日付の当日データが存在する場合は更新
+        ELSE
+          UPDATE xxcoi_lot_reception_daily  -- ロット別受払(日次)
+          SET    previous_inventory_quantity = l_pre_date_rec.book_inv_qty     -- 前日在庫数
+                ,book_inventory_quantity     = book_inventory_quantity
+                                                 + l_pre_date_rec.book_inv_qty -- 帳簿在庫数
+                ,last_updated_by             = cn_last_updated_by              -- 最終更新者
+                ,last_update_date            = cd_last_update_date             -- 最終更新日
+                ,last_update_login           = cn_last_update_login            -- 最終更新ログイン
+                ,request_id                  = cn_request_id                   -- 要求ID
+                ,program_application_id      = cn_program_application_id       -- アプリケーションID
+                ,program_id                  = cn_program_id                   -- プログラムID
+                ,program_update_date         = cd_program_update_date          -- プログラム更新日
+          WHERE  practice_date               = gd_proc_date                  -- 年月日
+          AND    base_code                   = l_pre_date_rec.base_code      -- 拠点コード
+          AND    subinventory_code           = l_pre_date_rec.subinv_code    -- 保管場所コード
+          AND    location_code               = l_pre_date_rec.location_code  -- ロケーションコード
+          AND    parent_item_id              = l_pre_date_rec.parent_item_id -- 親品目ID
+          AND    child_item_id               = l_pre_date_rec.child_item_id  -- 子品目ID
+          AND    lot                         = l_pre_date_rec.lot            -- ロット
+          AND    difference_summary_code     = l_pre_date_rec.diff_sum_code  -- 固有記号
+          ;
+        END IF;
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD END
 --
-        END LOOP pre_date_loop;
+        -- 成功件数カウントアップ
+        gn_normal_cnt := gn_normal_cnt + 1;
 --
-        -- 日次繰越データ作成用カーソルクローズ
-        CLOSE pre_date_cur;
+      END LOOP pre_date_loop;
 --
-      -- 累計実行
-      ELSE
-        -- 累計繰越データ作成用カーソルオープン
-        OPEN pre_sum_cur(
-          iv_practice_month => TO_CHAR( ADD_MONTHS( gd_proc_date, -1 ), cv_yyyymm ) -- 業務日付の前月
-        );
+      -- 日次繰越データ作成用カーソルクローズ
+      CLOSE pre_date_cur;
 --
-        <<pre_sum_loop>>
-        LOOP
+    -- 累計実行
+    ELSE
+      -- 累計繰越データ作成用カーソルオープン
+      OPEN pre_sum_cur(
+        iv_practice_month => TO_CHAR( ADD_MONTHS( gd_proc_date, -1 ), cv_yyyymm ) -- 業務日付の前月
+      );
 --
-          -- データフェッチ
-          FETCH pre_sum_cur INTO l_pre_sum_rec;
-          EXIT WHEN pre_sum_cur%NOTFOUND;
+      <<pre_sum_loop>>
+      LOOP
 --
-          -- 取得件数カウントアップ
-          gn_target_cnt := gn_target_cnt + 1;
+        -- データフェッチ
+        FETCH pre_sum_cur INTO l_pre_sum_rec;
+        EXIT WHEN pre_sum_cur%NOTFOUND;
 --
+        -- 取得件数カウントアップ
+        gn_target_cnt := gn_target_cnt + 1;
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD START
+        -- 変数初期化
+        ln_data_cre_judge := 0;
+--
+        -- 年月＝業務日付月の当月データが存在するかチェック
+        SELECT COUNT(1) AS cnt
+        INTO   ln_data_cre_judge
+        FROM   xxcoi_lot_reception_sum xlrs  -- ロット別受払(累計)
+        WHERE  xlrs.practice_month          = TO_CHAR( gd_proc_date, cv_yyyymm ) -- 年月
+        AND    xlrs.base_code               = l_pre_sum_rec.base_code            -- 拠点コード
+        AND    xlrs.subinventory_code       = l_pre_sum_rec.subinv_code          -- 保管場所コード
+        AND    xlrs.location_code           = l_pre_sum_rec.location_code        -- ロケーションコード
+        AND    xlrs.parent_item_id          = l_pre_sum_rec.parent_item_id       -- 親品目ID
+        AND    xlrs.child_item_id           = l_pre_sum_rec.child_item_id        -- 子品目ID
+        AND    xlrs.lot                     = l_pre_sum_rec.lot                  -- ロット
+        AND    xlrs.difference_summary_code = l_pre_sum_rec.diff_sum_code        -- 固有記号
+        AND    ROWNUM = 1
+        ;
+--
+        -- 年月＝業務日付月の当月データが存在しない場合
+        IF ( ln_data_cre_judge = 0 ) THEN
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD END
           -- 繰越データ作成
           INSERT INTO xxcoi_lot_reception_sum(
             base_code                          -- 拠点コード
@@ -2146,17 +2219,44 @@ AS
            ,cd_program_update_date             -- プログラム更新日
           );
 --
-          -- 成功件数カウントアップ
-          gn_normal_cnt := gn_normal_cnt + 1;
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD START
+        -- 年月＝業務日付月の当月データが存在する場合は更新
+        ELSE
+          UPDATE xxcoi_lot_reception_sum -- ロット別受払(累計)
+          SET    month_begin_quantity     = l_pre_sum_rec.book_inv_qty     -- 月首在庫数
+                ,book_inventory_quantity  = book_inventory_quantity
+                                              + l_pre_sum_rec.book_inv_qty -- 帳簿在庫数
+                ,last_updated_by          = cn_last_updated_by             -- 最終更新者
+                ,last_update_date         = cd_last_update_date            -- 最終更新日
+                ,last_update_login        = cn_last_update_login           -- 最終更新ログイン
+                ,request_id               = cn_request_id                  -- 要求ID
+                ,program_application_id   = cn_program_application_id      -- アプリケーションID
+                ,program_id               = cn_program_id                  -- プログラムID
+                ,program_update_date      = cd_program_update_date         -- プログラム更新日
+          WHERE  practice_month           = TO_CHAR( gd_proc_date, cv_yyyymm ) -- 年月
+          AND    base_code                = l_pre_sum_rec.base_code            -- 拠点コード
+          AND    subinventory_code        = l_pre_sum_rec.subinv_code          -- 保管場所コード
+          AND    location_code            = l_pre_sum_rec.location_code        -- ロケーションコード
+          AND    parent_item_id           = l_pre_sum_rec.parent_item_id       -- 親品目ID
+          AND    child_item_id            = l_pre_sum_rec.child_item_id        -- 子品目ID
+          AND    lot                      = l_pre_sum_rec.lot                  -- ロット
+          AND    difference_summary_code  = l_pre_sum_rec.diff_sum_code        -- 固有記号
+          ;
+        END IF;
+-- 2015/04/07 E_本稼動_12237 V1.1 ADD END
+        -- 成功件数カウントアップ
+        gn_normal_cnt := gn_normal_cnt + 1;
 --
-        END LOOP pre_sum_loop;
+      END LOOP pre_sum_loop;
 --
-        -- 累計繰越データ作成用カーソルクローズ
-        CLOSE pre_sum_cur;
---
-      END IF;
+      -- 累計繰越データ作成用カーソルクローズ
+      CLOSE pre_sum_cur;
 --
     END IF;
+--
+-- 2015/04/07 E_本稼動_12237 V1.1 DEL START
+--    END IF;
+-- 2015/04/07 E_本稼動_12237 V1.1 DEL END
 --
   EXCEPTION
 --
