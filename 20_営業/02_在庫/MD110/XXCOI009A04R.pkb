@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/12/25    1.9   N.Abe            [E_本稼動_00222]顧客名称取得方法修正
  *                                       [E_本稼動_00610]パフォーマンス改善
  *  2011/04/08    1.10  S.Ochiai         [E_本稼動_06588]レコード種別'21'(新規ベンダ基準在庫)追加対応
+ *  2015/04/16    1.11  K.Nakatsu        [E_本稼動_12826]拠点セキュリティ修正
  *
  *****************************************************************************************/
 --
@@ -131,6 +132,9 @@ AS
   cv_msg_xxcoi10165  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10165';   -- パラメータ日付（To）値メッセージ
   cv_msg_xxcoi10337  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10337';   -- 日付パラメータ整合性エラーメッセージ
 -- == 2009/12/15 V1.8 Added END   ===============================================================
+-- == 2015/04/16 V1.11 Added START ==============================================================
+  cv_msg_xxcoi10663  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10663';   -- 出庫拠点必須チェックエラーメッセージ
+-- == 2015/04/16 V1.11 Added END   ==============================================================
 --
   -- トークン名
   cv_token_pro                CONSTANT VARCHAR2(30) := 'PRO_TOK';
@@ -1224,7 +1228,14 @@ AS
              ,ic_item_mst_b                   iimb                        -- OPM品目マスタ
              ,xxcmn_item_mst_b                ximb                        -- OPM品目アドオンマスタ
              ,fnd_lookup_values               flv                         -- クイックコードマスタ
-      WHERE   xhit.output_flag                          =   gr_param.output_kbn
+-- == 2015/04/16 V1.11 Modified START ==============================================================
+--      WHERE   xhit.output_flag                          =   gr_param.output_kbn
+      WHERE    (  (  (gr_param.output_dpt              <>   cv_3)
+                 AND (xhit.output_flag                  =   gr_param.output_kbn)  )
+               OR
+                  (gr_param.output_dpt                  =   cv_3)
+               )
+-- == 2015/04/16 V1.11 Modified END   ==============================================================
       AND     xhit.invoice_date               BETWEEN       TO_DATE(SUBSTRB(gr_param.target_date, 1, 10), 'YYYY/MM/DD')
                                               AND           TO_DATE(SUBSTRB(gr_param.target_date_to, 1, 10), 'YYYY/MM/DD')
       AND     xhit.outside_base_code                    =   gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
@@ -1518,11 +1529,17 @@ AS
 --    cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_INVOICE_KBN';              -- 参照タイプ(伝票区分)
     cv_invoice_type    CONSTANT VARCHAR2(30)   := 'XXCOI1_HHT_EBS_CONVERT_TABLE';    -- 参照タイプ(伝票区分)
 -- == 2009/06/19 V1.4 Modified END   ===============================================================
+-- == 2015/04/16 V1.11 Added START ==============================================================
+    cv_all_op_base_cd  CONSTANT VARCHAR2(30)   := 'XXCOI1_ALL_OUTPUT_BASE_CD';       -- 参照タイプ(全拠点出力可能拠点)
+-- == 2015/04/16 V1.11 Added END   ==============================================================
 --
     -- *** ローカル変数 ***
     lv_organization_code mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
     lv_invoice_type_name fnd_lookup_values.meaning%TYPE ;        -- 伝票区分
     lv_reverse_kbn_name  fnd_lookup_values.meaning%TYPE;         -- 正負データ出力区分
+-- == 2015/04/16 V1.11 Added START ==============================================================
+    lv_dummy             VARCHAR2(1);                            -- ダミーフラグ
+-- == 2015/04/16 V1.11 Added END   ==============================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -1604,6 +1621,38 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- == 2015/04/16 V1.11 Added START ==============================================================
+    -- =====================================
+    -- パラメータ.拠点入力チェック
+    -- =====================================
+    BEGIN
+      SELECT 'X'
+      INTO   lv_dummy
+      FROM   fnd_lookup_values flv
+      WHERE  flv.lookup_type  = cv_all_op_base_cd
+      AND    flv.lookup_code  = gv_base_code
+      AND    flv.language     = USERENV('LANG')
+      AND    flv.enabled_flag = cv_yes
+      AND    gd_process_date BETWEEN NVL(flv.start_date_active ,gd_process_date)
+                                 AND NVL(flv.end_date_active   ,gd_process_date)
+      ;
+    --
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        --
+        -- 全拠点指定かつ、拠点コード未設定の場合エラー
+        IF (gr_param.output_dpt = cv_3
+          AND gr_param.out_base_code IS NULL)
+        THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  =>  cv_app_name
+                        ,iv_name         =>  cv_msg_xxcoi10663
+                        );
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+    END;
+-- == 2015/04/16 V1.11 Added END   ==============================================================
     --==============================================================
     -- コンカレント入力パラメータ出力
     --==============================================================
@@ -1611,8 +1660,13 @@ AS
     -- 出力区分名取得
     gv_output_kbn_name := xxcoi_common_pkg.get_meaning(cv_output_kbn,gr_param.output_kbn);
     --
-    -- リターンコードがNULLの場合はエラー
-    IF ( gv_output_kbn_name IS NULL ) THEN
+-- == 2015/04/16 V1.11 Modified START ==============================================================
+--    -- リターンコードがNULLの場合はエラー
+--    IF ( gv_output_kbn_name IS NULL ) THEN
+    -- 全拠点指定でなく、リターンコードがNULLの場合はエラー
+    IF ( gr_param.output_dpt <> cv_3
+     AND gv_output_kbn_name  IS NULL ) THEN
+-- == 2015/04/16 V1.11 Modified END   ==============================================================
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  =>  cv_app_name
                     ,iv_name         =>  cv_msg_xxcoi10311
@@ -1950,8 +2004,13 @@ AS
               RAISE global_process_expt;
             END IF;
 --
-            -- パラメータ.出力フラグが"未出力"の場合のみ
-            IF ( gr_param.output_kbn = cv_no ) THEN
+-- == 2015/04/16 V1.11 Modified START ==============================================================
+--            -- パラメータ.出力フラグが"未出力"の場合のみ
+--            IF ( gr_param.output_kbn = cv_no ) THEN
+            -- パラメータ.出力フラグが"未出力"かつパラメータ.出力場所が"全拠点"以外の場合のみ
+            IF ( gr_param.output_kbn =  cv_no  
+             AND gr_param.output_dpt <> cv_3) THEN
+-- == 2015/04/16 V1.11 Modified END   ==============================================================
               -- =============================
               -- 出力フラグ更新(A-5)
               -- =============================
