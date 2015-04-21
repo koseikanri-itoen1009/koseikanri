@@ -43,7 +43,7 @@ AS
  *  2014/10/01    1.0   K.Nakamura       新規作成
  *  2015/03/06    1.1   K.Nakamura       E_本稼動_12237 倉庫管理システム追加対応
  *  2015/04/03    1.2   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
- *  2015/04/09    1.3   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
+ *  2015/04/15    1.3   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
  *
  *****************************************************************************************/
 --
@@ -168,6 +168,9 @@ AS
   cv_msg_xxcoi_10600        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10600'; -- ロット別手持数量存在エラーメッセージ
   cv_msg_xxcoi_10660        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10660'; -- ロット別取引TEMP作成対象なしメッセージ
   cv_msg_xxcoi_10662        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10662'; -- ロット別引当情報取消メッセージ
+-- Mod Ver1.3 Start
+  cv_msg_xxcoi_10703        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10703'; -- パラメータ必須エラーメッセージ
+-- Mod Ver1.3 End
   -- メッセージ（COS）
   cv_msg_xxcos_00186        CONSTANT VARCHAR2(16) := 'APP-XXCOS1-00186'; -- 定番情報取得エラー
   cv_msg_xxcos_00187        CONSTANT VARCHAR2(16) := 'APP-XXCOS1-00187'; -- 特売情報取得エラー
@@ -1993,6 +1996,27 @@ AS
         RAISE global_api_expt;
       END IF;
     END IF;
+--
+-- Mod Ver1.3 Start
+    --==============================================================
+    --     必須チェック
+    --==============================================================
+    -- 随時実行（拠点コードが指定されている）の場合
+    IF ( gv_login_base_code IS NOT NULL ) THEN
+      -- チェーン店or顧客or顧客発注番号のいずれも指定されていない場合
+      IF (  ( gv_login_chain_store_code IS NULL )
+        AND ( gv_login_customer_code IS NULL )
+        AND ( gv_customer_po_number IS NULL ) ) THEN
+        -- パラメータ必須エラーメッセージ
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                       , iv_name         => cv_msg_xxcoi_10703
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+-- Mod Ver1.3 End
 --
     --==============================================================
     -- 17．コンカレント入力パラメータメッセージ出力
