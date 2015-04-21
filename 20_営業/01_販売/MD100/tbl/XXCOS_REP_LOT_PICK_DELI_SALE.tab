@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_REP_LOT_PICK_DELI_SALE
  * Description : ロット別ピックリスト_出荷先_製品_販売先別帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2014/09/24    1.0   SCSK S.Ito       新規作成
+ *  2015/04/10    1.1   SCSK S.Yamashita E_本稼動_13004対応
  ****************************************************************************************/
 CREATE TABLE xxcos.xxcos_rep_lot_pick_deli_sale 
 (
@@ -20,6 +21,10 @@ CREATE TABLE xxcos.xxcos_rep_lot_pick_deli_sale
     ,whse_name                      VARCHAR2(50)
     ,chain_code                     VARCHAR2(4)
     ,chain_name                     VARCHAR2(40)
+--  Add Ver1.1 S.Yamashita Start
+    ,customer_code                  VARCHAR2(9)
+    ,customer_name                  VARCHAR2(40)
+--  Add Ver1.1 S.Yamashita End
     ,center_code                    VARCHAR2(10)
     ,center_name                    VARCHAR2(40)
     ,area_code                      VARCHAR2(8)
@@ -67,6 +72,10 @@ COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.whse_code               IS 
 COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.whse_name               IS '倉庫名称';
 COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.chain_code              IS 'チェーン店コード';
 COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.chain_name              IS 'チェーン店名';
+--  Add Ver1.1 S.Yamashita Start
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.customer_code           IS '顧客コード';
+COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.customer_name           IS '顧客名';
+--  Add Ver1.1 S.Yamashita End
 COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.center_code             IS 'センターコード';
 COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.center_name             IS 'センター名';
 COMMENT ON COLUMN xxcos.xxcos_rep_lot_pick_deli_sale.area_code               IS '地区コード';
