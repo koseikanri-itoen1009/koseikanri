@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A07R(body)
  * Description      : ロット別ピックリスト（出荷先・製品・販売先別）
  * MD.050           : MD050_COS_012_A07_ロット別ピックリスト（出荷先・製品・販売先別）
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/10/06    1.0   S.Itou           新規作成
  *  2015/04/10    1.1   S.Yamashita     【E_本稼動_13004】対応
+ *  2015/04/21    1.2   S.Yamashita     【E_本稼動_13004】追加対応
  *
  *****************************************************************************************/
 --
@@ -468,7 +469,9 @@ AS
         INTO   lt_customer_name
         FROM   hz_cust_accounts    hca
              , hz_parties          hp
-             , xxcmm_cust_accounts xca
+--  Del Ver1.2 S.Yamashita Start
+--             , xxcmm_cust_accounts xca
+--  Del Ver1.2 S.Yamashita End
         WHERE  hca.party_id            = hp.party_id
         AND    hca.account_number      = iv_login_customer_code
         ;
