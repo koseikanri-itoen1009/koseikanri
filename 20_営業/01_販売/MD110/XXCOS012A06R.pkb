@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A06R(body)
  * Description      : ロット別ピックリスト（出荷先・販売先・製品別）
  * MD.050           : MD050_COS_012_A06_ロット別ピックリスト（出荷先・販売先・製品別）
- * Version          : 1.00
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/09/25    1.0   S.Itou           新規作成
+ *  2015/04/10    1.1   S.Yamashita     【E_本稼動_13004】対応
  *
  *****************************************************************************************/
 --
@@ -89,6 +90,9 @@ AS
   global_data_lock_expt     EXCEPTION;
   global_get_basecode_expt  EXCEPTION;
   global_get_chaincode_expt EXCEPTION;
+--  Add Ver1.1 S.Yamashita Start
+  global_get_custcode_expt  EXCEPTION;
+--  Add Ver1.1 S.Yamashita End
 --
   PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
 --
@@ -150,6 +154,10 @@ AS
                                      := 'APP-XXCOS1-12655';           --定番特売区分クイックコードマスタ
   ct_msg_shipping_sts_tblnm CONSTANT fnd_new_messages.message_name%TYPE
                                      := 'APP-XXCOS1-14802';           --出荷情報ステータスクイックコードマスタ
+--  Add Ver1.1 S.Yamashita Start
+  ct_msg_customer_tblnm     CONSTANT fnd_new_messages.message_name%TYPE
+                                     := 'APP-XXCOS1-00049';           --顧客マスタ
+--  Add Ver1.1 S.Yamashita End
   --トークン
   cv_tkn_table              CONSTANT VARCHAR2(100) := 'TABLE';                  --テーブル
   cv_tkn_date_from          CONSTANT VARCHAR2(100) := 'DATE_FROM';              --日付（From)
@@ -162,12 +170,15 @@ AS
   cv_tkn_api_name           CONSTANT VARCHAR2(100) := 'API_NAME';               --ＡＰＩ名称
   cv_tkn_param1             CONSTANT VARCHAR2(100) := 'PARAM1';                 --第１入力パラメータ／内容
   cv_tkn_param2             CONSTANT VARCHAR2(100) := 'PARAM2';                 --第２入力パラメータ／内容
-  cv_tkn_param3             CONSTANT VARCHAR2(100) := 'PARAM3';                 --第３入力パラメータ
+  cv_tkn_param3             CONSTANT VARCHAR2(100) := 'PARAM3';                 --第３入力パラメータ／内容
   cv_tkn_param4             CONSTANT VARCHAR2(100) := 'PARAM4';                 --第４入力パラメータ
-  cv_tkn_param5             CONSTANT VARCHAR2(100) := 'PARAM5';                 --第５入力パラメータ／内容
-  cv_tkn_param6             CONSTANT VARCHAR2(100) := 'PARAM6';                 --第６入力パラメータ
-  cv_tkn_param7             CONSTANT VARCHAR2(100) := 'PARAM7';                 --第７入力パラメータ／内容
-  cv_tkn_param8             CONSTANT VARCHAR2(100) := 'PARAM8';                 --第８入力パラメータ
+  cv_tkn_param5             CONSTANT VARCHAR2(100) := 'PARAM5';                 --第５入力パラメータ
+  cv_tkn_param6             CONSTANT VARCHAR2(100) := 'PARAM6';                 --第６入力パラメータ／内容
+  cv_tkn_param7             CONSTANT VARCHAR2(100) := 'PARAM7';                 --第７入力パラメータ
+  cv_tkn_param8             CONSTANT VARCHAR2(100) := 'PARAM8';                 --第８入力パラメータ／内容
+--  Add Ver1.1 S.Yamashita Start
+  cv_tkn_param9             CONSTANT VARCHAR2(100) := 'PARAM9';                 --第９入力パラメータ
+--  Add Ver1.1 S.Yamashita End
   cv_tkn_request            CONSTANT VARCHAR2(100) := 'REQUEST';                --要求ＩＤ
   --プロファイル名称
   ct_prof_max_date          CONSTANT fnd_profile_options.profile_option_name%TYPE
@@ -209,6 +220,9 @@ AS
   --パラメータ
   gv_login_base_code                  VARCHAR2(4);                    -- 拠点
   gv_login_chain_store_code           VARCHAR2(4);                    -- チェーン店
+--  Add Ver1.1 S.Yamashita Start
+  gv_login_customer_code              VARCHAR2(9);                    -- 顧客
+--  Add Ver1.1 S.Yamashita End
   gd_request_date_from                DATE;                           -- 着日(From)
   gd_request_date_to                  DATE;                           -- 着日(To)
   gd_edi_received_date                DATE := NULL;                   -- EDI受信日
@@ -221,6 +235,9 @@ AS
   gt_shipping_sts_cd1                 fnd_lookup_values.attribute1%TYPE;   -- 出荷情報ステータスコード1
   gt_shipping_sts_cd2                 fnd_lookup_values.attribute2%TYPE;   -- 出荷情報ステータスコード2
   gt_shipping_sts_cd3                 fnd_lookup_values.attribute3%TYPE;   -- 出荷情報ステータスコード3
+--  Add Ver1.1 S.Yamashita Start
+  gv_login_customer_name              VARCHAR2(40);                   -- 顧客名
+--  Add Ver1.1 S.Yamashita End
   --帳票ワーク内部テーブル
   g_rpt_data_tab                      g_rpt_data_ttype;
 --
@@ -300,12 +317,15 @@ AS
   PROCEDURE init(
     iv_login_base_code        IN  VARCHAR2    -- 1.拠点
    ,iv_login_chain_store_code IN  VARCHAR2    -- 2.チェーン店
-   ,iv_request_date_from      IN  VARCHAR2    -- 3.着日（From）
-   ,iv_request_date_to        IN  VARCHAR2    -- 4.着日（To）
-   ,iv_bargain_class          IN  VARCHAR2    -- 5.定番特売区分
-   ,iv_edi_received_date      IN  VARCHAR2    -- 6.EDI受信日
-   ,iv_shipping_status        IN  VARCHAR2    -- 7.ステータス
-   ,iv_order_number           IN  VARCHAR2    -- 8.受注番号
+--  Add Ver1.1 S.Yamashita Start
+   ,iv_login_customer_code    IN  VARCHAR2    -- 3.顧客
+--  Add Ver1.1 S.Yamashita End
+   ,iv_request_date_from      IN  VARCHAR2    -- 4.着日（From）
+   ,iv_request_date_to        IN  VARCHAR2    -- 5.着日（To）
+   ,iv_bargain_class          IN  VARCHAR2    -- 6.定番特売区分
+   ,iv_edi_received_date      IN  VARCHAR2    -- 7.EDI受信日
+   ,iv_shipping_status        IN  VARCHAR2    -- 8.ステータス
+   ,iv_order_number           IN  VARCHAR2    -- 9.受注番号
    ,ov_errbuf                 OUT VARCHAR2    --   エラー・メッセージ           --# 固定 #
    ,ov_retcode                OUT VARCHAR2    --   リターン・コード             --# 固定 #
    ,ov_errmsg                 OUT VARCHAR2    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -338,6 +358,9 @@ AS
     lt_shipping_sts_name      fnd_lookup_values.meaning%TYPE;  -- 出荷情報ステータス摘要
     lv_login_base_name        VARCHAR2(40);
     lv_login_chain_store_name VARCHAR2(40);
+--  Add Ver1.1 S.Yamashita Start
+    lt_customer_name          hz_parties.party_name%TYPE  DEFAULT NULL; -- 顧客名
+--  Add Ver1.1 S.Yamashita End
 --
     -- *** ローカル・カーソル ***
 --
@@ -433,6 +456,26 @@ AS
       END;
     END IF;
 --
+--  Add Ver1.1 S.Yamashita Start
+    --パラメータの顧客コードが設定されている場合、名称を取得する
+    IF ( iv_login_customer_code IS NOT NULL ) THEN
+      BEGIN
+        SELECT hp.party_name       AS customer_name
+        INTO   lt_customer_name
+        FROM   hz_cust_accounts    hca
+             , hz_parties          hp
+             , xxcmm_cust_accounts xca
+        WHERE  hca.party_id            = hp.party_id
+        AND    hca.account_number      = iv_login_customer_code
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lt_customer_name := NULL;
+      END;
+    END IF;
+--  Add Ver1.1 S.Yamashita End
+--
+--
     --==================================
     -- 4.定番特売区分（ヘッダ）チェック
     --==================================
@@ -497,18 +540,36 @@ AS
                                   ,iv_token_value1       => iv_login_base_code || cv_msg_sla || lv_login_base_name
                                   ,iv_token_name2        => cv_tkn_param2
                                   ,iv_token_value2       => iv_login_chain_store_code || cv_msg_sla || lv_login_chain_store_name
+--  Mod Ver1.1 S.Yamashita Start
+--                                  ,iv_token_name3        => cv_tkn_param3
+--                                  ,iv_token_value3       => iv_request_date_from
+--                                  ,iv_token_name4        => cv_tkn_param4
+--                                  ,iv_token_value4       => iv_request_date_to
+--                                  ,iv_token_name5        => cv_tkn_param5
+--                                  ,iv_token_value5       => iv_bargain_class || cv_msg_sla || gt_bargain_class_name
+--                                  ,iv_token_name6        => cv_tkn_param6
+--                                  ,iv_token_value6       => iv_edi_received_date
+--                                  ,iv_token_name7        => cv_tkn_param7
+--                                  ,iv_token_value7       => iv_shipping_status || cv_msg_sla || lt_shipping_sts_name
+--                                  ,iv_token_name8        => cv_tkn_param8
+--                                  ,iv_token_value8       => iv_order_number
                                   ,iv_token_name3        => cv_tkn_param3
-                                  ,iv_token_value3       => iv_request_date_from
+                                  ,iv_token_value3       => iv_login_customer_code || cv_msg_sla || lt_customer_name
                                   ,iv_token_name4        => cv_tkn_param4
-                                  ,iv_token_value4       => iv_request_date_to
+                                  ,iv_token_value4       => iv_request_date_from
                                   ,iv_token_name5        => cv_tkn_param5
-                                  ,iv_token_value5       => iv_bargain_class || cv_msg_sla || gt_bargain_class_name
+                                  ,iv_token_value5       => iv_request_date_to
                                   ,iv_token_name6        => cv_tkn_param6
-                                  ,iv_token_value6       => iv_edi_received_date
+                                  ,iv_token_value6       => iv_bargain_class || cv_msg_sla || gt_bargain_class_name
                                   ,iv_token_name7        => cv_tkn_param7
-                                  ,iv_token_value7       => iv_shipping_status || cv_msg_sla || lt_shipping_sts_name
+                                  ,iv_token_value7       => iv_edi_received_date
                                   ,iv_token_name8        => cv_tkn_param8
-                                  ,iv_token_value8       => iv_order_number
+                                  ,iv_token_value8       => iv_shipping_status || cv_msg_sla || lt_shipping_sts_name
+--  Mod Ver1.1 S.Yamashita End
+--  Add Ver1.1 S.Yamashita Start
+                                  ,iv_token_name9        => cv_tkn_param9
+                                  ,iv_token_value9       => iv_order_number
+--  Add Ver1.1 S.Yamashita End
                                  );
     --
     fnd_file.put_line(
@@ -532,6 +593,17 @@ AS
       AND  lv_login_chain_store_name IS NULL
         THEN
           RAISE global_get_chaincode_expt;
+--  Add Ver1.1 S.Yamashita Start
+      -- 顧客名取得エラー時
+      WHEN iv_login_customer_code IS NOT NULL
+      AND  lt_customer_name       IS NULL
+        THEN
+          lv_table_name       := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name
+                                  ,iv_name               => ct_msg_customer_tblnm
+                                 );
+          RAISE global_get_custcode_expt;
+--  Add Ver1.1 S.Yamashita End
       -- 定番特売区分（ヘッダ）取得エラー時
       WHEN gt_bargain_class_name IS NULL
         THEN
@@ -557,6 +629,10 @@ AS
     --==================================
     gv_login_base_code        := iv_login_base_code;
     gv_login_chain_store_code := iv_login_chain_store_code;
+--  Add Ver1.1 S.Yamashita Start
+    gv_login_customer_code    := iv_login_customer_code;
+    gv_login_customer_name    := SUBSTRB(lt_customer_name,1,40);
+--  Add Ver1.1 S.Yamashita End
     gt_bargain_class          := iv_bargain_class;
     gv_order_number           := iv_order_number;
     --時分秒付与
@@ -616,6 +692,20 @@ AS
                                  );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+--  Add Ver1.1 S.Yamashita Start
+    -- *** 顧客コード取得例外ハンドラ ***
+    WHEN global_get_custcode_expt THEN
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name
+                                  ,iv_name               => ct_msg_select_data_err
+                                  ,iv_token_name1        => cv_tkn_table_name
+                                  ,iv_token_value1       => lv_table_name
+                                  ,iv_token_name2        => cv_tkn_key_data
+                                  ,iv_token_value2       => NULL
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--  Add Ver1.1 S.Yamashita End
     -- *** クイックコードマスタ例外ハンドラ ***
     WHEN global_lookup_code_expt THEN
       ov_errmsg               := xxccp_common_pkg.get_msg(
@@ -854,6 +944,11 @@ AS
       AND  ( gv_login_chain_store_code  IS NULL
         OR   xlri.chain_code            = gv_login_chain_store_code
            )
+--  Add Ver1.1 S.Yamashita Start
+      AND  ( gv_login_customer_code     IS NULL
+        OR   xlri.customer_code         = gv_login_customer_code
+           )
+--  Add Ver1.1 S.Yamashita End
       AND    xlri.arrival_date    BETWEEN gd_request_date_from AND gd_request_date_to
       AND  ( gt_bargain_class           =  cv_bargain_class_all
         OR   xlri.regular_sale_class_line = gt_bargain_class
@@ -954,6 +1049,10 @@ AS
       g_rpt_data_tab(ln_idx).whse_name                    := lt_key_whse_name;
       g_rpt_data_tab(ln_idx).chain_code                   := lt_key_chain_code;
       g_rpt_data_tab(ln_idx).chain_name                   := lt_key_chain_name;
+--  Add Ver1.1 S.Yamashita Start
+      g_rpt_data_tab(ln_idx).customer_code                := gv_login_customer_code;
+      g_rpt_data_tab(ln_idx).customer_name                := gv_login_customer_name;
+--  Add Ver1.1 S.Yamashita End
       g_rpt_data_tab(ln_idx).center_code                  := lt_key_center_code;
       g_rpt_data_tab(ln_idx).center_name                  := lt_key_center_name;
       g_rpt_data_tab(ln_idx).area_code                    := lt_key_area_code;
@@ -1615,12 +1714,15 @@ AS
   PROCEDURE submain(
     iv_login_base_code        IN    VARCHAR2         -- 1.拠点
    ,iv_login_chain_store_code IN    VARCHAR2         -- 2.チェーン店
-   ,iv_request_date_from      IN    VARCHAR2         -- 3.着日（From）
-   ,iv_request_date_to        IN    VARCHAR2         -- 4.着日（To）
-   ,iv_bargain_class          IN    VARCHAR2         -- 5.定番特売区分
-   ,iv_edi_received_date      IN    VARCHAR2         -- 6.EDI受信日
-   ,iv_shipping_status        IN    VARCHAR2         -- 7.ステータス
-   ,iv_order_number           IN    VARCHAR2         -- 8.受注番号
+--  Add Ver1.1 S.Yamashita Start
+   ,iv_login_customer_code    IN    VARCHAR2         -- 3.顧客
+--  Add Ver1.1 S.Yamashita End
+   ,iv_request_date_from      IN    VARCHAR2         -- 4.着日（From）
+   ,iv_request_date_to        IN    VARCHAR2         -- 5.着日（To）
+   ,iv_bargain_class          IN    VARCHAR2         -- 6.定番特売区分
+   ,iv_edi_received_date      IN    VARCHAR2         -- 7.EDI受信日
+   ,iv_shipping_status        IN    VARCHAR2         -- 8.ステータス
+   ,iv_order_number           IN    VARCHAR2         -- 9.受注番号
    ,ov_errbuf                 OUT   VARCHAR2         -- エラー・メッセージ           --# 固定 #
    ,ov_retcode                OUT   VARCHAR2         -- リターン・コード             --# 固定 #
    ,ov_errmsg                 OUT   VARCHAR2         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1663,12 +1765,15 @@ AS
     init(
       iv_login_base_code        => iv_login_base_code          -- 1.拠点
      ,iv_login_chain_store_code => iv_login_chain_store_code   -- 2.チェーン店
-     ,iv_request_date_from      => iv_request_date_from        -- 3.着日（From）
-     ,iv_request_date_to        => iv_request_date_to          -- 4.着日（To）
-     ,iv_bargain_class          => iv_bargain_class            -- 5.定番特売区分
-     ,iv_edi_received_date      => iv_edi_received_date        -- 6.EDI受信日
-     ,iv_shipping_status        => iv_shipping_status          -- 7.ステータス
-     ,iv_order_number           => iv_order_number             -- 8.受注番号
+--  Add Ver1.1 S.Yamashita Start
+     ,iv_login_customer_code    => iv_login_customer_code      -- 3.顧客
+--  Add Ver1.1 S.Yamashita End
+     ,iv_request_date_from      => iv_request_date_from        -- 4.着日（From）
+     ,iv_request_date_to        => iv_request_date_to          -- 5.着日（To）
+     ,iv_bargain_class          => iv_bargain_class            -- 6.定番特売区分
+     ,iv_edi_received_date      => iv_edi_received_date        -- 7.EDI受信日
+     ,iv_shipping_status        => iv_shipping_status          -- 8.ステータス
+     ,iv_order_number           => iv_order_number             -- 9.受注番号
      ,ov_errbuf                 => lv_errbuf                   -- エラー・メッセージ
      ,ov_retcode                => lv_retcode                  -- リターン・コード
      ,ov_errmsg                 => lv_errmsg                   -- ユーザー・エラー・メッセージ
@@ -1792,12 +1897,15 @@ AS
    ,retcode                   OUT     VARCHAR2     --   リターン・コード    --# 固定 #
    ,iv_login_base_code        IN      VARCHAR2     -- 1.拠点
    ,iv_login_chain_store_code IN      VARCHAR2     -- 2.チェーン店
-   ,iv_request_date_from      IN      VARCHAR2     -- 3.着日（From）
-   ,iv_request_date_to        IN      VARCHAR2     -- 4.着日（To）
-   ,iv_bargain_class          IN      VARCHAR2     -- 5.定番特売区分
-   ,iv_edi_received_date      IN      VARCHAR2     -- 6.EDI受信日
-   ,iv_shipping_status        IN      VARCHAR2     -- 7.ステータス
-   ,iv_order_number           IN      VARCHAR2     -- 8.受注番号
+--  Add Ver1.1 S.Yamashita Start
+   ,iv_login_customer_code    IN      VARCHAR2     -- 3.顧客
+--  Add Ver1.1 S.Yamashita End
+   ,iv_request_date_from      IN      VARCHAR2     -- 4.着日（From）
+   ,iv_request_date_to        IN      VARCHAR2     -- 5.着日（To）
+   ,iv_bargain_class          IN      VARCHAR2     -- 6.定番特売区分
+   ,iv_edi_received_date      IN      VARCHAR2     -- 7.EDI受信日
+   ,iv_shipping_status        IN      VARCHAR2     -- 8.ステータス
+   ,iv_order_number           IN      VARCHAR2     -- 9.受注番号
   )
 --###########################  固定部 START   ###########################
 --
@@ -1850,12 +1958,15 @@ AS
     submain(
        iv_login_base_code                  -- 1.拠点
       ,iv_login_chain_store_code           -- 2.チェーン店
-      ,iv_request_date_from                -- 3.着日（From）
-      ,iv_request_date_to                  -- 4.着日（To）
-      ,iv_bargain_class                    -- 5.定番特売区分
-      ,iv_edi_received_date                -- 6.EDI受信日
-      ,iv_shipping_status                  -- 7.ステータス
-      ,iv_order_number                     -- 8.受注番号
+--  Add Ver1.1 S.Yamashita Start
+      ,iv_login_customer_code              -- 3.顧客
+--  Add Ver1.1 S.Yamashita End
+      ,iv_request_date_from                -- 4.着日（From）
+      ,iv_request_date_to                  -- 5.着日（To）
+      ,iv_bargain_class                    -- 6.定番特売区分
+      ,iv_edi_received_date                -- 7.EDI受信日
+      ,iv_shipping_status                  -- 8.ステータス
+      ,iv_order_number                     -- 9.受注番号
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
