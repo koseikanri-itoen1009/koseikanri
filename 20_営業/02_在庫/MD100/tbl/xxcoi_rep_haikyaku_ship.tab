@@ -3,13 +3,15 @@
  *
  * Table Name  : XXCOI_REP_HAIKYAKU_SHIP
  * Description : 製品廃却伝票帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2012/09/07    1.0  SCSK.Furuyama     新規作成
+ *  2015/03/17    1.1  SCSK.Uchida       E_本稼動_12960対応
+ *                                       製品廃却伝票のソート順変更
  *
  ************************************************************************/
 CREATE TABLE xxcoi.xxcoi_rep_haikyaku_ship (
@@ -22,6 +24,9 @@ CREATE TABLE xxcoi.xxcoi_rep_haikyaku_ship (
     ,slip_no                        VARCHAR2(12)
     ,transaction_qty                NUMBER
     ,trading_cost                   NUMBER
+     -- 2015/03/17 Ver1.1 Add Start
+    ,input_order_id                 NUMBER
+     -- 2015/03/17 Ver1.1 Add End
     ,nodata_msg                     VARCHAR2(50)
     ,created_by                     NUMBER
     ,creation_date                  DATE
@@ -54,6 +59,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.transaction_qty                 
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.trading_cost                           IS '営業原価額'
 /
+-- 2015/03/17 Ver1.1 Add Start
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.input_order_id                         IS '入力順ID'
+/
+-- 2015/03/17 Ver1.1 Add End
 COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.nodata_msg                             IS 'ゼロ件メッセージ'
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.created_by                             IS '作成者'
@@ -66,7 +75,7 @@ COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.last_update_date                
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.last_update_login                      IS '最終更新ユーザ'
 /
-COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.request_id                             IS '要求ID	'
+COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.request_id                             IS '要求ID'
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_haikyaku_ship.program_application_id                 IS 'プログラムアプリケーションID'
 /
