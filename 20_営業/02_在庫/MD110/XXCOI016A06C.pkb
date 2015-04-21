@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2014/10/01    1.0   K.Nakamura       新規作成
  *  2015/03/06    1.1   K.Nakamura       E_本稼動_12237 倉庫管理システム追加対応
  *  2015/04/03    1.2   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
+ *  2015/04/09    1.3   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
  *
  *****************************************************************************************/
 --
@@ -408,6 +409,10 @@ AS
   gv_kbn                    VARCHAR2(1)                                               DEFAULT NULL;  -- 判定区分
   gt_base_name              xxcos_login_base_info_v.base_name%TYPE                    DEFAULT NULL;  -- 拠点名
   gt_xxcoi016a06_kbn        fnd_lookup_values.meaning%TYPE                            DEFAULT NULL;  -- 判定区分_内容
+-- Add Ver1.3 Start
+  TYPE g_del_id_ttype       IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+  g_del_id_tab              g_del_id_ttype; -- ロット別引当情報削除情報
+-- Add Ver1.3 End
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -483,6 +488,9 @@ AS
     SELECT xlri.lot_reserve_info_id           AS lot_reserve_info_id            -- ロット別引当情報ID
          , xlri.slip_num                      AS slip_num                       -- 伝票No
          , xlri.order_number                  AS order_number                   -- 受注番号
+-- Add Ver1.3 Start
+         , xlri.parent_shipping_status        AS parent_shipping_status         -- 出荷情報ステータス（受注番号単位）
+-- Add Ver1.3 End
          , xlri.whse_code                     AS whse_code                      -- 保管場所コード
          , xlri.location_code                 AS location_code                  -- ロケーションコード
          , xlri.arrival_date                  AS arrival_date                   -- 着日
@@ -502,7 +510,10 @@ AS
          , xlri.reserve_transaction_type_code AS reserve_transaction_type_code  -- 引当時取引タイプコード
          , xlri.ordered_quantity              AS ordered_quantity               -- 受注数量
     FROM   xxcoi_lot_reserve_info             xlri
-    WHERE  xlri.parent_shipping_status = cv_shipping_status_20
+-- Mod Ver1.3 Start
+--    WHERE  xlri.parent_shipping_status = cv_shipping_status_20
+    WHERE  xlri.parent_shipping_status IN ( cv_shipping_status_10, cv_shipping_status_20 )
+-- Mod Ver1.3 End
     AND    xlri.base_code              = gv_login_base_code
     AND    xlri.arrival_date          >= gd_delivery_date_from
     AND    xlri.arrival_date          <  gd_delivery_date_to + 1
@@ -1962,8 +1973,12 @@ AS
       RAISE global_api_expt;
     END IF;
     --
-    -- 引当または引当解除の場合
-    IF ( ( gv_kbn = cv_kbn_1 ) OR ( gv_kbn = cv_kbn_2 ) ) THEN
+-- Mod Ver1.3 Start
+--    -- 引当または引当解除の場合
+--    IF ( ( gv_kbn = cv_kbn_1 ) OR ( gv_kbn = cv_kbn_2 ) ) THEN
+    -- 引当の場合
+    IF ( gv_kbn = cv_kbn_1 ) THEN
+-- Mod Ver1.3 End
       -- 着日Fromまたは着日Toの業務日付より過去日チェック
       IF ( ( gd_delivery_date_from < gd_process_date )
         OR ( gd_delivery_date_to < gd_process_date ) ) THEN
@@ -2426,6 +2441,9 @@ AS
     lt_sale_class              xxcoi_tmp_lot_reserve_info.regular_sale_class_line%TYPE      DEFAULT NULL; -- 定番特売区分(明細)
     lt_sale_class_name         xxcoi_tmp_lot_reserve_info.regular_sale_class_name_line%TYPE DEFAULT NULL; -- 定番特売区分名(明細)
     lt_delivery_order_edi      xxcoi_tmp_lot_reserve_info.delivery_order_edi%TYPE           DEFAULT NULL; -- 配送順(EDI)
+-- Add Ver1.3 Start
+    ln_cursor_no               NUMBER                                                       DEFAULT NULL; -- カーソル判定
+-- Add Ver1.3 End
 --
     -- *** ローカルカーソル ***
     -- 引当対象データ取得カーソル
@@ -2562,6 +2580,264 @@ AS
                    FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
                    WHERE  xtlrs.subinventory_code = oola.subinventory )
     ;
+-- Add Ver1.3 Start
+    -- 引当対象データ取得カーソル2
+    CURSOR l_kbn_11_cur
+    IS
+      SELECT /*+ LEADING(xca1) */
+             ooha.header_id                                AS header_id                 -- 受注ヘッダID
+           , ottt1.name                                    AS header_name               -- 受注タイプ名称
+           , ooha.cust_po_number                           AS slip_num                  -- 伝票No
+           , TO_CHAR(ooha.order_number)                    AS order_number              -- 受注番号
+           , ooha.order_source_id                          AS order_source_id           -- 受注ソースID
+           , xca2.chain_store_code                         AS chain_code                -- チェーン店コード
+           , SUBSTRB(hp2.party_name, 1, 40)                AS chain_name                -- チェーン店名
+           , xca2.cust_fresh_con_code                      AS cust_fresh_con_code_chain -- 顧客別鮮度条件コード（チェーン店）
+           , xca1.store_code                               AS shop_code                 -- 店舗コード
+           , xca1.cust_store_name                          AS shop_name                 -- 店舗名
+           , hca1.cust_account_id                          AS cust_account_id           -- 顧客ID
+           , hca1.account_number                           AS customer_code             -- 顧客コード
+           , SUBSTRB(hp1.party_name, 1, 40)                AS customer_name             -- 顧客名
+           , xca1.cust_fresh_con_code                      AS cust_fresh_con_code_cust  -- 顧客別鮮度条件コード（顧客）
+           , xca1.deli_center_code                         AS center_code               -- センターコード
+           , xca1.deli_center_name                         AS center_name               -- センター名
+           , xca1.edi_district_code                        AS area_code                 -- 地区コード
+           , xca1.edi_district_name                        AS area_name                 -- 地区名
+           , oola.line_id                                  AS line_id                   -- 受注明細ID
+           , oola.line_number                              AS line_number               -- 受注明細番号
+           , oola.inventory_item_id                        AS parent_item_id            -- 親品目ID
+           , iimb.item_no                                  AS parent_item_code          -- 親品目コード
+           , ximb.item_short_name                          AS parent_item_name          -- 親品目名
+           , NVL(oola.attribute5, scmd.sale_class_default) AS sale_class                -- 売上区分
+           , oola.attribute6                               AS item_code                 -- 子品目コード
+           , oola.ordered_quantity                         AS ordered_quantity          -- 受注数量
+           , oola.order_quantity_uom                       AS order_quantity_uom        -- 受注単位
+           , oola.schedule_ship_date                       AS schedule_ship_date        -- 出荷日
+           , TRUNC(oola.request_date)                      AS arrival_date              -- 着日
+           , oola.subinventory                             AS whse_code                 -- 保管場所コード
+           , msi.description                               AS whse_name                 -- 保管場所名
+           , ooha.orig_sys_document_ref                    AS orig_sys_document_ref     -- 外部システム受注番号
+           , oola.orig_sys_line_ref                        AS orig_sys_line_ref         -- 外部システム受注明細番号
+           , TRIM(SUBSTRB(xca1.delivery_order, 1, 7))      AS delivery_order1           -- 配送順（月、水、金）
+           , TRIM(NVL(SUBSTRB(xca1.delivery_order, 8, 7)
+                    , SUBSTRB(xca1.delivery_order, 1, 7))) AS delivery_order2           -- 配送順（火、木、土）
+           , ottt2.name                                    AS line_name                 -- 明細タイプ
+      FROM   oe_order_headers_all      ooha
+           , oe_order_lines_all        oola
+           , oe_transaction_types_all  otta1
+           , oe_transaction_types_all  otta2
+           , oe_transaction_types_tl   ottt1
+           , oe_transaction_types_tl   ottt2
+           , mtl_secondary_inventories msi
+           , hz_cust_accounts          hca1
+           , hz_cust_accounts          hca2
+           , hz_parties                hp1
+           , hz_parties                hp2
+           , xxcmm_cust_accounts       xca1
+           , xxcmm_cust_accounts       xca2
+           , ic_item_mst_b             iimb
+           , xxcmn_item_mst_b          ximb
+           , mtl_system_items_b        msib
+           , ( SELECT flv.meaning                               AS line_type_name
+                    , flv.attribute1                            AS sale_class_default
+               FROM   fnd_lookup_values                         flv
+               WHERE  flv.lookup_type  = cv_sale_class_mst
+               AND    flv.lookup_code  LIKE cv_xxcos
+               AND    flv.language     = ct_lang
+               AND    flv.enabled_flag = cv_flag_y
+               AND    flv.start_date_active                     <= gd_process_date
+               AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date
+             ) scmd
+      WHERE  ooha.header_id                  = oola.header_id
+      AND    ooha.org_id                     = gt_org_id
+      AND    ooha.order_type_id              = otta1.transaction_type_id
+      AND    otta1.transaction_type_code     = cv_order
+      AND    otta1.transaction_type_id       = ottt1.transaction_type_id
+      AND    ottt1.language                  = ct_lang
+      AND    oola.line_type_id               = otta2.transaction_type_id
+      AND    otta2.transaction_type_code     = cv_line
+      AND    otta2.transaction_type_id       = ottt2.transaction_type_id
+      AND    ottt2.language                  = ct_lang
+      AND    ottt2.name                      = scmd.line_type_name
+      AND    oola.ship_from_org_id           = gt_organization_id
+      AND    oola.subinventory               = msi.secondary_inventory_name
+      AND    oola.ship_from_org_id           = msi.organization_id
+      AND    oola.inventory_item_id          = msib.inventory_item_id
+      AND    oola.ship_from_org_id           = msib.organization_id
+      AND    msib.segment1                   = iimb.item_no
+      AND    iimb.item_id                    = ximb.item_id
+      AND    ximb.start_date_active         <= TRUNC(oola.request_date)
+      AND    ximb.end_date_active           >= TRUNC(oola.request_date)
+      AND    oola.sold_to_org_id             = hca1.cust_account_id
+      AND    hca1.party_id                   = hp1.party_id
+      AND    hca1.cust_account_id            = xca1.customer_id
+      AND    xca1.chain_store_code           = xca2.edi_chain_code(+)
+      AND    xca2.customer_id                = hca2.cust_account_id(+)
+      AND    hca2.party_id                   = hp2.party_id(+)
+      AND    oola.flow_status_code           = cv_booked
+      AND EXISTS ( SELECT 1
+                   FROM   fnd_lookup_values flv
+                   WHERE  flv.lookup_type                            = cv_order_type_mst
+                   AND    flv.lookup_code                         LIKE cv_xxcoi_016_a06
+                   AND    flv.attribute1 IS NULL
+                   AND    flv.attribute2 IS NULL
+                   AND    flv.language                               = ct_lang
+                   AND    flv.enabled_flag                           = cv_flag_y
+                   AND    flv.start_date_active                     <= gd_process_date
+                   AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date
+                   AND    flv.meaning                                = ottt1.name )
+      AND NOT EXISTS ( SELECT 1
+                       FROM   fnd_lookup_values flv
+                       WHERE  flv.lookup_type                            = cv_no_inv_item_code
+                       AND    flv.lookup_code                            = msib.segment1
+                       AND    flv.language                               = ct_lang
+                       AND    flv.enabled_flag                           = cv_flag_y
+                       AND    flv.start_date_active                     <= gd_process_date
+                       AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date )
+      AND NOT EXISTS ( SELECT 1
+                       FROM   xxcoi_tmp_lot_reserve_na xtlrn
+                       WHERE  xtlrn.header_id = ooha.header_id
+                       AND    xtlrn.line_id   = oola.line_id )
+      AND    ooha.header_id                  > gt_max_header_id
+      AND    ooha.ordered_date              >= ADD_MONTHS(gd_process_date, (gt_period_xxcoi016a06c1 * -1)) - 1
+      AND    ooha.ordered_date              <  gd_process_date + 1
+      AND    oola.request_date              >= gd_delivery_date_from
+      AND    oola.request_date              <  gd_delivery_date_to + 1
+      AND    xca1.chain_store_code           = gv_login_chain_store_code
+      AND EXISTS ( SELECT 1
+                   FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+                   WHERE  xtlrs.subinventory_code = oola.subinventory )
+    ;
+    -- 引当対象データ取得カーソル3
+    CURSOR l_kbn_12_cur
+    IS
+      SELECT /*+ LEADING(hca1) */
+             ooha.header_id                                AS header_id                 -- 受注ヘッダID
+           , ottt1.name                                    AS header_name               -- 受注タイプ名称
+           , ooha.cust_po_number                           AS slip_num                  -- 伝票No
+           , TO_CHAR(ooha.order_number)                    AS order_number              -- 受注番号
+           , ooha.order_source_id                          AS order_source_id           -- 受注ソースID
+           , xca2.chain_store_code                         AS chain_code                -- チェーン店コード
+           , SUBSTRB(hp2.party_name, 1, 40)                AS chain_name                -- チェーン店名
+           , xca2.cust_fresh_con_code                      AS cust_fresh_con_code_chain -- 顧客別鮮度条件コード（チェーン店）
+           , xca1.store_code                               AS shop_code                 -- 店舗コード
+           , xca1.cust_store_name                          AS shop_name                 -- 店舗名
+           , hca1.cust_account_id                          AS cust_account_id           -- 顧客ID
+           , hca1.account_number                           AS customer_code             -- 顧客コード
+           , SUBSTRB(hp1.party_name, 1, 40)                AS customer_name             -- 顧客名
+           , xca1.cust_fresh_con_code                      AS cust_fresh_con_code_cust  -- 顧客別鮮度条件コード（顧客）
+           , xca1.deli_center_code                         AS center_code               -- センターコード
+           , xca1.deli_center_name                         AS center_name               -- センター名
+           , xca1.edi_district_code                        AS area_code                 -- 地区コード
+           , xca1.edi_district_name                        AS area_name                 -- 地区名
+           , oola.line_id                                  AS line_id                   -- 受注明細ID
+           , oola.line_number                              AS line_number               -- 受注明細番号
+           , oola.inventory_item_id                        AS parent_item_id            -- 親品目ID
+           , iimb.item_no                                  AS parent_item_code          -- 親品目コード
+           , ximb.item_short_name                          AS parent_item_name          -- 親品目名
+           , NVL(oola.attribute5, scmd.sale_class_default) AS sale_class                -- 売上区分
+           , oola.attribute6                               AS item_code                 -- 子品目コード
+           , oola.ordered_quantity                         AS ordered_quantity          -- 受注数量
+           , oola.order_quantity_uom                       AS order_quantity_uom        -- 受注単位
+           , oola.schedule_ship_date                       AS schedule_ship_date        -- 出荷日
+           , TRUNC(oola.request_date)                      AS arrival_date              -- 着日
+           , oola.subinventory                             AS whse_code                 -- 保管場所コード
+           , msi.description                               AS whse_name                 -- 保管場所名
+           , ooha.orig_sys_document_ref                    AS orig_sys_document_ref     -- 外部システム受注番号
+           , oola.orig_sys_line_ref                        AS orig_sys_line_ref         -- 外部システム受注明細番号
+           , TRIM(SUBSTRB(xca1.delivery_order, 1, 7))      AS delivery_order1           -- 配送順（月、水、金）
+           , TRIM(NVL(SUBSTRB(xca1.delivery_order, 8, 7)
+                    , SUBSTRB(xca1.delivery_order, 1, 7))) AS delivery_order2           -- 配送順（火、木、土）
+           , ottt2.name                                    AS line_name                 -- 明細タイプ
+      FROM   oe_order_headers_all      ooha
+           , oe_order_lines_all        oola
+           , oe_transaction_types_all  otta1
+           , oe_transaction_types_all  otta2
+           , oe_transaction_types_tl   ottt1
+           , oe_transaction_types_tl   ottt2
+           , mtl_secondary_inventories msi
+           , hz_cust_accounts          hca1
+           , hz_cust_accounts          hca2
+           , hz_parties                hp1
+           , hz_parties                hp2
+           , xxcmm_cust_accounts       xca1
+           , xxcmm_cust_accounts       xca2
+           , ic_item_mst_b             iimb
+           , xxcmn_item_mst_b          ximb
+           , mtl_system_items_b        msib
+           , ( SELECT flv.meaning                               AS line_type_name
+                    , flv.attribute1                            AS sale_class_default
+               FROM   fnd_lookup_values                         flv
+               WHERE  flv.lookup_type  = cv_sale_class_mst
+               AND    flv.lookup_code  LIKE cv_xxcos
+               AND    flv.language     = ct_lang
+               AND    flv.enabled_flag = cv_flag_y
+               AND    flv.start_date_active                     <= gd_process_date
+               AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date
+             ) scmd
+      WHERE  ooha.header_id                  = oola.header_id
+      AND    ooha.org_id                     = gt_org_id
+      AND    ooha.order_type_id              = otta1.transaction_type_id
+      AND    otta1.transaction_type_code     = cv_order
+      AND    otta1.transaction_type_id       = ottt1.transaction_type_id
+      AND    ottt1.language                  = ct_lang
+      AND    oola.line_type_id               = otta2.transaction_type_id
+      AND    otta2.transaction_type_code     = cv_line
+      AND    otta2.transaction_type_id       = ottt2.transaction_type_id
+      AND    ottt2.language                  = ct_lang
+      AND    ottt2.name                      = scmd.line_type_name
+      AND    oola.ship_from_org_id           = gt_organization_id
+      AND    oola.subinventory               = msi.secondary_inventory_name
+      AND    oola.ship_from_org_id           = msi.organization_id
+      AND    oola.inventory_item_id          = msib.inventory_item_id
+      AND    oola.ship_from_org_id           = msib.organization_id
+      AND    msib.segment1                   = iimb.item_no
+      AND    iimb.item_id                    = ximb.item_id
+      AND    ximb.start_date_active         <= TRUNC(oola.request_date)
+      AND    ximb.end_date_active           >= TRUNC(oola.request_date)
+      AND    oola.sold_to_org_id             = hca1.cust_account_id
+      AND    hca1.party_id                   = hp1.party_id
+      AND    hca1.cust_account_id            = xca1.customer_id
+      AND    xca1.chain_store_code           = xca2.edi_chain_code(+)
+      AND    xca2.customer_id                = hca2.cust_account_id(+)
+      AND    hca2.party_id                   = hp2.party_id(+)
+      AND    oola.flow_status_code           = cv_booked
+      AND EXISTS ( SELECT 1
+                   FROM   fnd_lookup_values flv
+                   WHERE  flv.lookup_type                            = cv_order_type_mst
+                   AND    flv.lookup_code                         LIKE cv_xxcoi_016_a06
+                   AND    flv.attribute1 IS NULL
+                   AND    flv.attribute2 IS NULL
+                   AND    flv.language                               = ct_lang
+                   AND    flv.enabled_flag                           = cv_flag_y
+                   AND    flv.start_date_active                     <= gd_process_date
+                   AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date
+                   AND    flv.meaning                                = ottt1.name )
+      AND NOT EXISTS ( SELECT 1
+                       FROM   fnd_lookup_values flv
+                       WHERE  flv.lookup_type                            = cv_no_inv_item_code
+                       AND    flv.lookup_code                            = msib.segment1
+                       AND    flv.language                               = ct_lang
+                       AND    flv.enabled_flag                           = cv_flag_y
+                       AND    flv.start_date_active                     <= gd_process_date
+                       AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date )
+      AND NOT EXISTS ( SELECT 1
+                       FROM   xxcoi_tmp_lot_reserve_na xtlrn
+                       WHERE  xtlrn.header_id = ooha.header_id
+                       AND    xtlrn.line_id   = oola.line_id )
+      AND    ooha.header_id                  > gt_max_header_id
+      AND    ooha.ordered_date              >= ADD_MONTHS(gd_process_date, (gt_period_xxcoi016a06c1 * -1)) - 1
+      AND    ooha.ordered_date              <  gd_process_date + 1
+      AND    oola.request_date              >= gd_delivery_date_from
+      AND    oola.request_date              <  gd_delivery_date_to + 1
+      AND ( ( gv_login_chain_store_code IS NULL )
+         OR ( xca1.chain_store_code          = gv_login_chain_store_code ) )
+      AND    hca1.account_number             = gv_login_customer_code
+      AND EXISTS ( SELECT 1
+                   FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+                   WHERE  xtlrs.subinventory_code = oola.subinventory )
+    ;
+-- Add Ver1.3 End
     -- EDI情報取得カーソル
     CURSOR l_edi_cur( iv_order_number      VARCHAR2
                     , iv_order_line_number VARCHAR2 )
@@ -2575,6 +2851,9 @@ AS
       AND    xel.order_connection_line_number = iv_order_line_number
     ;
     l_edi_rec               l_edi_cur%ROWTYPE;
+-- Add Ver1.3 Start
+    l_kbn_1_rec             l_kbn_1_cur%ROWTYPE;
+-- Add Ver1.3 End
 --
   BEGIN
 --
@@ -2587,9 +2866,48 @@ AS
     --==============================================================
     -- 1．引当対象データ取得
     --==============================================================
+-- Mod Ver1.3 End
+--    -- 引当ループ
+--    << kbn_1_loop >>
+--    FOR l_kbn_1_rec IN l_kbn_1_cur LOOP
+    -- 顧客発注番号が指定された場合
+    -- またはチェーン店コードと顧客コードがともに指定されていない場合
+    IF ( ( gv_customer_po_number IS NOT NULL )
+      OR ( gv_login_chain_store_code IS NULL ) AND ( gv_login_customer_code IS NULL ) ) THEN
+       ln_cursor_no := 1;
+       OPEN l_kbn_1_cur;
+    ELSE
+      -- 顧客が指定されていない場合
+      IF ( gv_login_customer_code IS NULL ) THEN
+        ln_cursor_no := 2;
+        OPEN l_kbn_11_cur;
+      -- 顧客が指定されている場合
+      ELSE
+        ln_cursor_no := 3;
+        OPEN l_kbn_12_cur;
+      END IF;
+    END IF;
+    --
     -- 引当ループ
     << kbn_1_loop >>
-    FOR l_kbn_1_rec IN l_kbn_1_cur LOOP
+    LOOP
+    -- 顧客発注番号が指定された場合
+    -- またはチェーン店コードと顧客コードがともに指定されていない場合
+    IF ( ln_cursor_no = 1 ) THEN
+      FETCH l_kbn_1_cur INTO l_kbn_1_rec;
+      EXIT WHEN l_kbn_1_cur%NOTFOUND;
+    ELSE
+      -- 顧客が指定されていない場合
+      IF ( ln_cursor_no = 2 ) THEN
+        FETCH l_kbn_11_cur INTO l_kbn_1_rec;
+        EXIT WHEN l_kbn_11_cur%NOTFOUND;
+      -- 顧客が指定されている場合
+      ELSE
+        FETCH l_kbn_12_cur INTO l_kbn_1_rec;
+        EXIT WHEN l_kbn_12_cur%NOTFOUND;
+      END IF;
+    END IF;
+-- Mod Ver1.3 End
       -- 初期化
       lt_sale_class                        := NULL;
       lt_sale_class_name                   := NULL;
@@ -2747,6 +3065,12 @@ AS
       ov_retcode := cv_status_error;
       IF ( l_kbn_1_cur%ISOPEN ) THEN
         CLOSE l_kbn_1_cur;
+-- Add Ver1.3 Start
+      ELSIF ( l_kbn_11_cur%ISOPEN ) THEN
+        CLOSE l_kbn_11_cur;
+      ELSIF ( l_kbn_12_cur%ISOPEN ) THEN
+        CLOSE l_kbn_12_cur;
+-- Add Ver1.3 End
       END IF;
       IF ( l_edi_cur%ISOPEN ) THEN
         CLOSE l_edi_cur;
@@ -2785,6 +3109,9 @@ AS
     -- *** ローカル変数 ***
     ln_lot_tran_cnt            NUMBER      DEFAULT 0;    -- ロット別取引明細件数
     lv_tran_kbn                VARCHAR2(1) DEFAULT NULL; -- 取引区分
+-- Add Ver1.3 Start
+    ln_cursor_no               NUMBER      DEFAULT NULL; -- カーソル判定
+-- Add Ver1.3 End
 --
     -- *** ローカルカーソル ***
     -- 引当以外データ取得カーソル
@@ -2923,6 +3250,269 @@ AS
       ORDER BY ooha.order_number
              , oola.line_number
     ;
+-- Add Ver1.3 Start
+    -- 引当以外データ取得カーソル2
+    CURSOR l_kbn_41_cur
+    IS
+      SELECT /*+ LEADING(xca1) */
+             ooha.header_id                                AS header_id                 -- 受注ヘッダID
+           , ottt1.name                                    AS header_name               -- 受注タイプ名称
+           , ooha.cust_po_number                           AS slip_num                  -- 伝票No
+           , TO_CHAR(ooha.order_number)                    AS order_number              -- 受注番号
+           , ooha.order_source_id                          AS order_source_id           -- 受注ソースID
+           , xca2.chain_store_code                         AS chain_code                -- チェーン店コード
+           , SUBSTRB(hp2.party_name, 1, 40)                AS chain_name                -- チェーン店名
+           , xca2.cust_fresh_con_code                      AS cust_fresh_con_code_chain -- 顧客別鮮度条件コード（チェーン店）
+           , xca1.store_code                               AS shop_code                 -- 店舗コード
+           , xca1.cust_store_name                          AS shop_name                 -- 店舗名
+           , hca1.cust_account_id                          AS cust_account_id           -- 顧客ID
+           , hca1.account_number                           AS customer_code             -- 顧客コード
+           , SUBSTRB(hp1.party_name, 1, 40)                AS customer_name             -- 顧客名
+           , xca1.cust_fresh_con_code                      AS cust_fresh_con_code_cust  -- 顧客別鮮度条件コード（顧客）
+           , xca1.deli_center_code                         AS center_code               -- センターコード
+           , xca1.deli_center_name                         AS center_name               -- センター名
+           , xca1.edi_district_code                        AS area_code                 -- 地区コード
+           , xca1.edi_district_name                        AS area_name                 -- 地区名
+           , oola.line_id                                  AS line_id                   -- 受注明細ID
+           , oola.line_number                              AS line_number               -- 受注明細番号
+           , oola.inventory_item_id                        AS parent_item_id            -- 親品目ID
+           , iimb.item_no                                  AS parent_item_code          -- 親品目コード
+           , ximb.item_short_name                          AS parent_item_name          -- 親品目名
+           , NVL(oola.attribute5, scmd.sale_class_default) AS sale_class                -- 売上区分
+           , oola.attribute6                               AS item_code                 -- 子品目コード
+           , oola.ordered_quantity                         AS ordered_quantity          -- 受注数量
+           , oola.order_quantity_uom                       AS order_quantity_uom        -- 受注単位
+           , oola.schedule_ship_date                       AS schedule_ship_date        -- 出荷日
+           , TRUNC(oola.request_date)                      AS arrival_date              -- 着日
+           , msi.attribute7                                AS base_code                 -- 拠点コード
+           , oola.subinventory                             AS whse_code                 -- 保管場所コード
+           , msi.description                               AS whse_name                 -- 保管場所名
+           , ooha.orig_sys_document_ref                    AS orig_sys_document_ref     -- 外部システム受注番号
+           , oola.orig_sys_line_ref                        AS orig_sys_line_ref         -- 外部システム受注明細番号
+           , TRIM(SUBSTRB(xca1.delivery_order, 1, 7))      AS delivery_order1           -- 配送順（月、水、金）
+           , TRIM(NVL(SUBSTRB(xca1.delivery_order, 8, 7)
+                    , SUBSTRB(xca1.delivery_order, 1, 7))) AS delivery_order2           -- 配送順（火、木、土）
+           , ottt2.name                                    AS line_name                 -- 明細タイプ
+           , oola.flow_status_code                         AS flow_status_code          -- 明細ステータス
+      FROM   oe_order_headers_all      ooha
+           , oe_order_lines_all        oola
+           , oe_transaction_types_all  otta1
+           , oe_transaction_types_all  otta2
+           , oe_transaction_types_tl   ottt1
+           , oe_transaction_types_tl   ottt2
+           , mtl_secondary_inventories msi
+           , hz_cust_accounts          hca1
+           , hz_cust_accounts          hca2
+           , hz_parties                hp1
+           , hz_parties                hp2
+           , xxcmm_cust_accounts       xca1
+           , xxcmm_cust_accounts       xca2
+           , ic_item_mst_b             iimb
+           , xxcmn_item_mst_b          ximb
+           , mtl_system_items_b        msib
+           , ( SELECT flv.meaning                               AS line_type_name
+                    , flv.attribute1                            AS sale_class_default
+               FROM   fnd_lookup_values                         flv
+               WHERE  flv.lookup_type  = cv_sale_class_mst
+               AND    flv.lookup_code  LIKE cv_xxcos
+               AND    flv.language     = ct_lang
+               AND    flv.enabled_flag = cv_flag_y
+               AND    flv.start_date_active                     <= gd_process_date
+               AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date
+             ) scmd
+      WHERE  ooha.header_id                  = oola.header_id
+      AND    ooha.org_id                     = gt_org_id
+      AND    ooha.order_type_id              = otta1.transaction_type_id
+      AND    otta1.transaction_type_code     = cv_order
+      AND    otta1.transaction_type_id       = ottt1.transaction_type_id
+      AND    ottt1.language                  = ct_lang
+      AND    oola.line_type_id               = otta2.transaction_type_id
+      AND    otta2.transaction_type_code     = cv_line
+      AND    otta2.transaction_type_id       = ottt2.transaction_type_id
+      AND    ottt2.language                  = ct_lang
+      AND    ottt2.name                      = scmd.line_type_name
+      AND    oola.ship_from_org_id           = gt_organization_id
+      AND    oola.subinventory               = msi.secondary_inventory_name
+      AND    oola.ship_from_org_id           = msi.organization_id
+      AND    oola.inventory_item_id          = msib.inventory_item_id
+      AND    oola.ship_from_org_id           = msib.organization_id
+      AND    msib.segment1                   = iimb.item_no
+      AND    iimb.item_id                    = ximb.item_id
+      AND    ximb.start_date_active         <= TRUNC(oola.request_date)
+      AND    ximb.end_date_active           >= TRUNC(oola.request_date)
+      AND    oola.sold_to_org_id             = hca1.cust_account_id
+      AND    hca1.party_id                   = hp1.party_id
+      AND    hca1.cust_account_id            = xca1.customer_id
+      AND    xca1.chain_store_code           = xca2.edi_chain_code(+)
+      AND    xca2.customer_id                = hca2.cust_account_id(+)
+      AND    hca2.party_id                   = hp2.party_id(+)
+      AND    oola.flow_status_code          <> cv_entered
+      AND EXISTS ( SELECT 1
+                   FROM   fnd_lookup_values flv
+                   WHERE  flv.lookup_type                            = cv_order_type_mst
+                   AND    flv.lookup_code                         LIKE cv_xxcoi_016_a06
+                   AND    flv.language                               = ct_lang
+                   AND    flv.enabled_flag                           = cv_flag_y
+                   AND    flv.start_date_active                     <= gd_process_date
+                   AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date
+                   AND    flv.meaning                                = ottt1.name )
+      AND NOT EXISTS ( SELECT 1
+                       FROM   fnd_lookup_values flv
+                       WHERE  flv.lookup_type                            = cv_no_inv_item_code
+                       AND    flv.lookup_code                            = msib.segment1
+                       AND    flv.language                               = ct_lang
+                       AND    flv.enabled_flag                           = cv_flag_y
+                       AND    flv.start_date_active                     <= gd_process_date
+                       AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date )
+      AND NOT EXISTS ( SELECT 1
+                       FROM   xxcoi_tmp_lot_reserve_na xtlrn
+                       WHERE  xtlrn.header_id = ooha.header_id
+                       AND    xtlrn.line_id   = oola.line_id )
+      AND    ooha.header_id                 > gt_max_header_id
+      AND    ooha.ordered_date              >= ADD_MONTHS(gd_process_date, (gt_period_xxcoi016a06c5 * -1)) - 1
+      AND    ooha.ordered_date              <  gd_process_date + 1
+      AND    oola.request_date              >= gd_delivery_date_from
+      AND    oola.request_date              <  gd_delivery_date_to + 1
+      AND    xca1.chain_store_code          = gv_login_chain_store_code
+      AND EXISTS ( SELECT 1
+                   FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+                   WHERE  xtlrs.subinventory_code = oola.subinventory )
+      ORDER BY ooha.order_number
+             , oola.line_number
+    ;
+    -- 引当以外データ取得カーソル2
+    CURSOR l_kbn_42_cur
+    IS
+      SELECT /*+ LEADING(hca1) */
+             ooha.header_id                                AS header_id                 -- 受注ヘッダID
+           , ottt1.name                                    AS header_name               -- 受注タイプ名称
+           , ooha.cust_po_number                           AS slip_num                  -- 伝票No
+           , TO_CHAR(ooha.order_number)                    AS order_number              -- 受注番号
+           , ooha.order_source_id                          AS order_source_id           -- 受注ソースID
+           , xca2.chain_store_code                         AS chain_code                -- チェーン店コード
+           , SUBSTRB(hp2.party_name, 1, 40)                AS chain_name                -- チェーン店名
+           , xca2.cust_fresh_con_code                      AS cust_fresh_con_code_chain -- 顧客別鮮度条件コード（チェーン店）
+           , xca1.store_code                               AS shop_code                 -- 店舗コード
+           , xca1.cust_store_name                          AS shop_name                 -- 店舗名
+           , hca1.cust_account_id                          AS cust_account_id           -- 顧客ID
+           , hca1.account_number                           AS customer_code             -- 顧客コード
+           , SUBSTRB(hp1.party_name, 1, 40)                AS customer_name             -- 顧客名
+           , xca1.cust_fresh_con_code                      AS cust_fresh_con_code_cust  -- 顧客別鮮度条件コード（顧客）
+           , xca1.deli_center_code                         AS center_code               -- センターコード
+           , xca1.deli_center_name                         AS center_name               -- センター名
+           , xca1.edi_district_code                        AS area_code                 -- 地区コード
+           , xca1.edi_district_name                        AS area_name                 -- 地区名
+           , oola.line_id                                  AS line_id                   -- 受注明細ID
+           , oola.line_number                              AS line_number               -- 受注明細番号
+           , oola.inventory_item_id                        AS parent_item_id            -- 親品目ID
+           , iimb.item_no                                  AS parent_item_code          -- 親品目コード
+           , ximb.item_short_name                          AS parent_item_name          -- 親品目名
+           , NVL(oola.attribute5, scmd.sale_class_default) AS sale_class                -- 売上区分
+           , oola.attribute6                               AS item_code                 -- 子品目コード
+           , oola.ordered_quantity                         AS ordered_quantity          -- 受注数量
+           , oola.order_quantity_uom                       AS order_quantity_uom        -- 受注単位
+           , oola.schedule_ship_date                       AS schedule_ship_date        -- 出荷日
+           , TRUNC(oola.request_date)                      AS arrival_date              -- 着日
+           , msi.attribute7                                AS base_code                 -- 拠点コード
+           , oola.subinventory                             AS whse_code                 -- 保管場所コード
+           , msi.description                               AS whse_name                 -- 保管場所名
+           , ooha.orig_sys_document_ref                    AS orig_sys_document_ref     -- 外部システム受注番号
+           , oola.orig_sys_line_ref                        AS orig_sys_line_ref         -- 外部システム受注明細番号
+           , TRIM(SUBSTRB(xca1.delivery_order, 1, 7))      AS delivery_order1           -- 配送順（月、水、金）
+           , TRIM(NVL(SUBSTRB(xca1.delivery_order, 8, 7)
+                    , SUBSTRB(xca1.delivery_order, 1, 7))) AS delivery_order2           -- 配送順（火、木、土）
+           , ottt2.name                                    AS line_name                 -- 明細タイプ
+           , oola.flow_status_code                         AS flow_status_code          -- 明細ステータス
+      FROM   oe_order_headers_all      ooha
+           , oe_order_lines_all        oola
+           , oe_transaction_types_all  otta1
+           , oe_transaction_types_all  otta2
+           , oe_transaction_types_tl   ottt1
+           , oe_transaction_types_tl   ottt2
+           , mtl_secondary_inventories msi
+           , hz_cust_accounts          hca1
+           , hz_cust_accounts          hca2
+           , hz_parties                hp1
+           , hz_parties                hp2
+           , xxcmm_cust_accounts       xca1
+           , xxcmm_cust_accounts       xca2
+           , ic_item_mst_b             iimb
+           , xxcmn_item_mst_b          ximb
+           , mtl_system_items_b        msib
+           , ( SELECT flv.meaning                               AS line_type_name
+                    , flv.attribute1                            AS sale_class_default
+               FROM   fnd_lookup_values                         flv
+               WHERE  flv.lookup_type  = cv_sale_class_mst
+               AND    flv.lookup_code  LIKE cv_xxcos
+               AND    flv.language     = ct_lang
+               AND    flv.enabled_flag = cv_flag_y
+               AND    flv.start_date_active                     <= gd_process_date
+               AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date
+             ) scmd
+      WHERE  ooha.header_id                  = oola.header_id
+      AND    ooha.org_id                     = gt_org_id
+      AND    ooha.order_type_id              = otta1.transaction_type_id
+      AND    otta1.transaction_type_code     = cv_order
+      AND    otta1.transaction_type_id       = ottt1.transaction_type_id
+      AND    ottt1.language                  = ct_lang
+      AND    oola.line_type_id               = otta2.transaction_type_id
+      AND    otta2.transaction_type_code     = cv_line
+      AND    otta2.transaction_type_id       = ottt2.transaction_type_id
+      AND    ottt2.language                  = ct_lang
+      AND    ottt2.name                      = scmd.line_type_name
+      AND    oola.ship_from_org_id           = gt_organization_id
+      AND    oola.subinventory               = msi.secondary_inventory_name
+      AND    oola.ship_from_org_id           = msi.organization_id
+      AND    oola.inventory_item_id          = msib.inventory_item_id
+      AND    oola.ship_from_org_id           = msib.organization_id
+      AND    msib.segment1                   = iimb.item_no
+      AND    iimb.item_id                    = ximb.item_id
+      AND    ximb.start_date_active         <= TRUNC(oola.request_date)
+      AND    ximb.end_date_active           >= TRUNC(oola.request_date)
+      AND    oola.sold_to_org_id             = hca1.cust_account_id
+      AND    hca1.party_id                   = hp1.party_id
+      AND    hca1.cust_account_id            = xca1.customer_id
+      AND    xca1.chain_store_code           = xca2.edi_chain_code(+)
+      AND    xca2.customer_id                = hca2.cust_account_id(+)
+      AND    hca2.party_id                   = hp2.party_id(+)
+      AND    oola.flow_status_code          <> cv_entered
+      AND EXISTS ( SELECT 1
+                   FROM   fnd_lookup_values flv
+                   WHERE  flv.lookup_type                            = cv_order_type_mst
+                   AND    flv.lookup_code                         LIKE cv_xxcoi_016_a06
+                   AND    flv.language                               = ct_lang
+                   AND    flv.enabled_flag                           = cv_flag_y
+                   AND    flv.start_date_active                     <= gd_process_date
+                   AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date
+                   AND    flv.meaning                                = ottt1.name )
+      AND NOT EXISTS ( SELECT 1
+                       FROM   fnd_lookup_values flv
+                       WHERE  flv.lookup_type                            = cv_no_inv_item_code
+                       AND    flv.lookup_code                            = msib.segment1
+                       AND    flv.language                               = ct_lang
+                       AND    flv.enabled_flag                           = cv_flag_y
+                       AND    flv.start_date_active                     <= gd_process_date
+                       AND    NVL(flv.end_date_active, gd_process_date) >= gd_process_date )
+      AND NOT EXISTS ( SELECT 1
+                       FROM   xxcoi_tmp_lot_reserve_na xtlrn
+                       WHERE  xtlrn.header_id = ooha.header_id
+                       AND    xtlrn.line_id   = oola.line_id )
+      AND    ooha.header_id                 > gt_max_header_id
+      AND    ooha.ordered_date              >= ADD_MONTHS(gd_process_date, (gt_period_xxcoi016a06c5 * -1)) - 1
+      AND    ooha.ordered_date              <  gd_process_date + 1
+      AND    oola.request_date              >= gd_delivery_date_from
+      AND    oola.request_date              <  gd_delivery_date_to + 1
+      AND ( ( gv_login_chain_store_code IS NULL )
+         OR ( xca1.chain_store_code          = gv_login_chain_store_code ) )
+      AND    hca1.account_number             = gv_login_customer_code
+      AND EXISTS ( SELECT 1
+                   FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+                   WHERE  xtlrs.subinventory_code = oola.subinventory )
+      ORDER BY ooha.order_number
+             , oola.line_number
+    ;
+    l_kbn_4_rec             l_kbn_4_cur%ROWTYPE;
+-- Add Ver1.3 End
 --
   BEGIN
 --
@@ -2935,9 +3525,48 @@ AS
     --==============================================================
     -- 1．引当以外データ取得
     --==============================================================
+-- Mod Ver1.3 End
+--    -- 引当以外ループ
+--    << kbn_4_loop >>
+--    FOR l_kbn_4_rec IN l_kbn_4_cur LOOP
+    -- 顧客発注番号が指定された場合
+    -- またはチェーン店コードと顧客コードがともに指定されていない場合
+    IF ( ( gv_customer_po_number IS NOT NULL )
+      OR ( gv_login_chain_store_code IS NULL ) AND ( gv_login_customer_code IS NULL ) ) THEN
+      ln_cursor_no := 1;
+      OPEN l_kbn_4_cur;
+    ELSE
+      -- 顧客が指定されていない場合
+      IF ( gv_login_customer_code IS NULL ) THEN
+        ln_cursor_no := 2;
+        OPEN l_kbn_41_cur;
+      -- 顧客が指定されている場合
+      ELSE
+        ln_cursor_no := 3;
+        OPEN l_kbn_42_cur;
+      END IF;
+    END IF;
+    --
     -- 引当以外ループ
     << kbn_4_loop >>
-    FOR l_kbn_4_rec IN l_kbn_4_cur LOOP
+    LOOP
+    -- 顧客発注番号が指定された場合
+    -- またはチェーン店コードと顧客コードがともに指定されていない場合
+    IF ( ln_cursor_no = 1 ) THEN
+      FETCH l_kbn_4_cur INTO l_kbn_4_rec;
+      EXIT WHEN l_kbn_4_cur%NOTFOUND;
+    ELSE
+      -- 顧客が指定されていない場合
+      IF ( ln_cursor_no = 2 ) THEN
+        FETCH l_kbn_41_cur INTO l_kbn_4_rec;
+        EXIT WHEN l_kbn_41_cur%NOTFOUND;
+      -- 顧客が指定されている場合
+      ELSE
+        FETCH l_kbn_42_cur INTO l_kbn_4_rec;
+        EXIT WHEN l_kbn_42_cur%NOTFOUND;
+      END IF;
+    END IF;
+-- Mod Ver1.3 End
       -- 初期化
       ln_lot_tran_cnt := 0;
       lv_tran_kbn     := NULL;
@@ -3072,6 +3701,12 @@ AS
       ov_retcode := cv_status_error;
       IF ( l_kbn_4_cur%ISOPEN ) THEN
         CLOSE l_kbn_4_cur;
+-- Add Ver1.3 Start
+      ELSIF ( l_kbn_41_cur%ISOPEN ) THEN
+        CLOSE l_kbn_41_cur;
+      ELSIF ( l_kbn_42_cur%ISOPEN ) THEN
+        CLOSE l_kbn_42_cur;
+-- Add Ver1.3 End
       END IF;
 --
 --#####################################  固定部 END   ##########################################
@@ -3880,10 +4515,13 @@ AS
    * Description      : 受注訂正チェック処理(A-8)
    ***********************************************************************************/
   PROCEDURE chk_order(
-      iv_order_number IN  VARCHAR2 -- 受注番号
-    , ov_errbuf       OUT VARCHAR2 -- エラー・メッセージ           --# 固定 #
-    , ov_retcode      OUT VARCHAR2 -- リターン・コード             --# 固定 #
-    , ov_errmsg       OUT VARCHAR2 -- ユーザー・エラー・メッセージ --# 固定 #
+      iv_order_number           IN  VARCHAR2 -- 受注番号
+-- Add Ver1.3 Start
+    , iv_parent_shipping_status IN VARCHAR2 -- 出荷情報ステータス（受注番号単位）
+-- Add Ver1.3 End
+    , ov_errbuf                 OUT VARCHAR2 -- エラー・メッセージ           --# 固定 #
+    , ov_retcode                OUT VARCHAR2 -- リターン・コード             --# 固定 #
+    , ov_errmsg                 OUT VARCHAR2 -- ユーザー・エラー・メッセージ --# 固定 #
   )
   IS
     -- ===============================
@@ -4203,106 +4841,168 @@ AS
           --==============================================================
           -- 2．修正受注チェック
           --==============================================================
-          -- 受注と引当の総数が相違する場合
-          IF ( ln_order_summary_qty <> l_reserve_item_rec.summary_qty ) THEN
--- Mod Ver1.2 Start
---            -- 修正あり
---            lb_chk_flag := TRUE;
---            --
---            -- 倉庫管理対象で無ければ削除のみ
---            SELECT COUNT(1)                     AS cnt
---            INTO   ln_subinv_cnt
---            FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
---            WHERE  xtlrs.subinventory_code = lt_subinventory
---            ;
---            IF ( ln_subinv_cnt = 0 ) THEN
---              l_order_rec.flow_status_code := cv_cancelled;
---            END IF;
-            -- 保管場所指定の場合
-            IF ( gv_subinventory_code IS NOT NULL ) THEN
-              -- 指定された保管場所と一致する場合、修正あり警告
+-- Add Ver1.3 Start
+          -- 出荷仮確定かつ
+          -- 出荷情報ステータス（受注番号単位）が引当未の場合
+          IF (  ( gv_kbn = cv_kbn_3 )
+            AND ( iv_parent_shipping_status = cv_shipping_status_10 ) ) THEN
+            -- 受注の総数が0の場合（取消されている場合）
+            IF ( ln_order_summary_qty = 0 ) THEN
+              -- 指定された保管場所と一致する場合
               IF ( gv_subinventory_code = lt_subinventory ) THEN
-                -- 修正あり
-                lb_chk_flag := TRUE;
-              -- 指定された保管場所と一致しない場合
-              ELSE
-                -- 初期化
-                ln_order_summary_qty2 := 0;
-                -- 受注親品目総数取得ループ
-                << parent_item_loop2 >>
-                FOR l_parent_item_rec IN l_parent_item_cur( in_order_number      => TO_NUMBER(l_order_rec.order_number)
-                                                          , in_inventory_item_id => lt_parent_item_id
-                                                          , iv_subinventory      => gv_subinventory_code ) LOOP
-                  -- 初期化
-                  ln_after_quantity    := 0;
-                  -- 単位換算取得
-                  xxcos_common_pkg.get_uom_cnv(
-                      iv_before_uom_code    => l_parent_item_rec.order_quantity_uom -- 換算前単位コード
-                    , in_before_quantity    => l_parent_item_rec.ordered_quantity   -- 換算前数量
-                    , iov_item_code         => l_order_rec.parent_item_code         -- 品目コード
-                    , iov_organization_code => gt_organization_code                 -- 在庫組織コード
-                    , ion_inventory_item_id => lt_parent_item_id                    -- 品目ＩＤ
-                    , ion_organization_id   => gt_organization_id                   -- 在庫組織ＩＤ
-                    , iov_after_uom_code    => lt_after_uom_code                    -- 換算後単位コード
-                    , on_after_quantity     => ln_after_quantity                    -- 換算後数量
-                    , on_content            => ln_dummy                             -- 入数
-                    , ov_errbuf             => lv_errbuf                            -- エラー・メッセージエラー       #固定#
-                    , ov_retcode            => lv_retcode                           -- リターン・コード               #固定#
-                    , ov_errmsg             => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
-                  );
-                  -- リターンコードが正常以外の場合、エラー
-                  IF ( lv_retcode <> cv_status_normal ) THEN
-                    lv_errmsg := xxccp_common_pkg.get_msg(
-                                     iv_application  => cv_application
-                                   , iv_name         => cv_msg_xxcoi_10545
-                                   , iv_token_name1  => cv_tkn_common_pkg
-                                   , iv_token_value1 => cv_msg_xxcoi_10552
-                                   , iv_token_name2  => cv_tkn_errmsg
-                                   , iv_token_value2 => lv_errmsg
-                                 );
-                    lv_errbuf := lv_errmsg;
-                    RAISE global_api_expt;
+                -- ロット別引当情報削除用ループ
+                << del_reserve_loop >>
+                FOR l_del_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
+                                                          , in_line_id   => l_order_rec.line_id ) LOOP
+                  -- 同一IDを取得していない場合
+                  IF ( g_del_id_tab.EXISTS( l_del_reserve_rec.lot_reserve_info_id ) = FALSE ) THEN
+                    -- IDを保持
+                    g_del_id_tab( l_del_reserve_rec.lot_reserve_info_id ) := 1;
+                    --
+                    FND_FILE.PUT_LINE(
+                        which  => FND_FILE.LOG
+                      , buff   => 'A-8 削除 ロット別引当情報ID ' || l_del_reserve_rec.lot_reserve_info_id
+                    );
                   END IF;
                   --
-                  -- 親品目コードの総数合算
-                  ln_order_summary_qty2 := ln_order_summary_qty2 + ln_after_quantity;
+                END LOOP del_reserve_loop;
+              END IF;
+            -- 受注の総数が0ではなく
+            ELSE
+              -- 受注と引当の総数が相違しない場合
+              IF ( ln_order_summary_qty <> l_reserve_item_rec.summary_qty ) THEN
+                -- 指定された保管場所と一致する場合、修正あり警告
+                IF ( gv_subinventory_code = lt_subinventory ) THEN
+                  -- 修正あり
+                  lb_chk_flag := TRUE;
+                -- 指定された保管場所と一致しない場合
+                ELSE
+                  -- ロット別引当情報削除用ループ
+                  << del_reserve_loop >>
+                  FOR l_del_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
+                                                            , in_line_id   => l_order_rec.line_id ) LOOP
+                    -- 同一IDを取得していない場合
+                    IF ( g_del_id_tab.EXISTS( l_del_reserve_rec.lot_reserve_info_id ) = FALSE ) THEN
+                      -- IDを保持
+                      g_del_id_tab( l_del_reserve_rec.lot_reserve_info_id ) := 1;
+                      --
+                      FND_FILE.PUT_LINE(
+                          which  => FND_FILE.LOG
+                        , buff   => 'A-8 削除 ロット別引当情報ID ' || l_del_reserve_rec.lot_reserve_info_id
+                      );
+                    END IF;
+                    --
+                  END LOOP del_reserve_loop;
+                END IF;
+              END IF;
+            END IF;
+          -- 出荷情報ステータス（受注番号単位）が引当済の場合
+          -- または仮確定後訂正の場合
+          ELSE
+-- Add Ver1.3 End
+            -- 受注と引当の総数が相違する場合
+            IF ( ln_order_summary_qty <> l_reserve_item_rec.summary_qty ) THEN
+-- Mod Ver1.2 Start
+--              -- 修正あり
+--              lb_chk_flag := TRUE;
+--              --
+--              -- 倉庫管理対象で無ければ削除のみ
+--              SELECT COUNT(1)                     AS cnt
+--              INTO   ln_subinv_cnt
+--              FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+--              WHERE  xtlrs.subinventory_code = lt_subinventory
+--              ;
+--              IF ( ln_subinv_cnt = 0 ) THEN
+--                l_order_rec.flow_status_code := cv_cancelled;
+--              END IF;
+              -- 保管場所指定の場合
+              IF ( gv_subinventory_code IS NOT NULL ) THEN
+                -- 指定された保管場所と一致する場合、修正あり警告
+                IF ( gv_subinventory_code = lt_subinventory ) THEN
+                  -- 修正あり
+                  lb_chk_flag := TRUE;
+                -- 指定された保管場所と一致しない場合
+                ELSE
+                  -- 初期化
+                  ln_order_summary_qty2 := 0;
+                  -- 受注親品目総数取得ループ
+                  << parent_item_loop2 >>
+                  FOR l_parent_item_rec IN l_parent_item_cur( in_order_number      => TO_NUMBER(l_order_rec.order_number)
+                                                            , in_inventory_item_id => lt_parent_item_id
+                                                            , iv_subinventory      => gv_subinventory_code ) LOOP
+                    -- 初期化
+                    ln_after_quantity    := 0;
+                    -- 単位換算取得
+                    xxcos_common_pkg.get_uom_cnv(
+                        iv_before_uom_code    => l_parent_item_rec.order_quantity_uom -- 換算前単位コード
+                      , in_before_quantity    => l_parent_item_rec.ordered_quantity   -- 換算前数量
+                      , iov_item_code         => l_order_rec.parent_item_code         -- 品目コード
+                      , iov_organization_code => gt_organization_code                 -- 在庫組織コード
+                      , ion_inventory_item_id => lt_parent_item_id                    -- 品目ＩＤ
+                      , ion_organization_id   => gt_organization_id                   -- 在庫組織ＩＤ
+                      , iov_after_uom_code    => lt_after_uom_code                    -- 換算後単位コード
+                      , on_after_quantity     => ln_after_quantity                    -- 換算後数量
+                      , on_content            => ln_dummy                             -- 入数
+                      , ov_errbuf             => lv_errbuf                            -- エラー・メッセージエラー       #固定#
+                      , ov_retcode            => lv_retcode                           -- リターン・コード               #固定#
+                      , ov_errmsg             => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
+                    );
+                    -- リターンコードが正常以外の場合、エラー
+                    IF ( lv_retcode <> cv_status_normal ) THEN
+                      lv_errmsg := xxccp_common_pkg.get_msg(
+                                       iv_application  => cv_application
+                                     , iv_name         => cv_msg_xxcoi_10545
+                                     , iv_token_name1  => cv_tkn_common_pkg
+                                     , iv_token_value1 => cv_msg_xxcoi_10552
+                                     , iv_token_name2  => cv_tkn_errmsg
+                                     , iv_token_value2 => lv_errmsg
+                                   );
+                      lv_errbuf := lv_errmsg;
+                      RAISE global_api_expt;
+                    END IF;
+                    --
+                    -- 親品目コードの総数合算
+                    ln_order_summary_qty2 := ln_order_summary_qty2 + ln_after_quantity;
+                    --
+                  END LOOP parent_item_loop2;
                   --
-                END LOOP parent_item_loop2;
-                --
-                -- 引当親品目総数取得2
-                OPEN l_reserve_item2_cur( in_header_id      => l_order_rec.header_id
-                                        , in_parent_item_id => lt_parent_item_id
-                                        , iv_subinventory   => gv_subinventory_code );
-                FETCH l_reserve_item2_cur INTO l_reserve_item2_rec;
-                CLOSE l_reserve_item2_cur;
-                --
-                -- 受注数量があり、指定された保管場所で受注と引当が違う
-                IF ( ( ( l_reserve_item_rec.summary_qty > 0 ) OR ( l_reserve_item2_rec.summary_qty > 0 ) )
-                  AND  ( ln_order_summary_qty2 <> l_reserve_item2_rec.summary_qty ) ) THEN
+                  -- 引当親品目総数取得2
+                  OPEN l_reserve_item2_cur( in_header_id      => l_order_rec.header_id
+                                          , in_parent_item_id => lt_parent_item_id
+                                          , iv_subinventory   => gv_subinventory_code );
+                  FETCH l_reserve_item2_cur INTO l_reserve_item2_rec;
+                  CLOSE l_reserve_item2_cur;
+                  --
+                  -- 受注数量があり、指定された保管場所で受注と引当が違う
+                  IF ( ( ( l_reserve_item_rec.summary_qty > 0 ) OR ( l_reserve_item2_rec.summary_qty > 0 ) )
+                    AND  ( ln_order_summary_qty2 <> l_reserve_item2_rec.summary_qty ) ) THEN
+                    -- 修正あり
+                    lb_chk_flag := TRUE;
+                  END IF;
+                END IF;
+              -- 保管場所指定なしの場合
+              ELSE
+                ln_subinv_cnt := 0;
+                -- 倉庫管理対象のチェック
+                SELECT COUNT(1)                     AS cnt
+                INTO   ln_subinv_cnt
+                FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+                WHERE  xtlrs.subinventory_code = lt_subinventory
+                ;
+                -- 倉庫管理対象で無ければ削除のみ（倉庫管理対象を変更された場合を考慮）
+                IF ( ln_subinv_cnt = 0 ) THEN
+                  l_order_rec.flow_status_code := cv_cancelled;
+                -- 倉庫管理対象の場合、修正あり警告
+                ELSE
                   -- 修正あり
                   lb_chk_flag := TRUE;
                 END IF;
               END IF;
-            -- 保管場所指定なしの場合
-            ELSE
-              ln_subinv_cnt := 0;
-              -- 倉庫管理対象のチェック
-              SELECT COUNT(1)                     AS cnt
-              INTO   ln_subinv_cnt
-              FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
-              WHERE  xtlrs.subinventory_code = lt_subinventory
-              ;
-              -- 倉庫管理対象で無ければ削除のみ（倉庫管理対象を変更された場合を考慮）
-              IF ( ln_subinv_cnt = 0 ) THEN
-                l_order_rec.flow_status_code := cv_cancelled;
-              -- 倉庫管理対象の場合、修正あり警告
-              ELSE
-                -- 修正あり
-                lb_chk_flag := TRUE;
-              END IF;
-            END IF;
 -- Mod Ver1.2 End
+            END IF;
+-- Add Ver1.3 Start
           END IF;
+-- Add Ver1.3 End
         END IF;
         --
         -- 修正がある場合
@@ -5902,10 +6602,13 @@ AS
           -- ===============================================
           -- 当処理内で同一受注番号のレコードを全てチェックする
           chk_order(
-              iv_order_number => l_kbn_3_rec.order_number -- 受注番号
-            , ov_errbuf       => lv_errbuf                -- エラー・メッセージ
-            , ov_retcode      => lv_retcode               -- リターン・コード
-            , ov_errmsg       => lv_errmsg                -- ユーザー・エラー・メッセージ
+              iv_order_number           => l_kbn_3_rec.order_number -- 受注番号
+-- Add Ver1.3 Start
+            , iv_parent_shipping_status => l_kbn_3_rec.parent_shipping_status -- 出荷情報ステータス（受注番号単位）
+-- Add Ver1.3 End
+            , ov_errbuf                 => lv_errbuf                -- エラー・メッセージ
+            , ov_retcode                => lv_retcode               -- リターン・コード
+            , ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ
           );
           --
           IF ( lv_retcode = cv_status_warn ) THEN
@@ -5919,34 +6622,46 @@ AS
         -- 同一受注番号のレコードが正常の場合
         -- チェックはA-8で実施済
         IF ( gv_retcode = cv_status_normal ) THEN
-          -- ===============================================
-          -- ロット情報保持マスタ反映処理(A-11)
-          -- ===============================================
-          ref_mst_lot_hold_info(
-              it_kbn_3_rec => l_kbn_3_rec -- 出荷確定レコード
-            , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
-            , ov_retcode   => lv_retcode  -- リターン・コード
-            , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
-          );
-          --
-          IF ( lv_retcode = cv_status_error ) THEN
-            RAISE global_process_expt;
+-- Add Ver1.3 Start
+          -- IDを保持している場合
+          IF ( g_del_id_tab.EXISTS( l_kbn_3_rec.lot_reserve_info_id ) ) THEN
+            -- ロット別引当情報削除
+            DELETE FROM xxcoi_lot_reserve_info xlri
+            WHERE  xlri.lot_reserve_info_id = l_kbn_3_rec.lot_reserve_info_id
+            ;
+          ELSE
+-- Add Ver1.3 End
+            -- ===============================================
+            -- ロット情報保持マスタ反映処理(A-11)
+            -- ===============================================
+            ref_mst_lot_hold_info(
+                it_kbn_3_rec => l_kbn_3_rec -- 出荷確定レコード
+              , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
+              , ov_retcode   => lv_retcode  -- リターン・コード
+              , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
+            );
+            --
+            IF ( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+            END IF;
+            --
+            -- ===============================================
+            -- ロット別引当情報更新処理(A-14)
+            -- ===============================================
+            upd_lot_reserve_info(
+                iv_lot_tran_kbn        => NULL                            -- ロット別取引明細作成区分
+              , in_lot_reserve_info_id => l_kbn_3_rec.lot_reserve_info_id -- ロット別引当情報ID
+              , ov_errbuf              => lv_errbuf                       -- エラー・メッセージ
+              , ov_retcode             => lv_retcode                      -- リターン・コード
+              , ov_errmsg              => lv_errmsg                       -- ユーザー・エラー・メッセージ
+            );
+            --
+            IF ( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+            END IF;
+-- Add Ver1.3 Start
           END IF;
-          --
-          -- ===============================================
-          -- ロット別引当情報更新処理(A-14)
-          -- ===============================================
-          upd_lot_reserve_info(
-              iv_lot_tran_kbn        => NULL                            -- ロット別取引明細作成区分
-            , in_lot_reserve_info_id => l_kbn_3_rec.lot_reserve_info_id -- ロット別引当情報ID
-            , ov_errbuf              => lv_errbuf                       -- エラー・メッセージ
-            , ov_retcode             => lv_retcode                      -- リターン・コード
-            , ov_errmsg              => lv_errmsg                       -- ユーザー・エラー・メッセージ
-          );
-          --
-          IF ( lv_retcode = cv_status_error ) THEN
-            RAISE global_process_expt;
-          END IF;
+-- Add Ver1.3 End
           --
           -- 件数設定
           -- 正常時
@@ -6279,10 +6994,13 @@ AS
         -- 受注訂正チェック処理(A-8)
         -- ===============================================
         chk_order(
-            iv_order_number => gt_order_number_tab(i) -- 受注番号
-          , ov_errbuf       => lv_errbuf              -- エラー・メッセージ
-          , ov_retcode      => lv_retcode             -- リターン・コード
-          , ov_errmsg       => lv_errmsg              -- ユーザー・エラー・メッセージ
+            iv_order_number           => gt_order_number_tab(i) -- 受注番号
+-- Add Ver1.3 Start
+          , iv_parent_shipping_status => NULL                   -- 出荷情報ステータス（受注番号単位）
+-- Add Ver1.3 End
+          , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
+          , ov_retcode                => lv_retcode             -- リターン・コード
+          , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
         );
         --
         IF ( lv_retcode = cv_status_error ) THEN
