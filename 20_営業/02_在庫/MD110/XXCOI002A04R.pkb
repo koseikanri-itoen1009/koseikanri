@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI002A04R(body)
  * Description      : 製品廃却伝票
  * MD.050           : 製品廃却伝票 MD050_COI_002_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,7 +16,7 @@ AS
  *  del_work               ワークテーブルデータ削除(A-6)
  *  svf_request            SVF起動(A-5)
  *  ins_work               ワークテーブルデータ登録(A-4)
- *  get_kuragae_data       製品廃却伝票データ取得(A-3)
+ *  get_haikyaku_data      製品廃却伝票データ取得(A-3)
  *  get_base_data          拠点情報取得処理(A-2)
  *  init                   初期処理(A-1)
  *  submain                メイン処理プロシージャ
@@ -28,6 +28,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/09/05    1.0   K.Furuyama       新規作成
  *  2014/03/26    1.1   K.Nakamura       [E_本稼動_11556]資材取引の抽出条件修正、不要な定数・変数削除
+ *  2015/03/17    1.2   A.Uchida         [E_本稼動_12960]ソート順変更
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -381,6 +383,10 @@ AS
     it_slip_no                 IN mtl_material_transactions.attribute1%TYPE,           -- 伝票No
     it_transaction_qty         IN mtl_material_transactions.primary_quantity%TYPE,     -- 基準単位数量
     iv_trading_cost            IN NUMBER,                                              -- 営業原価額
+    -- 2015/03/17 Ver1.2 Add Start
+    it_input_order_id          IN mtl_material_transactions.original_transaction_temp_id%TYPE,
+                                                                                       -- 入力順ID
+    -- 2015/03/17 Ver1.2 Add End
     iv_nodata_msg              IN VARCHAR2,                                            -- ０件メッセージ
     ov_errbuf                  OUT VARCHAR2,                                           -- エラー・メッセージ           --# 固定 #
     ov_retcode                 OUT VARCHAR2,                                           -- リターン・コード             --# 固定 #
@@ -445,6 +451,9 @@ AS
       ,program_application_id
       ,program_id
       ,program_update_date
+       -- 2015/03/17 Ver1.2 Add Start
+      ,input_order_id
+       -- 2015/03/17 Ver1.2 Add End
     )VALUES(
        gr_param.year_month||gr_param.a_day          -- 対象年月日
       ,it_out_base_code                             -- 拠点
@@ -466,6 +475,9 @@ AS
       ,cn_program_application_id
       ,cn_program_id
       ,sysdate
+       -- 2015/03/17 Ver1.2 Add Start
+      ,it_input_order_id
+       -- 2015/03/17 Ver1.2 Add End
      );
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -566,6 +578,9 @@ AS
              ,msib.segment1                   item_no                   -- 品目コード
              ,ximb.item_short_name            item_short_name           -- 略称
              ,mmt.primary_quantity            transaction_qty           -- 基準単位数量
+              -- 2015/03/17 Ver1.2 Add Start
+             ,mmt.original_transaction_temp_id input_order_id           -- 入力順ID
+              -- 2015/03/17 Ver1.2 Add End
       FROM    mtl_material_transactions  mmt                            -- 資材取引
              ,mtl_transaction_types      mtt                            -- 取引タイプマスタ
              ,mtl_secondary_inventories  msi                            -- 保管場所マスタ
@@ -733,6 +748,9 @@ AS
          ,lr_info_haikyaku_rec.slip_no                   -- 伝票No
          ,NVL(lr_info_haikyaku_rec.transaction_qty,0)*-1 -- 取引数量
          ,ln_discrete_cost*-1                            -- 営業原価額
+          -- 2015/03/17 Ver1.2 Add Start
+         ,lr_info_haikyaku_rec.input_order_id            -- 入力順ID
+          -- 2015/03/17 Ver1.2 Add End
          ,NULL                                           -- ０件メッセージ
          ,lv_errbuf                                      -- エラー・メッセージ           --# 固定 #
          ,lv_retcode                                     -- リターン・コード             --# 固定 #
@@ -1353,6 +1371,9 @@ AS
          ,NULL                                      -- 伝票No
          ,NULL                                      -- 取引数量
          ,NULL                                      -- 営業原価額
+          -- 2015/03/17 Ver1.2 Add Start
+         ,NULL                                      -- 入力順ID
+          -- 2015/03/17 Ver1.2 Add End
          ,lv_nodata_msg                             -- 0件メッセージ
          ,lv_errbuf                                 -- エラー・メッセージ           --# 固定 #
          ,lv_retcode                                -- リターン・コード             --# 固定 #
