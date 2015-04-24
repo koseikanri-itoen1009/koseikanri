@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A10C(body)
  * Description      : ロット別受払データ作成(月次)
  * MD.050           : MD050_COI_016_A10_ロット別受払データ作成(月次).doc
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/10/27    1.0   Y.Nagasue        新規作成
  *  2015/04/07    1.1   S.Yamashita      E_本稼動_12237（倉庫管理不具合対応）
+ *  2015/04/20    1.2   S.Yamashita      E_本稼動_12237（倉庫管理不具合対応）
  *
  *****************************************************************************************/
 --
@@ -182,6 +183,9 @@ AS
   gt_org_id                    mtl_parameters.organization_id%TYPE;                      -- 在庫組織ID
   gd_proc_date                 DATE;                                                     -- 業務日付
   gt_pre_exe_id                xxcoi_cooperation_control.transaction_id%TYPE;            -- 前回取引ID
+-- 2015/04/20 E_本稼動_12237 V1.2 ADD START
+  gt_pre_exe_date              xxcoi_cooperation_control.last_cooperation_date%TYPE;     -- 前回処理日
+-- 2015/04/20 E_本稼動_12237 V1.2 ADD END
   gt_no_data_flag              VARCHAR2(1);                                              -- 対象0件フラグ
   gt_max_trx_id                xxcoi_lot_transactions.transaction_id%TYPE;               -- 最大取引ID
   gt_min_trx_id                xxcoi_lot_transactions.transaction_id%TYPE;               -- 最小取引ID
@@ -1545,8 +1549,14 @@ AS
 --
 -- 2015/04/07 E_本稼動_12237 V1.1 DEL END
 -- 2015/04/07 E_本稼動_12237 V1.1 ADD START
-    -- 定期実行の場合のみ繰越処理を行う
-    IF ( gt_startup_flg = ct_data_type_1 ) THEN
+-- 2015/04/20 E_本稼動_12237 V1.2 MOD START
+--    -- 定期実行の場合のみ繰越処理を行う
+--    IF ( gt_startup_flg = ct_data_type_1 ) THEN
+    -- 定期実行の場合かつ当月の初回起動時のみ繰越処理を行う
+    IF ( (gt_startup_flg = ct_data_type_1 )
+      AND (TO_CHAR(gt_pre_exe_date,cv_yyyymm) <> TO_CHAR(gd_proc_date,cv_yyyymm)) )
+    THEN
+-- 2015/04/20 E_本稼動_12237 V1.2 MOD END
 -- 2015/04/07 E_本稼動_12237 V1.1 ADD END
       -- カーソルオープン
       OPEN get_pre_mounth_data_cur(
@@ -1811,6 +1821,9 @@ AS
     gt_org_id           := NULL;      -- 在庫組織ID
     gd_proc_date        := NULL;      -- 業務日付
     gt_pre_exe_id       := NULL;      -- 前回取引ID
+-- 2015/04/20 E_本稼動_12237 V1.2 ADD START
+    gt_pre_exe_date     := NULL;      -- 前回処理日
+-- 2015/04/20 E_本稼動_12237 V1.2 ADD END
     gt_no_data_flag     := cv_flag_n; -- 対象0件フラグ
     gt_max_trx_id       := NULL;      -- 最大取引ID
     gt_min_trx_id       := NULL;      -- 最小取引ID
@@ -1953,7 +1966,13 @@ AS
     --==============================================================
     BEGIN
       SELECT xcc.transaction_id transaction_id
+-- 2015/04/20 E_本稼動_12237 V1.2 ADD START
+            ,xcc.last_cooperation_date last_cooperation_date -- 前回処理日
+-- 2015/04/20 E_本稼動_12237 V1.2 ADD END
       INTO   gt_pre_exe_id
+-- 2015/04/20 E_本稼動_12237 V1.2 ADD START
+            ,gt_pre_exe_date
+-- 2015/04/20 E_本稼動_12237 V1.2 ADD END
       FROM   xxcoi_cooperation_control xcc
       WHERE  xcc.program_short_name = cv_pkg_name -- プログラム名
       ;
