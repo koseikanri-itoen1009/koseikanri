@@ -20,6 +20,9 @@
 ##                         ・シェル名変更                                     ##
 ##                         ・CRS起動後ASMインスタンス起動までの時間を考慮し   ##
 ##                           ループ処理を追加                                 ##
+##                     SCSK 北河             2015/03/26 2.0.1                 ##
+##                       E_本稼動_12712対応                                   ##
+##                         ・CRS起動確認処理変更                              ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -193,25 +196,68 @@ trap 'L_shuryo 8' 1 2 3 15
 #      echo "${TE_ZCZZ01301}" 1>&2
 #      L_shuryo ${L_ijou}
 #  fi
+##2015/03/26 T.Kitagawa Add Start
+## コマンド・変数設定
+  L_crschk_cmd="crsctl check crs"                   ##CRSサービスチェックコマンド
+  L_crsstat_cmd="crsctl status resource -t -init"   ##CRSリソースチェックコマンド
+  L_crschk_str="online"                             ##CRSサービスの起動判定対象文字列
+  L_crsstat_str="ONLINE +ONLINE"                    ##CRSリソースの起動判定対象文字列(正規表現)
+  L_crschk_num=4                                    ##CRSサービスのonlineの数
+  L_crsstat_num=12                                  ##CRSリソースの"ONLINE ONLINE"の数
+##2015/03/26 T.Kitagawa Add End
   let cnt=1
   while [ "$cnt" -le "${TE_ZCZZCRS_WAITCNT}" ]
   do  
     sleep ${TE_ZCZZCRSTAIKI}
 
-    /usr/bin/ps -ef | /usr/bin/egrep 'ocssd.bin|osysmond.bin|asm_pmon|LISTENER_ASM' | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+##2015/03/26 T.Kitagawa Mod Start
+#    /usr/bin/ps -ef | /usr/bin/egrep 'ocssd.bin|osysmond.bin|asm_pmon|LISTENER_ASM' | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+#
+#    if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -lt 4 ]
+#      then
+#        if [ "$cnt" -eq "${TE_ZCZZCRS_WAITCNT}" ]
+#         then
+#           L_rogushuturyoku "${TE_ZCZZ01301}"
+#           echo "${TE_ZCZZ01301}" 1>&2
+#           L_shuryo ${L_ijou}
+#        fi
+#    elif [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ge 4 ]
+#      then
+#        break;
+#    fi
+    L_rogushuturyoku "$cnt回目確認"
+    L_rogushuturyoku "${L_crschk_cmd} 確認"
 
-    if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -lt 4 ]
+    ##CRSサービスチェックコマンド結果を標準出力・エラーファイルに上書き
+    ${L_crschk_cmd} 1> ${TE_ZCZZHYOUJUNSHUTURYOKU} 2> ${TE_ZCZZHYOUJUNERA}
+
+    ##標準出力ファイルに出力されている${L_crschk_str}の個数の判定
+    if [ `/usr/bin/grep ${L_crschk_str} ${TE_ZCZZHYOUJUNSHUTURYOKU} | /usr/bin/wc -l` -eq ${L_crschk_num} ]
       then
-        if [ "$cnt" -eq "${TE_ZCZZCRS_WAITCNT}" ]
-         then
-           L_rogushuturyoku "${TE_ZCZZ01301}"
-           echo "${TE_ZCZZ01301}" 1>&2
-           L_shuryo ${L_ijou}
+        L_rogushuturyoku "${L_crsstat_cmd} 確認"
+
+        ##CRSリソースチェックコマンド結果を標準出力・エラーファイルに追記
+        ${L_crsstat_cmd} 1>> ${TE_ZCZZHYOUJUNSHUTURYOKU} 2>> ${TE_ZCZZHYOUJUNERA}
+
+        ##標準出力ファイルに出力されている${L_crsstat_str}の個数の判定
+        if [ `/usr/bin/grep -E "${L_crsstat_str}" ${TE_ZCZZHYOUJUNSHUTURYOKU} | /usr/bin/wc -l` -eq ${L_crsstat_num} ]
+          then
+            ##CRS起動確認終了(ループ終了)
+            /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+            break;
         fi
-    elif [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ge 4 ]
-      then
-        break;
     fi
+
+    ##判定回数確認
+    if [ "$cnt" -eq "${TE_ZCZZCRS_WAITCNT}" ]
+      then
+        ##チェックコマンド確認が指定判定回数以内に完了しない場合エラー
+        L_rogushuturyoku "${TE_ZCZZ01301}"
+        echo "${TE_ZCZZ01301}" 1>&2
+        /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei}
+        L_shuryo ${L_ijou}
+    fi
+##2015/03/26 T.Kitagawa Mod End
 
     let cnt=cnt+1
   done
