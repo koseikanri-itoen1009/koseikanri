@@ -712,7 +712,10 @@ AS
              itp.whse_code                    whse_code
             ,itp.item_id                      item_id
             ,itp.lot_id                       lot_id
-            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2015/04/13 Mod Start
+--            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2015/04/13 Mod End
             ,CASE WHEN INSTR(xrpm.break_col_02,'-') = 0
                   THEN ''
                   WHEN xrpm.rcv_pay_div = '1'
@@ -752,6 +755,22 @@ AS
       AND  gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
       AND  itp.item_id               = gic_h.item_id
 -- 2009/11/12 Add End
+-- 2015/04/13 Add Start
+      GROUP BY
+             itp.whse_code
+            ,itp.item_id
+            ,itp.lot_id
+            ,CASE WHEN INSTR(xrpm.break_col_02,'-') = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = '1'
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,'-')-1)
+                  WHEN xrpm.dealings_div_name = '仕入'
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,'-')-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,'-')+1)
+             END
+            ,itp.trans_date
+            ,rsl.attribute1
+-- 2015/04/13 Add End
       UNION ALL
     -- 有償・拠点
     -- ----------------------------------------------------
@@ -1496,7 +1515,10 @@ AS
              itc.whse_code                    whse_code
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2015/04/13 Mod Start
+--            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div))) trans_qty
+-- 2015/04/13 Mod End
             ,CASE WHEN INSTR(xrpm.break_col_02,'-') = 0
                   THEN ''
                   WHEN xrpm.rcv_pay_div = '1'
@@ -1513,11 +1535,21 @@ AS
             ,gmi_item_categories    gic_h
             ,mtl_categories_b       mcb_h
 -- 2009/11/12 Add End
+-- 2015/04/13 Add Start
+            ,ic_adjs_jnl                      iaj
+            ,ic_jrnl_mst                      ijm
+-- 2015/04/13 Add End
       WHERE  itc.doc_type            = 'ADJI'
       AND    itc.reason_code         = 'X201'
 -- 2009/12/17 T.Yoshimoto Add Start
       AND    itc.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)
       AND    itc.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)
+-- 2015/04/13 Add Start
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2015/04/13 Add End
 -- 2009/12/17 T.Yoshimoto Add End
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
@@ -1528,6 +1560,21 @@ AS
       AND    gic_h.category_set_id     = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
       AND    itc.item_id               = gic_h.item_id
 -- 2009/11/12 Add End
+-- 2015/04/13 Add Start
+      GROUP BY itc.whse_code
+              ,itc.item_id
+              ,itc.lot_id
+              ,CASE WHEN INSTR(xrpm.break_col_02,'-') = 0
+                    THEN ''
+                    WHEN xrpm.rcv_pay_div = '1'
+                    THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,'-')-1)
+                    WHEN xrpm.dealings_div_name = '仕入'
+                    THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,'-')-1)
+                    ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,'-')+1)
+               END
+              ,itc.trans_date
+              ,ijm.attribute1
+-- 2015/04/13 Add End
       UNION ALL
       -- 浜岡
       -- ----------------------------------------------------
