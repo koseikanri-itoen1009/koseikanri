@@ -471,7 +471,6 @@ SELECT  SMRP.year                         year                   --年度
                               ,IJM.ATTRIBUTE1
                               ,TO_NUMBER( FLV01.LOOKUP_CODE )
 -- 2015/04/13 D.Sugahara Mod End E_本稼動_12983
-
                       -- [ 発注無し返品データ END ] --
                     UNION ALL
                       ----------------------------------------------
