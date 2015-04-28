@@ -324,11 +324,19 @@ SELECT  SMRP.year                         year                   --年度
                              ,PHA.vendor_id                     vendor_id       --取引先ID
                              ,IIMB.item_no                      item_code       --品目
                              ,ILTM.attribute9                   rcv_class       --仕入形態
-                             ,ITP.trans_qty                     rcv_qty         --仕入数量
-                             ,ROUND( PLA.unit_price * ITP.trans_qty )
+-- 2015/04/13 D.Sugahara Mod Start E_本稼動_12983
+-- 保留在庫トランの数量を受入返品実績アドオンID単位で集計する(SUMの追加：仕入数量、仕入金額、仕入消費税
+--                             ,ITP.trans_qty                     rcv_qty         --仕入数量
+--                             ,ROUND( PLA.unit_price * ITP.trans_qty )
+--                                                                rcv_price       --仕入金額( 実際単価【※発注明細のものを使用】 * 数量 )
+--                             ,ROUND( ROUND( PLA.unit_price * ITP.trans_qty ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
+--                                                                rcv_cn_tax      --仕入消費税( 仕入金額 * (消費税率*0.01) )
+                             ,SUM(ITP.trans_qty)                rcv_qty         --仕入数量
+                             ,ROUND( SUM( PLA.unit_price * ITP.trans_qty ) )                                                             
                                                                 rcv_price       --仕入金額( 実際単価【※発注明細のものを使用】 * 数量 )
-                             ,ROUND( ROUND( PLA.unit_price * ITP.trans_qty ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
+                             ,ROUND( ROUND( SUM( PLA.unit_price * ITP.trans_qty ) ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
                                                                 rcv_cn_tax      --仕入消費税( 仕入金額 * (消費税率*0.01) )
+-- 2015/04/13 D.Sugahara Mod End E_本稼動_12983
                              ,0                                 pay_qty         --有償数量
                              ,0                                 inv_price       --有償在庫金額
                              ,0                                 pay_price       --有償金額
@@ -363,6 +371,17 @@ SELECT  SMRP.year                         year                   --年度
                          AND  FLV01.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
                          AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITP.trans_date
                          AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITP.trans_date
+-- 2015/04/13 D.Sugahara Mod Start E_本稼動_12983
+-- 保留在庫トランの数量を受入返品実績アドオンID単位で集計する(Group Byの追加）
+                       GROUP BY 
+                              ITP.TRANS_DATE                  --対象日(取引日)
+                            , PHA.attribute10                 --部署コード
+                            , PHA.vendor_id                   --取引先ID
+                            , IIMB.ITEM_NO                    --品目
+                            , ILTM.ATTRIBUTE9                 --仕入形態
+                            , RSL.ATTRIBUTE1                  --受入返品実績アドオン.取引id
+                            , TO_NUMBER( FLV01.lookup_code )  --消費税率コード
+-- 2015/04/13 D.Sugahara Mod End E_本稼動_12983
                       -- [ 発注受入データ END ] --
                     UNION ALL
                       ----------------------------------------------
@@ -376,11 +395,19 @@ SELECT  SMRP.year                         year                   --年度
                              ,XRRT.item_code                    item_code       --品目
                              ,ILTM.attribute9                   rcv_class       --仕入形態
                               --以下の項目は『返品』なのでマイナスで計上する
-                             ,ITC.trans_qty                     rcv_qty         --仕入数量
-                             ,ROUND( XRRT.unit_price * ITC.trans_qty )
+-- 2015/04/13 D.Sugahara Mod Start E_本稼動_12983
+-- 完了在庫トランの数量を受入返品実績アドオンID単位で集計する(SUMの追加：仕入数量、仕入金額、仕入消費税
+--                             ,ITC.trans_qty                     rcv_qty         --仕入数量
+--                             ,ROUND( XRRT.unit_price * ITC.trans_qty )
+--                                                                rcv_price       --仕入金額( 実際単価【※受入アドオンのものを使用】 * 数量 )
+--                             ,ROUND( ROUND( XRRT.unit_price * ITC.trans_qty ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
+--                                                                rcv_cn_tax      --仕入消費税( 仕入金額 * (消費税率*0.01) )
+                             ,SUM(ITC.trans_qty)                rcv_qty         --仕入数量
+                             ,ROUND( SUM( XRRT.unit_price * ITC.trans_qty ) )
                                                                 rcv_price       --仕入金額( 実際単価【※受入アドオンのものを使用】 * 数量 )
-                             ,ROUND( ROUND( XRRT.unit_price * ITC.trans_qty ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
+                             ,ROUND( ROUND ( SUM( XRRT.unit_price * ITC.trans_qty ) ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
                                                                 rcv_cn_tax      --仕入消費税( 仕入金額 * (消費税率*0.01) )
+-- 2015/04/13 D.Sugahara Mod End E_本稼動_12983
                              ,0                                 pay_qty         --有償数量
                              ,0                                 inv_price       --有償在庫金額
                              ,0                                 pay_price       --有償金額
@@ -433,6 +460,18 @@ SELECT  SMRP.year                         year                   --年度
                          AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= XRRT.txns_date
                          AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= XRRT.txns_date
 -- 2013/06/18 D.Sugahara Mod End E_本稼動_10839
+-- 2015/04/13 D.Sugahara Mod Start E_本稼動_12983
+-- 完了在庫トランの数量を受入返品実績アドオンID単位で集計する(Group Byの追加）
+                       GROUP BY 
+                               ITC.TRANS_DATE
+                              ,XRRT.department_code
+                              ,XRRT.vendor_id      
+                              ,XRRT.item_code      
+                              ,ILTM.ATTRIBUTE9     
+                              ,IJM.ATTRIBUTE1
+                              ,TO_NUMBER( FLV01.LOOKUP_CODE )
+-- 2015/04/13 D.Sugahara Mod End E_本稼動_12983
+
                       -- [ 発注無し返品データ END ] --
                     UNION ALL
                       ----------------------------------------------
