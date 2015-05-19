@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOI_REP_BASE_RCPT
  * Description : 受払残高表（拠点別計）帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
+ *  2015/03/03    1.1   Y.Koh            障害対応E_本稼動_12827
  *
  ************************************************************************/
  CREATE TABLE xxcoi.xxcoi_rep_base_rcpt (
@@ -19,6 +20,9 @@
     ,cost_kbn                       VARCHAR2(8)
     ,base_code                      VARCHAR2(4)
     ,base_name                      VARCHAR2(8)
+-- == 2015/03/03 V1.1 Added START ===============================================================
+    ,inv_cl_char                    VARCHAR2(4)
+-- == 2015/03/03 V1.1 Added END   ===============================================================
     ,first_inventory_qty            NUMBER
     ,factry_in_qty                  NUMBER
     ,kuragae_in_qty                 NUMBER
@@ -63,6 +67,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_rep_base_rcpt.base_code                           
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_base_rcpt.base_name                            IS '拠点名称';
 /
+-- == 2015/03/03 V1.1 Added START ===============================================================
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_rcpt.inv_cl_char                          IS '在庫確定印字文字';
+/
+-- == 2015/03/03 V1.1 Added END   ===============================================================
 COMMENT ON COLUMN xxcoi.xxcoi_rep_base_rcpt.first_inventory_qty                  IS '月首棚卸高(数量)';
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_base_rcpt.factry_in_qty                        IS '工場入庫(数量)';
