@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A13C(spec)
  * Description      : 保管場所転送取引データOIF更新（倉替情報）
  * MD.050           : 保管場所転送取引データOIF更新（倉替情報） MD050_COI_003_A13
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/11    1.0   K.Nakamura       新規作成
  *  2009/02/20    1.1   K.Nakamura       [障害COI_024] 百貨店HHTの入庫確認情報更新時、転送先倉庫コード設定対応
+ *  2015/04/13    1.2   A.Uchida         [E_本稼動_13008]他拠点営業車の入出庫対応
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,9 @@ AS
   cv_dept_code_err_msg           CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10052'; -- 倉替対象可否エラーメッセージ
   cv_acct_period_close_err_msg   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10231'; -- 在庫会計期間エラーメッセージ
   cv_key_info_msg                CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10342'; -- HHT入出庫データ用KEY情報
+  -- 2015/04/27 Ver1.2 Add Start
+  cv_lot_tran_temp_cre_error     CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10453'; -- ロット別取引TEMP登録エラーメッセージ
+  -- 2015/04/27 Ver1.2 Add End
   -- トークン
   cv_tkn_pro                     CONSTANT VARCHAR2(20)  := 'PRO_TOK';              -- プロファイル名
   cv_tkn_org_code                CONSTANT VARCHAR2(20)  := 'ORG_CODE_TOK';         -- 在庫組織コード
@@ -133,6 +137,9 @@ AS
   cv_tkn_invoice_no              CONSTANT VARCHAR2(20)  := 'INVOICE_NO';           -- 伝票No
   cv_tkn_column_no               CONSTANT VARCHAR2(20)  := 'COLUMN_NO';            -- コラムNo
   cv_tkn_item_code               CONSTANT VARCHAR2(20)  := 'ITEM_CODE';            -- 品目コード
+  -- 2015/04/27 Ver1.2 Add Start
+  cv_tkn_name_err_msg           CONSTANT VARCHAR2(9)    := 'ERR_MSG';                   -- エラーメッセージ
+  -- 2015/04/27 Ver1.2 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -163,6 +170,9 @@ AS
     , outside_base_code          xxcoi_hht_inv_transactions.outside_base_code%TYPE      -- 出庫側拠点コード
     , inside_base_code           xxcoi_hht_inv_transactions.inside_base_code%TYPE       -- 入庫側拠点コード
     , stock_uncheck_list_div     xxcoi_hht_inv_transactions.stock_uncheck_list_div%TYPE -- 入庫未確認リスト対象区分
+    -- 2015/04/27 Ver1.2 Add Start
+    , interface_date             xxcoi_hht_inv_transactions.interface_date%TYPE         -- 受信日時
+    -- 2015/04/27 Ver1.2 Add End
   );
 --
   TYPE gt_kuragae_data_ttype IS TABLE OF gr_kuragae_data_rec INDEX BY BINARY_INTEGER;
@@ -467,6 +477,9 @@ AS
            , xhit.outside_base_code      AS outside_base_code      -- 出庫側拠点コード
            , xhit.inside_base_code       AS inside_base_code       -- 入庫側拠点コード
            , xhit.stock_uncheck_list_div AS stock_uncheck_list_div -- 入庫未確認リスト対象区分
+           -- 2015/04/27 Ver1.2 Add Start
+           , xhit.interface_date         AS interface_date         -- 受信日時
+           -- 2015/04/27 Ver1.2 Add End
       FROM   xxcoi_hht_inv_transactions  xhit                      -- HHT入出庫一時表
       WHERE  xhit.status          = cv_status_pre                  -- 処理ステータス
       AND    xhit.hht_program_div = cv_hht_program_div_2           -- 入出庫ジャーナル処理区分
@@ -998,6 +1011,12 @@ AS
     cv_zero                      CONSTANT VARCHAR2(1) := '0';  -- 固定値
 --
     -- *** ローカル変数 ***
+    -- 2015/04/27 Ver1.2 Add Start
+    ln_cnt                NUMBER;
+    lt_wh_flg             mtl_secondary_inventories.attribute14%TYPE;          -- 倉庫管理対象区分
+    ln_lot_tran_temp_id   xxcoi_lot_transactions_temp.transaction_id%TYPE;     -- ロット別取引TEMPID
+    ln_storage_info_id    xxcoi_storage_information.transaction_id%TYPE;       -- 入庫情報一時表ID
+    -- 2015/04/27 Ver1.2 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1013,6 +1032,24 @@ AS
 --
     -- 出庫側情報の場合の入庫情報一時表登録
     IF ( gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).stock_uncheck_list_div = cv_stock_uncheck_list_div_out ) THEN
+      -- 2015/04/27 Ver1.2 Add Start
+      -- 同時に登録されている、「倉庫→営業車」、「営業車→倉庫」を検索
+      ln_cnt := 0;
+      --
+      SELECT COUNT(1)
+      INTO   ln_cnt
+      FROM   xxcoi_hht_inv_transactions   xhit
+      WHERE  ((xhit.invoice_type   =  '1'
+        AND    xhit.outside_subinv_code = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code)
+        OR    (xhit.invoice_type   =  '2'
+        AND    xhit.inside_subinv_code  = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code))
+      AND    xhit.item_code      =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).item_code
+      AND    xhit.case_quantity  =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_quantity
+      AND    xhit.quantity       =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).quantity
+      AND    xhit.invoice_date   =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).invoice_date
+      AND    xhit.interface_date =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).interface_date
+      ;
+      -- 2015/04/27 Ver1.2 Add End
 --
       INSERT INTO xxcoi_storage_information(
           transaction_id                                                                       -- 取引ID
@@ -1075,7 +1112,13 @@ AS
         , NULL                                                                                 -- 賞味期限
         , NULL                                                                                 -- 工場固有記号
         , cv_flag_on                                                                           -- サマリーデータフラグ
-        , cv_flag_off                                                                          -- 入庫確認フラグ
+        -- 2015/04/27 Ver1.2 Mod Start
+--        , cv_flag_off                                                                          -- 入庫確認フラグ
+        , DECODE(ln_cnt
+                ,0
+                ,cv_flag_off
+                ,cv_flag_on  )                                                                 -- 入庫確認フラグ
+        -- 2015/04/27 Ver1.2 Mod End
         , cv_flag_off                                                                          -- 資材取引連携済フラグ
         , gv_auto_flag                                                                         -- 自動入庫確認フラグ
         , cn_created_by                                                                        -- 作成者
@@ -1087,8 +1130,74 @@ AS
         , cn_program_application_id                                                            -- プログラムアプリケーションID
         , cn_program_id                                                                        -- プログラムID
         , cd_program_update_date                                                               -- プログラム更新日
-      );
+      -- 2015/04/27 Ver1.2 Mod Start
+--      );
+      )
+      RETURNING transaction_id
+      INTO      ln_storage_info_id;
+      -- 2015/04/27 Ver1.2 Mod End
 --
+      -- 2015/04/27 Ver1.2 Add Start
+      IF ln_cnt > 0 THEN
+        BEGIN
+          -- 入庫側倉庫の倉庫管理区分を取得
+          SELECT msi.attribute14 AS wh_flg
+          INTO   lt_wh_flg
+          FROM   mtl_secondary_inventories   msi
+          WHERE  msi.attribute1               IN ('1','4')
+          AND    msi.attribute7               = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_base_code
+          AND    msi.secondary_inventory_name = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code
+          AND    msi.organization_id          = gt_org_id
+          AND    NVL(msi.disable_date,gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).invoice_date+1)
+                                              > gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).invoice_date
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lt_wh_flg := NULL;
+        END;
+--
+        IF lt_wh_flg = cv_flag_on THEN
+          -- 共通関数：ロット別取引TEMP作成 実行
+          xxcoi_common_pkg.cre_lot_trx_temp(
+             in_trx_set_id       => NULL
+            ,iv_parent_item_code => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).item_code
+            ,iv_child_item_code  => NULL
+            ,iv_lot              => NULL
+            ,iv_diff_sum_code    => NULL
+            ,iv_trx_type_code    => '20'
+            ,id_trx_date         => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).invoice_date
+            ,iv_slip_num         => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).invoice_no
+            ,in_case_in_qty      => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_in_quantity
+            ,in_case_qty         => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_quantity
+            ,in_singly_qty       => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).quantity
+            ,in_summary_qty      => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).total_quantity
+            ,iv_base_code        => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_base_code
+            ,iv_subinv_code      => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code
+            ,iv_tran_subinv_code => gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code
+            ,iv_tran_loc_code    => NULL
+            ,iv_inout_code       => '21'
+            ,iv_source_code      => cv_pkg_name
+            ,iv_relation_key     => ln_storage_info_id
+            ,on_trx_id           => ln_lot_tran_temp_id
+            ,ov_errbuf           => lv_errbuf
+            ,ov_retcode          => lv_retcode
+            ,ov_errmsg           => lv_errmsg
+            );
+--
+          -- 共通関数異常終了時
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            -- エラーメッセージの取得
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application_short_name
+                          ,iv_name         => cv_lot_tran_temp_cre_error
+                          ,iv_token_name1  => cv_tkn_name_err_msg
+                          ,iv_token_value1 => lv_errbuf
+                          );
+            RAISE global_api_expt;
+          END IF;
+        END IF;
+      END IF;
+      -- 2015/04/27 Ver1.2 Add End
     -- 百貨店HHT入庫側情報の場合の入庫情報一時表登録
     ELSIF ( gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).stock_uncheck_list_div = cv_stock_uncheck_list_div_in ) THEN
 --
