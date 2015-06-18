@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_gl_check_pkg(body)
  * Description            : 部門入力(GL)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(GL)共通関数 OCSJ/BFAFIN/MD070/F601/01
- * Version                : 11.5.10.2.12
+ * Version                : 11.5.10.2.13
  *
  * Program List
  *  -------------------------- ---- ----- ------------------------------------------------
@@ -55,6 +55,8 @@ AS
  *  2010/04/05   11.5.10.2.11   [E_本稼動_02174]部門入力エラーチェック結果が警告の場合、
  *                                              共通エラーチェックを実行するように変更
  *  2013/09/19   11.5.10.2.12   [E_本稼動_10999]項目整合性チェック追加
+ *  2015-03-24   11.5.10.2.13   [E_本稼動_12980]消費税額許容範囲チェック用カーソルの
+ *                                              会社コードを固定値：001（本社）に変更
  *
  *****************************************************************************************/
 --
@@ -130,6 +132,9 @@ AS
     -- *** ローカル定数 ***
     -- 通貨が取得できなかった場合の精度
     cn_curr_precision CONSTANT fnd_currencies.precision%TYPE := 2;
+-- 2015/03/24 Ver11.5.10.2.13 Add Start
+    cv_comp_code_001  CONSTANT VARCHAR2(3) := '001';               -- 会社コード：001（本社）
+-- 2015/03/24 Ver11.5.10.2.13 Add End
 --
     -- *** ローカル変数 ***
     -- エラーフラグ用配列タイプ
@@ -533,7 +538,10 @@ AS
     ) IS
     SELECT
       xjsjl.journal_id,  --伝票ID
-      xjsjl.segment1,    --会社コード
+-- 2015/03/24 Ver11.5.10.2.13 Add Start
+--      xjsjl.segment1,    --会社コード
+      cv_comp_code_001,  -- 会社コード：001（本社）
+-- 2015/03/24 Ver11.5.10.2.13 Add End
       xjsjl.tax_code,    --税区分
     --
       sum(
@@ -605,11 +613,17 @@ AS
       -- Ver11.5.10.1.6B 2005/12/15 Add End
     GROUP BY
       xjsjl.journal_id,  --仕訳id
-      xjsjl.segment1,    --会社コード
+-- 2015/03/24 Ver11.5.10.2.13 Add Start
+--      xjsjl.segment1,    --会社コード
+      cv_comp_code_001,  -- 会社コード：001（本社）
+-- 2015/03/24 Ver11.5.10.2.13 Add End
       xjsjl.tax_code     --税区分
     ORDER BY
       xjsjl.journal_id,--仕訳id
-      xjsjl.segment1,  --会社コード
+-- 2015/03/24 Ver11.5.10.2.13 Add Start
+--      xjsjl.segment1,  --会社コード
+      cv_comp_code_001,  -- 会社コード：001（本社）
+-- 2015/03/24 Ver11.5.10.2.13 Add End
       xjsjl.tax_code;  --税区分
 --
 -- ver 11.5.10.2.9 Add Start
