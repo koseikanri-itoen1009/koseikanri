@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2015/03/06    1.1   K.Nakamura       E_本稼動_12237 倉庫管理システム追加対応
  *  2015/04/03    1.2   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
  *  2015/04/15    1.3   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
+ *  2015/06/02    1.4   S.Yamashita      E_本稼動_13103対応
  *
  *****************************************************************************************/
 --
@@ -171,6 +172,9 @@ AS
 -- Mod Ver1.3 Start
   cv_msg_xxcoi_10703        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10703'; -- パラメータ必須エラーメッセージ
 -- Mod Ver1.3 End
+-- Add Ver1.4 S.Yamashita Start
+  cv_msg_xxcoi_10706        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10706'; -- 取引タイプコード未設定エラーメッセージ
+-- Add Ver1.4 S.Yamashita End
   -- メッセージ（COS）
   cv_msg_xxcos_00186        CONSTANT VARCHAR2(16) := 'APP-XXCOS1-00186'; -- 定番情報取得エラー
   cv_msg_xxcos_00187        CONSTANT VARCHAR2(16) := 'APP-XXCOS1-00187'; -- 特売情報取得エラー
@@ -369,6 +373,10 @@ AS
   gn_normal_10_cnt          NUMBER                                                    DEFAULT 0;     -- 成功件数（引当未）
   gn_normal_20_cnt          NUMBER                                                    DEFAULT 0;     -- 成功件数（引当済）
   gn_create_temp_cnt        NUMBER                                                    DEFAULT 0;     -- ロット別取引TEMP作成件数
+-- Add Ver1.4 S.Yamashita Start
+  gn_update_temp_cnt        NUMBER                                                    DEFAULT 0;     -- ロット別引当情報更新件数
+  gn_create_trx_cnt         NUMBER                                                    DEFAULT 0;     -- ロット別取引明細登録件数
+-- Add Ver1.4 S.Yamashita End
   gn_reserve_cnt            NUMBER                                                    DEFAULT 0;     -- 引当情報格納配列用添え字
   gv_retcode                VARCHAR2(1)                                               DEFAULT NULL;  -- 引当結果登録用判定コード
   gv_reserve_err_msg        VARCHAR2(16)                                              DEFAULT NULL;  -- 引当処理にてエラー発生時のメッセージコードを格納
@@ -4579,6 +4587,10 @@ AS
     ln_order_summary_qty2      NUMBER                                    DEFAULT 0;     -- 換算後数量総数2
     ln_subinv_cnt2             NUMBER                                    DEFAULT 0;     -- 保管場所チェック件数
 -- Add Ver1.2 End
+-- Add Ver1.4 S.Yamashita Start
+    ln_trx_type_chk_cnt        NUMBER                                    DEFAULT 0;     -- 取引タイプコード未設定チェック件数
+    lb_trx_type_chk_flag       BOOLEAN                                   DEFAULT FALSE; -- 取引タイプコード未設定フラグ
+-- Add Ver1.4 S.Yamashita End
     -- *** ローカルカーソル ***
     -- 受注カーソル
     CURSOR l_order_cur( in_order_number NUMBER )
@@ -4768,6 +4780,10 @@ AS
       ln_lot_tran_cnt := 0;
       lb_chk_flag     := FALSE;
       l_reserve_rec   := NULL;
+-- Add Ver1.4 S.Yamashita Start
+      ln_trx_type_chk_cnt  := 0;
+      lb_trx_type_chk_flag := FALSE;
+-- Add Ver1.4 S.Yamashita End
       --
       -- 出荷仮確定の場合、チェックなし
       -- 仮確定後訂正の場合、ロット別取引明細の存在チェック
@@ -4918,6 +4934,48 @@ AS
                     --
                   END LOOP del_reserve_loop;
                 END IF;
+-- Add Ver1.4 S.Yamashita Start
+              -- 受注と引当の総数が一致する場合
+              ELSIF (ln_order_summary_qty = l_reserve_item_rec.summary_qty) THEN
+                -- 取引タイプコード未設定レコードの存在チェック
+                SELECT /*+ INDEX(xlri xxcoi_lot_reserve_info_n02) */
+                       COUNT(1) AS cnt
+                INTO   ln_trx_type_chk_cnt -- 取引タイプコード未設定件数
+                FROM   xxcoi_lot_reserve_info xlri -- ロット別引当情報
+                WHERE  xlri.order_number = iv_order_number     -- 受注番号
+                AND    xlri.line_id      = l_order_rec.line_id -- 受注明細ID
+                AND    xlri.reserve_transaction_type_code IS NULL -- 取引タイプコード
+                ;
+--
+                -- 取引タイプコード未設定のレコードが存在する場合
+                IF ( ln_trx_type_chk_cnt <> 0 ) THEN
+                  -- 指定された保管場所と一致する場合、差異あり
+                  IF ( gv_subinventory_code = lt_subinventory ) THEN
+                    -- 受注修正あり
+                    lb_chk_flag := TRUE;
+                    -- 取引タイプコード未設定
+                    lb_trx_type_chk_flag := TRUE;
+                  -- 指定された保管場所と一致しない場合
+                  ELSE
+                    -- ロット別引当情報削除用ループ
+                    << del_reserve_loop >>
+                    FOR l_del_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
+                                                              , in_line_id   => l_order_rec.line_id ) LOOP
+                      -- 同一IDを取得していない場合
+                      IF ( g_del_id_tab.EXISTS( l_del_reserve_rec.lot_reserve_info_id ) = FALSE ) THEN
+                        -- IDを保持
+                        g_del_id_tab( l_del_reserve_rec.lot_reserve_info_id ) := 1;
+                        --
+                        FND_FILE.PUT_LINE(
+                            which  => FND_FILE.LOG
+                          , buff   => 'A-8 削除 ロット別引当情報ID ' || l_del_reserve_rec.lot_reserve_info_id
+                        );
+                      END IF;
+                      --
+                    END LOOP del_reserve_loop;
+                  END IF;
+                END IF;
+-- Add Ver1.4 S.Yamashita End
               END IF;
             END IF;
           -- 出荷情報ステータス（受注番号単位）が引当済の場合
@@ -5033,22 +5091,46 @@ AS
         IF ( lb_chk_flag = TRUE ) THEN
           -- 出荷仮確定の場合
           IF ( gv_kbn = cv_kbn_3 ) THEN
-            -- 引当情報差異エラーメッセージ
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_application
-                           , iv_name         => cv_msg_xxcoi_10553
-                           , iv_token_name1  => cv_tkn_order_number
-                           , iv_token_value1 => l_order_rec.order_number
-                           , iv_token_name2  => cv_tkn_line_number
-                           , iv_token_value2 => l_order_rec.line_number
-                         );
-            FND_FILE.PUT_LINE(
-                which  => FND_FILE.OUTPUT
-              , buff   => lv_errmsg
-            );
-            -- 警告で返す
-            ov_retcode   := cv_status_warn;
-            gb_warn_flag := TRUE;
+-- Add Ver1.4 S.Yamashita Start
+            -- 取引タイプコード未設定の場合
+            IF ( lb_trx_type_chk_flag = TRUE ) THEN
+              -- 取引タイプコード未設定エラーメッセージ
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_application
+                             , iv_name         => cv_msg_xxcoi_10706
+                             , iv_token_name1  => cv_tkn_order_number
+                             , iv_token_value1 => l_order_rec.order_number
+                             , iv_token_name2  => cv_tkn_line_number
+                             , iv_token_value2 => l_order_rec.line_number
+                           );
+              FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                , buff   => lv_errmsg
+              );
+              -- 警告で返す
+              ov_retcode   := cv_status_warn;
+              gb_warn_flag := TRUE;
+            ELSE
+-- Add Ver1.4 S.Yamashita End
+              -- 引当情報差異エラーメッセージ
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_application
+                             , iv_name         => cv_msg_xxcoi_10553
+                             , iv_token_name1  => cv_tkn_order_number
+                             , iv_token_value1 => l_order_rec.order_number
+                             , iv_token_name2  => cv_tkn_line_number
+                             , iv_token_value2 => l_order_rec.line_number
+                           );
+              FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                , buff   => lv_errmsg
+              );
+              -- 警告で返す
+              ov_retcode   := cv_status_warn;
+              gb_warn_flag := TRUE;
+-- Add Ver1.4 S.Yamashita Start
+            END IF;
+-- Add Ver1.4 S.Yamashita End
           -- 仮確定後訂正の場合
           ELSIF ( gv_kbn = cv_kbn_6 ) THEN
 -- Mod Ver1.2 Start
@@ -6322,6 +6404,10 @@ AS
     gn_normal_10_cnt   := 0; -- 成功件数（引当未）
     gn_normal_20_cnt   := 0; -- 成功件数（引当済）
     gn_create_temp_cnt := 0; -- ロット別取引TEMP作成件数
+-- Add Ver1.4 S.Yamashita Start
+    gn_update_temp_cnt := 0; -- ロット別引当情報更新件数
+    gn_create_trx_cnt  := 0; -- ロット別取引明細登録件数
+-- Add Ver1.4 S.Yamashita End
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -6720,6 +6806,9 @@ AS
           , ov_retcode             => lv_retcode                        -- リターン・コード
           , ov_errmsg              => lv_errmsg                         -- ユーザー・エラー・メッセージ
         );
+-- Add Ver1.4 S.Yamashita Start
+        gn_update_temp_cnt := gn_update_temp_cnt + 1;
+-- Add Ver1.4 S.Yamashita End
       END LOOP kbn_4_2_loop;
 -- Mod Ver1.1 End
       --
@@ -6772,7 +6861,10 @@ AS
 --        );
 -- Mod Ver1.1 End
         -- 正常時
-        gn_normal_cnt := gn_normal_cnt + 1;
+-- Mod Ver1.4 Start
+--        gn_normal_cnt := gn_normal_cnt + 1;
+        gn_create_trx_cnt := gn_create_trx_cnt + 1;
+-- Mod Ver1.4 End
       END LOOP kbn_4_loop;
 -- Add Ver1.1 Start
       -- ===============================================
@@ -7160,6 +7252,10 @@ AS
     cv_msg_xxcoi_10558 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10558'; -- 成功件数（引当済）件数メッセージ
     cv_msg_xxcoi_10569 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10569'; -- 失敗件数メッセージ
     cv_msg_xxcoi_10551 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10551'; -- ロット別取引TEMP作成件数メッセージ
+-- Add Ver 1.4 Start
+    cv_msg_xxcoi_10704 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10704'; -- ロット別引当情報更新件数メッセージ
+    cv_msg_xxcoi_10705 CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10705'; -- ロット別取引明細登録件数メッセージ
+-- Add Ver 1.4 End
     -- トークン
     cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';            -- 件数メッセージ用トークン名
 --
@@ -7235,6 +7331,10 @@ AS
       gn_target_20_cnt   := 0;
       gn_normal_20_cnt   := 0;
       gn_create_temp_cnt := 0;
+-- Add Ver1.4 S.Yamashita Start
+      gn_update_temp_cnt := 0;
+      gn_create_trx_cnt  := 0;
+-- Add Ver1.4 S.Yamashita End
       -- 終了ステータスをエラーにする
       lv_retcode := cv_status_error;
     -- エラー件数が0件で、警告件数が存在または警告フラグがTRUEの場合
@@ -7253,8 +7353,12 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
-    -- 引当または出荷確定の場合
-    IF ( ( gv_kbn = cv_kbn_1 ) OR ( gv_kbn = cv_kbn_3 ) OR ( gv_kbn = cv_kbn_4 ) ) THEN
+-- Mod Ver1.4 S.Yamashita Start
+    -- 引当または出荷仮確定の場合
+--    IF ( ( gv_kbn = cv_kbn_1 ) OR ( gv_kbn = cv_kbn_3 ) OR ( gv_kbn = cv_kbn_4 ) ) THEN
+    IF ( ( gv_kbn = cv_kbn_1 ) OR ( gv_kbn = cv_kbn_3 ) ) THEN
+-- Mod Ver1.4 S.Yamashita End
+
       -- 対象件数出力
       gv_out_msg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name
@@ -7334,6 +7438,54 @@ AS
          which  => FND_FILE.OUTPUT
         ,buff   => gv_out_msg
       );
+-- Add Ver1.4 S.Yamashita Start
+    -- 出荷確定の場合
+    ELSIF ( gv_kbn = cv_kbn_4 ) THEN
+      -- 対象件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                      ,iv_name         => cv_target_rec_msg
+                      ,iv_token_name1  => cv_cnt_token
+                      ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+      -- ロット別引当情報更新件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_xxcoi_10704
+                      ,iv_token_name1  => cv_cnt_token
+                      ,iv_token_value1 => TO_CHAR(gn_update_temp_cnt)
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+      -- ロット別取引明細登録件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_xxcoi_10705
+                      ,iv_token_name1  => cv_cnt_token
+                      ,iv_token_value1 => TO_CHAR(gn_create_trx_cnt)
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+      -- 失敗件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_xxcoi_10569
+                      ,iv_token_name1  => cv_cnt_token
+                      ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+-- Add Ver1.4 S.Yamashita End
     -- 返品・訂正・過去データ、仮確定後訂正の場合
     ELSIF ( ( gv_kbn = cv_kbn_5 ) OR ( gv_kbn = cv_kbn_6 ) ) THEN
       -- ロット別取引TEMP作成件数
