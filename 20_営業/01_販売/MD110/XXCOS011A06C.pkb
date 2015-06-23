@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2010/06/22    1.11  S.Arizumi       [E_本稼動_02995] 菱食EDI販売実績のオーダーNo.（注文伝票番号）不具合対応
  *  2011/02/08    1.12  OuKou           [E_本稼動_05917]EDI販売実績データ伝送取引先追加（カナカン）
  *  2011/10/11    1.13  K.Kiriu         [E_本稼動_07906]流通ＢＭＳ対応
+ *  2015/03/23    1.14  K.Kiriu         [E_本稼動_12766]出荷案内（販売実績）過去日付データ送信対応（トーカン様）
  *
  *****************************************************************************************/
 --
@@ -712,9 +713,13 @@ AS
 --****************　2009/06/12   N.Maeda  Ver1.5   ADD   START  *********************************************--
     edi_forward_number           xxcmm_cust_accounts.edi_forward_number%TYPE,               --EDI伝票追番
 --****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
--- 2009/06/25 M.Sano Ver.1.5 add Start
-    standard_uom_code            xxcos_sales_exp_lines.standard_uom_code%TYPE               --基準数量
--- 2009/06/25 M.Sano Ver.1.5 add End
+/* 2015/03/23 Ver1.14 Mod Start */
+---- 2009/06/25 M.Sano Ver.1.5 add Start
+--    standard_uom_code            xxcos_sales_exp_lines.standard_uom_code%TYPE               --基準数量
+---- 2009/06/25 M.Sano Ver.1.5 add End
+    standard_uom_code            xxcos_sales_exp_lines.standard_uom_code%TYPE,              --基準数量
+    delivery_date                xxcos_sales_exp_headers.delivery_date%TYPE                 --納品日
+/* 2015/03/23 Ver1.14 Mod End   */
   );
 --
 /* 2009/07/29 Ver1.5 Add Start */
@@ -2213,6 +2218,9 @@ AS
 -- 2009/06/25 M.Sano Ver.1.5 add Start
              ,xsel.standard_uom_code                  standard_uom_code            --基準数量
 -- 2009/06/25 M.Sano Ver.1.5 add End
+/* 2015/03/23 Ver1.14 Add Start */
+             ,xseh.delivery_date                      delivery_date                --納品日
+/* 2015/03/23 Ver1.14 Add End   */
       FROM    xxcos_lookup_values_v     xlvv   --請求先顧客コード(顧客単位)
              ,xxcfr_cust_hierarchy_v    xcchv  --顧客マスタ階層ビュー
              ,ra_terms_vl               rtv    --支払条件
@@ -2614,6 +2622,9 @@ AS
 /* 2009/11/05 Ver1.7 Add Start */
     lv_invoice_class        xxcos_sales_exp_headers.invoice_class%TYPE;        --伝票区分
 /* 2009/11/05 Ver1.7 Add End   */
+/* 2015/03/23 Ver1.14 Add Start */
+    ld_result_delivery_date DATE;                                              --実納品日
+/* 2015/03/23 Ver1.14 Add End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -2728,11 +2739,23 @@ AS
       lv_split_bill_cred_2 := SUBSTRB( gt_edi_sales_data(i).bill_cred_rec_code2, cn_5, cn_4 );  --5～8桁
       lv_split_bill_cred_3 := SUBSTRB( gt_edi_sales_data(i).bill_cred_rec_code2, cn_9, cn_4 );  --9～12桁
       --納品日の月の最終日を取得する(請求締日編集用)
-      ld_last_day          := LAST_DAY( gt_edi_sales_data(i).orig_delivery_date );
+/* 2015/03/23 Ver1.14 Del Start */
+--      ld_last_day          := LAST_DAY( gt_edi_sales_data(i).orig_delivery_date );
+/* 2015/03/23 Ver1.14 Del End   */
       --請求開始日-1を取得する(請求締日編集用)
       ln_due_date_dd_num   := gt_edi_sales_data(i).sales_exp_day - cn_1;
       --スマイル以外の場合
       IF ( iv_process_pattern <> cv_5 ) THEN
+/* 2015/03/23 Ver1.14 Add Start */
+        -- 請求締日の算出に使用する納品日、実納品日の設定
+        IF ( iv_process_pattern <> cv_4 ) THEN --トーカン以外
+          ld_last_day              := LAST_DAY( gt_edi_sales_data(i).orig_delivery_date );  --オリジナル納品日
+          ld_result_delivery_date  := NULL;                                                 --実納品日
+        ELSE
+          ld_last_day              := LAST_DAY( gt_edi_sales_data(i).delivery_date );       --納品日
+          ld_result_delivery_date  := gt_edi_sales_data(i).delivery_date;                   --実納品日
+        END IF;
+/* 2015/03/23 Ver1.14 Add End */
         --------------------------
         --請求締日の編集
         --------------------------
@@ -2807,6 +2830,9 @@ AS
         lv_billing_due_date    := NULL;  --請求締日
         lv_address             := NULL;  --届け先住所(漢字)
         lv_bill_cred_rec_code2 := NULL;  --チェーン店固有エリア(ヘッダー)
+/* 2015/03/23 Ver1.14 Add Start */
+        ld_result_delivery_date := NULL; --実納品日
+/* 2015/03/23 Ver1.14 Add End   */
       END IF;
       --------------------------
       --倉直の編集
@@ -2955,7 +2981,10 @@ AS
       l_data_tab(cv_delv_cent_name_alt)       := TO_CHAR(NULL);
       l_data_tab(cv_order_date)               := TO_CHAR(NULL);
       l_data_tab(cv_cent_delv_date)           := TO_CHAR(NULL);
-      l_data_tab(cv_result_delv_date)         := TO_CHAR(NULL);
+/* 2015/03/23 Ver1.14 Mod Start */
+--      l_data_tab(cv_result_delv_date)         := TO_CHAR(NULL);
+      l_data_tab(cv_result_delv_date)         := TO_CHAR(ld_result_delivery_date, cv_date_format); --実納品日
+/* 2015/03/23 Ver1.14 Mod End   */
       l_data_tab(cv_shop_delv_date)           := TO_CHAR(gt_edi_sales_data(i).orig_delivery_date, cv_date_format);  --店舗納品日
       l_data_tab(cv_dc_date_edi_data)         := TO_CHAR(NULL);
       l_data_tab(cv_dc_time_edi_data)         := TO_CHAR(NULL);
