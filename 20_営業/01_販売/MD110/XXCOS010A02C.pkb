@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *                                       ・営業担当が複数取得できた場合の考慮
  *  2010/04/20    1.13  H.Sasaki         [E_本稼動_01719]担当営業員の取得方法を変更
  *  2012/04/18    1.14  Y.Horikawa       [E_本稼動_09441]受注一覧リストPT対応に伴う影響回避の対応
+ *  2015/03/24    1.15  A.Uchida         [E_本稼動_12914]EDI受注データからEBS受注へ検収日を連携する
  *
  *****************************************************************************************/
 --
@@ -211,6 +212,9 @@ AS
   cv_no_target_cnt          CONSTANT NUMBER        :=  0;                             -- 抽出対象データ0件
   cv_flg_y                  CONSTANT VARCHAR2(10)  := 'Y';                            -- 'Y'
   cv_flg_n                  CONSTANT VARCHAR2(10)  := 'N';                            -- 'N'
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+  cv_date_format_ymd_slash  CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                   -- 日付書式(YYYY/MM/DD)
+-- 2015/03/24 Ver.1.15 A.Uchida add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -273,6 +277,10 @@ AS
          , xeh.invoice_class                 invoice_class                  -- 伝票区分
          , xeh.big_classification_code       big_classification_code        -- 大分類コード
 -- 2009/07/01 Ver.1.7 M.Sano add End
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+         , TO_CHAR(xeh.general_date_item4
+                  ,cv_date_format_ymd_slash) acceptance_date                -- 検収日
+-- 2015/03/24 Ver.1.15 A.Uchida add End
   FROM     xxcos_edi_headers     xeh                                        -- EDIヘッダ情報テーブル
          , hz_cust_accounts      hca                                        -- 顧客マスタ
          , xxcmm_cust_accounts   xca                                        -- 顧客追加情報
@@ -484,6 +492,10 @@ AS
     INDEX BY PLS_INTEGER;                                                                         -- 外部システム受注明細番号
   TYPE  g_tab_line_type_id               IS TABLE OF oe_lines_iface_all.line_type_id%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- 明細タイプID
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+  TYPE  g_tab_attribute4                 IS TABLE OF oe_lines_iface_all.attribute4%TYPE
+    INDEX BY PLS_INTEGER;                                                                         -- 検収日
+-- 2015/03/24 Ver.1.15 A.Uchida add End
   TYPE  g_tab_attribute5                 IS TABLE OF oe_lines_iface_all.attribute5%TYPE
     INDEX BY PLS_INTEGER;                                                                         -- 売上区分
   TYPE  g_tab_name_l                     IS TABLE OF oe_lines_iface_all.context%TYPE
@@ -540,6 +552,9 @@ AS
   gt_orig_sys_document_ref_l              g_tab_orig_sys_document_ref_l;     -- 外部システム受注番号
   gt_orig_sys_line_ref                    g_tab_orig_sys_line_ref;           -- 外部システム受注明細番号
   gt_line_type_id                         g_tab_line_type_id;                -- 明細タイプID
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+  gt_attribute4                           g_tab_attribute4;                -- 検収日
+-- 2015/03/24 Ver.1.15 A.Uchida add End
   gt_attribute5                           g_tab_attribute5;                  -- 売上区分
   gt_name_l                               g_tab_name_l;                      -- 取引明細タイプ名称
 --****************************** 2009/05/08 1.5 T.Kitajima ADD START ******************************--
@@ -949,7 +964,10 @@ AS
                        , iv_token_name1  => cv_tkn_table_name
                        , iv_token_value1 => gv_edi_header_tab
                        , iv_token_name2  => cv_tkn_key_data
-                       , iv_token_value2 => NULL
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+--                       , iv_token_value2 => NULL
+                       , iv_token_value2 => cv_msg_part||SQLERRM
+-- 2015/03/24 Ver.1.15 A.Uchida add End
                       );
         lv_errbuf  := lv_errmsg;
         RAISE global_api_expt;
@@ -1559,6 +1577,9 @@ AS
       gt_calculate_price_flag( gn_l_idx_all )      := cv_flg_n;
     END IF;
 --****************************** 2009/05/08 1.5 T.Kitajima ADD  END  ******************************--
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+    gt_attribute4 ( gn_l_idx_all )                 :=  gt_edi_headers ( gn_idx ).acceptance_date;           -- 検収日
+-- 2015/03/24 Ver.1.15 A.Uchida add End
 --
   EXCEPTION
 --
@@ -1716,6 +1737,9 @@ AS
 --
     EXCEPTION
       WHEN OTHERS THEN
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+        lv_errbuf := SQLERRM;
+-- 2015/03/24 Ver.1.15 A.Uchida add End
         RAISE upd_edi_headers_expt;
 --
     END;
@@ -1732,7 +1756,10 @@ AS
                      , iv_token_name2  => cv_tkn_key_data
                      , iv_token_value2 => NULL
                      );
-      lv_errbuf  := lv_errmsg;
+-- 2015/03/24 Ver.1.15 A.Uchida Mod Start
+--      lv_errbuf  := lv_errmsg;
+      lv_errbuf  := lv_errmsg||cv_msg_part||lv_errbuf;
+-- 2015/03/24 Ver.1.15 A.Uchida Mod End
       -- ログ出力
       proc_msg_output( cv_prg_name, lv_errbuf );
       ov_retcode := cv_status_error;
@@ -1873,6 +1900,9 @@ AS
       EXCEPTION
         -- データ登録エラー
         WHEN OTHERS THEN
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+          lv_errbuf := SQLERRM;
+-- 2015/03/24 Ver.1.15 A.Uchida add End
           RAISE ins_data_expt;
 --
     END;
@@ -1892,7 +1922,10 @@ AS
                      , iv_token_name2  => cv_tkn_key_data
                      , iv_token_value2 => NULL
                      );
-      lv_errbuf  := lv_errmsg;
+-- 2015/03/24 Ver.1.15 A.Uchida Mod Start
+--      lv_errbuf  := lv_errmsg;
+      lv_errbuf  := lv_errmsg||cv_msg_part||lv_errbuf;
+-- 2015/03/24 Ver.1.15 A.Uchida Mod End
       -- ログ出力
       proc_msg_output( cv_prg_name, lv_errbuf );
       ov_retcode := cv_status_error;
@@ -1984,6 +2017,9 @@ AS
           , orig_sys_document_ref                                         -- 外部システム受注番号
           , orig_sys_line_ref                                             -- 外部システム受注明細番号
           , line_type_id                                                  -- 明細タイプID
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+          , attribute4                                                    -- 検収日
+-- 2015/03/24 Ver.1.15 A.Uchida add End
           , attribute5                                                    -- 売上区分
           , context                                                       -- コンテキスト
           , created_by                                                    -- 作成者
@@ -2017,6 +2053,9 @@ AS
           , gt_orig_sys_document_ref_l( ln_ins_idx )                      -- 外部システム受注番号
           , gt_orig_sys_line_ref( ln_ins_idx )                            -- 外部システム受注明細番号
           , gt_line_type_id( ln_ins_idx )                                 -- 明細タイプID
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+          , gt_attribute4 ( ln_ins_idx )                                  -- 検収日
+-- 2015/03/24 Ver.1.15 A.Uchida add End
           , gt_attribute5( ln_ins_idx )                                   -- 売上区分
           , gt_name_l( gn_l_idx_all )                                     -- コンテキスト
           , cn_created_by                                                 -- 作成者
@@ -2033,6 +2072,9 @@ AS
     EXCEPTION
       -- データ登録エラー
       WHEN OTHERS THEN
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+        lv_errbuf := SQLERRM;
+-- 2015/03/24 Ver.1.15 A.Uchida add End
         RAISE ins_data_expt;
 --
     END;
@@ -2048,7 +2090,10 @@ AS
                      , iv_token_name2  => cv_tkn_key_data
                      , iv_token_value2 => NULL
                      );
-      lv_errbuf  := lv_errmsg;
+-- 2015/03/24 Ver.1.15 A.Uchida Mod Start
+--      lv_errbuf  := lv_errmsg;
+      lv_errbuf  := lv_errmsg||cv_msg_part||lv_errbuf;
+-- 2015/03/24 Ver.1.15 A.Uchida Mod End
       -- ログ出力
       proc_msg_output( cv_prg_name, lv_errbuf );
       ov_retcode := cv_status_error;
@@ -2135,6 +2180,9 @@ AS
     EXCEPTION
       -- データ登録エラー
       WHEN OTHERS THEN
+-- 2015/03/24 Ver.1.15 A.Uchida add Start
+        lv_errbuf := SQLERRM;
+-- 2015/03/24 Ver.1.15 A.Uchida add End
         RAISE ins_data_expt;
 --
     END;
@@ -2150,7 +2198,10 @@ AS
                      , iv_token_name2  => cv_tkn_key_data
                      , iv_token_value2 => NULL
                      );
-      lv_errbuf  := lv_errmsg;
+-- 2015/03/24 Ver.1.15 A.Uchida Mod Start
+--      lv_errbuf  := lv_errmsg;
+      lv_errbuf  := lv_errmsg||cv_msg_part||lv_errbuf;
+-- 2015/03/24 Ver.1.15 A.Uchida Mod End
       -- ログ出力
       proc_msg_output( cv_prg_name, lv_errbuf );
       ov_retcode := cv_status_error;
