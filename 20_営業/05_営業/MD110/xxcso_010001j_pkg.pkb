@@ -6,7 +6,7 @@ AS
  * Function Name    : xxcso_010001j_pkg(BODY)
  * Description      : 権限判定関数(XXCSOユーティリティ）
  * MD.050/070       : 
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/09/09    1.2   D.Abe            統合テスト障害対応(0001323)
  *  2010/02/10    1.3   D.Abe            E_本稼動_01538対応
  *  2012/08/10    1.4   K.kiriu          E_本稼動_09914対応
+ *  2015/04/17    1.5   K.kiriu          E_本稼動_13002対応
  *
  *****************************************************************************************/
 --
@@ -49,6 +50,9 @@ AS
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_authority';
     cv_lookup_type               CONSTANT VARCHAR2(100)   := 'XXCSO1_POSITION_SECURITY';
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    cv_cntr_chg_authority        CONSTANT VARCHAR2(100)   := 'XXCSO1_CONTRACT_CHG_AUTHORITY'; --XXCSO:契約変更権限
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -56,34 +60,89 @@ AS
     ln_sp_decision_header_id   NUMBER;              -- SP専決ヘッダID
     lv_employee_number         VARCHAR2(30);        -- 従業員番号
     lv_return_cd               VARCHAR2(1) := '0';  -- リターンコード(0:権限無し,1:権限有り)
-    lv_base_code               VARCHAR2(150);       -- 勤務地拠点コード
+    lv_base_code               VARCHAR2(150);       -- 所属拠点コード
     lv_login_user_id           VARCHAR2(30);        -- ログインユーザー
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    lt_login_resp              fnd_profile_option_values.profile_option_value%TYPE;  -- 契約変更権限
+    lv_sales_emp_base          VARCHAR2(150);       -- 担当営業の所属拠点コード
+    lv_login_emp_base          VARCHAR2(150);
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
   BEGIN
 --
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    /*プロファイル「XXCSO:契約変更権限」を取得*/
+    lt_login_resp := fnd_profile.value(cv_cntr_chg_authority);
+--
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     /*ログインユーザーIDを取得*/
     SELECT FND_GLOBAL.USER_ID
     INTO   lv_login_user_id
     FROM   DUAL;
 --
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    /*ログインユーザの所属拠点を取得*/
+    BEGIN
+      SELECT ( CASE
+                 WHEN xev.issue_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) THEN
+                   xev.work_base_code_new
+                 WHEN xev.issue_date >  TRUNC(xxcso_util_common_pkg.get_online_sysdate) THEN
+                   xev.work_base_code_old
+                END
+              ) AS login_emp_base
+      INTO    lv_login_emp_base
+      FROM    xxcso_employees_v2 xev
+      WHERE   xev.user_id = lv_login_user_id
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_login_emp_base := NULL;
+    END;
+--
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     /*担当営業員取得*/
     BEGIN
 --      SELECT xxcso_route_common_pkg.get_sales_person_cd(xcav.account_number,sysdate)
       SELECT xcrv.employee_number
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+            ,( CASE
+                 WHEN xev.issue_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) THEN
+                   xev.work_base_code_new
+                 WHEN xev.issue_date >  TRUNC(xxcso_util_common_pkg.get_online_sysdate) THEN
+                   xev.work_base_code_old
+               END
+             ) AS sales_emp_base
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
       INTO   lv_sales_person_cd
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+            ,lv_sales_emp_base
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
       FROM   xxcso_sp_decision_headers xsdh
             ,xxcso_sp_decision_custs xsdc
             ,xxcso_cust_accounts_v xcav
             ,xxcso_cust_resources_v2 xcrv
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+            ,xxcso_employees_v2 xev
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
       WHERE  xsdh.sp_decision_header_id = iv_sp_decision_header_id
         AND  xsdc.sp_decision_customer_class = '1'
         AND  xsdc.sp_decision_header_id = xsdh.sp_decision_header_id
         AND  xcav.cust_account_id       = xsdc.customer_id
-        AND  xcrv.cust_account_id       = xcav.cust_account_id;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Mod Start */
+--        AND  xcrv.cust_account_id       = xcav.cust_account_id;
+        AND  xcrv.cust_account_id       = xcav.cust_account_id
+        AND  xcrv.employee_number       = xev.employee_number;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Mod End   */
     EXCEPTION
     WHEN NO_DATA_FOUND THEN
         lv_sales_person_cd := NULL;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+        lv_sales_emp_base  := NULL;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     WHEN TOO_MANY_ROWS THEN
         lv_sales_person_cd := NULL;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+        lv_sales_emp_base  := NULL;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     END;
 --
    /*獲得営業員チェック*/
@@ -120,6 +179,18 @@ AS
     IF ln_sp_decision_header_id IS NOT NULL
     OR lv_employee_number IS NOT NULL THEN
        lv_return_cd := '1';
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+--
+    /*担当営業と同じ所属拠点の内務員と判断できた場合*/
+    ELSIF (
+            ( lt_login_resp = '1' )
+            AND
+            ( lv_sales_emp_base IS NOT NULL AND lv_login_emp_base IS NOT NULL )
+            AND
+            ( lv_sales_emp_base = lv_login_emp_base )
+          ) THEN
+      lv_return_cd := '1';
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
 --
     ELSE
      /*担当営業員の上長チェック*/
