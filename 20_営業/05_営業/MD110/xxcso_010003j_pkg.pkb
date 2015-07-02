@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2011/06/06    1.11  K.Kiriu          E_本稼動_01963対応
  *  2012/08/10    1.12  K.Kiriu          E_本稼動_09914対応
  *  2013/04/01    1.13  K.Kiriu          E_本稼動_10413対応
+ *  2015/04/17    1.14  K.Kiriu          E_本稼動_13002対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -787,29 +788,75 @@ AS
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_authority';
     cv_lookup_type               CONSTANT VARCHAR2(100)   := 'XXCSO1_POSITION_SECURITY';
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    cv_cntr_chg_authority        CONSTANT VARCHAR2(100)   := 'XXCSO1_CONTRACT_CHG_AUTHORITY'; --XXCSO:契約変更権限
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     -- ===============================
     -- ローカル変数
     -- ===============================
     lv_login_user_id           VARCHAR2(30);        -- ログインユーザー
     lv_sales_employee_number   VARCHAR2(30);        -- 売上担当営業員 従業員番号
-    lv_base_code               VARCHAR2(150);       -- 売上担当営業員 勤務地拠点コード
+    lv_base_code               VARCHAR2(150);       -- 売上担当営業員 所属拠点コード
     lv_leader_employee_number  VARCHAR2(30);        -- 売上担当営業員上長 従業員番号
     lv_employee_number         VARCHAR2(30);        -- 従業員番号
     ln_sp_decision_header_id   NUMBER;              -- SP専決ヘッダID
     lv_return_cd               VARCHAR2(1) := '0';  -- リターンコード(0:権限無し, 1:営業員権限, 2:拠点長権限)
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    lt_login_resp              fnd_profile_option_values.profile_option_value%TYPE;  -- 契約変更権限
+    lv_sales_emp_base          VARCHAR2(150);       -- 担当営業の所属拠点コード
+    lv_login_emp_base          VARCHAR2(150);
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
   BEGIN
 --
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    /*プロファイル「XXCSO:契約変更権限」を取得*/
+    lt_login_resp := fnd_profile.value(cv_cntr_chg_authority);
+--
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     -- ログインユーザーのユーザーIDを取得
     SELECT FND_GLOBAL.USER_ID
     INTO   lv_login_user_id
     FROM   DUAL;
 --
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    -- *******************************
+    -- ログインユーザの所属拠点取得
+    -- *******************************
+    BEGIN
+      SELECT ( CASE
+                 WHEN xev.issue_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) THEN
+                   xev.work_base_code_new
+                 WHEN xev.issue_date > TRUNC(xxcso_util_common_pkg.get_online_sysdate) THEN
+                   xev.work_base_code_old
+                END
+              ) AS login_emp_base
+      INTO    lv_login_emp_base
+      FROM    xxcso_employees_v2 xev
+      WHERE   xev.user_id = lv_login_user_id
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_login_emp_base := NULL;
+    END;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     -- ************************
     -- 売上担当営業員取得
     -- ************************
     BEGIN
       SELECT   xev.employee_number
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+              ,( CASE
+                  WHEN xev.issue_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate) THEN
+                    xev.work_base_code_new
+                  WHEN xev.issue_date >  TRUNC(xxcso_util_common_pkg.get_online_sysdate) THEN
+                    xev.work_base_code_old
+                  END
+               ) AS sales_emp_base
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
       INTO     lv_sales_employee_number
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+              ,lv_sales_emp_base
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
       FROM     xxcso_sp_decision_headers xsdh
               ,xxcso_sp_decision_custs xsdc
               ,xxcso_cust_accounts_v xcav
@@ -825,8 +872,14 @@ AS
     EXCEPTION
     WHEN NO_DATA_FOUND THEN
         lv_sales_employee_number := NULL;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+        lv_sales_emp_base        := NULL;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     WHEN TOO_MANY_ROWS THEN
         lv_sales_employee_number := NULL;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+        lv_sales_emp_base        := NULL;
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     END;
 --
     -- ************************
@@ -871,6 +924,19 @@ AS
        lv_return_cd := '1';
     END IF;
 --
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add Start */
+    -- 担当営業員と同一所属拠点の内務チェック
+    IF (
+         ( lt_login_resp = '1' )
+         AND 
+         ( lv_sales_emp_base IS NOT NULL AND lv_login_emp_base IS NOT NULL )
+         AND
+         ( lv_sales_emp_base = lv_login_emp_base )
+       ) THEN
+      lv_return_cd := '1';
+    END IF;
+--
+/* 2015/04/17 K.Kiriu E_本稼動_13002対応 Add End   */
     -- 売上担当営業員が設定されている場合のみ上長チェック実施
     IF ( lv_sales_employee_number IS NOT NULL ) THEN
 --
