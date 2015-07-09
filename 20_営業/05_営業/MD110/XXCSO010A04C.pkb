@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2010-08-03    1.9   H.Sasaki         E_本稼動_00822対応
  *  2014-02-03    1.10  S.Niki           E_本稼動_11397対応
  *  2015-02-16    1.11  K.Nakatsu        E_本稼動_12565対応
+ *  2015-06-25    1.12  Y.Shoji          E_本稼動_13019対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2100,8 +2101,14 @@ AS
     BEGIN
       SELECT
         xhda_c.cur_dpt_cd AS area_mgr_base_code   -- 地域管理拠点コード
+/* 2015/06/25 Ver1.12 Y.Shoji ADD START */
+       ,SUBSTR(xhda_a.dpt3_name, 1, LENGTH(xhda_a.dpt3_name) -1 ) AS a_mgr_boss_org_nm  -- 発行元所属名(L3階層の末尾の"計"を除いた名称)
+/* 2015/06/25 Ver1.12 Y.Shoji ADD END */
       INTO
         lt_area_mgr_base_cd                       -- 地域管理拠点コード
+/* 2015/06/25 Ver1.12 Y.Shoji ADD START */
+       ,lt_a_mgr_boss_org_nm                      -- 発行元所属名(L3階層の末尾の"計"を除いた名称)
+/* 2015/06/25 Ver1.12 Y.Shoji ADD END */
       FROM xxcmm_hierarchy_dept_all_v xhda_a
       ,(SELECT
           xhda_b.cur_dpt_cd  AS cur_dpt_cd
@@ -2138,11 +2145,15 @@ AS
     IF ( lt_area_mgr_base_cd IS NOT NULL) THEN
       BEGIN
         SELECT NVL2(xlv2.zip, cv_post_mark || xlv2.zip || ' ', '') || xlv2.address_line1  mgr_boss_org_ad -- 発行元所属住所
-              ,xlv2.location_name                                                         mgr_boss_org_nm -- 発行元所属名
+/* 2015/06/25 Ver1.12 Y.Shoji DEL START */
+--              ,xlv2.location_name                                                         mgr_boss_org_nm -- 発行元所属名
+/* 2015/06/25 Ver1.12 Y.Shoji DEL END */
               ,xev2.position_name_new                                                     mgr_boss_pos    -- 発行元所属長職位名
               ,xev2.full_name                                                             mgr_boss        -- 氏名
         INTO   lt_a_mgr_boss_org_ad                                                         -- 発行元所属住所
-              ,lt_a_mgr_boss_org_nm                                                         -- 発行元所属名
+/* 2015/06/25 Ver1.12 Y.Shoji DEL START */
+--              ,lt_a_mgr_boss_org_nm                                                         -- 発行元所属名
+/* 2015/06/25 Ver1.12 Y.Shoji DEL END */
               ,lt_a_mgr_boss_pos                                                            -- 発行元所属長職位名
               ,lt_a_mgr_boss                                                                -- 氏名
         FROM   per_all_people_f        papf                                                 -- 従業員マスタ
@@ -2189,7 +2200,10 @@ AS
       SELECT NVL2(flv_e_vice_org.zip, cv_post_mark || flv_e_vice_org.zip || ' ', '')
                || flv_e_vice_org.address_line1                                  vice_pres_org_ad  -- 発行元所属住所
             ,flv_e_vice_org.location_name                                       vice_pres_org_nm  -- 発行元所属名
-            ,xev2.position_name_new                                             vice_pres_pos     -- 発行元所属長職位名
+/* 2015/06/25 Ver1.12 Y.Shoji MOD START */
+--            ,xev2.position_name_new                                             vice_pres_pos     -- 発行元所属長職位名
+            ,flv_e_vice_org.position_name_new                                   vice_pres_pos     -- 発行元所属長職位名
+/* 2015/06/25 Ver1.12 Y.Shoji MOD END */
             ,xev2.full_name                                                     vice_pres         -- 氏名
       INTO   lt_e_vice_pres_org_ad                                                        -- 発行元所属住所
             ,lt_e_vice_pres_org_nm                                                        -- 発行元所属名
@@ -2200,6 +2214,9 @@ AS
                      ,flvv.meaning            location_name
                      ,flvv.attribute1         zip
                      ,flvv.attribute2         address_line1
+/* 2015/06/25 Ver1.12 Y.Shoji ADD START */
+                     ,flvv.description        position_name_new        -- 発行元所属長職位名
+/* 2015/06/25 Ver1.12 Y.Shoji ADD END */
                 FROM  fnd_lookup_values_vl    flvv
                 WHERE flvv.lookup_type      = cv_lkup_e_vice_org
                  AND  flvv.enabled_flag     = cv_enabled_flag
@@ -2224,12 +2241,20 @@ AS
     -- 発行元所属長職位、発行元所属長情報（設置協賛金）
     IF (lt_install_supp_amt < gn_is_amt_branch) THEN
       o_rep_memo_data_rec.install_supp_org_addr     := o_rep_cont_data_rec.issue_belonging_address;
-      o_rep_memo_data_rec.install_supp_org_name     := o_rep_cont_data_rec.issue_belonging_name;
+/* 2015/06/25 Ver1.12 Y.Shoji MOD START */
+--      o_rep_memo_data_rec.install_supp_org_name     := o_rep_cont_data_rec.issue_belonging_name;
+      -- 全角スペース6文字による印字位置の調整
+      o_rep_memo_data_rec.install_supp_org_name     := LPAD('　', 12, '　') || o_rep_cont_data_rec.issue_belonging_name;
+/* 2015/06/25 Ver1.12 Y.Shoji MOD END */
       o_rep_memo_data_rec.install_supp_org_boss_pos := o_rep_cont_data_rec.issue_belonging_boss_position;
       o_rep_memo_data_rec.install_supp_org_boss     := o_rep_cont_data_rec.issue_belonging_boss;
     ELSIF (lt_install_supp_amt < gn_is_amt_areamgr) THEN
       o_rep_memo_data_rec.install_supp_org_addr     := lt_a_mgr_boss_org_ad;
-      o_rep_memo_data_rec.install_supp_org_name     := lt_a_mgr_boss_org_nm;
+/* 2015/06/25 Ver1.12 Y.Shoji MOD START */
+--      o_rep_memo_data_rec.install_supp_org_name     := lt_a_mgr_boss_org_nm;
+      -- 全角スペース6文字による印字位置の調整
+      o_rep_memo_data_rec.install_supp_org_name     := LPAD('　', 12, '　') || lt_a_mgr_boss_org_nm;
+/* 2015/06/25 Ver1.12 Y.Shoji MOD END */
       o_rep_memo_data_rec.install_supp_org_boss_pos := lt_a_mgr_boss_pos;
       o_rep_memo_data_rec.install_supp_org_boss     := lt_a_mgr_boss;
     ELSE
