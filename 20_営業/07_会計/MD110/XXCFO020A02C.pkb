@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A02C(body)
  * Description      : 受払取引（生産）仕訳IF作成
  * MD.050           : 受払取引（生産）仕訳IF作成<MD050_CFO_020_A02>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2014-10-30    1.0   Y.Shoji          新規作成
  *  2015-01-23    1.1   Y.Shoji          システムテスト障害#35 対応
  *  2015-02-05    1.2   Y.Shoji          システムテスト障害#41 対応
+ *  2015-05-19    1.3   Y.Shoji          E_本稼動_13022対応 単価取得方法の修正
  *
  *****************************************************************************************/
 --
@@ -1379,9 +1380,28 @@ AS
     CURSOR get_journal_oif_data1_cur
     IS
       -- (1)受入 他勘定振替分（半製品から原料へ）
-      SELECT /*+ LEADING(itp xrpm grb xicv gmd gbh ilm) */
+      SELECT /*+ LEADING(itp xrpm xicv grb gmd gbh ilm iimb)
+                 USE_NL(itp xrpm xicv grb gmd gbh ilm iimb) */
              ROUND( NVL(itp.trans_qty, 0)             *
-                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itp.item_id     = xsup.item_id(+)
+                                          AND    itp.trans_date  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itp.trans_date)
+                                          ), 0)
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                        FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                        WHERE  itp.item_id     = xsup2.item_id(+)
+                                        AND    itp.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itp.trans_date)
+                                                               AND     NVL(xsup2.end_date_active(+), itp.trans_date)
+                                        ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div) )        AS  price               -- 金額
             ,gmd.material_detail_id                      AS  material_detail_id  -- 生産原料詳細ID
       FROM   ic_tran_pnd                 itp                      -- 保留在庫トランザクション
@@ -1391,6 +1411,9 @@ AS
             ,xxcmn_rcv_pay_mst           xrpm                     -- 受払区分アドオンマスタ
             ,xxcmn_item_categories5_v    xicv                     -- OPM品目カテゴリ割当情報View5
             ,ic_lots_mst                 ilm                      -- OPMロットマスタ
+-- 2015.05.19 Ver1.3 Add Start
+            ,ic_item_mst_b               iimb                     -- OPM品目マスタ
+-- 2015.05.19 Ver1.3 Add End
       WHERE  itp.doc_type         = cv_doc_type_prod                        -- 文書タイプ
       AND    itp.completed_ind    = cn_completed_ind_1                      -- 完了フラグ
       AND    itp.trans_date       >= gd_target_date_from                    -- 開始日
@@ -1410,6 +1433,9 @@ AS
       AND    gbh.routing_id       = grb.routing_id
       AND    ilm.lot_id           = itp.lot_id
       AND    ilm.item_id          = itp.item_id
+-- 2015.05.19 Ver1.3 Add Start
+      AND    iimb.item_id         = itp.item_id
+-- 2015.05.19 Ver1.3 Add End
       AND    EXISTS (
                       SELECT 1
                       FROM   gme_material_details        gmd2      -- 生産原料詳細2
@@ -1441,9 +1467,28 @@ AS
       -- （2）生産払出
       -- ①コーヒー焙煎倉庫（F30）以外の場合
       -- 生産払出（再製）＋生産払出（ブレンド合組）＋生産払出（再製合組）分
-      SELECT /*+ LEADING(itp xrpm grb xicv gmd gbh ilm flvv) */
+      SELECT /*+ LEADING(itp xrpm xicv grb gmd gbh ilm iimb)
+                 USE_NL(itp xrpm xicv grb gmd gbh ilm iimb) */
              ROUND( NVL(itp.trans_qty, 0)             *
-                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itp.item_id     = xsup.item_id(+)
+                                          AND    itp.trans_date  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itp.trans_date)
+                                          ), 0) 
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                        FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                        WHERE  itp.item_id     = xsup2.item_id(+)
+                                        AND    itp.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itp.trans_date)
+                                                               AND     NVL(xsup2.end_date_active(+), itp.trans_date)
+                                          ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div) )        AS  price                -- 金額
             ,itp.whse_code                               AS  whse_code            -- 倉庫コード
             ,gmd.material_detail_id                      AS  material_detail_id   -- 生産原料詳細ID
@@ -1454,6 +1499,9 @@ AS
             ,xxcmn_rcv_pay_mst           xrpm                     -- 受払区分アドオンマスタ
             ,xxcmn_item_categories5_v    xicv                     -- OPM品目カテゴリ割当情報View5
             ,ic_lots_mst                 ilm                      -- OPMロットマスタ
+-- 2015.05.19 Ver1.3 Add Start
+            ,ic_item_mst_b               iimb                     -- OPM品目マスタ
+-- 2015.05.19 Ver1.3 Add End
       WHERE  itp.doc_type           = cv_doc_type_prod                     -- 文書タイプ
       AND    itp.completed_ind      = cn_completed_ind_1                   -- 完了フラグ
       AND    itp.trans_date         >= gd_target_date_from                 -- 開始日
@@ -1481,6 +1529,9 @@ AS
       AND    gbh.routing_id         = grb.routing_id
       AND    ilm.lot_id             = itp.lot_id
       AND    ilm.item_id            = itp.item_id
+-- 2015.05.19 Ver1.3 Add Start
+      AND    iimb.item_id           = itp.item_id
+-- 2015.05.19 Ver1.3 Add End
       AND    NOT EXISTS (
                          SELECT 1
                          FROM   fnd_lookup_values_vl        flvv                     -- 参照タイプ
@@ -1491,9 +1542,28 @@ AS
                         )
       UNION ALL
       -- 生産受入（ブレンド合組）分
-      SELECT /*+ LEADING(itp xrpm grb xicv gmd gbh ilm flvv) */
+      SELECT /*+ LEADING(itp xrpm xicv grb gmd gbh ilm iimb)
+                 USE_NL(itp xrpm xicv grb gmd gbh ilm iimb) */
              ROUND( NVL(itp.trans_qty, 0)             *
-                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itp.item_id     = xsup.item_id(+)
+                                          AND    itp.trans_date  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itp.trans_date)
+                                          ), 0) 
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                        FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                        WHERE  itp.item_id     = xsup2.item_id(+)
+                                        AND    itp.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itp.trans_date)
+                                                               AND     NVL(xsup2.end_date_active(+), itp.trans_date)
+                                          ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div)       *
                     -1)                                  AS  price                -- 金額
             ,itp.whse_code                               AS  whse_code            -- 倉庫コード
@@ -1505,6 +1575,9 @@ AS
             ,xxcmn_rcv_pay_mst           xrpm                     -- 受払区分アドオンマスタ
             ,xxcmn_item_categories5_v    xicv                     -- OPM品目カテゴリ割当情報View5
             ,ic_lots_mst                 ilm                      -- OPMロットマスタ
+-- 2015.05.19 Ver1.3 Add Start
+            ,ic_item_mst_b               iimb                     -- OPM品目マスタ
+-- 2015.05.19 Ver1.3 Add End
       WHERE  itp.doc_type           = cv_doc_type_prod                     -- 文書タイプ
       AND    itp.completed_ind      = cn_completed_ind_1                   -- 完了フラグ
       AND    itp.trans_date         >= gd_target_date_from                 -- 開始日
@@ -1524,6 +1597,9 @@ AS
       AND    gbh.routing_id         = grb.routing_id
       AND    ilm.lot_id             = itp.lot_id
       AND    ilm.item_id            = itp.item_id
+-- 2015.05.19 Ver1.3 Add Start
+      AND    iimb.item_id           = itp.item_id
+-- 2015.05.19 Ver1.3 Add End
       AND    NOT EXISTS (
                          SELECT 1
                          FROM   fnd_lookup_values_vl        flvv                     -- 参照タイプ
@@ -1542,9 +1618,28 @@ AS
     CURSOR get_journal_oif_data2_2_cur
     IS
       -- (2)生産払出②コーヒー焙煎倉庫（F30）
-      SELECT /*+ LEADING(itp xrpm grb xicv gmd gbh ilm flvv) */
+      SELECT /*+ LEADING(itp xrpm xicv grb gmd gbh ilm iimb)
+                 USE_NL(itp xrpm xicv grb gmd gbh ilm iimb) */
              ROUND( NVL(itp.trans_qty, 0)             *
-                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itp.item_id     = xsup.item_id(+)
+                                          AND    itp.trans_date  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itp.trans_date)
+                                          ), 0) 
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itp.item_id     = xsup2.item_id(+)
+                                          AND    itp.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itp.trans_date)
+                                                                 AND     NVL(xsup2.end_date_active(+), itp.trans_date)
+                                          ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div) )        AS  price                -- 金額
             ,itp.whse_code                               AS  whse_code            -- 倉庫コード
             ,gmd.material_detail_id                      AS  material_detail_id   -- 生産原料詳細ID
@@ -1555,6 +1650,9 @@ AS
             ,xxcmn_rcv_pay_mst           xrpm                     -- 受払区分アドオンマスタ
             ,xxcmn_item_categories5_v    xicv                     -- OPM品目カテゴリ割当情報View5
             ,ic_lots_mst                 ilm                      -- OPMロットマスタ
+-- 2015.05.19 Ver1.3 Add Start
+            ,ic_item_mst_b               iimb                     -- OPM品目マスタ
+-- 2015.05.19 Ver1.3 Add End
             ,fnd_lookup_values_vl        flvv                     -- 参照タイプ
       WHERE  itp.doc_type         = cv_doc_type_prod                     -- 文書タイプ
       AND    itp.completed_ind    = cn_completed_ind_1                   -- 完了フラグ
@@ -1580,6 +1678,9 @@ AS
       AND    gbh.routing_id       = grb.routing_id
       AND    ilm.lot_id           = itp.lot_id
       AND    ilm.item_id          = itp.item_id
+-- 2015.05.19 Ver1.3 Add Start
+      AND    iimb.item_id         = itp.item_id
+-- 2015.05.19 Ver1.3 Add End
       AND    flvv.lookup_type     = cv_type_whse_cafe_roast                -- コーヒー焙煎倉庫の一覧
       AND    itp.whse_code        = flvv.lookup_code
       AND    flvv.start_date_active <= gd_target_date_from                 -- 開始日
@@ -1652,11 +1753,29 @@ AS
       -- (4)包装セット払出
       -- ①包装一課・沖縄 以外分
 -- 2015.01.23 Ver1.1 Mod Start
-      SELECT /*+ LEADING(itp gmd gbh grb xrpm xicv xsup flvv) 
-                 USE_NL(itp gmd gbh grb xrpm xicv xsup flvv) */
+      SELECT /*+ LEADING(itp gmd gbh grb xrpm xicv ilm iimb flvv) 
+                 USE_NL(itp gmd gbh grb xrpm xicv ilm iimb flvv) */
 -- 2015.01.23 Ver1.1 Mod END
              ROUND( NVL(itp.trans_qty, 0)        *
-                    NVL(xsup.stnd_unit_price, 0) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    NVL(xsup.stnd_unit_price, 0) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itp.item_id     = xsup.item_id(+)
+                                          AND    itp.trans_date  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itp.trans_date)
+                                          ), 0) 
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                        FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                        WHERE  itp.item_id     = xsup2.item_id(+)
+                                        AND    itp.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itp.trans_date)
+                                                               AND     NVL(xsup2.end_date_active(+), itp.trans_date)
+                                        ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div) )    AS  price               -- 金額
             ,itp.whse_code                           AS  whse_code           -- 倉庫コード
             ,gmd.material_detail_id                  AS  material_detail_id  -- 生産原料詳細ID
@@ -1670,7 +1789,13 @@ AS
             ,gmd_routings_b              grb                      -- 工順マスタ
             ,xxcmn_rcv_pay_mst           xrpm                     -- 受払区分アドオンマスタ
             ,xxcmn_item_categories5_v    xicv                     -- OPM品目カテゴリ割当情報View5
-            ,xxcmn_stnd_unit_price_v     xsup                     -- 標準原価情報Ｖｉｅｗ
+-- 2015.05.19 Ver1.3 Add Start
+            ,ic_lots_mst                 ilm                      -- OPMロットマスタ
+            ,ic_item_mst_b               iimb                     -- OPM品目マスタ
+-- 2015.05.19 Ver1.3 Add End
+-- 2015.05.19 Ver1.3 Del Start
+--            ,xxcmn_stnd_unit_price_v     xsup                     -- 標準原価情報Ｖｉｅｗ
+-- 2015.05.19 Ver1.3 Del End
             ,fnd_lookup_values_vl        flvv                     -- 参照タイプ
       WHERE  itp.doc_type           = cv_doc_type_prod                     -- 文書タイプ
       AND    itp.completed_ind      = cn_completed_ind_1                   -- 完了フラグ
@@ -1697,9 +1822,16 @@ AS
       AND    gmd.line_type          = itp.line_type
       AND    gmd.batch_id           = gbh.batch_id
       AND    gbh.routing_id         = grb.routing_id
-      AND    xsup.item_id           = itp.item_id
-      AND    itp.trans_date         BETWEEN NVL(xsup.start_date_active, itp.trans_date)
-                                    AND     NVL(xsup.end_date_active, itp.trans_date)
+-- 2015.05.19 Ver1.3 Add Start
+      AND    ilm.lot_id             = itp.lot_id
+      AND    ilm.item_id            = itp.item_id
+      AND    iimb.item_id           = itp.item_id
+-- 2015.05.19 Ver1.3 Add End
+-- 2015.05.19 Ver1.3 Del Start
+--      AND    xsup.item_id           = itp.item_id
+--      AND    itp.trans_date         BETWEEN NVL(xsup.start_date_active, itp.trans_date)
+--                                    AND     NVL(xsup.end_date_active, itp.trans_date)
+-- 2015.05.19 Ver1.3 Del End
       AND    flvv.lookup_type       = cv_type_package_cost_whse            -- 包装材料費倉庫リスト
       AND    itp.whse_code          = flvv.lookup_code
       AND    flvv.attribute1        = cv_att1_1                            -- 包装一課、沖縄以外
@@ -1708,11 +1840,29 @@ AS
       UNION ALL
       -- ②包装一課分
 -- 2015.01.23 Ver1.1 Mod Start
-      SELECT /*+ LEADING(itp gmd gbh grb xrpm xicv xsup)
-                 USE_NL(itp gmd gbh grb xrpm xicv xsup) */
+      SELECT /*+ LEADING(itp gmd gbh grb xrpm xicv ilm iimb)
+                 USE_NL(itp gmd gbh grb xrpm xicv ilm iimb) */
 -- 2015.01.23 Ver1.1 Mod END
              ROUND( NVL(itp.trans_qty, 0)        *
-                    NVL(xsup.stnd_unit_price, 0) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    NVL(xsup.stnd_unit_price, 0) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itp.item_id     = xsup.item_id(+)
+                                          AND    itp.trans_date  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itp.trans_date)
+                                          ), 0) 
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                        FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                        WHERE  itp.item_id     = xsup2.item_id(+)
+                                        AND    itp.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itp.trans_date)
+                                                               AND     NVL(xsup2.end_date_active(+), itp.trans_date)
+                                        ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div) )    AS  price               -- 金額
             ,itp.whse_code                           AS  whse_code           -- 倉庫コード
             ,gmd.material_detail_id                  AS  material_detail_id  -- 生産原料詳細ID
@@ -1726,7 +1876,13 @@ AS
             ,gmd_routings_b              grb                      -- 工順マスタ
             ,xxcmn_rcv_pay_mst           xrpm                     -- 受払区分アドオンマスタ
             ,xxcmn_item_categories5_v    xicv                     -- OPM品目カテゴリ割当情報View5
-            ,xxcmn_stnd_unit_price_v     xsup                     -- 標準原価情報Ｖｉｅｗ
+-- 2015.05.19 Ver1.3 Add Start
+            ,ic_lots_mst                 ilm                      -- OPMロットマスタ
+            ,ic_item_mst_b               iimb                     -- OPM品目マスタ
+-- 2015.05.19 Ver1.3 Add End
+-- 2015.05.19 Ver1.3 Del Start
+--            ,xxcmn_stnd_unit_price_v     xsup                     -- 標準原価情報Ｖｉｅｗ
+-- 2015.05.19 Ver1.3 Del End
       WHERE  itp.doc_type           = cv_doc_type_prod                     -- 文書タイプ
       AND    itp.completed_ind      = cn_completed_ind_1                   -- 完了フラグ
       AND    itp.trans_date         >= gd_target_date_from                 -- 開始日
@@ -1752,9 +1908,16 @@ AS
       AND    gmd.line_type          = itp.line_type
       AND    gmd.batch_id           = gbh.batch_id
       AND    gbh.routing_id         = grb.routing_id
-      AND    xsup.item_id           = itp.item_id
-      AND    itp.trans_date         BETWEEN NVL(xsup.start_date_active, itp.trans_date)
-                                    AND     NVL(xsup.end_date_active, itp.trans_date)
+-- 2015.05.19 Ver1.3 Add Start
+      AND    ilm.lot_id             = itp.lot_id
+      AND    ilm.item_id            = itp.item_id
+      AND    iimb.item_id           = itp.item_id
+-- 2015.05.19 Ver1.3 Add End
+-- 2015.05.19 Ver1.3 Del Start
+--      AND    xsup.item_id           = itp.item_id
+--      AND    itp.trans_date         BETWEEN NVL(xsup.start_date_active, itp.trans_date)
+--                                    AND     NVL(xsup.end_date_active, itp.trans_date)
+-- 2015.05.19 Ver1.3 Del End
       AND    NOT EXISTS (
                      SELECT 1
                      FROM   fnd_lookup_values_vl flvv
@@ -1768,10 +1931,28 @@ AS
 -- 2015.01.23 Ver1.1 Add Start
       UNION ALL
       -- ③包装一課・沖縄 以外分（事由コード：X952）
-      SELECT /*+ leading (itc ilm iimb ximb xrpm iwm iaj ijm xicv xsup flvv)
-                  use_nl (itc ilm iimb ximb xrpm iwm iaj ijm xicv xsup flvv)*/
+      SELECT /*+ leading (itc ilm iimb ximb xrpm iwm iaj ijm xicv flvv)
+                  use_nl (itc ilm iimb ximb xrpm iwm iaj ijm xicv flvv)*/
              ROUND( NVL(itc.trans_qty, 0)        *
-                    NVL(xsup.stnd_unit_price, 0) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    NVL(xsup.stnd_unit_price, 0) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itc.item_id     = xsup.item_id(+)
+                                          AND    itc.trans_date  BETWEEN NVL(xsup.start_date_active(+), itc.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itc.trans_date)
+                                          ), 0) 
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                        FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                        WHERE  itc.item_id     = xsup2.item_id(+)
+                                        AND    itc.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itc.trans_date)
+                                                               AND     NVL(xsup2.end_date_active(+), itc.trans_date)
+                                        ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div) )    AS  price               -- 金額
             ,itc.whse_code                           AS  whse_code           -- 倉庫コード
             ,NULL                                    AS  material_detail_id  -- 生産原料詳細ID
@@ -1786,7 +1967,9 @@ AS
             ,ic_adjs_jnl                 iaj             -- OPM在庫調整ジャーナル
             ,ic_jrnl_mst                 ijm             -- OPMジャーナルマスタ
             ,xxcmn_item_categories5_v    xicv            -- OPM品目カテゴリ割当情報View5
-            ,xxcmn_stnd_unit_price_v     xsup            -- 標準原価情報Ｖｉｅｗ
+-- 2015.05.19 Ver1.3 Del Start
+--            ,xxcmn_stnd_unit_price_v     xsup            -- 標準原価情報Ｖｉｅｗ
+-- 2015.05.19 Ver1.3 Del End
             ,fnd_lookup_values_vl        flvv            -- 参照タイプ
       WHERE  itc.doc_type            = cv_doc_type_adji          -- 文書タイプ
       AND    itc.reason_code         = cv_reason_code_x952       -- 事由コード
@@ -1810,9 +1993,11 @@ AS
       AND    xicv.item_id            = itc.item_id
       AND    xicv.item_class_code    = cv_item_class_code_2                 -- 資材
       AND    xicv.prod_class_code    = cv_prod_class_code_1                 -- リーフ
-      AND    xsup.item_id            = itc.item_id
-      AND    itc.trans_date          BETWEEN NVL(xsup.start_date_active, itc.trans_date)
-                                     AND     NVL(xsup.end_date_active, itc.trans_date)
+-- 2015.05.19 Ver1.3 Del Start
+--      AND    xsup.item_id            = itc.item_id
+--      AND    itc.trans_date          BETWEEN NVL(xsup.start_date_active, itc.trans_date)
+--                                     AND     NVL(xsup.end_date_active, itc.trans_date)
+-- 2015.05.19 Ver1.3 Del Start
       AND    flvv.lookup_type        = cv_type_package_cost_whse      -- 包装材料費倉庫リスト
       AND    itc.whse_code           = flvv.lookup_code
       AND    flvv.attribute1         = cv_att1_1                      -- 包装一課、沖縄以外
@@ -1820,10 +2005,28 @@ AS
       AND    flvv.END_DATE_ACTIVE    >= gd_target_date_to             -- 終了日
       UNION ALL
       -- ④包装一課分（事由コード：X952）
-      SELECT /*+ leading (itc ilm iimb ximb xrpm iwm iaj ijm xicv xsup)
-                  use_nl (itc ilm iimb ximb xrpm iwm iaj ijm xicv xsup)*/
+      SELECT /*+ leading (itc ilm iimb ximb xrpm iwm iaj ijm xicv)
+                  use_nl (itc ilm iimb ximb xrpm iwm iaj ijm xicv)*/
              ROUND( NVL(itc.trans_qty, 0)        *
-                    NVL(xsup.stnd_unit_price, 0) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    NVL(xsup.stnd_unit_price, 0) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itc.item_id     = xsup.item_id(+)
+                                          AND    itc.trans_date  BETWEEN NVL(xsup.start_date_active(+), itc.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itc.trans_date)
+                                          ), 0) 
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                        FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                        WHERE  itc.item_id     = xsup2.item_id(+)
+                                        AND    itc.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itc.trans_date)
+                                                               AND     NVL(xsup2.end_date_active(+), itc.trans_date)
+                                        ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div) )    AS  price               -- 金額
             ,itc.whse_code                           AS  whse_code           -- 倉庫コード
             ,NULL                                    AS  material_detail_id  -- 生産原料詳細ID
@@ -1838,7 +2041,9 @@ AS
             ,ic_adjs_jnl                 iaj             -- OPM在庫調整ジャーナル
             ,ic_jrnl_mst                 ijm             -- OPMジャーナルマスタ
             ,xxcmn_item_categories5_v    xicv            -- OPM品目カテゴリ割当情報View5
-            ,xxcmn_stnd_unit_price_v     xsup            -- 標準原価情報Ｖｉｅｗ
+-- 2015.05.19 Ver1.3 Del Start
+--            ,xxcmn_stnd_unit_price_v     xsup            -- 標準原価情報Ｖｉｅｗ
+-- 2015.05.19 Ver1.3 Del End
       WHERE  itc.doc_type            = cv_doc_type_adji          --文書タイプ
       AND    itc.reason_code         = cv_reason_code_x952       -- 事由コード
       AND    itc.trans_date          >= gd_target_date_from            -- 開始日
@@ -1861,9 +2066,11 @@ AS
       AND    xicv.item_id            = itc.item_id
       AND    xicv.item_class_code    = cv_item_class_code_2                 -- 資材
       AND    xicv.prod_class_code    = cv_prod_class_code_1                 -- リーフ
-      AND    xsup.item_id            = itc.item_id
-      AND    itc.trans_date          BETWEEN NVL(xsup.start_date_active, itc.trans_date)
-                                     AND     NVL(xsup.end_date_active, itc.trans_date)
+-- 2015.05.19 Ver1.3 Del Start
+--      AND    xsup.item_id            = itc.item_id
+--      AND    itc.trans_date          BETWEEN NVL(xsup.start_date_active, itc.trans_date)
+--                                     AND     NVL(xsup.end_date_active, itc.trans_date)
+-- 2015.05.19 Ver1.3 Del End
       AND    NOT EXISTS (
                      SELECT 1
                      FROM   fnd_lookup_values_vl flvv
@@ -1885,10 +2092,28 @@ AS
     CURSOR get_journal_oif_data6_cur
     IS
       -- (5)払出 他勘定振替分（原料・半製品へ）
-      SELECT /*+ LEADING(itp) 
-                 USE_NL(xrpm grb xicv gmd gbh ilm gmd2 xicv2 gmd3 xicv3) */
+      SELECT /*+ LEADING(itp xrpm xicv grb gmd gbh ilm iimb)
+                 USE_NL(itp xrpm xicv grb gmd gbh ilm iimb) */
              ROUND( NVL(itp.trans_qty, 0)             *
-                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+-- 2015.05.19 Ver1.3 Mod Start
+--                    TO_NUMBER(NVL(ilm.attribute7, 0)) *
+                    (CASE iimb.attribute15
+                       WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                          FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                          WHERE  itp.item_id     = xsup.item_id(+)
+                                          AND    itp.trans_date  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+                                                                 AND     NVL(xsup.end_date_active(+), itp.trans_date)
+                                          ), 0) 
+                       ELSE DECODE(iimb.lot_ctl
+                                  ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                  ,NVL((SELECT xsup2.stnd_unit_price
+                                        FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                        WHERE  itp.item_id     = xsup2.item_id(+)
+                                        AND    itp.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itp.trans_date)
+                                                               AND     NVL(xsup2.end_date_active(+), itp.trans_date)
+                                          ), 0))
+                     END)                             *
+-- 2015.05.19 Ver1.3 Mod End
                     TO_NUMBER(xrpm.rcv_pay_div) )        AS  price               -- 金額
             ,gmd.material_detail_id                      AS  material_detail_id  -- 生産原料詳細ID
       FROM   ic_tran_pnd                 itp                      -- 保留在庫トランザクション
@@ -1898,6 +2123,9 @@ AS
             ,xxcmn_rcv_pay_mst           xrpm                     -- 受払区分アドオンマスタ
             ,xxcmn_item_categories5_v    xicv                     -- OPM品目カテゴリ割当情報View5
             ,ic_lots_mst                 ilm                      -- OPMロットマスタ
+-- 2015.05.19 Ver1.3 Add Start
+            ,ic_item_mst_b               iimb                     -- OPM品目マスタ
+-- 2015.05.19 Ver1.3 Add End
       WHERE  itp.doc_type          = cv_doc_type_prod                     -- 文書タイプ
       AND    itp.completed_ind     = cn_completed_ind_1                   -- 完了フラグ
       AND    itp.trans_date        >= gd_target_date_from                 -- 開始日
@@ -1917,6 +2145,9 @@ AS
       AND    gbh.routing_id        = grb.routing_id
       AND    ilm.lot_id            = itp.lot_id
       AND    ilm.item_id           = itp.item_id
+-- 2015.05.19 Ver1.3 Add Start
+      AND    iimb.item_id          = itp.item_id
+-- 2015.05.19 Ver1.3 Add End
       AND    exists (
                      SELECT 1
                      FROM   gme_material_details        gmd2        -- 生産原料詳細
@@ -2436,9 +2667,28 @@ AS
               UNION ALL
               -- ⑨生産バッチ（品目振替）
               SELECT /*+ LEADING(itp xrpm)
-                         USE_NL(xrpm grb gmd gbh iimb ilm iwm xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h) */
+                         USE_NL(xrpm grb gmd gbh ilm iimb xsup iwm xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h) */
                      ROUND(NVL(itp.trans_qty, 0) *
-                           TO_NUMBER(NVL(ilm.attribute7, 0)) )   AS  price            -- 金額
+-- 2015.05.19 Ver1.3 Mod Start
+--                           TO_NUMBER(NVL(ilm.attribute7, 0)) )   AS  price            -- 金額
+                           (CASE iimb.attribute15
+                              WHEN '1' THEN NVL((SELECT xsup.stnd_unit_price
+                                                 FROM   xxcmn_stnd_unit_price_v     xsup  -- 標準原価情報Ｖｉｅｗ
+                                                 WHERE  itp.item_id     = xsup.item_id(+)
+                                                 AND    itp.trans_date  BETWEEN NVL(xsup.start_date_active(+), itp.trans_date)
+                                                                        AND     NVL(xsup.end_date_active(+), itp.trans_date)
+                                                 ), 0) 
+                              ELSE DECODE(iimb.lot_ctl
+                                         ,1,TO_NUMBER(NVL(ilm.attribute7, 0))
+                                         ,NVL((SELECT xsup2.stnd_unit_price
+                                               FROM   xxcmn_stnd_unit_price_v     xsup2  -- 標準原価情報Ｖｉｅｗ
+                                               WHERE  itp.item_id     = xsup2.item_id(+)
+                                               AND    itp.trans_date  BETWEEN NVL(xsup2.start_date_active(+), itp.trans_date)
+                                                                      AND     NVL(xsup2.end_date_active(+), itp.trans_date)
+                                               ), 0))
+                            END)
+                           )                                     AS  price            -- 金額
+-- 2015.05.19 Ver1.3 Mod End
                     ,itp.whse_code                               AS  whse_code        -- 倉庫コード
                     ,xicv.prod_class_code                        AS  prod_class_code  -- 商品区分
                     ,xicv.item_class_code                        AS  item_class_code  -- 品目区分
@@ -2450,6 +2700,9 @@ AS
                     ,xxcmn_item_categories5_v     xicv                     -- OPM品目カテゴリ割当情報View5
                     ,ic_lots_mst                  ilm                      -- OPMロットマスタ
                     ,ic_whse_mst                  iwm                      -- OPM倉庫マスタ
+-- 2015.05.19 Ver1.3 Add Start
+                    ,ic_item_mst_b                iimb                     -- OPM品目マスタ
+-- 2015.05.19 Ver1.3 Add End
               WHERE  itp.doc_type               = cv_doc_type_prod                      -- 文書タイプ
               AND    itp.completed_ind          = cn_completed_ind_1                    -- 完了フラグ
               AND    itp.trans_date             >= gd_target_date_from      -- 開始日
@@ -2473,6 +2726,9 @@ AS
               AND    gbh.routing_id             = grb.routing_id
               AND    ilm.lot_id                 = itp.lot_id
               AND    ilm.item_id                = itp.item_id
+-- 2015.05.19 Ver1.3 Add Start
+              AND    iimb.item_id               = itp.item_id
+-- 2015.05.19 Ver1.3 Add End
               AND    EXISTS (
                              SELECT /*+ LEADING(gmd2)
                                         USE_NL(gmd2 xicv2.iimb xicv2.gic_h xicv2.mcb_h xicv2.mct_h xicv2.gic_s xicv2.mcb_s xicv2.mct_s) */
@@ -2924,7 +3180,7 @@ AS
               UNION ALL
               -- ⑰月末積送中在庫額の算出
               SELECT /*+ LEADING(xsims ) 
-                         USE_NL(iwm xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc) */
+                         USE_NL(iimb iwm xicv.iimb xicv.gic_s xicv.mcb_s xicv.mct_s xicv.gic_h xicv.mcb_h xicv.mct_h xlc xsup) */
                      ROUND(-1                                  * 
                            (NVL(xsims.cargo_stock, 0)   -
                             NVL(xsims.cargo_stock_not_stn, 0)) *
