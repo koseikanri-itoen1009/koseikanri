@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,8 @@ AS
  *  2009/09/08    1.11  H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *  2010/10/27    1.12  H.Sasaki         [E_本稼動_05114]PT対応
  *  2014/03/27    1.13  K.Nakamura       [E_本稼動_11556]資材取引の抽出条件修正、不要な定数・変数削除
+ *  2015/03/16    1.14  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -118,6 +120,9 @@ AS
   cn_baracya_type      CONSTANT VARCHAR2(1)   := '1';              -- バラ茶区分
   cv_office_item_drink CONSTANT VARCHAR2(1)   := '2';              -- ドリンク
   cv_log               CONSTANT VARCHAR2(3)   := 'LOG';            -- コンカレントヘッダ出力先
+-- == 2015/03/16 V1.14 Added START ==============================================================
+  cv_format_yyyymmdd   CONSTANT VARCHAR2(10)  :=  'YYYY/MM/DD';    --  DATE型 年月日（YYYY/MM/DD）
+-- == 2015/03/16 V1.14 Added END   ==============================================================
 --
   -- メッセージ
   cv_msg_xxcoi00008  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00008';   -- 0件メッセージ
@@ -155,6 +160,10 @@ AS
 -- == 2009/05/29 V1.7 Added START ===============================================================
   cv_msg_xxcoi10381  CONSTANT VARCHAR2(30) := 'APP-XXCOI1-10381';   -- 伝票№マスク取得エラーメッセージ
 -- == 2009/05/29 V1.7 Added END   ===============================================================
+-- == 2015/03/16 V1.14 Added START ==============================================================
+  cv_msg_xxcoi00026  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00026';   -- 在庫会計期間ステータス取得エラーメッセージ
+  cv_msg_xxcoi10451  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10451';   -- 在庫確定印字文字取得エラーメッセージ
+-- == 2015/03/16 V1.14 Added END   ==============================================================
 --
   -- トークン名
   cv_token_pro                CONSTANT VARCHAR2(30) := 'PRO_TOK';
@@ -170,6 +179,9 @@ AS
   cv_token_product_class      CONSTANT VARCHAR2(20) := 'PRODUCT_CLASS';          -- 拠点分類
   cv_token_location_code      CONSTANT VARCHAR2(20) := 'LOCATION_CODE';          -- 拠点コード
   cv_token_base_major         CONSTANT VARCHAR2(20) := 'BASE_MAJOR_DIVISION';    -- 拠点大分類
+-- == 2015/03/16 V1.14 Added START ==============================================================
+  cv_token_target_data        CONSTANT VARCHAR2(20) := 'TARGET_DATE';            -- 対象日
+-- == 2015/03/16 V1.14 Added END   ==============================================================
 --
   --
   -- ===============================
@@ -219,6 +231,9 @@ AS
   gd_trans_date_from        DATE;                                             --  取引日FROM
   gd_trans_date_to          DATE;                                             --  取引日TO
 -- == 2010/10/27 V1.12 Added END   ===============================================================
+-- == 2015/03/16 V1.14 Added START ==============================================================
+  gt_inv_cl_char            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 在庫確定印字文字
+-- == 2015/03/16 V1.14 Added END   ==============================================================
 --
   /**********************************************************************************
    * Procedure Name   : del_work
@@ -502,6 +517,9 @@ AS
     --工場入庫明細リスト帳票ワークテーブル登録処理
     INSERT INTO xxcoi_rep_kuragae_ship_list(
        target_term
+-- == 2015/03/16 V1.14 Added START ==============================================================
+      ,inv_cl_char
+-- == 2015/03/16 V1.14 Added END   ==============================================================
       ,ship_base_code
       ,ship_base_name
       ,transaction_type_id
@@ -529,6 +547,9 @@ AS
       ,program_update_date
     )VALUES(
        gr_param.year_month||gr_param.a_day          -- 対象年月日
+-- == 2015/03/16 V1.14 Added START ==============================================================
+      ,gt_inv_cl_char                               -- 在庫確定印字文字
+-- == 2015/03/16 V1.14 Added END   ==============================================================
       ,it_out_base_code                             -- 出庫拠点
       ,it_out_base_name                             -- 出庫拠点名
       ,it_transaction_type_id                       -- 取引タイプID
@@ -2031,11 +2052,17 @@ AS
 -- == 2009/05/29 V1.7 Added START ===============================================================
     cv_prf_slip_number_mask CONSTANT VARCHAR2(30)   := 'XXCOI1_SLIP_NUMBER_MASK';       -- プロファイル名（伝票番号マスク）
 -- == 2009/05/29 V1.7 Added END   ===============================================================
+-- == 2015/03/16 V1.14 Added START ==============================================================
+    cv_prf_inv_cl_char      CONSTANT VARCHAR2(30) :=  'XXCOI1_INV_CL_CHARACTER';        -- プロファイル名（在庫確定印字文字）
+-- == 2015/03/16 V1.14 Added END   ==============================================================
 --
     -- *** ローカル変数 ***
     lv_organization_code     mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
     lv_mst_organization_code mtl_parameters.organization_code%TYPE;  -- マスタ組織コード
-    ld_date            DATE;
+    ld_date                  DATE;
+-- == 2015/03/16 V1.14 Added START ==============================================================
+    lb_chk_result            BOOLEAN DEFAULT TRUE;                   -- 在庫会計期間チェック結果
+-- == 2015/03/16 V1.14 Added END   ==============================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -2306,6 +2333,47 @@ AS
       gd_trans_date_to      :=  gd_trans_date_from + 1;
     END IF;
 -- == 2010/10/27 V1.12 Added END   ===============================================================
+-- == 2015/03/16 V1.14 Added START ==============================================================
+    --====================================
+    -- 在庫会計期間チェック
+    --====================================
+    xxcoi_common_pkg.org_acct_period_chk(
+        in_organization_id => gn_organization_id
+      , id_target_date     => gd_trans_date_to - 1
+      , ob_chk_result      => lb_chk_result
+      , ov_errbuf          => lv_errbuf
+      , ov_retcode         => lv_retcode
+      , ov_errmsg          => lv_errmsg
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name
+                     , iv_name         => cv_msg_xxcoi00026
+                     , iv_token_name1  => cv_token_target_data
+                     , iv_token_value1 => TO_CHAR(gd_trans_date_to - 1, cv_format_yyyymmdd)
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+    --====================================
+    -- 帳票印字文字取得
+    --====================================
+    IF NOT(lb_chk_result) THEN
+      gt_inv_cl_char := FND_PROFILE.VALUE(cv_prf_inv_cl_char);
+      --
+      IF ( gt_inv_cl_char IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name
+                       , iv_name         => cv_msg_xxcoi10451
+                       , iv_token_name1  => cv_token_pro
+                       , iv_token_value1 => cv_prf_inv_cl_char
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+-- == 2015/03/16 V1.14 Added END   ==============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
