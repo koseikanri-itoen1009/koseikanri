@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(body)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2011/02/15    1.10  H.Sasaki         [E_本稼動_01730]実績のないデータを出力対象から除外する
  *  2011/02/21    1.11  H.Sasaki         [E_本稼動_05896]政策群情報の２重表示抑止
  *  2011/04/04    1.12  H.Sasaki         [E_本稼動_02252]退職者データの出力制御
+ *  2015/03/16    1.13  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
  *
  *****************************************************************************************/
 --
@@ -143,6 +144,10 @@ AS
   --＠アプリケーション短縮名
   --  販物短縮アプリ名
   ct_xxcos_appl_short_name      CONSTANT  fnd_application.application_short_name%TYPE     :=  'XXCOS';
+-- == 2015/03/16 V1.13 Added START =================================================================
+  --  在庫短縮アプリ名
+  ct_xxcoi_appl_short_name      CONSTANT  fnd_application.application_short_name%TYPE     :=  'XXCOI';
+-- == 2015/03/16 V1.13 Added END   =================================================================
 --
   --＠販物メッセージ
   --  ロック取得エラーメッセージ
@@ -196,6 +201,10 @@ AS
   ct_msg_organization_code      CONSTANT  fnd_new_messages.message_name%TYPE              :=  'APP-XXCOS1-10585';
   --  稼働日数取得エラー
   ct_msg_operating_days         CONSTANT  fnd_new_messages.message_name%TYPE              :=  'APP-XXCOS1-10586';
+-- == 2015/03/16 V1.13 Added START =================================================================
+  --  会計期間名取得エラーメッセージ
+  ct_msg_xxcoi1_10399           CONSTANT  fnd_new_messages.message_name%TYPE              :=  'APP-XXCOI1-10399';
+-- == 2015/03/16 V1.13 Added END   =================================================================
 --
   --＠プロファイル名称
   --  XXCOS:ダミー営業グループコード
@@ -209,6 +218,14 @@ AS
   ct_prof_business_calendar_code
     CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_BUSINESS_CALENDAR_CODE';
 /* 2010/04/16 Ver1.9 Mod End   */
+-- == 2015/03/16 V1.13 Added START =================================================================
+  --  GL会計帳簿ID
+  ct_prof_gl_set_of_bks_id
+    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'GL_SET_OF_BKS_ID';
+  --  XXCOI:在庫確定印字文字
+  ct_prof_inv_cl_char
+    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOI1_INV_CL_CHARACTER';
+-- == 2015/03/16 V1.13 Added END   =================================================================
 --
   --＠クイックコード
   --  クイックコード（政策群コード）
@@ -272,6 +289,10 @@ AS
   cv_tkn_update_count           CONSTANT  VARCHAR2(020) := 'UPDATE_COUNT';
   --  削除件数
   cv_tkn_delete_count           CONSTANT  VARCHAR2(020) := 'DELETE_COUNT';
+-- == 2015/03/16 V1.13 Added START ==============================================================
+  -- 対象日
+  cv_tkn_date                   CONSTANT  VARCHAR2(20)  := 'DATE';
+-- == 2015/03/16 V1.13 Added END   ==============================================================
 --
   --＠パラメータ識別用
   --  「0：営業員のみ（営業員個々）」
@@ -385,6 +406,13 @@ AS
   --  顧客名称
   cn_limit_party_name           CONSTANT  PLS_INTEGER := 40;
 --
+-- == 2015/03/16 V1.13 Added START ==============================================================
+  --  GL会計期間
+  cv_gl                         CONSTANT  VARCHAR2(5) := 'SQLGL';
+  --  クローズ
+  cv_c                          CONSTANT  VARCHAR2(1) := 'C';
+-- == 2015/03/16 V1.13 Added END   ==============================================================
+--
   --  ===============================
   --  ユーザー定義プライベート型
   --  ===============================
@@ -422,6 +450,12 @@ AS
   --  XXCOS:カレンダコード
   gt_prof_business_calendar_code          fnd_profile_option_values.profile_option_value%TYPE;
 /* 2010/04/16 Ver1.9 Mod End   */
+-- == 2015/03/16 V1.13 Added START =================================================================
+  -- GL会計帳簿ID
+  gt_set_of_bks_id                        gl_sets_of_books.set_of_books_id%TYPE               DEFAULT NULL;
+  --  XXCOI:在庫確定印字文字
+  gt_prof_inv_cl_char                     fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL;
+-- == 2015/03/16 V1.13 Added END   =================================================================
 --
   --＠共通データ格納用
   --  共通データ．抽出基準日(date型)
@@ -489,8 +523,12 @@ AS
     lv_key_info                 VARCHAR2(5000);
     --パラメータ出力用
     lv_para_msg                 VARCHAR2(5000);
---
+    --
     lv_profile_name             VARCHAR2(5000);
+-- == 2015/03/16 V1.13 Added START =================================================================
+    -- 会計期間ステータス
+    lt_closing_status           gl_period_statuses.closing_status%TYPE              DEFAULT NULL;
+-- == 2015/03/16 V1.13 Added END   =================================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -658,6 +696,57 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END IF;
+-- == 2015/03/16 V1.13 Added START =================================================================
+    --========================================
+    -- GL会計帳簿ID取得
+    --========================================
+    gt_set_of_bks_id := FND_PROFILE.VALUE( ct_prof_gl_set_of_bks_id );
+    --
+    IF ( gt_set_of_bks_id IS NULL ) THEN
+      lv_profile_name := ct_prof_gl_set_of_bks_id;
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    --====================================
+    -- 会計期間チェック
+    --====================================
+    BEGIN
+      SELECT gps.closing_status  AS closing_status
+      INTO   lt_closing_status
+      FROM   gl_period_statuses  gps
+           , fnd_application     fa
+      WHERE  gps.application_id          = fa.application_id
+      AND    fa.application_short_name   = cv_gl
+      AND    gps.set_of_books_id         = gt_set_of_bks_id
+      AND    gps.adjustment_period_flag  = cv_no
+      AND    gps.start_date             <= gd_common_base_date
+      AND    gps.end_date               >= gd_common_base_date
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => ct_xxcoi_appl_short_name
+                     , iv_name         => ct_msg_xxcoi1_10399
+                     , iv_token_name1  => cv_tkn_date
+                     , iv_token_value1 => TO_CHAR(gd_common_base_date, cv_fmt_date_profile)
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END;
+    --
+    --====================================
+    -- 帳票印字文字取得
+    -- ※会計期間チェックはGLであるが、出力する値はプロファイル：在庫確定印字文字と同一
+    --====================================
+    IF ( lt_closing_status = cv_c ) THEN
+      gt_prof_inv_cl_char := FND_PROFILE.VALUE(ct_prof_inv_cl_char);
+      --
+      IF ( gt_prof_inv_cl_char IS NULL ) THEN
+        lv_profile_name := ct_prof_inv_cl_char;
+        RAISE global_get_profile_expt;
+      END IF;
+    END IF;
+-- == 2015/03/16 V1.13 Added END   =================================================================
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -758,6 +847,9 @@ AS
               target_date,
               base_code,
               base_name,
+-- == 2015/03/16 V1.13 Added START =================================================================
+              gl_cl_char,
+-- == 2015/03/16 V1.13 Added END   =================================================================
               section_code,
               section_name,
               group_in_sequence,
@@ -1092,6 +1184,9 @@ AS
             , gd_common_base_date                   AS  target_date                     --  日付
             , sub.base_code                         AS  base_code                       --  拠点コード
             , sub.base_name                         AS  base_name                       --  拠点名称
+-- == 2015/03/16 V1.13 Added START =================================================================
+            , gt_prof_inv_cl_char                   AS  gl_cl_char                      --  GL確定印字文字
+-- == 2015/03/16 V1.13 Added END   =================================================================
             , sub.section_code                      AS  section_code                    --  課コード
             , SUBSTRB(sub.section_name || lvsc.meaning, 1, cn_limit_sention_name)
                                                     AS  section_name                    --  課名称
@@ -2580,6 +2675,9 @@ AS
               target_date,
               base_code,
               base_name,
+-- == 2015/03/16 V1.13 Added START =================================================================
+              gl_cl_char,
+-- == 2015/03/16 V1.13 Added END   =================================================================
               section_code,
               section_name,
               group_in_sequence,
@@ -2694,6 +2792,9 @@ AS
               gd_common_base_date                                                   AS  target_date,
               work.base_code                                                        AS  base_code,
               work.base_name                                                        AS  base_name,
+-- == 2015/03/16 V1.13 Added START =================================================================
+              gt_prof_inv_cl_char                                                   AS  gl_cl_char,
+-- == 2015/03/16 V1.13 Added END   =================================================================
               work.section_code                                                     AS  section_code,
               work.section_name                                                     AS  section_name,
               work.group_in_sequence                                                AS  group_in_sequence,
@@ -3040,6 +3141,9 @@ AS
               target_date,
               base_code,
               base_name,
+-- == 2015/03/16 V1.13 Added START =================================================================
+              gl_cl_char,
+-- == 2015/03/16 V1.13 Added END   =================================================================
               section_code,
               section_name,
               group_in_sequence,
@@ -3154,6 +3258,9 @@ AS
               gd_common_base_date                                                   AS  target_date,
               work.base_code                                                        AS  base_code,
               SUBSTRB(work.base_name || xlbs.meaning, 1, cn_limit_base_name)        AS  base_name,
+-- == 2015/03/16 V1.13 Added START =================================================================
+              gt_prof_inv_cl_char                                                   AS  gl_cl_char,
+-- == 2015/03/16 V1.13 Added END   =================================================================
               work.section_code                                                     AS  section_code,
               work.section_name                                                     AS  section_name,
               work.group_in_sequence                                                AS  group_in_sequence,
