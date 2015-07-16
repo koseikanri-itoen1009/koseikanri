@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2011/04/20    1.11  S.Ochiai         [E_本稼動_01772]ＨＨＴ画面入力、ＨＨＴ連携データの原価割れ情報も表示させるよう修正
  *  2011/06/20    1.12  T.Ishiwata       [E_本稼動_07097]異常掛率卸価格チェック対応
  *  2012/01/24    1.13  T.Yoshimoto      [E_本稼動_08679]出力区分追加対応
+ *  2015/03/16    1.14  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
  *
  *****************************************************************************************/
 --
@@ -95,20 +96,24 @@ AS
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
-  --*** 会計期間区分取得例外 ***
-  global_acc_period_cls_get_expt    EXCEPTION;
-  --*** 会計期間取得例外 ***
-  global_account_period_get_expt    EXCEPTION;
+-- == 2015/03/16 V1.14 Deleted START =================================================================
+--  --*** 会計期間区分取得例外 ***
+--  global_acc_period_cls_get_expt    EXCEPTION;
+--  --*** 会計期間取得例外 ***
+--  global_account_period_get_expt    EXCEPTION;
+-- == 2015/03/16 V1.14 Deleted END   =================================================================
   --*** 書式チェック例外 ***
   global_format_chk_expt            EXCEPTION;
   --*** 日付逆転チェック例外 ***
   global_date_rever_chk_expt        EXCEPTION;
-  --*** 日付範囲チェック例外 ***
-  global_date_range_chk_expt        EXCEPTION;
-  --*** 対象データ取得例外 ***
-  global_data_get_expt              EXCEPTION;
-  --*** 営業原価取得例外 ***
-  global_sale_cost_get_expt         EXCEPTION;
+-- == 2015/03/16 V1.14 Deleted START =================================================================
+--  --*** 日付範囲チェック例外 ***
+--  global_date_range_chk_expt        EXCEPTION;
+--  --*** 対象データ取得例外 ***
+--  global_data_get_expt              EXCEPTION;
+--  --*** 営業原価取得例外 ***
+--  global_sale_cost_get_expt         EXCEPTION;
+-- == 2015/03/16 V1.14 Deleted END   =================================================================
   --*** 処理対象データ登録例外 ***
   global_data_insert_expt           EXCEPTION;
   --*** SVF起動例外 ***
@@ -136,11 +141,15 @@ AS
   cv_xxcoi_short_name       CONSTANT  VARCHAR2(100) := 'XXCOI';                -- 在庫領域短縮アプリ名
   --メッセージ
   cv_msg_format_check_err   CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00002';    -- 日付書式チェックエラーメッセージ
-  cv_msg_acc_cls_get_err    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11858';    -- 会計期間区分取得エラーメッセージ
-  cv_msg_acc_perd_get_err   CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00026';    -- 会計期間取得エラーメッセージ
+-- == 2015/03/16 V1.14 Deleted START =================================================================
+--  cv_msg_acc_cls_get_err    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11858';    -- 会計期間区分取得エラーメッセージ
+--  cv_msg_acc_perd_get_err   CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00026';    -- 会計期間取得エラーメッセージ
+-- == 2015/03/16 V1.14 Deleted END   =================================================================
   cv_msg_date_rever_err     CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00005';    -- 日付逆転エラーメッセージ
   cv_msg_date_range_err     CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11851';    -- 日付範囲エラーメッセージ
-  cv_msg_para_output_note   CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11853';    -- パラメータ出力メッセージ
+-- == 2015/03/16 V1.14 Deleted START =================================================================
+--  cv_msg_para_output_note   CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11853';    -- パラメータ出力メッセージ
+-- == 2015/03/16 V1.14 Deleted END   =================================================================
   cv_msg_sale_cost_get_err  CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11852';    -- 営業原価取得エラーメッセージ
   cv_msg_insert_err         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00010';    -- データ登録エラーメッセージ
   cv_msg_no_data_err        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00018';    -- 明細0件エラーメッセージ
@@ -160,8 +169,14 @@ AS
   cv_msg_check_mark         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-10607';    -- 異常掛率卸価格チェック記号
   cv_msg_fixed_price_err    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11860';    -- 定価取得エラーメッセージ
 -- 2011/06/20 Ver1.12 T.Ishiwata Add End
+-- == 2015/03/16 V1.14 Added START =================================================================
+  cv_msg_xxcoi1_00026       CONSTANT  VARCHAR2(100) :=  'APP-XXCOI1-00026';    -- 在庫会計期間ステータス取得エラーメッセージ
+  cv_msg_xxcoi1_10451       CONSTANT  VARCHAR2(100) :=  'APP-XXCOI1-10451';    -- 在庫確定印字文字取得エラーメッセージ
+-- == 2015/03/16 V1.14 Added END   =================================================================
   --トークン名
-  cv_tkn_nm_account         CONSTANT  VARCHAR2(100) :=  'ACCOUNT_NAME';        --会計期間種別名称
+-- == 2015/03/16 V1.14 Deleted START =================================================================
+--  cv_tkn_nm_account         CONSTANT  VARCHAR2(100) :=  'ACCOUNT_NAME';        --会計期間種別名称
+-- == 2015/03/16 V1.14 Deleted END   =================================================================
   cv_tkn_nm_para_date       CONSTANT  VARCHAR2(100) :=  'PARA_DATE';           --納品日(FROM)または納品日(TO)
   cv_tkn_nm_base_code       CONSTANT  VARCHAR2(100) :=  'BASE_CODE';           --売上拠点コード
   cv_tkn_nm_date_from       CONSTANT  VARCHAR2(100) :=  'DATE_FROM';           --納品日(FROM)
@@ -178,7 +193,9 @@ AS
   cv_tkn_nm_profile1        CONSTANT  VARCHAR2(100) :=  'PROFILE';             --プロファイル名(販売領域)
   cv_tkn_nm_profile2        CONSTANT  VARCHAR2(100) :=  'PRO_TOK';             --プロファイル名(在庫領域)
   cv_tkn_nm_org_cd          CONSTANT  VARCHAR2(100) :=  'ORG_CODE_TOK';        --在庫組織コード
-  cv_tkn_nm_acc_type        CONSTANT  VARCHAR2(100) :=  'TYPE';                --会計期間区分参照タイプ
+-- == 2015/03/16 V1.14 Deleted START =================================================================
+--  cv_tkn_nm_acc_type        CONSTANT  VARCHAR2(100) :=  'TYPE';                --会計期間区分参照タイプ
+-- == 2015/03/16 V1.14 Deleted END   =================================================================
 -- 2011/06/20 Ver1.12 T.Ishiwata Add Start
   cv_tkn_nm_item_cd         CONSTANT  VARCHAR2(100) :=  'ITEM_CODE';           --品目コード
   cv_tkn_nm_dlv_date        CONSTANT  VARCHAR2(100) :=  'DLV_DATE';            --納品日
@@ -186,12 +203,17 @@ AS
 -- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
   cv_tkn_nm_output_type     CONSTANT  VARCHAR2(100) :=  'OUTPUT_TYPE';         --出力区分
 -- 2012/01/24 v1.13 T.Yoshimoto Add End
+-- == 2015/03/16 V1.14 Added START =================================================================
+  cv_tkn_target_date        CONSTANT  VARCHAR2(100) :=  'TARGET_DATE';         --対象日
+-- == 2015/03/16 V1.14 Added END   =================================================================
   --トークン値
   cv_msg_vl_acc_cls_ar      CONSTANT  VARCHAR2(100) :=  'AR';                  --AR
   cv_msg_vl_date_from       CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11854';    --納品日FROM
   cv_msg_vl_date_to         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11855';    --納品日TO
   cv_msg_vl_table_name1     CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11856';    --帳票ワークテーブル名
-  cv_msg_vl_table_name2     CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11857';    --販売実績テーブル名
+-- == 2015/03/16 V1.14 Deleted START =================================================================
+--  cv_msg_vl_table_name2     CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11857';    --販売実績テーブル名
+-- == 2015/03/16 V1.14 Deleted END   =================================================================
   cv_msg_vl_api_name        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00041';    --API名称
   cv_msg_vl_key_request_id  CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00088';    --要求ID
   cv_msg_vl_min_date        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00120';    --MIN日付
@@ -256,6 +278,9 @@ AS
 -- 2011/06/20 Ver1.12 T.Ishiwata Add Start
   cv_prof_min_price_rate    CONSTANT  VARCHAR2(100) :=  'XXCOS1_MINIMUM_PRICE_RATE';         -- プロファイル名(最低卸価格掛率)
 -- 2011/06/20 Ver1.12 T.Ishiwata Add End
+-- == 2015/03/16 V1.14 Added START =================================================================
+  cv_prof_inv_cl_char       CONSTANT  VARCHAR2(100) :=  'XXCOI1_INV_CL_CHARACTER';           -- プロファイル名（在庫確定印字文字）
+-- == 2015/03/16 V1.14 Added END   =================================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -296,6 +321,9 @@ AS
   gn_minimum_price_rate     NUMBER;                                             --最低卸価格掛率(%)
   gv_check_mark             VARCHAR2(2);                                        --異常掛率卸価格チェック記号
 -- 2011/06/20 Ver1.12 T.Ishiwata Add End
+-- == 2015/03/16 V1.14 Added START =================================================================
+  gt_inv_cl_char            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 在庫確定印字文字
+-- == 2015/03/16 V1.14 Added END   =================================================================
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -635,6 +663,9 @@ AS
 -- ******** 2010/02/17 1.9 N.Maeda DEL START ******** --
 --    lv_acc_status        VARCHAR2(100);                    --会計期間ステータス
 -- ******** 2010/02/17 1.9 N.Maeda DEL  END  ******** --
+-- == 2015/03/16 V1.14 Added START =================================================================
+    lb_chk_result        BOOLEAN DEFAULT TRUE;             -- 在庫会計期間チェック結果
+-- == 2015/03/16 V1.14 Added END   =================================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -805,6 +836,47 @@ AS
     END IF;
 --
 -- ******** 2010/02/17 1.9 N.Maeda MOD  END  ******** --
+-- == 2015/03/16 V1.14 Added START =================================================================
+    --====================================
+    -- 在庫会計期間チェック
+    --====================================
+    xxcoi_common_pkg.org_acct_period_chk(
+        in_organization_id => gt_org_id
+      , id_target_date     => ld_dlv_date_to
+      , ob_chk_result      => lb_chk_result
+      , ov_errbuf          => lv_errbuf
+      , ov_retcode         => lv_retcode
+      , ov_errmsg          => lv_errmsg
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcoi_short_name
+                     , iv_name         => cv_msg_xxcoi1_00026
+                     , iv_token_name1  => cv_tkn_target_date
+                     , iv_token_value1 => TO_CHAR(ld_dlv_date_to, cv_yyyy_mm_dd)
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+    --====================================
+    -- 帳票印字文字取得
+    --====================================
+    IF NOT(lb_chk_result) THEN
+      gt_inv_cl_char := FND_PROFILE.VALUE(cv_prof_inv_cl_char);
+      --
+      IF ( gt_inv_cl_char IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcoi_short_name
+                       , iv_name         => cv_msg_xxcoi1_10451
+                       , iv_token_name1  => cv_tkn_nm_profile2
+                       , iv_token_value1 => cv_prof_inv_cl_char
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+-- == 2015/03/16 V1.14 Added END   =================================================================
     --チェックOK
     od_dlv_date_from := ld_dlv_date_from;
     od_dlv_date_to   := ld_dlv_date_to;
@@ -1948,6 +2020,9 @@ AS
 -- ************************ 2009/10/02 S.Miyakoshi Var1.7 MOD  END  ************************ --
         g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;            --納品日開始
         g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;              --納品日終了
+-- == 2015/03/16 V1.14 Added START =================================================================
+        g_report_data_tab(ln_idx).inv_cl_char            := gt_inv_cl_char;              --在庫確定印字文字
+-- == 2015/03/16 V1.14 Added END   =================================================================
         g_report_data_tab(ln_idx).employee_base_code     := l_data_rec.emp_code;         --営業担当者コード
         g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec.emp_name, 1, 14 );
                                                                                          --営業担当者名
@@ -2097,6 +2172,9 @@ AS
                                                                                                      --拠点名称
               g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                  --納品日開始
               g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                    --納品日終了
+-- == 2015/03/16 V1.14 Added START =================================================================
+              g_report_data_tab(ln_idx).inv_cl_char            := gt_inv_cl_char;                    --在庫確定印字文字
+-- == 2015/03/16 V1.14 Added END   =================================================================
               g_report_data_tab(ln_idx).employee_base_code     := l_rate_check_rec.emp_code;         --営業担当者コード
               g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_rate_check_rec.emp_name, 1, 14 );
                                                                                                      --営業担当者名
@@ -2144,6 +2222,9 @@ AS
                                                                                                      --拠点名称
             g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                    --納品日開始
             g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                      --納品日終了
+-- == 2015/03/16 V1.14 Added START =================================================================
+            g_report_data_tab(ln_idx).inv_cl_char            := gt_inv_cl_char;                      --在庫確定印字文字
+-- == 2015/03/16 V1.14 Added END   =================================================================
             g_report_data_tab(ln_idx).employee_base_code     := l_rate_check_rec.emp_code;           --営業担当者コード
             g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_rate_check_rec.emp_name, 1, 14 );
                                                                                                      --営業担当者名
