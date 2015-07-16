@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOI_REP_INV_CHECKLIST
  * Description : 棚卸チェックリスト帳票ワーク
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
  *  2009/07/13    1.1   H.Sasaki         [0000461]項目：取込順を追加
+ *  2015/03/24    1.2   K.Nakamura       E_本稼動_12906対応
  *
  ************************************************************************/
  CREATE TABLE xxcoi.xxcoi_rep_inv_checklist (
@@ -23,6 +24,9 @@
 -- == 2009/07/13 V1.1 Added END   ===============================================================
     ,base_code                      VARCHAR2(4)
     ,base_name                      VARCHAR2(50)
+-- Add Ver1.2 Start
+    ,inv_cl_char                    VARCHAR2(4)
+-- Add Ver1.2 End
     ,subinventory_code              VARCHAR2(10)
     ,subinventory_name              VARCHAR2(50)
     ,inventory_date                 DATE
@@ -66,6 +70,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.base_code                       
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.base_name                        IS '拠点名';
 /
+-- Add Ver1.2 Start
+COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.inv_cl_char                      IS '在庫確定印字文字';
+/
+-- Add Ver1.2 End
 COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.subinventory_code                IS '保管場所コード';
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_inv_checklist.subinventory_name                IS '保管場所名';
