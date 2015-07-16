@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_BUS_PERF
  * Description : 営業成績表帳票ワークテーブル
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,6 +14,7 @@
  *  2009/06/03    1.2   SCS T.Kitajima   COUNT_NEW_POINT(NUMBER(6,0)→NUMBER(6,2))
  *  2009/09/29    1.3   SCS S.Miyakoshi  [0001378]桁あふれ対応 NUMBER型の桁数指定無しに変更
  *                                       COUNT_NEW_POINT(NUMBER(6,2)→NUMBER(13,2))
+ *  2015/03/16    1.4   SCSK K.Nakamura  [E_本稼動_12906]対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_BUS_PERF
@@ -23,6 +24,9 @@ CREATE TABLE XXCOS.XXCOS_REP_BUS_PERF
     TARGET_DATE                     DATE,                       --日付
     BASE_CODE                       VARCHAR2(4),                --拠点コード
     BASE_NAME                       VARCHAR2(40),               --拠点名称
+-- Add Ver1.4 Start
+    GL_CL_CHAR                      VARCHAR2(4),                --GL確定印字文字
+-- Add Ver1.4 End
     SECTION_CODE                    VARCHAR2(2),                --課コード
     SECTION_NAME                    VARCHAR2(40),               --課名称
     GROUP_IN_SEQUENCE               VARCHAR2(2),                --グループ内順序
@@ -140,6 +144,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUM_DATA_CLASS                IS'集計
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.TARGET_DATE                   IS'日付';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.BASE_CODE                     IS'拠点コード';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.BASE_NAME                     IS'拠点名称';
+-- Add Ver1.4 Start
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.GL_CL_CHAR                    IS'GL確定印字文字';
+-- Add Ver1.4 End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SECTION_CODE                  IS'課コード';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SECTION_NAME                  IS'課名称';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.GROUP_IN_SEQUENCE             IS'グループ内順序';
