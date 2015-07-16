@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A19R(body)
  * Description      : 払出明細表（拠点別計）
  * MD.050           : 払出明細表（拠点別計） <MD050_XXCOI_006_A19>
- * Version          : V1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/06/26    1.2   H.Sasaki         [0000258]数量計算に棚卸減耗数を加算しない
  *                                                払出合計に基準在庫変更入庫を追加
  *  2009/07/21    1.3   H.Sasaki         [0000807]VD出庫数量より、基準在庫変更入庫数量を減算
+ *  2015/03/16    1.4   K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
  *
  *****************************************************************************************/
 --
@@ -101,8 +102,19 @@ AS
   cv_msg_xxcoi1_10111       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10111';       -- 受払年月未来日チェックエラーメッセージ
   cv_msg_xxcoi1_10114       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10114';       -- 原価区分名取得エラーメッセージ
   cv_msg_xxcoi1_10119       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10119';       -- SVF起動APIエラーメッセージ
+-- == 2015/03/16 V1.4 Added START =================================================================
+  cv_msg_xxcoi1_00005       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-00005';       -- 在庫組織コード取得エラーメッセージ
+  cv_msg_xxcoi1_00006       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-00006';       -- 在庫組織ID取得エラーメッセージ
+  cv_msg_xxcoi1_00026       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-00026';       -- 在庫会計期間ステータス取得エラーメッセージ
+  cv_msg_xxcoi1_10451       CONSTANT VARCHAR2(16) :=  'APP-XXCOI1-10451';       -- 在庫確定印字文字取得エラーメッセージ
+-- == 2015/03/16 V1.4 Added END   =================================================================
   cv_token_10107_1          CONSTANT VARCHAR2(30) :=  'P_INVENTORY_MONTH';      -- APP-XXCOI1-10107用トークン
   cv_token_10108_1          CONSTANT VARCHAR2(30) :=  'P_COST_TYPE';            -- APP-XXCOI1-10108用トークン
+-- == 2015/03/16 V1.4 Added START =================================================================
+  cv_token_protok           CONSTANT VARCHAR2(30) :=  'PRO_TOK';                -- プロファイル名
+  cv_token_orgcode          CONSTANT VARCHAR2(30) :=  'ORG_CODE_TOK';           -- 在庫組織コード
+  cv_token_target           CONSTANT VARCHAR2(30) :=  'TARGET_DATE';            -- 対象日
+-- == 2015/03/16 V1.4 Added END   =================================================================
   -- 棚卸区分（1:月中  2:月末）
   cv_inv_kbn_2              CONSTANT VARCHAR2(1)  :=  '2';
   -- 顧客
@@ -111,6 +123,12 @@ AS
   -- 日付型
   cv_type_month             CONSTANT VARCHAR2(6)  :=  'YYYYMM';                 -- DATE型 年月（YYYYMM）
   cv_type_date              CONSTANT VARCHAR2(8)  :=  'YYYYMMDD';               -- DATE型 年月日（YYYYMMDD）
+-- == 2015/03/16 V1.4 Added START =================================================================
+  cv_format_yyyymmdd        CONSTANT VARCHAR2(10) :=  'YYYY/MM/DD';             -- DATE型 年月日（YYYY/MM/DD）
+  -- プロファイル
+  cv_prf_name_org_code      CONSTANT VARCHAR2(30) :=  'XXCOI1_ORGANIZATION_CODE'; -- プロファイル名（在庫組織コード）
+  cv_prf_name_inv_cl_char   CONSTANT VARCHAR2(30) :=  'XXCOI1_INV_CL_CHARACTER';  -- プロファイル名（在庫確定印字文字）
+-- == 2015/03/16 V1.4 Added END   =================================================================
   -- LOOKUP_TYPE
   cv_xxcoi_cost_price_div   CONSTANT VARCHAR2(30) :=  'XXCOI1_COST_PRICE_DIV';  -- LOOKUP_TYPE（原価区分）
   -- その他
@@ -137,6 +155,10 @@ AS
   -- その他
   gd_f_process_date         DATE;                               -- 業務日付
   gt_cost_type_name         fnd_lookup_values.meaning%TYPE;     -- 原価区分名
+-- == 2015/03/16 V1.4 Added START =================================================================
+  gt_organization_id        mtl_parameters.organization_id%TYPE                 DEFAULT NULL; -- 在庫組織ID
+  gt_inv_cl_char            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 在庫確定印字文字
+-- == 2015/03/16 V1.4 Added END   =================================================================
 --
   -- ===============================
   -- ユーザー定義カーソル
@@ -561,6 +583,9 @@ AS
       ,cost_kbn                                 -- 04.原価区分
       ,base_code                                -- 05.拠点コード
       ,base_name                                -- 06.拠点名称
+-- == 2015/03/16 V1.4 Added START =================================================================
+      ,inv_cl_char                              -- 在庫確定印字文字
+-- == 2015/03/16 V1.4 Added END   =================================================================
       ,sales_ship_qty                           -- 07.売上出庫数量
       ,sales_ship_money                         -- 08.売上出庫金額
       ,vd_ship_qty                              -- 09.VD出庫数量
@@ -598,6 +623,9 @@ AS
       ,gt_cost_type_name                        -- 04
       ,lv_base_code                             -- 05
       ,lv_base_name                             -- 06
+-- == 2015/03/16 V1.4 Added START =================================================================
+      ,gt_inv_cl_char                           -- 在庫確定印字文字
+-- == 2015/03/16 V1.4 Added END   =================================================================
       ,ln_sales_ship_qty                        -- 07
       ,ln_sales_ship_money                      -- 08
       ,ln_vd_ship_qty                           -- 09
@@ -685,6 +713,9 @@ AS
 --
     -- *** ローカル変数 ***
     ld_dummy    DATE;       -- ダミー変数
+-- == 2015/03/16 V1.4 Added START =================================================================
+    lb_chk_result             BOOLEAN DEFAULT TRUE; -- 在庫会計期間チェック結果
+-- == 2015/03/16 V1.4 Added END   =================================================================
 --
     -- ===============================
     -- ローカル・カーソル
@@ -735,6 +766,47 @@ AS
       --
       RAISE global_process_expt;
     END IF;
+-- == 2015/03/16 V1.4 Added START =================================================================
+    --====================================
+    -- 在庫会計期間チェック
+    --====================================
+    xxcoi_common_pkg.org_acct_period_chk(
+        in_organization_id => gt_organization_id
+      , id_target_date     => LAST_DAY(ld_dummy)
+      , ob_chk_result      => lb_chk_result
+      , ov_errbuf          => lv_errbuf
+      , ov_retcode         => lv_retcode
+      , ov_errmsg          => lv_errmsg
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_short_name_xxcoi
+                     , iv_name         => cv_msg_xxcoi1_00026
+                     , iv_token_name1  => cv_token_target
+                     , iv_token_value1 => TO_CHAR(LAST_DAY(ld_dummy), cv_format_yyyymmdd)
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    --====================================
+    -- 帳票印字文字取得
+    --====================================
+    IF NOT(lb_chk_result) THEN
+      gt_inv_cl_char := FND_PROFILE.VALUE(cv_prf_name_inv_cl_char);
+      --
+      IF ( gt_inv_cl_char IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_short_name_xxcoi
+                       , iv_name         => cv_msg_xxcoi1_10451
+                       , iv_token_name1  => cv_token_protok
+                       , iv_token_value1 => cv_prf_name_inv_cl_char
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+-- == 2015/03/16 V1.4 Added END   =================================================================
    --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -790,6 +862,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- == 2015/03/16 V1.4 Added START =================================================================
+    lt_organization_code      fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 在庫組織コード
+-- == 2015/03/16 V1.4 Added END   =================================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -840,6 +915,42 @@ AS
     --  2.WHOカラム設定
     -- ===============================
     -- グローバル定数として、宣言部で設定しています。
+    --
+-- == 2015/03/16 V1.4 Added START =================================================================
+    --====================================
+    -- 在庫組織コード取得
+    --====================================
+    lt_organization_code := FND_PROFILE.VALUE(cv_prf_name_org_code);
+    --
+    IF ( lt_organization_code IS NULL ) THEN
+      -- プロファイル取得エラーメッセージ
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_short_name_xxcoi
+                     , iv_name         => cv_msg_xxcoi1_00005
+                     , iv_token_name1  => cv_token_protok
+                     , iv_token_value1 => cv_prf_name_org_code
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    --====================================
+    -- 在庫組織ID取得
+    --====================================
+    gt_organization_id := xxcoi_common_pkg.get_organization_id(lt_organization_code);
+    --
+    IF ( gt_organization_id IS NULL ) THEN
+      -- 在庫組織ID取得エラーメッセージ
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_short_name_xxcoi
+                     , iv_name         => cv_msg_xxcoi1_00006
+                     , iv_token_name1  => cv_token_orgcode
+                     , iv_token_value1 => lt_organization_code
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+-- == 2015/03/16 V1.4 Added END   =================================================================
     --
     -- ===============================
     --  3.原価区分名取得
