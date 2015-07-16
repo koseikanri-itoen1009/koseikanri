@@ -3,16 +3,17 @@
  *
  * Table Name  : XXCOS_REP_COST_DIV_LIST
  * Description : å¥âøäÑÇÍÉ`ÉFÉbÉNÉäÉXÉgí†ï[ÉèÅ[ÉNÉeÅ[ÉuÉã
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2009/01/30    1.0   SCS H.Ri       êVãKçÏê¨
+ *  2009/01/30    1.0   SCS H.Ri         êVãKçÏê¨
  *  2009/10/02    1.1   SCS S.Miyakoshi  [0001378]åÖÇ†Ç”ÇÍëŒâû DLV_UNIT_PRICE(NUMBER(8,2)Å®NUMBER(13,2))
  *                                                             SALE_AMOUNT(NUMBER(15,0)Å®NUMBER)
  *  2011/06/20    1.2   SCS T.Ishiwata   [E_ñ{â“ìÆ_07097]àŸèÌä|ó¶âµíPâøÉ`ÉFÉbÉNëŒâû
+ *  2015/03/16    1.3   SCSK K.Nakamura  [E_ñ{â“ìÆ_12906]ëŒâû
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_COST_DIV_LIST
@@ -22,6 +23,9 @@ CREATE TABLE XXCOS.XXCOS_REP_COST_DIV_LIST
     BASE_NAME                 VARCHAR2(40),                                --ãíì_ñºèÃ
     DLV_DATE_START            DATE,                                        --î[ïiì˙äJén
     DLV_DATE_END              DATE,                                        --î[ïiì˙èIóπ
+-- Add Ver1.3 Start
+    INV_CL_CHAR               VARCHAR2(4),                                 --ç›å…ämíËàÛéöï∂éö
+-- Add Ver1.3 End
     EMPLOYEE_BASE_CODE        VARCHAR2(5),                                 --âcã∆íSìñé“ÉRÅ[Éh
     EMPLOYEE_BASE_NAME        VARCHAR2(14),                                --âcã∆íSìñé“ñº
     DELIVER_TO_CODE           VARCHAR2(9),                                 --èoâ◊êÊÉRÅ[Éh
@@ -59,6 +63,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.BASE_CODE                  IS 'ã
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.BASE_NAME                  IS 'ãíì_ñºèÃ';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DLV_DATE_START             IS 'î[ïiì˙äJén';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DLV_DATE_END               IS 'î[ïiì˙èIóπ';
+-- Add Ver1.3 Start
+COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.INV_CL_CHAR                IS 'ç›å…ämíËàÛéöï∂éö';
+-- Add Ver1.3 End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.EMPLOYEE_BASE_CODE         IS 'âcã∆íSìñé“ÉRÅ[Éh';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.EMPLOYEE_BASE_NAME         IS 'âcã∆íSìñé“ñº';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_COST_DIV_LIST.DELIVER_TO_CODE            IS 'èoâ◊êÊÉRÅ[Éh';
