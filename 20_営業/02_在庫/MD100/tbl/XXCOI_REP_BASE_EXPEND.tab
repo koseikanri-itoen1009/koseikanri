@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOI_REP_BASE_EXPEND
  * Description : 払出明細表（拠点別計）帳票ワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
+ *  2015/03/24    1.1   K.Nakamura       E_本稼動_12906対応
  *
  ************************************************************************/
  CREATE TABLE xxcoi.xxcoi_rep_base_expend (
@@ -19,6 +20,9 @@
     ,cost_kbn                       VARCHAR2(8)
     ,base_code                      VARCHAR2(4)
     ,base_name                      VARCHAR2(8)
+-- Add Ver1.1 Start
+    ,inv_cl_char                    VARCHAR2(4)
+-- Add Ver1.1 End
     ,sales_ship_qty                 NUMBER
     ,sales_ship_money               NUMBER
     ,vd_ship_qty                    NUMBER
@@ -67,6 +71,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_rep_base_expend.base_code                         
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_base_expend.base_name                          IS '拠点名称';
 /
+-- Add Ver1.1 Start
+COMMENT ON COLUMN xxcoi.xxcoi_rep_base_expend.inv_cl_char                        IS '在庫確定印字文字';
+/
+-- Add Ver1.1 End
 COMMENT ON COLUMN xxcoi.xxcoi_rep_base_expend.sales_ship_qty                     IS '売上出庫数量';
 /
 COMMENT ON COLUMN xxcoi.xxcoi_rep_base_expend.sales_ship_money                   IS '売上出庫金額';
