@@ -195,7 +195,11 @@ SELECT
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
-            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2015/05/18 D.Sugahara Mod Start E_本稼動_12983
+-- 完了在庫トランの数量を受入返品実績アドオンID単位で集計する(SUMの追加)
+--            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM( itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) ) trans_qty
+-- 2015/05/18 D.Sugahara Mod End   E_本稼動_12983
             ,CASE WHEN INSTR(xrpm.break_col_01,'-') = 0
                        THEN ''
                   WHEN xrpm.rcv_pay_div = '1'
@@ -206,14 +210,41 @@ SELECT
              END                                  column_no
             ,itc.trans_date                       trans_date
       FROM   ic_tran_cmp                      itc
+-- 2015/05/18 D.Sugahara Add Start E_本稼動_12983
+            ,ic_adjs_jnl                      iaj  --在庫調整ジャーナル
+            ,ic_jrnl_mst                      ijm  --ジャーナルマスタ
+-- 2015/05/18 D.Sugahara Add End   E_本稼動_12983
             ,xxcmn_rcv_pay_mst                xrpm
       WHERE  itc.doc_type            = 'ADJI'
       AND    itc.reason_code         = 'X201'
+-- 2015/05/18 D.Sugahara Add Start E_本稼動_12983
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- 2015/05/18 D.Sugahara Add End   E_本稼動_12983
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND    itc.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itc.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
+-- 2015/05/18 D.Sugahara Add Start E_本稼動_12983
+-- 完了在庫トランの数量を受入返品実績アドオンID単位で集計する(Group Byの追加)
+      GROUP BY
+         itc.whse_code
+        ,itc.item_id  
+        ,itc.lot_id   
+        ,CASE WHEN INSTR(xrpm.break_col_01,'-') = 0
+                   THEN ''
+              WHEN xrpm.rcv_pay_div = '1'
+                   THEN SUBSTR(xrpm.break_col_01,1,INSTR(xrpm.break_col_01,'-') -1)
+              WHEN xrpm.dealings_div_name = '仕入'
+                   THEN SUBSTR(xrpm.break_col_01,1,INSTR(xrpm.break_col_01,'-') -1)
+              ELSE SUBSTR(xrpm.break_col_01,INSTR(xrpm.break_col_01,'-') +1)
+         END
+        ,itc.trans_date
+        ,ijm.attribute1  --受入返品実績アドオンID
+-- 2015/05/18 D.Sugahara Add End   E_本稼動_12983
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分情報ＶＩＷ在庫調整(浜岡)
@@ -694,7 +725,11 @@ SELECT
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
-            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2015/05/18 D.Sugahara Mod Start E_本稼動_12983
+-- 保留在庫トランの数量を受入返品実績アドオンID単位で集計する(SUMの追加)
+--            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM( itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) ) trans_qty
+-- 2015/05/18 D.Sugahara Mod End   E_本稼動_12983
             ,CASE WHEN INSTR(xrpm.break_col_01,'-') = 0
                        THEN ''
                   WHEN xrpm.rcv_pay_div = '1'
@@ -720,6 +755,23 @@ SELECT
       AND    xrpm.break_col_01       IS NOT NULL
       AND    itp.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itp.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
+-- 2015/05/18 D.Sugahara Add Start E_本稼動_12983
+-- 保留在庫トランの数量を受入返品実績アドオンID単位で集計する(Group Byの追加)
+      GROUP BY 
+         itp.whse_code
+        ,itp.item_id  
+        ,itp.lot_id
+        ,CASE WHEN INSTR(xrpm.break_col_01,'-') = 0
+                   THEN ''
+              WHEN xrpm.rcv_pay_div = '1'
+                   THEN SUBSTR(xrpm.break_col_01,1,INSTR(xrpm.break_col_01,'-') -1)
+              WHEN xrpm.dealings_div_name = '仕入'
+                   THEN SUBSTR(xrpm.break_col_01,1,INSTR(xrpm.break_col_01,'-') -1)
+              ELSE SUBSTR(xrpm.break_col_01,INSTR(xrpm.break_col_01,'-') +1)
+         END
+        ,itp.trans_date
+        ,rsl.attribute1        --受入返品実績アドオンID
+-- 2015/05/18 D.Sugahara Add End   E_本稼動_12983
       UNION ALL
       -- ----------------------------------------------------
       --  SQL16
