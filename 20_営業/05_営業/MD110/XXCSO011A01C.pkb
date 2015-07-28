@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.38
+ * Version          : 1.39
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,11 @@ AS
  *  update_po_req_line        発注依頼明細更新処理(A-23)
  *  check_maker_code          メーカーコードチェック処理(A-24)
  *  check_business_low_type   業態(小分類)チェック処理(A-25)
+ *  check_vd_accessory        付帯物チェック処理(A-28)
+ *  update_ib_modem           通信モデム物件更新処理(A-29)
+ *  update_ib_others          その他付帯物物件更新処理(A-30)
+ *  insert_hht_cdc_trn_proc   HHT集配信連携トランザクションテーブル登録処理(A-31)
+ *  get_vd_accessory          付帯物取得処理(A-32)
  *  submain                   メイン処理プロシージャ
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
@@ -117,6 +122,7 @@ AS
  *  2014-08-29    1.36 S.Yamashita       【E_本稼動_11719】ベンダー購入対応(PH2)
  *  2014-12-15    1.37 K.Kanada          【E_本稼動_12775】廃棄決裁の条件変更
  *  2015-01-13    1.38 T.Sano            【E_本稼動_12289】対応売上・担当拠点妥当性チェックを追加 
+ *  2015-05-07    1.39 K.Kiriu           【E_本稼動_12984】自販機の付帯機器管理に関する改修
  *
  *****************************************************************************************/
   --
@@ -297,6 +303,24 @@ AS
   /* 2015-01-13 T.Sano E_本稼動_12289対応 START */
   cv_tkn_number_77  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00717';  -- 参照タイプ内容取得エラーメッセージ
   /* 2015-01-13 T.Sano E_本稼動_12289対応 END */
+  /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+  cv_tkn_number_78  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00751';  -- 通信モデム重複エラーメッセージ
+  cv_tkn_number_79  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00104';  -- インスタンスパーティ取得エラー
+  cv_tkn_number_80  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00105';  -- インスタンスパーティ取得エラー
+  cv_tkn_number_81  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00752';  -- メッセージ用文字列(インスタンスパーティ情報)
+  cv_tkn_number_82  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00753';  -- メッセージ用文字列(インスタンスアカウント情報)
+  cv_tkn_number_83  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00754';  -- 引揚物件付帯物ロックエラー
+  cv_tkn_number_84  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00755';  -- 引揚物件付帯物ロックエラー
+  cv_tkn_number_85  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00756';  -- 通信モデム取得エラー
+  cv_tkn_number_86  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00757';  -- メッセージ用文字列(HHT集配信連携トランザクション)
+  cv_tkn_number_87  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00758';  -- 付帯物チェックエラー
+  cv_tkn_number_88  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00032';  -- データ抽出エラー
+  cv_tkn_number_89  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00702';  -- メッセージ用文字列(登録)
+  cv_tkn_number_90  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00703';  -- メッセージ用文字列(更新)
+  cv_tkn_number_91  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00759';  -- 引揚付帯物更新エラー
+  cv_tkn_number_92  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00704';  -- メッセージ用文字列(ロック)
+  cv_tkn_number_93  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00770';  -- 通信モデム設置不可エラー
+  /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -485,6 +509,20 @@ AS
   cb_true                   CONSTANT BOOLEAN     := TRUE;
   cb_false                  CONSTANT BOOLEAN     := FALSE;
 /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+/* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+  cv_yes                    CONSTANT VARCHAR2(1)   := 'Y';  -- 汎用「YES」
+  cv_no                     CONSTANT VARCHAR2(1)   := 'N';  -- 汎用「NO」
+  cv_fmt_yyyymmdd           CONSTANT VARCHAR2(8)   := 'YYYYMMDD';  --日付フォーマット
+  --付帯物チェックの区分
+  cv_vd_ac_chk_kbn_01       CONSTANT VARCHAR2(2)   := '01'; -- 通信モデム重複チェック
+  cv_vd_ac_chk_kbn_02       CONSTANT VARCHAR2(2)   := '02'; -- 通信モデム設置不可チェック
+  --参照タイプ
+  cv_vd_accessory_type      CONSTANT VARCHAR2(24)  := 'XXCSO1_VD_ACCESSORY_TYPE';
+  cv_modem_code             CONSTANT VARCHAR2(1)   := '1'; -- 自販機連動区分「通信モデム」
+  cv_acc_dist               CONSTANT VARCHAR2(1)   := '2'; -- 自販機連動区分「その他付帯物（付替可）」
+  cv_acc_no_dist            CONSTANT VARCHAR2(1)   := '3'; -- 自販機連動区分「その他付帯物（付替不可）」
+  cv_instance_type_code     CONSTANT VARCHAR2(1)   := '1'; -- インスタンスタイプコード(自販機)
+/* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -497,6 +535,9 @@ AS
   gt_instance_status_id_5 csi_instance_statuses.instance_status_id%TYPE; -- 廃棄処理済
   gt_instance_status_id_6 csi_instance_statuses.instance_status_id%TYPE; -- 物件削除済
 /*20090413_yabuki_ST549 END*/
+/* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+  gd_process_date  DATE;  --業務日付
+/* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -588,6 +629,10 @@ AS
 /* 2014-05-13 K.Nakamura E_本稼動_11853対応 START */
     ,instance_type_code           xxcso_install_base_v.instance_type_code%TYPE            -- インスタンスタイプコード
 /* 2014-05-13 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+    , linkage_type              po_un_numbers_vl.attribute15%TYPE                         -- 自販機連動区分
+    , maroon_coop_flag          fnd_lookup_values.attribute1%TYPE                         -- MaRooN連携フラグ
+/* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
   );
   --
   -- ===============================
@@ -749,6 +794,9 @@ AS
       RAISE global_api_expt;
       --
     END IF;
+    /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+    gd_process_date := od_process_date;
+    /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
     --
     -- ======================
     -- 取引タイプID抽出
@@ -2908,6 +2956,22 @@ AS
            /* 2014-05-13 K.Nakamura E_本稼動_11853対応 START */
            , xibv.instance_type_code           instance_type_code     -- インスタンスタイプコード
            /* 2014-05-13 K.Nakamura E_本稼動_11853対応 END */
+           /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+           , ( SELECT punv.attribute15
+               FROM   po_un_numbers_vl  punv
+               WHERE  punv.un_number = xibv.vendor_model
+             )                                 linkage_type           -- 自販機連動区分
+           , ( SELECT flvv.attribute1
+               FROM   po_un_numbers_vl     punv
+                    , fnd_lookup_values_vl flvv
+               WHERE  punv.un_number    = xibv.vendor_model
+               AND    punv.attribute15  = flvv.lookup_code
+               AND    flvv.lookup_type  = cv_vd_accessory_type
+               AND    flvv.enabled_flag = cv_yes
+               AND    gd_process_date BETWEEN NVL( flvv.start_date_active, gd_process_date )
+                                      AND     NVL( flvv.end_date_active,   gd_process_date )
+             )                                 maroon_coop_flag       -- MaRooN連携フラグ
+           /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
       INTO   o_instance_rec.instance_id  -- インスタンスID
            , o_instance_rec.op_req_flag  -- 作業依頼中フラグ
            , o_instance_rec.jotai_kbn1   -- 機器状態１（稼動状態）
@@ -2930,6 +2994,10 @@ AS
            /* 2014-05-13 K.Nakamura E_本稼動_11853対応 START */
            , o_instance_rec.instance_type_code -- インスタンスタイプコード
            /* 2014-05-13 K.Nakamura E_本稼動_11853対応 END */
+           /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+           , o_instance_rec.linkage_type
+           , o_instance_rec.maroon_coop_flag
+           /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
       FROM   xxcso_install_base_v  xibv
       WHERE  xibv.install_code = iv_install_code
       ;
@@ -4800,6 +4868,12 @@ AS
     , iv_install_code           IN   VARCHAR2    -- 設置用物件コード
     , iv_withdraw_install_code  IN   VARCHAR2    -- 引揚用物件コード
     , in_owner_account_id       IN   NUMBER      -- 設置先アカウントID
+    /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+    , ot_account_id             OUT  hz_cust_accounts.cust_account_id%TYPE  -- 顧客ID
+    , ot_party_site_id          OUT  hz_party_sites.party_site_id%TYPE      -- パーティサイトID
+    , ot_party_id               OUT  hz_parties.party_id%TYPE               -- パーティID
+    , ot_area_code              OUT  hz_locations.address3%TYPE             -- 地区コード
+    /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
 /*20090427_yabuki_ST505_517 END*/
     , ov_errbuf           OUT NOCOPY VARCHAR2    -- エラー・メッセージ --# 固定 #
     , ov_retcode          OUT NOCOPY VARCHAR2    -- リターン・コード   --# 固定 #
@@ -4883,11 +4957,21 @@ AS
             /* 2009.09.10 K.Satomura 0001335対応 START */
             ,casv.customer_class_code customer_class_code
             /* 2009.09.10 K.Satomura 0001335対応 END */
+            /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+            ,casv.party_site_id party_site_id
+            ,casv.party_id      party_id
+            ,casv.area_code     area_code
+            /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
       INTO   lv_customer_status
             ,lt_cust_acct_id
             /* 2009.09.10 K.Satomura 0001335対応 START */
             ,lt_customer_class_code
             /* 2009.09.10 K.Satomura 0001335対応 END */
+            /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+            ,ot_party_site_id
+            ,ot_party_id
+            ,ot_area_code
+            /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
       FROM   xxcso_cust_acct_sites_v  casv    -- 顧客マスタサイトビュー
       WHERE casv.account_number    = iv_account_number
       AND   casv.account_status    = cv_account_sts_active
@@ -4896,6 +4980,10 @@ AS
       AND   casv.party_site_status = cv_party_site_sts_active
       ;
 /*20090427_yabuki_ST505_517 END*/
+      /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+      --戻り値用の顧客IDに値を設定
+      ot_account_id := lt_cust_acct_id;
+      /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
       --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -7616,6 +7704,1208 @@ AS
   END check_business_low_type;
   --
 /* 2010.01.25 K.Hosoi E_本稼動_00533,00319対応 END */
+/* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+  /**********************************************************************************
+   * Procedure Name   : check_vd_accessory
+   * Description      : 付帯物チェック処理(A-28)
+   ***********************************************************************************/
+  PROCEDURE check_vd_accessory(
+      iv_chk_kbn          IN         VARCHAR2              -- チェック区分
+    , i_requisition_rec   IN         g_requisition_rtype   -- 発注依頼情報
+    , i_instance_rec      IN         g_instance_rtype      -- 物件情報（設置用）
+    , ov_errbuf           OUT NOCOPY VARCHAR2              -- エラー・メッセージ --# 固定 #
+    , ov_retcode          OUT NOCOPY VARCHAR2)             -- リターン・コード   --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'check_vd_accessory'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_cancel_code CONSTANT VARCHAR2(12) := 'XXCSO011A05C';
+--
+    -- *** ローカル変数 ***
+    cn_cnt                  NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- チェック区分01
+    IF ( iv_chk_kbn = cv_vd_ac_chk_kbn_01 ) THEN
+      -- 同一顧客に別のモデムがついていないかチェック
+      SELECT  COUNT(1) cnt
+      INTO    cn_cnt
+      FROM    csi_item_instances   cii
+            , hz_cust_accounts     hca
+            , po_un_numbers_vl     punv
+      WHERE   hca.account_number         =  i_requisition_rec.install_at_customer_code --顧客
+      AND     cii.owner_party_account_id =  hca.cust_account_id
+      AND     cii.attribute1             =  punv.un_number
+      AND     cii.external_reference     <> i_requisition_rec.install_code             --指定された物件以外
+      AND     punv.attribute15           =  cv_modem_code                              --通信モデム
+      ;
+      --
+      IF ( cn_cnt > 0 ) THEN
+        lv_errbuf  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_78                            -- メッセージコード
+                        , iv_token_name1  => cv_tkn_kokyaku                              -- トークンコード1
+                        , iv_token_value1 => i_requisition_rec.install_at_customer_code  -- トークン値1
+                      );
+        --
+        RAISE global_api_expt;
+        --
+      END IF;
+    -- チェック区分02
+    ELSIF ( iv_chk_kbn = cv_vd_ac_chk_kbn_02 ) THEN
+      -- 顧客が通信モデムの設置可能かチェック
+      SELECT  COUNT(1) cnt
+      INTO    cn_cnt
+      FROM    xxcso_hht_col_dlv_coop_trn  xhcdct
+      WHERE   xhcdct.account_number       =  i_requisition_rec.install_at_customer_code --顧客
+      AND     xhcdct.creating_source_code =  cv_cancel_code                             --発生元ソースコード(キャンセル)
+      AND     xhcdct.cooperate_flag       =  cv_yes                                     --連携フラグ
+      AND     xhcdct.withdraw_psid        IS NOT NULL                                   --引揚PSID
+      ;
+      --
+      IF ( cn_cnt > 0 ) THEN
+        lv_errbuf  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name                    -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_93                            -- メッセージコード
+                        , iv_token_name1  => cv_tkn_kokyaku                              -- トークンコード1
+                        , iv_token_value1 => i_requisition_rec.install_at_customer_code  -- トークン値1
+                      );
+        --
+        RAISE global_api_expt;
+        --
+      END IF;
+      --
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END check_vd_accessory;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_ib_modem
+   * Description      : 通信モデム更新処理(A-29)
+   ***********************************************************************************/
+  PROCEDURE update_ib_modem(
+      i_requisition_rec       IN         g_requisition_rtype                    -- 発注依頼情報
+    , i_instance_rec          IN         g_instance_rtype                       -- 物件情報（設置用）
+    , it_account_id           IN         hz_cust_accounts.cust_account_id%TYPE  -- 設置先アカウントID
+    , it_party_site_id        IN         hz_party_sites.party_site_id%TYPE      -- パーティサイトID
+    , it_party_id             IN         hz_parties.party_id%TYPE               -- パーティID
+    , it_area_code            IN         hz_locations.address3%TYPE             -- 地区コード
+    , it_transaction_type_id  IN         csi_txn_types.transaction_type_id%TYPE -- 取引タイプID
+    , ov_errbuf               OUT NOCOPY VARCHAR2              -- エラー・メッセージ --# 固定 #
+    , ov_retcode              OUT NOCOPY VARCHAR2)             -- リターン・コード   --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_ib_modem'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_party_source_table     CONSTANT VARCHAR2(100)  := 'HZ_PARTIES';     -- パーティソーステーブル
+    cv_relatnsh_type_code     CONSTANT VARCHAR2(100)  := 'OWNER';          -- リレーションタイプ
+    cv_location_type_code     CONSTANT VARCHAR2(100)  := 'HZ_PARTY_SITES'; -- 現行事業所タイプ
+    cn_api_version            CONSTANT NUMBER         := 1.0;
+    cv_commit_false           CONSTANT VARCHAR2(1)    := 'F';
+    cv_init_msg_list_true     CONSTANT VARCHAR2(2000) := 'T';
+    cv_encoded_false          CONSTANT VARCHAR2(1)    := 'F';
+    ln_cnt                    CONSTANT NUMBER         := 1;
+    cv_chiku_cd               CONSTANT VARCHAR2(100)  := 'CHIKU_CD';       -- 追加属性(地区コード)
+    --
+    -- *** ローカル変数 ***
+    -- メッセージトークン取得用
+    lv_tkn_msg                         VARCHAR2(5000);
+    -- 更新情報取得用
+    lt_instance_party_id               csi_i_parties.instance_party_id%TYPE;
+    lt_object_version_number2          csi_i_parties.object_version_number%TYPE;
+    lt_ip_account_id                   csi_ip_accounts.ip_account_id%TYPE;
+    lt_object_version_number3          csi_ip_accounts.object_version_number%TYPE;
+    l_ext_attrib_rec                   csi_iea_values%ROWTYPE;
+    -- API入力値格納用
+    ln_validation_level                NUMBER;
+    -- API入出力レコード値格納用
+    l_instance_rec                     csi_datastructures_pub.instance_rec;
+    l_ext_attrib_values_tab            csi_datastructures_pub.extend_attrib_values_tbl;
+    l_party_tab                        csi_datastructures_pub.party_tbl;
+    l_account_tab                      csi_datastructures_pub.party_account_tbl;
+    l_pricing_attrib_tab               csi_datastructures_pub.pricing_attribs_tbl;
+    l_org_assignments_tab              csi_datastructures_pub.organization_units_tbl;
+    l_asset_assignment_tab             csi_datastructures_pub.instance_asset_tbl;
+    l_txn_rec                          csi_datastructures_pub.transaction_rec;
+    l_instance_id_tab                  csi_datastructures_pub.id_tbl;
+    -- 戻り値格納用
+    lv_return_status                   VARCHAR2(1);
+    ln_msg_count                       NUMBER;
+    ln_msg_count2                      NUMBER;
+    lv_msg_data                        VARCHAR2(2000);
+    lv_msg_data2                       VARCHAR2(2000);
+    --
+    -- *** ローカル例外 ***
+    sql_expt      EXCEPTION;
+    api_expt      EXCEPTION;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- ========================================
+    -- A-13. 物件ロック処理
+    -- ========================================
+    lock_ib_info(
+        in_instance_id        => i_instance_rec.instance_id
+      , iv_install_code       => i_requisition_rec.install_code
+      , iv_lock_err_tkn_num   => cv_tkn_number_35
+      , iv_others_err_tkn_num => cv_tkn_number_36
+      , ov_errbuf             => lv_errbuf
+      , ov_retcode            => lv_retcode
+    );
+    --
+    -- 物件ロック処理が正常終了でない場合
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      RAISE sql_expt;
+      --
+    END IF;
+--
+    --インスタンスパーティ情報抽出 
+    BEGIN
+      SELECT cip.instance_party_id  instance_party_id                   -- インスタンスパーティID
+            ,cip.object_version_number                                  -- オブジェクトバージョン
+      INTO   lt_instance_party_id
+            ,lt_object_version_number2
+      FROM   csi_i_parties cip                                          -- インスタンスパーティ
+      WHERE  cip.instance_id  = i_instance_rec.instance_id
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合
+        lv_tkn_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name     -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_81             -- メッセージコード
+                      );
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name     -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_79             -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                        ,iv_token_value1 => lv_tkn_msg                   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken                -- トークンコード2
+                        ,iv_token_value2 => i_instance_rec.install_code  -- トークン値2
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE sql_expt;
+        -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_tkn_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name     -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_81             -- メッセージコード
+                      );
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name     -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_80             -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                        ,iv_token_value1 => lv_tkn_msg                   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken                -- トークンコード2
+                        ,iv_token_value2 => i_instance_rec.install_code  -- トークン値2
+                        ,iv_token_name3  => cv_tkn_err_msg               -- トークンコード3
+                        ,iv_token_value3 => SQLERRM                      -- トークン値3
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE sql_expt;
+    END;
+--
+    --インスタンスアカウント情報抽出 
+    BEGIN
+      SELECT cipa.ip_account_id  ip_account_id                          -- インスタンスアカウントID
+            ,cipa.object_version_number                                 -- オブジェクトバージョン 
+      INTO   lt_ip_account_id
+            ,lt_object_version_number3
+      FROM   csi_ip_accounts cipa
+      WHERE  cipa.instance_party_id  = lt_instance_party_id
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合
+        lv_tkn_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name     -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_82             -- メッセージコード
+                      );
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name     -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_79             -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                        ,iv_token_value1 => lv_tkn_msg                   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken                -- トークンコード2
+                        ,iv_token_value2 => i_instance_rec.install_code  -- トークン値2
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE sql_expt;
+        -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_tkn_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name     -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_82             -- メッセージコード
+                      );
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name     -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_80             -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                        ,iv_token_value1 => lv_tkn_msg                   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken                -- トークンコード2
+                        ,iv_token_value2 => i_instance_rec.install_code  -- トークン値2
+                        ,iv_token_name3  => cv_tkn_err_msg               -- トークンコード3
+                        ,iv_token_value3 => SQLERRM                      -- トークン値3
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE sql_expt;
+    END;
+--
+    --追加属性ID(地区コード)取得
+    l_ext_attrib_rec := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(
+                           i_instance_rec.instance_id
+                          ,cv_chiku_cd
+                        );
+--
+    -- インスタンスレコード設定
+    l_instance_rec.instance_id                      := i_instance_rec.instance_id;
+    l_instance_rec.location_type_code               := cv_location_type_code;
+    l_instance_rec.location_id                      := it_party_site_id;
+    l_instance_rec.object_version_number            := i_instance_rec.obj_ver_num;
+    l_instance_rec.request_id                       := cn_request_id;
+    l_instance_rec.program_application_id           := cn_program_application_id;
+    l_instance_rec.program_id                       := cn_program_id;
+    l_instance_rec.program_update_date              := cd_program_update_date;
+    -- パーティレコード設定
+    l_party_tab(ln_cnt).instance_party_id           := lt_instance_party_id;
+    l_party_tab(ln_cnt).party_source_table          := cv_party_source_table;
+    l_party_tab(ln_cnt).party_id                    := it_party_id;
+    l_party_tab(ln_cnt).relationship_type_code      := cv_relatnsh_type_code;
+    l_party_tab(ln_cnt).contact_flag                := cv_no;
+    l_party_tab(ln_cnt).object_version_number       := lt_object_version_number2;
+    -- アカウントレコード設定
+    l_account_tab(ln_cnt).ip_account_id             := lt_ip_account_id;
+    l_account_tab(ln_cnt).instance_party_id         := lt_instance_party_id;
+    l_account_tab(ln_cnt).parent_tbl_index          := cn_one;
+    l_account_tab(ln_cnt).party_account_id          := it_account_id;
+    l_account_tab(ln_cnt).relationship_type_code    := cv_relatnsh_type_code;
+    l_account_tab(ln_cnt).object_version_number     := lt_object_version_number3;
+    -- 取引レコード設定
+    l_txn_rec.transaction_date                      := cd_creation_date;
+    l_txn_rec.source_transaction_date               := cd_creation_date;
+    l_txn_rec.transaction_type_id                   := it_transaction_type_id;
+    -- 追加属性レコード設定(地区コード)
+    IF ( l_ext_attrib_rec.attribute_value_id IS NOT NULL ) THEN 
+      l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value       := it_area_code;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+      l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+    END IF;
+--
+    ------------------------------
+    -- ＩＢ更新用標準API
+    ------------------------------
+    CSI_ITEM_INSTANCE_PUB.UPDATE_ITEM_INSTANCE(
+        p_api_version           => cn_api_version
+      , p_commit                => cv_commit_false
+      , p_init_msg_list         => cv_init_msg_list_true
+      , p_validation_level      => ln_validation_level
+      , p_instance_rec          => l_instance_rec
+      , p_ext_attrib_values_tbl => l_ext_attrib_values_tab
+      , p_party_tbl             => l_party_tab
+      , p_account_tbl           => l_account_tab
+      , p_pricing_attrib_tbl    => l_pricing_attrib_tab
+      , p_org_assignments_tbl   => l_org_assignments_tab
+      , p_asset_assignment_tbl  => l_asset_assignment_tab
+      , p_txn_rec               => l_txn_rec
+      , x_instance_id_lst       => l_instance_id_tab
+      , x_return_status         => lv_return_status
+      , x_msg_count             => ln_msg_count
+      , x_msg_data              => lv_msg_data
+    );
+    --
+    -- APIが正常終了でない場合
+    IF ( lv_return_status <> FND_API.G_RET_STS_SUCCESS ) THEN
+      RAISE api_expt;
+      --
+    END IF;
+--
+  EXCEPTION
+--
+    WHEN sql_expt THEN
+      -- *** SQLデータ抽出例外＆ロックエラーハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    WHEN api_expt THEN
+      -- APIでエラーが発生した場合
+      ov_retcode := cv_status_error;
+      --
+      FOR i IN 1..fnd_msg_pub.count_msg LOOP
+        fnd_msg_pub.get(
+            p_msg_index     => i
+          , p_encoded       => cv_encoded_false
+          , p_data          => lv_msg_data2
+          , p_msg_index_out => ln_msg_count2
+        );
+        lv_msg_data := lv_msg_data || lv_msg_data2;
+        --
+      END LOOP;
+      --
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_sales_appl_short_name                 -- アプリケーション短縮名
+                     , iv_name         => cv_tkn_number_37                         -- メッセージコード
+                     , iv_token_name1  => cv_tkn_bukken                            -- トークンコード1
+                     , iv_token_value1 => i_requisition_rec.install_code           -- トークン値1
+                     , iv_token_name2  => cv_tkn_api_err_msg                       -- トークンコード2
+                     , iv_token_value2 => lv_msg_data                              -- トークン値2
+                   );
+      --
+      ov_errbuf := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      --
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_ib_modem;
+--
+  /**********************************************************************************
+   * Procedure Name   : update_ib_others
+   * Description      : その他付帯物物件更新処理(A-30)
+   ***********************************************************************************/
+  PROCEDURE update_ib_others(
+      iv_process_kbn          IN         VARCHAR2                                      -- 1.処理区分
+    , it_transaction_type_id  IN         csi_txn_types.transaction_type_id%TYPE        -- 2.取引タイプID
+    , i_requisition_rec       IN         g_requisition_rtype                           -- 3.発注依頼情報
+    , i_instance_rec          IN         g_instance_rtype                              -- 4.物件情報
+    , ov_errbuf               OUT NOCOPY VARCHAR2    -- エラー・メッセージ --# 固定 #
+    , ov_retcode              OUT NOCOPY VARCHAR2    -- リターン・コード   --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'update_ib_others';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);     -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_api_version         CONSTANT NUMBER         := 1.0;
+    cv_commit_false        CONSTANT VARCHAR2(1)    := 'F';
+    cv_init_msg_list_true  CONSTANT VARCHAR2(2000) := 'T';
+    cv_encoded_false       CONSTANT VARCHAR2(1)    := 'F';
+    --
+    -- *** ローカル変数 ***
+    --
+    -- API入力値格納用
+    ln_validation_level    NUMBER;
+    --
+    -- API入出力レコード値格納用
+    l_instance_rec           csi_datastructures_pub.instance_rec;
+    l_ext_attrib_values_tab  csi_datastructures_pub.extend_attrib_values_tbl;
+    l_party_tab              csi_datastructures_pub.party_tbl;
+    l_account_tab            csi_datastructures_pub.party_account_tbl;
+    l_pricing_attrib_tab     csi_datastructures_pub.pricing_attribs_tbl;
+    l_org_assignments_tab    csi_datastructures_pub.organization_units_tbl;
+    l_asset_assignment_tab   csi_datastructures_pub.instance_asset_tbl;
+    l_txn_rec                csi_datastructures_pub.transaction_rec;
+    l_instance_id_tab        csi_datastructures_pub.id_tbl;
+    --
+    -- 戻り値格納用
+    lv_return_status    VARCHAR2(1);
+    ln_msg_count        NUMBER;
+    ln_msg_count2       NUMBER;
+    lv_msg_data         VARCHAR2(2000);
+    lv_msg_data2        VARCHAR2(2000);
+    --
+    -- *** ローカル例外 ***
+    sql_expt      EXCEPTION;
+    api_expt      EXCEPTION;
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    -- ========================================
+    -- A-13. 物件ロック処理
+    -- ========================================
+    lock_ib_info(
+        in_instance_id        => i_instance_rec.instance_id
+      , iv_install_code       => i_instance_rec.install_code
+      , iv_lock_err_tkn_num   => cv_tkn_number_83
+      , iv_others_err_tkn_num => cv_tkn_number_84
+      , ov_errbuf             => lv_errbuf
+      , ov_retcode            => lv_retcode
+    );
+    --
+    -- 物件ロック処理が正常終了でない場合
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      RAISE sql_expt;
+      --
+    END IF;
+    --
+    --------------------------------------------------
+    -- 処理区分が「発注依頼申請」の場合
+    --------------------------------------------------
+    IF ( iv_process_kbn = cv_proc_kbn_req_appl ) THEN
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_on;
+      l_instance_rec.attribute8             := i_requisition_rec.requisition_number
+                                               || cv_slash || i_requisition_rec.install_at_customer_code;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := cn_request_id;
+      l_instance_rec.program_application_id := cn_program_application_id;
+      l_instance_rec.program_id             := cn_program_id;
+      l_instance_rec.program_update_date    := cd_program_update_date;
+    --------------------------------------------------
+    -- 処理区分が「発注依頼否認」の場合
+    --------------------------------------------------
+    ELSE
+      ------------------------------
+      -- インスタンスレコード設定
+      ------------------------------
+      l_instance_rec.instance_id            := i_instance_rec.instance_id;
+      l_instance_rec.attribute4             := cv_op_req_flag_off;
+      l_instance_rec.attribute8             := NULL;
+      l_instance_rec.object_version_number  := i_instance_rec.obj_ver_num;
+      l_instance_rec.request_id             := cn_request_id;
+      l_instance_rec.program_application_id := cn_program_application_id;
+      l_instance_rec.program_id             := cn_program_id;
+      l_instance_rec.program_update_date    := cd_program_update_date;
+      --
+    END IF;
+    --
+    ------------------------------
+    -- 取引レコード設定
+    ------------------------------
+    l_txn_rec.TRANSACTION_DATE        := cd_creation_date;
+    l_txn_rec.SOURCE_TRANSACTION_DATE := cd_creation_date;
+    l_txn_rec.TRANSACTION_TYPE_ID     := it_transaction_type_id;
+    --
+    ------------------------------
+    -- ＩＢ更新用標準API
+    ------------------------------
+    CSI_ITEM_INSTANCE_PUB.UPDATE_ITEM_INSTANCE(
+        p_api_version           => cn_api_version
+      , p_commit                => cv_commit_false
+      , p_init_msg_list         => cv_init_msg_list_true
+      , p_validation_level      => ln_validation_level
+      , p_instance_rec          => l_instance_rec
+      , p_ext_attrib_values_tbl => l_ext_attrib_values_tab
+      , p_party_tbl             => l_party_tab
+      , p_account_tbl           => l_account_tab
+      , p_pricing_attrib_tbl    => l_pricing_attrib_tab
+      , p_org_assignments_tbl   => l_org_assignments_tab
+      , p_asset_assignment_tbl  => l_asset_assignment_tab
+      , p_txn_rec               => l_txn_rec
+      , x_instance_id_lst       => l_instance_id_tab
+      , x_return_status         => lv_return_status
+      , x_msg_count             => ln_msg_count
+      , x_msg_data              => lv_msg_data
+    );
+    --
+    -- APIが正常終了でない場合
+    IF ( lv_return_status <> FND_API.G_RET_STS_SUCCESS ) THEN
+      RAISE api_expt;
+      --
+    END IF;
+    --
+  EXCEPTION
+    --
+    WHEN sql_expt THEN
+      -- *** SQLデータ抽出例外＆ロックエラーハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    WHEN api_expt THEN
+      -- APIでエラーが発生した場合
+      ov_retcode := cv_status_error;
+      --
+      FOR i IN 1..fnd_msg_pub.count_msg LOOP
+        fnd_msg_pub.get(
+            p_msg_index     => i
+          , p_encoded       => cv_encoded_false
+          , p_data          => lv_msg_data2
+          , p_msg_index_out => ln_msg_count2
+        );
+        lv_msg_data := lv_msg_data || lv_msg_data2;
+        --
+      END LOOP;
+      --
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_sales_appl_short_name                 -- アプリケーション短縮名
+                     , iv_name         => cv_tkn_number_91                         -- メッセージコード
+                     , iv_token_name1  => cv_tkn_bukken                            -- トークンコード1
+                     , iv_token_value1 => i_instance_rec.install_code              -- トークン値1
+                     , iv_token_name2  => cv_tkn_api_err_msg                       -- トークンコード2
+                     , iv_token_value2 => lv_msg_data                              -- トークン値2
+                   );
+      --
+      ov_errbuf := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END update_ib_others;
+--
+  /**********************************************************************************
+   * Procedure Name   : insert_hht_cdc_trn_proc
+   * Description      : HHT集配信連携トランザクションテーブル登録処理(A-31)
+   ***********************************************************************************/
+  PROCEDURE insert_hht_cdc_trn_proc(
+      iv_requisition_num IN         VARCHAR2  -- 購買依頼番号
+    , iv_install_code    IN         VARCHAR2  -- 物件コード
+    , id_work_hope_date  IN         DATE      -- 作業希望年月日
+    , ov_errbuf          OUT NOCOPY VARCHAR2  -- エラー・メッセージ --# 固定 #
+    , ov_retcode         OUT NOCOPY VARCHAR2  -- リターン・コード   --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name    CONSTANT VARCHAR2(100) := 'insert_hht_cdc_trn_proc';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf     VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);     -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    --
+    -- 拡張属性
+    cv_ps_id          CONSTANT VARCHAR2(5)  := 'PS_ID';
+    cv_line_number    CONSTANT VARCHAR2(11) := 'LINE_NUMBER';
+    -- *** ローカルデータ型 ***
+    -- *** ローカル変数 ***
+    -- メッセージトークン用
+    lv_tkn_msg1          VARCHAR2(100);
+    lv_tkn_msg2          VARCHAR2(100);
+    -- 登録用変数
+    lt_account_number   hz_cust_accounts.account_number%TYPE;
+    lv_ps_id            VARCHAR2(20);
+    lv_line_number      VARCHAR2(20);
+    -- 更新用変数
+    lr_row_id           ROWID;
+    -- *** ローカル例外 ***
+    sql_expt      EXCEPTION;
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    --------------------------------------------------
+    -- 物件情報取得
+    --------------------------------------------------
+    BEGIN
+      SELECT  hca.account_number  account_number
+            , xxcso_ib_common_pkg.get_ib_ext_attribs(cii.instance_id, cv_ps_id)        ps_id       --PSID
+            , xxcso_ib_common_pkg.get_ib_ext_attribs(cii.instance_id, cv_line_number)  line_number --回線番号
+      INTO    lt_account_number
+            , lv_ps_id
+            , lv_line_number
+      FROM    csi_item_instances   cii
+            , hz_cust_accounts     hca
+      WHERE   cii.external_reference     = iv_install_code
+      AND     cii.owner_party_account_id = hca.cust_account_id
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_85                -- メッセージコード
+                        , iv_token_name1  => cv_tkn_bukken                   -- トークンコード1
+                        , iv_token_value1 => iv_install_code                 -- トークン値1
+                        , iv_token_name2  => cv_tkn_err_msg                  -- トークンコード4
+                        , iv_token_value2 => SQLERRM                         -- トークン値4
+                      );
+        --
+        RAISE sql_expt;
+    END;
+    --
+    ------------------------------------------------------
+    -- HHT集配信連携トランザクションテーブル前回データ更新
+    ------------------------------------------------------
+    BEGIN
+      -- ロック
+      SELECT xhcdct.rowid  row_id
+      INTO   lr_row_id
+      FROM   xxcso_hht_col_dlv_coop_trn xhcdct
+      WHERE  xhcdct.account_number = lt_account_number
+      AND    xhcdct.cooperate_flag = cv_yes
+      FOR UPDATE NOWAIT
+      ;
+      -- 初回登録以降、前回の連携データを更新
+      IF ( lr_row_id IS NOT NULL ) THEN
+      --
+        UPDATE  xxcso_hht_col_dlv_coop_trn xhcdct
+        SET     xhcdct.cooperate_flag        = cv_no
+              , xhcdct.last_updated_by       = cn_last_updated_by
+              , xhcdct.last_update_date      = cd_last_update_date
+              , xhcdct.last_update_login     = cn_last_update_login
+              , request_id                   = cn_request_id
+              , program_application_id       = cn_program_application_id
+              , program_id                   = cn_program_id
+              , program_update_date          = cd_program_update_date
+        WHERE   xhcdct.rowid = lr_row_id
+        ;
+      END IF;
+      --
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+      WHEN g_lock_expt THEN
+        -- ロックに失敗した場合
+        lv_tkn_msg1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_86                -- メッセージコード
+                       );
+        lv_tkn_msg2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_92                -- メッセージコード
+                       );
+        lv_errbuf   := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_88                -- メッセージコード
+                         , iv_token_name1  => cv_tkn_table                    -- トークンコード1
+                         , iv_token_value1 => lv_tkn_msg1                     -- トークン値1
+                         , iv_token_name2  => cv_tkn_process                  -- トークンコード2
+                         , iv_token_value2 => lv_tkn_msg2                     -- トークン値2
+                         , iv_token_name3  => cv_tkn_err_msg                  -- トークンコード3
+                         , iv_token_value3 => SQLERRM                         -- トークン値3
+                         , iv_token_name4  => cv_tkn_base_val                 -- トークンコード4
+                         , iv_token_value4 => iv_install_code                 -- トークン値4
+                       );
+        --
+        RAISE sql_expt;
+        --
+      WHEN OTHERS THEN
+        lv_tkn_msg1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_86                -- メッセージコード
+                       );
+        lv_tkn_msg2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_90                -- メッセージコード
+                       );
+        lv_errbuf   := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_88                -- メッセージコード
+                         , iv_token_name1  => cv_tkn_table                    -- トークンコード1
+                         , iv_token_value1 => lv_tkn_msg1                     -- トークン値1
+                         , iv_token_name2  => cv_tkn_process                  -- トークンコード2
+                         , iv_token_value2 => lv_tkn_msg2                     -- トークン値2
+                         , iv_token_name3  => cv_tkn_err_msg                  -- トークンコード3
+                         , iv_token_value3 => SQLERRM                         -- トークン値3
+                         , iv_token_name4  => cv_tkn_base_val                 -- トークンコード4
+                         , iv_token_value4 => iv_install_code                 -- トークン値4
+                       );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    --
+    --------------------------------------------------
+    -- HHT集配信連携トランザクションテーブル登録
+    --------------------------------------------------
+    BEGIN
+      INSERT INTO xxcso_hht_col_dlv_coop_trn(
+          account_number         -- 顧客コード
+        , install_code           -- 物件コード
+        , creating_source_code   -- 発生元ソースコード
+        , install_psid           -- 設置PSID
+        , withdraw_psid          -- 引揚PSID
+        , line_number            -- 回線番号
+        , cooperate_flag         -- 連携フラグ
+        , cooperate_date         -- 連携日
+        , approval_date          -- 承認日
+        , created_by             -- 作成者
+        , creation_date          -- 作成日
+        , last_updated_by        -- 最終更新者
+        , last_update_date       -- 最終更新日
+        , last_update_login      -- 最終更新ログイン
+        , request_id             -- 要求ID
+        , program_application_id -- コンカレント・プログラム・アプリケーションID
+        , program_id             -- コンカレント・プログラムID
+        , program_update_date    -- プログラム更新日
+      ) VALUES (
+          lt_account_number                  -- 顧客コード
+        , iv_install_code                    -- 物件コード
+        , iv_requisition_num                 -- 発生元ソースコード
+        , lv_ps_id                           -- 設置PSID
+        , NULL                               -- 引揚PSID
+        , lv_line_number                     -- 回線番号
+        , cv_yes                             -- 連携フラグ
+        , id_work_hope_date                  -- 連携日
+        , TRUNC(cd_creation_date)            -- 承認日
+        , cn_created_by                      -- 作成者
+        , cd_creation_date                   -- 作成日
+        , cn_last_updated_by                 -- 最終更新者
+        , cd_last_update_date                -- 最終更新日
+        , cn_last_update_login               -- 最終更新ログイン
+        , cn_request_id                      -- 要求ID
+        , cn_program_application_id          -- コンカレント・プログラム・アプリケーションID
+        , cn_program_id                      -- コンカレント・プログラムID
+        , cd_program_update_date             -- プログラム更新日
+      );
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_tkn_msg1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_86                -- メッセージコード
+                       );
+        lv_tkn_msg2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_89                -- メッセージコード
+                       );
+        lv_errbuf   := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name        -- アプリケーション短縮名
+                         , iv_name         => cv_tkn_number_88                -- メッセージコード
+                         , iv_token_name1  => cv_tkn_table                    -- トークンコード1
+                         , iv_token_value1 => lv_tkn_msg1                      -- トークン値1
+                         , iv_token_name2  => cv_tkn_process                  -- トークンコード2
+                         , iv_token_value2 => lv_tkn_msg2                     -- トークン値2
+                         , iv_token_name3  => cv_tkn_err_msg                  -- トークンコード3
+                         , iv_token_value3 => SQLERRM                         -- トークン値3
+                         , iv_token_name4  => cv_tkn_base_val                 -- トークンコード4
+                         , iv_token_value4 => iv_install_code                 -- トークン値4
+                       );
+        --
+        RAISE sql_expt;
+        --
+    END;
+    --
+--
+  EXCEPTION
+    --
+    WHEN sql_expt THEN
+      -- *** SQL例外ハンドラ ***
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END insert_hht_cdc_trn_proc;
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : get_vd_accessory
+   * Description      : 付帯物取得処理(A-32)
+   ***********************************************************************************/
+  PROCEDURE get_vd_accessory(
+     iv_process_kbn          IN         VARCHAR2                                    -- 1 処理区分：1(申請)、2(承認)、3(否認)
+   , in_category_kbn         IN         NUMBER                                      -- 2.カテゴリ：1(引揚)、2(代替系)
+   , it_account_id           IN         hz_cust_accounts.cust_account_id%TYPE       -- 3.顧客ID
+   , it_install_code         IN         csi_item_instances.external_reference%TYPE  -- 4.物件コード(親)
+   , it_transaction_type_id  IN         csi_txn_types.transaction_type_id%TYPE      -- 5.取引タイプID
+   , i_requisition_rec       IN         g_requisition_rtype                         -- 6.発注依頼情報
+   , ov_errbuf               OUT NOCOPY VARCHAR2      -- エラー・メッセージ --# 固定 #
+   , ov_retcode              OUT NOCOPY VARCHAR2      -- リターン・コード   --# 固定 #
+  ) IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_vd_accessory'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_tkn_msg  VARCHAR2(500);
+--
+    -- *** ローカル・カーソル ***
+    CURSOR vd_acc_cur
+    IS
+      --引揚・代替時時に処理する付帯物
+      SELECT  /*+ LEADING(cii punv.t punv.b flvv)
+                  USE_NL(cii punv flvv)
+              */
+              cii.external_reference     install_code     -- 物件コード
+      FROM    csi_item_instances   cii   -- 物件マスタ
+            , po_un_numbers_vl     punv  -- 機種マスタ
+            , fnd_lookup_values_vl flvv  -- 参照タイプ
+      WHERE   cii.external_reference      <> it_install_code      -- 自販機本体以外
+      AND     cii.owner_party_account_id  =  it_account_id        -- 顧客が同一
+      AND     cii.attribute1              =  punv.un_number
+      AND     flvv.lookup_type            =  cv_vd_accessory_type
+      AND     flvv.lookup_code            =  punv.attribute15
+      AND     flvv.lookup_code            IN ( cv_modem_code, cv_acc_dist )
+      AND     flvv.enabled_flag           = cv_yes
+      AND     gd_process_date BETWEEN NVL( flvv.start_date_active, gd_process_date )
+                              AND     NVL( flvv.end_date_active,   gd_process_date )
+      UNION ALL
+      --引揚のときのみ処理する付帯物
+      SELECT  /*+ LEADING(cii2 punv2.t punv2.b flvv)
+                  USE_NL(cii2 punv2 flvv2) 
+              */
+              cii2.external_reference    install_code -- 物件コード
+      FROM    csi_item_instances   cii2  -- 物件マスタ
+            , po_un_numbers_vl     punv2 -- 機種マスタ
+            , fnd_lookup_values_vl flvv2 -- 参照タイプ
+      WHERE   cii2.external_reference     <> it_install_code      -- 自販機本体以外
+      AND     cii2.owner_party_account_id =  it_account_id        -- 顧客が同一
+      AND     cii2.attribute1             =  punv2.un_number
+      AND     flvv2.lookup_type           =  cv_vd_accessory_type
+      AND     flvv2.lookup_code           =  punv2.attribute15
+      AND     flvv2.lookup_code           =  cv_acc_no_dist
+      AND     flvv2.enabled_flag          =  cv_yes
+      AND     gd_process_date BETWEEN NVL( flvv2.start_date_active, gd_process_date )
+                              AND     NVL( flvv2.end_date_active,   gd_process_date )
+      AND     in_category_kbn             =  cn_num1              -- カテゴリが「引揚」の場合のみ
+    ;
+--
+    -- *** ローカル・レコード ***
+    vd_acc_rec           vd_acc_cur%ROWTYPE;
+    l_instance_acc_rec   g_instance_rtype;        -- 物件情報（付帯物用）
+    l_inst_acc_rec_init  g_instance_rtype;        -- 初期化用
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+   OPEN vd_acc_cur;
+   <<vd_acc_loop>>
+   LOOP
+     --
+     FETCH vd_acc_cur INTO vd_acc_rec;
+     --
+     EXIT WHEN vd_acc_cur%NOTFOUND OR vd_acc_cur%NOTFOUND IS NULL;
+     --
+     -- 初期化
+     l_instance_acc_rec := l_inst_acc_rec_init;
+     --
+     -- ========================================
+     -- A-4. 物件マスタ存在チェック処理
+     -- ========================================
+     check_ib_existence(
+         iv_install_code => vd_acc_rec.install_code  -- 引揚用物件コード
+       , o_instance_rec  => l_instance_acc_rec       -- 物件情報（付帯物用）
+       , ov_errbuf       => lv_errbuf                -- エラー・メッセージ  --# 固定 #
+       , ov_retcode      => lv_retcode               -- リターン・コード    --# 固定 #
+     );
+     --
+     IF ( lv_retcode <> cv_status_normal ) THEN
+       RAISE global_api_expt;
+       --
+     END IF;
+     --
+     --------------------------------------------------
+     -- 「発注依頼申請」の場合
+     --------------------------------------------------
+     IF ( iv_process_kbn = cv_proc_kbn_req_appl ) THEN
+       --
+       -- ========================================
+       -- A-6. 引揚用物件情報チェック処理
+       -- ========================================
+       check_withdraw_ib_info(
+           iv_install_code => vd_acc_rec.install_code  -- 付帯物物件コード
+         , i_instance_rec  => l_instance_acc_rec       -- 物件情報（付帯物用）
+         , iv_process_kbn  => iv_process_kbn           -- 処理区分
+         , ov_errbuf       => lv_errbuf                -- エラー・メッセージ  --# 固定 #
+         , ov_retcode      => lv_retcode               -- リターン・コード    --# 固定 #
+       );
+       --
+       IF ( lv_retcode <> cv_status_normal ) THEN
+         --メッセージトークン編集
+         IF ( lv_tkn_msg IS NULL ) THEN
+           lv_tkn_msg := vd_acc_rec.install_code;
+         ELSE
+           lv_tkn_msg := lv_tkn_msg || cv_msg_comma || vd_acc_rec.install_code;
+         END IF;
+         --
+       END IF;
+       --
+       IF ( lv_tkn_msg IS NULL ) THEN
+         -- ========================================
+         -- A-30. その他付帯物物件更新処理
+         -- ========================================
+         update_ib_others(
+             iv_process_kbn         => iv_process_kbn          -- 処理区分(発注依頼申請)
+           , it_transaction_type_id => it_transaction_type_id  -- 取引ID
+           , i_requisition_rec      => i_requisition_rec       -- 発注依頼情報
+           , i_instance_rec         => l_instance_acc_rec      -- 物件情報
+           , ov_errbuf              => lv_errbuf
+           , ov_retcode             => lv_retcode
+         );
+         IF ( lv_retcode <> cv_status_normal ) THEN
+           RAISE global_api_expt;
+           --
+         END IF;
+       END IF;
+       --
+     --------------------------------------------------
+     -- 「発注依頼承認」の場合
+     --------------------------------------------------
+     ELSIF ( iv_process_kbn = cv_proc_kbn_req_aprv ) THEN
+       --
+       -- ========================================
+       -- A-6. 引揚用物件情報チェック処理
+       -- ========================================
+       check_withdraw_ib_info(
+           iv_install_code => vd_acc_rec.install_code  -- 付帯物物件コード
+         , i_instance_rec  => l_instance_acc_rec       -- 物件情報（付帯物用）
+         , iv_process_kbn  => iv_process_kbn           -- 処理区分
+         , ov_errbuf       => lv_errbuf                -- エラー・メッセージ  --# 固定 #
+         , ov_retcode      => lv_retcode               -- リターン・コード    --# 固定 #
+       );
+       --
+       IF ( lv_retcode <> cv_status_normal ) THEN
+         --メッセージトークン編集
+         IF ( lv_tkn_msg IS NULL ) THEN
+           lv_tkn_msg := vd_acc_rec.install_code;
+         ELSE
+           lv_tkn_msg := lv_tkn_msg || cv_msg_comma || vd_acc_rec.install_code;
+         END IF;
+         --
+       END IF;
+       --
+       IF ( lv_tkn_msg IS NULL ) THEN
+         -- 代替系の場合
+         IF ( in_category_kbn = cn_num2 ) THEN
+           -- 付帯物がMaRoon連携対象の場合
+           IF ( l_instance_acc_rec.maroon_coop_flag = cv_yes ) THEN
+             -- ===============================================================
+             -- A-31. HHT集配信連携トランザクションテーブル登録処理(代替の設置)
+             -- ===============================================================
+             insert_hht_cdc_trn_proc(
+                 iv_requisition_num => i_requisition_rec.requisition_number
+               , iv_install_code    => l_instance_acc_rec.install_code
+               , id_work_hope_date  =>  TO_DATE( i_requisition_rec.work_hope_year ||
+                                                 i_requisition_rec.work_hope_month||
+                                                 i_requisition_rec.work_hope_day, cv_fmt_yyyymmdd)
+               , ov_errbuf          => lv_errbuf
+               , ov_retcode         => lv_retcode
+             );
+             --
+             IF ( lv_retcode <> cv_status_normal ) THEN
+               RAISE global_api_expt;
+               --
+             END IF;
+             --
+           END IF;
+           --
+         END IF;
+         --
+       END IF;
+     --------------------------------------------------
+     -- 「発注依頼否認」の場合
+     --------------------------------------------------
+     ELSE
+       -- ========================================
+       -- A-30. その他付帯物物件更新処理(作業フラグ解除)
+       -- ========================================
+       update_ib_others(
+           iv_process_kbn         => iv_process_kbn          -- 処理区分(発注依頼否認)
+         , it_transaction_type_id => it_transaction_type_id  -- 取引ID
+         , i_requisition_rec      => i_requisition_rec       -- 発注依頼情報
+         , i_instance_rec         => l_instance_acc_rec      -- 物件情報
+         , ov_errbuf              => lv_errbuf
+         , ov_retcode             => lv_retcode
+       );
+       IF ( lv_retcode <> cv_status_normal ) THEN
+         RAISE global_api_expt;
+         --
+       END IF;
+       --
+     END IF;
+     --
+   END LOOP vd_acc_loop;
+   --
+   CLOSE vd_acc_cur;
+   --
+   -- チェックエラーの確認
+   IF ( lv_tkn_msg IS NOT NULL ) THEN
+     ov_errbuf := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                    , iv_name         => cv_tkn_number_87          -- メッセージコード
+                    , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                    , iv_token_value1 => lv_tkn_msg                -- トークン値1
+                  );
+     ov_retcode := cv_status_error;
+   END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      -- カーソルクローズ
+      IF ( vd_acc_cur%ISOPEN ) THEN
+        CLOSE vd_acc_cur;
+      END IF;
+      --
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルクローズ
+      IF ( vd_acc_cur%ISOPEN ) THEN
+        CLOSE vd_acc_cur;
+      END IF;
+      --
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_vd_accessory;
+/* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -7656,6 +8946,12 @@ AS
 /*20090403_yabuki_ST297 START*/
     ln_rec_count            NUMBER;                                  -- 抽出件数
 /*20090403_yabuki_ST297 END*/
+   /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+    lt_account_id           hz_cust_accounts.cust_account_id%TYPE;   -- 顧客ID
+    lt_party_site_id        hz_party_sites.party_site_id%TYPE;       -- パーティサイトID
+    lt_party_id             hz_parties.party_id%TYPE;                -- パーティID
+    lt_area_code            hz_locations.address3%TYPE;              -- 地区コード
+   /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
     --
     -- *** ローカル・カーソル ***
     --
@@ -8096,6 +9392,12 @@ AS
           , iv_withdraw_install_code => NULL                                 -- 引揚用物件コード
           , in_owner_account_id      => NULL                                 -- 設置先アカウントID
 /*20090427_yabuki_ST505_517 END*/
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+          , ot_account_id            => lt_account_id
+          , ot_party_site_id         => lt_party_site_id
+          , ot_party_id              => lt_party_id
+          , ot_area_code             => lt_area_code
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
           , ov_errbuf         => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -8534,6 +9836,12 @@ AS
           , iv_install_code          => NULL                                        -- 設置用物件コード
           , iv_withdraw_install_code => l_requisition_rec.withdraw_install_code     -- 引揚用物件コード
           , in_owner_account_id      => l_withdraw_instance_rec.owner_account_id    -- 設置先アカウントID
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+          , ot_account_id            => lt_account_id
+          , ot_party_site_id         => lt_party_site_id
+          , ot_party_id              => lt_party_id
+          , ot_area_code             => lt_area_code
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
           , ov_errbuf                => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode               => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -8613,6 +9921,30 @@ AS
           RAISE reg_upd_process_expt;
           --
         END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+        -- 自販機の場合
+        IF ( l_withdraw_instance_rec.instance_type_code = cv_instance_type_code ) THEN
+          -- ========================================
+          -- A-32.付帯物取得処理（引揚用物件）
+          -- ========================================
+          get_vd_accessory(
+              iv_process_kbn         => iv_process_kbn                            -- 処理区分(発注依頼申請)
+            , in_category_kbn        => cn_num2                                   -- カテゴリ(代替系)
+            , it_account_id          => l_withdraw_instance_rec.owner_account_id  -- 顧客ID
+            , it_install_code        => l_withdraw_instance_rec.install_code      -- 引揚用物件コード(親)
+            , it_transaction_type_id => ln_transaction_type_id                    -- 取引タイプID
+            , i_requisition_rec      => l_requisition_rec                         -- 発注依頼情報
+            , ov_errbuf              => lv_errbuf                                 -- エラー・メッセージ  --# 固定 #
+            , ov_retcode             => lv_retcode                                -- リターン・コード    --# 固定 #
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE reg_upd_process_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
         --
       --------------------------------------------------
       -- カテゴリ区分が「旧台設置」の場合
@@ -8973,6 +10305,12 @@ AS
           , iv_withdraw_install_code => NULL                                 -- 引揚用物件コード
           , in_owner_account_id      => NULL                                 -- 設置先アカウントID
 /*20090427_yabuki_ST505_517 END*/
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+          , ot_account_id            => lt_account_id
+          , ot_party_site_id         => lt_party_site_id
+          , ot_party_id              => lt_party_id
+          , ot_area_code             => lt_area_code
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
           , ov_errbuf         => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -8997,6 +10335,42 @@ AS
           --
         END IF;
         --
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+        -- 自販機連動区分が「通信モデム」の場合
+        IF ( l_instance_rec.linkage_type = cv_modem_code ) THEN
+          -- ========================================
+          -- A-28. 付帯物チェック処理
+          -- ========================================
+          -- 同一顧客に別のモデムがついていないかチェック
+          check_vd_accessory(
+              iv_chk_kbn            => cv_vd_ac_chk_kbn_01  -- チェック区分
+            , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+            , i_instance_rec        => l_instance_rec       -- 物件情報（設置用）
+            , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+            , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+            --
+          END IF;
+          -- 顧客が通信モデムの設置可能かチェック
+          check_vd_accessory(
+              iv_chk_kbn            => cv_vd_ac_chk_kbn_02  -- チェック区分
+            , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+            , i_instance_rec        => l_instance_rec       -- 物件情報（設置用）
+            , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+            , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+            --
+          END IF;
+          --
+        END IF;
+        --
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
         /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
         -- ========================================
         -- A-13. 設置用物件更新処理
@@ -9423,6 +10797,12 @@ AS
           , iv_install_code          => NULL                                        -- 設置用物件コード
           , iv_withdraw_install_code => l_requisition_rec.withdraw_install_code     -- 引揚用物件コード
           , in_owner_account_id      => l_withdraw_instance_rec.owner_account_id    -- 設置先アカウントID
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+          , ot_account_id            => lt_account_id
+          , ot_party_site_id         => lt_party_site_id
+          , ot_party_id              => lt_party_id
+          , ot_area_code             => lt_area_code
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
           , ov_errbuf                => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode               => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -9489,6 +10869,30 @@ AS
           RAISE reg_upd_process_expt;
           --
         END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+        -- 自販機の場合
+        IF ( l_withdraw_instance_rec.instance_type_code = cv_instance_type_code ) THEN
+          -- ========================================
+          -- A-32.付帯物取得処理（引揚用物件）
+          -- ========================================
+          get_vd_accessory(
+              iv_process_kbn         => iv_process_kbn                           -- 処理区分(発注依頼申請)
+            , in_category_kbn        => cn_num2                                  -- カテゴリ(代替系)
+            , it_account_id          => l_withdraw_instance_rec.owner_account_id -- 顧客ID
+            , it_install_code        => l_withdraw_instance_rec.install_code     -- 引揚用物件コード(親)
+            , it_transaction_type_id => ln_transaction_type_id                   -- 取引タイプID
+            , i_requisition_rec      => l_requisition_rec                        -- 発注依頼情報
+            , ov_errbuf              => lv_errbuf                                -- エラー・メッセージ  --# 固定 #
+            , ov_retcode             => lv_retcode                               -- リターン・コード    --# 固定 #
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE reg_upd_process_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
         --
       --------------------------------------------------
       -- カテゴリ区分が「引揚」の場合
@@ -9777,6 +11181,12 @@ AS
           , iv_install_code          => NULL                                        -- 設置用物件コード
           , iv_withdraw_install_code => l_requisition_rec.withdraw_install_code     -- 引揚用物件コード
           , in_owner_account_id      => l_withdraw_instance_rec.owner_account_id    -- 設置先アカウントID
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+          , ot_account_id            => lt_account_id
+          , ot_party_site_id         => lt_party_site_id
+          , ot_party_id              => lt_party_id
+          , ot_area_code             => lt_area_code
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
           , ov_errbuf                => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode               => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -9807,6 +11217,30 @@ AS
           RAISE reg_upd_process_expt;
           --
         END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+        -- 自販機の場合
+        IF ( l_withdraw_instance_rec.instance_type_code = cv_instance_type_code ) THEN
+          -- ========================================
+          -- A-32.付帯物取得処理（引揚用物件）
+          -- ========================================
+          get_vd_accessory(
+              iv_process_kbn         => iv_process_kbn                            -- 処理区分(発注依頼申請)
+            , in_category_kbn        => cn_num1                                   -- カテゴリ(引揚)
+            , it_account_id          => l_withdraw_instance_rec.owner_account_id  -- 顧客ID
+            , it_install_code        => l_withdraw_instance_rec.install_code      -- 引揚用物件コード(親)
+            , it_transaction_type_id => ln_transaction_type_id                    -- 取引タイプID
+            , i_requisition_rec      => l_requisition_rec                         -- 発注依頼情報
+            , ov_errbuf              => lv_errbuf               -- エラー・メッセージ  --# 固定 #
+            , ov_retcode             => lv_retcode              -- リターン・コード    --# 固定 #
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE reg_upd_process_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
         --
       --------------------------------------------------
       -- カテゴリ区分が「廃棄申請」の場合
@@ -10406,6 +11840,12 @@ AS
           , iv_install_code          => l_requisition_rec.install_code              -- 設置用物件コード
           , iv_withdraw_install_code => NULL                                        -- 引揚用物件コード
           , in_owner_account_id      => l_instance_rec.owner_account_id             -- 設置先アカウントID
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+          , ot_account_id            => lt_account_id
+          , ot_party_site_id         => lt_party_site_id
+          , ot_party_id              => lt_party_id
+          , ot_area_code             => lt_area_code
+          /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
           , ov_errbuf                => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode               => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -10504,6 +11944,60 @@ AS
           --
         END IF;
         --
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+        --------------------------------------------------
+        -- カテゴリ区分が「旧台設置」の場合
+        --------------------------------------------------
+        IF ( l_requisition_rec.category_kbn = cv_category_kbn_old_install ) THEN
+          -- 設置物件が通信モデムの場合
+          IF ( l_instance_rec.linkage_type = cv_modem_code ) THEN
+            -- ========================================
+            -- A-29. 通信モデム更新処理
+            -- ========================================
+            update_ib_modem(
+               i_requisition_rec      => l_requisition_rec
+              ,i_instance_rec         => l_instance_rec
+              ,it_account_id          => lt_account_id
+              ,it_party_site_id       => lt_party_site_id
+              ,it_party_id            => lt_party_id
+              ,it_area_code           => lt_area_code
+              ,it_transaction_type_id => ln_transaction_type_id
+              ,ov_errbuf              => lv_errbuf
+              ,ov_retcode             => lv_retcode
+            );
+            --
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE reg_upd_process_expt;
+              --
+            END IF;
+            --
+          END IF;
+          --
+          -- 設置物件がMaRoon連携対象の場合
+          IF ( l_instance_rec.maroon_coop_flag = cv_yes ) THEN
+            -- =====================================================
+            -- A-31. HHT集配信連携トランザクションテーブル登録処理
+            -- =====================================================
+            insert_hht_cdc_trn_proc(
+               iv_requisition_num => l_requisition_rec.requisition_number
+              ,iv_install_code    => l_requisition_rec.install_code
+              ,id_work_hope_date  => TO_DATE( l_requisition_rec.work_hope_year ||
+                                              l_requisition_rec.work_hope_month||
+                                              l_requisition_rec.work_hope_day, cv_fmt_yyyymmdd)
+              ,ov_errbuf          => lv_errbuf
+              ,ov_retcode         => lv_retcode
+            );
+            --
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE reg_upd_process_expt;
+              --
+            END IF;
+            --
+          END IF;
+          --
+        END IF;
+        --
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
       END IF;
       --
       /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
@@ -10750,6 +12244,30 @@ AS
           --
         END IF;
         --
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+        -- 自販機の場合
+        IF ( l_withdraw_instance_rec.instance_type_code = cv_instance_type_code ) THEN
+          -- ========================================
+          -- A-32. 付帯物取得処理
+          -- ========================================
+          get_vd_accessory(
+              iv_process_kbn         => cv_proc_kbn_req_dngtn                    -- 処理区分(発注依頼否認)
+            , in_category_kbn        => cn_num2                                  -- カテゴリ(代替系)
+            , it_account_id          => l_withdraw_instance_rec.owner_account_id -- 顧客ID
+            , it_install_code        => l_withdraw_instance_rec.install_code     -- 引揚用物件コード(親)
+            , it_transaction_type_id => ln_transaction_type_id                   -- 取引タイプID
+            , i_requisition_rec      => l_requisition_rec                        -- 発注依頼情報
+            , ov_errbuf              => lv_errbuf
+            , ov_retcode             => lv_retcode
+          );
+          --
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE reg_upd_process_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
       --------------------------------------------------
       -- カテゴリ区分が「旧台設置」の場合
       --------------------------------------------------
@@ -10856,6 +12374,30 @@ AS
           RAISE reg_upd_process_expt;
           --
         END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+        -- 自販機の場合
+        IF ( l_withdraw_instance_rec.instance_type_code = cv_instance_type_code ) THEN
+          -- ========================================
+          -- A-32. 付帯物取得処理(引揚用物件)
+          -- ========================================
+          get_vd_accessory(
+              iv_process_kbn         => cv_proc_kbn_req_dngtn                    -- 処理区分(発注依頼否認)
+            , in_category_kbn        => cn_num2                                  -- カテゴリ(代替系)
+            , it_account_id          => l_withdraw_instance_rec.owner_account_id -- 顧客ID
+            , it_install_code        => l_withdraw_instance_rec.install_code     -- 引揚用物件コード(親)
+            , it_transaction_type_id => ln_transaction_type_id                   -- 取引タイプID
+            , i_requisition_rec      => l_requisition_rec                        -- 発注依頼情報
+            , ov_errbuf              => lv_errbuf
+            , ov_retcode             => lv_retcode
+          );
+          --
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE reg_upd_process_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
         --
       --------------------------------------------------
       -- カテゴリ区分が「引揚」の場合
@@ -10892,7 +12434,30 @@ AS
           RAISE reg_upd_process_expt;
           --
         END IF;
-        --
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 START */
+        -- 自販機の場合
+        IF ( l_withdraw_instance_rec.instance_type_code = cv_instance_type_code ) THEN
+          -- ========================================
+          -- A-32. 付帯物取得処理(引揚物件)
+          -- ========================================
+          get_vd_accessory(
+              iv_process_kbn         => cv_proc_kbn_req_dngtn                    -- 処理区分(発注依頼否認)
+            , in_category_kbn        => cn_num1                                  -- カテゴリ(引揚)
+            , it_account_id          => l_withdraw_instance_rec.owner_account_id -- 顧客ID
+            , it_install_code        => l_withdraw_instance_rec.install_code     -- 引揚用物件コード(親)
+            , it_transaction_type_id => ln_transaction_type_id                   -- 取引タイプID
+            , i_requisition_rec      => l_requisition_rec                        -- 発注依頼情報
+            , ov_errbuf              => lv_errbuf
+            , ov_retcode             => lv_retcode
+          );
+          --
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE reg_upd_process_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2015-05-07 K.Kiriu E_本稼動_12984対応 END   */
       --------------------------------------------------
       -- カテゴリ区分が「廃棄申請」の場合
       --------------------------------------------------
