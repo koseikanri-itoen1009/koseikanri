@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2012/08/10    1.12  K.Kiriu          E_本稼動_09914対応
  *  2013/04/01    1.13  K.Kiriu          E_本稼動_10413対応
  *  2015/04/17    1.14  K.Kiriu          E_本稼動_13002対応
+ *  2015/05/21    1.15  S.Yamashita      E_本稼動_12984対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1612,6 +1613,9 @@ AS
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_install_code';
     cv_flag_no                   CONSTANT VARCHAR2(1)     := 'N';      -- フラグN
+/* 2015/05/21 Ver1.15 S.Yamashita E_本稼動_12984対応 START */
+    cv_flag_yes                  CONSTANT VARCHAR2(1)     := 'Y';      -- フラグY
+/* 2015/05/21 Ver1.15 S.Yamashita E_本稼動_12984対応 END */
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -1631,7 +1635,29 @@ AS
     IF (ln_count = 0) THEN
       lv_return_value := '1';
     ELSE
-      lv_return_value := '0';
+/* 2015/05/21 Ver1.15 S.Yamashita E_本稼動_12984対応 START */
+      -- 件数初期化
+      ln_count := 0;
+--
+      -- 作業依頼中の付帯物を取得
+      SELECT COUNT('x') cnt
+      INTO   ln_count
+      FROM   csi_item_instances   cii   -- インストールベースマスタ
+      WHERE  cii.external_reference      <> iv_install_code       -- 自販機本体以外
+      AND    cii.owner_party_account_id  =  (SELECT cii2.owner_party_account_id AS account_id
+                                             FROM   csi_item_instances cii2
+                                             WHERE  cii2.external_reference = iv_install_code) -- 顧客コード
+      AND    cii.attribute4              =  cv_flag_yes           -- 作業依頼中フラグ
+      ;
+--
+      -- 作業依頼中の付帯物が存在する場合はエラー
+      IF ( ln_count <> 0 ) THEN
+        lv_return_value := '1';
+      ELSE
+        lv_return_value := '0';
+      END IF;
+--      lv_return_value := '0';
+/* 2015/05/21 Ver1.15 S.Yamashita E_本稼動_12984対応 END */
     END IF;
 --
     RETURN lv_return_value;
