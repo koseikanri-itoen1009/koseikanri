@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -85,6 +85,7 @@ AS
  *  2013-04-11    1.18  K.Nakamura       E_本稼動_09603対応
  *  2015-02-25    1.19  H.Wajima         E_本稼働_12565対応
  *  2015-04-02    1.20  K.Kiriu          E_本稼働_12565本番障害対応
+ *  2015-06-10    1.21  S.Yamashita      E_本稼働_12984対応
  *
  *****************************************************************************************/
   --
@@ -179,6 +180,9 @@ AS
   ct_dmmy_bnk_act           CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'XXCSO1_DUMMY_BANK_ACCOUNT'; -- ＢＭ現金支払ダミー口座参照コードタイプ
   ct_dmmy_act               CONSTANT fnd_lookup_values_vl.lookup_code%TYPE := 'DUMMY_ACCOUNT';             -- ＢＭ現金支払ダミー口座クイックコード
   /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+  cv_vd_accessory_type      CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'XXCSO1_VD_ACCESSORY_TYPE';-- 自販機付帯物
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
   ct_sp_dec_cust_class_bm1  CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '3';     -- ＳＰ専決顧客ＢＭ１
   ct_sp_dec_cust_class_bm2  CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '4';     -- ＳＰ専決顧客ＢＭ２
   ct_sp_dec_cust_class_bm3  CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '5';     -- ＳＰ専決顧客ＢＭ３
@@ -3462,6 +3466,10 @@ AS
     cv_tkn_value_party_site        CONSTANT VARCHAR2(50) := '物件情報更新処理時：パーティサイトマスタ';
     cv_tkn_value_party_id          CONSTANT VARCHAR2(50) := 'パーティＩＤ';
     cv_tkn_value_ib_update         CONSTANT VARCHAR2(50) := 'インストールベースマスタ更新';
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+    cv_tkn_value_un_numbers        CONSTANT VARCHAR2(50) := 'APP-XXCSO1-00678'; -- 機種マスタビュー
+    cv_tkn_hht_col_dlv_coop_trn    CONSTANT VARCHAR2(50) := 'APP-XXCSO1-00757'; -- HHT集配信連携トランザクション
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
     --
     -- *** ローカル変数 ***
     lt_instance_id                csi_item_instances.instance_id%TYPE;
@@ -3472,6 +3480,14 @@ AS
     ln_instance_acct_object_vnum  csi_ip_accounts.object_version_number%TYPE;
     lt_transaction_type_id        csi_txn_types.transaction_type_id%TYPE;
     lt_party_site_id              hz_party_sites.party_site_id%TYPE;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+    lt_owner_party_account_id     csi_item_instances.owner_party_account_id%TYPE;
+    lt_account_number_old         hz_cust_accounts.account_number%TYPE;
+    lt_account_number_new         hz_cust_accounts.account_number%TYPE;
+    lt_maroon_coop_flag           fnd_lookup_values.attribute1%TYPE;
+    lt_install_psid               xxcso_hht_col_dlv_coop_trn.install_psid%TYPE;
+    lt_line_number                xxcso_hht_col_dlv_coop_trn.line_number%TYPE;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
     --
     -- 物件情報更新用ＡＰＩ
     lt_instance_rec          csi_datastructures_pub.instance_rec;
@@ -3486,6 +3502,18 @@ AS
     lv_return_status         VARCHAR2(1);
     ln_msg_count             NUMBER;
     lv_msg_data              VARCHAR2(5000);
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+    -- *** ローカルカーソル ***
+    CURSOR get_install_base_cur
+    IS
+      SELECT cii.external_reference    install_code -- 物件コード
+      FROM   csi_item_instances   cii   -- インストールベースマスタ
+      WHERE  cii.owner_party_account_id  = lt_owner_party_account_id -- 顧客コード
+    ;
+--
+    -- *** レコードタイプ ***
+    l_install_base_rec get_install_base_cur%ROWTYPE;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
     --
   BEGIN
     --
@@ -3495,21 +3523,31 @@ AS
     --
     --###########################  固定部 END   ############################
     --
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+    -- ローカル変数初期化
+    lt_owner_party_account_id  := NULL;
+    lt_account_number_old      := NULL;
+    lt_account_number_new      := NULL;
+    lt_maroon_coop_flag        := NULL;
+    lt_install_psid            := NULL;
+    lt_line_number             := NULL;
+--
     -- ================================================
-    -- インスタンス情報取得
+    -- 変更前顧客取得
     -- ================================================
     BEGIN
-      SELECT cii.instance_id           -- インスタンスＩＤ
-            ,cii.object_version_number -- オブジェクトバージョン番号
-      INTO   lt_instance_id
-            ,ln_instance_object_vnum
+      SELECT cii.owner_party_account_id owner_party_account_id -- 顧客ID
+            ,hca.account_number         account_number         -- 顧客コード
+      INTO   lt_owner_party_account_id    -- 変更前顧客ID
+            ,lt_account_number_old        -- 変更前顧客コード
       FROM   csi_item_instances cii -- インストールベースマスタ
-      WHERE  cii.external_reference = it_mst_regist_info_rec.install_code
-      AND    cii.attribute4         = cv_flag_no
+            ,hz_cust_accounts   hca -- 顧客マスタ
+      WHERE  cii.external_reference     = it_mst_regist_info_rec.install_code -- 物件コード
+      AND    cii.owner_party_account_id = hca.cust_account_id                 -- 顧客ID
       ;
-      --
     EXCEPTION
       WHEN OTHERS THEN
+        -- データ取得エラー
         lv_errbuf := xxccp_common_pkg.get_msg(
                         iv_application  => cv_sales_appl_short_name            -- アプリケーション短縮名
                        ,iv_name         => cv_tkn_number_05                    -- メッセージコード
@@ -3520,212 +3558,464 @@ AS
                        ,iv_token_name3  => cv_tkn_key_id                       -- トークンコード3
                        ,iv_token_value3 => it_mst_regist_info_rec.install_code -- トークン値3
                      );
-        --
         RAISE global_api_expt;
-        --
     END;
-    --
+--
     -- ================================================
-    -- インスタンスパーティ情報取得
+    -- 物件情報取得ループ
     -- ================================================
-    BEGIN
-      SELECT cip.instance_party_id     -- インスタンスパーティＩＤ
-            ,cip.object_version_number -- オブジェクトバージョン番号
-      INTO   lt_instance_party_id
-            ,ln_instance_party_object_vnum
-      FROM   csi_i_parties cip -- インスタンスパーティマスタ
-      WHERE  cip.instance_id = lt_instance_id
-      ;
-      --
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errbuf := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_05            -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_action               -- トークンコード1
-                       ,iv_token_value1 => cv_tkn_value_instance_party -- トークン値1
-                       ,iv_token_name2  => cv_tkn_key_name             -- トークンコード2
-                       ,iv_token_value2 => cv_tkn_value_instance_id    -- トークン値2
-                       ,iv_token_name3  => cv_tkn_key_id               -- トークンコード3
-                       ,iv_token_value3 => lt_instance_id              -- トークン値3
-                     );
+    OPEN  get_install_base_cur;
+--
+    <<get_install_base_loop>>
+    LOOP
+--
+      FETCH get_install_base_cur INTO l_install_base_rec;
+      EXIT WHEN get_install_base_cur%NOTFOUND;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
+      -- ================================================
+      -- インスタンス情報取得
+      -- ================================================
+      BEGIN
+        SELECT cii.instance_id           -- インスタンスＩＤ
+              ,cii.object_version_number -- オブジェクトバージョン番号
+        INTO   lt_instance_id
+              ,ln_instance_object_vnum
+        FROM   csi_item_instances cii -- インストールベースマスタ
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+--      WHERE  cii.external_reference = it_mst_regist_info_rec.install_code
+        WHERE  cii.external_reference = l_install_base_rec.install_code
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
+        AND    cii.attribute4         = cv_flag_no
+        ;
         --
-        RAISE global_api_expt;
-        --
-    END;
-    --
-    -- ================================================
-    -- インスタンスアカウント情報取得
-    -- ================================================
-    BEGIN
-      SELECT cia.ip_account_id         -- インスタンスアカウントＩＤ
-            ,cia.object_version_number -- オブジェクトバージョン番号
-      INTO   lt_ip_account_id
-            ,ln_instance_acct_object_vnum
-      FROM   csi_ip_accounts cia -- インスタンスアカウントマスタ
-      WHERE  cia.instance_party_id = lt_instance_party_id
-      ;
-      --
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errbuf := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name       -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_05               -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_action                  -- トークンコード1
-                       ,iv_token_value1 => cv_tkn_value_instance_acct     -- トークン値1
-                       ,iv_token_name2  => cv_tkn_key_name                -- トークンコード2
-                       ,iv_token_value2 => cv_tkn_value_instance_party_id -- トークン値2
-                       ,iv_token_name3  => cv_tkn_key_id                  -- トークンコード3
-                       ,iv_token_value3 => lt_instance_party_id           -- トークン値3
-                     );
-        --
-        RAISE global_api_expt;
-        --
-    END;
-    --
-    -- ================================================
-    -- パーティサイトＩＤ取得
-    -- ================================================
-    BEGIN
-      SELECT hps.party_site_id -- パーティサイトＩＤ
-      INTO   lt_party_site_id
-      FROM   hz_party_sites hps -- パーティサイトマスタ
-      /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
-            ,hz_cust_accounts   hca  -- 顧客マスタ
-            ,hz_cust_acct_sites hcas -- 顧客サイトマスタ
-      --WHERE  hps.party_id = it_party_id
-      WHERE  hca.party_id        = it_party_id
-      AND    hca.cust_account_id = hcas.cust_account_id
-      AND    hcas.party_site_id  = hps.party_site_id
-      /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errbuf := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_05         -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_action            -- トークンコード1
-                       ,iv_token_value1 => cv_tkn_value_party_site  -- トークン値1
-                       ,iv_token_name2  => cv_tkn_key_name          -- トークンコード2
-                       ,iv_token_value2 => cv_tkn_value_party_id    -- トークン値2
-                       ,iv_token_name3  => cv_tkn_key_id            -- トークンコード3
-                       ,iv_token_value3 => it_party_id              -- トークン値3
-                     );
-        --
-        RAISE global_api_expt;
-        --
-    END;
-    --
-    -- ================================================
-    -- 取引タイプＩＤ取得
-    -- ================================================
-    BEGIN
-      SELECT ctt.transaction_type_id transaction_type_id -- 取引タイプＩＤ
-      INTO   lt_transaction_type_id
-      FROM   csi_txn_types ctt -- 取引タイプテーブル
-      WHERE  ctt.source_transaction_type = cv_src_tran_type
-      ;
-      --
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errbuf := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_13         -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_task_name         -- トークンコード1
-                       ,iv_token_value1 => cv_tkn_value_task_name   -- トークン値1
-                       ,iv_token_name2  => cv_tkn_src_tran_type     -- トークンコード2
-                       ,iv_token_value2 => cv_src_tran_type         -- トークン値2
-                       ,iv_token_name3  => cv_tkn_err_msg           -- トークンコード3
-                       ,iv_token_value3 => SQLERRM                  -- トークン値3
-                     );
-        --
-        RAISE global_api_expt;
-        --
-    END;
-    --
-    -- ================================================
-    -- 物件情報更新
-    -- ================================================
-    -- 構造体初期化
-    lt_ext_attrib_values_tbl.DELETE;
-    lt_party_tbl.DELETE;
-    lt_account_tbl.DELETE;
-    lt_pricing_attrib_tbl.DELETE;
-    lt_org_assignments_tbl.DELETE;
-    lt_asset_assignment_tbl.DELETE;
-    lt_instance_id_lst.DELETE;
-    --
-    -- インストールベール情報
-    lt_instance_rec.instance_id           := lt_instance_id;                      -- インスタンスＩＤ
-    lt_instance_rec.external_reference    := it_mst_regist_info_rec.install_code; -- 物件コード
-    lt_instance_rec.install_date          := it_mst_regist_info_rec.install_date; -- 設置日
-    lt_instance_rec.location_type_code    := cv_location_type_code;               -- 現行事業所タイプ
-    lt_instance_rec.location_id           := lt_party_site_id;                    -- 現行事業所ＩＤ
-    lt_instance_rec.object_version_number := ln_instance_object_vnum;             -- オブジェクトバージョン番号
-    --
-    -- インスタンスパーティ情報
-    lt_party_tbl(1).instance_party_id      := lt_instance_party_id;          -- インスタンスパーティＩＤ
-    lt_party_tbl(1).party_source_table     := cv_party_source_table;         -- パーティソーステーブル
-    lt_party_tbl(1).party_id               := it_party_id;                   -- パーティＩＤ
-    lt_party_tbl(1).relationship_type_code := cv_relationship_type_code;     -- リレーションタイプコード
-    lt_party_tbl(1).contact_flag           := cv_flag_no;                    -- コンタクトフラグ
-    lt_party_tbl(1).object_version_number  := ln_instance_party_object_vnum; -- オブジェクトバージョン番号
-    --
-    -- インスタンスアカウント情報
-    lt_account_tbl(1).ip_account_id          := lt_ip_account_id;                          -- インスタンスアカウントＩＤ
-    lt_account_tbl(1).instance_party_id      := lt_instance_party_id;                      -- インスタンスパーティＩＤ 
-    lt_account_tbl(1).parent_tbl_index       := cn_number_one;                             -- インデックス
-    lt_account_tbl(1).party_account_id       := it_mst_regist_info_rec.install_account_id; -- 顧客ＩＤ
-    lt_account_tbl(1).relationship_type_code := cv_relationship_type_code;                 -- リレーションタイプコード
-    lt_account_tbl(1).object_version_number  := ln_instance_acct_object_vnum;              -- オブジェクトバージョン番号
-    --
-    -- トランザクションタイプ構造体
-    lt_txn_rec.transaction_date        := SYSDATE;
-    lt_txn_rec.source_transaction_date := SYSDATE;
-    lt_txn_rec.transaction_type_id     := lt_transaction_type_id;
-    --
-    csi_item_instance_pub.update_item_instance(
-       p_api_version           => cn_api_version
-      ,p_commit                => fnd_api.g_false
-      ,p_init_msg_list         => fnd_api.g_true
-      ,p_validation_level      => fnd_api.g_valid_level_full
-      ,p_instance_rec          => lt_instance_rec
-      ,p_ext_attrib_values_tbl => lt_ext_attrib_values_tbl
-      ,p_party_tbl             => lt_party_tbl
-      ,p_account_tbl           => lt_account_tbl
-      ,p_pricing_attrib_tbl    => lt_pricing_attrib_tbl
-      ,p_org_assignments_tbl   => lt_org_assignments_tbl
-      ,p_asset_assignment_tbl  => lt_asset_assignment_tbl
-      ,p_txn_rec               => lt_txn_rec
-      ,x_instance_id_lst       => lt_instance_id_lst
-      ,x_return_status         => lv_return_status
-      ,x_msg_count             => ln_msg_count
-      ,x_msg_data              => lv_msg_data
-    );
-    --
-    IF (lv_return_status <> fnd_api.g_ret_sts_success) THEN
-      -- リターンコードがS以外の場合
-      IF (ln_msg_count > 1) THEN
-        lv_msg_data := fnd_msg_pub.get(
-                          p_msg_index => cn_number_one
-                         ,p_encoded   => fnd_api.g_true
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name            -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_05                    -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action                       -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_install_base           -- トークン値1
+                         ,iv_token_name2  => cv_tkn_key_name                     -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_value_install_code           -- トークン値2
+                         ,iv_token_name3  => cv_tkn_key_id                       -- トークンコード3
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+--                       ,iv_token_value3 => it_mst_regist_info_rec.install_code -- トークン値3
+                         ,iv_token_value3 => l_install_base_rec.install_code -- トークン値3
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
                        );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      -- ================================================
+      -- インスタンスパーティ情報取得
+      -- ================================================
+      BEGIN
+        SELECT cip.instance_party_id     -- インスタンスパーティＩＤ
+              ,cip.object_version_number -- オブジェクトバージョン番号
+        INTO   lt_instance_party_id
+              ,ln_instance_party_object_vnum
+        FROM   csi_i_parties cip -- インスタンスパーティマスタ
+        WHERE  cip.instance_id = lt_instance_id
+        ;
+        --
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_05            -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action               -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_instance_party -- トークン値1
+                         ,iv_token_name2  => cv_tkn_key_name             -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_value_instance_id    -- トークン値2
+                         ,iv_token_name3  => cv_tkn_key_id               -- トークンコード3
+                         ,iv_token_value3 => lt_instance_id              -- トークン値3
+                       );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      -- ================================================
+      -- インスタンスアカウント情報取得
+      -- ================================================
+      BEGIN
+        SELECT cia.ip_account_id         -- インスタンスアカウントＩＤ
+              ,cia.object_version_number -- オブジェクトバージョン番号
+        INTO   lt_ip_account_id
+              ,ln_instance_acct_object_vnum
+        FROM   csi_ip_accounts cia -- インスタンスアカウントマスタ
+        WHERE  cia.instance_party_id = lt_instance_party_id
+        ;
+        --
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name       -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_05               -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action                  -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_instance_acct     -- トークン値1
+                         ,iv_token_name2  => cv_tkn_key_name                -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_value_instance_party_id -- トークン値2
+                         ,iv_token_name3  => cv_tkn_key_id                  -- トークンコード3
+                         ,iv_token_value3 => lt_instance_party_id           -- トークン値3
+                       );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      -- ================================================
+      -- パーティサイトＩＤ取得
+      -- ================================================
+      BEGIN
+        SELECT hps.party_site_id -- パーティサイトＩＤ
+        INTO   lt_party_site_id
+        FROM   hz_party_sites hps -- パーティサイトマスタ
+        /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 START */
+              ,hz_cust_accounts   hca  -- 顧客マスタ
+              ,hz_cust_acct_sites hcas -- 顧客サイトマスタ
+        --WHERE  hps.party_id = it_party_id
+        WHERE  hca.party_id        = it_party_id
+        AND    hca.cust_account_id = hcas.cust_account_id
+        AND    hcas.party_site_id  = hps.party_site_id
+        /* 2010.01.06 K.Hosoi E_本稼動_00890,00891対応 END */
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_05         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_party_site  -- トークン値1
+                         ,iv_token_name2  => cv_tkn_key_name          -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_value_party_id    -- トークン値2
+                         ,iv_token_name3  => cv_tkn_key_id            -- トークンコード3
+                         ,iv_token_value3 => it_party_id              -- トークン値3
+                       );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      -- ================================================
+      -- 取引タイプＩＤ取得
+      -- ================================================
+      BEGIN
+        SELECT ctt.transaction_type_id transaction_type_id -- 取引タイプＩＤ
+        INTO   lt_transaction_type_id
+        FROM   csi_txn_types ctt -- 取引タイプテーブル
+        WHERE  ctt.source_transaction_type = cv_src_tran_type
+        ;
+        --
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_13         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_name         -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_task_name   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_src_tran_type     -- トークンコード2
+                         ,iv_token_value2 => cv_src_tran_type         -- トークン値2
+                         ,iv_token_name3  => cv_tkn_err_msg           -- トークンコード3
+                         ,iv_token_value3 => SQLERRM                  -- トークン値3
+                       );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      --
+      -- ================================================
+      -- 物件情報更新
+      -- ================================================
+      -- 構造体初期化
+      lt_ext_attrib_values_tbl.DELETE;
+      lt_party_tbl.DELETE;
+      lt_account_tbl.DELETE;
+      lt_pricing_attrib_tbl.DELETE;
+      lt_org_assignments_tbl.DELETE;
+      lt_asset_assignment_tbl.DELETE;
+      lt_instance_id_lst.DELETE;
+      --
+      -- インストールベール情報
+      lt_instance_rec.instance_id           := lt_instance_id;                      -- インスタンスＩＤ
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+--      lt_instance_rec.external_reference    := it_mst_regist_info_rec.install_code; -- 物件コード
+      lt_instance_rec.external_reference    := l_install_base_rec.install_code; -- 物件コード
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
+      lt_instance_rec.install_date          := it_mst_regist_info_rec.install_date; -- 設置日
+      lt_instance_rec.location_type_code    := cv_location_type_code;               -- 現行事業所タイプ
+      lt_instance_rec.location_id           := lt_party_site_id;                    -- 現行事業所ＩＤ
+      lt_instance_rec.object_version_number := ln_instance_object_vnum;             -- オブジェクトバージョン番号
+      --
+      -- インスタンスパーティ情報
+      lt_party_tbl(1).instance_party_id      := lt_instance_party_id;          -- インスタンスパーティＩＤ
+      lt_party_tbl(1).party_source_table     := cv_party_source_table;         -- パーティソーステーブル
+      lt_party_tbl(1).party_id               := it_party_id;                   -- パーティＩＤ
+      lt_party_tbl(1).relationship_type_code := cv_relationship_type_code;     -- リレーションタイプコード
+      lt_party_tbl(1).contact_flag           := cv_flag_no;                    -- コンタクトフラグ
+      lt_party_tbl(1).object_version_number  := ln_instance_party_object_vnum; -- オブジェクトバージョン番号
+      --
+      -- インスタンスアカウント情報
+      lt_account_tbl(1).ip_account_id          := lt_ip_account_id;                          -- インスタンスアカウントＩＤ
+      lt_account_tbl(1).instance_party_id      := lt_instance_party_id;                      -- インスタンスパーティＩＤ 
+      lt_account_tbl(1).parent_tbl_index       := cn_number_one;                             -- インデックス
+      lt_account_tbl(1).party_account_id       := it_mst_regist_info_rec.install_account_id; -- 顧客ＩＤ
+      lt_account_tbl(1).relationship_type_code := cv_relationship_type_code;                 -- リレーションタイプコード
+      lt_account_tbl(1).object_version_number  := ln_instance_acct_object_vnum;              -- オブジェクトバージョン番号
+      --
+      -- トランザクションタイプ構造体
+      lt_txn_rec.transaction_date        := SYSDATE;
+      lt_txn_rec.source_transaction_date := SYSDATE;
+      lt_txn_rec.transaction_type_id     := lt_transaction_type_id;
+      --
+      csi_item_instance_pub.update_item_instance(
+         p_api_version           => cn_api_version
+        ,p_commit                => fnd_api.g_false
+        ,p_init_msg_list         => fnd_api.g_true
+        ,p_validation_level      => fnd_api.g_valid_level_full
+        ,p_instance_rec          => lt_instance_rec
+        ,p_ext_attrib_values_tbl => lt_ext_attrib_values_tbl
+        ,p_party_tbl             => lt_party_tbl
+        ,p_account_tbl           => lt_account_tbl
+        ,p_pricing_attrib_tbl    => lt_pricing_attrib_tbl
+        ,p_org_assignments_tbl   => lt_org_assignments_tbl
+        ,p_asset_assignment_tbl  => lt_asset_assignment_tbl
+        ,p_txn_rec               => lt_txn_rec
+        ,x_instance_id_lst       => lt_instance_id_lst
+        ,x_return_status         => lv_return_status
+        ,x_msg_count             => ln_msg_count
+        ,x_msg_data              => lv_msg_data
+      );
+      --
+      IF (lv_return_status <> fnd_api.g_ret_sts_success) THEN
+        -- リターンコードがS以外の場合
+        IF (ln_msg_count > 1) THEN
+          lv_msg_data := fnd_msg_pub.get(
+                            p_msg_index => cn_number_one
+                           ,p_encoded   => fnd_api.g_true
+                         );
+          --
+        END IF;
+        --
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_14         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_api_name          -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_value_ib_update   -- トークン値1
+                       ,iv_token_name2  => cv_tkn_api_msg           -- トークンコード2
+                       ,iv_token_value2 => lv_msg_data              -- トークン値2
+                    );
+        --
+        RAISE global_api_expt;
         --
       END IF;
       --
-      lv_errbuf := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_14         -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_api_name          -- トークンコード1
-                     ,iv_token_value1 => cv_tkn_value_ib_update   -- トークン値1
-                     ,iv_token_name2  => cv_tkn_api_msg           -- トークンコード2
-                     ,iv_token_value2 => lv_msg_data              -- トークン値2
-                  );
-      --
-      RAISE global_api_expt;
-      --
-    END IF;
-    --
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+      -- Maroon連携フラグを取得
+      BEGIN
+        SELECT flvv.attribute1 maroon_flag -- Maroon連携フラグ
+        INTO   lt_maroon_coop_flag -- Maroon連携フラグ
+        FROM   csi_item_instances   cii  -- インストールベースマスタ
+              ,po_un_numbers_vl     punv -- 機種マスタビュー
+              ,fnd_lookup_values_vl flvv -- 参照タイプ
+        WHERE  cii.external_reference = l_install_base_rec.install_code  -- 物件コード
+        AND    cii.attribute1         = punv.un_number   -- 機種コード
+        AND    punv.attribute15       = flvv.lookup_code
+        AND    flvv.lookup_type       = cv_vd_accessory_type
+        AND    flvv.enabled_flag      = 'Y'
+        AND    cd_process_date BETWEEN NVL( flvv.start_date_active, cd_process_date )
+                               AND     NVL( flvv.end_date_active  , cd_process_date )
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_maroon_coop_flag := cv_flag_no;
+      END;
+--
+      -- Maroon連携フラグがYの場合
+      IF ( lt_maroon_coop_flag = cv_flag_yes ) THEN
+        -- HHT集配信連携トランザクション取得
+        BEGIN
+          SELECT xhcdct.install_psid  install_psid  -- 設置PSID
+                ,xhcdct.line_number   line_number   -- 回線番号
+          INTO   lt_install_psid     -- 設置PSID
+                ,lt_line_number      -- 回線番号
+          FROM   xxcso_hht_col_dlv_coop_trn xhcdct -- HHT集配信連携トランザクション
+          WHERE  xhcdct.install_code   = l_install_base_rec.install_code -- 物件コード
+          AND    xhcdct.account_number = lt_account_number_old -- 顧客コード
+          AND    xhcdct.cooperate_flag = cv_flag_yes -- 連携フラグ
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -- データ取得エラー
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name            -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_05                    -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action                       -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_hht_col_dlv_coop_trn         -- トークン値1
+                         ,iv_token_name2  => cv_tkn_key_name                     -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_value_install_code           -- トークン値2
+                         ,iv_token_name3  => cv_tkn_key_id                       -- トークンコード3
+                         ,iv_token_value3 => l_install_base_rec.install_code -- トークン値3
+                       );
+          RAISE global_api_expt;
+        END;
+--
+        -- HHT集配信連携トランザクション更新（前回データ）
+        BEGIN
+          UPDATE xxcso_hht_col_dlv_coop_trn xhcdct SET  -- HHT集配信連携トランザクション
+            xhcdct.cooperate_flag         = cv_flag_no                -- 連携フラグ
+           ,xhcdct.last_updated_by        = cn_last_updated_by        -- 最終更新者
+           ,xhcdct.last_update_date       = cd_last_update_date       -- 最終更新日
+           ,xhcdct.last_update_login      = cn_last_update_login      -- 最終更新ログイン
+           ,xhcdct.request_id             = cn_request_id             -- 要求ID
+           ,xhcdct.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+           ,xhcdct.program_id             = cn_program_id             -- コンカレント・プログラムID
+           ,xhcdct.program_update_date    = cd_program_update_date    -- プログラム更新日
+          WHERE  xhcdct.install_code   = l_install_base_rec.install_code -- 物件コード
+          AND    xhcdct.account_number = lt_account_number_old -- 顧客コード
+          AND    xhcdct.cooperate_flag = cv_flag_yes -- 連携フラグ
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- データ更新エラー
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_02         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_hht_col_dlv_coop_trn -- トークン値1
+                         ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                         ,iv_token_value2 => SQLERRM                  -- トークン値2
+                      );
+            RAISE global_api_expt;
+        END;
+--
+        -- HHT集配信連携トランザクション登録（変更前顧客_引揚データ）
+        BEGIN
+          INSERT INTO xxcso_hht_col_dlv_coop_trn(
+            account_number         -- 顧客コード
+           ,install_code           -- 物件コード
+           ,creating_source_code   -- 発生元ソースコード
+           ,install_psid           -- 設置PSID
+           ,withdraw_psid          -- 引揚PSID
+           ,line_number            -- 回線番号
+           ,cooperate_flag         -- 連携フラグ
+           ,approval_date          -- 承認日
+           ,cooperate_date         -- 連携日
+           ,created_by             -- 作成者
+           ,creation_date          -- 作成日
+           ,last_updated_by        -- 最終更新者
+           ,last_update_date       -- 最終更新日
+           ,last_update_login      -- 最終更新ログイン
+           ,request_id             -- 要求ID
+           ,program_application_id -- コンカレント・プログラム・アプリケーションID
+           ,program_id             -- コンカレント・プログラムID
+           ,program_update_date    -- プログラム更新日
+           )
+           VALUES(
+            lt_account_number_old               -- 変更前顧客コード
+           ,l_install_base_rec.install_code     -- 物件コード
+           ,cv_pkg_name                         -- 発生元ソースコード
+           ,NULL                                -- 設置PSID
+           ,lt_install_psid                     -- 引揚PSID
+           ,lt_line_number                      -- 回線番号
+           ,cv_flag_yes                         -- 連携フラグ
+           ,TRUNC( cd_creation_date )           -- 承認日
+           ,it_mst_regist_info_rec.install_date -- 連携日
+           ,cn_created_by                       -- 作成者
+           ,cd_creation_date                    -- 作成日
+           ,cn_last_updated_by                  -- 最終更新者
+           ,cd_last_update_date                 -- 最終更新日
+           ,cn_last_update_login                -- 最終更新ログイン
+           ,cn_request_id                       -- 要求ID
+           ,cn_program_application_id           -- コンカレント・プログラム・アプリケーションID
+           ,cn_program_id                       -- コンカレント・プログラムID
+           ,cd_program_update_date              -- プログラム更新日
+           );
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- データ登録エラー
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_06         -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                           ,iv_token_value1 => cv_tkn_hht_col_dlv_coop_trn  -- トークン値1
+                           ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                           ,iv_token_value2 => SQLERRM                  -- トークン値2
+                        );
+            RAISE global_api_expt;
+        END;
+--
+        -- 変更後顧客コードを取得
+        SELECT hca.account_number account_number -- 顧客コード
+        INTO   lt_account_number_new -- 変更後顧客コード
+        FROM   hz_cust_accounts hca -- 顧客マスタ
+        WHERE  hca.cust_account_id = it_mst_regist_info_rec.install_account_id -- 顧客ID
+        ;
+--
+        -- HHT集配信連携トランザクション登録（変更後顧客_設置データ）
+        BEGIN
+          INSERT INTO xxcso_hht_col_dlv_coop_trn(
+            account_number         -- 顧客コード
+           ,install_code           -- 物件コード
+           ,creating_source_code   -- 発生元ソースコード
+           ,install_psid           -- 設置PSID
+           ,withdraw_psid          -- 引揚PSID
+           ,line_number            -- 回線番号
+           ,cooperate_flag         -- 連携フラグ
+           ,approval_date          -- 承認日
+           ,cooperate_date         -- 連携日
+           ,created_by             -- 作成者
+           ,creation_date          -- 作成日
+           ,last_updated_by        -- 最終更新者
+           ,last_update_date       -- 最終更新日
+           ,last_update_login      -- 最終更新ログイン
+           ,request_id             -- 要求ID
+           ,program_application_id -- コンカレント・プログラム・アプリケーションID
+           ,program_id             -- コンカレント・プログラムID
+           ,program_update_date    -- プログラム更新日
+           )
+           VALUES(
+            lt_account_number_new               -- 変更後顧客コード
+           ,l_install_base_rec.install_code     -- 物件コード
+           ,cv_pkg_name                         -- 発生元ソースコード
+           ,lt_install_psid                     -- 設置PSID
+           ,NULL                                -- 引揚PSID
+           ,lt_line_number                      -- 回線番号
+           ,cv_flag_yes                         -- 連携フラグ
+           ,TRUNC( cd_creation_date )           -- 承認日
+           ,it_mst_regist_info_rec.install_date -- 連携日
+           ,cn_created_by                       -- 作成者
+           ,cd_creation_date                    -- 作成日
+           ,cn_last_updated_by                  -- 最終更新者
+           ,cd_last_update_date                 -- 最終更新日
+           ,cn_last_update_login                -- 最終更新ログイン
+           ,cn_request_id                       -- 要求ID
+           ,cn_program_application_id           -- コンカレント・プログラム・アプリケーションID
+           ,cn_program_id                       -- コンカレント・プログラムID
+           ,cd_program_update_date              -- プログラム更新日
+           );
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- 登録エラー
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_06         -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                           ,iv_token_value1 => cv_tkn_hht_col_dlv_coop_trn  -- トークン値1
+                           ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                           ,iv_token_value2 => SQLERRM                  -- トークン値2
+                        );
+            RAISE global_api_expt;
+        END;
+      END IF;
+--
+    END LOOP get_install_base_loop;
+--
+    -- カーソルクローズ
+    CLOSE get_install_base_cur;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
   EXCEPTION
     --
     --#################################  固定例外処理部 START   ####################################
@@ -3735,6 +4025,11 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000);
       ov_retcode := cv_status_error;
       ov_errmsg  := ov_errbuf;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+      IF ( get_install_base_cur%ISOPEN ) THEN
+        CLOSE get_install_base_cur;
+      END IF;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
       --
     WHEN global_api_others_expt THEN
       -- *** 共通関数OTHERS例外ハンドラ ***
@@ -3747,6 +4042,11 @@ AS
       ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
       ov_retcode := cv_status_error;
       ov_errmsg  := ov_errbuf;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 START */
+      IF ( get_install_base_cur%ISOPEN ) THEN
+        CLOSE get_install_base_cur;
+      END IF;
+/* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
       --
     --
     --#####################################  固定部 END   ##########################################
