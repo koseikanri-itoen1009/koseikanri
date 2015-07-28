@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  update_in_work_data    作業データテーブルの物件処理フラグ更新処理 (A-9)
  *  update_cust_or_party   顧客アドオンマスタとパーティマスタ更新処理 (A-10)
  *  delete_in_item_data    物件データワークテーブル削除処理 (A-12)
+ *  insupd_hht_cdc_trn_proc HHT集配信連携トランザクションテーブル登録更新処理(A-13)
  *  submain                メイン処理プロシージャ
  *                           (IN) 物件マスタ情報抽出 (A-2)
  *                           セーブポイント設定 (A-3)
@@ -74,6 +75,7 @@ AS
  *  2014-05-19    1.28  Y.Shoji          E_本稼動_11853⑧対応
  *  2014-07-08    1.29  T.Kobori         E_本稼動_11853⑩対応
  *  2014-08-27    1.30  S.Yamashita      E_本稼動_11719対応
+ *  2015-06-17    1.31  K.Kiriu          E_本稼動_12984対応 自販機の付帯機器管理に関する改修
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -170,6 +172,16 @@ AS
   /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
   cv_tkn_number_34        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00590';  -- 有効顧客抽出失敗エラーメッセージ
   /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
+  /* 2015-06-17 K.Kiriu E_本稼動_12984 ADD START */
+  cv_tkn_number_35        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00757';  -- HHT集配信連携トランザクション(文言)
+  cv_tkn_number_36        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00761';  -- 対象物件取得エラー
+  cv_tkn_number_37        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00767';  -- ロックエラー
+  cv_tkn_number_38        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00768';  -- 対象物件その他例外エラー
+  cv_tkn_number_39        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00703';  -- 更新(文言)
+  cv_tkn_number_40        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00702';  -- 登録(文言)
+  cv_tkn_number_41        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00344';  -- 発注依頼情報なしエラーメッセージ
+  cv_tkn_number_42        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00769';  -- 発注依頼情報(文言)
+  /* 2015-06-17 K.Kiriu E_本稼動_12984 ADD END   */
 --
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MSG';
@@ -205,6 +217,12 @@ AS
   cv_tkn_last_req_no      CONSTANT VARCHAR2(20) := 'LAST_REQ_NO';
   cv_tkn_req_no           CONSTANT VARCHAR2(20) := 'REQ_NO';
   cv_tkn_seq_no           CONSTANT VARCHAR2(20) := 'SEQ_NO';
+  /* 2015-06-17 K.Kiriu E_本稼動_12984 ADD START */
+  cv_tkn_action           CONSTANT VARCHAR2(20) := 'ACTION';
+  cv_tkn_cust_code        CONSTANT VARCHAR2(20) := 'CUST_CODE';
+  cv_tkn_install_code     CONSTANT VARCHAR2(20) := 'INSTALL_CODE';
+  cv_tkn_req_header_num   CONSTANT VARCHAR2(20) := 'REQ_HEADER_NUM';
+  /* 2015-06-17 K.Kiriu E_本稼動_12984 ADD END   */
 --
   -- 作業区分
   cn_work_kbn1            CONSTANT NUMBER        := 1;                -- 新台設置
@@ -8139,6 +8157,382 @@ AS
 --
   END delete_in_item_data;
 --
+/* 2015-06-17 K.Kiriu E_本稼動_12984 ADD START */
+  /**********************************************************************************
+   * Procedure Name   : insupd_hht_cdc_trn_proc
+   * Description      : HHT集配信連携トランザクションテーブル登録更新処理(A-13)
+   ***********************************************************************************/
+  PROCEDURE insupd_hht_cdc_trn_proc(
+    i_inst_base_data_rec IN  g_get_data_rtype,                            -- 1.(IN)物件マスタ情報
+    id_process_date      IN  DATE,                                        -- 2.業務処理日付
+    it_job_kbn           IN  xxcso_in_work_data.job_kbn%TYPE,             -- 3.作業区分
+    ov_errbuf            OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode           OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg            OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'insupd_hht_cdc_trn_proc'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_yes               CONSTANT VARCHAR2(1)   := 'Y';  -- 汎用「Y」
+    cv_no                CONSTANT VARCHAR2(1)   := 'N';  -- 汎用「N」
+    cv_vd_accessory_type CONSTANT VARCHAR2(24)  := 'XXCSO1_VD_ACCESSORY_TYPE';
+--
+    -- *** ローカル変数 ***
+    lt_cooperate_flag    xxcso_hht_col_dlv_coop_trn.cooperate_flag%TYPE; -- 連携フラグ
+    lt_install_code      csi_item_instances.external_reference%TYPE;     -- 物件コード
+    lt_account_number    hz_cust_accounts.account_number%TYPE;           -- 顧客コード
+    lt_install_psid      xxcso_hht_col_dlv_coop_trn.install_psid%TYPE;   -- 設置PSID
+    lt_line_number       xxcso_hht_col_dlv_coop_trn.line_number%TYPE;    -- 回線番号
+    lt_cooperate_date    xxcso_hht_col_dlv_coop_trn.cooperate_date%TYPE; -- 連携フラグ
+    lt_approval_date     xxcso_hht_col_dlv_coop_trn.approval_date%TYPE;  -- 連携日
+    lr_row_id            ROWID;
+    ln_dummy             NUMBER;
+    lv_tkn_msg1          VARCHAR2(100);
+    lv_tkn_msg2          VARCHAR2(100);
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル・例外 ***
+    update_error_expt    EXCEPTION;
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --初期化
+    lt_install_code   := NULL;
+    lt_account_number := NULL;
+    lr_row_id         := NULL;
+    lt_install_psid   := NULL;
+    lt_line_number    := NULL;
+    lt_cooperate_date := NULL;
+    lt_approval_date  := NULL;
+    lt_cooperate_flag := NULL;
+--
+    ----------------------------------------------
+    -- HHT集配新連携トランザクション作成更新の判断
+    ----------------------------------------------
+    -- 作業区分「引揚」の場合
+    IF ( it_job_kbn = cn_work_kbn5 ) THEN
+      lt_install_code := i_inst_base_data_rec.install_code2;
+    -- 作業区分「店内移動」の場合
+    ELSE
+      lt_install_code := i_inst_base_data_rec.install_code1;
+    END IF;
+    --
+    BEGIN
+      -- 物件がHHT集配信連携トランザクションの作成更新対象か確認
+      SELECT hca.account_number       account_number -- 顧客コード
+      INTO   lt_account_number
+      FROM   csi_item_instances   ccii -- インストールベースマスタ
+            ,po_un_numbers_vl     punv -- 機種マスタビュー
+            ,fnd_lookup_values_vl flvv -- 参照タイプ
+            ,hz_cust_accounts     hca  -- 顧客マスタ
+      WHERE  ccii.external_reference     =  lt_install_code
+      AND    ccii.attribute1             =  punv.un_number
+      AND    punv.attribute15            =  flvv.lookup_code
+      AND    flvv.lookup_type            =  cv_vd_accessory_type  -- 参照タイプ「XXCSO1_VD_ACCESSORY_TYPE」
+      AND    flvv.attribute1             =  cv_yes                -- MaRooN連携対象
+      AND    flvv.enabled_flag           =  cv_yes
+      AND    id_process_date             BETWEEN NVL( flvv.start_date_active, id_process_date )
+                                         AND     NVL( flvv.end_date_active  , id_process_date )
+      AND    ccii.owner_party_account_id =  hca.cust_account_id
+      ;
+      --
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- 存在しない場合(対象外の場合)、当処理は終了
+        RETURN;
+    END;
+--
+    ----------------------------------------------
+    -- HHT集配新連携トランザクション前回データ取得
+    ----------------------------------------------
+    BEGIN
+      SELECT xhcdct.rowid          row_id         -- ROWID(更新条件)
+            ,xhcdct.install_psid   install_psid   -- 設置PSID
+            ,xhcdct.line_number    line_number    -- 回線番号
+            ,xhcdct.cooperate_date cooperate_date -- 連携日
+            ,xhcdct.approval_date  approval_date  -- 承認日
+      INTO   lr_row_id
+            ,lt_install_psid
+            ,lt_line_number
+            ,lt_cooperate_date
+            ,lt_approval_date
+      FROM   xxcso_hht_col_dlv_coop_trn xhcdct -- HHT集配信連携トランザクション
+      WHERE  xhcdct.install_code   = lt_install_code   -- 物件コード
+      AND    xhcdct.account_number = lt_account_number -- 顧客コード
+      AND    xhcdct.cooperate_flag = cv_yes            -- 連携フラグ「Y」
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データなしエラー
+        lv_tkn_msg1 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name         -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_35    -- メッセージコード
+                       );
+        lv_errmsg   := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name         -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_36    -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action       -- トークンコード1
+                         ,iv_token_value1 => lv_tkn_msg1         -- トークン値1
+                         ,iv_token_name2  => cv_tkn_cust_code    -- トークンコード2
+                         ,iv_token_value2 => lt_account_number   -- トークン値2
+                         ,iv_token_name3  => cv_tkn_install_code -- トークンコード3
+                         ,iv_token_value3 => lt_install_code     -- トークン値3
+                       );
+        lv_errbuf := lv_errmsg;
+        RAISE update_error_expt;
+    END;
+--
+    -- 作業区分「引揚」の場合
+    IF ( it_job_kbn = cn_work_kbn5 ) THEN
+      -------------------------------------------
+      -- 前回のHHT集配信連携トランザクション更新
+      ------------------------------------------
+      BEGIN
+        -- ロックの取得
+        SELECT 1
+        INTO   ln_dummy
+        FROM   xxcso_hht_col_dlv_coop_trn xhcdct
+        WHERE  rowid = lr_row_id
+        FOR UPDATE NOWAIT
+        ;
+        -- 更新
+        UPDATE  xxcso_hht_col_dlv_coop_trn xhcdct
+        SET     xhcdct.cooperate_flag        = cv_no
+               ,xhcdct.last_updated_by       = cn_last_updated_by
+               ,xhcdct.last_update_date      = cd_last_update_date
+               ,xhcdct.last_update_login     = cn_last_update_login
+               ,request_id                   = cn_request_id
+               ,program_application_id       = cn_program_application_id
+               ,program_id                   = cn_program_id
+               ,program_update_date          = cd_program_update_date
+        WHERE   rowid                        = lr_row_id
+        ;
+      EXCEPTION
+        WHEN global_lock_expt THEN
+          -- ロックエラー
+          lv_tkn_msg1 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name         -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_35    -- メッセージコード
+                         );
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name         -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_37    -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_action       -- トークンコード1
+                           ,iv_token_value1 => lv_tkn_msg1         -- トークン値1
+                           ,iv_token_name2  => cv_tkn_cust_code    -- トークンコード2
+                           ,iv_token_value2 => lt_account_number   -- トークン値2
+                           ,iv_token_name3  => cv_tkn_install_code -- トークンコード3
+                           ,iv_token_value3 => lt_install_code     -- トークン値3
+                         );
+          lv_errbuf := lv_errmsg;
+          RAISE update_error_expt;
+        WHEN OTHERS THEN
+          -- その他例外
+          lv_tkn_msg1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name          -- アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_35     -- メッセージコード
+                         );
+          lv_tkn_msg2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name          -- アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_39     -- メッセージコード
+                         );
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name         -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_38    -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_action       -- トークンコード1
+                           ,iv_token_value1 => lv_tkn_msg1         -- トークン値1
+                           ,iv_token_name2  => cv_tkn_process      -- トークンコード2
+                           ,iv_token_value2 => lv_tkn_msg2         -- トークン値2
+                           ,iv_token_name3  => cv_tkn_cust_code    -- トークンコード3
+                           ,iv_token_value3 => lt_account_number   -- トークン値3
+                           ,iv_token_name4  => cv_tkn_install_code -- トークンコード4
+                           ,iv_token_value4 => lt_install_code     -- トークン値4
+                           ,iv_token_name5  => cv_tkn_errmsg       -- トークンコード5
+                           ,iv_token_value5 => SQLERRM             -- トークン値5
+                         );
+          lv_errbuf := lv_errmsg;
+          RAISE update_error_expt;
+      END;
+      -----------------------------
+      -- 新規作成データの値設定(引揚)
+      -----------------------------
+      lt_cooperate_flag := cv_yes;  -- 連携フラグ(連携)
+      BEGIN
+        -- 購買依頼データ取得
+        SELECT  TO_DATE( xrlv.work_hope_year || xrlv.work_hope_month || xrlv.work_hope_day,'yyyymmdd') work_hope_date  -- 連携日
+               ,TRUNC(pha.approved_date)                                                               approved_date   -- 承認日
+        INTO    lt_cooperate_date
+               ,lt_approval_date
+        FROM    po_requisition_headers_all pha
+               ,xxcso_requisition_lines_v  xrlv
+        WHERE   pha.segment1              = TO_CHAR(i_inst_base_data_rec.po_req_number)
+        AND     pha.requisition_header_id = xrlv.requisition_header_id
+        AND     xrlv.line_num             = i_inst_base_data_rec.line_num
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_tkn_msg1 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name                       -- アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_42                  -- メッセージコード
+                         );
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                        -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_41                   -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table                       -- トークンコード1
+                         ,iv_token_value1 => lv_tkn_msg1                        -- トークン値1
+                         ,iv_token_name2  => cv_tkn_req_header_num              -- トークンコード2
+                         ,iv_token_value2 => i_inst_base_data_rec.po_req_number -- トークン値2
+                         ,iv_token_name3  => cv_tkn_errmsg                      -- トークンコード3
+                         ,iv_token_value3 => SQLERRM                            -- トークン値3
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE update_error_expt;
+      END;
+      --
+    -- 作業区分「店内移動」(新台・旧台代替の付替え作業)の場合
+    ELSE
+      -----------------------------
+      -- 新規作成データの値設定(店内移動)
+      -----------------------------
+      lt_cooperate_flag := cv_no;   -- 連携フラグ(未連携)
+      --
+    END IF;
+--
+    ------------------------------------------------
+    -- HHT集配信連携トランザクションデータ挿入処理
+    ------------------------------------------------
+    BEGIN
+      INSERT INTO xxcso_hht_col_dlv_coop_trn(
+         account_number          -- 顧客コード
+        ,install_code            -- 物件コード
+        ,creating_source_code    -- 発生元ソースコード
+        ,install_psid            -- 設置PSID
+        ,withdraw_psid           -- 引揚PSID
+        ,line_number             -- 回線番号
+        ,cooperate_flag          -- 連携フラグ
+        ,cooperate_date          -- 連携日
+        ,approval_date           -- 承認日
+        ,created_by              -- 作成者
+        ,creation_date           -- 作成日
+        ,last_updated_by         -- 最終更新者
+        ,last_update_date        -- 最終更新日
+        ,last_update_login       -- 最終更新ログイン
+        ,request_id              -- 要求ID
+        ,program_application_id  -- コンカレント・プログラム・アプリケーションID
+        ,program_id              -- コンカレント・プログラムID
+        ,program_update_date     -- プログラム更新日
+      )VALUES(
+         lt_account_number                           -- 顧客コード
+        ,lt_install_code                             -- 物件コード
+        ,TO_CHAR(i_inst_base_data_rec.po_req_number) -- 発生元ソースコード(発注依頼番号)
+        ,NULL                                        -- 設置PSID
+        ,lt_install_psid                             -- 引揚PSID
+        ,lt_line_number                              -- 回線番号
+        ,lt_cooperate_flag                           -- 連携フラグ
+        ,lt_cooperate_date                           -- 連携日
+        ,lt_approval_date                            -- 承認日
+        ,cn_created_by                               -- 作成者
+        ,cd_creation_date                            -- 作成日
+        ,cn_last_updated_by                          -- 最終更新者
+        ,cd_last_update_date                         -- 最終更新日
+        ,cn_last_update_login                        -- 最終更新ログイン
+        ,cn_request_id                               -- 要求ID
+        ,cn_program_application_id                   -- コンカレント・プログラム・アプリケーションID
+        ,cn_program_id                               -- コンカレント・プログラムID
+        ,cd_program_update_date                      -- プログラム更新日
+      )
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- その他例外
+        lv_tkn_msg1 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name          -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_35     -- メッセージコード
+                       );
+        lv_tkn_msg2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name          -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_40     -- メッセージコード
+                       );
+        lv_errmsg   := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name         -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_38    -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action       -- トークンコード1
+                         ,iv_token_value1 => lv_tkn_msg1         -- トークン値1
+                         ,iv_token_name2  => cv_tkn_process      -- トークンコード2
+                         ,iv_token_value2 => lv_tkn_msg2         -- トークン値2
+                         ,iv_token_name3  => cv_tkn_cust_code    -- トークンコード3
+                         ,iv_token_value3 => lt_account_number   -- トークン値3
+                         ,iv_token_name4  => cv_tkn_install_code -- トークンコード4
+                         ,iv_token_value4 => lt_install_code     -- トークン値4
+                         ,iv_token_name5  => cv_tkn_errmsg       -- トークンコード5
+                         ,iv_token_value5 => SQLERRM             -- トークン値5
+                       );
+        lv_errbuf := lv_errmsg;
+        RAISE update_error_expt;
+    END;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    -- *** 更新失敗例外ハンドラ ***
+    WHEN update_error_expt THEN
+      -- 更新失敗ロールバックフラグの設定。
+      gb_rollback_flg := TRUE;
+      ov_errmsg       := lv_errmsg;
+      ov_errbuf       := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode      := cv_status_warn;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END insupd_hht_cdc_trn_proc;
+--
+/* 2015-06-17 K.Kiriu E_本稼動_12984 ADD END   */
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -8575,6 +8969,29 @@ AS
           /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
           IF (l_g_get_data_rec.completion_kbn = ct_comp_kbn_comp) THEN
           /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
+            /* 2015-06-17 K.Kiriu E_本稼動_12984 ADD START */
+            -- 作業が「引揚」「店内移動」の場合
+            IF ( ln_job_kbn = cn_work_kbn5 OR ln_job_kbn = cn_work_kbn6 ) THEN
+              -- ======================================================
+              -- A-13.HHT集配信連携トランザクションテーブル登録更新処理
+              -- ======================================================
+              insupd_hht_cdc_trn_proc(
+                 i_inst_base_data_rec => l_g_get_data_rec
+                ,id_process_date      => ld_process_date
+                ,it_job_kbn           => ln_job_kbn
+                ,ov_errbuf            => lv_errbuf
+                ,ov_retcode           => lv_sub_retcode
+                ,ov_errmsg            => lv_errmsg
+              );
+              --
+              IF (lv_sub_retcode = cv_status_error) THEN
+                RAISE global_process_expt;
+              ELSIF (lv_sub_retcode = cv_status_warn) THEN
+                RAISE skip_process_expt;
+              END IF;
+              --
+            END IF;
+            /* 2015-06-17 K.Kiriu E_本稼動_12984 ADD END   */
             -- ========================================
             -- A-8.物件データ更新処理
             -- ========================================
