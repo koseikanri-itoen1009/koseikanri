@@ -1,0 +1,57 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : XXCSO_HHT_COL_DLV_COOP_TRN
+ * Description     : HHT集配信連携トランザクション
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2015/06/29    1.0  K.Kiriu      初回作成
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_hht_col_dlv_coop_trn
+(
+   account_number                  VARCHAR2(30)  NOT NULL
+  ,install_code                    VARCHAR2(30)  NOT NULL
+  ,creating_source_code            VARCHAR2(20)  NOT NULL
+  ,install_psid                    VARCHAR2(20)
+  ,withdraw_psid                   VARCHAR2(20)
+  ,line_number                     VARCHAR2(20)
+  ,cooperate_flag                  VARCHAR2(1)   NOT NULL
+  ,cooperate_date                  DATE
+  ,approval_date                   DATE
+  ,created_by                      NUMBER(15)    NOT NULL
+  ,creation_date                   DATE          NOT NULL
+  ,last_updated_by                 NUMBER(15)    NOT NULL
+  ,last_update_date                DATE          NOT NULL
+  ,last_update_login               NUMBER(15)
+  ,request_id                      NUMBER(15)
+  ,program_application_id          NUMBER(15)
+  ,program_id                      NUMBER(15)
+  ,program_update_date             DATE
+)
+PCTFREE 10 PCTUSED 40 INITRANS 1 STORAGE ( INITIAL 65M )
+;
+--
+COMMENT ON TABLE xxcso.xxcso_hht_col_dlv_coop_trn IS ' HHT集配信連携トランザクション';
+--
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.account_number            IS '顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.install_code              IS '物件コード';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.creating_source_code      IS '発生元ソースコード';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.install_psid              IS '設置PSID';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.withdraw_psid             IS '引揚PSID';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.line_number               IS '回線番号';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.cooperate_flag            IS '連携フラグ';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.cooperate_date            IS '連携日';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.approval_date             IS '承認日';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.created_by                IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.creation_date             IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.request_id                IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_hht_col_dlv_coop_trn.program_update_date       IS 'プログラム更新日';
