@@ -7,7 +7,7 @@ AS
  * Description      : ファイルアップロードIFに取込まれたデータを
  *                    物件マスタ情報(IB)に登録します。
  * MD.050           : MD050_CSO_012_A02_自動販売機データ格納
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009-01-13    1.4   K.Hosoi          E_本稼動_00443対応
  *  2014-05-19    1.5   K.Nakamura       E_本稼動_11853対応 ベンダー購入対応
  *  2014-08-27    1.6   S.Yamashita      E_本稼動_11719対応 ベンダー購入対応
+ *  2015-05-19    1.7   S.Yamashita      E_本稼動_12984対応 自販機オンライン対応
  *
  *****************************************************************************************/
 --
@@ -138,6 +139,11 @@ AS
   cv_tkn_number_59        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00682';  -- 固定資産時必須エラー
   cv_tkn_number_60        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00268';  -- マイナス値エラーメッセージ
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+  cv_tkn_number_61        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00748';  -- PSID
+  cv_tkn_number_62        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00749';  -- 回線番号
+  cv_tkn_number_63        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00750';  -- 必須チェックエラー（通信モデム）
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
   cv_target_rec_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000';  -- 対象件数メッセージ
   cv_success_rec_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001';  -- 成功件数メッセージ
   cv_error_rec_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002';  -- エラー件数メッセージ
@@ -173,6 +179,9 @@ AS
   cv_tkn_lookup_type_name CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE_NAME';
   cv_tkn_eigyo            CONSTANT VARCHAR2(20) := 'EIGYO';
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+  cv_tkn_object_code      CONSTANT VARCHAR2(20) := 'OBJECT_CODE';
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
   cv_encoded_f            CONSTANT VARCHAR2(1)   := 'F';              -- FALSE
 --
@@ -192,6 +201,9 @@ AS
   cv_y                    CONSTANT VARCHAR2(1)  := 'Y';                 -- 有効フラグY
   ct_language             CONSTANT fnd_flex_values_tl.language%TYPE := USERENV('LANG'); -- 言語
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+  cv_vd_rendou_kbn_1      CONSTANT VARCHAR2(1)  := '1';                 -- 自販機連動区分「通信モデム」
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -218,6 +230,10 @@ AS
   gv_hazard_class         po_hazard_classes_vl.hazard_class%TYPE;              -- 機器区分
   gv_maker_name           fnd_lookup_values.meaning%TYPE;                      -- メーカー名
   gv_age_type             po_un_numbers_vl.attribute3%TYPE;                    -- 年式
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+  gt_vd_rendou_kbn        po_un_numbers_vl.attribute15%TYPE;                   -- 自販機連動区分
+  gv_modem_base_code      VARCHAR2(100);                                       -- 通信モデム拠点コード
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
   -- 追加属性ID格納用レコード型定義
   TYPE gr_ib_ext_attribs_id_rtype IS RECORD(
@@ -278,6 +294,10 @@ AS
     ,vd_shutoku_kg         NUMBER               -- 取得価格
     ,dclr_place            NUMBER               -- 申告地
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    ,ps_id                 NUMBER               -- PSID
+    ,line_number           NUMBER               -- 回線番号
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
   );
   -- 追加属性ID格納用レコード変数
   gr_ext_attribs_id_rec   gr_ib_ext_attribs_id_rtype;
@@ -295,6 +315,10 @@ AS
    ,dclr_place           VARCHAR2(5)             -- 申告地
    ,vd_shutoku_kg        VARCHAR2(10)            -- 取得価格
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+   ,ps_id                VARCHAR2(20)            -- PSID
+   ,line_number          VARCHAR2(20)            -- 回線番号
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
   );
   gr_blob_data gr_blob_data_rtype;
 --  
@@ -339,6 +363,10 @@ AS
     cv_vld_org_code           CONSTANT VARCHAR2(30)  := 'XXCSO1_VLD_ORG_CODE';
     -- XXCSO:物件用品目
     cv_bukken_item            CONSTANT VARCHAR2(30)  := 'XXCSO1_BUKKEN_ITEM';
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- XXCSO:通信モデム拠点コード
+    cv_modem_base_code        CONSTANT VARCHAR2(30)  := 'XXCSO1_MODEM_BASE_CODE';
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
     -- ファイルアップロード名称
     cv_xxcso1_file_name       CONSTANT VARCHAR2(30)  := 'XXCCP1_FILE_UPLOAD_OBJ';
     -- 参照タイプのIBステータスタイプコード
@@ -582,6 +610,12 @@ AS
     -- 申告地
     cv_dclr_place             CONSTANT VARCHAR2(100) := 'DCLR_PLACE';
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- PSID
+    cv_ps_id                  CONSTANT VARCHAR2(100) := 'PS_ID';
+    -- 回線番号
+    cv_line_number            CONSTANT VARCHAR2(100) := 'LINE_NUMBER';
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
     -- *** ローカル変数 ***
     -- 業務処理日
@@ -695,6 +729,12 @@ AS
                     cv_bukken_item
                    ,lv_bukken_item
                    ); -- 物件用品目
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    FND_PROFILE.GET(
+                    cv_modem_base_code
+                   ,gv_modem_base_code
+                   ); -- 通信モデム拠点コード
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
     -- プロファイル値取得に失敗した場合
     -- 在庫マスタ組織取得失敗時
@@ -706,6 +746,11 @@ AS
     -- 物件用品目
     ELSIF (lv_bukken_item IS NULL) THEN
       lv_tkn_value := cv_bukken_item;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- 通信モデム拠点コード
+    ELSIF (gv_modem_base_code IS NULL) THEN
+      lv_tkn_value := cv_modem_base_code;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
     END IF;
     -- エラーメッセージ取得
     IF (lv_tkn_value) IS NOT NULL THEN
@@ -1966,6 +2011,54 @@ AS
       RAISE global_process_expt;
     END IF;
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- 追加属性ID(PSID)
+    gr_ext_attribs_id_rec.ps_id := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_ps_id
+                                             ,ld_process_date
+                                           );
+    IF ( gr_ext_attribs_id_rec.ps_id IS NULL ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_61 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => lv_msg                       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_ps_id                     -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    -- 追加属性ID(回線番号)
+    gr_ext_attribs_id_rec.line_number := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                           cv_line_number
+                                          ,ld_process_date
+                                        );
+    IF ( gr_ext_attribs_id_rec.line_number IS NULL ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_62 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => lv_msg                       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_line_number               -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
     -- ========================
     -- 本社/工場区分(本社)取得 
@@ -2200,7 +2293,10 @@ AS
 --
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
 --    cn_format_col_cnt        CONSTANT NUMBER := 3;  -- 項目数
-    cn_format_col_cnt        CONSTANT NUMBER := 6;  -- 項目数
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+--    cn_format_col_cnt        CONSTANT NUMBER := 6;  -- 項目数
+    cn_format_col_cnt        CONSTANT NUMBER := 8;  -- 項目数
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     -- *** ローカル変数 ***
@@ -2216,6 +2312,10 @@ AS
     lv_msg                   VARCHAR2(5000);
     lv_vd_shutoku_kg         VARCHAR2(2000); -- チェック用
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    lv_ps_id                 VARCHAR2(2000); -- チェック用
+    lv_line_number           VARCHAR2(2000); -- チェック用
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
     -- *** ローカル例外 ***
 --    
@@ -2333,6 +2433,19 @@ AS
                                                              ,cv_msg_conm
                                                              ,6);
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- PSID
+    lv_ps_id := NULL;
+    lv_ps_id := xxccp_common_pkg.char_delim_partition(it_blob_data(in_data_num)
+                                                                    ,cv_msg_conm
+                                                                    ,7);
+--
+    -- 回線番号
+    lv_line_number := NULL;
+    lv_line_number := xxccp_common_pkg.char_delim_partition(it_blob_data(in_data_num)
+                                                                    ,cv_msg_conm
+                                                                    ,8);
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
     -- ***************************************************
     -- 3.項目値妥当性チェック
@@ -2413,6 +2526,49 @@ AS
       RAISE global_process_expt;
     END IF;
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- PSID半角数字チェック
+    lb_ret := xxccp_common_pkg.chk_number(
+                iv_check_char   => lv_ps_id
+              );
+    IF ( lb_ret = FALSE ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_61 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      cv_app_name
+                     ,cv_tkn_number_43
+                     ,cv_tkn_item
+                     ,lv_msg
+                     ,cv_tkn_base_value
+                     ,lv_ps_id
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 回線番号半角数字チェック
+    lb_ret := xxccp_common_pkg.chk_number(
+                iv_check_char   => lv_line_number
+              );
+    IF ( lb_ret = FALSE ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_62 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      cv_app_name
+                     ,cv_tkn_number_43
+                     ,cv_tkn_item
+                     ,lv_msg
+                     ,cv_tkn_base_value
+                     ,lv_line_number
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
     --物件コードLENGTHチェック
     IF (LENGTHB(gr_blob_data.object_code) <> 10) THEN
@@ -2463,6 +2619,47 @@ AS
     --
     gr_blob_data.vd_shutoku_kg := lv_vd_shutoku_kg;
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- PSID LENGTHチェック
+    IF ( LENGTHB(lv_ps_id) > 20 ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_61 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      cv_app_name
+                     ,cv_tkn_number_44
+                     ,cv_tkn_item
+                     ,lv_msg
+                     ,cv_tkn_base_value
+                     ,lv_ps_id
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    gr_blob_data.ps_id := lv_ps_id;
+--
+    -- 回線番号 LENGTHチェック
+    IF ( LENGTHB(lv_line_number) > 20 ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_62 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      cv_app_name
+                     ,cv_tkn_number_44
+                     ,cv_tkn_item
+                     ,lv_msg
+                     ,cv_tkn_base_value
+                     ,lv_line_number
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+    gr_blob_data.line_number := lv_line_number;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -2603,6 +2800,9 @@ AS
             ,punv.attribute13
             ,punv.attribute14
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+            ,punv.attribute15
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
       INTO   gv_maker_name
             ,gv_age_type
             ,lv_hazard_class
@@ -2610,6 +2810,9 @@ AS
             ,lt_lease_kbn
             ,lt_vd_shutoku_kg
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+            ,gt_vd_rendou_kbn
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
       FROM   po_un_numbers_vl punv
             ,fnd_lookup_values_vl flvv
       WHERE  punv.un_number = gr_blob_data.serial_code
@@ -2962,6 +3165,62 @@ AS
       END IF;
     END IF;
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- ***************************************************
+    -- 7.PSID、回線番号チェック
+    -- ***************************************************
+    -- 自販機連動区分がNULLまたは'1'「通信モデム」以外の場合
+    IF ( (gt_vd_rendou_kbn IS NULL)
+      OR (gt_vd_rendou_kbn <> cv_vd_rendou_kbn_1) )
+    THEN
+      -- NULLを設定
+      gr_blob_data.ps_id       := NULL; -- PSID
+      gr_blob_data.line_number := NULL; -- 回線番号
+--
+    -- 自販機連動区分が'1'「通信モデム」の場合
+    ELSIF ( gt_vd_rendou_kbn = cv_vd_rendou_kbn_1 ) THEN
+      -- 必須チェック（PSID）
+      IF ( gr_blob_data.ps_id IS NULL ) THEN
+        -- NULLの場合は必須エラー
+        lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_61 -- メッセージ
+                     );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name         -- アプリケーション短縮名：XXCSO
+                      ,iv_name         => cv_tkn_number_63
+                      ,iv_token_name1  => cv_tkn_item
+                      ,iv_token_value1 => lv_msg
+                      ,iv_token_name2  => cv_tkn_object_code
+                      ,iv_token_value2 => gr_blob_data.object_code
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- 必須チェック（回線番号）
+      IF ( gr_blob_data.line_number IS NULL ) THEN
+        -- NULLの場合は必須エラー
+        lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_62 -- メッセージ
+                     );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name         -- アプリケーション短縮名：XXCSO
+                      ,iv_name         => cv_tkn_number_63
+                      ,iv_token_name1  => cv_tkn_item
+                      ,iv_token_value1 => lv_msg
+                      ,iv_token_name2  => cv_tkn_object_code
+                      ,iv_token_value2 => gr_blob_data.object_code
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- エラーが発生していない場合は、拠点コードを設定
+      gr_blob_data.base_code       := gv_modem_base_code; -- 通信モデム拠点コード
+    END IF;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -3224,7 +3483,17 @@ AS
     l_instance_rec.attribute1                 := gr_blob_data.serial_code;     -- 機種(コード)
     l_instance_rec.attribute4                 := cv_flg_no;                    -- 作業依頼中フラグ
     /*20090326_matsunaka_ST183 START*/
-    l_instance_rec.attribute5                 := cv_flg_yes;                   -- 新古台フラグ
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 MOD START */
+--    l_instance_rec.attribute5                 := cv_flg_yes;                   -- 新古台フラグ
+    -- 自販機連動区分がNULLまたは'1'「通信モデム」以外の場合
+    IF ( (gt_vd_rendou_kbn IS NULL)
+      OR (gt_vd_rendou_kbn <> cv_vd_rendou_kbn_1) )
+    THEN
+      l_instance_rec.attribute5                 := cv_flg_yes;                   -- 新古台フラグ
+    ELSE
+      l_instance_rec.attribute5                 := cv_flg_no;                    -- 新古台フラグ
+    END IF;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 MOD END */
     /*20090326_matsunaka_ST183 END*/
     l_instance_rec.instance_usage_code        := cv_instance_usage_code;       -- インスタンス使用コード
     l_instance_rec.request_id                 := cn_request_id;                -- REQUEST_ID
@@ -3505,6 +3774,17 @@ AS
     l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.dclr_place;
     l_ext_attrib_values_tab(ln_cnt).attribute_value := gr_blob_data.dclr_place;
 /* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    -- PSID
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.ps_id;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := gr_blob_data.ps_id;
+--
+    -- 回線番号
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.line_number;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := gr_blob_data.line_number;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
     -- ====================
     -- 3.パーティデータ作成
@@ -3966,6 +4246,10 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD START */
+    gt_vd_rendou_kbn   := NULL;
+    gv_modem_base_code := NULL;
+/* 2015-05-19 S.Yamashita E_本稼動_12984対応 ADD END */
 --
     -- ================================
     -- A-1.初期処理 
