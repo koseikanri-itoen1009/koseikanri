@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,7 +17,7 @@ AS
  *  init                   初期処理(A-1)
  *  open_csv_file          作業依頼／発注情報CSVファイルオープン (A-2)
  *  get_ipro_po_related_data 作業依頼／発注情報関連マスタ情報抽出 (A-4)
- *  update_wk_reqst_tbl    作業依頼／発注情報連携対象テーブル更新 (A-6)
+ *  update_wk_requisition_proc 作業依頼／発注情報連携対象テーブル更新 (A-6)
  *  create_csv_rec         作業依頼／発注情報CSV出力 (A-7)
  *  close_csv_file         CSVファイルクローズ処理   (A-8)
  *  submain                メイン処理プロシージャ
@@ -71,6 +71,7 @@ AS
  *  2011-07-08    1.31  K.Kiriu          E_本稼動_07712対応(担当営業取得変更)
  *  2012-09-28    1.32  K.Taniguchi      E_本稼動_09604対応(担当営業取得変更)
  *  2014-05-16    1.33  Y.Shoji          E_本稼動_11853対応(連携項目：リース区分追加)
+ *  2015-06-03    1.34  K.Kiriu          E_本稼動_12984対応(自販機の付帯機器管理に関する改修)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -222,9 +223,21 @@ AS
   /* 2011.02.02 N.Horigome E_本稼動_02369対応 START */
   cv_sep_com              CONSTANT VARCHAR2(1)  := ',';
   /* 2011.02.02 N.Horigome E_本稼動_02369対応 END */
+  /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+  cv_format_date          CONSTANT VARCHAR2(8)  := 'YYYYMMDD'; -- 日付フォーマット(YYYYMDDD)
+  cv_format_time          CONSTANT VARCHAR2(6)  := 'HH24MI';   -- 日付フォーマット(HH24MI)
+  cv_one                  CONSTANT VARCHAR2(1)  := '1';        -- 汎用固定値「1」
+  cv_two                  CONSTANT VARCHAR2(1)  := '2';        -- 汎用固定値「2」
+  cv_yes                  CONSTANT VARCHAR2(1)  := 'Y';        -- 汎用固定値「Y」
+  cv_no                   CONSTANT VARCHAR2(1)  := 'N';        -- 汎用固定値「N」
+  /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+  /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+  gt_company_code_base    xxcso_requisition_lines_v.work_company_code%TYPE;   -- 作業会社CD
+  gt_location_code_base   xxcso_requisition_lines_v.work_location_code%TYPE;  -- 作業会社事業所CD
+  /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
 --
   -- ファイル・ハンドルの宣言
   gf_file_hand    UTL_FILE.FILE_TYPE;
@@ -355,6 +368,9 @@ AS
     /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
     ,lease_kbn               VARCHAR2(1)                                               -- リース区分
     /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+    ,install_type            VARCHAR2(1)                                               -- 物件タイプ
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
   );
   /* 2011-07-08 K.Kiriu E_本稼動_07712対応 ADD START */
   TYPE g_higher_emp_ttype    IS TABLE OF xxcso_employees_v.employee_number%TYPE INDEX BY VARCHAR2( 4 );
@@ -3285,6 +3301,22 @@ AS
       END IF;
     END IF;
     /* 2010.03.08 K.Hosoi E_本稼動_01838対応 END */
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+    -------------------------------------------------------------------------------------
+    -- 付帯物の場合、代替時の作業が発注依頼と異なる為、作業会社を発注依頼の作業に合わせる
+    -------------------------------------------------------------------------------------
+    IF ( io_get_data_rec.install_type = cv_one ) THEN
+      --発注依頼で指定した物件の処理の場合、作業会社を保持
+      gt_company_code_base               := io_get_data_rec.work_company_code;
+      gt_location_code_base              := io_get_data_rec.work_location_code;
+    ELSIF( io_get_data_rec.install_type = cv_two ) THEN
+      --付帯物の場合、発注依頼で指定した物件と同じ作業会社にする
+      io_get_data_rec.work_company_code  := gt_company_code_base;
+      io_get_data_rec.work_location_code := gt_location_code_base;
+      lv_work_company_code               := gt_company_code_base;
+      lv_work_location_code              := gt_location_code_base;
+    END IF;
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
 --
     BEGIN
       -- コード
@@ -3830,6 +3862,10 @@ AS
    ***********************************************************************************/
   PROCEDURE update_wk_requisition_proc(
      i_get_data_rec     IN     g_get_data_rtype        -- 出力用作業依頼/発注情報
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+    ,ib_break_flag      IN     BOOLEAN                 -- ブレークフラグ
+    ,iv_error_flag      IN     VARCHAR2                -- 発注依頼単位エラーフラグ
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
     ,ov_errbuf          OUT    NOCOPY VARCHAR2         -- エラー・メッセージ            --# 固定 #
     ,ov_retcode         OUT    NOCOPY VARCHAR2         -- リターン・コード              --# 固定 #
     ,ov_errmsg          OUT    NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ   --# 固定 #
@@ -4548,106 +4584,113 @@ AS
     END IF;
 
 --
-    -- ============================
-    -- 更新前のロック処理
-    -- ============================
-    BEGIN
-      SELECT  wkrp.requisition_line_id
-             ,wkrp.interface_flag
-      INTO    ln_req_line_id
-             ,lv_interface_flag 
-      FROM    xxcso_wk_requisition_proc wkrp
-      WHERE   wkrp.requisition_line_id = ln_rqstn_line_id
-      FOR UPDATE NOWAIT
-      ;
-    EXCEPTION
-      -- ロック失敗した場合の例外
-      WHEN global_lock_expt THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                  -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_04             -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_table                 -- トークンコード1
-                       ,iv_token_value1 => cv_wk_req_proc               -- トークン値1
-                       ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
-                       ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
-                       ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
-                       ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
-                       ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
-                       ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
-                       ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
-                       ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
-                       ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
-                       ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE update_error_expt;
-      -- 抽出に失敗した場合の例外
-      WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                  -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_06             -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
-                       ,iv_token_value1 => cv_wk_req_proc               -- トークン値1
-                       ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
-                       ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
-                       ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
-                       ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
-                       ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
-                       ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
-                       ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
-                       ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
-                       ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
-                       ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
-                       ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
-                       ,iv_token_value7 => SQLERRM                      -- トークン値7
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-    END;
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+    -- 同一発注依頼最後の行でエラーがない場合、ロック・更新を行う
+    IF ( ( ib_break_flag = TRUE ) AND ( iv_error_flag = cv_no ) ) THEN
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
+        -- ============================
+      -- 更新前のロック処理
+      -- ============================
+      BEGIN
+        SELECT  wkrp.requisition_line_id
+               ,wkrp.interface_flag
+        INTO    ln_req_line_id
+               ,lv_interface_flag 
+        FROM    xxcso_wk_requisition_proc wkrp
+        WHERE   wkrp.requisition_line_id = ln_rqstn_line_id
+        FOR UPDATE NOWAIT
+        ;
+      EXCEPTION
+        -- ロック失敗した場合の例外
+        WHEN global_lock_expt THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                  -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_04             -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table                 -- トークンコード1
+                         ,iv_token_value1 => cv_wk_req_proc               -- トークン値1
+                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE update_error_expt;
+        -- 抽出に失敗した場合の例外
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                  -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_06             -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                         ,iv_token_value1 => cv_wk_req_proc               -- トークン値1
+                         ,iv_token_name2  => cv_tkn_po_num                -- トークンコード2
+                         ,iv_token_value2 => lv_log_po_head_num           -- トークン値2
+                         ,iv_token_name3  => cv_tkn_po_line_num           -- トークンコード3
+                         ,iv_token_value3 => lv_log_po_line_num           -- トークン値3
+                         ,iv_token_name4  => cv_tkn_po_distr_num          -- トークンコード4
+                         ,iv_token_value4 => lv_log_po_dist_num           -- トークン値4
+                         ,iv_token_name5  => cv_tkn_reqst_num             -- トークンコード5
+                         ,iv_token_value5 => lv_log_rq_head_num           -- トークン値5
+                         ,iv_token_name6  => cv_tkn_reqst_line_num        -- トークンコード6
+                         ,iv_token_value6 => lv_log_rq_line_num           -- トークン値6
+                         ,iv_token_name7  => cv_tkn_errmsg               -- トークンコード7
+                         ,iv_token_value7 => SQLERRM                      -- トークン値7
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
 --
-    BEGIN
-      -- ==========================================
-      -- 作業依頼／発注情報連携対象テーブル更新処理 
-      -- ==========================================
-      UPDATE xxcso_wk_requisition_proc
-      SET    interface_flag         = cv_yes,
-             last_updated_by        = cn_last_updated_by,
-             last_update_date       = cd_last_update_date,
-             last_update_login      = cn_last_update_login,
-             request_id             = cn_request_id,
-             program_application_id = cn_program_application_id,
-             program_id             = cn_program_id,
-             program_update_date    = cd_program_update_date
-      WHERE  requisition_line_id    = ln_rqstn_line_id
-      ;
-    EXCEPTION
-      -- *** OTHERS例外ハンドラ ***
-      WHEN OTHERS THEN
-        -- 更新失敗ロールバックフラグの設定
-        gb_rollback_upd_flg := TRUE;
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                  -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_09             -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_table                 -- トークンコード1
-                       ,iv_token_value1 => cv_table_name                -- トークン値1
-                       ,iv_token_name2  => cv_tkn_process               -- トークンコード2
-                       ,iv_token_value2 => cv_up_process                -- トークン値2
-                       ,iv_token_name3  => cv_tkn_po_num                -- トークンコード3
-                       ,iv_token_value3 => lv_log_po_head_num           -- トークン値3
-                       ,iv_token_name4  => cv_tkn_po_line_num           -- トークンコード4
-                       ,iv_token_value4 => lv_log_po_line_num           -- トークン値4
-                       ,iv_token_name5  => cv_tkn_po_distr_num          -- トークンコード5
-                       ,iv_token_value5 => lv_log_po_dist_num           -- トークン値5
-                       ,iv_token_name6  => cv_tkn_reqst_num             -- トークンコード6
-                       ,iv_token_value6 => lv_log_rq_head_num           -- トークン値6
-                       ,iv_token_name7  => cv_tkn_reqst_line_num        -- トークンコード7
-                       ,iv_token_value7 => lv_log_rq_line_num           -- トークン値7
-                       ,iv_token_name8  => cv_tkn_errmsg               -- トークンコード8
-                       ,iv_token_value8 => SQLERRM                      -- トークン値8
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE update_error_expt;
-    END;
+      BEGIN
+        -- ==========================================
+        -- 作業依頼／発注情報連携対象テーブル更新処理 
+        -- ==========================================
+        UPDATE xxcso_wk_requisition_proc
+        SET    interface_flag         = cv_yes,
+               last_updated_by        = cn_last_updated_by,
+               last_update_date       = cd_last_update_date,
+               last_update_login      = cn_last_update_login,
+               request_id             = cn_request_id,
+               program_application_id = cn_program_application_id,
+               program_id             = cn_program_id,
+               program_update_date    = cd_program_update_date
+        WHERE  requisition_line_id    = ln_rqstn_line_id
+        ;
+      EXCEPTION
+        -- *** OTHERS例外ハンドラ ***
+        WHEN OTHERS THEN
+          -- 更新失敗ロールバックフラグの設定
+          gb_rollback_upd_flg := TRUE;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                  -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_09             -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table                 -- トークンコード1
+                         ,iv_token_value1 => cv_table_name                -- トークン値1
+                         ,iv_token_name2  => cv_tkn_process               -- トークンコード2
+                         ,iv_token_value2 => cv_up_process                -- トークン値2
+                         ,iv_token_name3  => cv_tkn_po_num                -- トークンコード3
+                         ,iv_token_value3 => lv_log_po_head_num           -- トークン値3
+                         ,iv_token_name4  => cv_tkn_po_line_num           -- トークンコード4
+                         ,iv_token_value4 => lv_log_po_line_num           -- トークン値4
+                         ,iv_token_name5  => cv_tkn_po_distr_num          -- トークンコード5
+                         ,iv_token_value5 => lv_log_po_dist_num           -- トークン値5
+                         ,iv_token_name6  => cv_tkn_reqst_num             -- トークンコード6
+                         ,iv_token_value6 => lv_log_rq_head_num           -- トークン値6
+                         ,iv_token_name7  => cv_tkn_reqst_line_num        -- トークンコード7
+                         ,iv_token_value7 => lv_log_rq_line_num           -- トークン値7
+                         ,iv_token_name8  => cv_tkn_errmsg               -- トークンコード8
+                         ,iv_token_value8 => SQLERRM                      -- トークン値8
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE update_error_expt;
+      END;
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+    END IF;
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
 --
   EXCEPTION
 --
@@ -5355,6 +5398,11 @@ AS
     /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
     -- 発注依頼明細ID
     ln_rqstn_line_id          NUMBER;
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+    lb_break_flag             BOOLEAN;                                       -- ブレーク判定用
+    lt_req_line_id            po_requisition_lines.requisition_line_id%TYPE; -- ブレーク判定用
+    lv_error_flag             VARCHAR2(1);                                   -- 発注依頼単位エラー判定用
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
 --
     -- *** ローカル・カーソル ***
     CURSOR get_ipro_po_data_cur
@@ -5434,6 +5482,9 @@ AS
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
               ,pd.attribute1                    lease_kbn                        -- リース区分
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+              ,cv_one                           install_type                     -- 物件タイプ(発注依頼で指定された物件)
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,po_req_distributions             prd                              -- 発注依頼搬送明細ビュー
@@ -5552,6 +5603,9 @@ AS
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
               ,pd.attribute1                    lease_kbn                        -- リース区分
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+              ,cv_one                           install_type                     -- 物件タイプ(発注依頼で指定された物件)
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,po_req_distributions             prd                              -- 発注依頼搬送明細ビュー
@@ -5662,6 +5716,9 @@ AS
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
               ,null                             lease_kbn                        -- リース区分
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+              ,cv_one                           install_type                     -- 物件タイプ(発注依頼で指定された物件)
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
@@ -5763,6 +5820,9 @@ AS
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
               ,null                             lease_kbn                        -- リース区分
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+              ,cv_one                           install_type                     -- 物件タイプ(発注依頼で指定された物件)
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
@@ -5864,6 +5924,9 @@ AS
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
               ,null                             lease_kbn                        -- リース区分
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+              ,cv_one                           install_type                     -- 物件タイプ(発注依頼で指定された物件)
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
@@ -5965,6 +6028,9 @@ AS
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD START */
               ,null                             lease_kbn                        -- リース区分
               /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+              ,cv_one                           install_type                     -- 物件タイプ(発注依頼で指定された物件)
+              /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
       FROM     xxcso_requisition_lines_v        prlv                             -- 発注依頼明細情報ビュー
               ,po_requisition_headers           prh                              -- 発注依頼ヘッダビュー
               ,xxcso_wk_requisition_proc        wrp                    -- 作業依頼／発注情報連携対象テーブル
@@ -5997,11 +6063,279 @@ AS
                  TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
         AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
                  TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
+      /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+      -- 店内移動 ※付帯物（新台代替）
+      UNION ALL
+      SELECT   /*+
+                 LEADING( wrp )
+                 USE_NL( wrp prlv prh prd pd ph cii1 cii2)
+                 INDEX( wrp XXCSO_WK_REQUISITION_PROC_N01 )
+                 INDEX( prlv.prl PO_REQUISITION_LINES_U1 )
+               */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+              ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
+              ,cn_work_kbn6                     job_kbn                          -- 作業区分
+              ,cii2.external_reference          install_code1                    -- 物件コード1
+              ,NULL                             un_number_id                     -- 機種ID
+              ,NULL                             install_code2                    -- 物件コード2
+              ,cn_rout_no                       requisition_route                -- 依頼ルート
+              ,TO_CHAR(prlv.creation_date, cv_format_date)   reqst_date          -- 依頼日
+              ,TO_CHAR(prlv.creation_date, cv_format_time)   reqst_time          -- 依頼時間
+              ,prlv.work_company_code           work_company_code                -- 作業会社事業所
+              ,prlv.work_location_code          work_location_code               -- 作業会社事業所
+              ,prlv.work_hope_year              work_hope_year                   -- 作業希望年
+              ,prlv.work_hope_month             work_hope_month                  -- 作業希望月
+              ,prlv.work_hope_day               work_hope_day                    -- 作業希望日
+              ,prlv.work_hope_time_type         work_hope_time_type              -- 作業希望時間区分
+              ,prlv.work_hope_time_hour         work_hope_time_hour              -- 作業希望時
+              ,prlv.work_hope_time_minute       work_hope_time_minute            -- 作業希望分
+              ,NULL                             withdraw_company_code            -- 引揚先（搬入先）
+              ,NULL                             withdraw_location_code           -- 引揚先（搬入先）事業所
+              ,NULL                             withdraw_process_kbn             -- 引揚機処理区分
+              ,prlv.preview_type                preview_type                     -- 下見区分
+              ,prlv.install_place_type          install_place_type               -- 設置場所区分
+              ,prlv.install_place_floor         install_place_floor              -- 設置場所階数
+              ,prlv.install_fall_prevention     install_fall_preventn            -- 設置転倒防止
+              ,prlv.install_step_type           install_step_type                -- 設置段差区分
+              ,prlv.install_inclination_type    install_inclination_type         -- 設置傾斜区分
+              ,prlv.electric_construction_type  electric_construction_type       -- 電気工事区分
+              ,prlv.installed_side_type         installed_side_type              -- 据付面区分
+              ,prlv.import_step_type            import_step_type                 -- 搬入段差区分
+              ,prlv.raising_type                raising_type                     -- 手上げ区分
+              ,prlv.stairs_lift_type            stairs_lift_type                 -- 階段昇降機区分
+              ,prlv.unic_type                   unic_type                        -- ユニック区分
+              ,prlv.elevator_frontage           elevator_frontage                -- エレベータ間口
+              ,prlv.elevator_depth              elevator_depth                   -- エレベータ奥行き
+              ,prlv.concrete_board              concrete_board                   -- コンクリート板
+              ,prlv.extension_code_type         extension_code_type              -- 延長コード区分
+              ,prlv.extension_code_meter        extension_code_meter             -- 延長コード（ｍ）
+              ,prlv.remarks1                    remarks1                         -- 備考１
+              ,prlv.remarks2                    remarks2                         -- 備考２
+              ,prlv.remarks3                    remarks3                         -- 備考３
+              ,NULL                             install_at_customer_code         -- 顧客コード１
+              ,NULL                             employee_number                  -- 担当営業員コード
+              ,NULL                             po_header_num                    -- 発注番号
+              ,NULL                             po_line_num                      -- 発注明細番号
+              ,NULL                             po_distribution_num              -- 発注搬送番号
+              ,prh.segment1                     req_header_num                   -- 発注依頼番号
+              ,prlv.line_num                    req_line_num                     -- 発注依頼明細番号
+              ,NULL                             log_po_header_num                -- ログ用発注番号
+              ,NULL                             log_po_line_num                  -- ログ用発注明細番号
+              ,NULL                             log_po_distribution_num          -- ログ用発注搬送番号
+              ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
+              ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
+              ,prh.created_by                   created_by                       -- 作成者
+              ,NULL                             lease_kbn                        -- リース区分
+              ,cv_two                           install_type                     -- 物件タイプ(付帯物)
+      FROM     xxcso_wk_requisition_proc        wrp      -- 作業依頼／発注情報連携対象テーブル
+              ,xxcso_requisition_lines_v        prlv     -- 発注依頼明細情報ビュー
+              ,po_requisition_headers           prh      -- 発注依頼ヘッダビュー
+              ,po_req_distributions             prd      -- 発注依頼搬送明細ビュー
+              ,po_distributions                 pd       -- 発注搬送明細ビュー
+              ,po_headers                       ph       -- 発注ヘッダビュー
+              ,csi_item_instances               cii1     -- 物件マスタ（発注依頼で指定）
+              ,csi_item_instances               cii2     -- 物件マスタ（付帯物）
+      WHERE    wrp.interface_flag          =  cv_n                              -- 未送信
+        AND    wrp.requisition_line_id     =  prlv.requisition_line_id
+        AND    prlv.category_kbn           =  cv_new_altrntive_att1             -- 新台代替
+        AND    prlv.requisition_header_id  =  prh.requisition_header_id
+        AND    prh.authorization_status    =  cv_approved                       -- 承認済(発注依頼)
+        AND    prlv.requisition_line_id    =  prd.requisition_line_id
+        AND    prd.distribution_id         =  pd.req_distribution_id
+        AND    pd.po_header_id             =  ph.po_header_id
+        AND    ph.authorization_status     =  cv_approved                       -- 承認済(発注)
+        AND    prlv.withdraw_install_code  =  cii1.external_reference
+        AND    cii1.instance_type_code     =  cv_one                            -- 発注依頼で指定された物件が自販機
+        AND    cii1.owner_party_account_id =  cii2.owner_party_account_id
+        AND    prh.segment1                =
+                 SUBSTRB( cii2.attribute8, 1, INSTRB(cii2.attribute8,'/') -1 )  -- 指定された物件と同一の発注依頼で作業依頼中
+        AND    cii1.external_reference    <>  cii2.external_reference           -- 発注依頼で指定された物件以外
+        AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
+                 TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
+                 TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
+      -- 店内移動 ※付帯物（旧台代替）
+      UNION ALL
+      SELECT   /*+
+                 LEADING( wrp )
+                 USE_NL( wrp prlv prh cii1 cii2 )
+                 INDEX( wrp XXCSO_WK_REQUISITION_PROC_N01 )
+                 INDEX( prlv.prl PO_REQUISITION_LINES_U1 )
+               */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+              ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
+              ,cn_work_kbn6                     job_kbn                          -- 作業区分
+              ,cii2.external_reference          install_code1                    -- 物件コード1
+              ,NULL                             un_number_id                     -- 機種ID
+              ,NULL                             install_code2                    -- 物件コード2
+              ,cn_rout_no                       requisition_route                -- 依頼ルート
+              ,TO_CHAR(prlv.creation_date, cv_format_date)   reqst_date          -- 依頼日
+              ,TO_CHAR(prlv.creation_date, cv_format_time)   reqst_time          -- 依頼時間
+              ,prlv.work_company_code           work_company_code                -- 作業会社事業所
+              ,prlv.work_location_code          work_location_code               -- 作業会社事業所
+              ,prlv.work_hope_year              work_hope_year                   -- 作業希望年
+              ,prlv.work_hope_month             work_hope_month                  -- 作業希望月
+              ,prlv.work_hope_day               work_hope_day                    -- 作業希望日
+              ,prlv.work_hope_time_type         work_hope_time_type              -- 作業希望時間区分
+              ,prlv.work_hope_time_hour         work_hope_time_hour              -- 作業希望時
+              ,prlv.work_hope_time_minute       work_hope_time_minute            -- 作業希望分
+              ,NULL                             withdraw_company_code            -- 引揚先（搬入先）
+              ,NULL                             withdraw_location_code           -- 引揚先（搬入先）事業所
+              ,NULL                             withdraw_process_kbn             -- 引揚機処理区分
+              ,prlv.preview_type                preview_type                     -- 下見区分
+              ,prlv.install_place_type          install_place_type               -- 設置場所区分
+              ,prlv.install_place_floor         install_place_floor              -- 設置場所階数
+              ,prlv.install_fall_prevention     install_fall_preventn            -- 設置転倒防止
+              ,prlv.install_step_type           install_step_type                -- 設置段差区分
+              ,prlv.install_inclination_type    install_inclination_type         -- 設置傾斜区分
+              ,prlv.electric_construction_type  electric_construction_type       -- 電気工事区分
+              ,prlv.installed_side_type         installed_side_type              -- 据付面区分
+              ,prlv.import_step_type            import_step_type                 -- 搬入段差区分
+              ,prlv.raising_type                raising_type                     -- 手上げ区分
+              ,prlv.stairs_lift_type            stairs_lift_type                 -- 階段昇降機区分
+              ,prlv.unic_type                   unic_type                        -- ユニック区分
+              ,prlv.elevator_frontage           elevator_frontage                -- エレベータ間口
+              ,prlv.elevator_depth              elevator_depth                   -- エレベータ奥行き
+              ,prlv.concrete_board              concrete_board                   -- コンクリート板
+              ,prlv.extension_code_type         extension_code_type              -- 延長コード区分
+              ,prlv.extension_code_meter        extension_code_meter             -- 延長コード（ｍ）
+              ,prlv.remarks1                    remarks1                         -- 備考１
+              ,prlv.remarks2                    remarks2                         -- 備考２
+              ,prlv.remarks3                    remarks3                         -- 備考３
+              ,NULL                             install_at_customer_code         -- 顧客コード１
+              ,NULL                             employee_number                  -- 担当営業員コード
+              ,NULL                             po_header_num                    -- 発注番号
+              ,NULL                             po_line_num                      -- 発注明細番号
+              ,NULL                             po_distribution_num              -- 発注搬送番号
+              ,prh.segment1                     req_header_num                   -- 発注依頼番号
+              ,prlv.line_num                    req_line_num                     -- 発注依頼明細番号
+              ,NULL                             log_po_header_num                -- ログ用発注番号
+              ,NULL                             log_po_line_num                  -- ログ用発注明細番号
+              ,NULL                             log_po_distribution_num          -- ログ用発注搬送番号
+              ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
+              ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
+              ,prh.created_by                   created_by                       -- 作成者
+              ,NULL                             lease_kbn                        -- リース区分
+              ,cv_two                           install_type                     -- 物件タイプ(付帯物)
+      FROM     xxcso_wk_requisition_proc        wrp      -- 作業依頼／発注情報連携対象テーブル
+              ,xxcso_requisition_lines_v        prlv     -- 発注依頼明細情報ビュー
+              ,po_requisition_headers           prh      -- 発注依頼ヘッダビュー
+              ,csi_item_instances               cii1     -- 物件マスタ（発注依頼で指定）
+              ,csi_item_instances               cii2     -- 物件マスタ（付帯物）
+      WHERE    wrp.interface_flag          =  cv_n                              -- 未送信
+        AND    wrp.requisition_line_id     =  prlv.requisition_line_id
+        AND    prlv.category_kbn           =  cv_old_altrntive_att1             -- 旧台代替
+        AND    prlv.requisition_header_id  =  prh.requisition_header_id
+        AND    prh.authorization_status    =  cv_approved                       -- 承認済(発注依頼)
+        AND    prlv.withdraw_install_code  =  cii1.external_reference
+        AND    cii1.instance_type_code     =  cv_one                            -- 発注依頼で指定された物件が自販機
+        AND    cii1.owner_party_account_id =  cii2.owner_party_account_id
+        AND    prh.segment1                =
+                 SUBSTRB( cii2.attribute8, 1, INSTRB(cii2.attribute8,'/') -1 )  -- 指定された物件と同一の発注依頼で作業依頼中
+        AND    cii1.external_reference    <>  cii2.external_reference           -- 発注依頼で指定された物件以外
+        AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
+                 TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
+                 TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
+      UNION ALL
+      -- 引揚 ※付帯物（引揚）
+      SELECT   /*+
+                 LEADING( wrp )
+                 USE_NL( wrp prlv prh cii1 cii2 )
+                 INDEX( wrp XXCSO_WK_REQUISITION_PROC_N01 )
+                 INDEX( prlv.prl PO_REQUISITION_LINES_U1 )
+               */
+               prlv.requisition_line_id         requisition_line_id              -- 発注依頼明細ID
+              ,cn_branch_no                     slip_branch_no                   -- 伝票枝番
+              ,cn_work_kbn5                     job_kbn                          -- 作業区分
+              ,NULL                             install_code1                    -- 物件コード1
+              ,NULL                             un_number_id                     -- 機種ID
+              ,cii2.external_reference          install_code2                    -- 物件コード2
+              ,cn_rout_no                       requisition_route                -- 依頼ルート
+              ,TO_CHAR(prlv.creation_date, cv_format_date)   reqst_date          -- 依頼日
+              ,TO_CHAR(prlv.creation_date, cv_format_time)   reqst_time          -- 依頼時間
+              ,prlv.work_company_code           work_company_code                -- 作業会社事業所
+              ,prlv.work_location_code          work_location_code               -- 作業会社事業所
+              ,prlv.work_hope_year              work_hope_year                   -- 作業希望年
+              ,prlv.work_hope_month             work_hope_month                  -- 作業希望月
+              ,prlv.work_hope_day               work_hope_day                    -- 作業希望日
+              ,prlv.work_hope_time_type         work_hope_time_type              -- 作業希望時間区分
+              ,prlv.work_hope_time_hour         work_hope_time_hour              -- 作業希望時
+              ,prlv.work_hope_time_minute       work_hope_time_minute            -- 作業希望分
+              ,prlv.withdraw_company_code       withdraw_company_code            -- 引揚先（搬入先）
+              ,prlv.withdraw_location_code      withdraw_location_code           -- 引揚先（搬入先）事業所
+              ,cv_withdraw_kbn                  withdraw_process_kbn             -- 引揚機処理区分
+              ,prlv.preview_type                preview_type                     -- 下見区分
+              ,prlv.install_place_type          install_place_type               -- 設置場所区分
+              ,prlv.install_place_floor         install_place_floor              -- 設置場所階数
+              ,prlv.install_fall_prevention     install_fall_preventn            -- 設置転倒防止
+              ,prlv.install_step_type           install_step_type                -- 設置段差区分
+              ,prlv.install_inclination_type    install_inclination_type         -- 設置傾斜区分
+              ,prlv.electric_construction_type  electric_construction_type       -- 電気工事区分
+              ,prlv.installed_side_type         installed_side_type              -- 据付面区分
+              ,prlv.import_step_type            import_step_type                 -- 搬入段差区分
+              ,prlv.raising_type                raising_type                     -- 手上げ区分
+              ,prlv.stairs_lift_type            stairs_lift_type                 -- 階段昇降機区分
+              ,prlv.unic_type                   unic_type                        -- ユニック区分
+              ,prlv.elevator_frontage           elevator_frontage                -- エレベータ間口
+              ,prlv.elevator_depth              elevator_depth                   -- エレベータ奥行き
+              ,prlv.concrete_board              concrete_board                   -- コンクリート板
+              ,prlv.extension_code_type         extension_code_type              -- 延長コード区分
+              ,prlv.extension_code_meter        extension_code_meter             -- 延長コード（ｍ）
+              ,prlv.remarks1                    remarks1                         -- 備考１
+              ,prlv.remarks2                    remarks2                         -- 備考２
+              ,prlv.remarks3                    remarks3                         -- 備考３
+              ,NULL                             install_at_customer_code         -- 顧客コード１
+              ,NULL                             employee_number                  -- 担当営業員コード
+              ,NULL                             po_header_num                    -- 発注番号
+              ,NULL                             po_line_num                      -- 発注明細番号
+              ,NULL                             po_distribution_num              -- 発注搬送番号
+              ,prh.segment1                     req_header_num                   -- 発注依頼番号
+              ,prlv.line_num                    req_line_num                     -- 発注依頼明細番号
+              ,NULL                             log_po_header_num                -- ログ用発注番号
+              ,NULL                             log_po_line_num                  -- ログ用発注明細番号
+              ,NULL                             log_po_distribution_num          -- ログ用発注搬送番号
+              ,prh.segment1                     log_req_header_num               -- ログ用発注依頼番号
+              ,prlv.line_num                    log_req_line_num                 -- ログ用発注依頼明細番号
+              ,prh.created_by                   created_by                       -- 作成者
+              ,NULL                             lease_kbn                        -- リース区分
+              ,cv_two                           install_type                     -- 物件タイプ(付帯物)
+      FROM     xxcso_wk_requisition_proc        wrp      -- 作業依頼／発注情報連携対象テーブル
+              ,xxcso_requisition_lines_v        prlv     -- 発注依頼明細情報ビュー
+              ,po_requisition_headers           prh      -- 発注依頼ヘッダビュー
+              ,csi_item_instances               cii1     -- 物件マスタ（発注依頼で指定）
+              ,csi_item_instances               cii2     -- 物件マスタ（付帯物）
+      WHERE    wrp.interface_flag          =  cv_n                              -- 未送信
+        AND    wrp.requisition_line_id     =  prlv.requisition_line_id
+        AND    prlv.category_kbn           =  cv_withdraw_att1                  -- 引揚
+        AND    prlv.requisition_header_id  =  prh.requisition_header_id
+        AND    prh.authorization_status    =  cv_approved                       -- 承認済
+        AND    prlv.withdraw_install_code  =  cii1.external_reference
+        AND    cii1.instance_type_code     =  cv_one                            -- 発注依頼で指定された物件が自販機
+        AND    cii1.owner_party_account_id =  cii2.owner_party_account_id
+        AND    prh.segment1                =
+                 SUBSTRB( cii2.attribute8, 1, INSTRB(cii2.attribute8,'/') -1 )  -- 指定された物件と同一の発注依頼で作業依頼中
+        AND    cii1.external_reference    <>  cii2.external_reference           -- 発注依頼で指定された物件以外
+        AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.lookup_start_date, TRUNC(ld_process_date))) AND
+                 TRUNC(NVL(prlv.lookup_end_date, TRUNC(ld_process_date))))
+        AND    (TRUNC(ld_process_date) BETWEEN(NVL(prlv.category_start_date, TRUNC(ld_process_date))) AND
+                 TRUNC(NVL(prlv.category_end_date, TRUNC(ld_process_date))))
+      ORDER BY
+        1   --発注依頼明細ID
+       ,55  --物件タイプ(1:発注依頼で指定した物件 2:付帯物)
+      /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
       ;
 --
     -- *** ローカル・レコード ***
     l_get_ipro_po_data_rec      get_ipro_po_data_cur%ROWTYPE;
     l_get_data_rec              g_get_data_rtype;
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+    -- *** ローカル・テーブル型 ***
+    TYPE l_get_ipro_po_data_ttype IS TABLE OF get_ipro_po_data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    TYPE g_get_data_ttype         IS TABLE OF g_get_data_rtype INDEX BY BINARY_INTEGER;
+    l_get_ipro_po_data_tab      l_get_ipro_po_data_ttype; -- カーソルデータ一括取得用
+    l_get_data_tbl              g_get_data_ttype;         -- 発注依頼単位の保持用
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
     -- *** ローカル例外 ***
     no_data_expt       EXCEPTION;
 --
@@ -6070,33 +6404,81 @@ AS
                  ''
     );
 --
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 MOD START */
+--    <<get_data_loop>>
+--    LOOP
+    -- 変数初期化
+    lb_break_flag  := FALSE;
+    lv_error_flag  := cv_no;
+    lt_req_line_id := NULL;
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 MOD END   */
+--
+    BEGIN
+      /* 2015-06-03 K.Kiriu E_本稼動_12984対応 MOD START */
+--      FETCH get_ipro_po_data_cur INTO l_get_ipro_po_data_rec;
+      FETCH get_ipro_po_data_cur BULK COLLECT INTO l_get_ipro_po_data_tab;
+      CLOSE get_ipro_po_data_cur;
+      -- *** DEBUG_LOG ***
+      -- カーソルクローズしたことをログ出力
+      fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   => cv_debug_msg_ccls1 || ' ' || TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS') ||
+                 ''
+      );
+      -- 処理対象件数格納
+      gn_target_cnt := l_get_ipro_po_data_tab.COUNT;
+      /* 2015-06-03 K.Kiriu E_本稼動_12984対応 MOD END   */
+    EXCEPTION
+      WHEN OTHERS THEN
+      ov_retcode := cv_status_error;
+      -- エラーメッセージ作成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_05             -- メッセージコード 
+                     ,iv_token_name1  => cv_tkn_table                 -- トークンコード1
+                     ,iv_token_value1 => cv_work_ipro_po_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_errmsg                -- トークンコード2
+                     ,iv_token_value2 => SQLERRM                      -- トークン値2
+                    );
+      lv_errbuf  := lv_errmsg;  
+     RAISE global_process_expt;
+    END;
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
     <<get_data_loop>>
-    LOOP
---
+    FOR i IN 1..l_get_ipro_po_data_tab.COUNT LOOP
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
       BEGIN
-        FETCH get_ipro_po_data_cur INTO l_get_ipro_po_data_rec;
-      EXCEPTION
-        WHEN OTHERS THEN
-        ov_retcode := cv_status_error;
-        -- エラーメッセージ作成
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                  -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_05             -- メッセージコード 
-                       ,iv_token_name1  => cv_tkn_table                 -- トークンコード1
-                       ,iv_token_value1 => cv_work_ipro_po_info         -- トークン値1
-                       ,iv_token_name2  => cv_tkn_errmsg                -- トークンコード2
-                       ,iv_token_value2 => SQLERRM                      -- トークン値2
-                      );
-        lv_errbuf  := lv_errmsg;  
-       RAISE global_process_expt;
-      END;
-
-      BEGIN
-        -- 処理対象件数格納
-        gn_target_cnt := get_ipro_po_data_cur%ROWCOUNT;
+        /* 2015-06-03 K.Kiriu E_本稼動_12984対応 MOD START */
+--        -- 処理対象件数格納
+--        gn_target_cnt := get_ipro_po_data_cur%ROWCOUNT;
 --
-        EXIT WHEN get_ipro_po_data_cur%NOTFOUND
-        OR  get_ipro_po_data_cur%ROWCOUNT = 0;
+--        EXIT WHEN get_ipro_po_data_cur%NOTFOUND
+--        OR  get_ipro_po_data_cur%ROWCOUNT = 0;
+        -- 初期化
+        l_get_ipro_po_data_rec   := NULL;
+        -- カーソル行のデータ取得
+        l_get_ipro_po_data_rec   := l_get_ipro_po_data_tab(i);
+        -----------------------
+        -- ブレーク判定の処理
+        -----------------------
+        -- 最終行でない場合
+        IF ( gn_target_cnt <> i ) THEN
+          -- 次の行から発注依頼明細IDを取得
+          lt_req_line_id := l_get_ipro_po_data_tab(i+1).requisition_line_id;
+        ELSE
+          -- 最終行の場合NULLを設定
+          lt_req_line_id := NULL;
+        END IF;
+        -- 現レコードと次のレコードの発注依頼明細IDを比較しブレーク判定をする
+        IF (
+             ( l_get_ipro_po_data_rec.requisition_line_id <> lt_req_line_id )
+             OR
+             ( lt_req_line_id IS NULL )
+           ) THEN
+          -- 次のレコードでブレークもしくは、最終行
+          lb_break_flag:= TRUE;
+        END IF;
+        /* 2015-06-03 K.Kiriu E_本稼動_12984対応 MOD END   */
 --
         -- レコード変数初期化
         l_get_data_rec    := NULL;
@@ -6357,6 +6739,9 @@ AS
         -- リース区分
         l_get_data_rec.lease_kbn               := l_get_ipro_po_data_rec.lease_kbn;
         /* 2014-05-16 Y.Shoji E_本稼動_11853⑥対応 ADD END */
+        /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+        l_get_data_rec.install_type            := l_get_ipro_po_data_rec.install_type;
+        /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
 --
 
         -- ========================================
@@ -6390,6 +6775,10 @@ AS
         -- ==================================================
         update_wk_requisition_proc(
            i_get_data_rec            => l_get_data_rec           -- 出力用作業依頼/発注情報
+          /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+          ,ib_break_flag              => lb_break_flag           -- ブレークフラグ
+          ,iv_error_flag              => lv_error_flag           -- 発注依頼単位エラーフラグ
+          /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
           ,ov_errbuf                  => lv_errbuf               -- エラー・メッセージ   --# 固定 #
           ,ov_retcode                 => lv_sub_retcode          -- リターン・コード     --# 固定 #
           ,ov_errmsg                  => lv_errmsg      -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -6400,27 +6789,66 @@ AS
           RAISE global_skip_expt;
         END IF;
 --
-        -- ========================================
-        -- A-7.作業依頼/発注情報データCSV出力
-        -- ========================================
-        create_csv_rec(
-          i_get_data_rec     =>  l_get_data_rec   -- 出力用作業依頼/発注情報
-         ,ov_errbuf          =>  lv_errbuf        -- エラー・メッセージ            --# 固定 #
-         ,ov_retcode         =>  lv_sub_retcode   -- リターン・コード              --# 固定 #
-         ,ov_errmsg          =>  lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
-        );
-        --
-        IF (lv_sub_retcode = cv_status_error) THEN
-          gb_rollback_upd_flg := TRUE;
-          RAISE global_process_expt;
+        /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+        -- チェック・更新でエラーが無い場合、発注依頼単位でデータ保持
+        l_get_data_tbl(i) := l_get_data_rec;
+        -- 発注依頼単位でエラーがない場合、CSVを出力する
+        IF ( ( lb_break_flag = TRUE ) AND ( lv_error_flag = cv_no ) ) THEN
+          << output_loop >>
+          FOR j IN l_get_data_tbl.FIRST..l_get_data_tbl.LAST LOOP
+            -- 初期化
+            l_get_data_rec := NULL;
+            -- 値を設定
+            l_get_data_rec := l_get_data_tbl(j);
+        /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
+            -- ========================================
+            -- A-7.作業依頼/発注情報データCSV出力
+            -- ========================================
+            create_csv_rec(
+              i_get_data_rec     =>  l_get_data_rec   -- 出力用作業依頼/発注情報
+             ,ov_errbuf          =>  lv_errbuf        -- エラー・メッセージ            --# 固定 #
+             ,ov_retcode         =>  lv_sub_retcode   -- リターン・コード              --# 固定 #
+             ,ov_errmsg          =>  lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
+            --
+            IF (lv_sub_retcode = cv_status_error) THEN
+              gb_rollback_upd_flg := TRUE;
+              RAISE global_process_expt;
+            END IF;
+          /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+          END LOOP output_loop;
+          /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
+        /* 2015-06-03 K.Kiriu E_本稼動_12984対応 MOD START */
+          -- 正常件数カウントアップ
+--          gn_normal_cnt := gn_normal_cnt + 1;
+          gn_normal_cnt := gn_normal_cnt + l_get_data_tbl.COUNT;
         END IF;
-        -- 正常件数カウントアップ
-        gn_normal_cnt := gn_normal_cnt + 1;
+--
+        -- 発注依頼単位の初期化
+        IF ( lb_break_flag = TRUE ) THEN
+          l_get_data_tbl.DELETE;    -- 発注依頼単位のテーブルクリア
+          lb_break_flag := FALSE;   -- ブレーク用フラグ初期化
+          lv_error_flag := cv_no;   -- 発注依頼単位エラーフラグ初期化
+        END IF;
+--
+        /* 2015-06-03 K.Kiriu E_本稼動_12984対応 MOD END   */
       EXCEPTION
         -- *** スキップ例外ハンドラ ***
         WHEN global_skip_expt THEN
           gn_error_cnt := gn_error_cnt + 1;       -- エラー件数カウント
           lv_retcode   := cv_status_warn;
+          /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+          -- 1発注依頼で最後の行がエラーの場合、発注依頼単位の初期化
+          IF ( lb_break_flag = TRUE ) THEN
+            l_get_data_tbl.DELETE;    -- 発注依頼単位のテーブルクリア
+            lb_break_flag := FALSE;   -- ブレーク用フラグ初期化
+            lv_error_flag := cv_no;   -- 発注依頼単位エラーフラグ初期化
+          -- 1発注依頼で最後の以外の場合、エラーフラグON
+          ELSE
+            -- 発注依頼単位エラーフラグON
+            lv_error_flag := cv_yes;
+          END IF;
+          /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
 --
           -- メッセージ出力
           fnd_file.put_line(
@@ -6449,6 +6877,18 @@ AS
         WHEN OTHERS THEN
           gn_error_cnt := gn_error_cnt + 1;       -- エラー件数カウント
           lv_retcode   := cv_status_warn;
+          /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
+          -- 1発注依頼で最後の行がエラーの場合、発注依頼単位の初期化
+          IF ( lb_break_flag = TRUE ) THEN
+            l_get_data_tbl.DELETE;    -- 発注依頼単位のテーブルクリア
+            lb_break_flag := FALSE;   -- ブレーク用フラグ初期化
+            lv_error_flag := cv_no;   -- 発注依頼単位エラーフラグ初期化
+          -- 1発注依頼で最後の以外の場合、エラーフラグON
+          ELSE
+            -- 発注依頼単位エラーフラグON
+            lv_error_flag := cv_yes;
+          END IF;
+          /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
 --
           -- ログ出力
           fnd_file.put_line(
@@ -6473,15 +6913,17 @@ AS
     END LOOP get_data_loop;
 --
     ov_retcode   := lv_retcode;
-    -- カーソルクローズ
-    CLOSE get_ipro_po_data_cur;
-    -- *** DEBUG_LOG ***
-    -- カーソルクローズしたことをログ出力
-    fnd_file.put_line(
-       which  => FND_FILE.LOG
-      ,buff   => cv_debug_msg_ccls1 || CHR(10) ||
-                 ''
-    );
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 DEL START */
+--    -- カーソルクローズ
+--    CLOSE get_ipro_po_data_cur;
+--    -- *** DEBUG_LOG ***
+--    -- カーソルクローズしたことをログ出力
+--    fnd_file.put_line(
+--       which  => FND_FILE.LOG
+--      ,buff   => cv_debug_msg_ccls1 || CHR(10) ||
+--                 ''
+--    );
+    /* 2015-06-03 K.Kiriu E_本稼動_12984対応 DEL END   */
 --
     -- 処理対象件数が0件の場合
     IF (gn_target_cnt = 0) THEN
