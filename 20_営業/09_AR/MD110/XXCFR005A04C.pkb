@@ -7,7 +7,7 @@ AS
  * Description      : ロックボックス入金処理
  * MD.050           : MD050_CFR_005_A04_ロックボックス入金処理
  * MD.070           : MD050_CFR_005_A04_ロックボックス入金処理
- * Version          : 1.01
+ * Version          : 1.02
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,6 +15,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理 (A-1)
  *  get_fb_data            FBファイル取込処理 (A-2)
+ *  get_bank_info          入金24時間化銀行情報取得処理 (A-11)
  *  get_receive_method     支払方法取得処理 (A-3)
  *  get_receipt_customer   入金先顧客取得処理 (A-4)
  *  get_fb_out_acct_number 自動消込対象外顧客取得処理 (A-5)
@@ -31,6 +32,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2010/10/15    1.00 SCS 廣瀬 真佐人  初回作成
  *  2013/07/22    1.01 SCSK 中村 健一   E_本稼動_10950 消費税増税対応
+ *  2015/05/29    1.02 SCSK 小路 恭弘   E_本稼動_13114 振込24時間化対応
  *
  *****************************************************************************************/
 --
@@ -123,6 +125,9 @@ AS
   cv_msg_005a04_126  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00126'; -- 対象支払方法重複エラーメッセージ
   cv_msg_005a04_127  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00127'; -- 対象支払方法出力メッセージ
   cv_msg_005a04_128  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00128'; -- 自動消込対象件数メッセージ
+-- 2015/05/29 Ver1.02 Add Start
+  cv_msg_005a04_151  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00151'; -- 入金番号管理テーブル削除エラーメッセージ
+-- 2015/05/29 Ver1.02 Add End
 --
 -- トークン
   cv_tkn_param_name            CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -147,12 +152,18 @@ AS
   cv_tkn_alt_name              CONSTANT VARCHAR2(20) := 'ALT_NAME';
   cv_tkn_receipt_method_owner  CONSTANT VARCHAR2(20) := 'RECEIPT_METHOD_OWNER';
   cv_tkn_bank_account_owner    CONSTANT VARCHAR2(20) := 'BANK_ACCOUNT_OWNER';
+-- 2015/05/29 Ver1.02 Add Start
+  cv_tkn_retention_date        CONSTANT VARCHAR2(20) := 'RETENTION_DATE';
+-- 2015/05/29 Ver1.02 Add End
 --
   --プロファイル
   cv_prf_fb_path        CONSTANT VARCHAR2(30) := 'XXCFR1_FB_FILEPATH';    -- FBファイル格納パス
   cv_prf_par_cnt        CONSTANT VARCHAR2(30) := 'XXCFR1_PARALLEL_COUNT'; -- パラレル実行数
   cv_set_of_bks_id      CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID';      -- 会計帳簿ID
   cv_org_id             CONSTANT VARCHAR2(30) := 'ORG_ID';                -- 営業単位ID
+-- 2015/05/29 Ver1.02 Add Start
+  cv_retention_period   CONSTANT VARCHAR2(30) := 'XXCFR1_RETENTION_PERIOD'; -- 入金番号管理テーブル保持期間
+-- 2015/05/29 Ver1.02 Add End
 --
   -- ファイル出力
   cv_file_type_out      CONSTANT VARCHAR2(10) := 'OUTPUT';           -- メッセージ出力
@@ -163,15 +174,24 @@ AS
   cv_format_ymd         CONSTANT VARCHAR2(10) := 'YYYYMMDD';     -- 日付フォーマット（年月日）
   cv_format_rmd         CONSTANT VARCHAR2(6)  := 'RRMMDD';       -- 日付フォーマット（和暦）
   cv_format_nls_cal     CONSTANT VARCHAR2(40) := 'NLS_CALENDAR=''JAPANESE IMPERIAL''';  -- 
+-- 2015/05/29 Ver1.02 Add Start
+  cv_format_dd          CONSTANT VARCHAR2(2)  := 'DD';           -- 日付フォーマット（年月）
+-- 2015/05/29 Ver1.02 Add End
 --
   -- テーブル名
   cv_tkn_rock_wk        CONSTANT VARCHAR2(50) := 'XXCFR_ROCKBOX_WK';  -- ロックボックス入金消込ワークテーブル
+-- 2015/05/29 Ver1.02 Add Start
+  cv_tkn_xcrnc          CONSTANT VARCHAR2(50) := 'XXCFR_CASH_RECEIPTS_NO_CONTROL';  -- 入金番号管理テーブル
+-- 2015/05/29 Ver1.02 Add END
 --
   -- リテラル値
   cb_true               CONSTANT BOOLEAN := TRUE;
   cb_false              CONSTANT BOOLEAN := FALSE;
 --
   cv_flag_y             CONSTANT VARCHAR2(10) := 'Y';  -- フラグ値：Y
+-- 2015/05/29 Ver1.02 Add Start
+  cv_flag_n             CONSTANT VARCHAR2(10) := 'N';  -- フラグ値：N
+-- 2015/05/29 Ver1.02 Add End
   cv_need               CONSTANT VARCHAR2(1)  := '1';  -- 要
   cv_no_need            CONSTANT VARCHAR2(1)  := '0';  -- 否
 --
@@ -195,6 +215,9 @@ AS
   gn_prf_par_cnt        NUMBER;                                     -- パラレル実行数
   gt_set_of_bks_id      gl_sets_of_books.set_of_books_id%TYPE;      -- 会計帳簿ID
   gn_org_id             NUMBER;                                     -- 営業単位
+-- 2015/05/29 Ver1.02 Add Start
+  gn_retention_period   NUMBER;                                     -- 入金番号管理テーブル保持期間
+-- 2015/05/29 Ver1.02 Add End
   -- その他
   gd_process_date       DATE;                                       -- 業務処理日付
   gt_tolerance_limit    ap_bank_charge_lines.tolerance_limit%TYPE;  -- 手数料限度額
@@ -375,6 +398,20 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- 2015/05/29 Ver1.02 Add Start
+    -- 入金番号管理テーブル保持期間
+    gn_retention_period    := TO_NUMBER( FND_PROFILE.VALUE( cv_retention_period ) );
+    IF ( gn_retention_period IS NULL ) THEN    -- 取得エラー時
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_cfr
+                    ,iv_name         => cv_msg_005a04_004
+                    ,iv_token_name1  => cv_tkn_prof_name
+                    ,iv_token_value1 => xxcfr_common_pkg.get_user_profile_name( cv_retention_period )
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2015/05/29 Ver1.02 Add End
 --
     --==============================================================
     -- 参照タイプの取得
@@ -465,12 +502,35 @@ AS
         lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_msg_kbn_cfr
                       ,iv_name         => cv_msg_005a04_114
+-- 2015/05/29 Ver1.02 Add Start
+                      ,iv_token_name1  => cv_tkn_receipt_date
+                      ,iv_token_value1 => TO_CHAR(gd_process_date, cv_format_date_ymd)
+-- 2015/05/29 Ver1.02 Add End
                      );
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
 --
     END;
 --
+-- 2015/05/29 Ver1.02 Add Start
+    --==============================================================
+    -- 管理テーブル保持期間を過ぎたレコードの削除
+    --==============================================================
+    BEGIN
+      DELETE FROM XXCFR_CASH_RECEIPTS_NO_CONTROL xcrnc   -- 入金番号管理テーブル
+      WHERE  xcrnc.receipt_date <= gd_process_date - gn_retention_period  -- 業務日付-入金番号管理テーブル保持期間
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(iv_application  => cv_msg_kbn_cfr                                                      -- アプリケーション短縮名
+                                             ,iv_name         => cv_msg_005a04_151                                                   -- メッセージ
+                                             ,iv_token_name1  => cv_tkn_retention_date                                               -- トークンコード
+                                             ,iv_token_value1 => TO_CHAR(gd_process_date - gn_retention_period, cv_format_date_ymd)  -- トークン：業務日付-入金番号管理テーブル保持期間
+                                             );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+-- 2015/05/29 Ver1.02 Add End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -894,6 +954,107 @@ AS
 --
   END get_fb_data;
 --
+-- 2015/05/29 Ver1.02 Add Start
+  /**********************************************************************************
+   * Procedure Name   : get_bank_info
+   * Description      : 入金24時間化銀行情報取得処理 (A-11)
+   ***********************************************************************************/
+  PROCEDURE get_bank_info(
+    it_bank_number       IN         xxcfr_rockbox_wk.bank_number%TYPE,      -- 銀行コード
+    it_receipt_date      IN         xxcfr_rockbox_wk.receipt_date%TYPE,     -- 入金日(IN)
+    ot_receipt_date      OUT NOCOPY xxcfr_rockbox_wk.receipt_date%TYPE,     -- 入金日(OUT)
+    ot_bank_code_flag    OUT NOCOPY VARCHAR2,                               -- 24時間化対応銀行フラグ
+    ov_errbuf            OUT NOCOPY VARCHAR2,  -- エラー・メッセージ           --# 固定 #
+    ov_retcode           OUT NOCOPY VARCHAR2,  -- リターン・コード             --# 固定 #
+    ov_errmsg            OUT NOCOPY VARCHAR2)  -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_bank_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    ct_fb_bank_code24    CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFR1_FB_BANK_CODE24';  -- 参照タイプ「FB24時間化対応銀行」
+--
+    -- *** ローカル変数 ***
+    cn_count_bank_number NUMBER;              -- 24時間化対応銀行カウント
+--
+    -- *** ローカル・カーソル ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 初期化
+    -- 戻り値
+    ov_errbuf := NULL;
+    ov_errmsg := NULL;
+    ot_receipt_date      := gd_process_date;   -- 入金日(OUT)に業務日付をセット
+    ot_bank_code_flag    := cv_flag_n;         -- 24時間化対応銀行フラグ：'N'
+    cn_count_bank_number := 0;
+--
+    -- 24時間化対応銀行取得
+    SELECT COUNT(flvv.lookup_code)  AS count_bank_number  -- 銀行コードカウント
+    INTO   cn_count_bank_number
+    FROM   fnd_lookup_values_vl flvv  -- 参照表
+    WHERE  flvv.lookup_type  = ct_fb_bank_code24   -- 参照タイプ
+    AND    flvv.lookup_code  = it_bank_number      -- 銀行コード
+    AND    flvv.enabled_flag = cv_flag_y           -- 有効フラグ
+    AND    it_receipt_date BETWEEN NVL( flvv.start_date_active, it_receipt_date )  -- 有効日(自)
+                               AND NVL( flvv.end_date_active  , it_receipt_date )  -- 有効日(至)
+    ;
+--
+    -- 24時間化対応銀行の場合
+    IF ( cn_count_bank_number > 0) THEN
+      -- 入金日(OUT)に入金日をセット
+      ot_receipt_date   := it_receipt_date;
+      -- 24時間化対応銀行フラグを'Y'にする
+      ot_bank_code_flag := cv_flag_y;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_bank_info;
+--
+-- 2015/05/29 Ver1.02 Add End
   /**********************************************************************************
    * Procedure Name   : get_receive_method
    * Description      : 支払方法取得処理 (A-3)
@@ -1227,6 +1388,9 @@ AS
    ***********************************************************************************/
   PROCEDURE get_fb_out_acct_number(
     it_account_number    IN         xxcfr_rockbox_wk.account_number%TYPE,  -- 顧客番号
+-- 2015/05/29 Ver1.02 Add Start
+    it_receipt_date      IN         xxcfr_rockbox_wk.receipt_date%TYPE,    -- 入金日
+-- 2015/05/29 Ver1.02 Add End
     ot_apply_flag        OUT NOCOPY xxcfr_rockbox_wk.apply_flag%TYPE,      -- 消込要否フラグ
     ov_errbuf            OUT NOCOPY VARCHAR2,  -- エラー・メッセージ           --# 固定 #
     ov_retcode           OUT NOCOPY VARCHAR2,  -- リターン・コード             --# 固定 #
@@ -1283,8 +1447,12 @@ AS
     WHERE  flvv.lookup_type  = ct_out_acct_number  -- 参照タイプ
     AND    flvv.lookup_code  = it_account_number   -- 参照コード
     AND    flvv.enabled_flag = cv_flag_y           -- 有効フラグ
-    AND    gd_process_date BETWEEN NVL( flvv.start_date_active, gd_process_date )  -- 有効日(自)
-                               AND NVL( flvv.end_date_active  , gd_process_date )  -- 有効日(至)
+-- 2015/05/29 Ver1.02 Mod Start
+--    AND    gd_process_date BETWEEN NVL( flvv.start_date_active, gd_process_date )  -- 有効日(自)
+--                               AND NVL( flvv.end_date_active  , gd_process_date )  -- 有効日(至)
+    AND    it_receipt_date BETWEEN NVL( flvv.start_date_active, it_receipt_date )
+                               AND NVL( flvv.end_date_active  , it_receipt_date )
+-- 2015/05/29 Ver1.02 Mod End
     ;
 --
     -- 対象が取得できる場合
@@ -1321,6 +1489,10 @@ AS
   PROCEDURE get_trx_amount(
     it_cust_account_id        IN         xxcfr_rockbox_wk.cust_account_id%TYPE,         -- 顧客ID
     it_amount                 IN         xxcfr_rockbox_wk.amount%TYPE,                  -- 入金額
+-- 2015/05/29 Ver1.02 Add Start
+    it_receipt_date           IN         xxcfr_rockbox_wk.receipt_date%TYPE,            -- 入金日
+    it_bank_code_flag         IN         VARCHAR2,                                      -- 24時間化対応銀行フラグ
+-- 2015/05/29 Ver1.02 Add End
     ot_apply_flag             OUT NOCOPY xxcfr_rockbox_wk.apply_flag%TYPE,              -- 消込要否フラグ
     ot_factor_discount_amount OUT NOCOPY xxcfr_rockbox_wk.factor_discount_amount%TYPE,  -- 手数料
     ot_apply_trx_count        OUT NOCOPY xxcfr_rockbox_wk.apply_trx_count%TYPE,         -- 消込対象件数
@@ -1347,10 +1519,16 @@ AS
     -- *** ローカル定数 ***
     cv_op    CONSTANT VARCHAR2(2) := 'OP';   -- オープン
     cv_rec   CONSTANT VARCHAR2(3) := 'REC';  -- 売掛／未収金
+-- 2015/05/29 Ver1.02 Add Start
+    cv_ar  CONSTANT VARCHAR2(2)   := 'AR';
+-- 2015/05/29 Ver1.02 Add End
 --
     -- *** ローカル変数 ***
     lt_amount_due_remaining  ar_payment_schedules_all.amount_due_remaining%TYPE := NULL;  -- 未回収残高
     lt_apply_trx_count       xxcfr_rockbox_wk.apply_trx_count%TYPE              := NULL;  -- 消込対象件数
+-- 2015/05/29 Ver1.02 Add Start
+    lt_tolerance_limit       ap_bank_charge_lines.tolerance_limit%TYPE          := NULL;  -- 手数料限度額
+-- 2015/05/29 Ver1.02 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1374,6 +1552,41 @@ AS
     ot_apply_flag             := cv_no_need;  -- 消込要否フラグ(否)
     ot_factor_discount_amount := NULL;        -- 手数料
     ot_apply_trx_count        := NULL;        -- 消込対象件数
+-- 2015/05/29 Ver1.02 Add Start
+    lt_tolerance_limit        := NULL;        -- 手数料限度額
+--
+    -- 24時間化対応銀行の場合
+    IF ( it_bank_code_flag = cv_flag_y ) THEN
+      -- 手数料限度額を入金日で取得し直す
+      BEGIN
+        SELECT abcl.tolerance_limit AS tolerance_limit
+        INTO   lt_tolerance_limit
+        FROM   ap_bank_charges      abc   -- 銀行手数料
+              ,ap_bank_charge_lines abcl  -- 銀行手数料明細
+        WHERE  abc.bank_charge_id    = abcl.bank_charge_id  -- 内部ID
+        AND    abc.transfer_priority = cv_ar                -- 優先度
+        AND    abcl.start_date                          <= it_receipt_date  -- 開始日
+        AND    NVL( abcl.end_date, it_receipt_date + 1 ) > it_receipt_date  -- 終了日
+        AND    abcl.tolerance_limit IS NOT NULL  -- 手数料限度額がNULL以外
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_msg_kbn_cfr
+                        ,iv_name         => cv_msg_005a04_114
+                        ,iv_token_name1  => cv_tkn_receipt_date
+                        ,iv_token_value1 => TO_CHAR(it_receipt_date, cv_format_date_ymd)
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+--
+      END;
+    -- 24時間化対応銀行ではない場合
+    ELSIF ( it_bank_code_flag = cv_flag_n ) THEN
+      -- 業務日付で取得した手数料限度額をセット
+      lt_tolerance_limit := gt_tolerance_limit;
+    END IF;
+-- 2015/05/29 Ver1.02 Add End
 --
     -- 未回収残高取得
     SELECT SUM( xrctm.amount_due_remaining ) AS amount_due_remaining  -- 未回収残高合計
@@ -1387,7 +1600,10 @@ AS
     ;
 --
     -- 対象の債権が存在し、且つ手数料が限度額以内であるかを判定し、手数料を決定する。
-    IF ( ( gt_tolerance_limit >= ABS( lt_amount_due_remaining - it_amount ) ) -- 手数料限度額 >= ABS(未回収残高合計 - 入金額)
+-- 2015/05/29 Ver1.02 Mod Start
+--    IF ( ( gt_tolerance_limit >= ABS( lt_amount_due_remaining - it_amount ) ) -- 手数料限度額 >= ABS(未回収残高合計 - 入金額)
+    IF ( ( lt_tolerance_limit >= ABS( lt_amount_due_remaining - it_amount ) ) -- 手数料限度額 >= ABS(未回収残高合計 - 入金額)
+-- 2015/05/29 Ver1.02 Mod End
      AND ( lt_apply_trx_count >  0                                          ) -- 消込対象本数 >  0
     ) THEN 
 --
@@ -1972,6 +2188,13 @@ AS
     ln_count          PLS_INTEGER;  -- ループカウンタ
     ln_cash_cnt       PLS_INTEGER;  -- 入金番号に使用する連番の採番用
     lb_warn_end       BOOLEAN;      -- 終了ステータス制御
+-- 2015/05/29 Ver1.02 Add Start
+    ln_cash_cnt2         PLS_INTEGER;  -- 24時間化対応銀行の入金番号に使用する連番の採番用
+    lv_bank_code_flag    VARCHAR2(1);  -- 24時間化対応銀行フラグ
+    lv_registration_flag VARCHAR2(1);  -- 入金番号管理テーブル登録フラグ
+--
+    lt_receipt_date      xxcfr_rockbox_wk.receipt_date%TYPE := NULL;  -- 入金日
+-- 2015/05/29 Ver1.02 Add End
 --
     l_rockbox_table_tab  rockbox_table_ttype;      -- FBデータ
     l_fb_file_name_tab   fnd_lookup_values_ttype;  -- FBファイル名
@@ -2005,6 +2228,11 @@ AS
     -- ローカル変数
     ln_cash_cnt := 0;
     lb_warn_end := cb_false;
+-- 2015/05/29 Ver1.02 Add Start
+    ln_cash_cnt2         := 0;
+    lv_bank_code_flag    := cv_flag_n;
+    lv_registration_flag := cv_flag_n;
+-- 2015/05/29 Ver1.02 Add End
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -2068,6 +2296,24 @@ AS
       <<loop_fb_data>>
       FOR ln_count IN l_rockbox_table_tab.FIRST..l_rockbox_table_tab.LAST LOOP
 --
+-- 2015/05/29 Ver1.02 Add Start
+        -- =====================================================
+        --  入金24時間化銀行情報取得処理 (A-11)
+        -- =====================================================
+        get_bank_info(
+           it_bank_number         => l_rockbox_table_tab(ln_count).bank_number          -- 銀行コード
+          ,it_receipt_date        => l_rockbox_table_tab(ln_count).receipt_date         -- 入金日(IN)
+          ,ot_receipt_date        => lt_receipt_date                                    -- 入金日(OUT)
+          ,ot_bank_code_flag      => lv_bank_code_flag                                  -- 24時間化対応銀行フラグ
+          ,ov_errbuf              => lv_errbuf   -- エラー・メッセージ           --# 固定 #
+          ,ov_retcode             => lv_retcode  -- リターン・コード             --# 固定 #
+          ,ov_errmsg              => lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+-- 2015/05/29 Ver1.02 Add End
         -- =====================================================
         --  支払方法取得処理 (A-3)
         -- =====================================================
@@ -2119,6 +2365,9 @@ AS
             -- =====================================================
             get_fb_out_acct_number(
                it_account_number  => l_rockbox_table_tab(ln_count).account_number   -- 顧客番号
+-- 2015/05/29 Ver1.02 Add Start
+              ,it_receipt_date    => lt_receipt_date                                -- 入金日
+-- 2015/05/29 Ver1.02 Add End
               ,ot_apply_flag      => l_rockbox_table_tab(ln_count).apply_flag       -- 消込要否フラグ
               ,ov_errbuf          => lv_errbuf   -- エラー・メッセージ           --# 固定 #
               ,ov_retcode         => lv_retcode  -- リターン・コード             --# 固定 #
@@ -2141,6 +2390,10 @@ AS
             get_trx_amount(
                it_cust_account_id        => l_rockbox_table_tab(ln_count).cust_account_id         -- 顧客ID
               ,it_amount                 => l_rockbox_table_tab(ln_count).amount                  -- 入金額
+-- 2015/05/29 Ver1.02 Add Start
+              ,it_receipt_date           => lt_receipt_date                                       -- 入金日
+              ,it_bank_code_flag         => lv_bank_code_flag                                     -- 24時間化対応銀行フラグ
+-- 2015/05/29 Ver1.02 Add End
               ,ot_apply_flag             => l_rockbox_table_tab(ln_count).apply_flag              -- 消込要否フラグ
               ,ot_factor_discount_amount => l_rockbox_table_tab(ln_count).factor_discount_amount  -- 手数料
               ,ot_apply_trx_count        => l_rockbox_table_tab(ln_count).apply_trx_count         -- 消込対象本数
@@ -2165,18 +2418,168 @@ AS
         -- 入金要否フラグが（要）のときは入金を作成する
         IF ( l_rockbox_table_tab(ln_count).cash_flag = cv_need ) THEN
 --
+-- 2015/05/29 Ver1.02 Add Start
+        -- =====================================================
+        --  入金24時間化銀行情報取得処理 (A-11)
+        -- =====================================================
+        get_bank_info(
+           it_bank_number         => l_rockbox_table_tab(ln_count).bank_number          -- 銀行コード
+          ,it_receipt_date        => l_rockbox_table_tab(ln_count).receipt_date         -- 入金日(IN)
+          ,ot_receipt_date        => lt_receipt_date                                    -- 入金日(OUT)
+          ,ot_bank_code_flag      => lv_bank_code_flag                                  -- 24時間化対応銀行フラグ
+          ,ov_errbuf              => lv_errbuf   -- エラー・メッセージ           --# 固定 #
+          ,ov_retcode             => lv_retcode  -- リターン・コード             --# 固定 #
+          ,ov_errmsg              => lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+-- 2015/05/29 Ver1.02 Add End
           -- =====================================================
           --  入金API起動処理 (A-7)
           -- =====================================================
-          -- 入金番号の連番を採番する変数をカウントアップ
-          ln_cash_cnt := ln_cash_cnt + 1;
-          -- 入金番号の採番
-          l_rockbox_table_tab(ln_count).receipt_number := l_rockbox_table_tab(ln_count).in_file_name -- FBファイル名
-                                                       || cv_msg_under_score                         -- アンダースコア
-                                                       || TO_CHAR( gd_process_date, cv_format_ymd )  -- 業務日付
-                                                       || cv_msg_under_score                         -- アンダースコア
-                                                       || TO_CHAR( ln_cash_cnt )                     -- 連番
-          ;
+-- 2015/05/29 Ver1.02 Mod Start
+--          -- 入金番号の連番を採番する変数をカウントアップ
+--          ln_cash_cnt := ln_cash_cnt + 1;
+--          -- 入金番号の採番
+--          l_rockbox_table_tab(ln_count).receipt_number := l_rockbox_table_tab(ln_count).in_file_name -- FBファイル名
+--                                                       || cv_msg_under_score                         -- アンダースコア
+--                                                       || TO_CHAR( gd_process_date, cv_format_ymd )  -- 業務日付
+--                                                       || cv_msg_under_score                         -- アンダースコア
+--                                                       || TO_CHAR( ln_cash_cnt )                     -- 連番
+--          ;
+          -- 1.24時間化対応銀行ではない場合
+          IF ( lv_bank_code_flag = cv_flag_n ) THEN
+            -- 入金番号の連番を採番する変数をカウントアップ
+            ln_cash_cnt := ln_cash_cnt + 1;
+            -- 入金番号の採番
+            l_rockbox_table_tab(ln_count).receipt_number := l_rockbox_table_tab(ln_count).in_file_name -- FBファイル名
+                                                         || cv_msg_under_score                         -- アンダースコア
+                                                         || TO_CHAR( gd_process_date, cv_format_ymd )  -- 業務日付
+                                                         || cv_msg_under_score                         -- アンダースコア
+                                                         || TO_CHAR( ln_cash_cnt )                     -- 連番
+            ;
+--
+          -- 2.24時間化対応銀行の場合
+          ELSIF ( lv_bank_code_flag = cv_flag_y ) THEN
+            -- 2-1.連番の取得
+            -- 2-1-1.最初のレコードもしくは、前レコードと銀行コードもしくは入金日が違う場合
+            IF ( ( ln_count = l_rockbox_table_tab.FIRST )
+              OR ( l_rockbox_table_tab(ln_count).bank_number  <> l_rockbox_table_tab(ln_count-1).bank_number  )
+              OR ( l_rockbox_table_tab(ln_count).receipt_date <> l_rockbox_table_tab(ln_count-1).receipt_date ) ) THEN
+              -- 入金番号管理テーブルから連番を取得
+              BEGIN
+                SELECT xcrnc.receipt_num  AS receipt_num
+                INTO   ln_cash_cnt2
+                FROM   xxcfr_cash_receipts_no_control xcrnc
+                WHERE  xcrnc.bank_cd                           = l_rockbox_table_tab(ln_count).bank_number
+                AND    TRUNC(xcrnc.receipt_date, cv_format_dd) = TRUNC(l_rockbox_table_tab(ln_count).receipt_date, cv_format_dd)
+                ;
+              EXCEPTION
+                -- 銀行コード・入金日単位で未登録の場合
+                WHEN NO_DATA_FOUND THEN
+                  -- 連番を0にする
+                  ln_cash_cnt2 := 0;
+                  -- 入金番号管理テーブル登録フラグを'Y'にする
+                  lv_registration_flag := cv_flag_y;
+              END;
+              -- 入金番号の連番をカウントアップ
+              ln_cash_cnt2 := ln_cash_cnt2 + 1;
+            -- 2-1-2.前レコードと銀行コード・入金日が同じ場合
+            ELSIF ( ( l_rockbox_table_tab(ln_count).bank_number  = l_rockbox_table_tab(ln_count-1).bank_number  )
+              AND   ( l_rockbox_table_tab(ln_count).receipt_date = l_rockbox_table_tab(ln_count-1).receipt_date ) ) THEN
+              -- 入金番号の連番をカウントアップ
+              ln_cash_cnt2 := ln_cash_cnt2 + 1;
+            END IF;
+            -- 2-2.入金番号の採番
+            l_rockbox_table_tab(ln_count).receipt_number := l_rockbox_table_tab(ln_count).in_file_name -- FBファイル名
+                                                         || cv_msg_under_score                         -- アンダースコア
+                                                         || TO_CHAR( lt_receipt_date, cv_format_ymd )  -- 入金日付
+                                                         || cv_msg_under_score                         -- アンダースコア
+                                                         || TO_CHAR( ln_cash_cnt2 )                    -- 連番
+            ;
+            -- 2-3.最後のレコードもしくは、次レコードと銀行コードもしくは入金日が違う場合、入金番号管理テーブルの登録
+            IF ( ( ln_count = l_rockbox_table_tab.LAST )
+              OR ( l_rockbox_table_tab(ln_count).bank_number  <> l_rockbox_table_tab(ln_count+1).bank_number  )
+              OR ( l_rockbox_table_tab(ln_count).receipt_date <> l_rockbox_table_tab(ln_count+1).receipt_date ) ) THEN
+              -- 2-3-1.入金番号管理テーブル登録フラグが'Y'の場合
+              IF ( lv_registration_flag = cv_flag_y ) THEN
+                BEGIN
+                  -- 入金番号管理テーブルに挿入
+                  INSERT INTO xxcfr_cash_receipts_no_control(
+                    bank_cd                 -- 銀行コード
+                   ,receipt_date            -- 入金日
+                   ,receipt_num             -- 番号
+                   ,created_by              -- 作成者
+                   ,creation_date           -- 作成日
+                   ,last_updated_by         -- 最終更新者
+                   ,last_update_date        -- 最終更新日
+                   ,last_update_login       -- 最終更新ログイン
+                   ,request_id              -- 要求ID
+                   ,program_application_id  -- コンカレント・プログラム・アプリケーションID
+                   ,program_id              -- コンカレント・プログラムID
+                   ,program_update_date     -- プログラム更新日
+                  )
+                  VALUES
+                  (
+                    l_rockbox_table_tab(ln_count).bank_number   -- 銀行コード
+                   ,l_rockbox_table_tab(ln_count).receipt_date  -- 入金日
+                   ,ln_cash_cnt2                                -- 番号
+                   ,cn_created_by                               -- 作成者
+                   ,cd_creation_date                            -- 作成日
+                   ,cn_last_updated_by                          -- 最終更新者
+                   ,cd_last_update_date                         -- 最終更新日
+                   ,cn_last_update_login                        -- 最終更新ログイン
+                   ,cn_request_id                               -- 要求ID
+                   ,cn_program_application_id                   -- コンカレント・プログラム・アプリケーションID
+                   ,cn_program_id                               -- コンカレント・プログラムID
+                   ,cd_program_update_date                      -- プログラム更新日
+                  )
+                  ;
+                EXCEPTION
+                  WHEN OTHERS THEN
+                    -- 登録エラーの旨を出力
+                    lv_errmsg := xxccp_common_pkg.get_msg(
+                                     iv_application  => cv_msg_kbn_cfr
+                                    ,iv_name         => cv_msg_005a04_016
+                                    ,iv_token_name1  => cv_tkn_table
+                                    ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_tkn_xcrnc)
+                                   );
+                    lv_errbuf := SUBSTRB(SQLERRM,1,5000);
+                    RAISE global_process_expt;
+                END;
+                -- 入金番号管理テーブル登録フラグを'N'にする
+                lv_registration_flag := cv_flag_n;
+              -- 2-3-2.入金番号管理テーブル登録フラグが'N'の場合
+              ELSIF ( lv_registration_flag = cv_flag_n ) THEN
+                BEGIN
+                  -- 入金番号管理テーブルを更新
+                  UPDATE xxcfr_cash_receipts_no_control xcrnc
+                  SET    xcrnc.receipt_num         = ln_cash_cnt2            -- 番号
+                        ,xcrnc.last_updated_by     = cn_last_updated_by      -- 最終更新者
+                        ,xcrnc.last_update_date    = cd_last_update_date     -- 最終更新日
+                        ,xcrnc.last_update_login   = cn_last_update_login    -- 最終更新ログイン
+                        ,xcrnc.program_update_date = cd_program_update_date  -- プログラム更新日
+                  WHERE  xcrnc.bank_cd                           = l_rockbox_table_tab(ln_count).bank_number
+                  AND    TRUNC(xcrnc.receipt_date, cv_format_dd) = TRUNC(l_rockbox_table_tab(ln_count).receipt_date, cv_format_dd)
+                  ;
+                EXCEPTION
+                  WHEN OTHERS THEN
+                    -- 更新エラーの旨を出力
+                    lv_errmsg := xxccp_common_pkg.get_msg(
+                                     iv_application  => cv_msg_kbn_cfr
+                                    ,iv_name         => cv_msg_005a04_017
+                                    ,iv_token_name1  => cv_tkn_table
+                                    ,iv_token_value1 => xxcfr_common_pkg.get_table_comment(cv_tkn_xcrnc)
+                                   );
+                    lv_errbuf := SUBSTRB(SQLERRM,1,5000);
+                    RAISE global_process_expt;
+                END;
+              END IF;
+            END IF;
+          END IF;
+-- 2015/05/29 Ver1.02 Mod End
 --
           exec_cash_api(
              it_amount                 => l_rockbox_table_tab(ln_count).amount                  -- 入金額
