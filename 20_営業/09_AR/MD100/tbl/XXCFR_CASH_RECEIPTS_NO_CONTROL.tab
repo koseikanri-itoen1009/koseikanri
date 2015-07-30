@@ -1,0 +1,40 @@
+CREATE TABLE xxcfr.xxcfr_cash_receipts_no_control (
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_cash_receipts_no_control
+ * Description     : 入金番号管理テーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- --------------- -----------------------------------
+ *  Date          Ver.  Editor          Description
+ * ------------- ----- --------------- -----------------------------------
+ *  2015/05/25    1.0   SCSK 小路恭弘   初回作成
+ ************************************************************************/
+     bank_cd                        VARCHAR2(4)   NOT NULL
+    ,receipt_date                   DATE          NOT NULL
+    ,receipt_num                    NUMBER(5)     NOT NULL
+    ,created_by                     NUMBER(15,0)
+    ,creation_date                  DATE
+    ,last_updated_by                NUMBER(15,0)
+    ,last_update_date               DATE
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE  xxcfr.xxcfr_cash_receipts_no_control IS '入金番号管理テーブル';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.bank_cd                         IS '銀行コード';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.receipt_date                    IS '入金日';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.receipt_num                     IS '番号';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.created_by                      IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.creation_date                   IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.last_updated_by                 IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.last_update_date                IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.last_update_login               IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.request_id                      IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.program_application_id          IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.program_id                      IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_cash_receipts_no_control.program_update_date             IS 'プログラム更新日';

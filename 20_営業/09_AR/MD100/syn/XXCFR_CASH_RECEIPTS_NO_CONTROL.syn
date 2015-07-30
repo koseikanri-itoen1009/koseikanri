@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_cash_receipts_no_control FOR xxcfr.xxcfr_cash_receipts_no_control;
