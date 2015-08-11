@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_rep_st_inv_ex_tax_a_h for xxcfr.xxcfr_rep_st_inv_ex_tax_a_h;
