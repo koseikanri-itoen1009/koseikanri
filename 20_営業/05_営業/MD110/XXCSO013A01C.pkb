@@ -11,7 +11,7 @@ AS
  *                    顧客ステータスを「顧客」に更新します。
  * MD.050           : MD050_CSO_013_A01_CSI→ARインタフェース：（OUT）顧客マスタ
  *
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009-05-07    1.3   Tomoko.Mori      【T1_0439対応】自販機のみ顧客関連情報更新
  *  2009-07-23    1.4   Kazuo.Satomura   0000671対応
  *  2009-07-23    1.5   T.Maruyama       E_本稼動_00270対応
+ *  2015-07-27    1.6   S.Yamashita      E_本稼動_13237対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1775,7 +1776,15 @@ AS
             , it_auth_status_approved  IN po_requisition_headers.authorization_status%TYPE
            )
     IS
-      SELECT xiwd.install_code2    install_code    -- 物件コード２（引揚用）
+-- 2015/07/27 S.Yamashita E_本稼動_13237対応 MOD START
+--      SELECT 
+        SELECT /*+
+                 LEADING(xiwd)
+                 INDEX(xiwd XXCSO_IN_WORK_DATA_N09)
+                 USE_NL(xiwd prh xrlv.prl xrlv.mcb xrlv.fllv cii)
+               */
+-- 2015/07/27 S.Yamashita E_本稼動_13237対応 MOD END
+             xiwd.install_code2    install_code    -- 物件コード２（引揚用）
            , xiwd.account_number2  account_number  -- 顧客コード２（現設置先）
            , xiwd.slip_no          slip_no         -- 伝票No
            , xiwd.slip_branch_no   slip_branch_no  -- 伝票枝番
@@ -1802,8 +1811,10 @@ AS
       AND    prh.authorization_status              = it_auth_status_approved   -- 承認ステータス
       AND    prh.segment1               = TO_CHAR( xiwd.po_req_number )    -- 発注依頼番号
       AND    xrlv.requisition_header_id = prh.requisition_header_id        -- 発注依頼ヘッダID
-      AND    xrlv.line_num              = xiwd.line_num                    -- 発注依頼明細番号
-      AND    xrlv.withdraw_install_code = xiwd.install_code2               -- 引揚用物件コード（物件コード）
+-- 2015/07/27 S.Yamashita E_本稼動_13237対応 DEL START
+--      AND    xrlv.line_num              = xiwd.line_num                    -- 発注依頼明細番号
+--      AND    xrlv.withdraw_install_code = xiwd.install_code2               -- 引揚用物件コード（物件コード）
+-- 2015/07/27 S.Yamashita E_本稼動_13237対応 DEL END
     /*20090507_mori_T1_0439 START*/
       AND    cii.external_reference     = xiwd.install_code2               -- 引揚用物件コード（物件コード）
     /*20090507_mori_T1_0439 END*/
