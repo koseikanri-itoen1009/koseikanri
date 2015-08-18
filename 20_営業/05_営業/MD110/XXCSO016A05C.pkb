@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.17
+ * Version          : 1.19
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2010-03-17    1.16  K.Hosoi          E_本稼動_01881対応
  *  2010-04-21    1.17  T.Maruyama       E_本稼動_02391対応 INSTANCE_NUMBERはEBSで7桁以上となるため固定値をセット
  *  2010-05-19    1.18  T.Maruyama       E_本稼動_02787対応 先月末拠点CDの導出項目を売上拠点から前月売上拠点へ変更
+ *  2015-07-23    1.19  S.Yamashita      E_本稼動_13237対応 
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -984,7 +985,9 @@ AS
         AND  xiw.completion_kbn          = cn_completion_kbn
         AND  TO_CHAR(xiw.po_req_number)  = prh.segment1
         AND  prh.requisition_header_id   = xrl.requisition_header_id
-        AND  xiw.line_num                = xrl.line_num
+-- 2015.07.23 S.Yamashita E_本稼動_13237対応 DEL START
+--        AND  xiw.line_num                = xrl.line_num
+-- 2015.07.23 S.Yamashita E_本稼動_13237対応 DEL END
         AND  (
                (
                      xrl.category_kbn    = cv_category_kbn
