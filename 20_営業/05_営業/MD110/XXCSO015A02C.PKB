@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2012-09-28    1.32  K.Taniguchi      E_本稼動_09604対応(担当営業取得変更)
  *  2014-05-16    1.33  Y.Shoji          E_本稼動_11853対応(連携項目：リース区分追加)
  *  2015-06-03    1.34  K.Kiriu          E_本稼動_12984対応(自販機の付帯機器管理に関する改修)
+ *  2015-07-27    1.35  K.Kiriu          E_本稼動_13237対応(自販機の付帯機器管理に関する改修追加対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5403,6 +5404,9 @@ AS
     lt_req_line_id            po_requisition_lines.requisition_line_id%TYPE; -- ブレーク判定用
     lv_error_flag             VARCHAR2(1);                                   -- 発注依頼単位エラー判定用
     /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
+    /* 2015-07-27 K.Kiriu E_本稼動_13237対応 ADD START */
+    ln_po_rec_line_num        NUMBER;                                        -- 発注依頼明細番号（付帯物）
+    /* 2015-07-27 K.Kiriu E_本稼動_13237対応 ADD END   */
 --
     -- *** ローカル・カーソル ***
     CURSOR get_ipro_po_data_cur
@@ -6789,6 +6793,10 @@ AS
           RAISE global_skip_expt;
         END IF;
 --
+        /* 2015-07-27 K.Kiriu E_本稼動_13237対応 ADD START */
+        -- 初期化
+        ln_po_rec_line_num := NULL;
+        /* 2015-07-27 K.Kiriu E_本稼動_13237対応 ADD END   */
         /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD START */
         -- チェック・更新でエラーが無い場合、発注依頼単位でデータ保持
         l_get_data_tbl(i) := l_get_data_rec;
@@ -6801,6 +6809,17 @@ AS
             -- 値を設定
             l_get_data_rec := l_get_data_tbl(j);
         /* 2015-06-03 K.Kiriu E_本稼動_12984対応 ADD END   */
+            /* 2015-07-27 K.Kiriu E_本稼動_13237対応 ADD START */
+            -- 発注依頼明細番号設定
+            IF ( j = l_get_data_tbl.FIRST ) THEN
+              -- 発注依頼単位で最初のデータの発注依頼明細番号を保持
+              ln_po_rec_line_num := l_get_data_rec.req_line_num;
+            ELSE
+              -- 発注依頼単位で複数データがある場合は最初の発注依頼明細番号からの連番とする
+              ln_po_rec_line_num          := ln_po_rec_line_num + 1;
+              l_get_data_rec.req_line_num := ln_po_rec_line_num;
+            END IF;
+            /* 2015-07-27 K.Kiriu E_本稼動_13237対応 ADD END   */
             -- ========================================
             -- A-7.作業依頼/発注情報データCSV出力
             -- ========================================
