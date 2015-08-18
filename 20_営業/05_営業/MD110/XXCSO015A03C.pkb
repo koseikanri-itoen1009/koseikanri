@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2014-07-08    1.29  T.Kobori         E_本稼動_11853⑩対応
  *  2014-08-27    1.30  S.Yamashita      E_本稼動_11719対応
  *  2015-06-17    1.31  K.Kiriu          E_本稼動_12984対応 自販機の付帯機器管理に関する改修
+ *  2015-07-29    1.32  K.Kiriu          E_本稼動_13237対応 自販機の付帯機器管理に関する改修追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -8190,6 +8191,9 @@ AS
     cv_yes               CONSTANT VARCHAR2(1)   := 'Y';  -- 汎用「Y」
     cv_no                CONSTANT VARCHAR2(1)   := 'N';  -- 汎用「N」
     cv_vd_accessory_type CONSTANT VARCHAR2(24)  := 'XXCSO1_VD_ACCESSORY_TYPE';
+   /* 2015.07.29 K.Kiriu E_本稼動_13237対応 ADD START */
+   cv_category_kbn_w     CONSTANT VARCHAR2(2)   := '50'; -- カテゴリ区分（引揚）
+   /* 2015.07.29 K.Kiriu E_本稼動_13237対応 ADD END   */
 --
     -- *** ローカル変数 ***
     lt_cooperate_flag    xxcso_hht_col_dlv_coop_trn.cooperate_flag%TYPE; -- 連携フラグ
@@ -8396,7 +8400,10 @@ AS
                ,xxcso_requisition_lines_v  xrlv
         WHERE   pha.segment1              = TO_CHAR(i_inst_base_data_rec.po_req_number)
         AND     pha.requisition_header_id = xrlv.requisition_header_id
-        AND     xrlv.line_num             = i_inst_base_data_rec.line_num
+        /* 2015.07.29 K.Kiriu E_本稼動_13237対応 MOD START */
+--        AND     xrlv.line_num             = i_inst_base_data_rec.line_num
+        AND     xrlv.category_kbn         = cv_category_kbn_w
+        /* 2015.07.29 K.Kiriu E_本稼動_13237対応 MOD END   */
         ;
       EXCEPTION
         WHEN OTHERS THEN
