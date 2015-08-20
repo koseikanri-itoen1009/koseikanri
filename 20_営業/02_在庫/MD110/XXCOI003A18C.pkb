@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A18C(body)
  * Description      : 拠点間倉替CSVアップロード
  * MD.050           : 拠点間倉替CSVアップロード MD050_COI_003_A18
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2015/06/24    1.0   S.Yamashita      新規作成
+ *  2015/08/18    1.1   S.Yamashita      E_本稼動_12907不具合対応
  *
  *****************************************************************************************/
 --
@@ -2795,7 +2796,10 @@ AS
      ,NULL                                                             -- H/C
      ,gt_department_flag                                               -- 百貨店フラグ
      ,SYSDATE                                                          -- 受信日時
-     ,DECODE(gt_out_subinv_code_conv,cv_const_e,gt_out_base_code
+-- 2015/08/18 Mod V1.1 Start
+--     ,DECODE(gt_out_subinv_code_conv,cv_const_e,gt_out_base_code
+     ,DECODE(gt_out_subinv_code_conv,cv_const_e,g_if_data_tab(cn_c_outside_code)
+-- 2015/08/18 Mod V1.1 End
                                                ,gt_in_base_code)       -- 他拠点コード
      ,gt_out_subinv_code                                               -- 出庫側保管場所
      ,gt_in_subinv_code                                                -- 入庫側保管場所
