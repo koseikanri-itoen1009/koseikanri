@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO011A05C (body)
  * Description      : 通信モデム設置可／不可変更処理
  * MD.050           : 通信モデム設置可／不可変更処理 (MD050_CSO_011A05)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2015/06/25    1.0   S.Yamashita      main新規作成
+ *  2015/08/19    1.1   S.Yamashita      [E_本稼動_12984]T4障害対応
  *
  *****************************************************************************************/
 --
@@ -939,7 +940,10 @@ AS
       -- 1.前回データ取得
       --==============================================================
       BEGIN
-        SELECT xhcdct.rowid         AS rowid        -- ROWID
+-- 2015/08/19 S.Yamashita Mod Start
+--        SELECT xhcdct.rowid         AS rowid        -- ROWID
+        SELECT xhcdct.rowid         AS row_id        -- ROWID
+-- 2015/08/19 S.Yamashita Mod End
               ,xhcdct.install_psid  AS install_psid    -- 設置PSID
               ,xhcdct.line_number   AS line_number     -- 回線番号
         INTO   lr_row_id
