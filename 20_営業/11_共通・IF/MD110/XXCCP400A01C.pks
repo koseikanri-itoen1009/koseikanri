@@ -29,3 +29,4 @@ AS
     iv_check_group   IN    VARCHAR2          -- 1.チェック対象グループコード
   );
 END XXCCP400A01C;
+/
