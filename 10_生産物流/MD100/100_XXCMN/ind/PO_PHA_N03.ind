@@ -1,0 +1,14 @@
+/***************************************************************************************
+ * Copyright(c)SCSK Corporation, 2014. All rights reserved.
+ *
+ * Index Name  : PO_PHA_N03
+ * Description : 発注ヘッダ インデックスN03
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2015/07/15    1.0   D.Sugahara       新規作成 （既存リリース済アイテムの構成管理を実施）
+ **************************************************************************************/
+CREATE INDEX PO.PO_PHA_N03 ON PO.PO_HEADERS_ALL( ATTRIBUTE1, ATTRIBUTE4 ) TABLESPACE APPS_TS_TX_DATA;
