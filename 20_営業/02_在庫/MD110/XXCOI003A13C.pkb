@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A13C(spec)
  * Description      : 保管場所転送取引データOIF更新（倉替情報）
  * MD.050           : 保管場所転送取引データOIF更新（倉替情報） MD050_COI_003_A13
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/12/11    1.0   K.Nakamura       新規作成
  *  2009/02/20    1.1   K.Nakamura       [障害COI_024] 百貨店HHTの入庫確認情報更新時、転送先倉庫コード設定対応
  *  2015/04/13    1.2   A.Uchida         [E_本稼動_13008]他拠点営業車の入出庫対応
+ *  2015/08/07    1.3   S.Yamashita      [E_本稼動_13215]他拠点営業車の入出庫不具合対応（確認数量の登録値変更）
  *
  *****************************************************************************************/
 --
@@ -1103,9 +1104,23 @@ AS
         , gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).total_quantity                       -- 出庫数量総バラ数
         , NULL                                                                                 -- 転送先倉庫コード
         , SUBSTRB( gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code, 6, 2 )  -- 確認倉庫コード
-        , cv_zero                                                                              -- 確認数量ケース数
-        , cv_zero                                                                              -- 確認数量バラ数
-        , cv_zero                                                                              -- 確認数量総バラ数
+        -- 2015/08/07 Ver1.3 Mod Start
+--        , cv_zero                                                                              -- 確認数量ケース数
+--        , cv_zero                                                                              -- 確認数量バラ数
+--        , cv_zero                                                                              -- 確認数量総バラ数
+        , DECODE(ln_cnt
+                ,0
+                ,cv_zero
+                ,gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_quantity )               -- 確認数量ケース数
+        , DECODE(ln_cnt
+                ,0
+                ,cv_zero
+                ,gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).quantity )                    -- 確認数量バラ数
+        , DECODE(ln_cnt
+                ,0
+                ,cv_zero
+                ,gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).total_quantity )              -- 確認数量総バラ数
+        -- 2015/08/07 Ver1.3 Mod End
         , cv_zero                                                                              -- 資材取引未連携数量
         , cv_slip_type                                                                         -- 伝票区分
         , gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_base_code                    -- 出庫拠点コード
