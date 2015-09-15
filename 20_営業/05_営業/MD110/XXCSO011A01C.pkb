@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.39
+ * Version          : 1.40
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -123,6 +123,7 @@ AS
  *  2014-12-15    1.37 K.Kanada          【E_本稼動_12775】廃棄決裁の条件変更
  *  2015-01-13    1.38 T.Sano            【E_本稼動_12289】対応売上・担当拠点妥当性チェックを追加 
  *  2015-05-07    1.39 K.Kiriu           【E_本稼動_12984】自販機の付帯機器管理に関する改修
+ *  2015-09-03    1.40 S.Yamashita       【E_本稼動_11854】廃棄決裁日の格納書式固定化
  *
  *****************************************************************************************/
   --
@@ -6390,6 +6391,9 @@ AS
     cv_commit_false        CONSTANT VARCHAR2(1)    := 'F';
     cv_init_msg_list_true  CONSTANT VARCHAR2(2000) := 'T';
     cv_encoded_false       CONSTANT VARCHAR2(1)    := 'F';
+    /* 2015.09.03 S.Yamashita E_本稼動_11854対応 START */
+    cv_date_fmt            CONSTANT VARCHAR2(10)   := 'YYYY/MM/DD';
+    /* 2015.09.03 S.Yamashita E_本稼動_11854対応 END */
     --
     -- 属性値
     cv_jotai_kbn3_ablsh_desc  CONSTANT VARCHAR2(1) := '3';  -- 機器状態３（廃棄情報）「廃棄決裁済」
@@ -6528,11 +6532,17 @@ AS
       IF ( l_iea_val_tab(3).attribute_value_id IS NULL ) THEN
         l_ext_attrib_values_tab(3).attribute_id    := i_ib_ext_attr_id_rec.abolishment_decision_date;
         l_ext_attrib_values_tab(3).instance_id     := i_instance_rec.instance_id;
-        l_ext_attrib_values_tab(3).attribute_value := TRUNC( id_process_date );
+        /* 2015.09.03 S.Yamashita E_本稼動_11854対応 START */
+--        l_ext_attrib_values_tab(3).attribute_value := TRUNC( id_process_date );
+        l_ext_attrib_values_tab(3).attribute_value := TO_CHAR( TRUNC( id_process_date ), cv_date_fmt );
+        /* 2015.09.03 S.Yamashita E_本稼動_11854対応 END */
         --
       ELSE
         l_ext_attrib_values_tab(3).attribute_value_id    := l_iea_val_tab(3).attribute_value_id;
-        l_ext_attrib_values_tab(3).attribute_value       := TRUNC( id_process_date );
+        /* 2015.09.03 S.Yamashita E_本稼動_11854対応 START */
+--        l_ext_attrib_values_tab(3).attribute_value       := TRUNC( id_process_date );
+        l_ext_attrib_values_tab(3).attribute_value       := TO_CHAR( TRUNC( id_process_date ), cv_date_fmt );
+        /* 2015.09.03 S.Yamashita E_本稼動_11854対応 END */
         l_ext_attrib_values_tab(3).object_version_number := l_iea_val_tab(3).object_version_number;
         --
       END IF;
