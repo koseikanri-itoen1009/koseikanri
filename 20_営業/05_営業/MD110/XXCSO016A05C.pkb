@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2010-04-21    1.17  T.Maruyama       E_本稼動_02391対応 INSTANCE_NUMBERはEBSで7桁以上となるため固定値をセット
  *  2010-05-19    1.18  T.Maruyama       E_本稼動_02787対応 先月末拠点CDの導出項目を売上拠点から前月売上拠点へ変更
  *  2015-07-23    1.19  S.Yamashita      E_本稼動_13237対応 
+ *  2015-09-04    1.20  S.Yamashita      E_本稼動_09738対応 物件取得条件に論理削除フラグを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -146,6 +147,9 @@ AS
 /* 2009.04.08 K.Satomura T1_0365対応 START */
   cv_flag_yes            CONSTANT VARCHAR2(1)   := 'Y';
 /* 2009.04.08 K.Satomura T1_0365対応 END */
+/* 2015.09.04 S.Yamashita E_本稼動_09738対応 START */
+  cv_flag_no             CONSTANT VARCHAR2(1)   := 'N';
+/* 2015.09.04 S.Yamashita E_本稼動_09738対応 END */
 --
   -- メッセージコード
   cv_tkn_number_01    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';     -- コンカレント入力パラメータなし
@@ -2913,7 +2917,12 @@ AS
                  AND   NVL( ciea.active_start_date, id_date ) <= id_date
                  AND   NVL( ciea.active_end_date, id_date )   >= id_date
              )                                last_year_month          -- 先月末年月
-      FROM   csi_item_instances cii;
+/* 2015.09.04 S.Yamashita E_本稼動_09738対応 START */
+--      FROM   csi_item_instances cii;
+      FROM   csi_item_instances cii
+      WHERE  NVL( cii.attribute9, cv_flag_no ) = cv_flag_no -- 論理削除フラグ
+      ;
+/* 2015.09.04 S.Yamashita E_本稼動_09738対応 END */
     /*20090709_hosoi_0000518 END*/
     -- *** ローカル・レコード ***
     l_xibv_data_rec        xibv_data_cur%ROWTYPE;
