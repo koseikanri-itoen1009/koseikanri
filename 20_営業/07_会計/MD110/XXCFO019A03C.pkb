@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A03C(body)
  * Description      : 電子帳簿販売実績の情報系システム連携
  * MD.050           : 電子帳簿販売実績の情報系システム連携 <MD050_CFO_019_A03>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2012/12/18    1.3   T.Ishiwata       性能改善対応
  *  2013/08/06    1.4   S.Niki           E_本稼動_10960対応(消費税増税対応)
  *  2014/01/29    1.5   S.Niki           E_本稼動_11449対応 消費税区分名称の取得条件を納品日⇒オリジナル納品日に変更
+ *  2015/08/21    1.6   Y.Shoji          E_本稼動_13255対応(夜間バッチ遅延_電子帳簿販売実績の情報系システム連携)
  *
  *****************************************************************************************/
 --
@@ -106,6 +107,9 @@ AS
   cv_upd_filename                       CONSTANT VARCHAR2(100) := 'XXCFO1_ELECTRIC_BOOK_SALES_EXP_U_FILENAME';  -- 電子帳簿販売実績更新ファイル名
   cv_organization_code                  CONSTANT VARCHAR2(100) := 'XXCOI1_ORGANIZATION_CODE';                   -- 在庫組織ID
   cv_org_id                             CONSTANT VARCHAR2(100) := 'ORG_ID';                                     -- 営業単位
+-- 2015/08/21 Ver.1.6 Y.Shoji Add Start
+  cv_sales_exp_upper_limit              CONSTANT VARCHAR2(100) := 'XXCFO1_SALES_EXP_UPPER_LIMIT';               -- 販売実績データ_上限値
+-- 2015/08/21 Ver.1.6 Y.Shoji Add End
   -- メッセージ
   cv_msg_cff_00165                      CONSTANT VARCHAR2(500) := 'APP-XXCFF1-00165';   --取得対象データ無しメッセージ
   cv_msg_cfo_00001                      CONSTANT VARCHAR2(500) := 'APP-XXCFO1-00001';   --プロファイル名取得エラーメッセージ
@@ -312,6 +316,9 @@ AS
   gv_coop_date                          VARCHAR2(14);                                     --連携日付
   gv_activ_file_h                       UTL_FILE.FILE_TYPE;                               -- ファイルハンドル取得用
   gt_sales_exp_header_id                xxcos_sales_exp_headers.sales_exp_header_id%TYPE DEFAULT NULL;
+-- 2015/08/21 Ver.1.6 Y.Shoji Add Start
+  gn_sales_exp_upper_limit              NUMBER;                                           --販売実績データ上限値
+-- 2015/08/21 Ver.1.6 Y.Shoji Add End
   --対象データ
   gt_data_type                          VARCHAR2(1);                                      --データ識別
   gt_ar_interface_flag                  xxcos_sales_exp_headers.ar_interface_flag%TYPE;   --ARインターフェースフラグ
@@ -626,6 +633,22 @@ AS
         RAISE global_process_expt;
       END IF;
     END IF;
+-- 2015/08/21 Ver.1.6 Y.Shoji Add Start
+    --販売実績データ_上限値
+    gn_sales_exp_upper_limit := TO_NUMBER(FND_PROFILE.VALUE(cv_sales_exp_upper_limit));
+    --
+    IF ( gn_sales_exp_upper_limit IS NULL ) THEN
+      lv_errbuf :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  cv_xxcfo_appl_name
+                    , iv_name           =>  cv_msg_cfo_00001
+                    , iv_token_name1    =>  cv_token_prof_name
+                    , iv_token_value1   =>  cv_sales_exp_upper_limit
+                    );
+      --
+      lv_errmsg :=  lv_errbuf ;
+      RAISE global_process_expt;
+    END IF;
+-- 2015/08/21 Ver.1.6 Y.Shoji Add End
     --
     --==============================================================
     -- 1.(7) 在庫組織ID取得
@@ -3444,6 +3467,13 @@ AS
 --        NULL;
 -- 2012/11/28 Ver.1.2 T.Osawa Delete End
       END;
+-- 2015/08/21 Ver.1.6 Y.Shoji Add Start
+      -- 販売実績のMAX件数が、上限値を超えた場合
+      IF ( lt_sales_exp_header_id_max > ln_ctl_max_sales_exp_header_id + gn_sales_exp_upper_limit ) THEN
+        -- 上限値分登録する
+        lt_sales_exp_header_id_max := ln_ctl_max_sales_exp_header_id + gn_sales_exp_upper_limit;
+      END IF;
+-- 2015/08/21 Ver.1.6 Y.Shoji Add End
       --
       BEGIN
         INSERT INTO xxcfo_sales_exp_control (
