@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A11C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定情報データ作成 (MD050_COS_014_A11)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *                                                       ・ヘッダID, 品目コードのサマリを削除
  *  2010/04/23    1.5   M.Sano           [E_本稼動_02322]・顧客品目の抽出条件を訂正
  *  2013/08/05    1.6   S.Niki           [E_本稼動_10904]・消費税増税対応
+ *  2015/09/11    1.7   Y.Shoji          [E_本稼動_06337]・納品拠点情報の取得条件を変更
  *
  *****************************************************************************************/
 --
@@ -1830,19 +1831,22 @@ AS
       AND     hcas.party_site_id       = hps.party_site_id
       AND     hca.cust_account_id      = hcas.cust_account_id
       AND     hca.party_id             = hp.party_id
-      AND     hca.account_number       = 
-                ( SELECT  xca1.delivery_base_code
-                  FROM    hz_cust_accounts     hca1  --顧客
-                         ,hz_parties           hp1   --パーティ
-                         ,xxcmm_cust_accounts  xca1  --顧客追加情報
-                  WHERE   hp1.duns_number_c        <> cv_cust_status     --顧客ステータス(中止決裁済以外)
-                  AND     hca1.party_id            =  hp1.party_id
-                  AND     hca1.status              =  cv_status_a        --ステータス(顧客有効)
-                  AND     hca1.customer_class_code =  cv_cust_code_cust  --顧客区分(顧客)
-                  AND     hca1.cust_account_id     =  xca1.customer_id
-                  AND     xca1.chain_store_code    =  gt_param_rec.chain_code  --チェーン店コード
-                  AND     rownum                   =  cn_1
-                )
+/* 2015/09/11 Ver1.7 Mod Start */
+--      AND     hca.account_number       = 
+--                ( SELECT  xca1.delivery_base_code
+--                  FROM    hz_cust_accounts     hca1  --顧客
+--                         ,hz_parties           hp1   --パーティ
+--                         ,xxcmm_cust_accounts  xca1  --顧客追加情報
+--                  WHERE   hp1.duns_number_c        <> cv_cust_status     --顧客ステータス(中止決裁済以外)
+--                  AND     hca1.party_id            =  hp1.party_id
+--                  AND     hca1.status              =  cv_status_a        --ステータス(顧客有効)
+--                  AND     hca1.customer_class_code =  cv_cust_code_cust  --顧客区分(顧客)
+--                  AND     hca1.cust_account_id     =  xca1.customer_id
+--                  AND     xca1.chain_store_code    =  gt_param_rec.chain_code  --チェーン店コード
+--                  AND     rownum                   =  cn_1
+--                )
+      AND     hca.account_number       = gt_param_rec.base_code
+/* 2015/09/11 Ver1.7 Mod End */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
