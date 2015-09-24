@@ -9,7 +9,7 @@ AS
  *                    
  * MD050            : MD050_CSO_015_A04_自販機-EBSインタフェース：（OUT）物件マスタ情報
  *                    
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  close_csv_file              CSVファイルクローズ処理 (A-14)
  *  update_wk_data_tbl          作業データテーブル更新(A-18)
  *  update_cust_shift_tbl       顧客移行情報テーブル更新(A-19)
+ *  update_wk_bulk_dist_tbl     一括廃棄連携対象テーブル更新 (A-20)
  *  submain                     メイン処理プロシージャ
  *                                セーブポイント(ファイルクローズ失敗用)発行(A-4)
  *                                拠点変更物件マスタ情報抽出 (A-5)
@@ -47,6 +48,7 @@ AS
  *  2009-06-18    1.7   K.Satomura       T1_1017再修正対応
  *  2009-06-24    1.8   M.Ohtsuki       【SCS障害管理番号_0000158】対応
  *  2009-08-11    1.9   K.Satomura      【SCS障害管理番号_0001000】対応
+ *  2015-08-05    1.10  K.Kiriu         【E_本稼動_13112】対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -116,6 +118,10 @@ AS
   cv_interface_flag_n    CONSTANT VARCHAR2(10)  := 'N';             -- 連携済フラグ
   cv_interface_flag_y    CONSTANT VARCHAR2(10)  := 'Y';             -- 連携済フラグ  
   cv_src_transaction_type CONSTANT VARCHAR2(10)  := 'IB_UI';      -- ソーストランザクションタイプ
+  /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+  cv_data_type_one       CONSTANT VARCHAR2(1)   := '1';           -- iProからの廃棄決済、その他のデータ
+  cv_data_type_two       CONSTANT VARCHAR2(1)   := '2';           -- 一括申請からの廃棄決済
+  /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
   
 --
   -- メッセージコード
@@ -153,6 +159,16 @@ AS
   cv_tkn_number_27  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00506';  -- 成功件数メッセージ
   cv_tkn_number_28  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00507';  -- エラー件数メッセージ
   /* 2009.08.11 K.Satomura 0001000対応 START */
+  /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+    -- 廃棄一括申請用メッセージ
+  cv_tkn_number_29  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00779';  -- 連携正常(廃棄一括申請)メッセージ
+  cv_tkn_number_30  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00780';  -- CSV出力エラー(廃棄一括申請)メッセージ
+  cv_tkn_number_31  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00778';  -- 一括廃棄連携対象テーブル
+  cv_tkn_number_32  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00781';  -- 物件ID
+  cv_tkn_number_33  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00241';  -- ロックエラーメッセージ
+  cv_tkn_number_34  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00243';  -- データ抽出エラーメッセージ
+  cv_tkn_number_35  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00782';  -- データ更新エラーメッセージ
+  /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
   -- トークンコード
   cv_tkn_bukken          CONSTANT VARCHAR2(20) := 'BUKKEN';                -- 物件コード
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';               -- エラーメッセージ
@@ -178,6 +194,9 @@ AS
   cv_tkn_proc_name       CONSTANT VARCHAR2(20) := 'PROC_NAME'; -- 処理名
   cv_tkn_count           CONSTANT VARCHAR2(20) := 'COUNT';     -- 件数
   /* 2009.08.11 K.Satomura 0001000対応 END */
+  /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+  cv_tkn_base_value      CONSTANT VARCHAR2(20) := 'BASE_VALUE';            -- エラー値
+  /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
 
 --
   cb_true                CONSTANT BOOLEAN := TRUE;
@@ -1186,6 +1205,9 @@ AS
    ***********************************************************************************/
   PROCEDURE create_csv_rec(
     i_get_rec   IN g_value_rtype,                  -- 情報データ
+    /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+    iv_data_type IN VARCHAR2,                      -- データ区分
+    /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
     ov_errbuf   OUT NOCOPY VARCHAR2,               -- エラー・メッセージ           --# 固定 #
     ov_retcode  OUT NOCOPY VARCHAR2,               -- リターン・コード             --# 固定 #
     ov_errmsg   OUT NOCOPY VARCHAR2                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1320,33 +1342,51 @@ AS
       WHEN UTL_FILE.INVALID_FILEHANDLE OR     -- ファイル・ハンドル無効エラー
            UTL_FILE.INVALID_OPERATION  OR     -- オープン不可能エラー
            UTL_FILE.WRITE_ERROR  THEN         -- 書込み操作中オペレーティングエラー
-        IF (gv_csv_process_kbn = cv_csv_proc_kbn_2) THEN
-          -- エラーメッセージ取得
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                     -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_12                -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_bukken                   -- トークンコード1
-                       ,iv_token_value1 => l_get_rec.external_reference    -- トークン値1
-                       ,iv_token_name2  => cv_tkn_err_msg                  -- トークンコード2
-                       ,iv_token_value2 => SQLERRM                         -- トークン値2
-                      );
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+        -- iProからの廃棄決済、その他の場合
+        IF ( iv_data_type = cv_data_type_one ) THEN
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
+          IF (gv_csv_process_kbn = cv_csv_proc_kbn_2) THEN
+            -- エラーメッセージ取得
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                     -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_12                -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_bukken                   -- トークンコード1
+                         ,iv_token_value1 => l_get_rec.external_reference    -- トークン値1
+                         ,iv_token_name2  => cv_tkn_err_msg                  -- トークンコード2
+                         ,iv_token_value2 => SQLERRM                         -- トークン値2
+                        );
+          ELSE
+            -- エラーメッセージ取得
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                              -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_15                         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_req_line_id                       -- トークンコード1
+                         ,iv_token_value1 => TO_CHAR(l_get_rec.requisition_line_id)   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_req_header_id                     -- トークンコード2
+                         ,iv_token_value2 => TO_CHAR(l_get_rec.requisition_header_id) -- トークン値2
+                         ,iv_token_name3  => cv_tkn_line_num                          -- トークンコード3
+                         ,iv_token_value3 => TO_CHAR(l_get_rec.line_num)              -- トークン値3
+                         ,iv_token_name4  => cv_tkn_err_msg                  -- トークンコード4
+                         ,iv_token_value4 => SQLERRM                         -- トークン値4
+                        );
+          END IF;
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+        -- 廃棄一括申請の場合
         ELSE
           -- エラーメッセージ取得
           lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                              -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_15                         -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_req_line_id                       -- トークンコード1
-                       ,iv_token_value1 => TO_CHAR(l_get_rec.requisition_line_id)   -- トークン値1
-                       ,iv_token_name2  => cv_tkn_req_header_id                     -- トークンコード2
-                       ,iv_token_value2 => TO_CHAR(l_get_rec.requisition_header_id) -- トークン値2
-                       ,iv_token_name3  => cv_tkn_line_num                          -- トークンコード3
-                       ,iv_token_value3 => TO_CHAR(l_get_rec.line_num)              -- トークン値3
-                       ,iv_token_name4  => cv_tkn_err_msg                  -- トークンコード4
-                       ,iv_token_value4 => SQLERRM                         -- トークン値4
+                        iv_application  => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_30              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_bukken                 -- トークンコード1
+                       ,iv_token_value1 => l_get_rec.external_reference  -- トークン値1
+                       ,iv_token_name2  => cv_tkn_err_msg                -- トークンコード2
+                       ,iv_token_value2 => SQLERRM                       -- トークン値2
                       );
         END IF;
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
         lv_errbuf := lv_errmsg;
-      RAISE file_put_line_expt;
+        RAISE file_put_line_expt;
     END;
 --
   EXCEPTION
@@ -2062,6 +2102,179 @@ AS
     --
   END update_cust_shift_tbl;
   /* 2009.08.11 K.Satomura 0001000対応 END */
+  /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+  /**********************************************************************************
+   * Procedure Name   : update_wk_bulk_dist_tbl
+   * Description      : 一括廃棄連携対象テーブル更新 (A-20)
+   ***********************************************************************************/
+  PROCEDURE update_wk_bulk_dist_tbl(
+     it_instance_id    IN  csi_item_instances.instance_id%TYPE  -- 物件ID
+    ,id_process_date   IN  DATE                                 -- 業務処理日
+    ,ov_errbuf         OUT NOCOPY VARCHAR2  -- エラー・メッセージ              --# 固定 #
+    ,ov_retcode        OUT NOCOPY VARCHAR2  -- リターン・コード                --# 固定 #
+    ,ov_errmsg         OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ    --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name         CONSTANT VARCHAR2(100) := 'update_wk_bulk_dist_tbl';    -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    lt_instance_id   csi_item_instances.instance_id%TYPE; -- 物件ID
+    lv_msg_tkn1      VARCHAR2(100);
+    lv_msg_tkn2      VARCHAR2(100);
+    -- *** ローカル・レコード ***
+    --
+    -- *** ローカル例外 ***
+    skip_process_expt             EXCEPTION;       -- データ出力処理例外
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    BEGIN
+      SELECT xwbdp.instance_id  instance_id       -- 物件ID
+      INTO   lt_instance_id
+      FROM   xxcso_wk_bulk_disposal_proc xwbdp    -- 一括廃棄連携対象テーブル
+      WHERE  xwbdp.instance_id = it_instance_id
+      FOR UPDATE NOWAIT
+      ;
+    EXCEPTION
+      -- ロック失敗した場合の例外
+      WHEN global_lock_expt THEN
+        lv_msg_tkn1 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_31          -- メッセージコード
+                       );
+        lv_msg_tkn2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_32          -- メッセージコード
+                       );
+        lv_errmsg   := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_33          -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+                         ,iv_token_value1 => lv_msg_tkn1               -- トークン値1
+                         ,iv_token_name2  => cv_tkn_item               -- トークンコード1
+                         ,iv_token_value2 => lv_msg_tkn2               -- トークン値1
+                         ,iv_token_name3  => cv_tkn_base_value         -- トークンコード1
+                         ,iv_token_value3 => TO_CHAR(it_instance_id)   -- トークン値1
+                       );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+      -- 抽出に失敗した場合の例外
+      WHEN OTHERS THEN
+        lv_msg_tkn1 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_31          -- メッセージコード
+                       );
+        lv_msg_tkn2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_32          -- メッセージコード
+                       );
+        lv_errmsg   := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_34          -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_name          -- トークンコード1
+                         ,iv_token_value1 => lv_msg_tkn1               -- トークン値1
+                         ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                         ,iv_token_value2 => lv_msg_tkn2               -- トークン値2
+                         ,iv_token_name3  => cv_tkn_base_value         -- トークンコード3
+                         ,iv_token_value3 => TO_CHAR(it_instance_id)   -- トークン値3
+                         ,iv_token_name4  => cv_tkn_err_msg            -- トークンコード4
+                         ,iv_token_value4 => SQLERRM                   -- トークン値4
+                       );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+    END;
+    -- 一括廃棄連携対象テーブルの連携済フラグを更新
+    BEGIN
+--
+      UPDATE xxcso_wk_bulk_disposal_proc                         -- 一括廃棄連携対象テーブル
+      SET    interface_flag         = cv_interface_flag_y        -- 連携済フラグ
+           , interface_date         = id_process_date            -- 連携日
+           , last_updated_by        = cn_last_updated_by         -- 最終更新者
+           , last_update_date       = cd_last_update_date        -- 最終更新日
+           , last_update_login      = cn_last_update_login       -- 最終更新ログイン
+           , request_id             = cn_request_id              -- 要求ID
+           , program_application_id = cn_program_application_id  -- コンカレント・プログラム・アプリケーションID
+           , program_id             = cn_program_id              -- コンカレント・プログラムID
+           , program_update_date    = cd_program_update_date     -- プログラム更新日
+      WHERE  instance_id            = lt_instance_id
+      ;
+    EXCEPTION
+      -- 更新に失敗した場合の例外
+      WHEN OTHERS THEN
+        gb_rollback_upd_flg := TRUE;
+        lv_msg_tkn1 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_31          -- メッセージコード
+                       );
+        lv_msg_tkn2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_32          -- メッセージコード
+                       );
+        lv_errmsg   := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name               -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_35          -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table              -- トークンコード1
+                         ,iv_token_value1 => lv_msg_tkn1               -- トークン値1
+                         ,iv_token_name2  => cv_tkn_item               -- トークンコード2
+                         ,iv_token_value2 => lv_msg_tkn2               -- トークン値2
+                         ,iv_token_name3  => cv_tkn_base_value         -- トークンコード3
+                         ,iv_token_value3 => TO_CHAR(it_instance_id)   -- トークン値3
+                         ,iv_token_name4  => cv_tkn_err_msg            -- トークンコード4
+                         ,iv_token_value4 => SQLERRM                   -- トークン値4
+                       );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+    END;
+--
+  EXCEPTION
+    -- *** ファイル処理例外ハンドラ ***
+    WHEN skip_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_wk_bulk_dist_tbl;
+  /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -2150,6 +2363,9 @@ AS
     lt_instance_type_code csi_item_instances.instance_type_code%TYPE;
     lt_seq_no             xxcso_in_work_data.seq_no%TYPE;
     /* 2009.05.29 K.Satomura T1_1017対応 END */
+    /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+    lv_data_type          VARCHAR2(1);
+    /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
     -- *** ローカル・カーソル ***
     -- 拠点変更物件マスタ情報抽出
     CURSOR bukken_info_location_data_cur
@@ -2213,7 +2429,11 @@ AS
     -- 廃棄作業依頼情報データ抽出
     CURSOR bukken_info_dis_work_data_cur
     IS
-      SELECT xrl.requisition_line_id requisition_line_id              -- 発注依頼明細ID
+      /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+--      SELECT xrl.requisition_line_id requisition_line_id              -- 発注依頼明細ID
+      SELECT cv_data_type_one        data_type                        -- データ区分
+            ,xrl.requisition_line_id requisition_line_id              -- 発注依頼明細ID
+      /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
             ,xrl.abolishment_install_code abolishment_install_code    -- 物件コード
             ,cii.instance_id instance_id                              -- インスタンスID
             ,xabv.old_head_office_code old_head_office_code           -- 旧本部コード
@@ -2252,7 +2472,42 @@ AS
         AND    (ld_process_date_t between(NVL(xrl.lookup_start_date, ld_process_date_t)) and
                        TRUNC(nvl(xrl.lookup_end_date, ld_process_date_t)))
         AND    (ld_process_date_t between(NVL(xrl.category_start_date, ld_process_date_t)) and
-                       TRUNC(NVL(xrl.category_end_date, ld_process_date_t)));
+      /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+--                       TRUNC(NVL(xrl.category_end_date, ld_process_date_t)));
+                       TRUNC(NVL(xrl.category_end_date, ld_process_date_t)))
+      UNION ALL
+      SELECT cv_data_type_two          data_type                      -- データ区分
+            ,NULL                      requisition_line_id            -- 発注依頼明細ID
+            ,cii.external_reference    abolishment_install_code       -- 物件コード
+            ,cii.instance_id           instance_id                    -- インスタンスID
+            ,xabv.old_head_office_code old_head_office_code           -- 旧本部コード
+            ,xabv.row_order            row_order                      -- 拠点並び順
+            ,xcav.sale_base_code       sale_base_code                 -- 拠点(部門コード)
+            ,NULL                      requisition_header_id          -- ログ用発注依頼ヘッダID
+            ,NULL                      line_num                       -- ログ用発注依頼明細番号
+      FROM  xxcso_wk_bulk_disposal_proc xwbdp                         -- 一括廃棄連携対象テーブル
+           ,csi_item_instances          cii                           -- インストールベースマスタ
+           ,xxcso_cust_accounts_v       xcav                          -- 顧客マスタビュー
+           ,xxcso_aff_base_v            xabv                          -- AFF部門マスタビュー
+      WHERE (
+              ( gv_date_value IS NULL                                -- 入力パラメータ.処理日付 IS NULL
+                AND
+                xwbdp.interface_flag = cv_interface_flag_n            -- 連携済フラグ = 'N'
+              )
+              OR
+              ( gv_date_value IS NOT NULL                                                    -- 入力パラメータ.処理日付 SI NOT NULL
+                AND
+                TRUNC(xwbdp.interface_date) = TRUNC(TO_DATE(gv_date_value, cv_final_format))  -- 連携日 = 入力パラメータ.処理日付
+              )
+            )
+      AND   xwbdp.instance_id          = cii.instance_id
+      AND   cii.owner_party_account_id = xcav.cust_account_id
+      AND   xcav.account_status        = cv_active_status
+      AND   xcav.sale_base_code        = xabv.base_code
+      AND   NVL(xabv.start_date_active,ld_process_date_t) <= ld_process_date_t
+      AND   NVL(xabv.end_date_active,  ld_process_date_t) >= ld_process_date_t
+      ;
+      /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
     /* 2009.05.29 K.Satomura T1_1017対応 START */
     -- 新台設置・新台代替の場合(機器区分連携)
     CURSOR bukken_info_device_data_cur
@@ -2460,6 +2715,9 @@ AS
         EXIT WHEN bukken_info_dis_work_data_cur%NOTFOUND
         OR  bukken_info_dis_work_data_cur%ROWCOUNT = 0;
         -- 取得データをローカル変数に格納
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+        lv_data_type          := l_dis_work_data_cur.data_type;
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
         lt_req_line_id        := l_dis_work_data_cur.requisition_line_id;      -- 発注依頼明細ID
         lt_external_reference := l_dis_work_data_cur.abolishment_install_code; -- 物件コード
         lt_instance_id        := l_dis_work_data_cur.instance_id;              -- インスタンスID
@@ -2545,26 +2803,54 @@ AS
         -- ================================================================
         SAVEPOINT bukken_info_disposal_work;
 --
-        /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
-        IF (gv_date_value IS NULL) THEN
-        /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
-          -- ================================================================
-          -- A-12 作業依頼／発注情報処理結果テーブル更新
-          -- ================================================================
-          update_wk_reqst_tbl(
-             i_get_rec        => l_get_rec         -- 抽出出力データ
-            ,id_process_date  => ld_process_date   -- 業務処理日
-            ,ov_errbuf        => lv_sub_buf        -- エラー・メッセージ          --# 固定 #
-            ,ov_retcode       => lv_sub_retcode    -- リターン・コード            --# 固定 #
-            ,ov_errmsg        => lv_sub_msg        -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+        -- iProからの廃棄決済データの場合
+        IF ( lv_data_type = cv_data_type_one ) THEN
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+          IF (gv_date_value IS NULL) THEN
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+            -- ================================================================
+            -- A-12 作業依頼／発注情報処理結果テーブル更新
+            -- ================================================================
+            update_wk_reqst_tbl(
+               i_get_rec        => l_get_rec         -- 抽出出力データ
+              ,id_process_date  => ld_process_date   -- 業務処理日
+              ,ov_errbuf        => lv_sub_buf        -- エラー・メッセージ          --# 固定 #
+              ,ov_retcode       => lv_sub_retcode    -- リターン・コード            --# 固定 #
+              ,ov_errmsg        => lv_sub_msg        -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
 --
-          IF (lv_sub_retcode = cv_status_error) THEN
-            RAISE select_warn_expt;
+            IF (lv_sub_retcode = cv_status_error) THEN
+              RAISE select_warn_expt;
+            END IF;
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
           END IF;
-        /* 2009.06.18 K.Satomura T1_1017再修正対応 START */
+          /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+        -- 一括申請からの廃棄決済の場合
+        ELSE
+          --
+          IF (gv_date_value IS NULL) THEN
+            -- ================================================================
+            -- A-20 一括廃棄連携対象テーブル更新
+            -- ================================================================
+            update_wk_bulk_dist_tbl(
+               it_instance_id   => lt_instance_id    -- 物件ID
+              ,id_process_date  => ld_process_date   -- 業務処理日
+              ,ov_errbuf        => lv_sub_buf        -- エラー・メッセージ          --# 固定 #
+              ,ov_retcode       => lv_sub_retcode    -- リターン・コード            --# 固定 #
+              ,ov_errmsg        => lv_sub_msg        -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
+            --
+            IF (lv_sub_retcode = cv_status_error) THEN
+              RAISE select_warn_expt;
+            END IF;
+            --
+          END IF;
+          --
         END IF;
-        /* 2009.06.18 K.Satomura T1_1017再修正対応 END */
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
 --
         -- ================================================================
         -- A-13 廃棄作業依頼情報データCSV出力
@@ -2572,6 +2858,9 @@ AS
 --
         create_csv_rec(
            i_get_rec        => l_get_rec        -- 拠点変更物件マスタ情報
+          /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+          ,iv_data_type     => lv_data_type
+          /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
           ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
           ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
           ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ    --# 固定 #
@@ -2582,29 +2871,57 @@ AS
           RAISE select_warn_expt;
         END IF;
 --
-        -- 出力に成功した場合
-        lv_sub_msg :=  xxccp_common_pkg.get_msg(
-                          iv_application  => cv_app_name                   -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_17              -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_req_line_id            -- トークンコード1
-                         ,iv_token_value1 => TO_CHAR(lt_req_line_id)       -- トークン値1
-                         ,iv_token_name2  => cv_tkn_req_header_id          -- トークンコード2
-                         ,iv_token_value2 => TO_CHAR(lt_req_header_id)     -- トークン値2
-                         ,iv_token_name3  => cv_tkn_line_num               -- トークンコード3
-                         ,iv_token_value3 => TO_CHAR(lt_line_num)          -- トークン値3
-                        );
-        -- 出力に出力
-        fnd_file.put_line(
-           which  => FND_FILE.OUTPUT
-          ,buff   => lv_sub_msg
-        );
-        -- ログに出力
-        fnd_file.put_line(
-           which  => FND_FILE.LOG
-          ,buff   => cv_pkg_name||cv_msg_cont||
-                     cv_prg_name||cv_msg_part||
-                     lv_sub_msg 
-        );
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+        -- iProからの廃棄決済出力成功メッセージ
+        IF ( lv_data_type = cv_data_type_one ) THEN
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
+          -- 出力に成功した場合
+          lv_sub_msg :=  xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name                   -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_17              -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_req_line_id            -- トークンコード1
+                           ,iv_token_value1 => TO_CHAR(lt_req_line_id)       -- トークン値1
+                           ,iv_token_name2  => cv_tkn_req_header_id          -- トークンコード2
+                           ,iv_token_value2 => TO_CHAR(lt_req_header_id)     -- トークン値2
+                           ,iv_token_name3  => cv_tkn_line_num               -- トークンコード3
+                           ,iv_token_value3 => TO_CHAR(lt_line_num)          -- トークン値3
+                          );
+          -- 出力に出力
+          fnd_file.put_line(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_sub_msg
+          );
+          -- ログに出力
+          fnd_file.put_line(
+             which  => FND_FILE.LOG
+            ,buff   => cv_pkg_name||cv_msg_cont||
+                       cv_prg_name||cv_msg_part||
+                       lv_sub_msg 
+          );
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+        -- 一括申請からの廃棄決済出力成功メッセージ
+        ELSE
+          -- 出力に成功した場合
+          lv_sub_msg :=  xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name                   -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_29              -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_bukken                 -- トークンコード1
+                           ,iv_token_value1 => lt_external_reference         -- トークン値1
+                          );
+          -- 出力に出力
+          fnd_file.put_line(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_sub_msg
+          );
+          -- ログに出力
+          fnd_file.put_line(
+             which  => FND_FILE.LOG
+            ,buff   => cv_pkg_name||cv_msg_cont||
+                       cv_prg_name||cv_msg_part||
+                       lv_sub_msg 
+          );
+        END IF;
+        /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
 --          
         --成功件数カウント
         /* 2009.08.11 K.Satomura 0001000対応 START */
@@ -2862,6 +3179,9 @@ AS
         -- ================================================================
         create_csv_rec(
            i_get_rec  => l_get_rec      -- 拠点変更物件マスタ情報
+          /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+          ,iv_data_type => cv_data_type_one -- データ区分
+          /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
           ,ov_errbuf  => lv_sub_buf     -- エラー・メッセージ           --# 固定 #
           ,ov_retcode => lv_sub_retcode -- リターン・コード             --# 固定 #
           ,ov_errmsg  => lv_sub_msg     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3177,6 +3497,9 @@ AS
 --
         create_csv_rec(
            i_get_rec        => l_get_rec        -- 拠点変更物件マスタ情報
+          /* 2015.08.05 K.Kiriu E_本稼動_13112対応 START */
+          ,iv_data_type     => cv_data_type_one -- データ区分
+          /* 2015.08.05 K.Kiriu E_本稼動_13112対応 END   */
           ,ov_errbuf        => lv_sub_buf       -- エラー・メッセージ            --# 固定 #
           ,ov_retcode       => lv_sub_retcode   -- リターン・コード              --# 固定 #
           ,ov_errmsg        => lv_sub_msg       -- ユーザー・エラー・メッセージ  --# 固定 #
