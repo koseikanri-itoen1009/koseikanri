@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2015/04/03    1.2   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
  *  2015/04/15    1.3   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
  *  2015/06/02    1.4   S.Yamashita      E_本稼動_13103対応
+ *  2015/08/20    1.5   S.Yamashita      E_本稼動_13213対応
  *
  *****************************************************************************************/
 --
@@ -175,6 +176,9 @@ AS
 -- Add Ver1.4 S.Yamashita Start
   cv_msg_xxcoi_10706        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10706'; -- 取引タイプコード未設定エラーメッセージ
 -- Add Ver1.4 S.Yamashita End
+-- Add Ver1.5 S.Yamashita Start
+  cv_msg_xxcoi_10709        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10709'; -- 受注ステータスエラーメッセージ
+-- Add Ver1.5 S.Yamashita End
   -- メッセージ（COS）
   cv_msg_xxcos_00186        CONSTANT VARCHAR2(16) := 'APP-XXCOS1-00186'; -- 定番情報取得エラー
   cv_msg_xxcos_00187        CONSTANT VARCHAR2(16) := 'APP-XXCOS1-00187'; -- 特売情報取得エラー
@@ -229,6 +233,10 @@ AS
   cv_tkn_common_pkg         CONSTANT VARCHAR2(20) := 'COMMON_PKG';          -- 共通関数項目値
   cv_tkn_errmsg             CONSTANT VARCHAR2(20) := 'ERR_MSG';             -- エラーメッセージ
   cv_tkn_line_type          CONSTANT VARCHAR2(20) := 'LINE_TYPE';           -- 明細タイプ
+-- Add Ver1.5 S.Yamashita Start
+  cv_tkn_arrival_date       CONSTANT VARCHAR2(20) := 'ARRIVAL_DATE';        -- 着日
+  cv_tkn_slip_num           CONSTANT VARCHAR2(20) := 'SLIP_NUM';            -- 伝票No
+-- Add Ver1.5 S.Yamashita End
   --
   cv_flag_y                 CONSTANT VARCHAR2(1)  := 'Y';
   cv_flag_n                 CONSTANT VARCHAR2(1)  := 'N';
@@ -262,6 +270,9 @@ AS
   cv_entered                CONSTANT VARCHAR2(10) := 'ENTERED';   -- 入力中
   cv_booked                 CONSTANT VARCHAR2(10) := 'BOOKED';    -- 記帳済
   cv_cancelled              CONSTANT VARCHAR2(10) := 'CANCELLED'; -- 取消
+-- Add Ver1.5 S.Yamashita Start
+  cv_closed                 CONSTANT VARCHAR2(10) := 'CLOSED';    -- クローズ済
+-- Add Ver1.5 S.Yamashita End
   -- 受注タイプコード
   cv_order                  CONSTANT VARCHAR2(5)  := 'ORDER';
   cv_line                   CONSTANT VARCHAR2(5)  := 'LINE';
@@ -543,11 +554,41 @@ AS
   -- 出荷確定更新カーソル
   CURSOR g_kbn_4_2_cur
   IS
-    SELECT xlri.lot_reserve_info_id AS lot_reserve_info_id
-         , xlri.lot_tran_kbn        AS lot_tran_kbn
-    FROM   xxcoi_lot_reserve_info   xlri
-    WHERE  xlri.parent_shipping_status = cv_shipping_status_25
-    AND    xlri.arrival_date           < gd_delivery_date_from + 1
+-- Mod Ver1.5 S.Yamashita Start
+--    SELECT xlri.lot_reserve_info_id AS lot_reserve_info_id
+    SELECT /*+ LEADING(xlri oola) 
+               INDEX(xlri xxcoi_lot_reserve_info_n04)*/
+           xlri.lot_reserve_info_id AS lot_reserve_info_id -- ロット別引当情報ID
+-- Mod Ver1.5 S.Yamashita End
+         , xlri.lot_tran_kbn        AS lot_tran_kbn     -- ロット別取引明細作成区分
+-- Add Ver1.5 S.Yamashita Start
+         , xlri.base_code           AS base_code        -- 拠点コード
+         , xlri.whse_code           AS whse_code        -- 保管場所コード
+         , xlri.chain_code          AS chain_code       -- チェーン店コード
+         , xlri.arrival_date        AS arrival_date     -- 着日
+         , xlri.customer_code       AS customer_code    -- 顧客コード
+         , xlri.slip_num            AS slip_num         -- 伝票No.
+         , xlri.order_number        AS order_number     -- 受注番号
+         , xlri.item_code           AS item_code        -- 品目コード
+         , oola.flow_status_code    AS flow_status_code -- 受注ステータス
+-- Add Ver1.5 S.Yamashita End
+    FROM   xxcoi_lot_reserve_info   xlri -- ロット別引当情報
+-- Add Ver1.5 S.Yamashita Start
+         , oe_order_lines_all       oola -- 受注明細
+-- Add Ver1.5 S.Yamashita End
+    WHERE  xlri.parent_shipping_status = cv_shipping_status_25     -- 出荷情報ステータス
+    AND    xlri.arrival_date           < gd_delivery_date_from + 1 -- 着日
+-- Add Ver1.5 S.Yamashita Start
+    AND    xlri.header_id              = oola.header_id -- ヘッダID
+    AND    xlri.line_id                = oola.line_id   -- 明細ID
+    ORDER BY
+           xlri.base_code     -- 拠点コード
+          ,xlri.whse_code     -- 保管場所コード
+          ,xlri.chain_code    -- チェーン店コード
+          ,xlri.arrival_date  -- 着日
+          ,xlri.customer_code -- 顧客コード
+          ,xlri.slip_num      -- 伝票No.
+-- Add Ver1.5 S.Yamashita End
   ;
 -- Add Ver1.1 End
   -- 出荷確定対象取得カーソル
@@ -6796,19 +6837,56 @@ AS
         -- 対象件数設定
         gn_target_cnt := gn_target_cnt + 1;
         --
-        -- ===============================================
-        -- ロット別引当情報更新処理(A-14)
-        -- ===============================================
-        upd_lot_reserve_info(
-            iv_lot_tran_kbn        => l_kbn_4_2_rec.lot_tran_kbn        -- ロット別取引明細作成区分
-          , in_lot_reserve_info_id => l_kbn_4_2_rec.lot_reserve_info_id -- ロット別引当情報ID
-          , ov_errbuf              => lv_errbuf                         -- エラー・メッセージ
-          , ov_retcode             => lv_retcode                        -- リターン・コード
-          , ov_errmsg              => lv_errmsg                         -- ユーザー・エラー・メッセージ
-        );
+-- Add Ver1.5 S.Yamashita Start
+        -- ロット別取引明細作成区分が'0'（未作成）かつ、受注ステータスがCLOSEDでない場合
+        IF (  l_kbn_4_2_rec.lot_tran_kbn     =  cv_lot_tran_kbn_0
+          AND l_kbn_4_2_rec.flow_status_code <> cv_closed )
+        THEN
+          -- 受注ステータスエラーメッセージ
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                         , iv_name         => cv_msg_xxcoi_10709
+                         , iv_token_name1  => cv_tkn_base_code
+                         , iv_token_value1 => l_kbn_4_2_rec.base_code
+                         , iv_token_name2  => cv_tkn_subinventory_code
+                         , iv_token_value2 => l_kbn_4_2_rec.whse_code
+                         , iv_token_name3  => cv_tkn_chain_store_code
+                         , iv_token_value3 => l_kbn_4_2_rec.chain_code
+                         , iv_token_name4  => cv_tkn_arrival_date
+                         , iv_token_value4 => TO_CHAR(l_kbn_4_2_rec.arrival_date,cv_yyyymmdd)
+                         , iv_token_name5  => cv_tkn_customer_code
+                         , iv_token_value5 => l_kbn_4_2_rec.customer_code
+                         , iv_token_name6  => cv_tkn_slip_num
+                         , iv_token_value6 => l_kbn_4_2_rec.slip_num
+                         , iv_token_name7  => cv_tkn_order_number
+                         , iv_token_value7 => l_kbn_4_2_rec.order_number
+                         , iv_token_name8  => cv_tkn_item_code
+                         , iv_token_value8 => l_kbn_4_2_rec.item_code
+                       );
+          FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+            , buff   => lv_errmsg
+          );
+          -- 警告件数
+          gn_warn_cnt := gn_warn_cnt + 1;
+        ELSE
+-- Add Ver1.5 S.Yamashita End
+          -- ===============================================
+          -- ロット別引当情報更新処理(A-14)
+          -- ===============================================
+          upd_lot_reserve_info(
+              iv_lot_tran_kbn        => l_kbn_4_2_rec.lot_tran_kbn        -- ロット別取引明細作成区分
+            , in_lot_reserve_info_id => l_kbn_4_2_rec.lot_reserve_info_id -- ロット別引当情報ID
+            , ov_errbuf              => lv_errbuf                         -- エラー・メッセージ
+            , ov_retcode             => lv_retcode                        -- リターン・コード
+            , ov_errmsg              => lv_errmsg                         -- ユーザー・エラー・メッセージ
+          );
 -- Add Ver1.4 S.Yamashita Start
-        gn_update_temp_cnt := gn_update_temp_cnt + 1;
+          gn_update_temp_cnt := gn_update_temp_cnt + 1;
 -- Add Ver1.4 S.Yamashita End
+-- Add Ver1.5 S.Yamashita Start
+        END IF;
+-- Add Ver1.5 S.Yamashita End
       END LOOP kbn_4_2_loop;
 -- Mod Ver1.1 End
       --
