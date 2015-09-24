@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *  2014-08-27    1.30  S.Yamashita      E_本稼動_11719対応
  *  2015-06-17    1.31  K.Kiriu          E_本稼動_12984対応 自販機の付帯機器管理に関する改修
  *  2015-07-29    1.32  K.Kiriu          E_本稼動_13237対応 自販機の付帯機器管理に関する改修追加対応
+ *  2015-09-04    1.33  S.Yamashita      E_本稼動_13070対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -272,6 +273,9 @@ AS
   /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
   cv_debug_msg12          CONSTANT VARCHAR2(200) := 'gv_dclr_place_code = ';
   /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
+  /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD START */
+  cv_debug_msg13          CONSTANT VARCHAR2(200) := 'gt_own_base_wkcmp_code = ';
+  /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD END */
   cv_debug_msg_copn       CONSTANT VARCHAR2(200) := '<< カーソルをオープンしました >>';
   cv_debug_msg_ccls1      CONSTANT VARCHAR2(200) := '<< カーソルをクローズしました >>';
   cv_debug_msg_ccls2      CONSTANT VARCHAR2(200) := '<< 例外処理内でカーソルをクローズしました >>';
@@ -298,6 +302,9 @@ AS
   /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
   gv_dclr_place_code      VARCHAR2(5);                                   -- 申告地コード
   /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
+  /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD START */
+  gt_own_base_wkcmp_code  fnd_profile_option_values.profile_option_value%TYPE;  -- 自拠点作業時作業会社CD
+  /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD END */
   gt_inv_mst_org_id       mtl_parameters.organization_id%TYPE;           -- 組織ID
   gt_vld_org_id           mtl_parameters.organization_id%TYPE;           -- 検証組織ID
   gt_txn_type_id          csi_txn_types.transaction_type_id%TYPE;        -- 取引タイプID
@@ -530,6 +537,10 @@ AS
     -- XXCSO:申告地コード
     cv_dclr_place_code        CONSTANT VARCHAR2(30)  := 'XXCSO1_DCLR_PLACE_CODE';
     /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
+    /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD START */
+    -- XXCSO:自拠点作業時作業会社CD
+    cv_own_base_wkcmp_code    CONSTANT VARCHAR2(30)  := 'XXCSO1_ZIKYOTEN_WKCMP_FULL_CD';
+    /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD END */
 --
     -- ソーストランザクションタイプ
     cv_src_transaction_type   CONSTANT VARCHAR2(30)  := 'IB_UI';
@@ -924,6 +935,12 @@ AS
                    ,gv_dclr_place_code
                    ); -- 申告地コード
     /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
+    /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD START */
+    FND_PROFILE.GET(
+                    cv_own_base_wkcmp_code
+                   ,gt_own_base_wkcmp_code
+                   ); -- 自拠点作業時作業会社CD
+    /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD END */
     -- *** DEBUG_LOG ***
     -- 取得したプロファイル値をログ出力
     fnd_file.put_line(
@@ -937,6 +954,9 @@ AS
                  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD START */
                  cv_debug_msg12 || gv_dclr_place_code    || CHR(10) ||
                  /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD END */
+                 /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD START */
+                 cv_debug_msg13 || gt_own_base_wkcmp_code || CHR(10) ||
+                 /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD END */
                  ''
     );
 --
@@ -950,6 +970,11 @@ AS
     -- 物件用品目
     ELSIF (lv_bukken_item IS NULL) THEN
       lv_tkn_value := cv_bukken_item;
+    /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD START */
+    -- XXCSO:自拠点作業時作業会社CD
+    ELSIF (gt_own_base_wkcmp_code IS NULL) THEN
+      lv_tkn_value := cv_own_base_wkcmp_code;
+    /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD END */
     END IF;
     -- エラーメッセージ取得
     IF (lv_tkn_value) IS NOT NULL THEN
@@ -5677,7 +5702,13 @@ AS
 --
             -- 物件ファイル．機種をもとに機種マスタより導出した機器区分＝'1'（自販機）、
             -- 且つプロファイル「XXCSO:引揚拠点コード」のサイト値がNULL以外
-            IF ((lv_hazard_class = cv_kbn1) AND (gv_withdraw_base_code IS NOT NULL)) THEN
+            -- 且つ自拠点作業以外の場合
+            /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD START */
+--            IF ((lv_hazard_class = cv_kbn1) AND (gv_withdraw_base_code IS NOT NULL)) THEN
+            IF ( (lv_hazard_class = cv_kbn1) AND (gv_withdraw_base_code IS NOT NULL) AND
+                 ( (io_inst_base_data_rec.withdraw_company_code || io_inst_base_data_rec.withdraw_location_code) <> gt_own_base_wkcmp_code )
+            ) THEN
+            /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD END */
 --
               -- 先月末年月の取得
               l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
@@ -5711,7 +5742,13 @@ AS
 --
             -- 物件ファイル．機種をもとに機種マスタより導出した機器区分≠'1'（什器）、
             --   且つプロファイル「XXCSO:什器引揚拠点コード」のサイト値がNULL以外
-            ELSIF ((lv_hazard_class <> cv_kbn1) AND (gv_jyki_withdraw_base_code IS NOT NULL)) THEN
+            --   且つ自拠点作業以外の場合
+            /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD START */
+--            ELSIF ((lv_hazard_class <> cv_kbn1) AND (gv_jyki_withdraw_base_code IS NOT NULL)) THEN
+            ELSIF ( (lv_hazard_class <> cv_kbn1) AND (gv_jyki_withdraw_base_code IS NOT NULL) AND
+                    ( (io_inst_base_data_rec.withdraw_company_code || io_inst_base_data_rec.withdraw_location_code) <> gt_own_base_wkcmp_code )
+            ) THEN
+            /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD END */
 --
               -- 先月末年月の取得
               l_ext_attrib_rec := XXCSO_IB_COMMON_PKG.get_ib_ext_attrib_info2(ln_instance_id, cv_ex_last_year_month);
@@ -5976,17 +6013,27 @@ AS
         l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
       END IF;
 --
-      -- 機器区分が’1’でかつ「引揚拠点コード」がNOT NULLの場合
+      -- 機器区分が’1’でかつ「引揚拠点コード」がNOT NULLかつ、自拠点作業以外の場合
       IF (io_inst_base_data_rec.machinery_kbn = cv_kbn1 AND
-          gv_withdraw_base_code IS NOT NULL)THEN
+      /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD START */
+--          gv_withdraw_base_code IS NOT NULL)THEN
+          ( gv_withdraw_base_code IS NOT NULL ) AND
+          ( (io_inst_base_data_rec.withdraw_company_code || io_inst_base_data_rec.withdraw_location_code) <> gt_own_base_wkcmp_code )
+      ) THEN
+      /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD END */
         -- アカウントID、パーティサイトID、パーティID、地区コードの設定
         ln_account_id     := gn_account_id;
         ln_party_site_id  := gn_party_site_id;
         ln_party_id       := gn_party_id;
         lv_area_code      := gv_area_code;
-      -- 機器区分が’1’以外でか「什器引揚拠点コード」がNOT NULLである場合
+      -- 機器区分が’1’以外でか「什器引揚拠点コード」がNOT NULLである場合かつ、自拠点作業以外の場合
       ELSIF (io_inst_base_data_rec.machinery_kbn <> cv_kbn1 AND
-             gv_jyki_withdraw_base_code IS NOT NULL) THEN
+      /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD START */
+--             gv_jyki_withdraw_base_code IS NOT NULL) THEN
+             ( gv_jyki_withdraw_base_code IS NOT NULL ) AND
+             ( (io_inst_base_data_rec.withdraw_company_code || io_inst_base_data_rec.withdraw_location_code) <> gt_own_base_wkcmp_code )
+      ) THEN
+      /* 2015-09-04 S.Yamashita E_本稼動_13070対応 MOD END */
         -- アカウントID、パーティサイトID、パーティID、地区コードの設定
         ln_account_id     := gn_jyki_account_id;
         ln_party_site_id  := gn_jyki_party_site_id;
@@ -6174,10 +6221,20 @@ AS
       -- ④-2.新台代替、旧台代替、引揚の時かつ抽出した物件コードが物件コード２と同一(引揚用物件)
       ELSIF (( ln_job_kbn = cn_jon_kbn_3 OR ln_job_kbn = cn_jon_kbn_4 OR ln_job_kbn = cn_jon_kbn_5 )
         AND lv_install_code = lv_install_code2 ) THEN
-          -- プロファイル取得した引揚用の申告地を設定
-          lv_dclr_place := gv_dclr_place_code;
-          -- 申告地更新フラグにYをセット
-          lv_dclr_place_upd_flg := cv_flg_yes;
+          /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD START */
+          -- 自拠点作業以外の場合
+          IF ( (io_inst_base_data_rec.withdraw_company_code || io_inst_base_data_rec.withdraw_location_code) <> gt_own_base_wkcmp_code ) THEN
+          /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD END */
+            -- プロファイル取得した引揚用の申告地を設定
+            lv_dclr_place := gv_dclr_place_code;
+            -- 申告地更新フラグにYをセット
+            lv_dclr_place_upd_flg := cv_flg_yes;
+          /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD START */
+          ELSE
+            -- 自拠点作業の場合、申告地更新フラグにNをセット
+            lv_dclr_place_upd_flg := cv_flg_no;
+          END IF;
+          /* 2015-09-04 S.Yamashita E_本稼動_13070対応 ADD END */
       END IF;
       -- 更新対象の作業区分（④-1、④-2の条件に該当する）の場合
       IF ( lv_dclr_place_upd_flg = cv_flg_yes ) THEN
