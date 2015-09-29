@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFR1_FB_FILEPATH
+  AS '/var/T4/ebsif/inbound/ca_iffile/jx/';

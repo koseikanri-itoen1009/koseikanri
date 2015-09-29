@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFR1_CASH_RECEIPT_FILEPATH
+  AS '/var/T4/ebsif/outbound/ca_iffile/kb/';
