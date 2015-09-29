@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFF_LEASE_FILEPATH
+  AS '/var/T4/ebsif/outbound/cd_iffile/ma';
