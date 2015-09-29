@@ -1,0 +1,1 @@
+CREATE OR REPLACE DIRECTORY XXCSM_OUT_INFOSYS_FILE_DIR AS '/var/T4/ebsif/outbound/bj_iffile/kb';
