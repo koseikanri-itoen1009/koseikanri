@@ -1,0 +1,1 @@
+CREATE OR REPLACE DIRECTORY xxcmn_tdxfam_unsougyo_dir AS '/var/T4/ebsif/outbound/TDXFAM_UNSOUGYO';

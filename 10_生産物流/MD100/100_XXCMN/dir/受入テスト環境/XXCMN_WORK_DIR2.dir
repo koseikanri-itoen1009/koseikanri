@@ -1,0 +1,1 @@
+CREATE OR REPLACE DIRECTORY xxcmn_work_dir2 AS '/var/T4/ebsif/outbound';
