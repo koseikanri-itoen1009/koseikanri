@@ -1,0 +1,114 @@
+#! /usr/bin/ksh
+
+#######################################################################
+#【概要】リモートインスタンスで動作する指定のセッションをSql*Plusで切断
+#
+#【実行パラメタ】1.inst_id:gv$session,gv$lockで特定できたセッションが
+#　　　　　　　　　　　　　存在するインスタンス
+#　　　　　　　　2.sid　　：同、セッションID
+#　　　　　　　　3.serial#：同、シリアル
+#
+#【起動条件】１．本スクリプトを呼び出すコンカレント処理でgv$session，
+#　　　　　　　　gv$lockから、切断対象の inst_id，sid，serial#が特定
+#　　　　　　　　出来ている状態で、パラメタ指定され、実行されること
+#
+#【終了条件】１．SQL*PLUSが正常終了したら、正常終了（exit 0）
+#　　　　　　２．SQL*PLUSが異常終了したら、異常終了（exit 4）
+#　　　　　　３．inst_idが不定の場合、異常終了（exit 4）
+#
+#【特記】EBSコンカレントShellとして実行する場合には、Krown#10317参照
+# 2015/1/15 T4環境用にコピー作成
+# 2015/09/17 E_本稼動_13310対応(T4環境再構築)
+#
+#######################################################################
+
+##########################################################
+# 1. Parameter set
+##########################################################
+
+###############################
+#for SHELL script use
+###############################
+#Parameter1=$1;
+#SID=$2;
+#SERIAL=$3;
+
+###############################
+#for concurrent program use
+###############################
+Parameter1=$5;
+SID=$6;
+SERIAL=$7;
+
+##########################################################
+# 2. instance_id set
+##########################################################
+
+case $Parameter1 in
+1)
+# 2015/01/15 MOD START
+#  INST=PEBSITO1;
+# 2015/09/17 MOD START
+#  INST=VEBS09;
+  INST=`whoami`;
+# 2015/09/17 MOD END
+## 2015/01/15 MOD END
+  ;;
+2)
+# 2015/01/15 MOD START
+#  INST=PEBSITO2;
+# 2015/09/17 MOD START
+#  INST=VEBS09;
+  INST=`whoami`;
+# 2015/09/17 MOD END
+# 2015/01/15 MOD END
+  ;;
+3)
+# 2015/01/15 MOD START
+#  INST=PEBSITO3;
+# 2015/09/17 MOD START
+#  INST=VEBS09;
+  INST=`whoami`;
+# 2015/09/17 MOD END
+# 2015/01/15 MOD END
+  ;;
+*)
+  exit 4
+  ;;
+esac;
+
+##########################################################
+# 2. SQL*Plus
+##########################################################
+
+sqlplus -s /nolog << EOF 
+whenever sqlerror exit 1
+set feedback off
+set echo off
+set pages 0
+--
+
+CONNECT apps/apps@$INST
+
+alter system kill session '$SID,$SERIAL';
+
+-- for rerun-test
+-- select inst_id,instance_name,host_name from gv\$instance
+-- where inst_id = $Parameter1;
+
+EOF
+
+##########################################################
+# 3. Exit status check
+##########################################################
+
+# エラーは取得しない
+# 切断しようとして、既にセッションがない場合が存在する為
+#Exit fatal
+#if [ $? -ne 0 ]
+#then
+#    exit 4;
+#fi;
+
+#Exit normal
+exit 0;
