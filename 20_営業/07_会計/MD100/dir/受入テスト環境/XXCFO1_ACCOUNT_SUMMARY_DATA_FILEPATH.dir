@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFO1_ACCOUNT_SUM_FILEPATH
+  AS '/var/T4/ebsif/outbound/cc_iffile/kb/';

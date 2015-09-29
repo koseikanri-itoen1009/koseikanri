@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XX03_PDF_DIR
+  AS '/vebs/vebs06/vebs06comn/admin/out/vebs06_vebsdb21';

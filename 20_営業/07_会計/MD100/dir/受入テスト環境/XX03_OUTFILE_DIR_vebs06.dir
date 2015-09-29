@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XX03_OUTFILE_DIR
+  AS '/vebs/vebs06/vebs06comn/admin/out/vebs06_vebsdb21';

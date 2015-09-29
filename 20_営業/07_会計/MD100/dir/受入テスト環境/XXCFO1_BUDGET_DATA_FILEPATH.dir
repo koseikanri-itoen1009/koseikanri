@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFO1_BUDGET_DATA_FILEPATH
+  AS '/var/T4/ebsif/outbound/cc_iffile/kb/';
