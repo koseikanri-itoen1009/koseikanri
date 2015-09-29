@@ -1,0 +1,1 @@
+CREATE OR REPLACE DIRECTORY xxcok_in_aj_jx_dir AS '/var/T4/ebsif/inbound/aj_iffile/jx';
