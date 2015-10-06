@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A13C(spec)
  * Description      : 保管場所転送取引データOIF更新（倉替情報）
  * MD.050           : 保管場所転送取引データOIF更新（倉替情報） MD050_COI_003_A13
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/02/20    1.1   K.Nakamura       [障害COI_024] 百貨店HHTの入庫確認情報更新時、転送先倉庫コード設定対応
  *  2015/04/13    1.2   A.Uchida         [E_本稼動_13008]他拠点営業車の入出庫対応
  *  2015/08/07    1.3   S.Yamashita      [E_本稼動_13215]他拠点営業車の入出庫不具合対応（確認数量の登録値変更）
+ *  2015/10/05    1.4   S.Yamashita      [E_本稼動_13328]E_本稼動_13215の再対応（入庫情報一時表の更新項目に確認数量を追加）
  *
  *****************************************************************************************/
 --
@@ -1349,6 +1350,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+    -- 2015/10/05 Ver1.4 Add Start
+    ln_cnt                NUMBER;
+    -- 2015/10/05 Ver1.4 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1365,6 +1369,24 @@ AS
     -- 出庫側情報の場合の入庫情報一時表更新
     IF ( gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).stock_uncheck_list_div = cv_stock_uncheck_list_div_out ) THEN
 --
+      -- 2015/10/05 Ver1.4 Add Start
+      -- 同時に登録されている、「倉庫→営業車」、「営業車→倉庫」を検索
+      ln_cnt := 0;
+--
+      SELECT COUNT(1) AS cnt
+      INTO   ln_cnt
+      FROM   xxcoi_hht_inv_transactions   xhit -- HHT入出庫一時表
+      WHERE  ((xhit.invoice_type   =  '1'
+        AND    xhit.outside_subinv_code = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code)   -- 倉庫から営業車
+        OR    (xhit.invoice_type   =  '2'
+        AND    xhit.inside_subinv_code  = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code)) -- 営業車から倉庫
+      AND    xhit.item_code      =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).item_code       -- 品目コード
+      AND    xhit.case_quantity  =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_quantity   -- ケース数
+      AND    xhit.quantity       =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).quantity        -- 本数
+      AND    xhit.invoice_date   =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).invoice_date    -- 伝票日付
+      AND    xhit.interface_date =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).interface_date  -- 受信日時
+      ;
+      -- 2015/10/05 Ver1.4 Add End
       UPDATE xxcoi_storage_information  xsi                                                                   -- 入庫情報一時表
       SET    xsi.ship_case_qty          = ( gt_storage_info_tab( gn_storage_info_loop_cnt ).ship_case_qty     -- 出庫数量ケース数 = 
                                           + gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_quantity )   -- 出庫数量ケース数 + ケース数
@@ -1372,6 +1394,23 @@ AS
                                           + gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).quantity )        -- 出庫数量バラ数   + 本数
            , xsi.ship_summary_qty       = ( gt_storage_info_tab( gn_storage_info_loop_cnt ).ship_summary_qty  -- 出庫数量総バラ数
                                           + gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).total_quantity )  -- 出庫数量総バラ数 + 総数
+           -- 2015/10/05 Ver1.4 Add Start
+           , xsi.check_case_qty         = DECODE(ln_cnt                                                            -- 確認数量ケース数 =
+                                                ,0
+                                                ,gt_storage_info_tab( gn_storage_info_loop_cnt ).check_case_qty    -- 確認数量ケース数(他拠点営業車の取引以外)
+                                                ,gt_storage_info_tab( gn_storage_info_loop_cnt ).ship_case_qty
+                                                 + gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_quantity ) -- 出庫数量ケース数 + ケース数(他拠点営業車の取引)
+           , xsi.check_singly_qty       = DECODE(ln_cnt                                                            -- 確認数量バラ数 =
+                                                ,0
+                                                ,gt_storage_info_tab( gn_storage_info_loop_cnt ).check_singly_qty  -- 確認数量バラ数(他拠点営業車の取引以外)
+                                                ,gt_storage_info_tab( gn_storage_info_loop_cnt ).ship_singly_qty
+                                                 + gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).quantity )      -- 出庫数量バラ数 + 本数(他拠点営業車の取引)
+           , xsi.check_summary_qty      = DECODE(ln_cnt                                                            -- 確認数量総バラ数 =
+                                                ,0
+                                                ,gt_storage_info_tab( gn_storage_info_loop_cnt ).check_summary_qty -- 確認数量総バラ数(他拠点営業車の取引以外)
+                                                ,gt_storage_info_tab( gn_storage_info_loop_cnt ).ship_summary_qty
+                                                 + gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).total_quantity) -- 出庫数量総バラ数 + 総数(他拠点営業車の取引)
+           -- 2015/10/05 Ver1.4 Add End
            , xsi.last_updated_by        = cn_last_updated_by                                                  -- 最終更新者
            , xsi.last_update_date       = cd_last_update_date                                                 -- 最終更新日
            , xsi.last_update_login      = cn_last_update_login                                                -- 最終更新ログイン
