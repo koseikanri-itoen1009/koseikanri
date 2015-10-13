@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A03C(body)
  * Description      : 仕入実績仕訳IF作成
  * MD.050           : 仕入実績仕訳IF作成<MD050_CFO_020_A03>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *                                       ・抽出方法の変更
  *                                         ⇒受入明細のattribute1(受入返品実績の取引ID)が
  *                                           NULLのデータが存在するため
+ *  2015-09-04    1.3   Y.Shoji          A-4仕入先情報取得の適用開始日、適用終了日、無効日の条件を変更
  *
  *****************************************************************************************/
 --
@@ -1095,8 +1096,11 @@ AS
     -- ***************************************
 --
     -- 共通関数からOPM在庫会計期間CLOSE年月を取得し、終了日を設定
-    ld_opminv_date := LAST_DAY(TO_DATE(xxcmn_common_pkg.get_opminv_close_period ||
-                            cv_fdy || cv_e_time,cv_dt_format));
+-- 2015.09.04 Ver1.3 Mod Start
+--    ld_opminv_date := LAST_DAY(TO_DATE(xxcmn_common_pkg.get_opminv_close_period ||
+--                            cv_fdy || cv_e_time,cv_dt_format));
+    ld_opminv_date := LAST_DAY(TO_DATE(xxcmn_common_pkg.get_opminv_close_period || cv_fdy, cv_d_format));
+-- 2015.09.04 Ver1.3 Mod End
 --
     -- ===============================
     -- 1.抽出カーソルをフェッチし、ループ処理を行う
@@ -1124,18 +1128,27 @@ AS
         -- 仕入先情報を取得
         -- ===============================
         BEGIN
-          SELECT xv2v.segment1                      -- 仕入先コード
+-- 2015.09.04 Ver1.3 Mod Start
+--          SELECT xv2v.segment1                      -- 仕入先コード
+          SELECT xv2v.segment1          vendor_code   -- 仕入先コード
 -- 2015.01.22 Ver1.1 Mod Start
 --                ,xv2v.vendor_short_name             -- 仕入先略称
-                ,xv2v.vendor_full_name             -- 正式名
+--                ,xv2v.vendor_full_name             -- 正式名
 -- 2015.01.22 Ver1.1 Mod End
+                ,xv2v.vendor_full_name  vendor_name   -- 正式名
+-- 2015.09.04 Ver1.3 Mod End
           INTO   lt_vendor_code
                 ,lt_vendor_name
           FROM   xxcmn_vendors2_v xv2v              -- 仕入先情報view2
           WHERE  xv2v.vendor_id = lt_vendor_id      -- 仕入先ID
-          AND    NVL(xv2v.START_DATE_ACTIVE,ld_opminv_date) <= ld_opminv_date
-          AND    NVL(xv2v.END_DATE_ACTIVE,ld_opminv_date)   >= ld_opminv_date
-          AND    NVL(xv2v.INACTIVE_DATE,ld_opminv_date)     >= ld_opminv_date
+-- 2015.09.04 Ver1.3 Mod Start
+--          AND    NVL(xv2v.START_DATE_ACTIVE,ld_opminv_date) <= ld_opminv_date
+--          AND    NVL(xv2v.END_DATE_ACTIVE,ld_opminv_date)   >= ld_opminv_date
+--          AND    NVL(xv2v.INACTIVE_DATE,ld_opminv_date)     >= ld_opminv_date
+          AND    NVL(TRUNC(xv2v.start_date_active),ld_opminv_date) <= ld_opminv_date
+          AND    NVL(TRUNC(xv2v.end_date_active),ld_opminv_date)   >= ld_opminv_date
+          AND    NVL(TRUNC(xv2v.inactive_date),ld_opminv_date)     >= ld_opminv_date
+-- 2015.09.04 Ver1.3 Mod End
           ;
 --
         EXCEPTION
@@ -1244,18 +1257,27 @@ AS
         -- 仕入先情報を取得
         -- ===============================
         BEGIN
-          SELECT xv2v.segment1                      -- 仕入先コード
+-- 2015.09.04 Ver1.3 Mod Start
+--          SELECT xv2v.segment1                      -- 仕入先コード
+          SELECT xv2v.segment1           vendor_code  -- 仕入先コード
 -- 2015.01.22 Ver1.1 Mod Start
 --                ,xv2v.vendor_short_name             -- 仕入先略称
-                ,xv2v.vendor_full_name             -- 正式名
+--                ,xv2v.vendor_full_name             -- 正式名
 -- 2015.01.22 Ver1.1 Mod End
+                ,xv2v.vendor_full_name   vendor_name  -- 正式名
+-- 2015.09.04 Ver1.3 Mod End
           INTO   lt_vendor_code
                 ,lt_vendor_name
           FROM   xxcmn_vendors2_v xv2v              -- 仕入先情報view2
           WHERE  xv2v.vendor_id = lt_vendor_id      -- 仕入先ID
-          AND    NVL(xv2v.START_DATE_ACTIVE,ld_opminv_date) <= ld_opminv_date
-          AND    NVL(xv2v.END_DATE_ACTIVE,ld_opminv_date)   >= ld_opminv_date
-          AND    NVL(xv2v.INACTIVE_DATE,ld_opminv_date)     >= ld_opminv_date
+-- 2015.09.04 Ver1.3 Mod Start
+--          AND    NVL(xv2v.START_DATE_ACTIVE,ld_opminv_date) <= ld_opminv_date
+--          AND    NVL(xv2v.END_DATE_ACTIVE,ld_opminv_date)   >= ld_opminv_date
+--          AND    NVL(xv2v.INACTIVE_DATE,ld_opminv_date)     >= ld_opminv_date
+          AND    NVL(TRUNC(xv2v.start_date_active),ld_opminv_date) <= ld_opminv_date
+          AND    NVL(TRUNC(xv2v.end_date_active),ld_opminv_date)   >= ld_opminv_date
+          AND    NVL(TRUNC(xv2v.inactive_date),ld_opminv_date)     >= ld_opminv_date
+-- 2015.09.04 Ver1.3 Mod End
           ;
 --
         EXCEPTION
