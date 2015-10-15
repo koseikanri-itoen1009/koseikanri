@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2015/04/15    1.3   K.Nakamura       E_本稼動_12237 倉庫管理システム不具合対応
  *  2015/06/02    1.4   S.Yamashita      E_本稼動_13103対応
  *  2015/08/20    1.5   S.Yamashita      E_本稼動_13213対応
+ *  2015/10/09    1.6   S.Yamashita      E_本稼動_13216/E_本稼動_13326対応
  *
  *****************************************************************************************/
 --
@@ -2657,7 +2658,13 @@ AS
     -- 引当対象データ取得カーソル2
     CURSOR l_kbn_11_cur
     IS
-      SELECT /*+ LEADING(xca1) */
+-- Mod Ver1.6 S.Yamashita Start
+--      SELECT /*+ LEADING(xca1) */
+      SELECT /*+ LEADING(xca1) 
+                 INDEX(oola xxcos_oe_order_lines_all_n22)
+                 USE_NL(oola msi)
+             */
+-- Mod Ver1.6 S.Yamashita End
              ooha.header_id                                AS header_id                 -- 受注ヘッダID
            , ottt1.name                                    AS header_name               -- 受注タイプ名称
            , ooha.cust_po_number                           AS slip_num                  -- 伝票No
@@ -4878,6 +4885,9 @@ AS
                                                     , iv_subinventory      => lt_subinventory ) LOOP
             -- 初期化
             ln_after_quantity    := 0;
+-- Add Ver1.6 S.Yamashita Start
+            lt_after_uom_code    := NULL;
+-- Add Ver1.6 S.Yamashita End
             -- 単位換算取得
             xxcos_common_pkg.get_uom_cnv(
                 iv_before_uom_code    => l_parent_item_rec.order_quantity_uom -- 換算前単位コード
@@ -5055,6 +5065,9 @@ AS
                                                             , iv_subinventory      => gv_subinventory_code ) LOOP
                     -- 初期化
                     ln_after_quantity    := 0;
+-- Add Ver1.6 S.Yamashita Start
+                    lt_after_uom_code    := NULL;
+-- Add Ver1.6 S.Yamashita End
                     -- 単位換算取得
                     xxcos_common_pkg.get_uom_cnv(
                         iv_before_uom_code    => l_parent_item_rec.order_quantity_uom -- 換算前単位コード
