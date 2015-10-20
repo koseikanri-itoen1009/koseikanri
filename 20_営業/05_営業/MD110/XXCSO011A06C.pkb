@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO011A06C(body)
  * Description      : 物件を廃棄の状態に更新します。
  * MD.050           : 廃棄申請CSVアップロード (MD050_CSO_011A06)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2015/08/20    1.0   S.Yamashita      新規作成
+ *  2015/10/08    1.1   S.Yamashita      E_本稼動_13112 再対応
  *
  *****************************************************************************************/
 --
@@ -957,6 +958,9 @@ AS
     ld_deprn_date             DATE;                                              -- 償却日
     lt_fa_book_type_code      fa_books.book_type_code%TYPE;                      -- 台帳名
     lt_date_placed_in_service fa_books.date_placed_in_service%TYPE;              -- 事業供用日
+-- 2015/10/08 S.Yamashita Add Start
+    lv_no_chk_flag            VARCHAR2(1);  -- 償却チェックフラグ
+-- 2015/10/08 S.Yamashita Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -988,6 +992,9 @@ AS
     ld_deprn_date             := NULL; -- 償却日
     lt_fa_book_type_code      := NULL; -- 台帳名
     lt_date_placed_in_service := NULL; -- 事業供用日
+-- 2015/10/08 S.Yamashita Add Start
+    lv_no_chk_flag            := cv_no; -- 償却チェックフラグ
+-- 2015/10/08 S.Yamashita Add End
 --
     -- 行番号メッセージ取得
     lv_msg_row_num := xxccp_common_pkg.get_msg(
@@ -1076,8 +1083,12 @@ AS
         ov_retcode := cv_status_warn;
       END IF;
 --
-      -- 機器状態１（稼動状態）が'2'（滞留）以外の場合
-      IF ( lt_jotai_kbn1 <> cv_jotai_kbn_2 ) THEN
+-- 2015/10/08 S.Yamashita Mod Start
+--      -- 機器状態１（稼動状態）が'2'（滞留）以外の場合
+--      IF ( lt_jotai_kbn1 <> cv_jotai_kbn_2 ) THEN
+      -- 機器状態１（稼動状態）がNULLの場合、または'2'（滞留）以外の場合
+      IF ( ( lt_jotai_kbn1 IS NULL ) OR ( lt_jotai_kbn1 <> cv_jotai_kbn_2 ) ) THEN
+-- 2015/10/08 S.Yamashita Mod End
         lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_app_name
                       ,iv_name         => cv_msg_cso_00359 -- 機器状態１（稼動状態）_廃棄用チェックエラーメッセージ
@@ -1095,8 +1106,14 @@ AS
         ov_retcode := cv_status_warn;
       END IF;
 --
-      -- 「機器状態３（廃棄情報）が'0'(予定無)、もしくは'1'(廃棄予定)」以外の場合
-      IF ( ( lt_jotai_kbn3 <> cv_jotai_kbn_0 ) AND ( lt_jotai_kbn3 <> cv_jotai_kbn_1 ) ) THEN
+-- 2015/10/08 S.Yamashita Mod Start
+--      -- 「機器状態３（廃棄情報）が'0'(予定無)、もしくは'1'(廃棄予定)」以外の場合
+--      IF ( ( lt_jotai_kbn3 <> cv_jotai_kbn_0 ) AND ( lt_jotai_kbn3 <> cv_jotai_kbn_1 ) ) THEN
+      -- 機器状態３（廃棄情報）がNULLの場合、または「機器状態３（廃棄情報）が'0'(予定無)、もしくは'1'(廃棄予定)」以外の場合
+      IF ( ( lt_jotai_kbn3 IS NULL )
+        OR (( lt_jotai_kbn3 <> cv_jotai_kbn_0 ) AND ( lt_jotai_kbn3 <> cv_jotai_kbn_1 )) )
+      THEN
+-- 2015/10/08 S.Yamashita Mod End
         lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_app_name
                       ,iv_name         => cv_msg_cso_00361 -- 機器状態３（廃棄情報）_廃棄決済用チェックエラーメッセージ
@@ -1166,10 +1183,21 @@ AS
             ov_retcode := cv_status_warn;
           END IF;
 --
-          -- ステータスが「中途解約(自己都合)」または「中途解約(保険対応)」かつ、証書受領フラグが「受領済」の場合
-          IF ( (lt_object_status = cv_obj_sts_110 OR lt_object_status = cv_obj_sts_111)
-                   AND (lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd) )
+-- 2015/10/08 S.Yamashita Mod Start
+--          -- ステータスが「中途解約(自己都合)」または「中途解約(保険対応)」かつ、証書受領フラグが「受領済」の場合
+--          IF ( (lt_object_status = cv_obj_sts_110 OR lt_object_status = cv_obj_sts_111)
+--                   AND (lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd) )
+--          THEN
+          -- 物件ステータスが「中途解約(自己都合)」かつ証書受領フラグが「受領済」』か、
+          -- 物件ステータスが「中途解約(保険対応)」かつ証書受領フラグが「受領済」』
+          IF ( ( (lt_object_status = cv_obj_sts_110) AND (lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd) )
+            OR ( (lt_object_status = cv_obj_sts_111) AND (lt_bond_acceptance_flag = cv_bnd_accpt_flg_accptd) ) )
           THEN
+            lv_no_chk_flag := cv_yes; -- 償却期間チェック対象外
+          END IF;
+--
+          IF ( lv_no_chk_flag = cv_no ) THEN
+-- 2015/10/08 S.Yamashita Mod End
             -- リース情報取得
             BEGIN
               SELECT /*+ USE_NL(xxoh xxcl xxch) INDEX(xxoh XXCFF_OBJECT_HEADERS_U01) */
