@@ -1,2 +1,2 @@
 CREATE OR REPLACE DIRECTORY XX03_UPLOAD_DIR
-  AS '/vebs/vebs06/vebs06comn/admin/out/vebs06_vebsdb21';
+  AS '/vebs/vebs06/vebs06appl/xx03/11.5.2/upload/';
