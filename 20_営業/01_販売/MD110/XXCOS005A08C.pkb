@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -80,6 +80,14 @@ AS
  *  2012/06/25    1.27  D.Sugahara       [E_本稼動_09744]受注OIF取りこぼし対応（呼出コンカレントを
  *                                                       受注インポートエラー検知(CSV受注取込用）に変更）
  *  2015/07/24    1.28  S.Niki           [E_本稼動_12961] 返品、返品訂正、受注訂正、変動電気代をアップロード可能に修正
+ *  2015/10/29    1.29  Y.Shoji          [E_本稼動_12961]
+ *                                         ・ 出荷指示項目を追加
+ *                                         ・「通常訂正」「返品訂正」「返品受注」の『顧客発注番号』『単価』の必須チェックを外し、
+ *                                            値が入っていない場合は自動で導出
+ *                                         ・「通常訂正」「返品訂正」「返品受注」の『オーダーNO』の必須チェック追加
+ *                                         ・「変動電気代」の『オーダーNO』に値が設定されていた場合はNULLを設定
+                                           ・『データ種別』の必須チェックを外す
+                                           ・「問屋」「国際」の『売上区分』の必須チェックを外す
  *
  *****************************************************************************************/
 --
@@ -528,7 +536,10 @@ AS
 ---- ***************** 2009/11/18 1.14 N.Maeda ADD  END  ***************** --
 -- ************** Ver1.28 MOD START *************** --
 --  cn_c_header                       CONSTANT  NUMBER        := 48;                                   --項目
-  cn_c_header                       CONSTANT  NUMBER        := 52;                                   --項目
+-- ************** Ver1.29 MOD START *************** --
+--  cn_c_header                       CONSTANT  NUMBER        := 52;                                   --項目
+  cn_c_header                       CONSTANT  NUMBER        := 53;                                   --項目
+-- ************** Ver1.29 MOD END   *************** --
 -- ************** Ver1.28 MOD END   *************** --                                 --項目
 -- *********** 2009/12/04 1.15 N.Maeda MOD  END  ***********--
   cn_begin_line                     CONSTANT  NUMBER        := 2;                                    --最初の行
@@ -602,6 +613,10 @@ AS
   cn_sales_class_digit              CONSTANT  NUMBER        := 1;                                    --売上区分(桁数)
   cn_sales_class_stand              CONSTANT  NUMBER        := 52;                                   --売上区分(項目順位)
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** Ver1.29 ADD START *************** --
+  cn_ship_instructions_digit        CONSTANT  NUMBER        := 40;                                   --出荷指示(桁数)
+  cn_ship_instructions_stand        CONSTANT  NUMBER        := 53;                                   --出荷指示(項目順位)
+-- ************** Ver1.29 ADD END   *************** --
 --****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
   cv_trunc_mm                       CONSTANT VARCHAR2(2)    := 'MM';                                 --日付切捨用
 --****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
@@ -702,6 +717,9 @@ AS
   gt_line_context_unset_flg         fnd_lookup_values.attribute2%TYPE;                               --明細コンテキスト未設定フラグ
   gt_sales_class_must_flg           fnd_lookup_values.attribute3%TYPE;                               --売上区分設定フラグ
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** Ver1.29 ADD START *************** --
+  gt_orig_sys_document_ref   oe_order_headers.orig_sys_document_ref%TYPE; -- 受注ソース参照(シーケンス設定)
+-- ************** Ver1.29 ADD END   *************** --
 --
   /**********************************************************************************
    * Procedure Name   : para_out
@@ -1885,6 +1903,9 @@ AS
     ov_line_type            OUT VARCHAR2,  -- 受注タイプ（明細）※訂正用
     ov_sales_class          OUT VARCHAR2,  -- 売上区分
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** Ver1.29 ADD START *************** --
+    ov_ship_instructions    OUT VARCHAR2,  -- 出荷指示
+-- ************** Ver1.29 ADD END   *************** --
     ov_errbuf               OUT VARCHAR2, -- 1.エラー・メッセージ           --# 固定 #
     ov_retcode              OUT VARCHAR2, -- 2.リターン・コード             --# 固定 #
     ov_errmsg               OUT VARCHAR2) -- 3.ユーザー・エラー・メッセージ --# 固定 #
@@ -2954,16 +2975,58 @@ AS
           ov_cust_po_number := gr_order_work_data(in_cnt)(cn_cust_po_number_stand);
         END IF;
       --
+-- ************** Ver1.29 ADD START *************** --
+        --単価
+        xxccp_common_pkg2.upload_item_check(
+          iv_item_name    => gr_order_work_data(cn_item_header)(cn_unit_price_stand), -- 1.項目名称(日本語名)         -- 必須
+          iv_item_value   => gr_order_work_data(in_cnt)(cn_unit_price_stand),         -- 2.項目の値                   -- 任意
+          in_item_len     => cn_unit_price_digit,                                     -- 3.項目の長さ                 -- 必須
+          in_item_decimal => cn_unit_price_point,                                     -- 4.項目の長さ(小数点以下)     -- 条件付必須
+          iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                            -- 5.必須フラグ(上記定数を設定) -- 必須
+          iv_item_attr    => xxccp_common_pkg2.gv_attr_num,                           -- 6.項目属性(上記定数を設定)   -- 必須
+          ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
+          ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
+          ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --ワーニング
+        IF ( lv_retcode = cv_status_warn ) THEN
+          lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                          iv_application   => ct_xxcos_appl_short_name,
+                          iv_name          => ct_msg_get_format_err,
+                          iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                          iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                          iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                          iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                          iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                          iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                          iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                          iv_token_value4  => gr_order_work_data(cn_item_header)(cn_unit_price_stand)          --項目名
+                        ) || cv_line_feed;
+          --
+        --共通関数エラー
+        ELSIF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_api_expt;
+        --正常終了
+        ELSIF ( lv_retcode = cv_status_normal ) THEN
+          on_unit_price := gr_order_work_data(in_cnt)(cn_unit_price_stand);
+        END IF;
+-- ************** Ver1.29 ADD END   *************** --
       END IF;
 --
       IF ( iv_get_format IN ( cv_revision_nrm_format , cv_revision_ret_format , cv_return_format ) ) THEN
+        ------------------------------------
+        -- 通常訂正CSV、返品訂正CSV、返品CSV (項目チェック)
+        ------------------------------------
         --顧客発注番号
         xxccp_common_pkg2.upload_item_check(
           iv_item_name    => gr_order_work_data(cn_item_header)(cn_cust_po_number_stand), -- 1.項目名称(日本語名)         -- 必須
           iv_item_value   => gr_order_work_data(in_cnt)(cn_cust_po_number_stand),         -- 2.項目の値                   -- 任意
           in_item_len     => cn_cust_po_number_digit,                                     -- 3.項目の長さ                 -- 必須
           in_item_decimal => NULL,                                                        -- 4.項目の長さ(小数点以下)     -- 条件付必須
-          iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                                -- 5.必須フラグ(上記定数を設定) -- 必須
+-- ************** Ver1.29 MOD START *************** --
+--          iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                                -- 5.必須フラグ(上記定数を設定) -- 必須
+          iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                                -- 5.必須フラグ(上記定数を設定) -- 必須
+-- ************** Ver1.29 MOD END   *************** --
           iv_item_attr    => xxccp_common_pkg2.gv_attr_vc2,                               -- 6.項目属性(上記定数を設定)   -- 必須
           ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
           ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
@@ -2994,19 +3057,14 @@ AS
           ov_cust_po_number := gr_order_work_data(in_cnt)(cn_cust_po_number_stand);
         END IF;
       --
-      END IF;
---
-      IF ( iv_get_format IN ( cv_revision_nrm_format , cv_revision_ret_format , cv_return_format , cv_electricity_format ) ) THEN
-        ------------------------------------
-        -- 通常訂正CSV、返品訂正CSV、返品CSV、変動電気代CSV (項目チェック)
-        ------------------------------------
+-- ************** Ver1.29 ADD START *************** --
         --オーダーNo.
         xxccp_common_pkg2.upload_item_check(
           iv_item_name    => gr_order_work_data(cn_item_header)(cn_order_number),  -- 1.項目名称(日本語名)         -- 必須
           iv_item_value   => gr_order_work_data(in_cnt)(cn_order_number),          -- 2.項目の値                   -- 任意
           in_item_len     => cn_order_number_dlength,                              -- 3.項目の長さ                 -- 必須
           in_item_decimal => NULL,                                                 -- 4.項目の長さ(小数点以下)     -- 条件付必須
-          iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                         -- 5.必須フラグ(上記定数を設定) -- 必須
+          iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                         -- 5.必須フラグ(上記定数を設定) -- 必須
           iv_item_attr    => xxccp_common_pkg2.gv_attr_vc2,                        -- 6.項目属性(上記定数を設定)   -- 必須
           ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
           ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
@@ -3043,7 +3101,7 @@ AS
           iv_item_value   => gr_order_work_data(in_cnt)(cn_unit_price_stand),         -- 2.項目の値                   -- 任意
           in_item_len     => cn_unit_price_digit,                                     -- 3.項目の長さ                 -- 必須
           in_item_decimal => cn_unit_price_point,                                     -- 4.項目の長さ(小数点以下)     -- 条件付必須
-          iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                            -- 5.必須フラグ(上記定数を設定) -- 必須
+          iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                            -- 5.必須フラグ(上記定数を設定) -- 必須
           iv_item_attr    => xxccp_common_pkg2.gv_attr_num,                           -- 6.項目属性(上記定数を設定)   -- 必須
           ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
           ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
@@ -3071,7 +3129,87 @@ AS
         ELSIF ( lv_retcode = cv_status_normal ) THEN
           on_unit_price := gr_order_work_data(in_cnt)(cn_unit_price_stand);
         END IF;
+-- ************** Ver1.29 ADD END   *************** --
+      END IF;
 --
+      IF ( iv_get_format IN ( cv_revision_nrm_format , cv_revision_ret_format , cv_return_format , cv_electricity_format ) ) THEN
+        ------------------------------------
+        -- 通常訂正CSV、返品訂正CSV、返品CSV、変動電気代CSV (項目チェック)
+        ------------------------------------
+-- ************** Ver1.29 DEL START *************** --
+--        --オーダーNo.
+--        xxccp_common_pkg2.upload_item_check(
+--          iv_item_name    => gr_order_work_data(cn_item_header)(cn_order_number),  -- 1.項目名称(日本語名)         -- 必須
+--          iv_item_value   => gr_order_work_data(in_cnt)(cn_order_number),          -- 2.項目の値                   -- 任意
+--          in_item_len     => cn_order_number_dlength,                              -- 3.項目の長さ                 -- 必須
+--          in_item_decimal => NULL,                                                 -- 4.項目の長さ(小数点以下)     -- 条件付必須
+--          iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                         -- 5.必須フラグ(上記定数を設定) -- 必須
+--          iv_item_attr    => xxccp_common_pkg2.gv_attr_vc2,                        -- 6.項目属性(上記定数を設定)   -- 必須
+--          ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
+--          ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
+--          ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        --
+--        --ワーニング
+--        IF ( lv_retcode = cv_status_warn ) THEN
+--          --ワーニングメッセージ作成
+--          lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+--                          iv_application   => ct_xxcos_appl_short_name,
+--                          iv_name          => ct_msg_get_format_err,
+--                          iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+--                          iv_token_value1  => gv_temp_line_no,                                                 --行番号
+--                          iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+--                          iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+--                          iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+--                          iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+--                          iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+--                          iv_token_value4  => gr_order_work_data(cn_item_header)(cn_order_number)              --項目名
+--                        ) || cv_line_feed;
+--          --
+--        --共通関数エラー
+--        ELSIF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_api_expt;
+--        --正常終了
+--        ELSIF ( lv_retcode = cv_status_normal ) THEN
+--          ov_order_number := gr_order_work_data(in_cnt)(cn_order_number); -- オーダーNo
+--        END IF;
+----
+--        --単価
+--        xxccp_common_pkg2.upload_item_check(
+--          iv_item_name    => gr_order_work_data(cn_item_header)(cn_unit_price_stand), -- 1.項目名称(日本語名)         -- 必須
+--          iv_item_value   => gr_order_work_data(in_cnt)(cn_unit_price_stand),         -- 2.項目の値                   -- 任意
+--          in_item_len     => cn_unit_price_digit,                                     -- 3.項目の長さ                 -- 必須
+--          in_item_decimal => cn_unit_price_point,                                     -- 4.項目の長さ(小数点以下)     -- 条件付必須
+--          iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                            -- 5.必須フラグ(上記定数を設定) -- 必須
+--          iv_item_attr    => xxccp_common_pkg2.gv_attr_num,                           -- 6.項目属性(上記定数を設定)   -- 必須
+--          ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
+--          ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
+--          ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        --ワーニング
+--        IF ( lv_retcode = cv_status_warn ) THEN
+--          lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+--                          iv_application   => ct_xxcos_appl_short_name,
+--                          iv_name          => ct_msg_get_format_err,
+--                          iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+--                          iv_token_value1  => gv_temp_line_no,                                                 --行番号
+--                          iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+--                          iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+--                          iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+--                          iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+--                          iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+--                          iv_token_value4  => gr_order_work_data(cn_item_header)(cn_unit_price_stand)          --項目名
+--                        ) || cv_line_feed;
+--          --
+--        --共通関数エラー
+--        ELSIF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_api_expt;
+--        --正常終了
+--        ELSIF ( lv_retcode = cv_status_normal ) THEN
+--          on_unit_price := gr_order_work_data(in_cnt)(cn_unit_price_stand);
+--        END IF;
+----
+-- ************** Ver1.29 DEL END   *************** --
         --伝票区分
         xxccp_common_pkg2.upload_item_check(
           iv_item_name    => gr_order_work_data(cn_item_header)(cn_invoice_class_stand),  -- 1.項目名称(日本語名)         -- 必須
@@ -3267,7 +3405,10 @@ AS
       iv_item_value   => gr_order_work_data(in_cnt)(cn_data_type_stand),         -- 2.項目の値                   -- 任意
       in_item_len     => cn_data_type_digit,                                     -- 3.項目の長さ                 -- 必須
       in_item_decimal => NULL,                                                   -- 4.項目の長さ(小数点以下)     -- 条件付必須
-      iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                           -- 5.必須フラグ(上記定数を設定) -- 必須
+-- ************** Ver1.29 MOD START *************** --
+--      iv_item_nullflg => xxccp_common_pkg2.gv_null_ng,                           -- 5.必須フラグ(上記定数を設定) -- 必須
+      iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                           -- 5.必須フラグ(上記定数を設定) -- 必須
+-- ************** Ver1.29 MOD END   *************** --
       iv_item_attr    => xxccp_common_pkg2.gv_attr_vc2,                          -- 6.項目属性(上記定数を設定)   -- 必須
       ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
       ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
@@ -3582,6 +3723,45 @@ AS
         od_shipping_date        :=  TO_DATE(gr_order_work_data(in_cnt)(cn_shipping_date),cv_yyyymmdd_format);-- 13.<出荷日>
       END IF;
 --
+-- ************** Ver1.29 ADD START *************** --
+    --出荷指示
+    xxccp_common_pkg2.upload_item_check(
+      iv_item_name    => gr_order_work_data(cn_item_header)(cn_ship_instructions_stand),  -- 1.項目名称(日本語名)         -- 必須
+      iv_item_value   => gr_order_work_data(in_cnt)(cn_ship_instructions_stand),          -- 2.項目の値                   -- 任意
+      in_item_len     => cn_ship_instructions_digit,                                      -- 3.項目の長さ                 -- 必須
+      in_item_decimal => NULL,                                                            -- 4.項目の長さ(小数点以下)     -- 条件付必須
+      iv_item_nullflg => xxccp_common_pkg2.gv_null_ok,                                    -- 5.必須フラグ(上記定数を設定) -- 必須
+      iv_item_attr    => xxccp_common_pkg2.gv_attr_vc2,                                   -- 6.項目属性(上記定数を設定)   -- 必須
+      ov_errbuf       => lv_errbuf,   -- 1.エラー・メッセージ           --# 固定 #
+      ov_retcode      => lv_retcode,  -- 2.リターン・コード             --# 固定 #
+      ov_errmsg       => lv_errmsg    -- 3.ユーザー・エラー・メッセージ --# 固定 #
+    );
+    --
+    --ワーニング
+    IF ( lv_retcode = cv_status_warn ) THEN
+      --ワーニングメッセージ作成
+      lv_err_msg := lv_err_msg || xxccp_common_pkg.get_msg(
+                      iv_application   => ct_xxcos_appl_short_name,
+                      iv_name          => ct_msg_get_format_err,
+                      iv_token_name1   => cv_tkn_param1,                                                   --パラメータ1(トークン)
+                      iv_token_value1  => gv_temp_line_no,                                                 --行番号
+                      iv_token_name2   => cv_tkn_param2,                                                   --パラメータ2(トークン)
+                      iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),                     --オーダーNO
+                      iv_token_name3   => cv_tkn_param3,                                                   --パラメータ3(トークン)
+                      iv_token_value3  => gr_order_work_data(in_cnt)(cn_line_number),                      --行No
+                      iv_token_name4   => cv_tkn_err_msg ,                                                 --エラーメッセージ(トークン)
+                      iv_token_value4  => gr_order_work_data(cn_item_header)(cn_ship_instructions_stand)   --項目名
+                    ) || cv_line_feed;
+      --
+    --共通関数エラー
+    ELSIF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_api_expt;
+    --正常終了
+    ELSIF ( lv_retcode = cv_status_normal ) THEN
+      ov_ship_instructions := gr_order_work_data(in_cnt)(cn_ship_instructions_stand);
+    END IF;
+--
+-- ************** Ver1.29 ADD END   *************** --
 -- ************** 2010/12/03 1.21 H.Sekine ADD START  ************** --
 -- ************** Ver1.28 DEL START *************** --
 --    --顧客発注番号
@@ -4673,7 +4853,12 @@ AS
       --売上区分設定フラグが'Y'の場合のみチェック
       IF ( gt_sales_class_must_flg = cv_sales_class_must_y ) THEN
         --必須チェック
-        IF ( iv_sales_class IS NULL ) THEN
+-- ************** Ver1.29 MOD START *************** --
+--        IF ( iv_sales_class IS NULL ) THEN
+        -- 「通常訂正CSV」、「返品訂正CSV」、「返品CSV」、「変動電気代CSV」の場合
+        IF (  ( iv_sales_class IS NULL )
+          AND ( iv_get_format  IN ( cv_revision_nrm_format , cv_revision_ret_format , cv_return_format , cv_electricity_format ) ) ) THEN
+-- ************** Ver1.29 MOD END   *************** --
           ov_errmsg := xxccp_common_pkg.get_msg(
                         iv_application   => ct_xxcos_appl_short_name,
                         iv_name          => ct_msg_sls_cls_null_err,
@@ -4689,6 +4874,13 @@ AS
           ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
           ov_retcode := cv_status_warn;
 --
+-- ************** Ver1.29 ADD START *************** --
+        -- 「問屋CSV」、「国際CSV」がNULLの場合、妥当性チェックをしない
+        ELSIF (  ( iv_sales_class IS NULL )
+          AND    ( iv_get_format  IN ( cv_tonya_format , cv_kokusai_format ) ) ) THEN
+          NULL;
+--
+-- ************** Ver1.29 ADD END   *************** --
         ELSE
           --妥当性チェック
           BEGIN
@@ -5661,6 +5853,9 @@ AS
     iv_subinventory          IN  VARCHAR2,     -- 保管場所
     iv_sales_class           IN  VARCHAR2,     -- 売上区分
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** Ver1.29 ADD START *************** --
+    iv_ship_instructions     IN  VARCHAR2,     -- 出荷指示
+-- ************** Ver1.29 ADD END   *************** --
     ov_errbuf                OUT VARCHAR2, -- エラー・メッセージ           --# 固定 #
     ov_retcode               OUT VARCHAR2, -- リターン・コード             --# 固定 #
     ov_errmsg                OUT VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5716,18 +5911,39 @@ AS
       --カウントUP
       gn_hed_cnt := gn_hed_cnt + 1;
       --受注ヘッダーOIF
-      gt_order_no := iv_orig_sys_document_ref;
+-- ************** Ver1.29 MOD START *************** --
+--      gt_order_no := iv_orig_sys_document_ref;
+      -- 変動電気代以外の場合
+      IF ( iv_get_format <> cv_electricity_format ) THEN
+        gt_order_no := iv_orig_sys_document_ref;
+      END IF;
+--
+      -- 外部システム受注番号を初期化
+      gt_orig_sys_document_ref := NULL;
+--
+-- ************** Ver1.29 MOD END   *************** --
 -- ************** Ver1.28 ADD START *************** --
-      --受注ソースが「Online」の場合は、受注一覧の出力対象となるようorig_sys_document_refを設定
+      -- 1.「通常訂正CSV」、「返品訂正CSV」、「返品CSV」、「変動電気代CSV」の場合
+      --   受注一覧の出力対象となるようorig_sys_document_refを設定
       IF iv_get_format IN ( cv_revision_nrm_format , cv_revision_ret_format , cv_return_format , cv_electricity_format ) THEN
           --シーケンスを取得。
         SELECT xxcos_orig_sys_doc_ref_s01.NEXTVAL seq_no
         INTO ln_seq_no
         FROM dual
         ;
-        gv_seq_no := cv_pre_orig_sys_doc_ref || TO_CHAR((lpad(ln_seq_no,11,0)));
-      --
-      ELSE
+-- ************** Ver1.29 MOD START *************** --
+--        gv_seq_no := cv_pre_orig_sys_doc_ref || TO_CHAR((lpad(ln_seq_no,11,0)));
+--      --
+--      ELSE
+        -- 外部システム受注番号に採番した値を設定
+        gt_orig_sys_document_ref := cv_pre_orig_sys_doc_ref || TO_CHAR((lpad(ln_seq_no,11,0)));
+      END IF;
+--
+      -- 2.「問屋CSV」「国際CSV」「見本CSV」「広告宣伝費CSV」の場合
+      --   または、A-4で取得した顧客発注番号がNULLの場合
+      IF ( ( gt_orig_sys_document_ref IS NULL )
+        OR ( iv_cust_po_number        IS NULL ) ) THEN
+-- ************** Ver1.29 MOD END   *************** --
 -- ************** Ver1.28 ADD END   *************** --
           --シーケンスを取得。
         SELECT xxcos_cust_po_number_s01.NEXTVAL
@@ -5735,6 +5951,13 @@ AS
         FROM DUAL
         ;
         gv_seq_no := 'I' || TO_CHAR((lpad(ln_seq_no,11,0)));
+-- ************** Ver1.29 ADD START *************** --
+      END IF;
+--
+      -- 3.「問屋CSV」「国際CSV」「見本CSV」「広告宣伝費CSV」の場合
+      IF ( gt_orig_sys_document_ref IS NULL ) THEN
+        gt_orig_sys_document_ref := gv_seq_no;
+-- ************** Ver1.29 ADD END   *************** --
 -- ************** Ver1.28 ADD START *************** --
       END IF;
 -- ************** Ver1.28 ADD END   *************** --
@@ -5747,7 +5970,7 @@ AS
 --      END IF;
 -- *********** 2009/12/16 1.16 N.Maeda DEL  END  ***********--
 --
-      -- 顧客発注番号が設定されていない場合はシーケンス取得した値を設定する。
+      -- 4.顧客発注番号が設定されていない場合はシーケンス取得した値を設定する。
       IF ( iv_cust_po_number IS NOT NULL ) THEN
         lv_cust_po_number := iv_cust_po_number;
       ELSE
@@ -5756,7 +5979,10 @@ AS
 -- *********** 2009/12/04 1.15 N.Maeda ADD  END  ***********--
       --変数に設定
       gr_order_oif_data(gn_hed_cnt).order_source_id           := in_order_source_id;        --受注ソースID(インポートソースID)
-      gr_order_oif_data(gn_hed_cnt).orig_sys_document_ref     := gv_seq_no;                 --受注ソース参照(シーケンス設定)
+-- ************** Ver1.29 MOD START *************** --
+--      gr_order_oif_data(gn_hed_cnt).orig_sys_document_ref     := gv_seq_no;                 --受注ソース参照(シーケンス設定)
+      gr_order_oif_data(gn_hed_cnt).orig_sys_document_ref     := gt_orig_sys_document_ref;  --受注ソース参照(シーケンス設定)
+-- ************** Ver1.29 MOD END   *************** --
       gr_order_oif_data(gn_hed_cnt).org_id                    := in_org_id;                 --組織ID(営業単位)
       gr_order_oif_data(gn_hed_cnt).ordered_date              := id_ordered_date;           --受注日(発注日)
       gr_order_oif_data(gn_hed_cnt).order_type                := iv_order_type;             --受注タイプ(受注タイプ（通常受注）)
@@ -5775,6 +6001,9 @@ AS
 -- ************** Ver1.28 ADD START *************** --
       gr_order_oif_data(gn_hed_cnt).attribute5                := iv_invoice_class;          --伝票区分
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** Ver1.29 ADD START *************** --
+      gr_order_oif_data(gn_hed_cnt).shipping_instructions     := iv_ship_instructions;      --出荷指示
+-- ************** Ver1.29 ADD END   *************** --
       gr_order_oif_data(gn_hed_cnt).created_by                := cn_created_by;             --作成者
       gr_order_oif_data(gn_hed_cnt).creation_date             := cd_creation_date;          --作成日
       gr_order_oif_data(gn_hed_cnt).last_updated_by           := cn_last_updated_by;        --更新者
@@ -5820,7 +6049,10 @@ AS
     --受注明細OIF
     gn_line_cnt := gn_line_cnt + 1;
     gr_order_line_oif_data(gn_line_cnt).order_source_id            := in_order_source_id;        --受注ソースID(インポートソースID)
-    gr_order_line_oif_data(gn_line_cnt).orig_sys_document_ref      := gv_seq_no;                 --受注ソース参照(シーケンスNo
+-- ************** Ver1.29 ADD START *************** --
+--    gr_order_line_oif_data(gn_line_cnt).orig_sys_document_ref      := gv_seq_no;                 --受注ソース参照(シーケンスNo
+    gr_order_line_oif_data(gn_line_cnt).orig_sys_document_ref      := gt_orig_sys_document_ref;  --受注ソース参照(シーケンスNo
+-- ************** Ver1.29 ADD END   *************** --
     gr_order_line_oif_data(gn_line_cnt).orig_sys_line_ref          := iv_orig_sys_line_ref;      --受注ソース明細参照(行No.)
 /* 2011/01/25 1.23 H.Sekine Add Start */
     gr_order_line_oif_data(gn_line_cnt).line_number                := TO_NUMBER(iv_orig_sys_line_ref); --受注明細行番号
@@ -5838,7 +6070,10 @@ AS
 -- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
     gr_order_line_oif_data(gn_line_cnt).salesrep_id                := in_salesrep_id;            --営業担当ID
 -- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
-    gr_order_line_oif_data(gn_line_cnt).customer_po_number         := gv_seq_no;                 --顧客発注番号(シーケンス)
+-- ************** Ver1.29 MOD START *************** --
+--    gr_order_line_oif_data(gn_line_cnt).customer_po_number         := gv_seq_no;                 --顧客発注番号(シーケンス)
+    gr_order_line_oif_data(gn_line_cnt).customer_po_number         := gt_orig_sys_document_ref;  --顧客発注番号(シーケンス設定)
+-- ************** Ver1.29 MOD END   *************** --
     gr_order_line_oif_data(gn_line_cnt).customer_line_number       := iv_customer_line_number;   --顧客明細番号(行No.(※設定必要))
 -- ************** Ver1.28 ADD START *************** --
     gr_order_line_oif_data(gn_line_cnt).attribute5                 := lt_sales_class;            --フレックスフィールド5(売上区分)
@@ -6297,6 +6532,9 @@ AS
     lv_line_type               VARCHAR2(128);     -- 受注タイプ（明細）※訂正用
     lv_sales_class             VARCHAR2(128);     -- 売上区分
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** Ver1.29 ADD START *************** --
+    lv_ship_instructions       VARCHAR2(2000);    -- 出荷指示
+-- ************** Ver1.29 ADD END   *************** --
 --
     lv_account_number          VARCHAR2(40);  -- 顧客コード
     lv_delivery_code           VARCHAR2(40);  -- 配送先コード
@@ -6460,7 +6698,9 @@ AS
         ov_subinventory         => lv_subinventory,         -- 保管場所
         ov_line_type            => lv_line_type,            -- 受注タイプ（明細）※訂正用
         ov_sales_class          => lv_sales_class,          -- 売上区分
--- ************** Ver1.28 ADD END   *************** --
+-- ************** Ver1.29 ADD START *************** --
+        ov_ship_instructions    => lv_ship_instructions,    -- 出荷指示
+-- ************** Ver1.29 ADD END   *************** --
         ov_errbuf               => lv_errbuf,               -- エラー・メッセージ           --# 固定 #
         ov_retcode              => lv_retcode,              -- リターン・コード             --# 固定 #
         ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -6742,6 +6982,9 @@ AS
           iv_subinventory          => lv_subinventory,         -- 保管場所
           iv_sales_class           => lv_sales_class,          -- 売上区分
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** Ver1.29 ADD START *************** --
+          iv_ship_instructions     => lv_ship_instructions,    -- 出荷指示
+-- ************** Ver1.29 ADD END   *************** --
           ov_errbuf                => lv_errbuf,               -- エラー・メッセージ           --# 固定 #
           ov_retcode               => lv_retcode,              -- リターン・コード             --# 固定 #
           ov_errmsg                => lv_errmsg                -- ユーザー・エラー・メッセージ --# 固定 #
