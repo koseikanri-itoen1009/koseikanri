@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM_CUST_STS_CHK_PKG(body)
  * Description      : 顧客ステータスを「中止」に変更する際、ステータス変更が可能か判定を行います。
  * MD.050           : MD050_CMM_003_A11_顧客ステータス変更チェック
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,9 +16,7 @@ AS
  *  item_ins               物件情報存在チェック(A-2)
  *  cust_base_chk          基準在庫数・釣銭基準額チェック処理(A-3)
  *  cust_balance_chk       売掛残高チェック処理(A-4)
--- 2011/03/07 Ver1.5 add start
  *  cust_tran_chk          月内取引存在チェック処理(A-5)
--- 2011/03/07 Ver1.5 add end
  *  submain                メイン処理プロシージャ
  *  main                   実行ファイル登録プロシージャ(A-5 終了処理)
  *
@@ -30,8 +28,9 @@ AS
  *  2009/02/19    1.1   Takuya.Kaihara   物件マスタ.削除フラグの修正
  *  2009/09/11    1.2   Yutaka.Kuboshima 障害0001350 業態(小分類)の必須チェックの削除
  *  2010/02/15    1.3   Yutaka.Kuboshima 障害E_本稼動_01528 PT対応：残高情報チェックSQL
- *  2010/08/04    1.4   Shigeto.NIki     障害E_本稼動_04245 業態関係なく売掛残高チェック
+ *  2010/08/04    1.4   Shigeto.Niki     障害E_本稼動_04245 業態関係なく売掛残高チェック
  *  2011/03/07    1.5   Masato.Hirose    障害E_本稼動_02443 月内取引の存在チェック追加
+ *  2015/11/17    1.6   Shigeto.Niki     障害E_本稼動_13403 PT対応：残高情報チェックSQL
  *
  *****************************************************************************************/
 --
@@ -388,6 +387,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
 --
+-- Ver1.6 add start
+    -- *** ローカル定数 ***
+    cv_inv       CONSTANT VARCHAR2(3)    := 'INV';              -- 請求書
+-- Ver1.6 add end
     -- *** ローカル変数 ***
     lv_errmsg    VARCHAR2(5000);                                -- ユーザー・エラー・メッセージ
     ln_bal_count NUMBER;                                        --対象件数
@@ -431,51 +434,109 @@ AS
 --    AND    aps.status               = cv_status_op
 --    AND    hcsu.site_use_id         = rct.bill_to_site_use_id
 --    AND    rct.customer_trx_id      = aps.customer_trx_id);
-    SELECT COUNT( cust_bal.cust_account_id )
-    INTO   ln_bal_count
-    FROM  ( SELECT hca_bill.cust_account_id cust_account_id
-            FROM   hz_cust_accounts         hca_ship
-                  ,hz_cust_site_uses        hcsu_ship  -- 営業OUのみ
-                  ,hz_cust_acct_sites       hcas_ship  -- 営業OUのみ
-                  ,hz_cust_accounts         hca_bill
-                  ,hz_cust_site_uses        hcsu_bill  -- 営業OUのみ
-                  ,hz_cust_acct_sites       hcas_bill  -- 営業OUのみ
-                  ,ra_customer_trx_all      rct
-                  ,ar_payment_schedules_all aps
-            WHERE  hca_ship.customer_class_code IN ( cv_cust_cls_cd_cu, cv_cust_cls_cd_uc )
-            AND    hca_ship.cust_account_id      = in_cust_id
-            AND    hcas_ship.cust_account_id     = hca_ship.cust_account_id
-            AND    hcsu_ship.cust_acct_site_id   = hcas_ship.cust_acct_site_id
-            AND    hcsu_ship.site_use_code       = cv_site_use_cd_st
-            AND    hcas_bill.cust_account_id     = hca_bill.cust_account_id
-            AND    hcsu_bill.cust_acct_site_id   = hcas_bill.cust_acct_site_id
-            AND    hcsu_bill.site_use_code       = cv_site_use_cd_bt
-            AND    aps.status                    = cv_status_op
-            AND    hcsu_ship.bill_to_site_use_id = hcsu_bill.site_use_id
-            AND    hca_bill.cust_account_id      = rct.bill_to_customer_id
-            AND    rct.customer_trx_id           = aps.customer_trx_id
-            AND    ROWNUM                        = 1
-            UNION ALL
-            SELECT hca.cust_account_id cust_account_id
-            FROM   hz_cust_accounts         hca
-                  ,hz_cust_site_uses        hcsu  -- 営業OUのみ
-                  ,hz_cust_acct_sites       hcas  -- 営業OUのみ
-                  ,ra_customer_trx_all      rct
-                  ,ar_payment_schedules_all aps
-            WHERE  hca.customer_class_code  = cv_cust_cls_cd_uk
-            AND    hca.cust_account_id      = in_cust_id
-            AND    hcas.cust_account_id     = hca.cust_account_id
-            AND    hcsu.cust_acct_site_id   = hcas.cust_acct_site_id
-            AND    hcsu.site_use_code       = cv_site_use_cd_bt
-            AND    aps.status               = cv_status_op
-            AND    hca.cust_account_id      = rct.bill_to_customer_id
-            AND    rct.customer_trx_id      = aps.customer_trx_id
-            AND    ROWNUM                   = 1
-          ) cust_bal
-    WHERE  ROWNUM = 1
-    ;
--- 2010/02/15 Ver1.3 E_本稼動_XXXXX modify end by Yutaka.Kuboshima
---
+-- Ver1.6 mod start
+--    SELECT COUNT( cust_bal.cust_account_id )
+--    INTO   ln_bal_count
+--    FROM  ( SELECT hca_bill.cust_account_id cust_account_id
+--            FROM   hz_cust_accounts         hca_ship
+--                  ,hz_cust_site_uses        hcsu_ship  -- 営業OUのみ
+--                  ,hz_cust_acct_sites       hcas_ship  -- 営業OUのみ
+--                  ,hz_cust_accounts         hca_bill
+--                  ,hz_cust_site_uses        hcsu_bill  -- 営業OUのみ
+--                  ,hz_cust_acct_sites       hcas_bill  -- 営業OUのみ
+--                  ,ra_customer_trx_all      rct
+--                  ,ar_payment_schedules_all aps
+--            WHERE  hca_ship.customer_class_code IN ( cv_cust_cls_cd_cu, cv_cust_cls_cd_uc )
+--            AND    hca_ship.cust_account_id      = in_cust_id
+--            AND    hcas_ship.cust_account_id     = hca_ship.cust_account_id
+--            AND    hcsu_ship.cust_acct_site_id   = hcas_ship.cust_acct_site_id
+--            AND    hcsu_ship.site_use_code       = cv_site_use_cd_st
+--            AND    hcas_bill.cust_account_id     = hca_bill.cust_account_id
+--            AND    hcsu_bill.cust_acct_site_id   = hcas_bill.cust_acct_site_id
+--            AND    hcsu_bill.site_use_code       = cv_site_use_cd_bt
+--            AND    aps.status                    = cv_status_op
+--            AND    hcsu_ship.bill_to_site_use_id = hcsu_bill.site_use_id
+--            AND    hca_bill.cust_account_id      = rct.bill_to_customer_id
+--            AND    rct.customer_trx_id           = aps.customer_trx_id
+--            AND    ROWNUM                        = 1
+--            UNION ALL
+--            SELECT hca.cust_account_id cust_account_id
+--            FROM   hz_cust_accounts         hca
+--                  ,hz_cust_site_uses        hcsu  -- 営業OUのみ
+--                  ,hz_cust_acct_sites       hcas  -- 営業OUのみ
+--                  ,ra_customer_trx_all      rct
+--                  ,ar_payment_schedules_all aps
+--            WHERE  hca.customer_class_code  = cv_cust_cls_cd_uk
+--            AND    hca.cust_account_id      = in_cust_id
+--            AND    hcas.cust_account_id     = hca.cust_account_id
+--            AND    hcsu.cust_acct_site_id   = hcas.cust_acct_site_id
+--            AND    hcsu.site_use_code       = cv_site_use_cd_bt
+--            AND    aps.status               = cv_status_op
+--            AND    hca.cust_account_id      = rct.bill_to_customer_id
+--            AND    rct.customer_trx_id      = aps.customer_trx_id
+--            AND    ROWNUM                   = 1
+--          ) cust_bal
+--    WHERE  ROWNUM = 1
+--    ;
+---- 2010/02/15 Ver1.3 E_本稼動_XXXXX modify end by Yutaka.Kuboshima
+   BEGIN
+     SELECT 1 AS dummy
+     INTO   ln_bal_count
+     FROM  ( SELECT /*+ LEADING(hca_ship hcas_ship hcsu_ship) */
+                    hca_bill.cust_account_id AS cust_account_id
+             FROM   hz_cust_accounts         hca_ship
+                   ,hz_cust_site_uses        hcsu_ship
+                   ,hz_cust_acct_sites       hcas_ship
+                   ,hz_cust_accounts         hca_bill
+                   ,hz_cust_site_uses        hcsu_bill
+                   ,hz_cust_acct_sites       hcas_bill
+             WHERE  hca_ship.customer_class_code IN ( cv_cust_cls_cd_cu, cv_cust_cls_cd_uc )
+             AND    hca_ship.cust_account_id      = in_cust_id
+             AND    hcas_ship.cust_account_id     = hca_ship.cust_account_id
+             AND    hcsu_ship.cust_acct_site_id   = hcas_ship.cust_acct_site_id
+             AND    hcsu_ship.site_use_code       = cv_site_use_cd_st
+             AND    hcas_bill.cust_account_id     = hca_bill.cust_account_id
+             AND    hcsu_bill.cust_acct_site_id   = hcas_bill.cust_acct_site_id
+             AND    hcsu_bill.site_use_code       = cv_site_use_cd_bt
+             AND    hcsu_ship.bill_to_site_use_id = hcsu_bill.site_use_id
+             AND    EXISTS ( SELECT /*+ INDEX(aps AR_PAYMENT_SCHEDULES_N6) */
+                                    1
+                             FROM   ar_payment_schedules_all aps
+                             WHERE  aps.customer_id = hca_bill.cust_account_id
+                             AND    aps.status      = cv_status_op  --オープン
+                             AND    aps.class       = cv_inv        --請求書
+                             AND    ROWNUM          = 1
+                    )
+             UNION ALL
+             SELECT /*+ LEADING(hca hcas hcsu)
+                        INDEX(hcsu HZ_CUST_SITE_USES_N1)
+                        INDEX(hcas HZ_CUST_ACCT_SITES_N2)
+                    */
+                    hca.cust_account_id AS cust_account_id
+             FROM   hz_cust_accounts         hca
+                   ,hz_cust_site_uses        hcsu
+                   ,hz_cust_acct_sites       hcas
+             WHERE  hca.customer_class_code  = cv_cust_cls_cd_uk
+             AND    hca.cust_account_id      = in_cust_id
+             AND    hcas.cust_account_id     = hca.cust_account_id
+             AND    hcsu.cust_acct_site_id   = hcas.cust_acct_site_id
+             AND    hcsu.site_use_code       = cv_site_use_cd_bt
+             AND    EXISTS ( SELECT /*+ INDEX(aps2 AR_PAYMENT_SCHEDULES_N6) */
+                                    1
+                             FROM   ar_payment_schedules_all aps2
+                             WHERE  aps2.customer_id = hca.cust_account_id
+                             AND    aps2.status      = cv_status_op  --オープン
+                             AND    aps2.class       = cv_inv        --請求書
+                             AND    ROWNUM           = 1
+                    )
+           ) cust_bal
+     WHERE  ROWNUM = 1
+     ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ln_bal_count := 0;
+    END;
+-- Ver1.6 mod end
     IF ( ln_bal_count > 0 ) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(cv_cnst_msg_kbn,
                                             cv_msg_xxcmm_10315);
