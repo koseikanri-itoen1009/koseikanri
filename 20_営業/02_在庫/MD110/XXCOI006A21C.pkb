@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2010/05/12    1.11  N.Abe            [E_本稼動_02076]棚卸しデータ取込順の採番方法修正
  *  2011/04/27    1.12  N.Horigome       [E_本稼動_06884]一時表取込エラー時のメッセージ出力追加
  *  2011/10/18    1.13  K.Nakamura       [E_T4_00223]ケース数の半角チェックを共通関数を使用しないよう修正
+ *  2015/11/10    1.14  S.Yamashita      [E_本稼動_13384]棚卸日の必須チェック追加
  *
  *****************************************************************************************/
 --
@@ -1777,6 +1778,20 @@ AS
       END IF;
       --必須チェックエラー
       RAISE required_expt;
+-- == 2015/11/10 V1.14 Added START ============================================================== ==
+    --棚卸日
+    ELSIF (it_inventory_date IS NULL) THEN
+      lt_column := xxcoi_common_pkg.get_meaning(
+                   cv_lk_reslt_col
+                  ,cv_inv_dt
+                );
+      --取得できなかった場合エラー
+      IF (lt_column IS NULL) THEN
+        RAISE get_result_col_expt;
+      END IF;
+      --必須チェックエラー
+      RAISE required_expt;
+-- == 2015/11/10 V1.14 Added END   ============================================================== ==
     --棚卸場所
     ELSIF (it_inventory_place IS NULL) THEN
       lt_column := xxcoi_common_pkg.get_meaning(
