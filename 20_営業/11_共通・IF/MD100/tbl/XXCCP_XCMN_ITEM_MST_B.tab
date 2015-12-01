@@ -1,0 +1,64 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2015. All rights reserved.
+ * 
+ * TABLE Name      : XXCCP_XCMN_ITEM_MST_B
+ * Description     : OPM品目アドオン中間テーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2015/10/23    1.0   S.Niki       新規作成
+ ************************************************************************/
+CREATE TABLE xxccp.xxccp_xcmn_item_mst_b(
+    item_id                     NUMBER
+   ,item_no                     VARCHAR2(32)  NOT NULL
+   ,start_date_active           DATE          NOT NULL
+   ,end_date_active             DATE
+   ,active_flag                 VARCHAR2(1)
+   ,item_name                   VARCHAR2(60)
+   ,item_short_name             VARCHAR2(20)
+   ,item_name_alt               VARCHAR2(30)
+   ,parent_item_id              NUMBER
+   ,parent_item_no              VARCHAR2(32)
+   ,obsolete_class              VARCHAR2(1)
+   ,obsolete_date               DATE
+   ,model_type                  NUMBER(2,0)
+   ,product_class               NUMBER(2,0)
+   ,product_type                NUMBER(2,0)
+   ,expiration_day              NUMBER(4,0)
+   ,delivery_lead_time          NUMBER(4,0)
+   ,whse_county_code            VARCHAR2(4)
+   ,standard_yield              NUMBER(5,2)
+   ,shipping_end_date           DATE
+   ,rate_class                  VARCHAR2(1)
+   ,shelf_life                  NUMBER(4)
+   ,shelf_life_class            VARCHAR2(2)
+   ,bottle_class                VARCHAR2(2)
+   ,uom_class                   VARCHAR2(2)
+   ,inventory_chk_class         VARCHAR2(2)
+   ,trace_class                 VARCHAR2(2)
+   ,shipping_cs_unit_qty        NUMBER(5)
+   ,palette_max_cs_qty          NUMBER(3)
+   ,palette_max_step_qty        NUMBER(3)
+   ,palette_step_qty            NUMBER(2)
+   ,cs_weigth_or_capacity       NUMBER(10)
+   ,raw_material_consumption    NUMBER(10)
+   ,attribute1                  VARCHAR2(20)
+   ,attribute2                  VARCHAR2(20)
+   ,attribute3                  VARCHAR2(20)
+   ,attribute4                  VARCHAR2(20)
+   ,attribute5                  VARCHAR2(20)
+   ,created_by                  NUMBER(15,0)  NOT NULL
+   ,creation_date               DATE          NOT NULL
+   ,last_updated_by             NUMBER(15,0)  NOT NULL
+   ,last_update_date            DATE          NOT NULL
+   ,last_update_login           NUMBER(15,0)
+   ,request_id                  NUMBER(15,0)
+   ,program_application_id      NUMBER(15,0)
+   ,program_id                  NUMBER(15,0)
+   ,program_update_date         DATE
+   ,record_type                 VARCHAR(1)
+  )
+/

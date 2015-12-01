@@ -1,0 +1,137 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2015. All rights reserved.
+ *
+ * TABLE Name      : XXCCP_IC_ITEM_MST_B
+ * Description     : OPM品目マスタ中間テーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2015/08/31    1.0   S.Niki       新規作成
+ ************************************************************************/
+CREATE TABLE xxccp.xxccp_ic_item_mst_b(
+    item_id                     NUMBER(10)
+   ,item_no                     VARCHAR2(32)  NOT NULL
+   ,item_desc1                  VARCHAR2(70)  NOT NULL
+   ,item_desc2                  VARCHAR2(70)
+   ,alt_itema                   VARCHAR2(32)
+   ,alt_itemb                   VARCHAR2(32)
+   ,item_um                     VARCHAR2(4)   NOT NULL
+   ,dualum_ind                  NUMBER(5)     NOT NULL
+   ,item_um2                    VARCHAR2(4)
+   ,deviation_lo                NUMBER        NOT NULL
+   ,deviation_hi                NUMBER        NOT NULL
+   ,level_code                  NUMBER(5)
+   ,lot_ctl                     NUMBER(5)     NOT NULL
+   ,lot_indivisible             NUMBER(5)     NOT NULL
+   ,sublot_ctl                  NUMBER(5)     NOT NULL
+   ,loct_ctl                    NUMBER(5)     NOT NULL
+   ,noninv_ind                  NUMBER(5)     NOT NULL
+   ,match_type                  NUMBER(5)     NOT NULL
+   ,inactive_ind                NUMBER(5)     NOT NULL
+   ,inv_type                    VARCHAR2(4)
+   ,shelf_life                  NUMBER        NOT NULL
+   ,retest_interval             NUMBER        NOT NULL
+   ,gl_class                    VARCHAR2(8)
+   ,inv_class                   VARCHAR2(8)
+   ,sales_class                 VARCHAR2(8)
+   ,ship_class                  VARCHAR2(8)
+   ,frt_class                   VARCHAR2(8)
+   ,price_class                 VARCHAR2(8)
+   ,storage_class               VARCHAR2(8)
+   ,purch_class                 VARCHAR2(8)
+   ,tax_class                   VARCHAR2(8)
+   ,customs_class               VARCHAR2(8)
+   ,alloc_class                 VARCHAR2(8)
+   ,planning_class              VARCHAR2(8)
+   ,itemcost_class              VARCHAR2(8)
+   ,cost_mthd_code              VARCHAR2(4)
+   ,upc_code                    VARCHAR2(16)
+   ,grade_ctl                   NUMBER(5)     NOT NULL
+   ,status_ctl                  NUMBER(5)     NOT NULL
+   ,qc_grade                    VARCHAR2(4)
+   ,lot_status                  VARCHAR2(4)
+   ,bulk_id                     NUMBER(10)
+   ,pkg_id                      NUMBER(10)
+   ,qcitem_id                   NUMBER(10)
+   ,qchold_res_code             VARCHAR2(4)
+   ,expaction_code              VARCHAR2(4)
+   ,fill_qty                    NUMBER        NOT NULL
+   ,fill_um                     VARCHAR2(4)
+   ,expaction_interval          NUMBER        NOT NULL
+   ,phantom_type                NUMBER(5)     NOT NULL
+   ,whse_item_id                NUMBER(10)
+   ,whse_item_no                VARCHAR2(32)  NOT NULL
+   ,experimental_ind            NUMBER(5)     NOT NULL
+   ,exported_date               DATE          NOT NULL
+   ,trans_cnt                   NUMBER(10)
+   ,delete_mark                 NUMBER(5)     NOT NULL
+   ,text_code                   NUMBER(10)
+   ,seq_dpnd_class              VARCHAR2(8)
+   ,commodity_code              VARCHAR2(9)
+   ,creation_date               DATE          NOT NULL
+   ,created_by                  NUMBER(15,0)  NOT NULL
+   ,last_update_date            DATE          NOT NULL
+   ,last_updated_by             NUMBER(15,0)  NOT NULL
+   ,last_update_login           NUMBER(15,0)
+   ,program_application_id      NUMBER(15,0)
+   ,program_id                  NUMBER(15,0)
+   ,program_update_date         DATE
+   ,request_id                  NUMBER(15,0)
+   ,attribute1                  VARCHAR2(240)
+   ,attribute2                  VARCHAR2(240)
+   ,attribute3                  VARCHAR2(240)
+   ,attribute4                  VARCHAR2(240)
+   ,attribute5                  VARCHAR2(240)
+   ,attribute6                  VARCHAR2(240)
+   ,attribute7                  VARCHAR2(240)
+   ,attribute8                  VARCHAR2(240)
+   ,attribute9                  VARCHAR2(240)
+   ,attribute10                 VARCHAR2(240)
+   ,attribute11                 VARCHAR2(240)
+   ,attribute12                 VARCHAR2(240)
+   ,attribute13                 VARCHAR2(240)
+   ,attribute14                 VARCHAR2(240)
+   ,attribute15                 VARCHAR2(240)
+   ,attribute16                 VARCHAR2(240)
+   ,attribute17                 VARCHAR2(240)
+   ,attribute18                 VARCHAR2(240)
+   ,attribute19                 VARCHAR2(240)
+   ,attribute20                 VARCHAR2(240)
+   ,attribute21                 VARCHAR2(240)
+   ,attribute22                 VARCHAR2(240)
+   ,attribute23                 VARCHAR2(240)
+   ,attribute24                 VARCHAR2(240)
+   ,attribute25                 VARCHAR2(240)
+   ,attribute26                 VARCHAR2(240)
+   ,attribute27                 VARCHAR2(240)
+   ,attribute28                 VARCHAR2(240)
+   ,attribute29                 VARCHAR2(240)
+   ,attribute30                 VARCHAR2(240)
+   ,attribute_category          VARCHAR2(30)
+   ,item_abccode                VARCHAR2(4)
+   ,ont_pricing_qty_source      NUMBER(5)
+   ,alloc_category_id           NUMBER
+   ,customs_category_id         NUMBER
+   ,frt_category_id             NUMBER
+   ,gl_category_id              NUMBER
+   ,inv_category_id             NUMBER
+   ,cost_category_id            NUMBER
+   ,planning_category_id        NUMBER
+   ,price_category_id           NUMBER
+   ,purch_category_id           NUMBER
+   ,sales_category_id           NUMBER
+   ,seq_category_id             NUMBER
+   ,ship_category_id            NUMBER
+   ,storage_category_id         NUMBER
+   ,tax_category_id             NUMBER
+   ,autolot_active_indicator    NUMBER(1)
+   ,lot_prefix                  VARCHAR2(32)
+   ,lot_suffix                  NUMBER(32)
+   ,sublot_prefix               VARCHAR2(32)
+   ,sublot_suffix               NUMBER(32)
+   ,record_type                 VARCHAR(1)
+)
+/

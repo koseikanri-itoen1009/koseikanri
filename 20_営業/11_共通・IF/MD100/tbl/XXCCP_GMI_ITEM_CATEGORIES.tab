@@ -1,0 +1,28 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2015. All rights reserved.
+ *
+ * TABLE Name      : XXCCP_GMI_ITEM_CATEGORIES
+ * Description     : OPM品目カテゴリ割当中間テーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2015/09/11    1.0   S.Niki       新規作成
+ ************************************************************************/
+CREATE TABLE xxccp.xxccp_gmi_item_categories(
+    item_id                     NUMBER
+   ,item_no                     VARCHAR2(32)  NOT NULL
+   ,category_set_id             NUMBER
+   ,category_set_name           VARCHAR2(30)  NOT NULL
+   ,category_id                 NUMBER
+   ,segment1                    VARCHAR2(40)  NOT NULL
+   ,created_by                  NUMBER(15,0)  NOT NULL
+   ,creation_date               DATE          NOT NULL
+   ,last_updated_by             NUMBER(15,0)  NOT NULL
+   ,last_update_date            DATE          NOT NULL
+   ,last_update_login           NUMBER(15,0)
+   ,record_type                 VARCHAR(1)
+  )
+/

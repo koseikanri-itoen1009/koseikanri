@@ -1,0 +1,81 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2015. All rights reserved.
+ *
+ * TABLE Name      : XXCCP_CM_CMPT_DTL
+ * Description     : OPM品目原価中間テーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2015/08/31    1.0   S.Niki       新規作成
+ ************************************************************************/
+CREATE TABLE xxccp.xxccp_cm_cmpt_dtl(
+    cmpntcost_id            NUMBER(10)
+   ,item_id                 NUMBER(10)
+   ,item_no                 VARCHAR2(32)  NOT NULL
+   ,whse_code               VARCHAR2(4)   NOT NULL
+   ,calendar_code           VARCHAR2(4)   NOT NULL
+   ,period_code             VARCHAR2(4)   NOT NULL
+   ,cost_mthd_code          VARCHAR2(4)   NOT NULL
+   ,cost_cmpntcls_id        NUMBER(10)
+   ,cost_analysis_code      VARCHAR2(4)   NOT NULL
+   ,cost_level              NUMBER(5)     NOT NULL
+   ,cmpnt_cost              NUMBER        NOT NULL
+   ,burden_ind              NUMBER(5)     NOT NULL
+   ,fmeff_id                NUMBER(10)
+   ,rollover_ind            NUMBER(5)     NOT NULL
+   ,total_qty               NUMBER
+   ,costcalc_orig           NUMBER(5)
+   ,rmcalc_type             NUMBER(5)
+   ,rollup_ref_no           NUMBER(10)
+   ,acproc_id               NUMBER(10)
+   ,trans_cnt               NUMBER(10)
+   ,text_code               NUMBER(10)
+   ,delete_mark             NUMBER(5)     NOT NULL
+   ,request_id              NUMBER(15,0)
+   ,program_application_id  NUMBER(15,0)
+   ,program_id              NUMBER(15,0)
+   ,program_update_date     DATE
+   ,attribute1              VARCHAR2(240)
+   ,attribute2              VARCHAR2(240)
+   ,attribute3              VARCHAR2(240)
+   ,attribute4              VARCHAR2(240)
+   ,attribute5              VARCHAR2(240)
+   ,attribute6              VARCHAR2(240)
+   ,attribute7              VARCHAR2(240)
+   ,attribute8              VARCHAR2(240)
+   ,attribute9              VARCHAR2(240)
+   ,attribute10             VARCHAR2(240)
+   ,attribute11             VARCHAR2(240)
+   ,attribute12             VARCHAR2(240)
+   ,attribute13             VARCHAR2(240)
+   ,attribute14             VARCHAR2(240)
+   ,attribute15             VARCHAR2(240)
+   ,attribute16             VARCHAR2(240)
+   ,attribute17             VARCHAR2(240)
+   ,attribute18             VARCHAR2(240)
+   ,attribute19             VARCHAR2(240)
+   ,attribute20             VARCHAR2(240)
+   ,attribute21             VARCHAR2(240)
+   ,attribute22             VARCHAR2(240)
+   ,attribute23             VARCHAR2(240)
+   ,attribute24             VARCHAR2(240)
+   ,attribute25             VARCHAR2(240)
+   ,attribute26             VARCHAR2(240)
+   ,attribute27             VARCHAR2(240)
+   ,attribute28             VARCHAR2(240)
+   ,attribute29             VARCHAR2(240)
+   ,attribute30             VARCHAR2(240)
+   ,created_by              NUMBER(15,0)  NOT NULL
+   ,creation_date           DATE          NOT NULL
+   ,last_updated_by         NUMBER(15,0)  NOT NULL
+   ,last_update_date        DATE          NOT NULL
+   ,last_update_login       NUMBER(15,0)
+   ,attribute_category      VARCHAR2(30)
+   ,period_trans_qty        NUMBER
+   ,period_perp_qty         NUMBER
+   ,record_type             VARCHAR(1)
+)
+/

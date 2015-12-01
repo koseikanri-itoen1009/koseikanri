@@ -1,0 +1,38 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2015. All rights reserved.
+ * 
+ * TABLE Name      : XXCCP_MTL_CATEGORIES_B
+ * Description     : 品目カテゴリ中間テーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2015/09/29    1.0   S.Niki       新規作成
+ ************************************************************************/
+CREATE TABLE xxccp.xxccp_mtl_categories_b(
+    structure_code              VARCHAR2(30)  NOT NULL
+   ,structure_id                NUMBER        NOT NULL
+   ,segment1                    VARCHAR2(40)
+   ,description                 VARCHAR2(240)
+   ,disable_date                DATE
+   ,attribute_category          VARCHAR2(30)
+   ,attribute1                  VARCHAR2(150)
+   ,attribute2                  VARCHAR2(150)
+   ,attribute3                  VARCHAR2(150)
+   ,attribute4                  VARCHAR2(150)
+   ,attribute5                  VARCHAR2(150)
+   ,attribute6                  VARCHAR2(150)
+   ,attribute7                  VARCHAR2(150)
+   ,attribute8                  VARCHAR2(150)
+   ,attribute9                  VARCHAR2(150)
+   ,attribute10                 VARCHAR2(150)
+   ,attribute11                 VARCHAR2(150)
+   ,attribute12                 VARCHAR2(150)
+   ,attribute13                 VARCHAR2(150)
+   ,attribute14                 VARCHAR2(150)
+   ,attribute15                 VARCHAR2(150)
+   ,record_type                 VARCHAR(1)
+  )
+/

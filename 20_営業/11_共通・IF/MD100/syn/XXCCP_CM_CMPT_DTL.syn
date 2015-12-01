@@ -1,0 +1,14 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2015. All rights reserved.
+ *
+ * TABLE Name      : XXCCP_CM_CMPT_DTL
+ * Synonym Name    : OPM品目原価中間テーブル(シノニム)
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2015/08/10    1.0   S.Niki       新規作成
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM apps.xxccp_cm_cmpt_dtl FOR xxccp.xxccp_cm_cmpt_dtl;

@@ -1,0 +1,19 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2015. All rights reserved.
+ *
+ * INDEX Name      : XXCCP_MTL_SYSTEM_ITEMS_B_N01
+ * Synonym Name    : DISC品目マスタ中間テーブル(インデックス)
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2015/08/11    1.0   S.Niki       新規作成
+ ************************************************************************/
+CREATE INDEX xxccp.xxccp_mtl_system_items_b_n01
+ON xxccp.xxccp_mtl_system_items_b
+(
+  segment1
+)
+TABLESPACE XXIDX2;
