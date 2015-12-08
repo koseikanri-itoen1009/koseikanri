@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *                                                       考慮漏れ対応
  *  2010/05/07    1.18  M.Sano           [E_本稼動_02575]VDコラム別取引情報の別明細で重複削除される
  *                                                       現象の修正
+ *  2015/10/19    1.19  K.Kiriu          [E_本稼動_13355]保管場所エラースキップ対応
  *
  *****************************************************************************************/
 --
@@ -2682,7 +2683,10 @@ AS
                                    iv_token_value2       => lv_str_key_data
                                  );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
+-- 2015/10/19 Ver.1.19 K.Kiriu Mod Start
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_warn;
+-- 2015/10/19 Ver.1.19 K.Kiriu Mod End
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -5198,36 +5202,38 @@ AS
           ELSIF ( lv_retcode = cv_status_error ) THEN
             RAISE global_process_expt;
           END IF;
-          --
-          -- ===================================================
-          -- 今回データセット
-          -- ===================================================
-          gn_tt_xvdh_idx                  := gn_tt_xvdh_idx + 1;
-          g_tt_xvdh_tab(gn_tt_xvdh_idx).vd_digestion_hdr_id
-                                          := l_xvdh_rec2.vd_digestion_hdr_id;
-          g_tt_xvdh_tab(gn_tt_xvdh_idx).customer_number
-                                          := l_xvdh_rec2.customer_number;
-          g_tt_xvdh_tab(gn_tt_xvdh_idx).digestion_due_date
-                                          := l_xvdh_rec2.digestion_due_date;
--- 2010/03/24 Ver.1.14 Add Start
-          g_tt_xvdh_tab(gn_tt_xvdh_idx).sales_base_code
-                                          := l_xvdh_rec2.sales_base_code;
--- 2010/03/24 Ver.1.14 Add End
-          --
-          -- ===================================================
-          -- VDコラム別取引ヘッダデータセット
-          -- ===================================================
-          gn_xvch_idx                     := gn_xvch_idx + 1;
-          g_xvch_tab(gn_xvch_idx).customer_number
-                                          := l_xvdh_rec2.customer_number;
-          g_xvch_tab(gn_xvch_idx).digestion_due_date
-                                          := l_xvdh_rec2.digestion_due_date;
-          g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
-                                          := NVL( l_xvdh_rec2.pre_digestion_due_date + cn_one_day, gd_min_date );
--- 2010/03/24 Ver.1.14 Add Start
-          g_xvch_tab(gn_xvch_idx).sales_base_code
-                                          := l_xvdh_rec2.sales_base_code;
--- 2010/03/24 Ver.1.14 Add End
+-- 2015/10/19 Ver.1.19 K.Kiriu Del Start
+--          --
+--          -- ===================================================
+--          -- 今回データセット
+--          -- ===================================================
+--          gn_tt_xvdh_idx                  := gn_tt_xvdh_idx + 1;
+--          g_tt_xvdh_tab(gn_tt_xvdh_idx).vd_digestion_hdr_id
+--                                          := l_xvdh_rec2.vd_digestion_hdr_id;
+--          g_tt_xvdh_tab(gn_tt_xvdh_idx).customer_number
+--                                          := l_xvdh_rec2.customer_number;
+--          g_tt_xvdh_tab(gn_tt_xvdh_idx).digestion_due_date
+--                                          := l_xvdh_rec2.digestion_due_date;
+---- 2010/03/24 Ver.1.14 Add Start
+--          g_tt_xvdh_tab(gn_tt_xvdh_idx).sales_base_code
+--                                          := l_xvdh_rec2.sales_base_code;
+---- 2010/03/24 Ver.1.14 Add End
+--          --
+--          -- ===================================================
+--          -- VDコラム別取引ヘッダデータセット
+--          -- ===================================================
+--          gn_xvch_idx                     := gn_xvch_idx + 1;
+--          g_xvch_tab(gn_xvch_idx).customer_number
+--                                          := l_xvdh_rec2.customer_number;
+--          g_xvch_tab(gn_xvch_idx).digestion_due_date
+--                                          := l_xvdh_rec2.digestion_due_date;
+--          g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
+--                                          := NVL( l_xvdh_rec2.pre_digestion_due_date + cn_one_day, gd_min_date );
+---- 2010/03/24 Ver.1.14 Add Start
+--          g_xvch_tab(gn_xvch_idx).sales_base_code
+--                                          := l_xvdh_rec2.sales_base_code;
+---- 2010/03/24 Ver.1.14 Add End
+-- 2015/10/19 Ver.1.19 K.Kiriu Del End
           --
           -- ===================================================
           -- A-4  ヘッダ単位初期化処理
@@ -5327,9 +5333,42 @@ AS
             ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
           );
           --
-          IF ( lv_retcode <> cv_status_normal ) THEN
+-- 2015/10/19 Ver.1.19 K.Kiriu Mod Start
+--          IF ( lv_retcode <> cv_status_normal ) THEN
+          IF ( lv_retcode = cv_status_warn ) THEN
+            RAISE skip_error_expt;
+          ELSIF ( lv_retcode = cv_status_error ) THEN
+-- 2015/10/19 Ver.1.19 K.Kiriu Mod End
             RAISE global_process_expt;
           END IF;
+-- 2015/10/19 Ver.1.19 K.Kiriu Add Start
+          --
+          -- ===================================================
+          -- 今回データセット
+          -- ===================================================
+          gn_tt_xvdh_idx                  := gn_tt_xvdh_idx + 1;
+          g_tt_xvdh_tab(gn_tt_xvdh_idx).vd_digestion_hdr_id
+                                          := l_xvdh_rec2.vd_digestion_hdr_id;
+          g_tt_xvdh_tab(gn_tt_xvdh_idx).customer_number
+                                          := l_xvdh_rec2.customer_number;
+          g_tt_xvdh_tab(gn_tt_xvdh_idx).digestion_due_date
+                                          := l_xvdh_rec2.digestion_due_date;
+          g_tt_xvdh_tab(gn_tt_xvdh_idx).sales_base_code
+                                          := l_xvdh_rec2.sales_base_code;
+          --
+          -- ===================================================
+          -- VDコラム別取引ヘッダデータセット
+          -- ===================================================
+          gn_xvch_idx                     := gn_xvch_idx + 1;
+          g_xvch_tab(gn_xvch_idx).customer_number
+                                          := l_xvdh_rec2.customer_number;
+          g_xvch_tab(gn_xvch_idx).digestion_due_date
+                                          := l_xvdh_rec2.digestion_due_date;
+          g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
+                                          := NVL( l_xvdh_rec2.pre_digestion_due_date + cn_one_day, gd_min_date );
+          g_xvch_tab(gn_xvch_idx).sales_base_code
+                                          := l_xvdh_rec2.sales_base_code;
+-- 2015/10/19 Ver.1.19 K.Kiriu Add End
           --
           -- ===================================================
           -- 消化VD用消化計算ヘッダ登録用セット処理
@@ -5726,44 +5765,46 @@ AS
               IF ( lv_lock_data_err_flg = cv_yes ) THEN
                 RAISE skip_error_expt;
               END IF;
-              -- ===================================================
-              -- 今回データセット
-              -- ===================================================
-              <<tt_xvdh_loop2>>
-              FOR ln_wk_idx IN 1..g_tt_xvdh_work_tab.COUNT LOOP
-                -- 今回データセット
-                g_tt_xvdh_tab(ln_wk_idx).vd_digestion_hdr_id
-                                          := g_tt_xvdh_work_tab(ln_wk_idx).vd_digestion_hdr_id;
-                g_tt_xvdh_tab(ln_wk_idx).customer_number
-                                          := g_tt_xvdh_work_tab(ln_wk_idx).customer_number;
-                g_tt_xvdh_tab(ln_wk_idx).digestion_due_date
-                                          := g_tt_xvdh_work_tab(ln_wk_idx).digestion_due_date;
--- 2010/03/24 Ver.1.14 Add Start
-                g_tt_xvdh_tab(ln_wk_idx).sales_base_code
-                                          := g_tt_xvdh_work_tab(ln_wk_idx).sales_base_code;
--- 2010/03/24 Ver.1.14 Add End
-              --
-              END LOOP tt_xvdh_loop2;
--- 2010/02/15 Ver.1.13 K.Hosoi Add End
-              --
-              -- ===================================================
-              -- VDコラム別取引ヘッダデータセット
-              -- ===================================================
-              gn_xvch_idx                 := gn_xvch_idx + 1;
-              g_xvch_tab(gn_xvch_idx).customer_number
-                                          := l_cust_rec.customer_number;
-              g_xvch_tab(gn_xvch_idx).digestion_due_date
-                                          := g_diges_due_dt_tab(ln_idx);
-              g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
-                                          := CASE
-                                               WHEN ( ld_pre_digestion_due_date = gd_min_date )
-                                               THEN ld_pre_digestion_due_date
-                                               ELSE ld_pre_digestion_due_date + cn_one_day
-                                             END;
--- 2010/03/24 Ver.1.14 Add Start
-              g_xvch_tab(gn_xvch_idx).sales_base_code
-                                          := l_cust_rec.sales_base_code;
--- 2010/03/24 Ver.1.14 Add End
+-- 2015/10/19 Ver.1.19 K.Kiriu Del Start
+--              -- ===================================================
+--              -- 今回データセット
+--              -- ===================================================
+--              <<tt_xvdh_loop2>>
+--              FOR ln_wk_idx IN 1..g_tt_xvdh_work_tab.COUNT LOOP
+--                -- 今回データセット
+--                g_tt_xvdh_tab(ln_wk_idx).vd_digestion_hdr_id
+--                                          := g_tt_xvdh_work_tab(ln_wk_idx).vd_digestion_hdr_id;
+--                g_tt_xvdh_tab(ln_wk_idx).customer_number
+--                                          := g_tt_xvdh_work_tab(ln_wk_idx).customer_number;
+--                g_tt_xvdh_tab(ln_wk_idx).digestion_due_date
+--                                          := g_tt_xvdh_work_tab(ln_wk_idx).digestion_due_date;
+---- 2010/03/24 Ver.1.14 Add Start
+--                g_tt_xvdh_tab(ln_wk_idx).sales_base_code
+--                                          := g_tt_xvdh_work_tab(ln_wk_idx).sales_base_code;
+---- 2010/03/24 Ver.1.14 Add End
+--              --
+--              END LOOP tt_xvdh_loop2;
+---- 2010/02/15 Ver.1.13 K.Hosoi Add End
+--              --
+--              -- ===================================================
+--              -- VDコラム別取引ヘッダデータセット
+--              -- ===================================================
+--              gn_xvch_idx                 := gn_xvch_idx + 1;
+--              g_xvch_tab(gn_xvch_idx).customer_number
+--                                          := l_cust_rec.customer_number;
+--              g_xvch_tab(gn_xvch_idx).digestion_due_date
+--                                          := g_diges_due_dt_tab(ln_idx);
+--              g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
+--                                          := CASE
+--                                               WHEN ( ld_pre_digestion_due_date = gd_min_date )
+--                                               THEN ld_pre_digestion_due_date
+--                                               ELSE ld_pre_digestion_due_date + cn_one_day
+--                                             END;
+---- 2010/03/24 Ver.1.14 Add Start
+--              g_xvch_tab(gn_xvch_idx).sales_base_code
+--                                          := l_cust_rec.sales_base_code;
+---- 2010/03/24 Ver.1.14 Add End
+-- 2015/10/19 Ver.1.19 K.Kiriu Del End
               --
               -- ===================================================
               -- A-4  ヘッダ単位初期化処理
@@ -5848,9 +5889,49 @@ AS
                 ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ
               );
               --
-              IF ( lv_retcode <> cv_status_normal ) THEN
+-- 2015/10/19 Ver.1.19 K.Kiriu Mod Start
+--              IF ( lv_retcode <> cv_status_normal ) THEN
+              IF ( lv_retcode = cv_status_warn ) THEN
+                RAISE skip_error_expt;
+              ELSIF ( lv_retcode = cv_status_error ) THEN
+-- 2015/10/19 Ver.1.19 K.Kiriu Mod End
                 RAISE global_process_expt;
               END IF;
+-- 2015/10/19 Ver.1.19 K.Kiriu Add Start
+              -- ===================================================
+              -- 今回データセット
+              -- ===================================================
+              <<tt_xvdh_loop2>>
+              FOR ln_wk_idx IN 1..g_tt_xvdh_work_tab.COUNT LOOP
+                -- 今回データセット
+                g_tt_xvdh_tab(ln_wk_idx).vd_digestion_hdr_id
+                                          := g_tt_xvdh_work_tab(ln_wk_idx).vd_digestion_hdr_id;
+                g_tt_xvdh_tab(ln_wk_idx).customer_number
+                                          := g_tt_xvdh_work_tab(ln_wk_idx).customer_number;
+                g_tt_xvdh_tab(ln_wk_idx).digestion_due_date
+                                          := g_tt_xvdh_work_tab(ln_wk_idx).digestion_due_date;
+                g_tt_xvdh_tab(ln_wk_idx).sales_base_code
+                                          := g_tt_xvdh_work_tab(ln_wk_idx).sales_base_code;
+              --
+              END LOOP tt_xvdh_loop2;
+              --
+              -- ===================================================
+              -- VDコラム別取引ヘッダデータセット
+              -- ===================================================
+              gn_xvch_idx                 := gn_xvch_idx + 1;
+              g_xvch_tab(gn_xvch_idx).customer_number
+                                          := l_cust_rec.customer_number;
+              g_xvch_tab(gn_xvch_idx).digestion_due_date
+                                          := g_diges_due_dt_tab(ln_idx);
+              g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
+                                          := CASE
+                                               WHEN ( ld_pre_digestion_due_date = gd_min_date )
+                                               THEN ld_pre_digestion_due_date
+                                               ELSE ld_pre_digestion_due_date + cn_one_day
+                                             END;
+              g_xvch_tab(gn_xvch_idx).sales_base_code
+                                          := l_cust_rec.sales_base_code;
+-- 2015/10/19 Ver.1.19 K.Kiriu Add End
               --
               -- ===================================================
               -- 消化VD用消化計算ヘッダ登録用セット処理
