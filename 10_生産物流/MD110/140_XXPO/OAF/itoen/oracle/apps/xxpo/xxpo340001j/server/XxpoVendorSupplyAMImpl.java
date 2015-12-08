@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2009-02-06 1.4  伊藤ひとみ   本番障害#1147対応
 * 2009-02-18 1.5  伊藤ひとみ   本番障害#1096,1178対応
 * 2009-03-02 1.6  伊藤ひとみ   本番障害#32対応
+* 2015-10-06 1.7  山下翔太     E_本稼動_13238対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -43,7 +44,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 外注出来高報告のアプリケーションモジュールクラスです。
  * @author  ORACLE 伊藤 ひとみ
- * @version 1.6
+ * @version 1.7
  ***************************************************************************
  */
 public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -469,6 +470,49 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     }
   }
 
+// 2015-10-06 S.Yamashita Add Start
+  /***************************************************************************
+   * ロット情報を取得するメソッドです。(登録画面用)
+   ***************************************************************************
+   */
+  public void getLotMst()
+  {
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // データ取得
+    String itemClassCode = (String)vendorSupplyMakeRow.getAttribute("ItemClassCode");// 品目区分
+    Number itemId        = (Number)vendorSupplyMakeRow.getAttribute("ItemId");       // 品目ID
+    Date productedDate   = (Date)vendorSupplyMakeRow.getAttribute("ProductedDate");  // 製造日
+    String koyuCode      = (String)vendorSupplyMakeRow.getAttribute("KoyuCode");     // 固有記号
+    
+    // 品目区分が5：製品の場合
+    if (XxpoConstants.ITEM_CLASS_PROD.equals(itemClassCode))
+    {
+      // ロット情報取得
+      HashMap retHashMap = XxpoUtility.getLotMst(
+                    getOADBTransaction(), // トランザクション
+                    itemId,               // 品目ID
+                    productedDate,        // 製造日
+                    koyuCode              // 固有記号
+                  );
+      // 外注出来高情報:登録VOにセット
+      vendorSupplyMakeRow.setAttribute("LotNumber"      , retHashMap.get("LotNumber"));      // ロットNo
+      vendorSupplyMakeRow.setAttribute("LotId"          , retHashMap.get("LotId"));          // ロットID
+      vendorSupplyMakeRow.setAttribute("LotStatus"      , retHashMap.get("LotStatus"));      // ロットステータス
+      vendorSupplyMakeRow.setAttribute("QtInspectReqNo" , retHashMap.get("QtInspectReqNo")); // 品質検査依頼No
+    }else
+    {
+      // 品目区分が「5:製品」以外の場合はNULLをセット
+      // 外注出来高情報:登録VOにセット
+      vendorSupplyMakeRow.setAttribute("LotNumber"      , ""); // ロットNo
+      vendorSupplyMakeRow.setAttribute("LotId"          , ""); // ロットID
+      vendorSupplyMakeRow.setAttribute("LotStatus"      , ""); // ロットステータス
+      vendorSupplyMakeRow.setAttribute("QtInspectReqNo" , ""); // 品質検査依頼No
+    }
+  }
+// 2015-10-06 S.Yamashita Add End
   /***************************************************************************
    * 入力チェックを行うメソッドです。(登録画面用)
    * @param exceptions - エラーリスト
@@ -1494,6 +1538,12 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     vendorSupplyMakeRow.setAttribute("VendorStockWhse", ""); // 相手先在庫入庫先
     // 工場データから取得する項目をリセット
     vendorSupplyMakeRow.setAttribute("KoyuCode",        ""); // 固有記号
+// 2015-10-06 S.Yamashita Add Start
+    vendorSupplyMakeRow.setAttribute("LotNumber",       ""); // ロットNo
+    vendorSupplyMakeRow.setAttribute("LotId",           ""); // ロットID
+    vendorSupplyMakeRow.setAttribute("LotStatus",       ""); // ロットステータス
+    vendorSupplyMakeRow.setAttribute("QtInspectReqNo",  ""); // 品質検査依頼No
+// 2015-10-06 S.Yamashita Add End
 
     // 入力制御
     readOnlyChangedMake();
@@ -1507,6 +1557,10 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
   {
     // 固有記号取得
     getKoyuCode(); 
+// 2015-10-06 S.Yamashita Add Start
+    // ロット情報取得
+    getLotMst();
+// 2015-10-06 S.Yamashita Add End
   }
 
   /***************************************************************************
@@ -1523,6 +1577,10 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
         
     // 賞味期限取得
     getUseByDate(); 
+// 2015-10-06 S.Yamashita Add Start
+    // ロット情報取得
+    getLotMst();
+// 2015-10-06 S.Yamashita Add End
   }
 
   /***************************************************************************
@@ -1539,6 +1597,10 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     
     // 賞味期限取得
     getUseByDate();
+// 2015-10-06 S.Yamashita Add Start
+    // ロット情報取得
+    getLotMst();
+// 2015-10-06 S.Yamashita Add End
   }
 
   /***************************************************************************
@@ -1554,6 +1616,10 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 賞味期限取得
     getUseByDate();
+// 2015-10-06 S.Yamashita Add Start
+    // ロット情報取得
+    getLotMst();
+// 2015-10-06 S.Yamashita Add End
   }
 
   /***************************************************************************
@@ -1591,6 +1657,16 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       getUseByDate();
     }
 // 2009-02-06 H.Itou Add End
+// 2015-10-06 S.Yamashita Add Start
+    // ロットNoに値がない場合、自動算出
+    if (XxcmnUtility.isBlankOrNull(params.get("LotNumber")))
+    {
+      // ************************** //
+      // *   ロット情報算出       * //
+      // ************************** //
+      getLotMst();
+    }
+// 2015-10-06 S.Yamashita Add End
 
     // ******************************* //
     // *   必須チェック              * //
@@ -1633,19 +1709,21 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       OAException.raiseBundledOAException(exceptions);
     }
 
-    // ******************************* //
-    // *   ロット存在確認チェック    * //
-    // ******************************* //
-    // 新規登録かつ 品目区分が5：製品の場合、実行
-    if (XxpoConstants.PROCESS_FLAG_I.equals(processFlag) && XxpoConstants.ITEM_CLASS_PROD.equals(itemClassCode))
-    {
-      lotCheck(exceptions);
-      // 例外があった場合、例外メッセージを出力し、処理終了
-      if (exceptions.size() > 0)
-      {
-        OAException.raiseBundledOAException(exceptions);
-      }      
-    }
+// 2015-10-06 S.Yamashita Del Start
+//    // ******************************* //
+//    // *   ロット存在確認チェック    * //
+//    // ******************************* //
+//    // 新規登録かつ 品目区分が5：製品の場合、実行
+//    if (XxpoConstants.PROCESS_FLAG_I.equals(processFlag) && XxpoConstants.ITEM_CLASS_PROD.equals(itemClassCode))
+//    {
+//      lotCheck(exceptions);
+//      // 例外があった場合、例外メッセージを出力し、処理終了
+//      if (exceptions.size() > 0)
+//      {
+//        OAException.raiseBundledOAException(exceptions);
+//      }      
+//    }
+// 2015-10-06 S.Yamashita Del End
     
     // ******************************* //
     // *   引当可能数量チェック      * //
@@ -1673,6 +1751,10 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap params = getAllDataHashMap();
     String productResultType = (String)params.get("ProductResultType"); // 処理タイプ
     String testCode          = (String)params.get("TestCode");          // 試験有無区分
+// 2015-10-06 S.Yamashita Add Start
+    String lotNumber         = (String)params.get("LotNumber");         // ロットNo
+    String qtInspectReqNo    = (String)params.get("QtInspectReqNo");    // 品詞検査依頼No
+// 2015-10-06 S.Yamashita Add End
     
     // ************************ //
     // *     在庫単価取得     * //
@@ -1694,15 +1776,22 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 //    // ************************ //
 //    getLocationData();
 // 2008-10-23 H.Itou Del End
-    // ************************ //
-    // * ロットマスタ登録     * //
-    // ************************ //
-    // ロット登録処理が正常終了でない場合
-    if (XxcmnConstants.RETURN_NOT_EXE.equals(insLotMst()))
+// 2015-10-06 S.Yamashita Add Start
+    // 既存ロットを使用しない場合
+    if(XxcmnUtility.isBlankOrNull(lotNumber))
     {
-      return XxcmnConstants.RETURN_NOT_EXE;
+// 2015-10-06 S.Yamashita Add End
+      // ************************ //
+      // * ロットマスタ登録     * //
+      // ************************ //
+      // ロット登録処理が正常終了でない場合
+      if (XxcmnConstants.RETURN_NOT_EXE.equals(insLotMst()))
+      {
+        return XxcmnConstants.RETURN_NOT_EXE;
+      }
+// 2015-10-06 S.Yamashita Add Start
     }
-    
+// 2015-10-06 S.Yamashita Add End
     // ********************************** //
     // * 外注出来高実績(アドオン)登録   * //
     // ********************************** //
@@ -1715,15 +1804,23 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     // 処理タイプ1:相手先在庫管理の場合
     if (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType))
     {
-      // ************************ //
-      // * ロット原価登録       * //
-      // ************************ //
-      // ロット原価登録処理が正常終了でない場合
-      if (XxcmnConstants.RETURN_NOT_EXE.equals(insLotCost()))
+// 2015-10-06 S.Yamashita Add Start
+      // 既存ロットを使用しない場合
+      if(XxcmnUtility.isBlankOrNull(lotNumber))
       {
-        return XxcmnConstants.RETURN_NOT_EXE;
-      }
+// 2015-10-06 S.Yamashita Add End
+        // ************************ //
+        // * ロット原価登録       * //
+        // ************************ //
+        // ロット原価登録処理が正常終了でない場合
+        if (XxcmnConstants.RETURN_NOT_EXE.equals(insLotCost()))
+        {
+          return XxcmnConstants.RETURN_NOT_EXE;
+        }
     
+// 2015-10-06 S.Yamashita Add Start
+      }
+// 2015-10-06 S.Yamashita Add End
       // ******************************** //
       // * 完了在庫トランザクション登録 * //
       // ******************************** //
@@ -1779,11 +1876,19 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     // 試験有無区分 1:有の場合
     if (XxpoConstants.QT_TYPE_ON.equals(testCode))
     {
-      // 品質検査依頼情報登録が正常終了でない場合
-      if (XxcmnConstants.RETURN_NOT_EXE.equals(doQtInspection()))
+// 2015-10-06 S.Yamashita Add Start
+      // 既存ロットを使用しない場合、または品質検査依頼Noがない場合
+      if (XxcmnUtility.isBlankOrNull(lotNumber) || XxcmnUtility.isBlankOrNull(qtInspectReqNo))
       {
-        return XxcmnConstants.RETURN_NOT_EXE;
+// 2015-10-06 S.Yamashita Add End
+        // 品質検査依頼情報登録が正常終了でない場合
+        if (XxcmnConstants.RETURN_NOT_EXE.equals(doQtInspection()))
+        {
+          return XxcmnConstants.RETURN_NOT_EXE;
+        }
+// 2015-10-06 S.Yamashita Add Start
       }
+// 2015-10-06 S.Yamashita Add End
     }
     return XxcmnConstants.RETURN_SUCCESS;
   }
