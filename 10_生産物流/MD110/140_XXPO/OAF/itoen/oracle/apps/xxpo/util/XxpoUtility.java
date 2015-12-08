@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.28
+* バージョン : 1.29
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -36,6 +36,7 @@
 * 2009-05-13 1.26 吉元強樹     本番障害#1282対応
 * 2009-07-08 1.27 伊藤ひとみ   本番障害#1566対応
 * 2011-06-01 1.28 窪和重       本番障害#1786対応
+* 2015-10-05 1.29 山下翔太     E_本稼動_13238対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -59,7 +60,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.27
+ * @version 1.29
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -571,6 +572,107 @@ public class XxpoUtility
       return true;
     }
   } // chkLotMst
+// 2015-10-05 S.Yamashita Add Start
+  /*****************************************************************************
+   * ロット情報を取得します。
+   * @param  trans            - トランザクション
+   * @param  itemId           - 品目ID
+   * @param  manufacturedDate - 製造日
+   * @param  koyuCode         - 固有記号
+   * @return HashMap          - ロット情報
+   * @throws OAException      - OA例外
+   ****************************************************************************/
+  public static HashMap getLotMst(
+    OADBTransaction trans,
+    Number itemId,
+    Date   manufacturedDate,
+    String koyuCode
+  ) throws OAException
+  {
+    String  apiName    = "getLotMst";   // API名
+    HashMap retHashMap = new HashMap(); // PL/SQL戻り値
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                                 );
+    sb.append("  SELECT ilm.lot_no lot_no "                            ); // ロットNo
+    sb.append("        ,ilm.lot_id lot_id "                            ); // ロットID
+    sb.append("        ,ilm.attribute23 lot_status "                   ); // ロットステータス
+    sb.append("        ,ilm.attribute22 qt_inspect_req_no "            ); // 品質検査依頼No
+    sb.append("  INTO   :1 "                                           ); 
+    sb.append("        ,:2 "                                           ); 
+    sb.append("        ,:3 "                                           ); 
+    sb.append("        ,:4 "                                           ); 
+    sb.append("  FROM   ic_lots_mst ilm "                              ); // OPMロットマスタ
+    sb.append("  WHERE  ilm.item_id    = :5 "                          ); // 品目ID
+    sb.append("  AND    ilm.attribute1 = TO_CHAR( :6, 'YYYY/MM/DD' ) " ); // 製造日
+    sb.append("  AND    ilm.attribute2 = :7; "                         ); // 固有記号
+    sb.append("EXCEPTION "                                             );
+    sb.append("  WHEN NO_DATA_FOUND THEN "                             );
+    sb.append("    NULL; "                                             );
+    sb.append("END; "                                                  );
+
+    // PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(5, XxcmnUtility.intValue(itemId));             // 品目ID
+      cstmt.setDate(6, XxcmnUtility.dateValue(manufacturedDate)); // 製造日
+      cstmt.setString(7, koyuCode);                               // 固有記号
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR); // ロットNo
+      cstmt.registerOutParameter(2, Types.VARCHAR); // ロットID
+      cstmt.registerOutParameter(3, Types.VARCHAR); // ロットステータス
+      cstmt.registerOutParameter(4, Types.VARCHAR); // 品質検査依頼No
+      
+      // PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      retHashMap.put("LotNumber"     , cstmt.getString(1)); // ロットNo
+      retHashMap.put("LotId"         , cstmt.getString(2)); // ロットID
+      retHashMap.put("LotStatus"     , cstmt.getString(3)); // ロットステータス
+      retHashMap.put("QtInspectReqNo", cstmt.getString(4)); // 品質検査依頼No
+      
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    // PL/SQL戻り値
+    return retHashMap;
+  } // getLotMst
+// 2015-10-05 S.Yamashita Add End
 
   /*****************************************************************************
    * 引当可能数量チェックを行います。
