@@ -37,7 +37,7 @@ AS
  *  2010/02/18    1.5   K.Yamaguchi      [障害E_本稼動_01600]非在庫品目の場合納品数量を０とする
  *                                                           変動電気料を連携対象外とする
  *  2011/04/19    1.6   Y.Nishino        [障害E_本稼動_04976]情報系への連携項目追加
- *  2015/02/23    1.7   Y.Koh            障害対応E_本稼動_12840
+ *  2015/10/08    1.7   K.Kiriu          [障害E_本稼動_13323]0除算対応（E_本稼動_12840再対応)
  *
  *****************************************************************************************/
 --
@@ -89,9 +89,9 @@ AS
   cv_tkn_profile             CONSTANT VARCHAR2(30)   := 'PROFILE';                           -- プロファイル名
   cv_tkn_directory           CONSTANT VARCHAR2(30)   := 'DIRECTORY';                         -- ディレクトリ
   cv_tkn_file_name           CONSTANT VARCHAR2(30)   := 'FILE_NAME';                         -- ファイル名
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
   cv_tkn_uom_code            CONSTANT VARCHAR2(30)   := 'UOM_CODE';                          -- 単位
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
 --
   -- *** 定数(メッセージ) ***
   cv_msg_ccp1_90000          CONSTANT VARCHAR2(50)   := 'APP-XXCCP1-90000';                  -- 対象件数出力
@@ -115,13 +115,12 @@ AS
 -- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
   cv_msg_cok1_10070          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10070';                  -- ロック取得エラー
   cv_msg_cok1_10071          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10071';                  -- 更新エラー
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
   cv_msg_cok1_10538          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10538';                  -- 実績振替基準単位数量0スキップメッセージ
   cv_msg_cok1_10539          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10539';                  -- 実績振替基準単位数量0警告メッセージ
-  cv_msg_cok1_10540          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10540';                  -- 数量0スキップ件数メッセージ
-  cv_msg_cok1_10541          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10541';                  -- 単位エラースキップ件数メッセージ
-  cv_msg_cok1_10542          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10542';                  -- 小数第三位での算出件数メッセージ
--- == 2015/02/23 V1.7 Added END   ===============================================================
+  cv_msg_cok1_10540          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10540';                  -- 単位エラースキップ件数メッセージ
+  cv_msg_cok1_10541          CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10541';                  -- 小数第三位での算出件数メッセージ
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
 --
   -- *** 定数(カスタム・プロファイル名) ***
   cv_prof_company_code       CONSTANT VARCHAR2(50)   := 'XXCOK1_AFF1_COMPANY_CODE';          -- 会社コード
@@ -145,9 +144,9 @@ AS
 -- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
   -- *** 定数(参照タイプ) ***
   cv_lookup_type_01          CONSTANT VARCHAR2(30)   := 'XXCOS1_NO_INV_ITEM_CODE';           -- 非在庫品目
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
   cv_lookup_type_02          CONSTANT VARCHAR2(30)   := 'XXCOK1_TRANSFER_DISABLED_UOM';      -- 振替不可単位
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
   -- *** 定数(参照タイプ・有効フラグ) ***
   cv_enable                  CONSTANT VARCHAR2(1)   := 'Y'; -- 有効
 -- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
@@ -179,11 +178,10 @@ AS
 -- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
   gn_skip_cnt           NUMBER              DEFAULT 0;      -- スキップ件数
 -- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
--- == 2015/02/23 V1.7 Added START ===============================================================
-  gn_qty_skip_cnt       NUMBER              := 0;      -- 数量0スキップ件数
-  gn_uom_skip_cnt       NUMBER              := 0;      -- 単位エラースキップ件数
-  gn_decimal3_cnt       NUMBER              := 0;      -- 小数第三位での算出件数
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
+  gn_uom_skip_cnt       NUMBER              DEFAULT 0;      -- 単位エラースキップ件数
+  gn_decimal3_cnt       NUMBER              DEFAULT 0;      -- 小数第三位での算出件数
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
 --
   gd_sysdate            DATE                DEFAULT NULL;   -- システム日付
   gv_prof_company_code  VARCHAR2(100)       DEFAULT NULL;   -- 会社コード
@@ -451,26 +449,22 @@ AS
     ln_item_uom_price NUMBER       DEFAULT NULL;
     lv_item_uom_price VARCHAR2(15) DEFAULT NULL;
 -- 2010/01/08 Ver.1.4 [E_本稼動_00555,E_本稼動_00900] SCS K.Yamaguchi ADD END
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
+    lv_sale_qty       VARCHAR2(15) DEFAULT NULL;
     lv_exists         VARCHAR2(1);
-    lv_out_msg        VARCHAR2(2000);
+    lv_out_msg        VARCHAR2(5000);
     --
     item_uom_qty_expt EXCEPTION;   --基準単位0例外
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
 --
   BEGIN
     -- ============
     -- 変数の初期化
     -- ============
     lv_retcode := cv_status_normal;
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
     lv_exists  := NULL;
-    -- 数量が0の場合は、数量0スキップ件数をカウントして売上実績振替情報の出力は行わない。
-    IF g_xsti_tab( in_idx ).xsti_qty = 0 THEN
-      gn_qty_skip_cnt := gn_qty_skip_cnt + 1;
-      RETURN;
-    END IF;
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
 --
     -- ==============
     -- 消費税額の算出
@@ -505,7 +499,14 @@ AS
                             , 2
                        )
     ;
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
+--
+    IF( ln_sale_qty = TRUNC( ln_sale_qty ) ) THEN
+      lv_sale_qty := TO_CHAR( ln_sale_qty );
+    ELSE
+      lv_sale_qty := TO_CHAR( ln_sale_qty, 'FM999999990.99' );
+    END IF;
+--
     --基準単位数量が0となる場合
     IF ( ln_item_uom_qty = 0 ) THEN
       --コンカレントは警告終了とする
@@ -513,7 +514,7 @@ AS
       --
       BEGIN
         --参照タイプに指定された単位が存在するか
-        SELECT 'X'
+        SELECT 'X' dummy
         INTO   lv_exists
         FROM   fnd_lookup_values_vl flvv
         WHERE  flvv.lookup_type  = cv_lookup_type_02                          --振替不可単位
@@ -536,6 +537,7 @@ AS
           gn_uom_skip_cnt := gn_uom_skip_cnt + 1;
           RAISE item_uom_qty_expt;
       END;
+--
       --基準単位数量の再判定
       IF ( ln_item_uom_qty = 0 ) THEN
         --データを出力しない
@@ -561,7 +563,7 @@ AS
                       );
       END IF;
     END IF;
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
     ln_item_uom_price := ROUND(   g_xsti_tab( in_idx ).xsti_delivery_unit_price -- 納品単価
                                 / ln_item_uom_qty                               -- 基準単位数量
                               , 2
@@ -616,7 +618,10 @@ AS
 -- Start 2010/01/07 Ver1.4 Y.Kuboshima
 -- 基準単位数量を設定するよう修正
 --                   || TO_CHAR( g_xsti_tab( in_idx ).xsti_qty )                                     -- 売上数量
-                   || TO_CHAR( ln_sale_qty )                                                       -- 売上数量
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu REPAIR START
+--                   || TO_CHAR( ln_sale_qty )                                                       -- 売上数量
+                   || lv_sale_qty                                                                 -- 売上数量
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu REPAIR END
 -- End   2010/01/07 Ver1.4 Y.Kuboshima
       || cv_msg_c
                    || TO_CHAR( lt_tax_amt )                                                        -- 消費税額
@@ -677,7 +682,7 @@ AS
     ov_retcode := lv_retcode;
 --
   EXCEPTION
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
     WHEN item_uom_qty_expt THEN
       --スキップメッセージ出力
       ov_retcode := cv_status_warn;
@@ -696,7 +701,7 @@ AS
                     , iv_message   =>  lv_out_msg
                     , in_new_line  =>  cn_number_0
                     );
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
@@ -731,10 +736,9 @@ AS
     lv_errmsg   VARCHAR2(5000)  DEFAULT NULL;  -- ユーザー・エラー・メッセージ
     lv_out_msg  VARCHAR2(2000)  DEFAULT NULL;  -- メッセージ
     lb_retcode  BOOLEAN         DEFAULT TRUE;  -- メッセージ出力ファンクション戻り値
--- == 2015/02/23 V1.7 Added START ===============================================================
-    lb_warn     BOOLEAN         DEFAULT FALSE;
--- == 2015/02/23 V1.7 Added END   ===============================================================
-
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
+    lb_warn     BOOLEAN         DEFAULT FALSE; -- スキップ判定用
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
 --
     -- =============
     -- ローカル例外
@@ -854,11 +858,11 @@ AS
         );
         IF( lv_retcode = cv_status_error ) THEN
           RAISE loop_expt;
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
         ELSIF( lv_retcode = cv_status_warn ) THEN
           --１件でも警告の場合、処理を警告終了とする。
           lb_warn := TRUE;
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
         END IF;
         --==================================================
         -- 売上実績振替情報更新
@@ -881,14 +885,14 @@ AS
     -- ====================
     -- 出力パラメータの設定
     -- ====================
--- == 2015/02/23 V1.7 Modified START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu REPAIR START
 --    ov_retcode := lv_retcode;
     IF( lb_warn = FALSE ) THEN
       ov_retcode := lv_retcode;
     ELSE
       ov_retcode := cv_status_warn;
     END IF;
--- == 2015/02/23 V1.7 Modified END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu REPAIR END
 --
   EXCEPTION
     --*** 対象データ無エラー ***
@@ -1289,9 +1293,9 @@ AS
     -- エラー処理件数：1件
     -- その他処理件数：0件
     -- ====================================
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
     gn_normal_cnt := gn_normal_cnt - gn_uom_skip_cnt;
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
     IF( lv_retcode = cv_status_error ) THEN
       gn_error_cnt  := cn_count_1;
       gn_target_cnt := cn_count_0;
@@ -1300,10 +1304,10 @@ AS
       gn_error_cnt  := cn_count_0;
     ELSIF( lv_retcode = cv_status_warn ) THEN
       gn_error_cnt  := cn_count_0;
--- == 2015/02/23 V1.7 Deleted START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu DEL START
 --      gn_target_cnt := cn_count_0;
 --      gn_normal_cnt := cn_count_0;
--- == 2015/02/23 V1.7 Deleted END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu DEL END
     END IF;
 --
     -- ===============================
@@ -1344,11 +1348,11 @@ AS
                   , in_new_line  =>  cn_number_0
                   );
 --
--- == 2015/02/23 V1.7 Added START ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
     -- 小数第三位での算出件数出力
     lv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application           => cv_appli_name_xxcok
-                  , iv_name                  => cv_msg_cok1_10542
+                  , iv_name                  => cv_msg_cok1_10541
                   , iv_token_name1           => cv_tkn_count
                   , iv_token_value1          => TO_CHAR( gn_decimal3_cnt )
                   );
@@ -1357,8 +1361,8 @@ AS
                   , iv_message               => lv_out_msg
                   , in_new_line              => cn_number_0
                   );
--- == 2015/02/23 V1.7 Added END   ===============================================================
--- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
+-- 2010/10/08 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
     -- スキップ件数出力
     lv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application           => cv_appli_name_xxccp
@@ -1372,23 +1376,11 @@ AS
                   , in_new_line              => 0
                   );
 -- 2010/02/18 Ver.1.5 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
--- == 2015/02/23 V1.7 Added START ===============================================================
-    -- 数量0スキップ件数出力
-    lv_out_msg := xxccp_common_pkg.get_msg(
-                    iv_application           => cv_appli_name_xxcok
-                  , iv_name                  => cv_msg_cok1_10540
-                  , iv_token_name1           => cv_tkn_count
-                  , iv_token_value1          => TO_CHAR( gn_qty_skip_cnt )
-                  );
-    lb_retcode := xxcok_common_pkg.put_message_f(
-                    in_which                 => FND_FILE.OUTPUT
-                  , iv_message               => lv_out_msg
-                  , in_new_line              => cn_number_0
-                  );
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD START
     -- 単位エラースキップ件数出力
     lv_out_msg := xxccp_common_pkg.get_msg(
                     iv_application           => cv_appli_name_xxcok
-                  , iv_name                  => cv_msg_cok1_10541
+                  , iv_name                  => cv_msg_cok1_10540
                   , iv_token_name1           => cv_tkn_count
                   , iv_token_value1          => TO_CHAR( gn_uom_skip_cnt )
                   );
@@ -1397,7 +1389,7 @@ AS
                   , iv_message               => lv_out_msg
                   , in_new_line              => cn_number_0
                   );
--- == 2015/02/23 V1.7 Added END   ===============================================================
+-- 2015/10/08 Ver.1.7 [障害E_本稼動_13323] SCSK K.Kiriu ADD END
     --エラー件数出力
     lv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application   =>  cv_appli_name_xxccp
