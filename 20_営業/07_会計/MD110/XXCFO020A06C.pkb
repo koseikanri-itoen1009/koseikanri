@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A06C (spec)
  * Description      : 相良会計仕訳科目マッピング共通機能
  * MD.050           : 相良会計仕訳科目マッピング共通機能 (MD050_CFO_020A06)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/09/26    1.0   T.Kobori         新規作成
+ *  2015/11/18    1.1   Y.Shoji          E_本稼動_13335対応
  *
  *****************************************************************************************/
 --
@@ -270,6 +271,10 @@ AS
               )
           OR  ((iv_report = lv_je_ptn_purchasing              --仕入実績表または出荷実績表
               OR iv_report = lv_je_ptn_shipment)
+-- 2015.11.18 Ver1.1 Add Start
+              AND   (iv_prod_class    IS NULL                 --商品区分
+                OR   flvv.attribute3   = iv_prod_class)
+-- 2015.11.18 Ver1.1 Add End
               AND    flvv.attribute5   = iv_ptn_siwake        --仕訳パターン
               AND    flvv.attribute6   = iv_line_no           --行番号
               ))
