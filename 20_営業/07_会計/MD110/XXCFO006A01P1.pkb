@@ -7,7 +7,7 @@ AS
  * Description     : APWIセキュリティ
  * MD.050          : MD050_CFO_006_A01_APWIセキュリティ
  * MD.070          : MD050_CFO_006_A01_APWIセキュリティ
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-05   1.0    SCS 嵐田 勇人    初回作成
+ *  2015-12-02   1.1    SCSK小路 恭弘    E_本稼動_13393対応
  *
  *****************************************************************************************/
 --
@@ -48,6 +49,13 @@ AS
     cn_security_1       CONSTANT NUMBER(2) := 1 ;                                           -- 財務
     cn_security_2       CONSTANT NUMBER(2) := 2 ;                                           -- 購買
     cn_security_99      CONSTANT NUMBER(2) := 99 ;                                          -- ログインユーザー対象なし
+-- 2015.12.02 Ver1.1 Add Start
+    cn_security_3       CONSTANT NUMBER(2) := 3 ;                                           -- 損益照会
+    cn_appli_id_101     CONSTANT NUMBER(3) := 101 ;                                         -- アプリケーションID:101
+    cv_dept_user        CONSTANT VARCHAR2(13) := 'XXCFO%DPT_USR';                           -- 職責：損益照会
+    cv_profile_resp_id  CONSTANT VARCHAR2(7)  := 'RESP_ID';                                 -- 職責ID
+    cv_xx03_department  CONSTANT VARCHAR2(15) := 'XX03_DEPARTMENT';                         -- 部門
+-- 2015.12.02 Ver1.1 Add End
     cv_yes_no_y         CONSTANT VARCHAR2(1) := 'Y' ;                                       -- Y
     -- ===============================
     -- ローカル変数
@@ -57,6 +65,9 @@ AS
     lv_papf_dff28       PER_ALL_PEOPLE_F.ATTRIBUTE28%TYPE ;     -- ログインユーザーに紐付く所属部門
     ln_set_of_books_id  AP_INVOICES_ALL.SET_OF_BOOKS_ID%TYPE ;  -- 会計帳簿ID
     ln_org_id           AP_INVOICES_ALL.ORG_ID%TYPE ;           -- 組織ID
+-- 2015.12.02 Ver1.1 Add Start
+    lt_resp_id          fnd_responsibility.responsibility_key%TYPE ; -- 職責ID
+-- 2015.12.02 Ver1.1 Add End
 --
   BEGIN
 --
@@ -122,11 +133,52 @@ AS
         WHEN NO_DATA_FOUND THEN
           NULL ;
       END ;
+-- 2015.12.02 Ver1.1 Add Start
+      BEGIN
+        -- ====================================================
+        -- 職責：SALES_XXXX_損益照会_会計の判定
+        -- ===================================================
+        SELECT cn_security_3    cn_security_3                  -- 損益照会
+              ,fnd_profile.value(cv_profile_resp_id)  resp_id  -- 職責ID
+        INTO   ln_security
+              ,lt_resp_id
+        FROM   fnd_responsibility fr   -- 職責
+        WHERE  fr.application_id     = cn_appli_id_101
+        AND    fr.responsibility_key LIKE cv_dept_user
+        AND    fr.responsibility_id  = fnd_profile.value(cv_profile_resp_id) ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+-- 2015.12.02 Ver1.1 Add End
     END IF ;
 --
     -- WHERE句追加判定（財務,所属部門なし）
     IF (ln_security IN ( cn_security_1 ,cn_security_99 )) THEN
       NULL ;
+-- 2015.12.02 Ver1.1 Add Start
+    -- 損益照会の場合
+    ELSIF (ln_security = cn_security_3) THEN
+      -- ====================================================
+      -- 階層部門起票分
+      -- ===================================================
+      lv_where := ' ( EXISTS (  SELECT 1 ' ;
+      lv_where := lv_where || ' FROM   apps.fnd_flex_value_rule_usages   ffvru';  -- セキュリティルール割当
+      lv_where := lv_where || '       ,apps.fnd_flex_value_rules         ffvr';   -- セキュリティルール
+      lv_where := lv_where || '       ,apps.fnd_flex_value_sets          ffvs';   -- セキュリティルールセット
+      lv_where := lv_where || '       ,apps.fnd_flex_value_rule_lines    ffvrl';  -- セキュリティルール要素
+      lv_where := lv_where || ' WHERE  ffvru.application_id              = ' || cn_appli_id_101 || ' ' ;
+      lv_where := lv_where || ' AND    ffvs.flex_value_set_name          = ' || '''' || cv_xx03_department || '''' || ' ' ;
+      lv_where := lv_where || ' AND    ffvr.flex_value_set_id            = ffvs.flex_value_set_id ' ;
+      lv_where := lv_where || ' AND    ffvru.flex_value_rule_id          = ffvr.flex_value_rule_id ' ;
+      lv_where := lv_where || ' AND    ffvru.flex_value_set_id           = ffvr.flex_value_set_id ' ;
+      lv_where := lv_where || ' AND    ffvrl.flex_value_rule_id          = ffvr.flex_value_rule_id ' ;
+      lv_where := lv_where || ' AND    ffvrl.flex_value_set_id           = ffvr.flex_value_set_id ' ;
+      lv_where := lv_where || ' AND    ffvrl.flex_value_low              = ap_invoices_all.attribute3 ' ;
+      lv_where := lv_where || ' AND    ap_invoices_all.set_of_books_id   = ' || ln_set_of_books_id || ' ' ;
+      lv_where := lv_where || ' AND    ap_invoices_all.org_id            = ' || ln_org_id || ' ' ;
+      lv_where := lv_where || ' AND    ffvru.responsibility_id           = ' || lt_resp_id || ' ) ) ' ;
+-- 2015.12.02 Ver1.1 Add End
     ELSE
       -- ====================================================
       -- 各拠点・部門/購買関連共通設定
