@@ -58,6 +58,7 @@ public class XxcsoRtnRsrcFullVORowImpl extends OAViewRowImpl
   protected static final int SALEBASECODE = 30;
   protected static final int RSVSALEBASECODE = 31;
   protected static final int RSVSALEBASEACTDATE = 32;
+  protected static final int CUSTOMERCLASSCODE = 33;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -542,6 +543,8 @@ public class XxcsoRtnRsrcFullVORowImpl extends OAViewRowImpl
         return getRsvSaleBaseCode();
       case RSVSALEBASEACTDATE:
         return getRsvSaleBaseActDate();
+      case CUSTOMERCLASSCODE:
+        return getCustomerClassCode();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -650,6 +653,9 @@ public class XxcsoRtnRsrcFullVORowImpl extends OAViewRowImpl
         return;
       case RSVSALEBASEACTDATE:
         setRsvSaleBaseActDate((Date)value);
+        return;
+      case CUSTOMERCLASSCODE:
+        setCustomerClassCode((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -856,6 +862,26 @@ public class XxcsoRtnRsrcFullVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(RSVSALEBASEACTDATE, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute CustomerClassCode
+   */
+  public String getCustomerClassCode()
+  {
+    return (String)getAttributeInternal(CUSTOMERCLASSCODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute CustomerClassCode
+   */
+  public void setCustomerClassCode(String value)
+  {
+    setAttributeInternal(CUSTOMERCLASSCODE, value);
+  }
+
+
 
 
 
