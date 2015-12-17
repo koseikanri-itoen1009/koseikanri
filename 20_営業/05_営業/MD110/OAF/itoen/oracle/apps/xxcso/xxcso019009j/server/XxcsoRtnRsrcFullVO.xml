@@ -41,6 +41,9 @@ SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER,
        ,xcav.sale_base_code sale_base_code
        ,xcav.rsv_sale_base_code rsv_sale_base_code
        ,TRUNC(xcav.rsv_sale_base_act_date) rsv_sale_base_act_date
+-- 2015-09-07 [E_本稼動_13307]  Add Start
+      ,xcav.customer_class_code customer_class_code
+-- 2015-09-07 [E_本稼動_13307]  Add End
 FROM   xxcso_cust_accounts_v   xcav
       ,XXCSO_RTN_RSRC_V        XxcsoRtnRsrcVEO
 WHERE  XxcsoRtnRsrcVEO.account_number = xcav.account_number
@@ -103,6 +106,9 @@ SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER,
        ,xcav.sale_base_code sale_base_code
        ,xcav.rsv_sale_base_code rsv_sale_base_code
        ,TRUNC(xcav.rsv_sale_base_act_date) rsv_sale_base_act_date
+-- 2015-09-07 [E_本稼動_13307]  Add Start
+      ,xcav.customer_class_code customer_class_code
+-- 2015-09-07 [E_本稼動_13307]  Add End
 FROM   xxcso_cust_accounts_v   xcav
       ,XXCSO_RTN_RSRC_V        XxcsoRtnRsrcVEO
 WHERE  XxcsoRtnRsrcVEO.account_number = xcav.account_number
@@ -136,11 +142,60 @@ AND    (
         OR
         (:10 IS NULL)
        )
-
+-- 2015-09-07 [E_本稼動_13307]  Add Start
+UNION ALL
+SELECT XxcsoRtnRsrcVEO.ACCOUNT_NUMBER, 
+       XxcsoRtnRsrcVEO.CUST_ACCOUNT_ID, 
+       XxcsoRtnRsrcVEO.CREATED_BY, 
+       XxcsoRtnRsrcVEO.CREATION_DATE, 
+       XxcsoRtnRsrcVEO.LAST_UPDATED_BY, 
+       XxcsoRtnRsrcVEO.LAST_UPDATE_DATE, 
+       XxcsoRtnRsrcVEO.LAST_UPDATE_LOGIN, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_START_DATE, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.TRGT_ROUTE_NO_LAST_UPD_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO,
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_START_DATE,
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_EXTENSION_ID,
+       XxcsoRtnRsrcVEO.NEXT_ROUTE_NO_LAST_UPD_DATE,
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE,
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_START_DATE,
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_EXTENSION_ID,
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_LAST_UPD_DATE,
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE,
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_START_DATE, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_EXTENSION_ID, 
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_LAST_UPD_DATE,
+       XxcsoRtnRsrcVEO.TRGT_RESOURCE_CNT,
+       XxcsoRtnRsrcVEO.NEXT_RESOURCE_CNT
+      ,hp.party_name                       party_name
+      ,'3'                                 sort_code
+      ,xca.receiv_base_code                sale_base_code
+      ,''                                  rsv_sale_base_code
+      ,TO_DATE('')                         rsv_sale_base_act_date
+      ,hca.customer_class_code             customer_class_code
+FROM   hz_parties              hp
+      ,hz_cust_accounts        hca
+      ,xxcmm_cust_accounts     xca
+      ,xxcso_rtn_rsrc_v        XxcsoRtnRsrcVEO
+WHERE  XxcsoRtnRsrcVEO.account_number = hca.account_number
+AND    hca.party_id                   = hp.party_id
+AND    xca.customer_id                = hca.cust_account_id
+AND    ( hca.customer_class_code || '-' || hp.duns_number_c ) = '14-99'
+AND    xca.receiv_base_code        = :11
+AND    EXISTS(
+         SELECT  /*+ PUSH_SUBQ */
+                 1
+         FROM    xxcso_resource_custs_v2  xrcv
+         WHERE   xrcv.employee_number     = :12
+         AND     hca.account_number       = xrcv.account_number
+       )
+AND    :13 IS NULL
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <EntityUsage
@@ -387,5 +442,15 @@ AND    (
       AliasName="RsvSaleBaseActDate"
       Expression="RsvSaleBaseActDate"
       SQLType="DATE" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerClassCode"
+      IsPersistent="false"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CustomerClassCode"
+      Expression="CustomerClassCode"
+      SQLType="VARCHAR" >
    </ViewAttribute>
 </ViewObject>
