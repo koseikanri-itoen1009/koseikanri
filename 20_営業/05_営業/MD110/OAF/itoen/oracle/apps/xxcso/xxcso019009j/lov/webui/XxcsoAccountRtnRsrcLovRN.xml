@@ -1,7 +1,7 @@
 <?xml version = '1.0' encoding = 'UTF-8'?>
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
 <!--*[Enter Javadoc like developer documentation, delete this line once you fill the included template.] [Put a one line description of the region here.] [Put a brief description of the usage of the region here.] @param [Parameter_name] [Put parameter use here.] @param [Parameter_name] [Put parameter use here.] @see [Put any additional links apart from controller class and BC4J objects directly referenced by this region]-->
-<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso019009j.lov.server.XxcsoRtnRsrcBulkUpdateLovAM" advancedSearchAllowed="true" scope="/">
+<oa:listOfValues version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso019009j.lov.server.XxcsoRtnRsrcBulkUpdateLovAM" advancedSearchAllowed="true" scope="/">
    <ui:contents>
       <oa:table name="XxcsoAccountRtnRsrcLovRN" id="ResultTblRN" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/ResultTblRN">
          <ui:contents>
@@ -15,6 +15,7 @@
             <oa:formValue id="SaleBaseCode" dataType="VARCHAR2" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="SaleBaseCode"/>
             <oa:formValue id="RsvSaleBaseActDate" dataType="DATE" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="RsvSaleBaseActDate"/>
             <oa:formValue id="RsvSaleBaseCode" dataType="VARCHAR2" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="RsvSaleBaseCode"/>
+            <oa:formValue id="CustomerClassCode" viewName="XxcsoAccountRtnRsrcLovVO1" viewAttr="CustomerClassCode"/>
          </ui:contents>
       </oa:table>
    </ui:contents>
