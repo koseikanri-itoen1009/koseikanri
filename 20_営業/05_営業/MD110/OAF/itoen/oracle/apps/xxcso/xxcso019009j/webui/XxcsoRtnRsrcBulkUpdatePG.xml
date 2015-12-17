@@ -1,6 +1,6 @@
 <?xml version = '1.0' encoding = 'UTF-8'?>
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
-<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <content>
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso019009j.server.XxcsoRtnRsrcBulkUpdateAM" use="/itoen/oracle/apps/xxcso/xxcso019009j/attributesets/XxcsoRtnRsrcBulkUpdateAttrSets/PageLayoutRN" controllerClass="itoen.oracle.apps.xxcso.xxcso019009j.webui.XxcsoRtnRsrcBulkUpdateCO">
          <ui:corporateBranding>
@@ -110,6 +110,7 @@
                                                       <lovMap id="SaleBaseCodeMap" lovItem="SaleBaseCode" resultTo="formSaleBaseCode" useForValidation="no"/>
                                                       <lovMap id="RsvSaleBaseCodeMap" lovItem="RsvSaleBaseCode" resultTo="formRsvSaleBaseCode" useForValidation="no"/>
                                                       <lovMap id="RsvSaleBaseActDateMap" lovItem="RsvSaleBaseActDate" resultTo="formRsvSaleBaseActDate" useForValidation="no"/>
+                                                      <lovMap id="CustomerClassCode" lovItem="CustomerClassCode" resultTo="formCustomerClassCode"/>
                                                    </lovMappings>
                                                 </oa:messageLovInput>
                                              </ui:contents>
@@ -163,6 +164,7 @@
                                           <oa:formValue id="formSaleBaseCode" viewAttr="SaleBaseCode"/>
                                           <oa:formValue id="formRsvSaleBaseCode" viewAttr="RsvSaleBaseCode"/>
                                           <oa:formValue id="formRsvSaleBaseActDate" viewAttr="RsvSaleBaseActDate" dataType="DATE"/>
+                                          <oa:formValue id="formCustomerClassCode" viewAttr="CustomerClassCode"/>
                                        </ui:contents>
                                        <ui:tableActions>
                                           <oa:flowLayout id="ResultActionFlRN">
