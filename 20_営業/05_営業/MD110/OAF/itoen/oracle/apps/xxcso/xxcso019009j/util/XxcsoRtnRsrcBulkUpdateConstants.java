@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoRtnRsrcBulkUpdateConstants
 * 概要説明   : ルートNo/担当営業員一括更新画面共通固定値クラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-01-16 1.0  SCS富尾和基  新規作成
 * 2009-03-05 1.1  SCS柳平直人  [CT1-034]重複営業員エラー対応
 * 2010-03-23 1.2  SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
+* 2015-09-08 1.3  SCSK桐生和幸 [E_本稼動_13307]ルート一括登録画面仕様変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.util;
@@ -55,4 +56,7 @@ public class XxcsoRtnRsrcBulkUpdateConstants
 
   public static final String REFLECT_TRGT               = "1";
   public static final String REFLECT_RSV                = "2";
+// 2015-09-08 [E_本稼動_13307] Add Start
+  public static final String CUSTOMER_CLASS_14          = "14";
+// 2015-09-08 [E_本稼動_13307] Add End
 }
