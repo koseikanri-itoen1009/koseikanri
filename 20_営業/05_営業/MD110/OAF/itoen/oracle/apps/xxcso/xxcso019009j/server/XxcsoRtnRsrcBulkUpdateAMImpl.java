@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoRtnRsrcBulkUpdateAMImpl
 * 概要説明   : ルートNo/担当営業員一括更新画面アプリケーション・モジュールクラス
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2009-05-07 1.4  SCS柳平直人  [T1_0603]登録前検証処理方法修正
 * 2009-08-19 1.5  SCS阿部大輔  [0001123]追加ボタン初期設定対応
 * 2010-03-23 1.6  SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
+* 2015-09-08 1.7  SCSK桐生和幸 [E_本稼動_13307]ルート一括登録画面仕様変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.server;
@@ -818,6 +819,10 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       XxcsoUtils.debug(txn, "RSVSALEBASEACTDATE  ："
                               + registRow.getRsvSaleBaseActDate()             );
 // 2010-03-23 [E_本稼動_01942] Add End
+// 2015-09-08 [E_本稼動_13307] Add Start
+      XxcsoUtils.debug(txn, "DATATYPE            ："
+                              + registRow.getCustomerClassCode()              );
+// 2015-09-08 [E_本稼動_13307] Add End
 // 2009-05-07 [T1_0708] Add Start
       byte rowState = registRow.getXxcsoRtnRsrcVEO().getEntityState();
       if ( rowState == OAPlsqlEntityImpl.STATUS_MODIFIED )
@@ -843,24 +848,25 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
 //      }
 // 2010-03-23 [E_本稼動_01942] Add End
 
-      //画面項目「新ルートNo」妥当性チェック
-      if ( registRow.getNextRouteNo() != null
-        && ! registRow.getNextRouteNo().equals("")
-        && registRow.getAccountNumber() != null
-        && ! registRow.getAccountNumber().equals("") )
-      {
-        if ( ! chkRouteNo( txn , registRow.getNextRouteNo() ) )
-        {
-          OAException error
-            = XxcsoMessage.createErrorMessage(
-                XxcsoConstants.APP_XXCSO1_00514,
-                XxcsoConstants.TOKEN_INDEX,
-                String.valueOf(index)
-              );
-          errorList.add(error);
-        }
-      }
-
+// 2015-09-08 [E_本稼動_13307] Del Start
+//        //画面項目「新ルートNo」妥当性チェック
+//        if ( registRow.getNextRouteNo() != null
+//          && ! registRow.getNextRouteNo().equals("")
+//          && registRow.getAccountNumber() != null
+//          && ! registRow.getAccountNumber().equals("") )
+//        {
+//          if ( ! chkRouteNo( txn , registRow.getNextRouteNo() ) )
+//          {
+//            OAException error
+//              = XxcsoMessage.createErrorMessage(
+//                  XxcsoConstants.APP_XXCSO1_00514,
+//                  XxcsoConstants.TOKEN_INDEX,
+//                  String.valueOf(index)
+//                );
+//            errorList.add(error);
+//          }
+//        }
+// 2015-09-08 [E_本稼動_13307] Del End
       //画面項目「新担当」「新ルートNo」に入力値が存在する顧客コードを取得
       if ( ( registRow.getNextResource() != null
         && ! registRow.getNextResource().equals("") )
@@ -915,81 +921,165 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       if ( rowState == OAPlsqlEntityImpl.STATUS_MODIFIED ||
            rowState == OAPlsqlEntityImpl.STATUS_NEW )
       {
-        //売上拠点チェック
-        if (initRow.getReflectMethod() != null && ! "".equals(initRow.getReflectMethod())
-           )
+// 2015-09-08 [E_本稼動_13307] Add Start
+        //売掛管理先顧客以外
+        if ( ! XxcsoRtnRsrcBulkUpdateConstants.CUSTOMER_CLASS_14.equals(registRow.getCustomerClassCode()) )
         {
-          //「反映方法」即時反映の場合
-          if (initRow.getReflectMethod().equals(XxcsoRtnRsrcBulkUpdateConstants.REFLECT_TRGT))
+          //画面項目「新ルートNo」妥当性チェック
+          if ( registRow.getNextRouteNo() != null
+            && ! registRow.getNextRouteNo().equals("")
+            && registRow.getAccountNumber() != null
+            && ! registRow.getAccountNumber().equals("") )
           {
-            // 売上拠点チェック
-            if ( registRow.getAccountNumber() != null
-              && ! registRow.getAccountNumber().equals("")
-              && ( ( registRow.getNextResource() != null
-                  && ! registRow.getNextResource().equals("") )
-                  || registRow.getNextRouteNo() != null
-                  && ! registRow.getNextRouteNo().equals("")) )
+            if ( ! chkRouteNo( txn , registRow.getNextRouteNo() ) )
             {
-              if (!(chkExistBaseCode(txn, baseCode ,registRow.getSaleBaseCode())
-                   )
-                 )
+              OAException error
+                = XxcsoMessage.createErrorMessage(
+                    XxcsoConstants.APP_XXCSO1_00514,
+                    XxcsoConstants.TOKEN_INDEX,
+                    String.valueOf(index)
+                  );
+              errorList.add(error);
+            }
+          }
+// 2015-09-08 [E_本稼動_13307] Add End
+          //売上拠点チェック
+          if (initRow.getReflectMethod() != null && ! "".equals(initRow.getReflectMethod())
+             )
+          {
+            //「反映方法」即時反映の場合
+            if (initRow.getReflectMethod().equals(XxcsoRtnRsrcBulkUpdateConstants.REFLECT_TRGT))
+            {
+              // 売上拠点チェック
+              if ( registRow.getAccountNumber() != null
+                && ! registRow.getAccountNumber().equals("")
+                && ( ( registRow.getNextResource() != null
+                    && ! registRow.getNextResource().equals("") )
+                    || registRow.getNextRouteNo() != null
+                    && ! registRow.getNextRouteNo().equals("")) )
               {
-                OAException error
-                  = XxcsoMessage.createErrorMessage(
-                      XxcsoConstants.APP_XXCSO1_00603,
-                      XxcsoConstants.TOKEN_INDEX,
-                      String.valueOf(index)
-                    );
-                errorList.add(error);
+                if (!(chkExistBaseCode(txn, baseCode ,registRow.getSaleBaseCode())
+                     )
+                   )
+                {
+                  OAException error
+                    = XxcsoMessage.createErrorMessage(
+                        XxcsoConstants.APP_XXCSO1_00603,
+                        XxcsoConstants.TOKEN_INDEX,
+                        String.valueOf(index)
+                      );
+                  errorList.add(error);
+                }
+              }
+              //画面項目「新担当」同一拠点内存在チェック
+              if ( registRow.getNextResource() != null
+                && ! registRow.getNextResource().equals("")
+                && registRow.getAccountNumber() != null
+                && ! registRow.getAccountNumber().equals("") )
+              {
+                if ( ! chkExistEmployee( txn, registRow.getNextResource(), initRow.getCurrentDate(), baseCode ) )
+                {
+                  OAException error
+                    = XxcsoMessage.createErrorMessage(
+                        XxcsoConstants.APP_XXCSO1_00422,
+                        XxcsoConstants.TOKEN_INDEX,
+                        String.valueOf(index)
+                      );
+                  errorList.add(error);
+                }
               }
             }
-            //画面項目「新担当」同一拠点内存在チェック
-            if ( registRow.getNextResource() != null
-              && ! registRow.getNextResource().equals("")
-              && registRow.getAccountNumber() != null
-              && ! registRow.getAccountNumber().equals("") )
+            //「反映方法」予約反映の場合
+            else
             {
-              if ( ! chkExistEmployee( txn, registRow.getNextResource(), initRow.getCurrentDate(), baseCode ) )
+              // 売上拠点、予約売上拠点チェックの場合
+              if ( registRow.getAccountNumber() != null
+                && ! registRow.getAccountNumber().equals("")
+                && ( ( registRow.getNextResource() != null
+                    && ! registRow.getNextResource().equals("") )
+                    || registRow.getNextRouteNo() != null
+                    && ! registRow.getNextRouteNo().equals("")) )
               {
-                OAException error
-                  = XxcsoMessage.createErrorMessage(
-                      XxcsoConstants.APP_XXCSO1_00422,
-                      XxcsoConstants.TOKEN_INDEX,
-                      String.valueOf(index)
-                    );
-                errorList.add(error);
+                if (!(chkExistRcvBaseCode (txn, 
+                                           baseCode ,
+                                           initRow.getNextDate(),
+                                           registRow.getSaleBaseCode(),
+                                           registRow.getRsvSaleBaseCode(),
+                                           registRow.getRsvSaleBaseActDate()
+                                          )
+                     )
+                   )
+                {
+                  OAException error
+                    = XxcsoMessage.createErrorMessage(
+                        XxcsoConstants.APP_XXCSO1_00603,
+                        XxcsoConstants.TOKEN_INDEX,
+                        String.valueOf(index)
+                      );
+                  errorList.add(error);
+                }
+              }
+              //画面項目「新担当」同一拠点内存在チェック
+              if ( registRow.getNextResource() != null
+                && ! registRow.getNextResource().equals("")
+                && registRow.getAccountNumber() != null
+                && ! registRow.getAccountNumber().equals("") )
+              {
+                if ( ! chkExistEmployee( txn, registRow.getNextResource() , initRow.getNextDate() , baseCode ) )
+                {
+                  OAException error
+                    = XxcsoMessage.createErrorMessage(
+                        XxcsoConstants.APP_XXCSO1_00422,
+                        XxcsoConstants.TOKEN_INDEX,
+                        String.valueOf(index)
+                      );
+                  errorList.add(error);
+                }
               }
             }
           }
-          //「反映方法」予約反映の場合
-          else
+// 2015-09-08 [E_本稼動_13307] Add Start
+        }
+        else
+        {
+          if (initRow.getReflectMethod() != null && ! "".equals(initRow.getReflectMethod())
+             )
           {
-            // 売上拠点、予約売上拠点チェックの場合
-            if ( registRow.getAccountNumber() != null
-              && ! registRow.getAccountNumber().equals("")
-              && ( ( registRow.getNextResource() != null
-                  && ! registRow.getNextResource().equals("") )
-                  || registRow.getNextRouteNo() != null
-                  && ! registRow.getNextRouteNo().equals("")) )
+            //予約反映の場合エラー
+            if ( initRow.getReflectMethod().equals(XxcsoRtnRsrcBulkUpdateConstants.REFLECT_RSV) )
             {
-              if (!(chkExistRcvBaseCode (txn, 
-                                         baseCode ,
-                                         initRow.getNextDate(),
-                                         registRow.getSaleBaseCode(),
-                                         registRow.getRsvSaleBaseCode(),
-                                         registRow.getRsvSaleBaseActDate()
-                                        )
-                   )
-                 )
-              {
-                OAException error
-                  = XxcsoMessage.createErrorMessage(
-                      XxcsoConstants.APP_XXCSO1_00603,
-                      XxcsoConstants.TOKEN_INDEX,
-                      String.valueOf(index)
-                    );
-                errorList.add(error);
-              }
+              OAException error
+                      = XxcsoMessage.createErrorMessage(
+                          XxcsoConstants.APP_XXCSO1_00790,
+                          XxcsoConstants.TOKEN_INDEX,
+                          String.valueOf(index)
+                        );
+              errorList.add(error);
+            }
+            //画面項目「新ルートNo」が設定されている場合エラー
+            if ( registRow.getNextRouteNo() != null
+              && ! registRow.getNextRouteNo().equals("")
+              && registRow.getAccountNumber() != null
+              && ! registRow.getAccountNumber().equals("") )
+            {
+              OAException error
+                = XxcsoMessage.createErrorMessage(
+                    XxcsoConstants.APP_XXCSO1_00789,
+                    XxcsoConstants.TOKEN_INDEX,
+                    String.valueOf(index)
+                  );
+              errorList.add(error);
+            }
+            //入金拠点チェック
+            if ( ! chkExistReceivableBaseCode( txn, registRow.getAccountNumber() , baseCode ) )
+            {
+              OAException error
+                = XxcsoMessage.createErrorMessage(
+                    XxcsoConstants.APP_XXCSO1_00788,
+                    XxcsoConstants.TOKEN_INDEX,
+                    String.valueOf(index)
+                  );
+              errorList.add(error);
             }
             //画面項目「新担当」同一拠点内存在チェック
             if ( registRow.getNextResource() != null
@@ -1010,6 +1100,7 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
             }
           }
         }
+// 2015-09-08 [E_本稼動_13307] Add End
       }
 // 2010-03-23 [E_本稼動_01942] Add End
       /* 20090402_abe_T1_0125 START*/
@@ -1295,6 +1386,50 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
   
 // 2010-03-23 [E_本稼動_01942] Add End
 
+// 2015-09-08 [E_本稼動_13307] Add Start
+  /*****************************************************************************
+   * 入金拠点チェック
+   * @param txn         OADBTransactionインスタンス
+   * @param AccountNumber    顧客コード
+   * @param baseCode         拠点コード
+   * @return boolean         TRUE:存在する FALSE:存在しない
+   *****************************************************************************
+   */
+  private boolean chkExistReceivableBaseCode(
+    OADBTransaction txn
+   ,String AccountNumber
+   ,String baseCode
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    XxcsoRtnRsrcBulkUpdateReceivableVOImpl recVo
+      = getXxcsoRtnRsrcBulkUpdateReceivableVO1();
+    if ( recVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateReceivableVO"
+        );
+    }
+
+    recVo.initQuery(
+      AccountNumber
+     ,baseCode
+    );
+
+    //引数の拠点と顧客の入金拠点が同じ場合
+    if ( recVo.getRowCount() != 0 )
+    {
+      return true;
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return false;
+  }
+// 2015-09-08 [E_本稼動_13307] Add End
+
   /*****************************************************************************
    * 適用ボタン押下後再検索処理
    *****************************************************************************
@@ -1513,6 +1648,15 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
   public XxcsoRtnRsrcBulkUpdateEmployeeVOImpl getXxcsoRtnRsrcBulkUpdateEmployeeVO()
   {
     return (XxcsoRtnRsrcBulkUpdateEmployeeVOImpl)findViewObject("XxcsoRtnRsrcBulkUpdateEmployeeVO");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoRtnRsrcBulkUpdateReceivableVO1
+   */
+  public XxcsoRtnRsrcBulkUpdateReceivableVOImpl getXxcsoRtnRsrcBulkUpdateReceivableVO1()
+  {
+    return (XxcsoRtnRsrcBulkUpdateReceivableVOImpl)findViewObject("XxcsoRtnRsrcBulkUpdateReceivableVO1");
   }
 
 
