@@ -7,7 +7,7 @@
    LoadComponentsLazily="true" >
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_deployType" Value="0" />
    </DesignTime>
    <ViewUsage
@@ -29,5 +29,9 @@
    <ViewUsage
       Name="XxcsoRtnRsrcBulkUpdateEmployeeVO"
       ViewObjectName="itoen.oracle.apps.xxcso.xxcso019009j.server.XxcsoRtnRsrcBulkUpdateEmployeeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoRtnRsrcBulkUpdateReceivableVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso019009j.server.XxcsoRtnRsrcBulkUpdateReceivableVO" >
    </ViewUsage>
 </AppModule>
