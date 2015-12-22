@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2015/12/02    1.0   Y.Shoji          [E_本稼動_13393]新規作成
+ *  2015/12/16    1.1   Y.Shoji          [E_本稼動_13393]受入テスト障害対応
  *
  *****************************************************************************************/
 --
@@ -134,6 +135,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2015.12.15 Ver1.1 Add Start
+    cv_invoice_num_oie      CONSTANT VARCHAR2(4)  := 'OIE%';               -- 従業員経費精算
+-- 2015.12.15 Ver1.1 Add End
 --
     -- *** ローカル変数 ***
 --
@@ -243,6 +247,9 @@ AS
       AND    aia.invoice_id                    = apsa.invoice_id
       AND    aia.org_id                        = apsa.org_id
       AND    aia.vendor_id                     = pv.vendor_id
+-- 2015.12.15 Ver1.1 Add Start
+      AND    aia.invoice_num                   LIKE cv_invoice_num_oie
+-- 2015.12.15 Ver1.1 Add End
       AND    aia.gl_date                       BETWEEN TO_DATE(iv_gl_date_from ,'YYYY/MM/DD HH24:MI:SS')
                                                AND     TO_DATE(iv_gl_date_to   ,'YYYY/MM/DD HH24:MI:SS')
                                                                                            -- 1,2.GL記帳日 範囲指定
