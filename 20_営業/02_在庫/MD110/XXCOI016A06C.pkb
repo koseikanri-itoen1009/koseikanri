@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  get_item               子品目情報取得処理(A-6)
  *  inventory_reservation  引当対象在庫判定処理(A-7)
  *  chk_order              受注訂正チェック処理(A-8)
+ *  chk_parent_item_qty    親品目数量チェック処理(A-19)
  *  ins_lot_transactions   ロット別取引明細登録処理(A-9)
  *  ref_lot_onhand         ロット別手持数量反映処理(A-10)
  *  ref_mst_lot_hold_info  ロット情報保持マスタ反映処理(A-11)
@@ -47,6 +48,7 @@ AS
  *  2015/06/02    1.4   S.Yamashita      E_本稼動_13103対応
  *  2015/08/20    1.5   S.Yamashita      E_本稼動_13213対応
  *  2015/10/09    1.6   S.Yamashita      E_本稼動_13216/E_本稼動_13326対応
+ *  2015/12/16    1.7   S.Yamashita      E_本稼動_13340対応
  *
  *****************************************************************************************/
 --
@@ -571,6 +573,10 @@ AS
          , xlri.slip_num            AS slip_num         -- 伝票No.
          , xlri.order_number        AS order_number     -- 受注番号
          , xlri.item_code           AS item_code        -- 品目コード
+-- Add Ver1.7 S.Yamashita Start
+         , xlri.parent_item_id      AS parent_item_id   -- 親品目ID
+         , xlri.parent_item_code    AS parent_item_code -- 親品目コード
+-- Add Ver1.7 S.Yamashita End
          , oola.flow_status_code    AS flow_status_code -- 受注ステータス
 -- Add Ver1.5 S.Yamashita End
     FROM   xxcoi_lot_reserve_info   xlri -- ロット別引当情報
@@ -5329,6 +5335,191 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END chk_order;
+-- Add Ver1.7 S.Yamashita Start
+--
+  /**********************************************************************************
+   * Procedure Name   : chk_parent_item_qty
+   * Description      : 親品目数量チェック処理(A-19)
+   ***********************************************************************************/
+  PROCEDURE chk_parent_item_qty(
+      iv_order_number     IN  VARCHAR2 -- 受注番号
+    , iv_subinventory     IN  VARCHAR2 -- 保管場所コード
+    , in_parent_item_id   IN  NUMBER   -- 親品目ID
+    , iv_parent_item_code IN  VARCHAR2 -- 親品目コード
+    , ov_errbuf           OUT VARCHAR2 -- エラー・メッセージ           --# 固定 #
+    , ov_retcode          OUT VARCHAR2 -- リターン・コード             --# 固定 #
+    , ov_errmsg           OUT VARCHAR2 -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_parent_item_qty'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    ln_dummy                   NUMBER                                       DEFAULT NULL;  -- ダミー値
+    lt_after_uom_code          mtl_units_of_measure_tl.uom_code%TYPE        DEFAULT NULL;  -- 換算後単位コード
+    ln_after_quantity          NUMBER                                       DEFAULT 0;     -- 換算後数量
+    ln_order_summary_qty       NUMBER                                       DEFAULT 0;     -- 換算後数量総数
+    lt_parent_item_id          xxcoi_lot_reserve_info.parent_item_id%TYPE   DEFAULT NULL;  -- 親品目ID
+    lt_parent_item_code        xxcoi_lot_reserve_info.parent_item_code%TYPE DEFAULT NULL;  -- 親品目コード
+    
+    -- *** ローカルカーソル ***
+    -- 受注親品目総数取得カーソル（クローズ済明細のみカウント対象）
+    CURSOR l_parent_item_kbn_4_cur( in_order_number      NUMBER     -- 受注番号
+                                  , in_parent_item_id    NUMBER     -- 親品目ID
+                                  , iv_subinventory      VARCHAR2 ) -- 保管場所
+    IS
+      SELECT oola.ordered_quantity   AS ordered_quantity   -- 受注数量
+           , oola.order_quantity_uom AS order_quantity_uom -- 受注単位
+      FROM   oe_order_headers_all    ooha -- 受注ヘッダ
+           , oe_order_lines_all      oola -- 受注明細
+      WHERE  ooha.header_id         = oola.header_id
+      AND    ooha.org_id            = gt_org_id
+      AND    oola.flow_status_code  = cv_closed         -- 受注明細ステータス：クローズ
+      AND    ooha.order_number      = in_order_number   -- 受注番号
+      AND    oola.inventory_item_id = in_parent_item_id -- 親品目ID
+      AND    oola.subinventory      = iv_subinventory   -- 保管場所コード
+    ;
+    -- 引当親品目総数取得カーソル
+    CURSOR l_reserve_item_kbn_4_cur( iv_order_number   VARCHAR2   -- 受注番号
+                                   , in_parent_item_id NUMBER     -- 親品目ID
+                                   , iv_subinventory   VARCHAR2 ) -- 保管場所コード
+    IS
+      SELECT NVL(SUM(xlri.summary_qty), 0) AS summary_qty  -- 引当総数
+      FROM   xxcoi_lot_reserve_info  xlri -- ロット別引当情報
+      WHERE  xlri.order_number   = iv_order_number   -- 受注番号
+      AND    xlri.org_id         = gt_org_id         -- 営業単位
+      AND    xlri.parent_item_id = in_parent_item_id -- 親品目ID
+      AND    xlri.whse_code      = iv_subinventory   -- 保管場所コード
+    ;
+    -- レコードタイプ
+    l_parent_item_kbn_4_rec  l_parent_item_kbn_4_cur%ROWTYPE;
+    l_reserve_item_kbn_4_rec l_reserve_item_kbn_4_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    lt_parent_item_code  := iv_parent_item_code;
+    lt_parent_item_id    := in_parent_item_id;
+--
+    -- 受注親品目総数取得ループ
+    << parent_item_loop >>
+    FOR l_parent_item_kbn_4_rec IN l_parent_item_kbn_4_cur( in_order_number      => TO_NUMBER( iv_order_number ) -- 受注番号
+                                                          , in_parent_item_id    => lt_parent_item_id            -- 親品目ID
+                                                          , iv_subinventory      => iv_subinventory )            -- 保管場所
+    LOOP
+      -- 初期化
+      ln_after_quantity  := 0;
+      lt_after_uom_code  := NULL;
+--
+      -- 単位換算取得
+      xxcos_common_pkg.get_uom_cnv(
+          iv_before_uom_code    => l_parent_item_kbn_4_rec.order_quantity_uom -- 換算前単位コード
+        , in_before_quantity    => l_parent_item_kbn_4_rec.ordered_quantity   -- 換算前数量
+        , iov_item_code         => lt_parent_item_code                  -- 品目コード
+        , iov_organization_code => gt_organization_code                 -- 在庫組織コード
+        , ion_inventory_item_id => lt_parent_item_id                    -- 品目ＩＤ
+        , ion_organization_id   => gt_organization_id                   -- 在庫組織ＩＤ
+        , iov_after_uom_code    => lt_after_uom_code                    -- 換算後単位コード
+        , on_after_quantity     => ln_after_quantity                    -- 換算後数量
+        , on_content            => ln_dummy                             -- 入数
+        , ov_errbuf             => lv_errbuf                            -- エラー・メッセージエラー       #固定#
+        , ov_retcode            => lv_retcode                           -- リターン・コード               #固定#
+        , ov_errmsg             => lv_errmsg                            -- ユーザー・エラー・メッセージ   #固定#
+      );
+      -- リターンコードが正常以外の場合、エラー
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                       , iv_name         => cv_msg_xxcoi_10545
+                       , iv_token_name1  => cv_tkn_common_pkg
+                       , iv_token_value1 => cv_msg_xxcoi_10552
+                       , iv_token_name2  => cv_tkn_errmsg
+                       , iv_token_value2 => lv_errmsg
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+--
+      -- 親品目コードの総数合算
+      ln_order_summary_qty := ln_order_summary_qty + ln_after_quantity;
+--
+    END LOOP parent_item_loop;
+--
+    -- 引当親品目総数取得
+    OPEN l_reserve_item_kbn_4_cur( iv_order_number   => iv_order_number    -- 受注番号
+                                 , in_parent_item_id => lt_parent_item_id  -- 親品目ID
+                                 , iv_subinventory   => iv_subinventory ); -- 保管場所
+    FETCH l_reserve_item_kbn_4_cur INTO l_reserve_item_kbn_4_rec;
+    CLOSE l_reserve_item_kbn_4_cur;
+--
+    -- 受注と引当の総数が相違する場合
+    IF ( ln_order_summary_qty <> l_reserve_item_kbn_4_rec.summary_qty ) THEN
+      -- 警告で返す
+      ov_retcode   := cv_status_warn;
+      gb_warn_flag := TRUE;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+      -- カーソルクローズ
+      IF ( l_parent_item_kbn_4_cur%ISOPEN ) THEN
+        CLOSE l_parent_item_kbn_4_cur;
+      END IF;
+      IF ( l_reserve_item_kbn_4_cur%ISOPEN ) THEN
+        CLOSE l_reserve_item_kbn_4_cur;
+      END IF;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+      -- カーソルクローズ
+      IF ( l_parent_item_kbn_4_cur%ISOPEN ) THEN
+        CLOSE l_parent_item_kbn_4_cur;
+      END IF;
+      IF ( l_reserve_item_kbn_4_cur%ISOPEN ) THEN
+        CLOSE l_reserve_item_kbn_4_cur;
+      END IF;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_parent_item_qty;
+-- Add Ver1.7 S.Yamashita End
 --
   /**********************************************************************************
    * Procedure Name   : ins_lot_transactions
@@ -6850,39 +7041,68 @@ AS
         -- 対象件数設定
         gn_target_cnt := gn_target_cnt + 1;
         --
--- Add Ver1.5 S.Yamashita Start
-        -- ロット別取引明細作成区分が'0'（未作成）かつ、受注ステータスがCLOSEDでない場合
-        IF (  l_kbn_4_2_rec.lot_tran_kbn     =  cv_lot_tran_kbn_0
-          AND l_kbn_4_2_rec.flow_status_code <> cv_closed )
-        THEN
-          -- 受注ステータスエラーメッセージ
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_application
-                         , iv_name         => cv_msg_xxcoi_10709
-                         , iv_token_name1  => cv_tkn_base_code
-                         , iv_token_value1 => l_kbn_4_2_rec.base_code
-                         , iv_token_name2  => cv_tkn_subinventory_code
-                         , iv_token_value2 => l_kbn_4_2_rec.whse_code
-                         , iv_token_name3  => cv_tkn_chain_store_code
-                         , iv_token_value3 => l_kbn_4_2_rec.chain_code
-                         , iv_token_name4  => cv_tkn_arrival_date
-                         , iv_token_value4 => TO_CHAR(l_kbn_4_2_rec.arrival_date,cv_yyyymmdd)
-                         , iv_token_name5  => cv_tkn_customer_code
-                         , iv_token_value5 => l_kbn_4_2_rec.customer_code
-                         , iv_token_name6  => cv_tkn_slip_num
-                         , iv_token_value6 => l_kbn_4_2_rec.slip_num
-                         , iv_token_name7  => cv_tkn_order_number
-                         , iv_token_value7 => l_kbn_4_2_rec.order_number
-                         , iv_token_name8  => cv_tkn_item_code
-                         , iv_token_value8 => l_kbn_4_2_rec.item_code
-                       );
-          FND_FILE.PUT_LINE(
-              which  => FND_FILE.OUTPUT
-            , buff   => lv_errmsg
+-- Mod Ver1.7 S.Yamashita Start
+---- Add Ver1.5 S.Yamashita Start
+--        -- ロット別取引明細作成区分が'0'（未作成）かつ、受注ステータスがCLOSEDでない場合
+--        IF (  l_kbn_4_2_rec.lot_tran_kbn     =  cv_lot_tran_kbn_0
+--          AND l_kbn_4_2_rec.flow_status_code <> cv_closed )
+--        THEN
+        -- ロット別取引明細作成区分が'0'（未作成）の場合
+        IF (  l_kbn_4_2_rec.lot_tran_kbn = cv_lot_tran_kbn_0 ) THEN
+          -- 親品目数量チェック処理(A-19)
+          chk_parent_item_qty(
+            iv_order_number           => l_kbn_4_2_rec.order_number     -- 受注番号
+           ,iv_subinventory           => l_kbn_4_2_rec.whse_code        -- 保管場所コード
+           ,in_parent_item_id         => l_kbn_4_2_rec.parent_item_id   -- 親品目ID
+           ,iv_parent_item_code       => l_kbn_4_2_rec.parent_item_code -- 親品目コード
+           ,ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
+           ,ov_retcode                => lv_retcode             -- リターン・コード
+           ,ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
           );
-          -- 警告件数
-          gn_warn_cnt := gn_warn_cnt + 1;
+          -- 警告（数量差異有り）の場合
+          IF ( lv_retcode = cv_status_warn ) THEN
+-- Mod Ver1.7 S.Yamashita End
+            -- 受注ステータスエラーメッセージ
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_application
+                           , iv_name         => cv_msg_xxcoi_10709
+                           , iv_token_name1  => cv_tkn_base_code
+                           , iv_token_value1 => l_kbn_4_2_rec.base_code
+                           , iv_token_name2  => cv_tkn_subinventory_code
+                           , iv_token_value2 => l_kbn_4_2_rec.whse_code
+                           , iv_token_name3  => cv_tkn_chain_store_code
+                           , iv_token_value3 => l_kbn_4_2_rec.chain_code
+                           , iv_token_name4  => cv_tkn_arrival_date
+                           , iv_token_value4 => TO_CHAR(l_kbn_4_2_rec.arrival_date,cv_yyyymmdd)
+                           , iv_token_name5  => cv_tkn_customer_code
+                           , iv_token_value5 => l_kbn_4_2_rec.customer_code
+                           , iv_token_name6  => cv_tkn_slip_num
+                           , iv_token_value6 => l_kbn_4_2_rec.slip_num
+                           , iv_token_name7  => cv_tkn_order_number
+                           , iv_token_value7 => l_kbn_4_2_rec.order_number
+                           , iv_token_name8  => cv_tkn_item_code
+                           , iv_token_value8 => l_kbn_4_2_rec.item_code
+                         );
+            FND_FILE.PUT_LINE(
+                which  => FND_FILE.OUTPUT
+              , buff   => lv_errmsg
+            );
+            -- 警告件数
+            gn_warn_cnt := gn_warn_cnt + 1;
+-- Mod Ver1.7 S.Yamashita Start
+--        ELSE
+          -- エラーの場合
+          ELSIF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
         ELSE
+        -- ロット別取引明細作成区分が'0'（未作成）でない場合はチェック無し
+          lv_retcode := cv_status_normal;
+        END IF;
+--
+        -- 親品目数量チェックエラーが発生していない場合
+        IF ( lv_retcode = cv_status_normal ) THEN
+-- Mod Ver1.7 S.Yamashita End
 -- Add Ver1.5 S.Yamashita End
           -- ===============================================
           -- ロット別引当情報更新処理(A-14)
