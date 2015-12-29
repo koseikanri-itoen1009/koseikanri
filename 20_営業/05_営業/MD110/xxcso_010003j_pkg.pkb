@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  chk_validate_db           P    -      ＤＢ更新判定チェック
  *  chk_cash_payment          F    V      現金支払チェック
  *  chk_install_code          F    V      物件コードチェック
+ *  chk_stop_account          F    V      中止顧客チェック
+ *  chk_account_install_code  F    V      顧客物件チェック
  *  chk_bank_branch           F    V      銀行支店マスタチェック
  *  chk_supplier              F    V      仕入先マスタチェック
  *  chk_bank_account          F    V      銀行口座マスタチェック
@@ -59,6 +61,7 @@ AS
  *  2013/04/01    1.13  K.Kiriu          E_本稼動_10413対応
  *  2015/04/17    1.14  K.Kiriu          E_本稼動_13002対応
  *  2015/05/21    1.15  S.Yamashita      E_本稼動_12984対応
+ *  2015/12/03    1.16  S.Yamashita      E_本稼動_13345対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1673,6 +1676,112 @@ AS
   END chk_install_code;
 --
 /* 2010.03.01 D.Abe E_本稼動_01868対応 END */
+/* 2015/12/03 Ver1.16 S.Yamashita E_本稼動_13345対応 START */
+   /**********************************************************************************
+   * Function Name    : chk_stop_account
+   * Description      : 中止顧客チェック関数
+   ***********************************************************************************/
+  FUNCTION chk_stop_account(
+    in_install_account_id           IN  NUMBER
+  )
+  RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name              CONSTANT VARCHAR2(100)   := 'chk_stop_account';
+    cv_sutatus_90            CONSTANT VARCHAR2(2)     := '90'; -- 顧客ステータス'90'（中止決裁済）
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_retval                VARCHAR2(1);  -- 戻り値
+    ln_cnt                   NUMBER;       -- 件数カウント用
+  BEGIN
+--
+    -- 初期化
+    lv_retval := '0';
+    ln_cnt    := 0;
+--
+    -- 中止顧客のチェック
+    SELECT COUNT(1) AS cnt -- 件数
+    INTO   ln_cnt
+    FROM   hz_cust_accounts      hca -- 顧客マスタ
+          ,hz_parties            hp  -- パーティマスタ
+    WHERE  hca.cust_account_id        = in_install_account_id -- 顧客ID
+    AND    hca.party_id               = hp.party_id           -- パーティID
+    AND    hp.duns_number_c           = cv_sutatus_90         -- 顧客ステータス'90'（中止決裁済）
+    ;
+--
+    -- 中止顧客の場合
+    IF ( ln_cnt <> 0 ) THEN
+      lv_retval := '1';
+    END IF;
+    --
+    RETURN lv_retval;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+  WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_stop_account;
+--
+  /**********************************************************************************
+   * Function Name    : chk_account_install_code
+   * Description      : 顧客物件チェック
+   ***********************************************************************************/
+  FUNCTION chk_account_install_code(
+    in_install_account_id        IN  NUMBER
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_account_install_code';
+    cv_instance_type_code_1      CONSTANT VARCHAR2(1)     := '1'; -- インスタンスタイプコード'1'(自販機)
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_retval                    VARCHAR2(1); -- 戻り値
+    ln_cnt                       NUMBER;      -- 件数カウント用
+--
+  BEGIN
+--
+    -- 初期化
+    lv_retval := '0';
+    ln_cnt    := 0;
+--
+    -- 顧客に紐づく自販機を取得
+    SELECT COUNT(1) AS cnt -- 件数
+    INTO   ln_cnt
+    FROM   csi_item_instances   cii   -- インストールベースマスタ
+    WHERE  cii.owner_party_account_id  = in_install_account_id   -- 顧客ID
+    AND    cii.instance_type_code      = cv_instance_type_code_1 -- インスタンスタイプコード'1'(自販機)
+    ;
+--
+    -- 顧客に自販機が紐づいている場合
+    IF ( ln_cnt <> 0 ) THEN
+      lv_retval := '1';
+    END IF;
+--
+    RETURN lv_retval;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_account_install_code;
+--
+/* 2015/12/03 Ver1.16 S.Yamashita E_本稼動_13345対応 END */
 /* 2011/01/07 Ver1.10 K.Kiriu E_本稼動_02498対応 START */
   /**********************************************************************************
    * Function Name    : chk_bank_branch
