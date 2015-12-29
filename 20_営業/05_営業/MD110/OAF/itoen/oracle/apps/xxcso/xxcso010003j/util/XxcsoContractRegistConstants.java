@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistConstants
 * 概要説明   : 自販機設置契約情報登録共通固定値クラス
-* バージョン : 2.0
+* バージョン : 2.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2012-06-12 1.8  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
 * 2013-04-01 1.9  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
 * 2015-02-06 2.0  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
+* 2015-11-30 2.1  SCSK山下翔太 [E_本稼動_13345]オーナ変更マスタ連携エラー対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -454,6 +455,12 @@ public class XxcsoContractRegistConstants
   public static final String 
     TOKEN_VALUE_INSTALL_CODE_CHK        = "物件コード検証チェック";
 // 2010-03-01 [E_本稼動_01868] Add End
+// 2015-11-30 [E_本稼動_13345] Add Start
+  public static final String
+    TOKEN_VALUE_STOP_ACCOUNT_CHK        = "中止顧客検証チェック";
+  public static final String
+    TOKEN_VALUE_ACCOUNT_INSTALL_CODE_CHK = "顧客物件検証チェック";
+// 2015-11-30 [E_本稼動_13345] Add End
 // 2011-01-06 Ver1.6 [E_本稼動_02498] Add Start
   public static final String 
     TOKEN_VALUE_BANK_BRANCH_CHK         = "銀行支店マスタチェック";
