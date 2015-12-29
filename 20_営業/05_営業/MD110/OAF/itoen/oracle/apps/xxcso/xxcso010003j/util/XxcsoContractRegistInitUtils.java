@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistInitUtils
 * 概要説明   : 自販機設置契約情報登録初期ユーティリティクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2009-02-25 1.1  SCS柳平直人  [CT1-029]コピー時送付先テーブルデータ不正対応
 * 2009-05-25 1.2  SCS柳平直人  [ST障害T1_1136]LOVPK項目設定対応
 * 2015-02-02 1.3  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
+* 2015-11-26 1.4  SCSK山下翔太 [E_本稼動_13345]オーナ変更マスタ連携エラー対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -719,7 +720,9 @@ public class XxcsoContractRegistInitUtils
     mngRow.setInstallAddress2(        mngRow2.getInstallAddress2()            );
     mngRow.setContractEffectDate(     mngRow2.getContractEffectDate()         );
     mngRow.setInstallDate(            mngRow2.getInstallDate()                );
-    mngRow.setInstallCode(            mngRow2.getInstallCode()                );
+// 2015-11-26 [E_本稼動_13345] Del Start
+//    mngRow.setInstallCode(            mngRow2.getInstallCode()                );
+// 2015-11-26 [E_本稼動_13345] Del End
 // 2009-05-25 [ST障害T1_1136] Add Start
     mngRow.setInstanceId(             mngRow2.getInstanceId()                 );
 // 2009-05-25 [ST障害T1_1136] Add End
