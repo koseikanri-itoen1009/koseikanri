@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -22,6 +22,7 @@
 * 2011-01-06 1.11 SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
 * 2011-06-06 1.12 SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
 * 2015-02-09 1.13 SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
+* 2015-11-26 1.14 SCSK山下翔太 [E_本稼動_13345]オーナ変更マスタ連携エラー対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -3222,7 +3223,17 @@ public class XxcsoContractRegistValidateUtils
       = (XxcsoContractManagementFullVORowImpl) contMngVo.first();
 
     XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
-
+// 2015-11-26 [E_本稼動_13345] Add Start
+    // 中止顧客チェック
+    if ( ! chkStopAccount( txn, contMngVoRow.getInstallAccountId() ) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00791
+          );
+      errorList.add(error);
+    }
+// 2015-11-26 [E_本稼動_13345] Add End
     // ///////////////////////////////////
     // 設置先名
     // ///////////////////////////////////
@@ -3480,6 +3491,17 @@ public class XxcsoContractRegistValidateUtils
             ,token1
             ,0
            );
+// 2015-11-26 [E_本稼動_13345] Add Start
+      // 顧客物件コードチェック
+      if ( ! chkAccountInstallCode( txn, contMngVoRow.getInstallCode(), contMngVoRow.getInstallAccountId() ) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00792
+            );
+        errorList.add(error);
+      }
+// 2015-11-26 [E_本稼動_13345] Add End
 // 2010-03-01 [E_本稼動_01868] Add Start
       // 確定ボタン時のみ物件コードチェック
       if ( fixedFrag )
@@ -5167,6 +5189,142 @@ public class XxcsoContractRegistValidateUtils
     return returnValue;
  }
 // 2010-03-01 [E_本稼動_01678] Add End
+// 2015-11-26 [E_本稼動_13345] Add Start
+  /*****************************************************************************
+   * 中止顧客の検証
+   * @param  txn                 OADBTransactionインスタンス
+   * @param  AccountId           顧客ID
+   * @return boolean             検証結果
+   *****************************************************************************
+   */
+  private static boolean chkStopAccount(
+    OADBTransaction   txn
+   ,Number            AccountId
+  )
+  {
+    OracleCallableStatement stmt = null;
+    boolean returnValue = true;
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_stop_account(:2);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setNUMBER(2, AccountId);
+
+      stmt.execute();
+
+      String returnString = stmt.getString(1);
+      if ( ! "0".equals(returnString) )
+      {
+        returnValue = false;
+      }
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_STOP_ACCOUNT_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+
+  /*****************************************************************************
+   * 顧客物件の検証
+   * @param  txn                 OADBTransactionインスタンス
+   * @param  InstallCode         顧客物件コード
+   * @param  AccountId           顧客ID
+   * @return boolean             検証結果
+   *****************************************************************************
+   */
+  private static boolean chkAccountInstallCode(
+    OADBTransaction   txn
+   ,String            InstallCode
+   ,Number            AccountId
+  )
+  {
+    OracleCallableStatement stmt = null;
+    boolean returnValue = true;
+
+    if ( InstallCode == null || "".equals(InstallCode.trim()) )
+    {
+      // null空文字時はチェック不要
+      return returnValue;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_account_install_code(:2);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setNUMBER(2, AccountId);
+
+      stmt.execute();
+
+      String returnString = stmt.getString(1);
+      if ( ! "0".equals(returnString) )
+      {
+        returnValue = false;
+      }
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_ACCOUNT_INSTALL_CODE_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2015-11-26 [E_本稼動_13345] Add End
 // 2010-03-01 [E_本稼動_01868] Add Start
   /*****************************************************************************
    * 物件コードの検証
