@@ -32,6 +32,9 @@ AND     NOT EXISTS (
           AND     cis2.instance_status_id = cis.instance_status_id
         )
 AND     xxcso_ib_common_pkg.get_ib_ext_attribs(cii.instance_id,'JOTAI_KBN1') = '1'
+/* 2015/11/25 S.Yamashita E_–{‰Ò“®_13345‘Î‰ž START */
+AND     cii.instance_type_code = '1'
+/* 2015/11/25 S.Yamashita E_–{‰Ò“®_13345‘Î‰ž END */
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
