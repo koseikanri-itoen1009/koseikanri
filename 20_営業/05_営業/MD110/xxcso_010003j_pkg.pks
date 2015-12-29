@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  chk_validate_db           P    -      ＤＢ更新判定チェック
  *  chk_cash_payment          F    V      現金支払チェック
  *  chk_install_code          F    V      物件コードチェック
+ *  chk_stop_account          F    V      中止顧客チェック
+ *  chk_account_install_code  F    V      顧客物件チェック
  *  chk_bank_branch           F    V      銀行支店マスタチェック
  *  chk_supplier              F    V      仕入先マスタチェック
  *  chk_bank_account          F    V      銀行口座マスタチェック
@@ -52,6 +54,7 @@ AS
  *  2011/01/06    1.7   K.Kiriu          E_本稼動_02498対応
  *  2011/06/06    1.8   K.Kiriu          E_本稼動_01963対応
  *  2013/04/01    1.9   K.Kiriu          E_本稼動_10413対応
+ *  2015/12/03    1.10  S.Yamashita      E_本稼動_13345対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -193,6 +196,18 @@ AS
      iv_install_code              IN  VARCHAR2         -- 物件コード
   ) RETURN VARCHAR2;
 --
+/* 2015.12.03 S.Yamashita E_本稼動_13345対応 START */
+  -- 中止顧客チェック
+  FUNCTION chk_stop_account(
+    in_install_account_id         IN  NUMBER           -- 顧客ID
+  ) RETURN VARCHAR2;
+--
+  -- 顧客物件チェック
+  FUNCTION chk_account_install_code(
+    in_install_account_id         IN  NUMBER           -- 顧客ID
+  ) RETURN VARCHAR2;
+--
+/* 2015.12.03 S.Yamashita E_本稼動_13345対応 END */
 /* 2010.03.01 D.Abe E_本稼動_01868対応 END */
 /* 2011/01/06 Ver1.7 K.kiriu E_本稼動_02498対応 START */
   -- 銀行支店マスタチェック
