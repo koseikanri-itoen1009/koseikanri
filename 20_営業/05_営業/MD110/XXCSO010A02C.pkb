@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -86,6 +86,7 @@ AS
  *  2015-02-25    1.19  H.Wajima         E_本稼働_12565対応
  *  2015-04-02    1.20  K.Kiriu          E_本稼働_12565本番障害対応
  *  2015-06-10    1.21  S.Yamashita      E_本稼働_12984対応
+ *  2015-11-24    1.22  K.Kiriu          E_本稼働_13345対応
  *
  *****************************************************************************************/
   --
@@ -3470,6 +3471,9 @@ AS
     cv_tkn_value_un_numbers        CONSTANT VARCHAR2(50) := 'APP-XXCSO1-00678'; -- 機種マスタビュー
     cv_tkn_hht_col_dlv_coop_trn    CONSTANT VARCHAR2(50) := 'APP-XXCSO1-00757'; -- HHT集配信連携トランザクション
 /* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
+/* 2015/11/24 Ver1.22 K.Kiriu E_本稼動_13345対応 START */
+    cv_tkn_account_number          CONSTANT VARCHAR2(50) := 'APP-XXCSO1-00707'; -- 顧客コード
+/* 2015/11/24 Ver1.22 K.Kiriu E_本稼動_13345対応 END   */
     --
     -- *** ローカル変数 ***
     lt_instance_id                csi_item_instances.instance_id%TYPE;
@@ -3488,6 +3492,9 @@ AS
     lt_install_psid               xxcso_hht_col_dlv_coop_trn.install_psid%TYPE;
     lt_line_number                xxcso_hht_col_dlv_coop_trn.line_number%TYPE;
 /* 2015/06/10 Ver1.21 S.Yamashita E_本稼動_12984対応 END   */
+/* 2015/11/24 Ver1.22 K.Kiriu E_本稼動_13345対応 START */
+    lr_row_id                     ROWID;
+/* 2015/11/24 Ver1.22 K.Kiriu E_本稼動_13345対応 END   */
     --
     -- 物件情報更新用ＡＰＩ
     lt_instance_rec          csi_datastructures_pub.instance_rec;
@@ -3954,6 +3961,62 @@ AS
         WHERE  hca.cust_account_id = it_mst_regist_info_rec.install_account_id -- 顧客ID
         ;
 --
+/* 2015/11/24 Ver1.22 K.Kiriu E_本稼動_13345対応 START */
+        -- 変更後顧客に連携対象のデータが存在するか確認
+        lr_row_id := NULL;  --初期化
+        BEGIN
+          SELECT xhcdct.rowid  row_id
+          INTO   lr_row_id
+          FROM   xxcso_hht_col_dlv_coop_trn xhcdct
+          WHERE  xhcdct.account_number = lt_account_number_new --変更後顧客
+          AND    xhcdct.cooperate_flag = cv_flag_yes           --連携対象
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            NULL;
+          WHEN OTHERS THEN
+            -- データ取得エラー
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name            -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_05                    -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action                       -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_hht_col_dlv_coop_trn         -- トークン値1
+                         ,iv_token_name2  => cv_tkn_key_name                     -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_account_number               -- トークン値2
+                         ,iv_token_name3  => cv_tkn_key_id                       -- トークンコード3
+                         ,iv_token_value3 => lt_account_number_new               -- トークン値3
+                       );
+          RAISE global_api_expt;
+        END;
+        -- 存在する場合は連携対象外に更新する
+        IF ( lr_row_id IS NOT NULL ) THEN
+          BEGIN
+            UPDATE  xxcso_hht_col_dlv_coop_trn xhcdct SET -- HHT集配信連携トランザクション
+                    xhcdct.cooperate_flag          = cv_flag_no                 -- 連携フラグ
+                  , xhcdct.last_updated_by         = cn_last_updated_by         -- 最終更新者
+                  , xhcdct.last_update_date        = cd_last_update_date        -- 最終更新日
+                  , xhcdct.last_update_login       = cn_last_update_login       -- 最終更新ログイン
+                  , xhcdct.request_id              = cn_request_id              -- 要求ID
+                  , xhcdct.program_application_id  = cn_program_application_id  -- コンカレント・プログラム・アプリケーションI
+                  , xhcdct.program_id              = cn_program_id              -- コンカレント・プログラムID
+                  , xhcdct.program_update_date     = cd_program_update_date     -- プログラム更新日
+            WHERE   xhcdct.rowid = lr_row_id
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              -- データ更新エラー
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_02         -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                           ,iv_token_value1 => cv_tkn_hht_col_dlv_coop_trn -- トークン値1
+                           ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                           ,iv_token_value2 => SQLERRM                  -- トークン値2
+                        );
+              RAISE global_api_expt;
+          END;
+        END IF;
+/* 2015/11/24 Ver1.22 K.Kiriu E_本稼動_13345対応 END   */
         -- HHT集配信連携トランザクション登録（変更後顧客_設置データ）
         BEGIN
           INSERT INTO xxcso_hht_col_dlv_coop_trn(
