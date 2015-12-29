@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2011/11/01    1.10  T.Yoshimoto      [E_本稼動_07570]拠点コード妥当性チェック追加対応
  *  2014/10/27    1.11  Y.Koh            [E_本稼動_12237]倉庫管理システム対応
  *  2015/03/19    1.12  S.Niki           [E_本稼動_12237]E_本稼動_07570対応の取消
+ *  2015/11/11    1.13  S.Yamashita      [E_本稼動_13356]パフォーマンス改善対応
  *
  *****************************************************************************************/
 --
@@ -269,6 +270,19 @@ AS
 -- 2014/10/27 E_本稼動_12237 V1.11 Add START
   gt_transaction_id            xxcoi_hht_inv_transactions.transaction_id%TYPE;   -- 入出庫一時表ID
 -- 2014/10/27 E_本稼動_12237 V1.11 Add END
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+  gv_cnv_errmsg                VARCHAR2(5000);                                   -- 保管場所コード変換時エラーメッセージ
+  gv_cnv_errbuf                VARCHAR2(5000);                                   -- 保管場所コード変換時エラーメッセージ
+  -- 在庫会計期間の妥当性チェック用変数
+  -- レコード型
+  TYPE g_rec_checked_data IS RECORD(
+    invoice_date               xxcoi_in_hht_inv_transactions.invoice_date%TYPE   -- 伝票日付
+  );
+  -- テーブル型
+  TYPE g_tab_checked_data      IS TABLE OF g_rec_checked_data INDEX BY VARCHAR2(5000);
+  -- テーブル
+  gt_checked_data              g_tab_checked_data;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -723,6 +737,9 @@ AS
     cv_item_status_opm      CONSTANT VARCHAR2(10) := 'OPM';                         -- ステータス：OPM
     cv_item_status_active   CONSTANT VARCHAR2(10) := 'Active';                      -- ステータス：Active
     cv_flg_y                CONSTANT VARCHAR2(1)  := 'Y';                           -- ﾌﾗｸﾞ値：Y
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+    cv_date_fmt             CONSTANT VARCHAR2(8)  := 'YYYYMMDD';                    -- 日付フォーマット：YYYYMMDD
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
     --
     -- *** ローカル変数 ***
     --
@@ -1080,41 +1097,51 @@ AS
         END IF;
     --
     END IF;
-    -- -------------------------------
-    -- 10.在庫会計期間チェック
-    -- -------------------------------
-    xxcoi_common_pkg.org_acct_period_chk(
-        in_organization_id => gt_org_id                                         -- 在庫組織ID
-      , id_target_date     => g_hht_inv_if_tab( in_work_count ).invoice_date    -- 伝票日付
-      , ob_chk_result      => lb_org_acct_period_flg                            -- チェック結果
-      , ov_errbuf          => lv_errbuf
-      , ov_retcode         => lv_retcode
-      , ov_errmsg          => lv_errmsg
-    );
-    -- 在庫会計期間ステータスの取得に失敗した場合
-    IF ( lv_retcode != cv_status_normal ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application_short_name
-                     , iv_name         => cv_msg_org_acct_period_err
-                     , iv_token_name1  => cv_tkn_target_date
-                     , iv_token_value1 => TO_CHAR( g_hht_inv_if_tab( in_work_count ).invoice_date ,'yyyymmdd' )
-                   );
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+    -- 妥当性チェック用テーブルに存在しない場合
+    IF ( NOT ( gt_checked_data.EXISTS( TO_CHAR( g_hht_inv_if_tab( in_work_count ).invoice_date , cv_date_fmt )))) THEN
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
+      -- -------------------------------
+      -- 10.在庫会計期間チェック
+      -- -------------------------------
+      xxcoi_common_pkg.org_acct_period_chk(
+          in_organization_id => gt_org_id                                         -- 在庫組織ID
+        , id_target_date     => g_hht_inv_if_tab( in_work_count ).invoice_date    -- 伝票日付
+        , ob_chk_result      => lb_org_acct_period_flg                            -- チェック結果
+        , ov_errbuf          => lv_errbuf
+        , ov_retcode         => lv_retcode
+        , ov_errmsg          => lv_errmsg
+      );
+      -- 在庫会計期間ステータスの取得に失敗した場合
+      IF ( lv_retcode != cv_status_normal ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application_short_name
+                       , iv_name         => cv_msg_org_acct_period_err
+                       , iv_token_name1  => cv_tkn_target_date
+                       , iv_token_value1 => TO_CHAR( g_hht_inv_if_tab( in_work_count ).invoice_date ,'yyyymmdd' )
+                     );
 -- == 2010/01/29 V1.5 Modified START ===============================================================
---      RAISE global_api_expt;
-      RAISE invalid_value_expt;
+--        RAISE global_api_expt;
+        RAISE invalid_value_expt;
 -- == 2010/01/29 V1.5 Modified END   ===============================================================
+      END IF;
+      -- 当月在庫会計期間がクローズの場合
+      IF ( NOT lb_org_acct_period_flg ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application_short_name
+                       , iv_name         => cv_invoice_date_invalid_err
+                       , iv_token_name1  => cv_tkn_proc_date
+                       , iv_token_value1 => TO_CHAR( g_hht_inv_if_tab( in_work_count ).invoice_date ,'yyyymmdd' )
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE invalid_value_expt;
+      END IF;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+      -- 成功した場合は変数に格納
+      gt_checked_data( TO_CHAR( g_hht_inv_if_tab( in_work_count ).invoice_date , cv_date_fmt )).invoice_date
+        := g_hht_inv_if_tab( in_work_count ).invoice_date;
     END IF;
-    -- 当月在庫会計期間がクローズの場合
-    IF ( NOT lb_org_acct_period_flg ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_application_short_name
-                     , iv_name         => cv_invoice_date_invalid_err
-                     , iv_token_name1  => cv_tkn_proc_date
-                     , iv_token_value1 => TO_CHAR( g_hht_inv_if_tab( in_work_count ).invoice_date ,'yyyymmdd' )
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE invalid_value_expt;
-    END IF;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
 --
 -- 2011/11/01 v1.10 T.Yoshimoto Add Start E_本稼動_07570
 -- 2015/03/19 v1.12 Del Start
@@ -1600,6 +1627,11 @@ AS
         ov_errmsg  := lv_errmsg;
         ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
         ov_retcode := cv_status_warn;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+        -- 次レコードのエラー出力用
+        gv_cnv_errmsg := lv_errmsg;
+        gv_cnv_errbuf := lv_errbuf;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
 --  棚卸確定済例外
     WHEN inv_status_fix_expt THEN
         -- KEY情報出力
@@ -1633,6 +1665,11 @@ AS
         ov_errmsg  := lv_errmsg;
         ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
         ov_retcode := cv_status_warn;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+        -- 次レコードのエラー出力用
+        gv_cnv_errmsg := lv_errmsg;
+        gv_cnv_errbuf := lv_errbuf;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1973,9 +2010,24 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+    cv_dummy      CONSTANT VARCHAR2(1)   := 'Z';        -- キー値比較用ダミー値
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
     -- *** ローカル変数 ***
     ln_work_count    NUMBER := 0;                       -- LOOP件数
     lv_work_status   VARCHAR2(1) := cv_status_normal;   -- 制御用ステータス
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+    -- 前レコードのキー値保持用
+    lt_before_record_type     xxcoi_hht_inv_transactions.record_type%TYPE;     -- レコード種別
+    lt_before_invoice_type    xxcoi_hht_inv_transactions.invoice_type%TYPE;    -- 伝票区分
+    lt_before_department_flag xxcoi_hht_inv_transactions.department_flag%TYPE; -- 百貨店フラグ
+    lt_before_base_code       xxcoi_hht_inv_transactions.base_code%TYPE;       -- 拠点コード
+    lt_before_outside_code    xxcoi_hht_inv_transactions.outside_code%TYPE;    -- 出庫側コード
+    lt_before_inside_code     xxcoi_hht_inv_transactions.inside_code%TYPE;     -- 入庫側コード
+    lt_before_invoice_date    xxcoi_hht_inv_transactions.invoice_date%TYPE;    -- 伝票日付
+    lv_before_work_status     VARCHAR2(1) := cv_status_normal;                 -- 制御用ステータス
+    lv_key_info               VARCHAR2(5000);                                  -- HHT入出庫データ用KEY情報
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1997,6 +2049,17 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+    lt_before_record_type     := NULL;  -- レコード種別
+    lt_before_invoice_type    := NULL;  -- 伝票区分
+    lt_before_department_flag := NULL;  -- 百貨店フラグ
+    lt_before_base_code       := NULL;  -- 拠点コード
+    lt_before_outside_code    := NULL;  -- 出庫側コード
+    lt_before_inside_code     := NULL;  -- 入庫側コード
+    lt_before_invoice_date    := NULL;  -- 伝票日付
+    lv_before_work_status     := cv_status_normal; -- 制御用ステータス
+    lv_key_info               := NULL;  -- HHT入出庫データ用KEY情報
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -2073,6 +2136,26 @@ AS
         -- 正常
         ELSE
         --
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+          IF ( ( lt_before_record_type IS NULL ) -- 初回レコードの場合
+            OR (
+                 ( g_hht_inv_if_tab( ln_work_count ).record_type  <> lt_before_record_type     ) -- キー値が不一致の場合
+              OR ( NVL( g_hht_inv_if_tab( ln_work_count ).invoice_type   , cv_dummy ) <> lt_before_invoice_type    )
+              OR ( NVL( g_hht_inv_if_tab( ln_work_count ).department_flag, cv_dummy ) <> lt_before_department_flag )
+              OR ( g_hht_inv_if_tab( ln_work_count ).base_code    <> lt_before_base_code       )
+              OR ( g_hht_inv_if_tab( ln_work_count ).outside_code <> lt_before_outside_code    )
+              OR ( g_hht_inv_if_tab( ln_work_count ).inside_code  <> lt_before_inside_code     )
+              OR ( g_hht_inv_if_tab( ln_work_count ).invoice_date <> lt_before_invoice_date    )))
+          THEN
+            -- キー値を保持
+            lt_before_record_type     := g_hht_inv_if_tab( ln_work_count ).record_type;  -- レコード種別
+            lt_before_invoice_type    := NVL( g_hht_inv_if_tab( ln_work_count ).invoice_type   , cv_dummy ); -- 伝票区分
+            lt_before_department_flag := NVL( g_hht_inv_if_tab( ln_work_count ).department_flag, cv_dummy ); -- 百貨店フラグ
+            lt_before_base_code       := g_hht_inv_if_tab( ln_work_count ).base_code;    -- 拠点コード
+            lt_before_outside_code    := g_hht_inv_if_tab( ln_work_count ).outside_code; -- 出庫側コード
+            lt_before_inside_code     := g_hht_inv_if_tab( ln_work_count ).inside_code;  -- 入庫側コード
+            lt_before_invoice_date    := g_hht_inv_if_tab( ln_work_count ).invoice_date; -- 伝票日付
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
             cnv_subinv_code(
                 ln_work_count        -- TABLE(INDEX)
               , lv_errbuf            -- エラー・メッセージ           --# 固定 #
@@ -2086,6 +2169,10 @@ AS
                 gn_error_cnt := gn_error_cnt + 1;
                 -- 警告ステータスセット
                 lv_work_status := cv_status_warn;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+                -- 前レコードステータスにセット
+                lv_before_work_status := cv_status_warn;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
             --
             ELSIF ( lv_retcode = cv_status_error ) THEN
             --
@@ -2093,8 +2180,59 @@ AS
                 gn_error_cnt := gn_error_cnt + 1;
                 -- OTHERS例外のため処理中断
                 RAISE global_process_expt;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+            --
+            ELSE
+              -- 前レコードステータスにセット
+              lv_before_work_status := cv_status_normal;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
             --
             END IF;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add START
+          --
+          ELSE
+          -- キー値が一致する場合
+            -- 前レコードが警告の場合
+            IF ( lv_before_work_status = cv_status_warn ) THEN
+              -- エラー件数のカウントアップ
+              gn_error_cnt := gn_error_cnt + 1;
+              -- 警告ステータスセット
+              lv_work_status := lv_before_work_status;
+              -- エラーメッセージのセット
+              lv_errmsg := gv_cnv_errmsg;
+              lv_errbuf := gv_cnv_errbuf;
+--
+              -- 前レコードと同じエラーメッセージを出力
+              -- KEY情報取得
+              lv_key_info := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_application_short_name
+                , iv_name         => cv_key_info
+                , iv_token_name1  => cv_tkn_base_code
+                , iv_token_value1 => g_hht_inv_if_tab( ln_work_count ).base_code       -- 拠点コード
+                , iv_token_name2  => cv_tkn_record_type
+                , iv_token_value2 => g_hht_inv_if_tab( ln_work_count ).record_type     -- レコード種別
+                , iv_token_name3  => cv_tkn_invoice_type
+                , iv_token_value3 => g_hht_inv_if_tab( ln_work_count ).invoice_type    -- 伝票区分
+                , iv_token_name4  => cv_tkn_dept_flag
+                , iv_token_value4 => g_hht_inv_if_tab( ln_work_count ).department_flag -- 百貨店フラグ
+                , iv_token_name5  => cv_tkn_invoice_no
+                , iv_token_value5 => g_hht_inv_if_tab( ln_work_count ).invoice_no      -- 伝票番号
+                , iv_token_name6  => cv_tkn_column_no
+                , iv_token_value6 => g_hht_inv_if_tab( ln_work_count ).column_no       -- コラムNo
+                , iv_token_name7  => cv_tkn_item_code
+                , iv_token_value7 => g_hht_inv_if_tab( ln_work_count ).item_code       -- 品目コード
+              );
+              FND_FILE.PUT_LINE(
+                  which  => FND_FILE.OUTPUT
+                , buff   => lv_key_info || gv_cnv_errmsg );
+              FND_FILE.PUT_LINE(
+                  which  => FND_FILE.LOG
+                , buff   => lv_key_info || gv_cnv_errbuf );
+            --
+            END IF;
+          --
+          END IF;
+-- 2015/11/11 E_本稼動_13356 V1.13 Add END
         --
         END IF;
         --
