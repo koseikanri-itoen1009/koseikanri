@@ -4,10 +4,10 @@ AS
  *
  * Copyright(c)Oracle Corporation Japan, 2003. All rights reserved.
  *
- * Package Name     : xx03_je_error_check_pkg(spec)
+ * Package Name     : xx03_je_error_check_pkg(body)
  * Description      : 仕訳エラーチェック共通関数
  * MD.070           : 仕訳エラーチェック共通関数 OCSJ/BFAFIN/MD070/F313
- * Version          : 11.5.10.2.7
+ * Version          : 11.5.10.2.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -99,6 +99,7 @@ AS
  *                                           行なう項目とSYSDATEで行なう項目を再確認)
  *  2015/03/24   11.5.10.2.7    Y.Shoji      消費税額許容範囲チェックカーソルの会社コードを
  *                                           固定値：001（本社）に変更する。
+ *  2015/12/17   11.5.10.2.8    S.Niki       [E_本稼動_13421]aff_dff_checkに中止顧客チェック追加
  *
  *****************************************************************************************/
 --
@@ -1112,6 +1113,18 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+-- Ver11.5.10.2.8 Add Start
+    --メッセージ
+    cv_msg_cust_stop_err            CONSTANT VARCHAR2(30) := 'APP-XX03-03090';  --中止顧客チェックエラーメッセージ
+    --プロファイル
+    cv_prof_aff3_change             CONSTANT VARCHAR2(30) := 'XXCOK1_AFF3_CHANGE';  --XXCOK:勘定科目_仮払金（釣銭）
+    --トークン
+    cv_tkn_cust_num                 CONSTANT VARCHAR2(30) := 'TOK_XX03_CUST_NUM';   --顧客コード
+    --固定値
+    cv_cust_status_stop             CONSTANT VARCHAR2(2)  := '90';              --顧客ステータス：90(中止決裁済)
+    --変数
+    lt_account_change               xx03_companies_v.flex_value%TYPE;           --勘定科目_仮払金（釣銭）
+-- Ver11.5.10.2.8 Add End
     ln_set_of_books_id              gl_period_statuses.set_of_books_id%TYPE;    --帳簿ID
     xx03_error_checks_rec           xx03_error_checks_cur%ROWTYPE;              --エラーチェックテーブルレコード
 
@@ -1466,7 +1479,20 @@ AS
       ;
 
     fnd_currencies_rec    fnd_currencies_cur%ROWTYPE;     --テーブルレコード
-
+-- Ver11.5.10.2.8 Add Start
+    --顧客マスタ
+    CURSOR cust_check_cur(
+        it_segment5  IN  xx03_error_checks.segment5%TYPE   -- 1.segment5
+    ) IS
+      SELECT hp.duns_number_c       AS cust_status
+      FROM   hz_cust_accounts hca
+            ,hz_parties       hp
+      WHERE  hca.party_id       = hp.party_id
+      AND    hca.account_number = it_segment5
+      ;
+    --
+    cust_check_rec  cust_check_cur%ROWTYPE;     --テーブルレコード
+-- Ver11.5.10.2.8 Add End
     -- ===============================
     -- ユーザー定義例外
     -- ===============================
@@ -1499,7 +1525,10 @@ AS
 
     --2.  帳簿ID取得
     ln_set_of_books_id := xx00_profile_pkg.value ('GL_SET_OF_BKS_ID') ;
-
+-- Ver11.5.10.2.8 Add Start
+    --    勘定科目_仮払金（釣銭）取得
+    lt_account_change := xx00_profile_pkg.value (cv_prof_aff3_change) ;
+-- Ver11.5.10.2.8 Add End
     --3.エラーチェックテーブル読み込み
      OPEN xx03_error_checks_cur(
         in_check_id         -- 1.チェックID
@@ -1976,6 +2005,39 @@ AS
                   --戻り値更新
                   lv_ret_status := cv_status_error;
                 END IF;
+-- Ver11.5.10.2.8 Add Start
+                --segment3(勘定科目)＝プロファイル「勘定科目_仮払金（釣銭）」の場合、
+                --segment5(相手先)に設定された顧客をチェックします。
+                IF ( lt_account_change IS NOT NULL AND xx03_error_checks_rec.segment3 = lt_account_change ) THEN
+                  OPEN cust_check_cur(
+                      xx03_error_checks_rec.segment5  -- 1.segment5
+                  );
+                  --読み込み
+                  FETCH cust_check_cur INTO cust_check_rec;
+                  --顧客ステータス＝'90'(中止決裁済)の場合、中止顧客として
+                  --エラー情報テーブル出力サブ関数(ins_error_tbl)を呼び出し、
+                  --エラー情報テーブルを出力します。
+                  IF cust_check_rec.cust_status = cv_cust_status_stop THEN
+                    lv_error_code := cv_msg_cust_stop_err;
+                    lt_tokeninfo.DELETE;
+                    lt_tokeninfo(0).token_name  := cv_tkn_cust_num;                --TOK_XX03_CUST_NUM
+                    lt_tokeninfo(0).token_value := xx03_error_checks_rec.segment5; --顧客コード
+                    lv_ret := xx03_je_error_check_pkg.ins_error_tbl(
+                       xx03_error_checks_rec.check_id    , --1.チェックID
+                       xx03_error_checks_rec.journal_id  , --2.仕訳キー
+                       xx03_error_checks_rec.line_number , --3.行番号
+                       xx03_error_checks_rec.dr_cr       , --4.貸借区分
+                       lv_error_code   ,                   --5.エラーコード
+                       lt_tokeninfo    ,                   --6.トークン情報
+                       cv_status_error );
+                    lt_tokeninfo.DELETE;
+                    --戻り値更新
+                    lv_ret_status := cv_status_error;
+                  END IF;
+                  --カーソルのクローズ
+                  CLOSE cust_check_cur;
+                END IF;
+-- Ver11.5.10.2.8 Add End
               END IF;
               --カーソルのクローズ
               CLOSE gl_sets_of_books_cur;
