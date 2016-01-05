@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A13C(spec)
  * Description      : 保管場所転送取引データOIF更新（倉替情報）
  * MD.050           : 保管場所転送取引データOIF更新（倉替情報） MD050_COI_003_A13
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2015/04/13    1.2   A.Uchida         [E_本稼動_13008]他拠点営業車の入出庫対応
  *  2015/08/07    1.3   S.Yamashita      [E_本稼動_13215]他拠点営業車の入出庫不具合対応（確認数量の登録値変更）
  *  2015/10/05    1.4   S.Yamashita      [E_本稼動_13328]E_本稼動_13215の再対応（入庫情報一時表の更新項目に確認数量を追加）
+ *  2015/12/25    1.5   S.Niki           [E_本稼動_13442]他拠点営業車入出庫セキュリティマスタを参照するよう修正
  *
  *****************************************************************************************/
 --
@@ -108,6 +109,10 @@ AS
   cv_stock_uncheck_list_div_out  CONSTANT VARCHAR2(1)   := 'O';            -- 入庫未確認リスト対象区分 O：出庫側情報
   cv_stock_uncheck_list_div_in   CONSTANT VARCHAR2(1)   := 'I';            -- 入庫未確認リスト対象区分 I：入庫側情報
   cv_slip_type                   CONSTANT VARCHAR2(2)   := '20';           -- 伝票区分 20:拠点間倉替
+-- Ver1.5 Add Start
+  cv_invoice_type_1              CONSTANT VARCHAR2(1)   := '1';            -- 伝票区分 1:倉庫から営業車
+  cv_invoice_type_2              CONSTANT VARCHAR2(1)   := '2';            -- 伝票区分 2:営業車から倉庫
+-- Ver1.5 Add End
   -- メッセージ
   cv_no_para_msg                 CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなしメッセージ
   cv_org_code_get_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
@@ -142,6 +147,10 @@ AS
   -- 2015/04/27 Ver1.2 Add Start
   cv_tkn_name_err_msg           CONSTANT VARCHAR2(9)    := 'ERR_MSG';                   -- エラーメッセージ
   -- 2015/04/27 Ver1.2 Add End
+-- Ver1.5 Add Start
+  -- 参照タイプ
+  cv_lkp_base_secure             CONSTANT VARCHAR2(30) := 'XXCOI1_OTHER_BASE_INOUT_SECURE'; -- 他拠点営業車入出庫セキュリティマスタ
+-- Ver1.5 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1041,10 +1050,28 @@ AS
       SELECT COUNT(1)
       INTO   ln_cnt
       FROM   xxcoi_hht_inv_transactions   xhit
-      WHERE  ((xhit.invoice_type   =  '1'
-        AND    xhit.outside_subinv_code = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code)
-        OR    (xhit.invoice_type   =  '2'
-        AND    xhit.inside_subinv_code  = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code))
+-- Ver1.5 Mod Start
+--      WHERE  ((xhit.invoice_type   =  '1'
+--        AND    xhit.outside_subinv_code = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code)
+--        OR    (xhit.invoice_type   =  '2'
+--        AND    xhit.inside_subinv_code  = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code))
+      WHERE  ((xhit.invoice_type        = cv_invoice_type_1 -- 倉庫から営業車
+        AND    xhit.outside_subinv_code = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code
+        AND    EXISTS (SELECT 'X'
+                       FROM   fnd_lookup_values_vl flvv
+                       WHERE  SUBSTRB(flvv.lookup_code,1,4) = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_base_code
+                       AND    SUBSTRB(flvv.meaning,1,4)     = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_base_code
+                       AND    flvv.enabled_flag             = cv_flag_on
+                       AND    flvv.lookup_type              = cv_lkp_base_secure )) -- 倉庫から他拠点営業車の場合
+        OR    (xhit.invoice_type        = cv_invoice_type_2 -- 営業車から倉庫
+        AND    xhit.inside_subinv_code  = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code
+        AND    EXISTS (SELECT 'X'
+                       FROM   fnd_lookup_values_vl flvv
+                       WHERE  SUBSTRB(flvv.lookup_code,1,4) = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_base_code
+                       AND    SUBSTRB(flvv.meaning,1,4)     = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_base_code
+                       AND    flvv.enabled_flag             = cv_flag_on
+                       AND    flvv.lookup_type              = cv_lkp_base_secure ))) -- 営業車から他拠点倉庫の場合
+-- Ver1.5 Mod End
       AND    xhit.item_code      =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).item_code
       AND    xhit.case_quantity  =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_quantity
       AND    xhit.quantity       =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).quantity
@@ -1376,10 +1403,28 @@ AS
       SELECT COUNT(1) AS cnt
       INTO   ln_cnt
       FROM   xxcoi_hht_inv_transactions   xhit -- HHT入出庫一時表
-      WHERE  ((xhit.invoice_type   =  '1'
-        AND    xhit.outside_subinv_code = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code)   -- 倉庫から営業車
-        OR    (xhit.invoice_type   =  '2'
-        AND    xhit.inside_subinv_code  = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code)) -- 営業車から倉庫
+-- Ver1.5 Mod Start
+--      WHERE  ((xhit.invoice_type   =  '1'
+--        AND    xhit.outside_subinv_code = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code)   -- 倉庫から営業車
+--        OR    (xhit.invoice_type   =  '2'
+--        AND    xhit.inside_subinv_code  = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code)) -- 営業車から倉庫
+      WHERE  ((xhit.invoice_type        = cv_invoice_type_1 -- 倉庫から営業車
+        AND    xhit.outside_subinv_code = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_subinv_code
+        AND    EXISTS (SELECT 'X'
+                       FROM   fnd_lookup_values_vl flvv
+                       WHERE  SUBSTRB(flvv.lookup_code,1,4) = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_base_code
+                       AND    SUBSTRB(flvv.meaning,1,4)     = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_base_code
+                       AND    flvv.enabled_flag             = cv_flag_on
+                       AND    flvv.lookup_type              = cv_lkp_base_secure )) -- 倉庫から他拠点営業車の場合
+        OR    (xhit.invoice_type        = cv_invoice_type_2 -- 営業車から倉庫
+        AND    xhit.inside_subinv_code  = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_subinv_code
+        AND    EXISTS (SELECT 'X'
+                       FROM   fnd_lookup_values_vl flvv
+                       WHERE  SUBSTRB(flvv.lookup_code,1,4) = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).inside_base_code
+                       AND    SUBSTRB(flvv.meaning,1,4)     = gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).outside_base_code
+                       AND    flvv.enabled_flag             = cv_flag_on
+                       AND    flvv.lookup_type              = cv_lkp_base_secure ))) -- 営業車から他拠点倉庫の場合
+-- Ver1.5 Mod End
       AND    xhit.item_code      =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).item_code       -- 品目コード
       AND    xhit.case_quantity  =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).case_quantity   -- ケース数
       AND    xhit.quantity       =  gt_kuragae_data_tab( gn_kuragae_data_loop_cnt ).quantity        -- 本数
