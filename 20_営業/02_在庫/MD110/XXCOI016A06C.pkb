@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2015/08/20    1.5   S.Yamashita      E_本稼動_13213対応
  *  2015/10/09    1.6   S.Yamashita      E_本稼動_13216/E_本稼動_13326対応
  *  2015/12/16    1.7   S.Yamashita      E_本稼動_13340対応
+ *  2015/12/24    1.8   S.Yamashita      E_本稼動_13401対応
  *
  *****************************************************************************************/
 --
@@ -182,6 +183,9 @@ AS
 -- Add Ver1.5 S.Yamashita Start
   cv_msg_xxcoi_10709        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10709'; -- 受注ステータスエラーメッセージ
 -- Add Ver1.5 S.Yamashita End
+-- Add Ver1.8 S.Yamashita Start
+  cv_msg_xxcoi_10710        CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10710'; -- 引当時ステータスチェックエラーメッセージ
+-- Add Ver1.8 S.Yamashita End
   -- メッセージ（COS）
   cv_msg_xxcos_00186        CONSTANT VARCHAR2(16) := 'APP-XXCOS1-00186'; -- 定番情報取得エラー
   cv_msg_xxcos_00187        CONSTANT VARCHAR2(16) := 'APP-XXCOS1-00187'; -- 特売情報取得エラー
@@ -3831,6 +3835,9 @@ AS
     ld_delivery_date_e      DATE DEFAULT NULL; -- 納品日_生産
     ld_last_deliver_lot_s   DATE DEFAULT NULL; -- 納品ロット_営業
     ld_delivery_date_s      DATE DEFAULT NULL; -- 納品日_営業
+-- Add Ver1.8 S.Yamashita Start
+    ln_chk_order_cnt        NUMBER DEFAULT 0;  -- 出荷仮確定件数
+-- Add Ver1.8 S.Yamashita End
 --
   BEGIN
 --
@@ -3894,6 +3901,37 @@ AS
         gd_last_deliver_lot := NULL;
         gd_delivery_date    := NULL;
     END;
+-- Add Ver1.8 S.Yamashita Start
+    -- ステータスチェック
+    SELECT COUNT(1) AS cnt
+    INTO   ln_chk_order_cnt -- 出荷仮確定件数
+    FROM   xxcoi_lot_reserve_info xlri -- ロット別引当情報
+    WHERE  xlri.order_number = it_kbn_1_rec.order_number -- 受注番号
+    AND    xlri.org_id       = gt_org_id                 -- 営業単位
+    AND    xlri.whse_code    = it_kbn_1_rec.whse_code    -- 保管場所
+    AND    xlri.parent_shipping_status = cv_shipping_status_25 -- 出荷情報ステータス（受注番号単位）
+    ;
+--
+    -- 出荷仮確定件数が0でない場合
+    IF ( ln_chk_order_cnt <> 0) THEN
+      -- 引当時ステータスチェックエラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_application
+                   , iv_name         => cv_msg_xxcoi_10710
+                   , iv_token_name1  => cv_tkn_order_number
+                   , iv_token_value1 => it_kbn_1_rec.order_number
+                   , iv_token_name2  => cv_tkn_line_number
+                   , iv_token_value2 => it_kbn_1_rec.line_number
+                   , iv_token_name3  => cv_tkn_item_code
+                   , iv_token_value3 => it_kbn_1_rec.parent_item_code
+                   );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_errmsg
+      );
+      ov_retcode := cv_status_warn;
+    END IF;
+-- Add Ver1.8 S.Yamashita End
 --
   EXCEPTION
 --
@@ -5897,163 +5935,163 @@ AS
     -- ロット別引当情報登録ループ
     << ins_lot_reserve_loop >>
     FOR i IN 1 .. gt_reserve_tab.COUNT LOOP
-      INSERT INTO xxcoi_lot_reserve_info(
-          lot_reserve_info_id                       -- ロット別引当情報ID
-        , slip_num                                  -- 伝票No
-        , order_number                              -- 受注番号
-        , org_id                                    -- 営業単位
-        , parent_shipping_status                    -- 出荷情報ステータス(受注番号単位)
-        , parent_shipping_status_name               -- 出荷情報ステータス名称(受注番号単位)
-        , base_code                                 -- 拠点コード
-        , base_name                                 -- 拠点名
-        , whse_code                                 -- 保管場所コード
-        , whse_name                                 -- 保管場所名
-        , location_code                             -- ロケーションコード
-        , location_name                             -- ロケーション名称
-        , shipping_status                           -- 出荷情報ステータス
-        , shipping_status_name                      -- 出荷情報ステータス名称
-        , chain_code                                -- チェーン店コード
-        , chain_name                                -- チェーン店名
-        , shop_code                                 -- 店舗コード
-        , shop_name                                 -- 店舗名
-        , customer_code                             -- 顧客コード
-        , customer_name                             -- 顧客名
-        , center_code                               -- センターコード
-        , center_name                               -- センター名
-        , area_code                                 -- 地区コード
-        , area_name                                 -- 地区名称
-        , shipped_date                              -- 出荷日
-        , arrival_date                              -- 着日
-        , item_div                                  -- 商品区分
-        , item_div_name                             -- 商品区分名
-        , parent_item_code                          -- 親品目コード
-        , parent_item_name                          -- 親品目名称
-        , item_code                                 -- 子品目コード
-        , item_name                                 -- 子品目名称
-        , lot                                       -- ロット
-        , difference_summary_code                   -- 固有記号
-        , case_in_qty                               -- 入数
-        , case_qty                                  -- ケース数
-        , singly_qty                                -- バラ数
-        , summary_qty                               -- 数量
-        , regular_sale_class_line                   -- 定番特売区分(明細)
-        , regular_sale_class_name_line              -- 定番特売区分名(明細)
-        , edi_received_date                         -- EDI受信日
-        , delivery_order_edi                        -- 配送順(EDI)
-        , before_ordered_quantity                   -- 訂正前受注数量
-        , reserve_performer_code                    -- 引当実行者コード
-        , reserve_performer_name                    -- 引当実行者名
-        , mark                                      -- 記号
-        , lot_tran_kbn                              -- ロット別取引明細作成区分
-        , header_id                                 -- 受注ヘッダID
-        , line_id                                   -- 受注明細ID
-        , customer_id                               -- 顧客ID
-        , parent_item_id                            -- 親品目ID
-        , item_id                                   -- 子品目ID
-        , reserve_transaction_type_code             -- 引当時取引タイプコード
-        , order_quantity_uom                        -- 受注単位
-        , ordered_quantity                          -- 受注数量
-        , short_case_in_qty                         -- 入数（不足数）
-        , short_case_qty                            -- ケース数（不足数）
-        , short_singly_qty                          -- バラ数（不足数）
-        , short_summary_qty                         -- 数量（不足数）
-        , created_by                                -- 作成者
-        , creation_date                             -- 作成日
-        , last_updated_by                           -- 最終更新者
-        , last_update_date                          -- 最終更新日
-        , last_update_login                         -- 最終更新ログイン
-        , request_id                                -- 要求ID
-        , program_application_id                    -- プログラムアプリケーションID
-        , program_id                                -- プログラムID
-        , program_update_date                       -- プログラム更新日
-      ) VALUES (
-          xxcoi_lot_reserve_info_s01.NEXTVAL        -- ロット別引当情報ID
-        , it_kbn_1_rec.slip_num                     -- 伝票No
-        , it_kbn_1_rec.order_number                 -- 受注番号
-        , gt_org_id                                 -- 営業単位
-        , NULL                                      -- 出荷情報ステータス(受注番号単位)
-        , NULL                                      -- 出荷情報ステータス名称(受注番号単位)
-        , gv_login_base_code                        -- 拠点コード
-        , gt_base_name                              -- 拠点名
-        , it_kbn_1_rec.whse_code                    -- 保管場所コード
-        , it_kbn_1_rec.whse_name                    -- 保管場所名
-        , gt_reserve_tab(i).location_code           -- ロケーションコード
-        , gt_reserve_tab(i).location_name           -- ロケーション名称
-        , lt_shipping_status                        -- 出荷情報ステータス
-        , lt_shipping_status_name                   -- 出荷情報ステータス名称
-        , it_kbn_1_rec.chain_code                   -- チェーン店コード
-        , it_kbn_1_rec.chain_name                   -- チェーン店名
-        , it_kbn_1_rec.shop_code                    -- 店舗コード
-        , it_kbn_1_rec.shop_name                    -- 店舗名
-        , it_kbn_1_rec.customer_code                -- 顧客コード
-        , it_kbn_1_rec.customer_name                -- 顧客名
-        , it_kbn_1_rec.center_code                  -- センターコード
-        , it_kbn_1_rec.center_name                  -- センター名
-        , it_kbn_1_rec.area_code                    -- 地区コード
-        , it_kbn_1_rec.area_name                    -- 地区名称
-        , it_kbn_1_rec.shipped_date                 -- 出荷日
-        , it_kbn_1_rec.arrival_date                 -- 着日
-        , gt_reserve_tab(i).item_div                -- 商品区分
-        , gt_reserve_tab(i).item_div_name           -- 商品区分名
-        , it_kbn_1_rec.parent_item_code             -- 親品目コード
-        , it_kbn_1_rec.parent_item_name             -- 親品目名称
-        , gt_reserve_tab(i).item_code               -- 子品目コード
-        , gt_reserve_tab(i).item_name               -- 子品目名称
-        , gt_reserve_tab(i).lot                     -- ロット
-        , gt_reserve_tab(i).difference_summary_code -- 固有記号
-        , gt_reserve_tab(i).case_in_qty             -- 入数
-        , gt_reserve_tab(i).case_qty                -- ケース数
-        , gt_reserve_tab(i).singly_qty              -- バラ数
-        , gt_reserve_tab(i).summary_qty             -- 数量
-        , it_kbn_1_rec.regular_sale_class_line      -- 定番特売区分(明細)
-        , it_kbn_1_rec.regular_sale_class_name_line -- 定番特売区分名(明細)
-        , it_kbn_1_rec.edi_received_date            -- EDI受信日
-        , it_kbn_1_rec.delivery_order_edi           -- 配送順(EDI)
-        , gt_order_summary_qty                      -- 訂正前受注数量：出荷調整を行えるよう、引当時点の受注数量を設定する
-        , gt_employee_number                        -- 引当実行者コード
-        , gv_employee_name                          -- 引当実行者名
-        , gt_reserve_tab(i).mark                    -- 記号
-        , cv_lot_tran_kbn_0                         -- ロット別取引明細作成区分
-        , it_kbn_1_rec.header_id                    -- 受注ヘッダID
-        , it_kbn_1_rec.line_id                      -- 受注明細ID
-        , it_kbn_1_rec.customer_id                  -- 顧客ID
-        , it_kbn_1_rec.parent_item_id               -- 親品目ID
-        , gt_reserve_tab(i).item_id                 -- 子品目ID
-        , lt_tran_type_code                         -- 引当時取引タイプコード
-        , it_kbn_1_rec.order_quantity_uom           -- 受注単位
-        , it_kbn_1_rec.ordered_quantity             -- 受注数量
-        , gt_reserve_tab(i).short_case_in_qty       -- 入数（不足数）
-        , gt_reserve_tab(i).short_case_qty          -- ケース数（不足数）
-        , gt_reserve_tab(i).short_singly_qty        -- バラ数（不足数）
-        , gt_reserve_tab(i).short_summary_qty       -- 数量（不足数）
-        , cn_created_by                             -- 作成者
-        , cd_creation_date                          -- 作成日
-        , cn_last_updated_by                        -- 最終更新者
-        , cd_last_update_date                       -- 最終更新日
-        , cn_last_update_login                      -- 最終更新ログイン
-        , cn_request_id                             -- 要求ID
-        , cn_program_application_id                 -- プログラムアプリケーションID
-        , cn_program_id                             -- プログラムID
-        , cd_program_update_date                    -- プログラム更新日
-      );
-      -- デバッグ用
-      IF ( gv_retcode = cv_status_normal ) THEN
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.LOG
-          , buff   => 'A-12.3 ロット別引当情報登録→引当済' ||
-                      ' 受注番号：'                         || it_kbn_1_rec.order_number     ||
-                      ' 親品目コード：'                     || it_kbn_1_rec.parent_item_code ||
-                      ' 子品目コード：'                     || gt_reserve_tab(i).item_code
+        INSERT INTO xxcoi_lot_reserve_info(
+            lot_reserve_info_id                       -- ロット別引当情報ID
+          , slip_num                                  -- 伝票No
+          , order_number                              -- 受注番号
+          , org_id                                    -- 営業単位
+          , parent_shipping_status                    -- 出荷情報ステータス(受注番号単位)
+          , parent_shipping_status_name               -- 出荷情報ステータス名称(受注番号単位)
+          , base_code                                 -- 拠点コード
+          , base_name                                 -- 拠点名
+          , whse_code                                 -- 保管場所コード
+          , whse_name                                 -- 保管場所名
+          , location_code                             -- ロケーションコード
+          , location_name                             -- ロケーション名称
+          , shipping_status                           -- 出荷情報ステータス
+          , shipping_status_name                      -- 出荷情報ステータス名称
+          , chain_code                                -- チェーン店コード
+          , chain_name                                -- チェーン店名
+          , shop_code                                 -- 店舗コード
+          , shop_name                                 -- 店舗名
+          , customer_code                             -- 顧客コード
+          , customer_name                             -- 顧客名
+          , center_code                               -- センターコード
+          , center_name                               -- センター名
+          , area_code                                 -- 地区コード
+          , area_name                                 -- 地区名称
+          , shipped_date                              -- 出荷日
+          , arrival_date                              -- 着日
+          , item_div                                  -- 商品区分
+          , item_div_name                             -- 商品区分名
+          , parent_item_code                          -- 親品目コード
+          , parent_item_name                          -- 親品目名称
+          , item_code                                 -- 子品目コード
+          , item_name                                 -- 子品目名称
+          , lot                                       -- ロット
+          , difference_summary_code                   -- 固有記号
+          , case_in_qty                               -- 入数
+          , case_qty                                  -- ケース数
+          , singly_qty                                -- バラ数
+          , summary_qty                               -- 数量
+          , regular_sale_class_line                   -- 定番特売区分(明細)
+          , regular_sale_class_name_line              -- 定番特売区分名(明細)
+          , edi_received_date                         -- EDI受信日
+          , delivery_order_edi                        -- 配送順(EDI)
+          , before_ordered_quantity                   -- 訂正前受注数量
+          , reserve_performer_code                    -- 引当実行者コード
+          , reserve_performer_name                    -- 引当実行者名
+          , mark                                      -- 記号
+          , lot_tran_kbn                              -- ロット別取引明細作成区分
+          , header_id                                 -- 受注ヘッダID
+          , line_id                                   -- 受注明細ID
+          , customer_id                               -- 顧客ID
+          , parent_item_id                            -- 親品目ID
+          , item_id                                   -- 子品目ID
+          , reserve_transaction_type_code             -- 引当時取引タイプコード
+          , order_quantity_uom                        -- 受注単位
+          , ordered_quantity                          -- 受注数量
+          , short_case_in_qty                         -- 入数（不足数）
+          , short_case_qty                            -- ケース数（不足数）
+          , short_singly_qty                          -- バラ数（不足数）
+          , short_summary_qty                         -- 数量（不足数）
+          , created_by                                -- 作成者
+          , creation_date                             -- 作成日
+          , last_updated_by                           -- 最終更新者
+          , last_update_date                          -- 最終更新日
+          , last_update_login                         -- 最終更新ログイン
+          , request_id                                -- 要求ID
+          , program_application_id                    -- プログラムアプリケーションID
+          , program_id                                -- プログラムID
+          , program_update_date                       -- プログラム更新日
+        ) VALUES (
+            xxcoi_lot_reserve_info_s01.NEXTVAL        -- ロット別引当情報ID
+          , it_kbn_1_rec.slip_num                     -- 伝票No
+          , it_kbn_1_rec.order_number                 -- 受注番号
+          , gt_org_id                                 -- 営業単位
+          , NULL                                      -- 出荷情報ステータス(受注番号単位)
+          , NULL                                      -- 出荷情報ステータス名称(受注番号単位)
+          , gv_login_base_code                        -- 拠点コード
+          , gt_base_name                              -- 拠点名
+          , it_kbn_1_rec.whse_code                    -- 保管場所コード
+          , it_kbn_1_rec.whse_name                    -- 保管場所名
+          , gt_reserve_tab(i).location_code           -- ロケーションコード
+          , gt_reserve_tab(i).location_name           -- ロケーション名称
+          , lt_shipping_status                        -- 出荷情報ステータス
+          , lt_shipping_status_name                   -- 出荷情報ステータス名称
+          , it_kbn_1_rec.chain_code                   -- チェーン店コード
+          , it_kbn_1_rec.chain_name                   -- チェーン店名
+          , it_kbn_1_rec.shop_code                    -- 店舗コード
+          , it_kbn_1_rec.shop_name                    -- 店舗名
+          , it_kbn_1_rec.customer_code                -- 顧客コード
+          , it_kbn_1_rec.customer_name                -- 顧客名
+          , it_kbn_1_rec.center_code                  -- センターコード
+          , it_kbn_1_rec.center_name                  -- センター名
+          , it_kbn_1_rec.area_code                    -- 地区コード
+          , it_kbn_1_rec.area_name                    -- 地区名称
+          , it_kbn_1_rec.shipped_date                 -- 出荷日
+          , it_kbn_1_rec.arrival_date                 -- 着日
+          , gt_reserve_tab(i).item_div                -- 商品区分
+          , gt_reserve_tab(i).item_div_name           -- 商品区分名
+          , it_kbn_1_rec.parent_item_code             -- 親品目コード
+          , it_kbn_1_rec.parent_item_name             -- 親品目名称
+          , gt_reserve_tab(i).item_code               -- 子品目コード
+          , gt_reserve_tab(i).item_name               -- 子品目名称
+          , gt_reserve_tab(i).lot                     -- ロット
+          , gt_reserve_tab(i).difference_summary_code -- 固有記号
+          , gt_reserve_tab(i).case_in_qty             -- 入数
+          , gt_reserve_tab(i).case_qty                -- ケース数
+          , gt_reserve_tab(i).singly_qty              -- バラ数
+          , gt_reserve_tab(i).summary_qty             -- 数量
+          , it_kbn_1_rec.regular_sale_class_line      -- 定番特売区分(明細)
+          , it_kbn_1_rec.regular_sale_class_name_line -- 定番特売区分名(明細)
+          , it_kbn_1_rec.edi_received_date            -- EDI受信日
+          , it_kbn_1_rec.delivery_order_edi           -- 配送順(EDI)
+          , gt_order_summary_qty                      -- 訂正前受注数量：出荷調整を行えるよう、引当時点の受注数量を設定する
+          , gt_employee_number                        -- 引当実行者コード
+          , gv_employee_name                          -- 引当実行者名
+          , gt_reserve_tab(i).mark                    -- 記号
+          , cv_lot_tran_kbn_0                         -- ロット別取引明細作成区分
+          , it_kbn_1_rec.header_id                    -- 受注ヘッダID
+          , it_kbn_1_rec.line_id                      -- 受注明細ID
+          , it_kbn_1_rec.customer_id                  -- 顧客ID
+          , it_kbn_1_rec.parent_item_id               -- 親品目ID
+          , gt_reserve_tab(i).item_id                 -- 子品目ID
+          , lt_tran_type_code                         -- 引当時取引タイプコード
+          , it_kbn_1_rec.order_quantity_uom           -- 受注単位
+          , it_kbn_1_rec.ordered_quantity             -- 受注数量
+          , gt_reserve_tab(i).short_case_in_qty       -- 入数（不足数）
+          , gt_reserve_tab(i).short_case_qty          -- ケース数（不足数）
+          , gt_reserve_tab(i).short_singly_qty        -- バラ数（不足数）
+          , gt_reserve_tab(i).short_summary_qty       -- 数量（不足数）
+          , cn_created_by                             -- 作成者
+          , cd_creation_date                          -- 作成日
+          , cn_last_updated_by                        -- 最終更新者
+          , cd_last_update_date                       -- 最終更新日
+          , cn_last_update_login                      -- 最終更新ログイン
+          , cn_request_id                             -- 要求ID
+          , cn_program_application_id                 -- プログラムアプリケーションID
+          , cn_program_id                             -- プログラムID
+          , cd_program_update_date                    -- プログラム更新日
         );
-      ELSE
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.LOG
-          , buff   => 'A-12.3 ロット別引当情報登録→引当未' ||
-                      ' 受注番号：'                         || it_kbn_1_rec.order_number     ||
-                      ' 親品目コード：'                     || it_kbn_1_rec.parent_item_code ||
-                      ' 子品目コード：'                     || gt_reserve_tab(i).item_code
-        );
-      END IF;
+        -- デバッグ用
+        IF ( gv_retcode = cv_status_normal ) THEN
+          FND_FILE.PUT_LINE(
+              which  => FND_FILE.LOG
+            , buff   => 'A-12.3 ロット別引当情報登録→引当済' ||
+                        ' 受注番号：'                         || it_kbn_1_rec.order_number     ||
+                        ' 親品目コード：'                     || it_kbn_1_rec.parent_item_code ||
+                        ' 子品目コード：'                     || gt_reserve_tab(i).item_code
+          );
+        ELSE
+          FND_FILE.PUT_LINE(
+              which  => FND_FILE.LOG
+            , buff   => 'A-12.3 ロット別引当情報登録→引当未' ||
+                        ' 受注番号：'                         || it_kbn_1_rec.order_number     ||
+                        ' 親品目コード：'                     || it_kbn_1_rec.parent_item_code ||
+                        ' 子品目コード：'                     || gt_reserve_tab(i).item_code
+          );
+        END IF;
     END LOOP ins_lot_reserve_loop;
     --
     -- 成功件数設定
@@ -6398,6 +6436,10 @@ AS
                , xlri.program_id                  = cn_program_id                                          -- プログラムID
                , xlri.program_update_date         = cd_program_update_date                                 -- プログラム更新日
           WHERE  xlri.order_number                = l_shipping_status_tab(i).order_number                  -- 受注番号
+-- Add Ver1.8 S.Yamashita Start
+          AND    xlri.org_id                      = gt_org_id                                              -- 営業単位
+          AND    xlri.shipping_status             IN (cv_shipping_status_10,cv_shipping_status_20)         -- 出荷情報ステータス（明細単位）
+-- Add Ver1.8 S.Yamashita End
           ;
         END IF;
         --
@@ -6840,52 +6882,61 @@ AS
         --
         IF ( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
-        END IF;
-        --
-        -- ===============================================
-        -- 子品目情報取得処理(A-6)
-        -- ===============================================
-        get_item(
-            it_kbn_1_rec => l_kbn_1_rec -- 引当レコード
-          , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
-          , ov_retcode   => lv_retcode  -- リターン・コード
-          , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
-        );
-        --
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-        --
-        -- ===============================================
-        -- 引当対象在庫判定処理(A-7)
-        -- ===============================================
-        inventory_reservation(
-            it_kbn_1_rec => l_kbn_1_rec -- 引当レコード
-          , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
-          , ov_retcode   => lv_retcode  -- リターン・コード
-          , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
-        );
-        --
-        IF ( lv_retcode = cv_status_warn ) THEN
+-- Mod Ver1.8 S.Yamashita Start
+        ELSIF ( lv_retcode = cv_status_warn ) THEN
+          gb_warn_flag := TRUE;
           gv_retcode := cv_status_warn;
-        ELSIF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
+--        END IF;
+        ELSE
+-- Mod Ver1.8 S.Yamashita End
+          --
+          -- ===============================================
+          -- 子品目情報取得処理(A-6)
+          -- ===============================================
+          get_item(
+              it_kbn_1_rec => l_kbn_1_rec -- 引当レコード
+            , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
+            , ov_retcode   => lv_retcode  -- リターン・コード
+            , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          -- ===============================================
+          -- 引当対象在庫判定処理(A-7)
+          -- ===============================================
+          inventory_reservation(
+              it_kbn_1_rec => l_kbn_1_rec -- 引当レコード
+            , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
+            , ov_retcode   => lv_retcode  -- リターン・コード
+            , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode = cv_status_warn ) THEN
+            gv_retcode := cv_status_warn;
+          ELSIF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          -- ===============================================
+          -- ロット別引当情報登録処理(A-12)
+          -- ===============================================
+          ins_lot_reserve_info(
+              it_kbn_1_rec => l_kbn_1_rec -- 引当レコード
+            , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
+            , ov_retcode   => lv_retcode  -- リターン・コード
+            , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+-- Add Ver1.8 S.Yamashita Start
         END IF;
-        --
-        -- ===============================================
-        -- ロット別引当情報登録処理(A-12)
-        -- ===============================================
-        ins_lot_reserve_info(
-            it_kbn_1_rec => l_kbn_1_rec -- 引当レコード
-          , ov_errbuf    => lv_errbuf   -- エラー・メッセージ
-          , ov_retcode   => lv_retcode  -- リターン・コード
-          , ov_errmsg    => lv_errmsg   -- ユーザー・エラー・メッセージ
-        );
-        --
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        END IF;
-        --
+-- Add Ver1.8 S.Yamashita End
       END LOOP kbn_1_loop;
       --
       -- 対象件数が存在する場合
