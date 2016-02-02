@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.24
+ * Version                : 1.25
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2009/02/27   1.22  Oracle 伊藤 ひとみ 本番障害#32再対応(品質検査依頼情報作成)
  *  2009/03/09   1.23  Oracle 伊藤 ひとみ 本番障害#32再対応(品質検査依頼情報作成)
  *  2015/10/29   1.24  SCSK   山下 翔太   E_本稼動_13238対応
+ *  2015/12/18   1.25  SCSK   桐生 和幸   E_本稼動_12057対応
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -4601,9 +4602,18 @@ AS
     -- OPM保留在庫トランザクションカーソル
     CURSOR cur_ic_tran_pnd
     IS
-      SELECT itp.trans_id   trans_id
+-- 2015/12/18 K.Kiriu Mod Start E_本稼動_12057対応
+--      SELECT itp.trans_id   trans_id
+      SELECT /*+ LEADING(itp)
+                 INDEX(itp ic_tran_pndi2)
+             */
+             itp.trans_id   trans_id
+-- 2015/12/18 K.Kiriu Mod End   E_本稼動_12057対応
             ,itp.trans_date trans_date
       FROM   ic_tran_pnd itp -- OPM保留在庫トランザクション
+-- 2015/12/18 K.Kiriu Add Start E_本稼動_12057対応
+            ,gme_material_details gmd  --生産原料詳細
+-- 2015/12/18 K.Kiriu Add End   E_本稼動_12057対応
       WHERE  itp.reverse_id  IS NULL
 -- 2008/09/03 D.Nihei ADD START 生産バッチのデータのみを取得する
       AND    itp.doc_type    = 'PROD'
@@ -4613,6 +4623,10 @@ AS
 -- 2008/11/17 D.Nihei ADD END
       AND    itp.delete_mark = gn_delete_mark_off
       AND    itp.doc_id      = in_batch_id
+-- 2015/12/18 K.Kiriu Add Start E_本稼動_12057対応
+      AND    itp.doc_id      = gmd.batch_id
+      AND    itp.line_id     = gmd.material_detail_id
+-- 2015/12/18 K.Kiriu Add End   E_本稼動_12057対応
       ;
 --
     -- *** ローカル・レコード ***
