@@ -21,6 +21,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-01-05   1.0    SCS 嵐田 勇人    初回作成
  *  2015-12-02   1.1    SCSK小路 恭弘    E_本稼動_13393対応
+ *  2016-01-26   1.2    SCSK小路 恭弘    E_本稼動_13393対応
  *
  *****************************************************************************************/
 --
@@ -50,8 +51,13 @@ AS
     cn_security_2       CONSTANT NUMBER(2) := 2 ;                                           -- 購買
     cn_security_99      CONSTANT NUMBER(2) := 99 ;                                          -- ログインユーザー対象なし
 -- 2015.12.02 Ver1.1 Add Start
-    cn_security_3       CONSTANT NUMBER(2) := 3 ;                                           -- 損益照会
+    cn_security_3       CONSTANT NUMBER(2) := 3 ;                                           -- 損益照会/経費精算発生事由データ出力
     cn_appli_id_101     CONSTANT NUMBER(3) := 101 ;                                         -- アプリケーションID:101
+-- 2016.01.26 Ver1.2 Add Start
+    cn_program_id       CONSTANT NUMBER    := fnd_global.conc_program_id;                   -- コンカレントプログラムID
+    cn_prog_appl_id     CONSTANT NUMBER    := fnd_global.prog_appl_id;                      -- コンカレント・プログラム・アプリケーションID
+    cv_conc_name        CONSTANT VARCHAR2(12) := 'XXCCP007A08C';                            -- 経費精算発生事由データ出力
+-- 2016.01.26 Ver1.2 Add End
     cv_dept_user        CONSTANT VARCHAR2(13) := 'XXCFO%DPT_USR';                           -- 職責：損益照会
     cv_profile_resp_id  CONSTANT VARCHAR2(7)  := 'RESP_ID';                                 -- 職責ID
     cv_xx03_department  CONSTANT VARCHAR2(15) := 'XX03_DEPARTMENT';                         -- 部門
@@ -68,6 +74,9 @@ AS
 -- 2015.12.02 Ver1.1 Add Start
     lt_resp_id          fnd_responsibility.responsibility_key%TYPE ; -- 職責ID
 -- 2015.12.02 Ver1.1 Add End
+-- 2016.01.26 Ver1.2 Add Start
+    lt_program_id       fnd_concurrent_programs.concurrent_program_id%TYPE ; -- コンカレントプログラムID
+-- 2016.01.26 Ver1.2 Add End
 --
   BEGIN
 --
@@ -118,6 +127,48 @@ AS
       END ;
     END IF ;
 --
+-- 2016.01.26 Ver1.2 Add Start
+    IF (ln_security = cn_security_0) THEN
+      BEGIN
+        -- ====================================================
+        -- 職責：SALES_XXXX_損益照会_会計の判定
+        -- ===================================================
+        SELECT fnd_profile.value(cv_profile_resp_id)  resp_id        -- 職責ID
+        INTO   lt_resp_id
+        FROM   fnd_responsibility fr   -- 職責
+        WHERE  fr.application_id     = cn_appli_id_101
+        AND    fr.responsibility_key LIKE cv_dept_user
+        AND    fr.responsibility_id  = fnd_profile.value(cv_profile_resp_id) ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+--
+      -- 職責：SALES_XXXX_損益照会_会計の場合
+      IF ( lt_resp_id IS NOT NULL ) THEN
+        BEGIN
+          -- ====================================================
+          -- 経費精算発生事由データ出力の判定
+          -- ===================================================
+          SELECT fcp.concurrent_program_id  program_id
+          INTO   lt_program_id
+          FROM   fnd_concurrent_programs fcp
+          WHERE  fcp.application_id          = cn_prog_appl_id
+          AND    fcp.concurrent_program_name = cv_conc_name
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            NULL;
+        END;
+--
+        -- 経費精算発生事由データ出力の場合
+        IF ( lt_program_id = cn_program_id ) THEN
+          ln_security := cn_security_3;  -- 損益照会/経費精算発生事由データ出力
+        END IF;
+      END IF;
+    END IF;
+--
+-- 2016.01.26 Ver1.2 Add End
     -- 拠点の場合
     IF (ln_security = cn_security_0) THEN
       BEGIN
@@ -133,31 +184,33 @@ AS
         WHEN NO_DATA_FOUND THEN
           NULL ;
       END ;
+-- 2016.01.26 Ver1.2 Del Start
 -- 2015.12.02 Ver1.1 Add Start
-      BEGIN
-        -- ====================================================
-        -- 職責：SALES_XXXX_損益照会_会計の判定
-        -- ===================================================
-        SELECT cn_security_3    cn_security_3                  -- 損益照会
-              ,fnd_profile.value(cv_profile_resp_id)  resp_id  -- 職責ID
-        INTO   ln_security
-              ,lt_resp_id
-        FROM   fnd_responsibility fr   -- 職責
-        WHERE  fr.application_id     = cn_appli_id_101
-        AND    fr.responsibility_key LIKE cv_dept_user
-        AND    fr.responsibility_id  = fnd_profile.value(cv_profile_resp_id) ;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          NULL;
-      END;
+--      BEGIN
+--        -- ====================================================
+--        -- 職責：SALES_XXXX_損益照会_会計の判定
+--        -- ===================================================
+--        SELECT cn_security_3    cn_security_3                  -- 損益照会
+--              ,fnd_profile.value(cv_profile_resp_id)  resp_id  -- 職責ID
+--        INTO   ln_security
+--              ,lt_resp_id
+--        FROM   fnd_responsibility fr   -- 職責
+--        WHERE  fr.application_id     = cn_appli_id_101
+--        AND    fr.responsibility_key LIKE cv_dept_user
+--        AND    fr.responsibility_id  = fnd_profile.value(cv_profile_resp_id) ;
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          NULL;
+--      END;
 -- 2015.12.02 Ver1.1 Add End
+-- 2016.01.26 Ver1.2 Del End
     END IF ;
 --
     -- WHERE句追加判定（財務,所属部門なし）
     IF (ln_security IN ( cn_security_1 ,cn_security_99 )) THEN
       NULL ;
 -- 2015.12.02 Ver1.1 Add Start
-    -- 損益照会の場合
+    -- 損益照会/経費精算発生事由データ出力の場合
     ELSIF (ln_security = cn_security_3) THEN
       -- ====================================================
       -- 階層部門起票分
