@@ -88,10 +88,6 @@ CREATE OR REPLACE VIEW APPS.XXSKY_品目マスタ_基本_V
 ,パレット段
 ,ケース重量容積
 ,原料使用量
--- 2012/08/29 T.Makuta Add Start E_本稼動_09591
-,鮮度条件
-,鮮度条件名称
--- 2012/08/29 T.Makuta Add End   E_本稼動_09591
 ,作成者
 ,作成日
 ,最終更新者
@@ -324,15 +320,6 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
        ,XIMB.palette_step_qty         palette_step_qty            --パレット段
        ,XIMB.cs_weigth_or_capacity    cs_weigth_or_capacity       --ケース重量容積
        ,XIMB.raw_material_consumption raw_material_consumption    --原料使用量
--- 2012/08/29 T.Makuta Add Start E_本稼動_09591
-       ,IIMB.attribute19             freshness_condition          --鮮度条件
-       ,(SELECT FLV17.meaning
-         FROM fnd_lookup_values FLV17                             --クイックコード(鮮度条件名称)
-         WHERE FLV17.language    = 'JA'                           --言語
-           AND FLV17.lookup_type = 'XXCMN_FRESHNESS_CONDITION'    --クイックコードタイプ
-           AND FLV17.lookup_code = IIMB.attribute19               --クイックコード
-       ) freshness_condition_name
--- 2012/08/29 T.Makuta Add End   E_本稼動_09591
 -- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
        --,FU_CB.user_name               created_by_name             --CREATED_BYのユーザー名(ログイン時の入力コード)
        ,(SELECT FU_CB.user_name
@@ -647,12 +634,6 @@ COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.ケース重量容積         IS 'ケース
 /
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.原料使用量             IS '原料使用量'
 /
--- 2012/08/29 T.Makuta Add Start E_本稼動_09591
-COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.鮮度条件               IS '鮮度条件'
-/
-COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.鮮度条件名称           IS '鮮度条件名称'
-/
--- 2012/08/29 T.Makuta Add End   E_本稼動_09591
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.作成者                 IS '作成者'
 /
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.作成日                 IS '作成日'
