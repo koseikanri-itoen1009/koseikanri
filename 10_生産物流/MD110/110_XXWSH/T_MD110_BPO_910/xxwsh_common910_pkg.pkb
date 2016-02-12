@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.38
+ * Version                : 1.37
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -18,10 +18,10 @@ AS
  *  check_lot_reversal     P         D.ロット逆転防止チェック
  *  check_lot_reversal2    P         D.ロット逆転防止チェック(依頼No指定あり)
  *  check_fresh_condition  P         E.鮮度条件チェック
+ *  get_fresh_pass_date    P         E.鮮度条件合格製造日取得
  *  calc_lead_time         P         F.リードタイム算出
  *  check_shipping_judgment
  *                         P         G.出荷可否チェック
- *  get_fresh_pass_date    P         H.鮮度条件合格製造日取得
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
  *  Date         Ver.  Editor           Description
@@ -70,7 +70,6 @@ AS
  *  2009/03/19   1.32  SCS   飯田甫     [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *  2009/04/23   1.33  SCS   風間由紀   [リードタイム算出] 本番障害#1398対応
  *  2009/10/15   1.37  SCS   伊藤ひとみ [ロット逆転防止チェック] 本番障害#1661対応
- *  2012/08/31   1.38  SCSK  幕田智子   [鮮度条件合格製造日取得] E_本稼動_09591対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4463,7 +4462,7 @@ AS
 --###########################  固定部 END   ############################
 --
     /********************************************
-     *  パラメータチェック(H-1)                 *
+     *  パラメータチェック(E-1)                 *
      ********************************************/
     -- 必須入力パラメータをチェックします
     -- 配送先ID
@@ -4492,47 +4491,19 @@ AS
     END IF;
 --
     /********************************************
-     *  鮮度条件取得(H-2)                       *
+     *  鮮度条件取得(E-2)                       *
      ********************************************/
     -- 鮮度条件および鮮度条件付随情報の取得
--- Ver1.38 T.Makuta E_本稼動_09591 Mod Start
-/*
---- BEGIN
----   SELECT xlv.attribute1                        freshness_class
----         ,NVL( TO_NUMBER( xlv.attribute2 ), 0 ) freshness_base_value
----         ,NVL( TO_NUMBER( xlv.attribute3 ), 0 ) freshness_adjust_value
----   INTO   lv_freshness_class                                  -- 鮮度条件区分
----         ,ln_freshness_base_value                             -- 鮮度条件基準値
----         ,ln_freshness_adjust_value                           -- 鮮度条件調整値
----   FROM   xxcmn_cust_acct_sites2_v    xcasv                   -- 顧客サイト情報VIEW2
----         ,xxcmn_lookup_values2_v      xlv                     -- クイックコード情報VIEW2(鮮度条件)
----   WHERE  xlv.lookup_code           = xcasv.freshness_condition
----   AND    xcasv.party_site_id       = it_move_to_id           -- 配送先ID(パーティサイトID)
----   AND    xcasv.start_date_active  <= TRUNC( id_standard_date )
----   AND    xcasv.end_date_active    >= TRUNC( id_standard_date )
----   AND    xlv.lookup_type           = cv_lookup_fressness_condition
----   AND ( (xlv.start_date_active    <= TRUNC( id_standard_date ) )
----     OR  (xlv.start_date_active    IS NULL  ) )
----   AND ( (xlv.end_date_active      >= TRUNC( id_standard_date ) )
----     OR  (xlv.end_date_active      IS NULL  ) );
-*/
     BEGIN
-      SELECT NVL( xlv2.attribute1, xlv.attribute1 )   freshness_class
-            ,DECODE(xlv2.attribute1, NULL, NVL( TO_NUMBER( xlv.attribute2 ), 0 )
-                   ,NVL( TO_NUMBER( xlv2.attribute2 ), 0 )) freshness_base_value
-            ,DECODE(xlv2.attribute1, NULL, NVL( TO_NUMBER( xlv.attribute3 ), 0 )
-                   ,NVL( TO_NUMBER( xlv2.attribute3 ), 0 )) freshness_adjust_value
+      SELECT xlv.attribute1                        freshness_class
+            ,NVL( TO_NUMBER( xlv.attribute2 ), 0 ) freshness_base_value
+            ,NVL( TO_NUMBER( xlv.attribute3 ), 0 ) freshness_adjust_value
       INTO   lv_freshness_class                                  -- 鮮度条件区分
             ,ln_freshness_base_value                             -- 鮮度条件基準値
             ,ln_freshness_adjust_value                           -- 鮮度条件調整値
       FROM   xxcmn_cust_acct_sites2_v    xcasv                   -- 顧客サイト情報VIEW2
             ,xxcmn_lookup_values2_v      xlv                     -- クイックコード情報VIEW2(鮮度条件)
-            ,xxcmn_lookup_values2_v      xlv2
-            ,ic_item_mst_b ic
       WHERE  xlv.lookup_code           = xcasv.freshness_condition
-      AND    xlv.lookup_type           = xlv2.lookup_type
-      AND    xlv2.lookup_code          = NVL( ic.attribute19, xlv.lookup_code )
-      AND    ic.item_no                = it_item_no
       AND    xcasv.party_site_id       = it_move_to_id           -- 配送先ID(パーティサイトID)
       AND    xcasv.start_date_active  <= TRUNC( id_standard_date )
       AND    xcasv.end_date_active    >= TRUNC( id_standard_date )
@@ -4540,12 +4511,7 @@ AS
       AND ( (xlv.start_date_active    <= TRUNC( id_standard_date ) )
         OR  (xlv.start_date_active    IS NULL  ) )
       AND ( (xlv.end_date_active      >= TRUNC( id_standard_date ) )
-        OR  (xlv.end_date_active      IS NULL  ) )
-      AND ( (xlv2.start_date_active    <= TRUNC( id_standard_date ) )
-        OR  (xlv2.start_date_active    IS NULL  ) )
-      AND ( (xlv2.end_date_active      >= TRUNC( id_standard_date ) )
-        OR  (xlv2.end_date_active      IS NULL  ) );
--- Ver1.38 T.Makuta E_本稼動_09591 Mod End
+        OR  (xlv.end_date_active      IS NULL  ) );
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -4575,7 +4541,7 @@ AS
     END IF;
 --
     /********************************************
-     *  賞味期間取得 (H-3)                      *
+     *  賞味期間取得 (E-3)                      *
      ********************************************/
     -- 「品目コード」に紐づく品目の賞味期間を取得
     BEGIN
@@ -4608,21 +4574,21 @@ AS
     END IF;
     --
     /**************************************
-     *  製造日の算出(1:賞味期限基準)(H-4) *
+     *  製造日の算出(1:賞味期限基準)(E-4) *
      **************************************/
     IF   ( lv_freshness_class = cv_freshness_class1 ) THEN
       -- 製造日 = 着荷予定日 - (賞味期間 / 鮮度条件基準値) - 鮮度条件調整値
       ld_manufact_date := id_arrival_date - TRUNC( ln_expiration_days / ln_freshness_base_value ) - ln_freshness_adjust_value;
 --
     /**************************************
-     *  製造日の算出(2:製造日基準)(H-5)   *
+     *  製造日の算出(2:製造日基準)(E-5)   *
      **************************************/
     ELSIF( lv_freshness_class = cv_freshness_class2 ) THEN
       -- 製造日 = 着荷予定日 - 鮮度条件基準値 - 鮮度条件調整値
       ld_manufact_date := id_arrival_date - ln_freshness_base_value - ln_freshness_adjust_value;
 --
     /**************************************
-     *  製造日の算出(0:一般)(H-6)         *
+     *  製造日の算出(0:一般)(E-6)         *
      **************************************/
     ELSE
       -- 賞味期限 = 着荷予定日 - 鮮度条件基準値 - 鮮度条件調整値
@@ -4633,7 +4599,7 @@ AS
     END IF;
     --
     /********************************************
-     *  OUTパラメータセット(H-7)                *
+     *  OUTパラメータセット(E-7)                *
      ********************************************/
      od_manufacture_date := ld_manufact_date; -- 鮮度条件合格製造日
      ov_retcode          := cv_status_normal; -- リターンコード
