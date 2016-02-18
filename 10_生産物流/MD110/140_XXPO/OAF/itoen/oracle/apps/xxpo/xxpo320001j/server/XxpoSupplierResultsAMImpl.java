@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoSupplierResultsAMImpl
 * 概要説明   : 仕入先出荷実績入力:検索アプリケーションモジュール
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2008-12-06 1.5  伊藤ひとみ   本番障害#528対応
 * 2008-12-16 1.6  吉元強樹     本番障害#689,753対応
 * 2011-06-01 1.7  窪和重       本番障害#1786対応
+* 2016-02-03 1.8  菅原大輔     E_本稼動_12384対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.server;
@@ -1143,11 +1144,20 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     {
       supplierResultsDetailsVORow = (OARow)supplierResultsDetailsVo.getCurrentRow();
 
-      // 行単位での入力チェックを実施
-      messageTextRowCheck(supplierResultsDetailsVo,
-                          supplierResultsDetailsVORow,
-                          exceptions);
+// 2016-02-03 v1.8 D.Sugahara Mod Start
+      // 取消済でない明細について行単位での入力チェックを実施
+      // 削除フラグ取得
+//      messageTextRowCheck(supplierResultsDetailsVo,
+//                          supplierResultsDetailsVORow,
+//                          exceptions);
+      String cancelFlg =  (String)supplierResultsDetailsVORow.getAttribute("CancelFlag");
 
+      if(XxcmnConstants.STRING_N.equals(cancelFlg)){
+        messageTextRowCheck(supplierResultsDetailsVo,
+                            supplierResultsDetailsVORow,
+                            exceptions);
+      }
+// 2016-02-03 v1.8 D.Sugahara Mod End
       supplierResultsDetailsVo.next();
     }
   }
