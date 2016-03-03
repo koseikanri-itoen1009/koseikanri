@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2015/10/09    1.6   S.Yamashita      E_本稼動_13216/E_本稼動_13326対応
  *  2015/12/16    1.7   S.Yamashita      E_本稼動_13340対応
  *  2015/12/24    1.8   S.Yamashita      E_本稼動_13401対応
+ *  2016/02/25    1.9   S.Yamashita      E_本稼動_13478対応
  *
  *****************************************************************************************/
 --
@@ -4683,6 +4684,10 @@ AS
     ln_trx_type_chk_cnt        NUMBER                                    DEFAULT 0;     -- 取引タイプコード未設定チェック件数
     lb_trx_type_chk_flag       BOOLEAN                                   DEFAULT FALSE; -- 取引タイプコード未設定フラグ
 -- Add Ver1.4 S.Yamashita End
+-- Add Ver1.9 S.Yamashita Start
+    lb_no_temp_flag            BOOLEAN                                   DEFAULT FALSE; -- TEMP作成対象外フラグ
+    ln_del_cnt                 NUMBER                                    DEFAULT 0;     -- 取消対象件数
+-- Add Ver1.9 S.Yamashita End
     -- *** ローカルカーソル ***
     -- 受注カーソル
     CURSOR l_order_cur( in_order_number NUMBER )
@@ -4844,6 +4849,19 @@ AS
       WHERE  xlri.header_id = in_header_id
       AND    xlri.line_id   = in_line_id
     ;
+-- Add Ver1.9 S.Yamashita Start
+    -- ロット別引当情報更新用カーソル(保管場所指定)
+    CURSOR l_upd_reserve_whse_cur( iv_order_number VARCHAR2  -- 受注番号
+                                 , in_line_id      NUMBER    -- 受注明細ID
+                                 , iv_whse_code    VARCHAR2 )-- 保管場所コード
+    IS
+      SELECT xlri.lot_reserve_info_id AS lot_reserve_info_id -- ロット別引当情報ID
+      FROM   xxcoi_lot_reserve_info xlri -- ロット別引当情報
+      WHERE  xlri.order_number = iv_order_number -- 受注番号
+      AND    xlri.line_id      = in_line_id      -- 受注明細ID
+      AND    xlri.whse_code   <> iv_whse_code    -- 保管場所コード
+    ;
+-- Add Ver1.9 S.Yamashita End
     l_reserve_rec          l_reserve_cur%ROWTYPE;
     l_parent_item_rec      l_parent_item_cur%ROWTYPE;
     l_reserve_item_rec     l_reserve_item_cur%ROWTYPE;
@@ -4876,6 +4894,10 @@ AS
       ln_trx_type_chk_cnt  := 0;
       lb_trx_type_chk_flag := FALSE;
 -- Add Ver1.4 S.Yamashita End
+-- Add Ver1.9 S.Yamashita Start
+      lb_no_temp_flag := FALSE;
+      ln_del_cnt      := 0;
+-- Add Ver1.9 S.Yamashita End
       --
       -- 出荷仮確定の場合、チェックなし
       -- 仮確定後訂正の場合、ロット別取引明細の存在チェック
@@ -5180,13 +5202,30 @@ AS
               END IF;
 -- Mod Ver1.2 End
             END IF;
+-- Add Ver1.9 S.Yamashita Start
+            -- 仮確定後訂正の場合
+            IF ( gv_kbn = cv_kbn_6 ) THEN
+              -- 取消対象の引当情報を取得
+              SELECT COUNT(1)   AS del_cnt
+              INTO   ln_del_cnt -- 取消対象件数
+              FROM   xxcoi_lot_reserve_info xlri -- ロット別引当情報
+              WHERE  xlri.order_number = l_order_rec.order_number -- 受注番号
+              AND    xlri.line_id      = l_order_rec.line_id      -- 受注明細ID
+              AND    xlri.whse_code    <> lt_subinventory         -- 保管場所コード
+              ;
+            END IF;
+-- Add Ver1.9 S.Yamashita End
 -- Add Ver1.3 Start
           END IF;
 -- Add Ver1.3 End
         END IF;
         --
-        -- 修正がある場合
-        IF ( lb_chk_flag = TRUE ) THEN
+-- Mod Ver1.9 S.Yamashita Start
+--        -- 修正がある場合
+--        IF ( lb_chk_flag = TRUE ) THEN
+        -- 修正がある場合または、仮確定後訂正で取消対象が存在する場合
+        IF ( (lb_chk_flag = TRUE) OR (ln_del_cnt <> 0) ) THEN
+-- Mod Ver1.9 S.Yamashita End
           -- 出荷仮確定の場合
           IF ( gv_kbn = cv_kbn_3 ) THEN
 -- Add Ver1.4 S.Yamashita Start
@@ -5243,46 +5282,118 @@ AS
               AND    msi.organization_id = gt_organization_id
               AND    msi.secondary_inventory_name = lt_subinventory
               ;
+-- Add Ver1.9 S.Yamashita Start
+              -- 受注保管場所が倉庫管理対象でない場合
+              -- または倉庫管理対象の場合かつ指定された保管場所と一致しない場合
+              IF ( ( ln_subinv_cnt2 = 0 )
+                OR ((ln_subinv_cnt2 <> 0) AND (gv_subinventory_code <> lt_subinventory)))
+              THEN
+                -- 取消対象が存在する場合
+                IF ( ln_del_cnt <> 0 ) THEN
+                  -- 取消のみ(取消メッセージを表示する)
+                  l_order_rec.flow_status_code := cv_cancelled;
+                -- 取消対象が存在しない場合
+                ELSE
+                  -- 取消のみ(取消メッセージは表示しない)
+                  lb_no_temp_flag := TRUE;
+                END IF;
+              --倉庫管理対象かつ指定された保管場所と一致する場合
+              ELSE
+                -- 取消対象が存在する場合
+                IF ( ln_del_cnt <> 0) THEN
+                  -- 数量差異が無い場合
+                  IF ( lb_chk_flag = FALSE ) THEN
+                    -- 取消のみ(取消メッセージを表示する)
+                    l_order_rec.flow_status_code := cv_cancelled;
+                  END IF;
+                END IF;
+              END IF;
+--
+            -- 保管場所指定でない場合
+            ELSE
+              -- 倉庫管理対象のチェック
+              SELECT COUNT(1)                     AS cnt
+              INTO   ln_subinv_cnt2
+              FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
+              WHERE  xtlrs.subinventory_code = lt_subinventory
+              ;
+-- Add Ver1.9 S.Yamashita End
               -- 倉庫管理対象で無ければ削除のみ（倉庫管理対象を変更された場合を考慮）
               IF ( ln_subinv_cnt2 = 0 ) THEN
                 l_order_rec.flow_status_code := cv_cancelled;
+-- Add Ver1.9 S.Yamashita Start
+              -- 倉庫管理対象の場合
+              ELSE
+                -- 取消対象が存在する場合
+                IF ( ln_del_cnt <> 0) THEN
+                  -- 数量差異が無い場合
+                  IF ( lb_chk_flag = FALSE ) THEN
+                    -- 取消のみ(取消メッセージを表示する)
+                    l_order_rec.flow_status_code := cv_cancelled;
+                  END IF;
+                END IF;
               END IF;
+-- Add Ver1.9 S.Yamashita End
             END IF;
+-- Add Ver1.9 S.Yamashita Start
+            -- TEMP作成対象外フラグがTRUEでない場合
+            IF (lb_no_temp_flag <> TRUE) THEN
+-- Add Ver1.9 S.Yamashita End
 -- Mod Ver1.2 End
-            -- ロット別取引TEMP登録処理
-            ins_lot_tran_temp(
-                iv_tran_kbn           => cv_tran_kbn_1                  -- 取引区分
-              , in_header_id          => l_order_rec.header_id          -- 受注ヘッダID
-              , in_line_id            => l_order_rec.line_id            -- 受注明細ID
-              , iv_slip_num           => l_order_rec.slip_num           -- 伝票No
-              , iv_order_number       => l_order_rec.order_number       -- 受注番号
-              , iv_line_number        => l_order_rec.line_number        -- 受注明細番号
-              , id_arrival_date       => l_order_rec.arrival_date       -- 着日
-              , iv_parent_item_code   => l_order_rec.parent_item_code   -- 親品目コード
-              , iv_item_code          => l_order_rec.item_code          -- 子品目コード
-              , in_parent_item_id     => l_order_rec.parent_item_id     -- 品目ID
-              , iv_order_quantity_uom => l_order_rec.order_quantity_uom -- 受注単位
-              , in_ordered_quantity   => l_order_rec.ordered_quantity   -- 受注数量
-              , iv_base_code          => l_order_rec.base_code          -- 拠点コード
-              , iv_subinventory_code  => l_order_rec.whse_code          -- 保管場所コード
-              , iv_line_name          => l_order_rec.line_name          -- 明細摘要
-              , iv_sale_class         => l_order_rec.sale_class         -- 定番特売区分(明細)
-              , iv_flow_status_code   => l_order_rec.flow_status_code   -- 明細ステータス
-              , ov_errbuf             => lv_errbuf                      -- エラー・メッセージ
-              , ov_retcode            => lv_retcode                     -- リターン・コード
-              , ov_errmsg             => lv_errmsg                      -- ユーザー・エラー・メッセージ
-            );
-            IF ( lv_retcode = cv_status_error ) THEN
-              RAISE global_process_expt;
+              -- ロット別取引TEMP登録処理
+              ins_lot_tran_temp(
+                  iv_tran_kbn           => cv_tran_kbn_1                  -- 取引区分
+                , in_header_id          => l_order_rec.header_id          -- 受注ヘッダID
+                , in_line_id            => l_order_rec.line_id            -- 受注明細ID
+                , iv_slip_num           => l_order_rec.slip_num           -- 伝票No
+                , iv_order_number       => l_order_rec.order_number       -- 受注番号
+                , iv_line_number        => l_order_rec.line_number        -- 受注明細番号
+                , id_arrival_date       => l_order_rec.arrival_date       -- 着日
+                , iv_parent_item_code   => l_order_rec.parent_item_code   -- 親品目コード
+                , iv_item_code          => l_order_rec.item_code          -- 子品目コード
+                , in_parent_item_id     => l_order_rec.parent_item_id     -- 品目ID
+                , iv_order_quantity_uom => l_order_rec.order_quantity_uom -- 受注単位
+                , in_ordered_quantity   => l_order_rec.ordered_quantity   -- 受注数量
+                , iv_base_code          => l_order_rec.base_code          -- 拠点コード
+                , iv_subinventory_code  => l_order_rec.whse_code          -- 保管場所コード
+                , iv_line_name          => l_order_rec.line_name          -- 明細摘要
+                , iv_sale_class         => l_order_rec.sale_class         -- 定番特売区分(明細)
+                , iv_flow_status_code   => l_order_rec.flow_status_code   -- 明細ステータス
+                , ov_errbuf             => lv_errbuf                      -- エラー・メッセージ
+                , ov_retcode            => lv_retcode                     -- リターン・コード
+                , ov_errmsg             => lv_errmsg                      -- ユーザー・エラー・メッセージ
+              );
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE global_process_expt;
+              END IF;
+              --
+-- Add Ver1.9 S.Yamashita Start
             END IF;
-            --
-            -- ロット別引当情報更新用ループ
-            << upd_reserve_loop >>
-            FOR l_upd_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
-                                                      , in_line_id   => l_order_rec.line_id ) LOOP
-              ln_ins_cnt := ln_ins_cnt + 1;
-              gt_lot_id_tab(ln_ins_cnt) := l_upd_reserve_rec.lot_reserve_info_id;
-            END LOOP upd_reserve_loop;
+--
+            -- 取消対象が存在しない場合
+            IF ( ln_del_cnt = 0 ) THEN
+-- Add Ver1.9 S.Yamashita End
+              -- ロット別引当情報更新用ループ
+              << upd_reserve_loop >>
+              FOR l_upd_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
+                                                        , in_line_id   => l_order_rec.line_id ) LOOP
+                ln_ins_cnt := ln_ins_cnt + 1;
+                gt_lot_id_tab(ln_ins_cnt) := l_upd_reserve_rec.lot_reserve_info_id;
+              END LOOP upd_reserve_loop;
+-- Add Ver1.9 S.Yamashita Start
+            -- 取消対象が存在する場合
+            ELSE
+              -- ロット別引当情報更新用ループ(保管場所指定)
+              << upd_reserve_whse_loop >>
+              FOR l_upd_reserve_rec IN l_upd_reserve_whse_cur( iv_order_number => TO_CHAR(l_order_rec.order_number) -- 受注番号
+                                                             , in_line_id   => l_order_rec.line_id                  -- 受注明細ID
+                                                             , iv_whse_code => l_order_rec.whse_code                -- 保管場所コード
+                                                             ) LOOP
+                ln_ins_cnt := ln_ins_cnt + 1;
+                gt_lot_id_tab(ln_ins_cnt) := l_upd_reserve_rec.lot_reserve_info_id;
+              END LOOP upd_reserve_whse_loop;
+            END IF;
+-- Add Ver1.9 S.Yamashita End
           END IF;
           --
           FND_FILE.PUT_LINE(
