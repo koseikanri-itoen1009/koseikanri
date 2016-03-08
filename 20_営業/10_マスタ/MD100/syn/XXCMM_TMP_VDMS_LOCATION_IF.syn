@@ -1,0 +1,15 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * SYNONYM Name   : xxcmm_tmp_vdms_location_if
+ * Description    : 
+ * Version        : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2016/02/08    1.0   K.Kiriu          êVãKçÏê¨
+ *
+ ****************************************************************************************/
+CREATE OR REPLACE SYNONYM apps.xxcmm_tmp_vdms_location_if FOR xxcmm.xxcmm_tmp_vdms_location_if;
