@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009-07-17    1.14  Hiroshi.Ogawa    0000781対応
  *  2009-08-19    1.15  Kazuo.Satomura   統合テスト障害対応(0001051)
  *  2010-01-13    1.16  Kazuyo.Hosoi     E_本稼動_00443対応
+ *  2016-01-18    1.17  K.Kiriu          E_本稼動_13456対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -125,8 +126,10 @@ AS
   cv_tkn_number_17    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00158';  -- 登録エラーメッセージ
   cv_tkn_number_18    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00272';  -- 自販機SH物件インタフェース存在チェックエラーメッセージ
   cv_tkn_number_19    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00024';  -- 物件関連情報抽出エラーメッセージ
-  cv_tkn_number_20    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00104';  -- 発注番号なし警告メッセージ
-  cv_tkn_number_21    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00105';  -- 発注番号抽出エラーメッセージ
+  /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--  cv_tkn_number_20    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00104';  -- 発注番号なし警告メッセージ
+--  cv_tkn_number_21    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00105';  -- 発注番号抽出エラーメッセージ
+  /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
   -- トークンコード
   cv_tkn_entry            CONSTANT VARCHAR2(20) := 'ENTRY';
   cv_tkn_value            CONSTANT VARCHAR2(20) := 'VALUE';
@@ -272,7 +275,9 @@ AS
   --
   gn_mfg_fctory_cd_cnt    NUMBER;  -- INV 工場返品倉替先コード件数
   --
-  gn_po_number            xxcso_in_work_data.po_number%TYPE;   -- 新_発注番号
+  /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--  gn_po_number            xxcso_in_work_data.po_number%TYPE;   -- 新_発注番号
+  /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
   gv_manufacturer_name    fnd_lookup_values_vl.meaning%TYPE;   -- 新_メーカー名
   gv_age_type             po_un_numbers_vl.attribute3%TYPE;    -- 新_年式
   gv_department_code      xxcso_cust_acct_sites_v.customer_class_code%TYPE;
@@ -346,7 +351,9 @@ AS
           ,cii.quantity                  new_quantity               -- 新_数量
           ,xiih.history_creation_date    history_creation_date      -- 履歴作成日
           ,xiih.interface_flag           interface_flag             -- 連携済フラグ
-          ,xiih.po_number                old_po_number              -- 旧_発注番号
+          /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--          ,xiih.po_number                old_po_number              -- 旧_発注番号
+          /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
           ,xiih.manufacturer_name        old_manufacturer_name      -- 旧_メーカー名
           ,xiih.age_type                 old_age_type               -- 旧_年式
           ,xiih.un_number                old_model                  -- 旧_機種
@@ -575,15 +582,17 @@ AS
                        OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
                        OR  NVL(xiih.install_number,' ')       <> NVL(cii.attribute2,' ')       -- 機番チェック
                        OR  NVL(xiih.quantity,0)               <> NVL(cii.quantity,0)           -- 数量チェック
-                       OR  NVL(xiih.po_number,' ')            <>                               -- 発注番号チェック
-                             (
-                              SELECT  NVL(TO_CHAR(MAX(xiwd.po_number)),' ')
-                              FROM    xxcso_in_work_data  xiwd
-                              WHERE   xiwd.install_code1           = cii.external_reference
-                                AND   xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)
-                                AND   xiwd.completion_kbn          = cv_comp_kbn_ok
-                                AND   xiwd.install1_processed_flag = cv_yes
-                             )
+                       /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--                       OR  NVL(xiih.po_number,' ')            <>                               -- 発注番号チェック
+--                             (
+--                              SELECT  NVL(TO_CHAR(MAX(xiwd.po_number)),' ')
+--                              FROM    xxcso_in_work_data  xiwd
+--                              WHERE   xiwd.install_code1           = cii.external_reference
+--                                AND   xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)
+--                                AND   xiwd.completion_kbn          = cv_comp_kbn_ok
+--                                AND   xiwd.install1_processed_flag = cv_yes
+--                             )
+                       /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
                        OR  NVL(xiih.manufacturer_name,' ')    <>                               -- メーカー名チェック
                              (
                               SELECT  NVL(
@@ -871,15 +880,17 @@ AS
                        OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
                        OR  NVL(xiih.install_number,' ')       <> NVL(cii.attribute2,' ')       -- 機番チェック
                        OR  NVL(xiih.quantity,0)               <> NVL(cii.quantity,0)           -- 数量チェック
-                       OR  NVL(xiih.po_number,' ')            <>                               -- 発注番号チェック
-                             (
-                              SELECT  NVL(TO_CHAR(MAX(xiwd.po_number)),' ')
-                              FROM    xxcso_in_work_data  xiwd
-                              WHERE   xiwd.install_code1           = cii.external_reference
-                                AND   xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)
-                                AND   xiwd.completion_kbn          = cv_comp_kbn_ok
-                                AND   xiwd.install1_processed_flag = cv_yes
-                             )
+                       /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--                       OR  NVL(xiih.po_number,' ')            <>                               -- 発注番号チェック
+--                             (
+--                              SELECT  NVL(TO_CHAR(MAX(xiwd.po_number)),' ')
+--                              FROM    xxcso_in_work_data  xiwd
+--                              WHERE   xiwd.install_code1           = cii.external_reference
+--                                AND   xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)
+--                                AND   xiwd.completion_kbn          = cv_comp_kbn_ok
+--                                AND   xiwd.install1_processed_flag = cv_yes
+--                             )
+                       /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
                        OR  NVL(xiih.manufacturer_name,' ')    <>                               -- メーカー名チェック
                              (
                               SELECT  NVL(
@@ -1663,148 +1674,150 @@ AS
 --
   END init;
 --
-  /**********************************************************************************
-   * Procedure Name   : get_po_number
-   * Description      : 発注番号抽出(A-3)
-   ***********************************************************************************/
-  PROCEDURE get_po_number(
-     ov_errbuf           OUT NOCOPY VARCHAR2   -- エラー・メッセージ            --# 固定 #
-    ,ov_retcode          OUT NOCOPY VARCHAR2   -- リターン・コード              --# 固定 #
-    ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ  --# 固定 #
-  )
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name             CONSTANT VARCHAR2(100)   := 'get_po_number';     -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(4000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(4000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
-    -- *** ローカル変数 ***
-    -- *** ローカル・レコード ***
-    -- *** ローカル・カーソル ***
-    -- *** ローカル例外 ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
---
-    -- ========================================
-    -- 発注番号抽出
-    -- ========================================
-    BEGIN
-    --
-      /* 2009.05.20 K.Satomura T1_1095対応 START */
-      --SELECT xiwd.po_number
-      SELECT MAX(xiwd.po_number)
-      /* 2009.05.20 K.Satomura T1_1095対応 END */
-      INTO   gn_po_number
-      FROM   xxcso_in_work_data xiwd
-      WHERE  xiwd.install_code1           = g_get_xxcso_ib_info_h_rec.object_code -- 物件コード
-      AND    xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)  -- 作業区分
-      AND    xiwd.completion_kbn          = cv_comp_kbn_ok                        -- 完了区分
-      AND    xiwd.install1_processed_flag = cv_yes                                -- 物件1処理済フラグ
-      /* 2009.04.08 K.Satomura T1_0372対応 START */
-      /* 2009.05.20 K.Satomura T1_1095対応 START */
-      --GROUP BY xiwd.po_number
-      /* 2009.05.20 K.Satomura T1_1095対応 END */
-      /* 2009.04.08 K.Satomura T1_0372対応 END */
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        -- 検索結果が0件である場合
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_app_name                  --アプリケーション短縮名
-                      ,iv_name         => cv_tkn_number_20             --メッセージコード
-                      ,iv_token_name1  => cv_tkn_task_name
-                      ,iv_token_value1 => cv_tkn_msg_po_num
-                      ,iv_token_name2  => cv_tkn_bukken
-                      ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
-                     );
-        lv_errbuf := lv_errmsg || SQLERRM;
-        ov_retcode := cv_status_warn;
-        RAISE g_sql_err_expt;
-      WHEN OTHERS THEN
-        -- SQLエラーが発生した場合
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_app_name                  --アプリケーション短縮名
-                      ,iv_name         => cv_tkn_number_21             --メッセージコード
-                      ,iv_token_name1  => cv_tkn_task_name
-                      ,iv_token_value1 => cv_tkn_msg_po_num
-                      ,iv_token_name2  => cv_tkn_bukken
-                      ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
-                      ,iv_token_name3  => cv_tkn_err_msg
-                      ,iv_token_value3 => SQLERRM
-                     );
-        lv_errbuf := lv_errmsg || SQLERRM;
-        ov_retcode := cv_status_error;
-        RAISE g_sql_err_expt;
-    END;
---
-    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000334) START */
-    /* 2009.05.20 K.Satomura T1_1095対応 START */
-    --IF (gn_po_number IS NULL) THEN
-    --  -- 検索結果が0件である場合
-    --  lv_errmsg := xxccp_common_pkg.get_msg(
-    --                 iv_application  => cv_app_name      --アプリケーション短縮名
-    --                ,iv_name         => cv_tkn_number_20 --メッセージコード
-    --                ,iv_token_name1  => cv_tkn_task_name
-    --                ,iv_token_value1 => cv_tkn_msg_po_num
-    --                ,iv_token_name2  => cv_tkn_bukken
-    --                ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
-    --               );
-    --  --
-    --  lv_errbuf := lv_errmsg || SQLERRM;
-    --  ov_retcode := cv_status_warn;
-    --  RAISE g_sql_err_expt;
-    --  --
-    --END IF;
-    /* 2009.05.20 K.Satomura T1_1095対応 END */
-    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000334) END */
---
-  EXCEPTION
---
-    -- SQLエラー例外
-    WHEN g_sql_err_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      --
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 処理部共通例外ハンドラ ***
-    WHEN global_process_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
-      ov_retcode := cv_status_error;
---
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
-      ov_retcode := cv_status_error;
---
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END get_po_number;
+/* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--  /**********************************************************************************
+--   * Procedure Name   : get_po_number
+--   * Description      : 発注番号抽出(A-3)
+--   ***********************************************************************************/
+--  PROCEDURE get_po_number(
+--     ov_errbuf           OUT NOCOPY VARCHAR2   -- エラー・メッセージ            --# 固定 #
+--    ,ov_retcode          OUT NOCOPY VARCHAR2   -- リターン・コード              --# 固定 #
+--    ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ  --# 固定 #
+--  )
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name             CONSTANT VARCHAR2(100)   := 'get_po_number';     -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(4000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(4000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+--    -- *** ローカル変数 ***
+--    -- *** ローカル・レコード ***
+--    -- *** ローカル・カーソル ***
+--    -- *** ローカル例外 ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+----
+--    -- ========================================
+--    -- 発注番号抽出
+--    -- ========================================
+--    BEGIN
+--    --
+--      /* 2009.05.20 K.Satomura T1_1095対応 START */
+--      --SELECT xiwd.po_number
+--      SELECT MAX(xiwd.po_number)
+--      /* 2009.05.20 K.Satomura T1_1095対応 END */
+--      INTO   gn_po_number
+--      FROM   xxcso_in_work_data xiwd
+--      WHERE  xiwd.install_code1           = g_get_xxcso_ib_info_h_rec.object_code -- 物件コード
+--      AND    xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)  -- 作業区分
+--      AND    xiwd.completion_kbn          = cv_comp_kbn_ok                        -- 完了区分
+--      AND    xiwd.install1_processed_flag = cv_yes                                -- 物件1処理済フラグ
+--      /* 2009.04.08 K.Satomura T1_0372対応 START */
+--      /* 2009.05.20 K.Satomura T1_1095対応 START */
+--      --GROUP BY xiwd.po_number
+--      /* 2009.05.20 K.Satomura T1_1095対応 END */
+--      /* 2009.04.08 K.Satomura T1_0372対応 END */
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        -- 検索結果が0件である場合
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_app_name                  --アプリケーション短縮名
+--                      ,iv_name         => cv_tkn_number_20             --メッセージコード
+--                      ,iv_token_name1  => cv_tkn_task_name
+--                      ,iv_token_value1 => cv_tkn_msg_po_num
+--                      ,iv_token_name2  => cv_tkn_bukken
+--                      ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
+--                     );
+--        lv_errbuf := lv_errmsg || SQLERRM;
+--        ov_retcode := cv_status_warn;
+--        RAISE g_sql_err_expt;
+--      WHEN OTHERS THEN
+--        -- SQLエラーが発生した場合
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_app_name                  --アプリケーション短縮名
+--                      ,iv_name         => cv_tkn_number_21             --メッセージコード
+--                      ,iv_token_name1  => cv_tkn_task_name
+--                      ,iv_token_value1 => cv_tkn_msg_po_num
+--                      ,iv_token_name2  => cv_tkn_bukken
+--                      ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
+--                      ,iv_token_name3  => cv_tkn_err_msg
+--                      ,iv_token_value3 => SQLERRM
+--                     );
+--        lv_errbuf := lv_errmsg || SQLERRM;
+--        ov_retcode := cv_status_error;
+--        RAISE g_sql_err_expt;
+--    END;
+----
+--    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000334) START */
+--    /* 2009.05.20 K.Satomura T1_1095対応 START */
+--    --IF (gn_po_number IS NULL) THEN
+--    --  -- 検索結果が0件である場合
+--    --  lv_errmsg := xxccp_common_pkg.get_msg(
+--    --                 iv_application  => cv_app_name      --アプリケーション短縮名
+--    --                ,iv_name         => cv_tkn_number_20 --メッセージコード
+--    --                ,iv_token_name1  => cv_tkn_task_name
+--    --                ,iv_token_value1 => cv_tkn_msg_po_num
+--    --                ,iv_token_name2  => cv_tkn_bukken
+--    --                ,iv_token_value2 => g_get_xxcso_ib_info_h_rec.object_code
+--    --               );
+--    --  --
+--    --  lv_errbuf := lv_errmsg || SQLERRM;
+--    --  ov_retcode := cv_status_warn;
+--    --  RAISE g_sql_err_expt;
+--    --  --
+--    --END IF;
+--    /* 2009.05.20 K.Satomura T1_1095対応 END */
+--    /* 2009.07.02 K.Satomura 統合テスト障害対応(0000334) END */
+----
+--  EXCEPTION
+----
+--    -- SQLエラー例外
+--    WHEN g_sql_err_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+--      --
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 処理部共通例外ハンドラ ***
+--    WHEN global_process_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,4000);
+--      ov_retcode := cv_status_error;
+----
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
+--      ov_retcode := cv_status_error;
+----
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END get_po_number;
+/* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
 --
   /**********************************************************************************
    * Procedure Name   : get_type_info
@@ -2248,11 +2261,14 @@ AS
         --       g_get_xxcso_ib_info_h_rec.old_customer_code
         --     = gv_customer_code                                                   -- 顧客コード
         --    )
+        /* 2016.01.18 K.Kiriu E_本稼動_13456対応 MOD START */
+--            (
+--               NVL(g_get_xxcso_ib_info_h_rec.old_po_number, cn_zero)
+--             = NVL(gn_po_number, cn_zero) -- 発注番号
+--            )
+--        AND (
             (
-               NVL(g_get_xxcso_ib_info_h_rec.old_po_number, cn_zero)
-             = NVL(gn_po_number, cn_zero) -- 発注番号
-            )
-        AND (
+        /* 2016.01.18 K.Kiriu E_本稼動_13456対応 MOD END   */
                NVL(g_get_xxcso_ib_info_h_rec.old_manufacturer_name, cv_null)
              = NVL(gv_manufacturer_name, cv_null) -- メーカー名
             )
@@ -2638,7 +2654,10 @@ AS
          g_get_xxcso_ib_info_h_rec.object_code       -- 物件コード
         ,gd_process_date                             -- 発生日
         ,g_get_xxcso_ib_info_h_rec.lease_class       -- リース種別
-        ,gn_po_number                                -- 発注番号
+        /* 2016.01.18 K.Kiriu E_本稼動_13456対応 MOD START */
+--        ,gn_po_number                                -- 発注番号
+        ,NULL                                        -- 発注番号
+        /* 2016.01.18 K.Kiriu E_本稼動_13456対応 MOD END   */
         ,gv_manufacturer_name                        -- メーカー名
         ,gv_age_type                                 -- 年式
         ,g_get_xxcso_ib_info_h_rec.new_model         -- 機種
@@ -2768,7 +2787,9 @@ AS
       UPDATE xxcso_ib_info_h
       SET    history_creation_date   = gd_process_date                             -- 履歴作成日
             ,interface_flag          = cv_yes                                      -- 連携済フラグ
-            ,po_number               = gn_po_number                                -- 発注番号
+            /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--            ,po_number               = gn_po_number                                -- 発注番号
+            /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
             ,manufacturer_name       = gv_manufacturer_name                        -- メーカー名
             ,age_type                = gv_age_type                                 -- 年式
             ,un_number               = g_get_xxcso_ib_info_h_rec.new_model         -- 機種
@@ -2994,43 +3015,45 @@ AS
         gv_installation_address := g_get_xxcso_ib_info_h_rec.new_installation_address;
         gv_customer_code        := g_get_xxcso_ib_info_h_rec.new_customer_code;
         /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
-        -- ========================================
-        -- A-3.発注番号抽出
-        -- ========================================
-        /* 2009.04.07 D.Abe T1_0339対応 START */
-        gn_po_number := NULL;
-        IF (g_get_xxcso_ib_info_h_rec.newold_flag = cv_no
-          OR g_get_xxcso_ib_info_h_rec.newold_flag IS NULL)
-        THEN
-        /* 2009.04.07 D.Abe T1_0339対応 END */
-          get_po_number(
-             ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-            ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-            ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
-        /* 2009.04.07 D.Abe T1_0339対応 START */
-        ELSE
-          lv_retcode := cv_status_normal;
-        END IF;
-        /* 2009.04.07 D.Abe T1_0339対応 END */
---
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
-        ELSIF (lv_retcode = cv_status_warn) THEN
-          -- スキップ件数
-          gn_warn_cnt   := gn_warn_cnt + 1;
-          -- 固定ステータス設定（警告）
-          ov_retcode := cv_status_warn;
-          --警告出力
-          fnd_file.put_line(
-             which  => FND_FILE.OUTPUT
-            ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
-          );
-          fnd_file.put_line(
-             which  => FND_FILE.LOG
-            ,buff   => lv_errmsg                  --警告メッセージ
-          );
-        ELSE
+        /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--        -- ========================================
+--        -- A-3.発注番号抽出
+--        -- ========================================
+--        /* 2009.04.07 D.Abe T1_0339対応 START */
+--        gn_po_number := NULL;
+--        IF (g_get_xxcso_ib_info_h_rec.newold_flag = cv_no
+--          OR g_get_xxcso_ib_info_h_rec.newold_flag IS NULL)
+--        THEN
+--        /* 2009.04.07 D.Abe T1_0339対応 END */
+--          get_po_number(
+--             ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+--            ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+--            ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+--          );
+--        /* 2009.04.07 D.Abe T1_0339対応 START */
+--        ELSE
+--          lv_retcode := cv_status_normal;
+--        END IF;
+--        /* 2009.04.07 D.Abe T1_0339対応 END */
+----
+--        IF (lv_retcode = cv_status_error) THEN
+--          RAISE global_process_expt;
+--        ELSIF (lv_retcode = cv_status_warn) THEN
+--          -- スキップ件数
+--          gn_warn_cnt   := gn_warn_cnt + 1;
+--          -- 固定ステータス設定（警告）
+--          ov_retcode := cv_status_warn;
+--          --警告出力
+--          fnd_file.put_line(
+--             which  => FND_FILE.OUTPUT
+--            ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
+--          );
+--          fnd_file.put_line(
+--             which  => FND_FILE.LOG
+--            ,buff   => lv_errmsg                  --警告メッセージ
+--          );
+--        ELSE
+       /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END    */
 --
           -- ========================================
           -- A-4.機種情報抽出
@@ -3332,7 +3355,9 @@ AS
               END IF;
             END IF;
           END IF;
-        END IF;
+        /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL START */
+--        END IF;
+        /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
 --
 --
       END LOOP loop_get_xxcso_ib_info;
