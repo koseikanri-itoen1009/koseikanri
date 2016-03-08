@@ -11,7 +11,7 @@ AS
  *                    顧客ステータスを「顧客」に更新します。
  * MD.050           : MD050_CSO_013_A01_CSI→ARインタフェース：（OUT）顧客マスタ
  *
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009-07-23    1.4   Kazuo.Satomura   0000671対応
  *  2009-07-23    1.5   T.Maruyama       E_本稼動_00270対応
  *  2015-07-27    1.6   S.Yamashita      E_本稼動_13237対応
+ *  2016-02-05    1.7   S.Niki           E_本稼動_13456対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -179,8 +180,10 @@ AS
   cv_job_kbn_withdraw        CONSTANT VARCHAR2(1) := '5';        -- 作業区分（引揚）
   cv_completion_kbn_cmplt    CONSTANT VARCHAR2(1) := '1';        -- 完了区分（完了）
   cv_install2_proc_end       CONSTANT VARCHAR2(1) := 'Y';        -- 物件２処理済フラグ（処理済）
-  cv_withdrawal_type_nrml    CONSTANT VARCHAR2(1) := '1';        -- 引揚区分（引揚）
-  cv_category_kbn_withdraw   CONSTANT VARCHAR2(2) := '50';       -- カテゴリ区分（引揚）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--  cv_withdrawal_type_nrml    CONSTANT VARCHAR2(1) := '1';        -- 引揚区分（引揚）
+--  cv_category_kbn_withdraw   CONSTANT VARCHAR2(2) := '50';       -- カテゴリ区分（引揚）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
   cv_case_arc_left           CONSTANT VARCHAR2(1)  := '(';
   cv_case_arc_right          CONSTANT VARCHAR2(1)  := ')';
   cv_msg_equal               CONSTANT VARCHAR2(1)  := '=';
@@ -197,7 +200,9 @@ AS
   cv_log_msg4          CONSTANT VARCHAR2(200) := 'lv_cust_sts_suspended = ';
   cv_log_msg5          CONSTANT VARCHAR2(200) := 'lv_cust_sts_approved  = ';
   cv_log_msg6          CONSTANT VARCHAR2(200) := 'lv_cust_sts_customer  = ';
-  cv_log_msg7          CONSTANT VARCHAR2(200) := 'lv_req_sts_approved   = ';
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--  cv_log_msg7          CONSTANT VARCHAR2(200) := 'lv_req_sts_approved   = ';
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
   cv_log_msg8          CONSTANT VARCHAR2(200) := 'lv_org_id = ' ;
   cv_log_msg9          CONSTANT VARCHAR2(200) := '<< 顧客ステータス抽出処理 >>';
   cv_log_msg10         CONSTANT VARCHAR2(200) := '<< ロールバックしました >>';
@@ -372,7 +377,9 @@ AS
       ov_cust_sts_suspended  OUT NOCOPY VARCHAR2  -- 顧客ステータス（休止）
     , ov_cust_sts_approved   OUT NOCOPY VARCHAR2  -- 顧客ステータス（承認済）
     , ov_cust_sts_customer   OUT NOCOPY VARCHAR2  -- 顧客ステータス（顧客）
-    , ov_req_sts_approved    OUT NOCOPY VARCHAR2  -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--    , ov_req_sts_approved    OUT NOCOPY VARCHAR2  -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
     , ov_org_id              OUT NOCOPY VARCHAR2  -- オルグID
     , ov_errbuf              OUT NOCOPY VARCHAR2  -- エラー・メッセージ            --# 固定 #
     , ov_retcode             OUT NOCOPY VARCHAR2  -- リターン・コード              --# 固定 #
@@ -403,8 +410,10 @@ AS
     cv_cust_sts_approved     CONSTANT VARCHAR2(30) := 'XXCSO1_CUST_STATUS_APPROVED';
     -- XXCSO:顧客ステータス（顧客）
     cv_cust_sts_customer     CONSTANT VARCHAR2(30) := 'XXCSO1_CUST_STATUS_CUSTOMER';
-    -- XXCSO:発注依頼ステータスコード（承認済）
-    cv_req_sts_approved      CONSTANT VARCHAR2(30) := 'XXCSO1_PO_REQ_STATUS_CD_APRVD';
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--    -- XXCSO:発注依頼ステータスコード（承認済）
+--    cv_req_sts_approved      CONSTANT VARCHAR2(30) := 'XXCSO1_PO_REQ_STATUS_CD_APRVD';
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
     -- MO:営業単位
     cv_org_id                CONSTANT VARCHAR2(30) := 'ORG_ID';
 --
@@ -413,7 +422,9 @@ AS
     lv_cust_sts_suspended    VARCHAR2(2000);  -- 顧客ステータス（休止）
     lv_cust_sts_approved     VARCHAR2(2000);  -- 顧客ステータス（承認済）
     lv_cust_sts_customer     VARCHAR2(2000);  -- 顧客ステータス（顧客）
-    lv_req_sts_approved      VARCHAR2(2000);  -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--    lv_req_sts_approved      VARCHAR2(2000);  -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
     lv_org_id                VARCHAR2(2000);  -- オルグID
     -- プロファイル値取得失敗時 トークン値格納用
     lv_tkn_value             VARCHAR2(1000);
@@ -454,12 +465,14 @@ AS
       , val  => lv_cust_sts_customer
     );
     --
-    -- 発注依頼ステータスコード（承認済）
-    FND_PROFILE.GET(
-        name => cv_req_sts_approved
-      , val  => lv_req_sts_approved
-    );
-    --
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--    -- 発注依頼ステータスコード（承認済）
+--    FND_PROFILE.GET(
+--        name => cv_req_sts_approved
+--      , val  => lv_req_sts_approved
+--    );
+--    --
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
     -- オルグID
     FND_PROFILE.GET(
         name => cv_org_id
@@ -473,7 +486,9 @@ AS
                  cv_log_msg4 || lv_cust_sts_suspended || CHR(10) ||
                  cv_log_msg5 || lv_cust_sts_approved  || CHR(10) ||
                  cv_log_msg6 || lv_cust_sts_customer  || CHR(10) ||
-                 cv_log_msg7 || lv_req_sts_approved   || CHR(10) ||
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--                 cv_log_msg7 || lv_req_sts_approved   || CHR(10) ||
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
                  cv_log_msg8 || lv_org_id             || CHR(10) ||
                  ''
     );
@@ -491,10 +506,12 @@ AS
     ELSIF ( lv_cust_sts_customer IS NULL ) THEN
       lv_tkn_value := cv_cust_sts_customer;
       --
-    -- 発注依頼ステータスコード（承認済）取得失敗時
-    ELSIF ( lv_req_sts_approved IS NULL ) THEN
-      lv_tkn_value := cv_req_sts_approved;
-      --
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--    -- 発注依頼ステータスコード（承認済）取得失敗時
+--    ELSIF ( lv_req_sts_approved IS NULL ) THEN
+--      lv_tkn_value := cv_req_sts_approved;
+--      --
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
     -- オルグID取得失敗時
     ELSIF ( lv_org_id IS NULL ) THEN
       lv_tkn_value := cv_org_id;
@@ -517,7 +534,9 @@ AS
     ov_cust_sts_suspended := lv_cust_sts_suspended;  -- 顧客ステータス（休止）
     ov_cust_sts_approved  := lv_cust_sts_approved;   -- 顧客ステータス（承認済）
     ov_cust_sts_customer  := lv_cust_sts_customer;   -- 顧客ステータス（顧客）
-    ov_req_sts_approved   := lv_req_sts_approved;    -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--    ov_req_sts_approved   := lv_req_sts_approved;    -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
     ov_org_id             := lv_org_id;              -- オルグID
 --
   EXCEPTION
@@ -1766,14 +1785,18 @@ AS
     lt_cust_sts_suspended     hz_parties.duns_number_c%TYPE;                     -- 顧客ステータス（休止）
     lt_cust_sts_approved      hz_parties.duns_number_c%TYPE;                     -- 顧客ステータス（承認済）
     lt_cust_sts_customer      hz_parties.duns_number_c%TYPE;                     -- 顧客ステータス（顧客）
-    lt_req_sts_approved       po_requisition_headers.authorization_status%TYPE;  -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--    lt_req_sts_approved       po_requisition_headers.authorization_status%TYPE;  -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
     lv_org_id                 NUMBER;                                            -- オルグID
     --
     -- *** ローカル・カーソル ***
     -- 作業データ抽出カーソル
     CURSOR get_work_data_cur(
               id_process_date          IN DATE
-            , it_auth_status_approved  IN po_requisition_headers.authorization_status%TYPE
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--            , it_auth_status_approved  IN po_requisition_headers.authorization_status%TYPE
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
            )
     IS
 -- 2015/07/27 S.Yamashita E_本稼動_13237対応 MOD START
@@ -1781,7 +1804,10 @@ AS
         SELECT /*+
                  LEADING(xiwd)
                  INDEX(xiwd XXCSO_IN_WORK_DATA_N09)
-                 USE_NL(xiwd prh xrlv.prl xrlv.mcb xrlv.fllv cii)
+-- 2016/02/05 S.Niki E_本稼動_13456対応 MOD START
+--                 USE_NL(xiwd prh xrlv.prl xrlv.mcb xrlv.fllv cii)
+                 USE_NL(xiwd cii)
+-- 2016/02/05 S.Niki E_本稼動_13456対応 MOD END
                */
 -- 2015/07/27 S.Yamashita E_本稼動_13237対応 MOD END
              xiwd.install_code2    install_code    -- 物件コード２（引揚用）
@@ -1797,8 +1823,10 @@ AS
            , xiwd.seq_no           seq_no           -- シーケンス番号
          /* 2009/12/03 T.maruyama E_本稼動_00270対応 END */
       FROM   xxcso_in_work_data         xiwd    -- 作業データテーブル
-           , po_requisition_headers     prh     -- 発注依頼ヘッダビュー
-           , xxcso_requisition_lines_v  xrlv    -- 発注依頼明細情報ビュー
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--           , po_requisition_headers     prh     -- 発注依頼ヘッダビュー
+--           , xxcso_requisition_lines_v  xrlv    -- 発注依頼明細情報ビュー
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
          /*20090507_mori_T1_0439 START*/
            , csi_item_instances         cii     -- インストールベースマスタ（物件マスタ）
          /*20090507_mori_T1_0439 END*/
@@ -1806,11 +1834,13 @@ AS
       AND    xiwd.completion_kbn                   = cv_completion_kbn_cmplt   -- 完了区分（完了）
       AND    xiwd.install2_processed_flag          = cv_install2_proc_end      -- 物件２処理済フラグ（処理済）
       AND    xiwd.suspend_processed_flag           = cv_suspend_proc_unprc     -- 休止処理済フラグ（未処理）
-      AND    SUBSTRB( xrlv.withdrawal_type, 1, 1 ) = cv_withdrawal_type_nrml   -- 引揚区分（引揚）
-      AND    xrlv.category_kbn                     = cv_category_kbn_withdraw  -- カテゴリ区分（引揚）
-      AND    prh.authorization_status              = it_auth_status_approved   -- 承認ステータス
-      AND    prh.segment1               = TO_CHAR( xiwd.po_req_number )    -- 発注依頼番号
-      AND    xrlv.requisition_header_id = prh.requisition_header_id        -- 発注依頼ヘッダID
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--      AND    SUBSTRB( xrlv.withdrawal_type, 1, 1 ) = cv_withdrawal_type_nrml   -- 引揚区分（引揚）
+--      AND    xrlv.category_kbn                     = cv_category_kbn_withdraw  -- カテゴリ区分（引揚）
+--      AND    prh.authorization_status              = it_auth_status_approved   -- 承認ステータス
+--      AND    prh.segment1               = TO_CHAR( xiwd.po_req_number )    -- 発注依頼番号
+--      AND    xrlv.requisition_header_id = prh.requisition_header_id        -- 発注依頼ヘッダID
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
 -- 2015/07/27 S.Yamashita E_本稼動_13237対応 DEL START
 --      AND    xrlv.line_num              = xiwd.line_num                    -- 発注依頼明細番号
 --      AND    xrlv.withdraw_install_code = xiwd.install_code2               -- 引揚用物件コード（物件コード）
@@ -1893,7 +1923,9 @@ AS
         ov_cust_sts_suspended => lt_cust_sts_nm_suspended  -- 顧客ステータス（休止）
       , ov_cust_sts_approved  => lt_cust_sts_nm_approved   -- 顧客ステータス（承認済）
       , ov_cust_sts_customer  => lt_cust_sts_nm_customer   -- 顧客ステータス（顧客）
-      , ov_req_sts_approved   => lt_req_sts_approved       -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--      , ov_req_sts_approved   => lt_req_sts_approved       -- 発注依頼ステータスコード（承認済）
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
       , ov_org_id             => lv_org_id                 -- オルグID
       , ov_errbuf             => lv_errbuf                 -- エラー・メッセージ            --# 固定 #
       , ov_retcode            => lv_retcode                -- リターン・コード              --# 固定 #
@@ -1987,7 +2019,9 @@ AS
     -- 作業データ抽出カーソルオープン
     OPEN get_work_data_cur(
         id_process_date         => ld_process_date
-      , it_auth_status_approved => lt_req_sts_approved
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL START
+--      , it_auth_status_approved => lt_req_sts_approved
+-- 2016/02/05 S.Niki E_本稼動_13456対応 DEL END
     );
 --
     -- 作業データ抽出カーソルをオープンしたことをログ出力
