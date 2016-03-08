@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -22,6 +22,7 @@
 * 2013-04-19 1.13 SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.14 SCSK桐生和幸  [E_本稼動_11397]売価1円対応
 * 2014-12-15 1.15 SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
+* 2016-01-08 1.16 SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -1070,189 +1071,191 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   }
 
   
-  /*****************************************************************************
-   * 発注依頼ボタン押下処理
-   *****************************************************************************
-   */
-  public HashMap handleRequestButton()
-  {
-    OADBTransaction txn = getOADBTransaction();
-
-    XxcsoUtils.debug(txn, "[START]");
-
-    XxcsoSpDecisionHeaderFullVOImpl headerVo
-      = getXxcsoSpDecisionHeaderFullVO1();
-    if ( headerVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError(
-          "getXxcsoSpDecisionHeaderFullVO1"
-        );
-    }
-
-    // 2009-08-24 [障害0001104] Add Start
-    XxcsoSpDecRequestFullVOImpl requestVo
-      = getXxcsoSpDecRequestFullVO1();
-    if ( requestVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError(
-          "XxcsoSpDecisionHeaderFullVO1"
-        );
-    }
-   
-    XxcsoSpDecRequestFullVORowImpl requestRow
-      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
-
-    requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_REQUEST);
-    // 2009-08-24 [障害0001104] Add End
-
-    validateAll(true);
-
-    XxcsoSpDecisionHeaderFullVORowImpl headerRow
-      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
-
-    NUMBER requestId = null;
-    OracleCallableStatement stmt = null;
-    try
-    {
-      StringBuffer sql = new StringBuffer(100);
-      sql.append("BEGIN");
-      sql.append("  :1 := fnd_request.submit_request(");
-      sql.append("          application       => 'XXCSO'");
-      sql.append("         ,program           => 'XXCSO020A04C'");
-      sql.append("         ,description       => NULL");
-      sql.append("         ,start_time        => NULL");
-      sql.append("         ,sub_request       => FALSE");
-      sql.append("         ,argument1         => :2");
-      sql.append("       );");
-      sql.append("END;");
-
-      stmt
-        = (OracleCallableStatement)
-            txn.createCallableStatement(sql.toString(), 0);
-
-      stmt.registerOutParameter(1, OracleTypes.NUMBER);
-      stmt.setString(2, headerRow.getSpDecisionHeaderId().stringValue());
-
-      stmt.execute();
-      
-      requestId = stmt.getNUMBER(1);
-    }
-    catch ( SQLException e )
-    {
-      XxcsoUtils.unexpected(txn, e);
-      throw
-        XxcsoMessage.createSqlErrorMessage(
-          e
-         ,XxcsoSpDecisionConstants.TOKEN_VALUE_IB_REQUEST
-        );
-    }
-    finally
-    {
-      try
-      {
-        if ( stmt != null )
-        {
-          stmt.close();
-        }
-      }
-      catch ( SQLException e )
-      {
-        XxcsoUtils.unexpected(txn, e);
-      }
-    }
-
-    if ( NUMBER.zero().equals(requestId) )
-    {
-      try
-      {
-        StringBuffer sql = new StringBuffer(50);
-        sql.append("BEGIN fnd_message.retrieve(:1); END;");
-
-        stmt
-          = (OracleCallableStatement)
-              txn.createCallableStatement(sql.toString(), 0);
-
-        stmt.registerOutParameter(1, OracleTypes.VARCHAR);
-
-        stmt.execute();
-
-        String errmsg = stmt.getString(1);
-
-        throw
-          XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00310
-           ,XxcsoConstants.TOKEN_CONC
-           ,XxcsoSpDecisionConstants.TOKEN_VALUE_IB_REQUEST
-           ,XxcsoConstants.TOKEN_CONCMSG
-           ,errmsg
-          );
-      }
-      catch ( SQLException e )
-      {
-        XxcsoUtils.unexpected(txn, e);
-        throw
-          XxcsoMessage.createSqlErrorMessage(
-            e
-           ,XxcsoSpDecisionConstants.TOKEN_VALUE_IB_REQUEST
-          );
-      }
-      finally
-      {
-        try
-        {
-          if ( stmt != null )
-          {
-            stmt.close();
-          }
-        }
-        catch ( SQLException e )
-        {
-          XxcsoUtils.unexpected(txn, e);
-        }
-      }
-    }
-
-    commit();
-
-    OAException msg
-      = XxcsoMessage.createConfirmMessage(
-          XxcsoConstants.APP_XXCSO1_00001
-         ,XxcsoConstants.TOKEN_RECORD
-         ,XxcsoSpDecisionConstants.TOKEN_VALUE_REQUEST_CONC
-            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
-            + XxcsoConstants.TOKEN_VALUE_REQUEST_ID
-            + requestId.stringValue()
-            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
-         ,XxcsoConstants.TOKEN_ACTION
-         ,XxcsoSpDecisionConstants.TOKEN_VALUE_START
-        );
-
-    HashMap params = new HashMap(2);
-    params.put(
-      XxcsoConstants.EXECUTE_MODE
-     ,XxcsoSpDecisionConstants.DETAIL_MODE
-    );
-    params.put(
-      XxcsoConstants.TRANSACTION_KEY1
-     ,headerRow.getSpDecisionHeaderId()
-    );
-
-    HashMap returnValue = new HashMap(2);
-    returnValue.put(
-      XxcsoSpDecisionConstants.PARAM_URL_PARAM
-     ,params
-    );
-    returnValue.put(
-      XxcsoSpDecisionConstants.PARAM_MESSAGE
-     ,msg
-    );
-    
-    XxcsoUtils.debug(txn, "[END]");
-
-    return returnValue;
-  }
+// 2016-01-08 [E_本稼動_13456] Del Start
+//  /*****************************************************************************
+//   * 発注依頼ボタン押下処理
+//   *****************************************************************************
+//   */
+//  public HashMap handleRequestButton()
+//  {
+//    OADBTransaction txn = getOADBTransaction();
+//
+//    XxcsoUtils.debug(txn, "[START]");
+//
+//    XxcsoSpDecisionHeaderFullVOImpl headerVo
+//      = getXxcsoSpDecisionHeaderFullVO1();
+//    if ( headerVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "getXxcsoSpDecisionHeaderFullVO1"
+//        );
+//    }
+//
+//    // 2009-08-24 [障害0001104] Add Start
+//    XxcsoSpDecRequestFullVOImpl requestVo
+//      = getXxcsoSpDecRequestFullVO1();
+//    if ( requestVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionHeaderFullVO1"
+//        );
+//    }
+//   
+//    XxcsoSpDecRequestFullVORowImpl requestRow
+//      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
+//
+//    requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_REQUEST);
+//    // 2009-08-24 [障害0001104] Add End
+//
+//    validateAll(true);
+//
+//    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+//      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+//
+//    NUMBER requestId = null;
+//    OracleCallableStatement stmt = null;
+//    try
+//    {
+//      StringBuffer sql = new StringBuffer(100);
+//      sql.append("BEGIN");
+//      sql.append("  :1 := fnd_request.submit_request(");
+//      sql.append("          application       => 'XXCSO'");
+//      sql.append("         ,program           => 'XXCSO020A04C'");
+//      sql.append("         ,description       => NULL");
+//      sql.append("         ,start_time        => NULL");
+//      sql.append("         ,sub_request       => FALSE");
+//      sql.append("         ,argument1         => :2");
+//      sql.append("       );");
+//      sql.append("END;");
+//
+//      stmt
+//        = (OracleCallableStatement)
+//            txn.createCallableStatement(sql.toString(), 0);
+//
+//      stmt.registerOutParameter(1, OracleTypes.NUMBER);
+//      stmt.setString(2, headerRow.getSpDecisionHeaderId().stringValue());
+//
+//      stmt.execute();
+//      
+//      requestId = stmt.getNUMBER(1);
+//    }
+//    catch ( SQLException e )
+//    {
+//      XxcsoUtils.unexpected(txn, e);
+//      throw
+//        XxcsoMessage.createSqlErrorMessage(
+//          e
+//         ,XxcsoSpDecisionConstants.TOKEN_VALUE_IB_REQUEST
+//        );
+//    }
+//    finally
+//    {
+//      try
+//      {
+//        if ( stmt != null )
+//        {
+//          stmt.close();
+//        }
+//      }
+//      catch ( SQLException e )
+//      {
+//        XxcsoUtils.unexpected(txn, e);
+//      }
+//    }
+//
+//    if ( NUMBER.zero().equals(requestId) )
+//    {
+//      try
+//      {
+//        StringBuffer sql = new StringBuffer(50);
+//        sql.append("BEGIN fnd_message.retrieve(:1); END;");
+//
+//        stmt
+//          = (OracleCallableStatement)
+//              txn.createCallableStatement(sql.toString(), 0);
+//
+//        stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+//
+//        stmt.execute();
+//
+//        String errmsg = stmt.getString(1);
+//
+//        throw
+//          XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00310
+//           ,XxcsoConstants.TOKEN_CONC
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_IB_REQUEST
+//           ,XxcsoConstants.TOKEN_CONCMSG
+//           ,errmsg
+//          );
+//      }
+//      catch ( SQLException e )
+//      {
+//        XxcsoUtils.unexpected(txn, e);
+//        throw
+//          XxcsoMessage.createSqlErrorMessage(
+//            e
+//           ,XxcsoSpDecisionConstants.TOKEN_VALUE_IB_REQUEST
+//          );
+//      }
+//      finally
+//      {
+//        try
+//        {
+//          if ( stmt != null )
+//          {
+//            stmt.close();
+//          }
+//        }
+//        catch ( SQLException e )
+//        {
+//          XxcsoUtils.unexpected(txn, e);
+//        }
+//      }
+//    }
+//
+//    commit();
+//
+//    OAException msg
+//      = XxcsoMessage.createConfirmMessage(
+//          XxcsoConstants.APP_XXCSO1_00001
+//         ,XxcsoConstants.TOKEN_RECORD
+//         ,XxcsoSpDecisionConstants.TOKEN_VALUE_REQUEST_CONC
+//            + XxcsoConstants.TOKEN_VALUE_SEP_LEFT
+//            + XxcsoConstants.TOKEN_VALUE_REQUEST_ID
+//            + requestId.stringValue()
+//            + XxcsoConstants.TOKEN_VALUE_SEP_RIGHT
+//         ,XxcsoConstants.TOKEN_ACTION
+//         ,XxcsoSpDecisionConstants.TOKEN_VALUE_START
+//        );
+//
+//    HashMap params = new HashMap(2);
+//    params.put(
+//      XxcsoConstants.EXECUTE_MODE
+//     ,XxcsoSpDecisionConstants.DETAIL_MODE
+//    );
+//    params.put(
+//      XxcsoConstants.TRANSACTION_KEY1
+//     ,headerRow.getSpDecisionHeaderId()
+//    );
+//
+//    HashMap returnValue = new HashMap(2);
+//    returnValue.put(
+//      XxcsoSpDecisionConstants.PARAM_URL_PARAM
+//     ,params
+//    );
+//    returnValue.put(
+//      XxcsoSpDecisionConstants.PARAM_MESSAGE
+//     ,msg
+//    );
+//    
+//    XxcsoUtils.debug(txn, "[END]");
+//
+//    return returnValue;
+//  }
+// 2016-01-08 [E_本稼動_13456] Del End
 
   
   /*****************************************************************************
@@ -2647,48 +2650,50 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoExtRefOpclTypeListVO");
     }
 
-    // 新／旧
-    XxcsoLookupListVOImpl newOldListVo
-      = getXxcsoNewoldTypeListVO();
-    if ( newOldListVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError("XxcsoNewoldTypeListVO");
-    }
-
-    newOldListVo.initQuery(
-      "XXCSO1_CSI_JOB_KBN"
-     ,"attribute3 = '1'"
-     ,"TO_NUMBER(lookup_code)"
-    );
-    
-    // メーカーコード
-    XxcsoLookupListVOImpl makerCodeListVo
-      = getXxcsoMakerCodeListVO();
-    if ( makerCodeListVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError("XxcsoMakerCodeListVO");
-    }
-
-    makerCodeListVo.initQuery(
-      "XXCSO_CSI_MAKER_CODE"
-     ,"lookup_code"
-    );
-
-    // 規格内／外
-    XxcsoLookupListVOImpl standardListVo
-      = getXxcsoStandardTypeListVO();
-    if ( standardListVo == null )
-    {
-      throw
-        XxcsoMessage.createInstanceLostError("XxcsoStandardTypeListVO");
-    }
-
-    standardListVo.initQuery(
-      "XXCSO1_SP_VD_STANDARD_TYPE"
-     ,"lookup_code"
-    );
+// 2016-01-08 [E_本稼動_13456] Del Start
+//    // 新／旧
+//    XxcsoLookupListVOImpl newOldListVo
+//      = getXxcsoNewoldTypeListVO();
+//    if ( newOldListVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError("XxcsoNewoldTypeListVO");
+//    }
+//
+//    newOldListVo.initQuery(
+//      "XXCSO1_CSI_JOB_KBN"
+//     ,"attribute3 = '1'"
+//     ,"TO_NUMBER(lookup_code)"
+//    );
+//    
+//    // メーカーコード
+//    XxcsoLookupListVOImpl makerCodeListVo
+//      = getXxcsoMakerCodeListVO();
+//    if ( makerCodeListVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError("XxcsoMakerCodeListVO");
+//    }
+//
+//    makerCodeListVo.initQuery(
+//      "XXCSO_CSI_MAKER_CODE"
+//     ,"lookup_code"
+//    );
+//
+//    // 規格内／外
+//    XxcsoLookupListVOImpl standardListVo
+//      = getXxcsoStandardTypeListVO();
+//    if ( standardListVo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError("XxcsoStandardTypeListVO");
+//    }
+//
+//    standardListVo.initQuery(
+//      "XXCSO1_SP_VD_STANDARD_TYPE"
+//     ,"lookup_code"
+//    );
+// 2016-01-08 [E_本稼動_13456] Del End
     
     // 取引条件
     XxcsoLookupListVOImpl condBizListVo
@@ -3551,36 +3556,38 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       )
     );
 // 2009-04-14 [ST障害T1_0225] Mod End
-    /////////////////////////////////////
-    // 検証処理：VD情報
-    /////////////////////////////////////
-    // 2009-08-24 [障害0001104] Add Start
-    // 申請区分が「新規」の場合、必須チェック。または「発注依頼」ボタンの場合
-    if ((XxcsoSpDecisionConstants.APP_TYPE_NEW.equals(headerRow.getApplicationType()) ||
-        (XxcsoSpDecisionConstants.OPERATION_REQUEST.equals(requestRow.getOperationMode()))
-       ))
-    {
-    // 2009-08-24 [障害0001104] Add End
-      errorList.addAll(
-        XxcsoSpDecisionValidateUtils.validateVdInfo(
-          txn
-         ,headerVo
-         ,submitFlag
-        )
-      );
-    // 2009-08-24 [障害0001104] Add Start
-    }
-    else
-    {
-      errorList.addAll(
-        XxcsoSpDecisionValidateUtils.validateVdInfo(
-          txn
-         ,headerVo
-         ,false
-        )
-      );
-
-    }
+// 2016-01-08 [E_本稼動_13456] Del Start
+//    /////////////////////////////////////
+//    // 検証処理：VD情報
+//    /////////////////////////////////////
+//    // 2009-08-24 [障害0001104] Add Start
+//    // 申請区分が「新規」の場合、必須チェック。または「発注依頼」ボタンの場合
+//    if ((XxcsoSpDecisionConstants.APP_TYPE_NEW.equals(headerRow.getApplicationType()) ||
+//        (XxcsoSpDecisionConstants.OPERATION_REQUEST.equals(requestRow.getOperationMode()))
+//       ))
+//    {
+//    // 2009-08-24 [障害0001104] Add End
+//      errorList.addAll(
+//        XxcsoSpDecisionValidateUtils.validateVdInfo(
+//          txn
+//         ,headerVo
+//         ,submitFlag
+//        )
+//      );
+//    // 2009-08-24 [障害0001104] Add Start
+//    }
+//    else
+//    {
+//      errorList.addAll(
+//        XxcsoSpDecisionValidateUtils.validateVdInfo(
+//          txn
+//         ,headerVo
+//         ,false
+//        )
+//      );
+//
+//    }
+// 2016-01-08 [E_本稼動_13456] Del End
     // 2009-08-24 [障害0001104] Add End
     /////////////////////////////////////
     // 検証処理：取引条件
@@ -3896,10 +3903,12 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 // 2014-12-15 [E_本稼動_12565] Add Start
     String OperationMode = requestRow.getOperationMode();
 
-    // 発注依頼ボタン以外の場合
-    if ( OperationMode != XxcsoSpDecisionConstants.OPERATION_REQUEST )
-    {
-// 2014-12-15 [E_本稼動_12565] Add End
+// 2016-01-08 [E_本稼動_13456] Del Start
+//    // 発注依頼ボタン以外の場合
+//    if ( OperationMode != XxcsoSpDecisionConstants.OPERATION_REQUEST )
+//    {
+//// 2014-12-15 [E_本稼動_12565] Add End
+// 2016-01-08 [E_本稼動_13456] Del End
 
       /////////////////////////////////////
       // 検証処理：その他条件
@@ -3930,7 +3939,9 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
          ,submitFlag
         )
       );
-    }
+// 2016-01-08 [E_本稼動_13456] Del Start
+//    }
+// 2016-01-08 [E_本稼動_13456] Del End
 // 2014-12-15 [E_本稼動_12565] Add End
     /////////////////////////////////////
     // 検証処理：BM1
@@ -4381,24 +4392,26 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       }
     }
 // 2010-03-01 [E_本稼動_01678] Add End
-// 2013-04-19 [E_本稼動_09603] Add Start
-    // 発注依頼ボタンの場合
-    if ( OperationMode == XxcsoSpDecisionConstants.OPERATION_REQUEST )
-    {
-      String contractexists = headerRow.getContractExists();
-      // 契約の存在チェック
-      errorList.addAll(
-        XxcsoSpDecisionValidateUtils.validateContractExists(
-          txn
-         ,contractexists
-        )
-      );
-      if ( errorList.size() > 0 )
-      {
-        OAException.raiseBundledOAException(errorList);
-      }
-    }
-// 2013-04-19 [E_本稼動_09603] Add End
+// 2016-01-08 [E_本稼動_13456] Del Start
+//// 2013-04-19 [E_本稼動_09603] Add Start
+//    // 発注依頼ボタンの場合
+//    if ( OperationMode == XxcsoSpDecisionConstants.OPERATION_REQUEST )
+//    {
+//      String contractexists = headerRow.getContractExists();
+//      // 契約の存在チェック
+//      errorList.addAll(
+//        XxcsoSpDecisionValidateUtils.validateContractExists(
+//          txn
+//         ,contractexists
+//        )
+//      );
+//      if ( errorList.size() > 0 )
+//      {
+//        OAException.raiseBundledOAException(errorList);
+//      }
+//    }
+//// 2013-04-19 [E_本稼動_09603] Add End
+// 2016-01-08 [E_本稼動_13456] Del End
     XxcsoUtils.debug(txn, "[END]");
   }
 
