@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 2.0
+* バージョン : 2.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2012-06-12 1.8  SCS桐生和幸  [E_本稼動_09602]契約取消ボタン追加対応
 * 2013-04-01 1.9  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
 * 2015-02-09 2.0  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
+* 2016-01-06 2.1  SCSK桐生和幸 [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -1004,6 +1005,15 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoContractManagementFullVO1");
     }
 
+// 2016-01-06 [E_本稼動_13456] Add Start
+    XxcsoPageRenderVOImpl pageRndrVo = getXxcsoPageRenderVO1();
+    if ( pageRndrVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoPageRenderVOImpl");
+    }
+// 2016-01-06 [E_本稼動_13456] Add End
+
 // 2010-03-01 [E_本稼動_01678] Add Start
     XxcsoBm1DestinationFullVOImpl dest1Vo
       = getXxcsoBm1DestinationFullVO1();
@@ -1066,6 +1076,11 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     XxcsoContractManagementFullVORowImpl mngRow
       = (XxcsoContractManagementFullVORowImpl) mngVo.first();
 
+// 2016-01-06 [E_本稼動_13456] Add Start
+    XxcsoPageRenderVORowImpl pageRndrVoRow
+      = (XxcsoPageRenderVORowImpl) pageRndrVo.first(); 
+// 2016-01-06 [E_本稼動_13456] Add End
+
     // 契約書フォーマットにその他が選択されている場合、エラー
     if ( XxcsoContractRegistConstants.FORMAT_OTHER.equals(
           mngRow.getContractFormat()
@@ -1111,6 +1126,21 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
        ,bank3Vo
       );
 // 2010-03-01 [E_本稼動_01678] Add End
+// 2016-01-06 [E_本稼動_13456] Add Start
+      // オーナー変更の場合
+      if ( XxcsoContractRegistConstants.OWNER_CHANGE_FLAG_ON.equals(
+           pageRndrVoRow.getOwnerChangeFlag() )
+      )
+      {
+        // 自販機S連携フラグ
+        mngRow.setVdmsInterfaceFlag(XxcsoContractRegistConstants.INTERFACE_NONE);
+      }
+      else
+      {
+        // 自販機S連携フラグ
+        mngRow.setVdmsInterfaceFlag(XxcsoContractRegistConstants.INTERFACE_NO_TARGET);
+      }
+// 2016-01-06 [E_本稼動_13456] Add End
       // 保存処理を実行します。
       this.commit();
 // 2010-01-26 [E_本稼動_01314] Add Start
@@ -1303,6 +1333,15 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoContractManagementFullVO1");
     }
 
+// 2016-01-06 [E_本稼動_13456] Add Start
+    XxcsoPageRenderVOImpl pageRndrVo = getXxcsoPageRenderVO1();
+    if ( pageRndrVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoPageRenderVOImpl");
+    }
+// 2016-01-06 [E_本稼動_13456] Add End
+
 // 2010-03-01 [E_本稼動_01678] Add Start
     XxcsoBm1DestinationFullVOImpl dest1Vo
       = getXxcsoBm1DestinationFullVO1();
@@ -1365,6 +1404,12 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     XxcsoContractManagementFullVORowImpl mngRow
       = (XxcsoContractManagementFullVORowImpl) mngVo.first();
 // 2010-02-09 [E_本稼動_01538] Mod Start
+
+// 2016-01-06 [E_本稼動_13456] Add Start
+    XxcsoPageRenderVORowImpl pageRndrVoRow
+      = (XxcsoPageRenderVORowImpl) pageRndrVo.first(); 
+// 2016-01-06 [E_本稼動_13456] Add End
+
     /////////////////////////////////////
     // 検証処理：ＤＢ値検証
     /////////////////////////////////////
@@ -1387,12 +1432,42 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
       mngRow.setStatus(XxcsoContractRegistConstants.STS_FIX);
       // マスタ連携フラグ
       mngRow.setCooperateFlag(XxcsoContractRegistConstants.COOPERATE_NONE);
+// 2016-01-06 [E_本稼動_13456] Add Start
+      // オーナー変更の場合
+      if ( XxcsoContractRegistConstants.OWNER_CHANGE_FLAG_ON.equals(
+           pageRndrVoRow.getOwnerChangeFlag() )
+      )
+      {
+        // 自販機S連携フラグ
+        mngRow.setVdmsInterfaceFlag(XxcsoContractRegistConstants.INTERFACE_NONE);
+      }
+      else
+      {
+        // 自販機S連携フラグ
+        mngRow.setVdmsInterfaceFlag(XxcsoContractRegistConstants.INTERFACE_NO_TARGET);
+      }
+// 2016-01-06 [E_本稼動_13456] Add End
     }
     // 適用ボタン押下の場合
     else
     {
       // ステータス
       mngRow.setStatus(XxcsoContractRegistConstants.STS_INPUT);
+// 2016-01-06 [E_本稼動_13456] Add Start
+      // オーナー変更の場合
+      if ( XxcsoContractRegistConstants.OWNER_CHANGE_FLAG_ON.equals(
+           pageRndrVoRow.getOwnerChangeFlag() )
+      )
+      {
+        // 自販機S連携フラグ
+        mngRow.setVdmsInterfaceFlag(XxcsoContractRegistConstants.INTERFACE_NONE);
+      }
+      else
+      {
+        // 自販機S連携フラグ
+        mngRow.setVdmsInterfaceFlag(XxcsoContractRegistConstants.INTERFACE_NO_TARGET);
+      }
+// 2016-01-06 [E_本稼動_13456] Add End
     }
 
 // 2010-03-01 [E_本稼動_01678] Add Start
