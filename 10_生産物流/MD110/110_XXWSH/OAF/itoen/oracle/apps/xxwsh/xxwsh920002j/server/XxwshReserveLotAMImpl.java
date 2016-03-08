@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotAMImpl
 * 概要説明   : 引当ロット入力:登録アプリケーションモジュール
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2009-12-04 1.11 伊藤ひとみ     E_本稼動_00011対応
 * 2010-02-03 1.12 伊藤ひとみ     E_本稼動_00011対応
 * 2010-12-27 1.13 桐生和幸       E_本稼動_05951対応
+* 2016-02-18 1.14 山下翔太       E_本稼動_13468対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -1969,6 +1970,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-12-10 H.Itou Add End
     String showLotNo                 = null;                                                 // 表示用ロットNo
     String productionDate            = null;                                                 // 製造年月日
+// 2016-02-18 S.Yamashita Add Start
+    String expirationDate            = null;                                                 // 賞味期限
+// 2016-02-18 S.Yamashita Add End
 
     // 警告情報格納用
     String[]  lotRevErrFlgRow   = new String[vo.getRowCount()]; // ロット逆転防止チェックエラーフラグ
@@ -2039,6 +2043,9 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-12-10 H.Itou Mod End
       showLotNo            = (String)row.getAttribute("ShowLotNo");                                       // 表示用ロットNo
       productionDate       = (String)row.getAttribute("ProductionDate");                                  // 製造年月日
+// 2016-02-18 S.Yamashita Add Start
+      expirationDate       = (String)row.getAttribute("ExpirationDate");                                  // 賞味期限
+// 2016-02-18 S.Yamashita Add End
 
       // 警告情報格納用配列に初期値をセット
       lotRevErrFlgRow[vo.getCurrentRowIndex()]   = XxcmnConstants.STRING_N; // ロット逆転防止チェックエラーフラグ
@@ -2059,10 +2066,13 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
       if ((actualQuantityBk != actualQuantity) || (actualQuantity > 0))
       {
 
-        // ロット管理品で引当数量が0より大きく製造年月日が設定されている場合のみロット逆転防止チェック、鮮度条件チェックを行う
+        // ロット管理品で引当数量が0より大きい場合
         if ((XxwshConstants.LOT_CTL_Y.equals(lotCtl.toString()))
          && (actualQuantity > 0)
-         && (!XxcmnUtility.isBlankOrNull(productionDate)))
+// 2016-02-18 S.Yamashita Mod Start
+//         && (!XxcmnUtility.isBlankOrNull(productionDate)))
+        )
+// 2016-02-18 S.Yamashita Mod End
         {
           // 呼出画面区分が出荷で品目区分が製品の場合もしくは商品区分がリーフで品目区分が半製品の場合
           if ((XxwshConstants.CALL_PIC_KBN_SHIP_INPUT.equals(callPictureKbn))
@@ -2070,48 +2080,56 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
                || (   XxwshConstants.PROD_CLASS_CODE_LEAF.equals(prodClass)
                    && XxwshConstants.ITEM_TYPE_HALF.equals(itemClass))))
           {
-            // ロット逆転防止チェックを実行
-            data = XxwshUtility.doCheckLotReversalMov(
-                     getOADBTransaction(),
-                     XxwshConstants.LOT_BIZ_CLASS_SHIP_INS,
-                     itemCode,
-                     showLotNo,
-                     deliverToId,
-                     scheduleArrivalDate,
+// 2016-02-18 S.Yamashita Add Start
+            // 賞味期限が設定されている場合
+            if (!XxcmnUtility.isBlankOrNull(expirationDate))
+            {
+// 2016-02-18 S.Yamashita Add End
+              // ロット逆転防止チェックを実行
+              data = XxwshUtility.doCheckLotReversalMov(
+                       getOADBTransaction(),
+                       XxwshConstants.LOT_BIZ_CLASS_SHIP_INS,
+                       itemCode,
+                       showLotNo,
+                       deliverToId,
+                       scheduleArrivalDate,
 // 2009-01-22 H.Itou Mod Start 本番#1000対応
-//                     scheduleShipDate);
-                     scheduleShipDate,
-                     requestNo
-                     );
+//                       scheduleShipDate);
+                       scheduleShipDate,
+                       requestNo
+                       );
 // 2009-01-22 H.Itou Mod End
 
-            result  = (Number)data.get("result");  // 処理結果
-            revDate = (Date)data.get("revDate");   // 逆転日付
+              result  = (Number)data.get("result");  // 処理結果
+              revDate = (Date)data.get("revDate");   // 逆転日付
 
-            // API実行結果が1:エラーの場合
-            if (!XxwshConstants.RETURN_SUCCESS.equals(result))
-            {
-              // ロット逆転防止エラーフラグをYに設定
-              lotRevErrFlgRow[vo.getCurrentRowIndex()]     = XxcmnConstants.STRING_Y;
-              revDateRow[vo.getCurrentRowIndex()]          = revDate; // 逆転日付
-              // 警告メッセージで使用するShipTypeを設定(出荷)
-              shipTypeRow[vo.getCurrentRowIndex()]         = XxwshConstants.TOKEN_NAME_DELIVER_TO;
+              // API実行結果が1:エラーの場合
+              if (!XxwshConstants.RETURN_SUCCESS.equals(result))
+              {
+                // ロット逆転防止エラーフラグをYに設定
+                lotRevErrFlgRow[vo.getCurrentRowIndex()]     = XxcmnConstants.STRING_Y;
+                revDateRow[vo.getCurrentRowIndex()]          = revDate; // 逆転日付
+                // 警告メッセージで使用するShipTypeを設定(出荷)
+                shipTypeRow[vo.getCurrentRowIndex()]         = XxwshConstants.TOKEN_NAME_DELIVER_TO;
 
-              // 警告日付がNULLの場合
-              if (XxcmnUtility.isBlankOrNull(warningDate))
-              {
-                // 警告日付と警告区分に値をセットします。
-                warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
-                warningDate  = revDate;                            // 警告日付
-                  
-              // 警告日付が逆転日付より小さい日付の場合
-              } else if (XxcmnUtility.chkCompareDate(1, revDate, warningDate))
-              {
-                // 警告日付と警告区分に値をセットします。
-                warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
-                warningDate  = revDate;                            // 警告日付
+                // 警告日付がNULLの場合
+                if (XxcmnUtility.isBlankOrNull(warningDate))
+                {
+                  // 警告日付と警告区分に値をセットします。
+                  warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
+                  warningDate  = revDate;                            // 警告日付
+                    
+                // 警告日付が逆転日付より小さい日付の場合
+                } else if (XxcmnUtility.chkCompareDate(1, revDate, warningDate))
+                {
+                  // 警告日付と警告区分に値をセットします。
+                  warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
+                  warningDate  = revDate;                            // 警告日付
+                }
               }
+// 2016-02-18 S.Yamashita Add Start
             }
+// 2016-02-18 S.Yamashita Add End
 // 2009-01-26 H.Itou Mod Start 本番障害＃936対応
 //            // 鮮度条件チェックを実行
 //            data = XxwshUtility.doCheckFreshCondition(
@@ -2126,79 +2144,95 @@ public class XxwshReserveLotAMImpl extends XxcmnOAApplicationModuleImpl
 //
 //            // API実行結果が1:エラーの場合
 //            if (!XxwshConstants.RETURN_SUCCESS.equals(result))
-            // 以下の場合、鮮度条件警告
-            // ・鮮度条件合格製造日リターンコードが0(リターンコード1は賞味期間が0の場合なので、鮮度条件チェックを行わない。)
-            // ・製造日が鮮度条件合格製造日より古い
-            if (XxcmnConstants.API_RETURN_NORMAL.equals(getFreshRetCode)
-             && XxcmnUtility.chkCompareDate(1, standardDate, new Date(productionDate.replaceAll("/", "-"))))
-// 2009-01-26 H.Itou Mod End
+// 2016-02-18 S.Yamashita Add Start
+            // 製造日が設定されている場合
+            if (!XxcmnUtility.isBlankOrNull(productionDate))
             {
-              // 鮮度条件チェックエラーフラグをYに設定
-              freshErrFlgRow[vo.getCurrentRowIndex()]      = XxcmnConstants.STRING_Y;
-              standardDateRow[vo.getCurrentRowIndex()]     = standardDate; // 基準日
+// 2016-02-18 S.Yamashita Add End
+              // 以下の場合、鮮度条件警告
+              // ・鮮度条件合格製造日リターンコードが0(リターンコード1は賞味期間が0の場合なので、鮮度条件チェックを行わない。)
+              // ・製造日が鮮度条件合格製造日より古い
+              if (XxcmnConstants.API_RETURN_NORMAL.equals(getFreshRetCode)
+               && XxcmnUtility.chkCompareDate(1, standardDate, new Date(productionDate.replaceAll("/", "-"))))
+// 2009-01-26 H.Itou Mod End
+              {
+                // 鮮度条件チェックエラーフラグをYに設定
+                freshErrFlgRow[vo.getCurrentRowIndex()]      = XxcmnConstants.STRING_Y;
+                standardDateRow[vo.getCurrentRowIndex()]     = standardDate; // 基準日
 
-              // 警告日付がNULLの場合
-              if (XxcmnUtility.isBlankOrNull(warningDate))
-              {
-                // 警告日付と警告区分に値をセットします。
-                warningClass = XxwshConstants.WARNING_CLASS_FRESH;   // 警告区分
-                warningDate  = standardDate;                         // 警告日付
-                  
-              // 警告日付が鮮度条件合格製造日より小さい日付の場合
-              } else if (XxcmnUtility.chkCompareDate(1, standardDate, warningDate))
-              {
-                // 警告日付と警告区分に値をセットします。
-                warningClass = XxwshConstants.WARNING_CLASS_FRESH;   // 警告区分
-                warningDate  = standardDate;                         // 警告日付
-              }
-            }            
+                // 警告日付がNULLの場合
+                if (XxcmnUtility.isBlankOrNull(warningDate))
+                {
+                  // 警告日付と警告区分に値をセットします。
+                  warningClass = XxwshConstants.WARNING_CLASS_FRESH;   // 警告区分
+                  warningDate  = standardDate;                         // 警告日付
+                    
+                // 警告日付が鮮度条件合格製造日より小さい日付の場合
+                } else if (XxcmnUtility.chkCompareDate(1, standardDate, warningDate))
+                {
+                  // 警告日付と警告区分に値をセットします。
+                  warningClass = XxwshConstants.WARNING_CLASS_FRESH;   // 警告区分
+                  warningDate  = standardDate;                         // 警告日付
+                }
+              }            
+// 2016-02-18 S.Yamashita Add Start
+            }
+// 2016-02-18 S.Yamashita Add End
           // 呼出画面区分が移動で商品区分がドリンクで品目区分が製品の場合
           } else if (   XxwshConstants.CALL_PIC_KBN_MOVE_ORDER.equals(callPictureKbn)
                      && XxwshConstants.PROD_CLASS_CODE_DRINK.equals(prodClass)
                      && XxwshConstants.ITEM_TYPE_PROD.equals(itemClass))
           {
-            // ロット逆転防止チェックを実行
-            data = XxwshUtility.doCheckLotReversalMov(
-                     getOADBTransaction(),
-                     XxwshConstants.LOT_BIZ_CLASS_MOVE_INS,
-                     itemCode,
-                     showLotNo,
-                     deliverToId,
-                     scheduleArrivalDate,
+// 2016-02-18 S.Yamashita Add Start
+            // 賞味期限が設定されている場合
+            if (!XxcmnUtility.isBlankOrNull(expirationDate))
+            {
+// 2016-02-18 S.Yamashita Add End
+              // ロット逆転防止チェックを実行
+              data = XxwshUtility.doCheckLotReversalMov(
+                       getOADBTransaction(),
+                       XxwshConstants.LOT_BIZ_CLASS_MOVE_INS,
+                       itemCode,
+                       showLotNo,
+                       deliverToId,
+                       scheduleArrivalDate,
 // 2009-01-22 H.Itou Mod Start 本番#1000対応
-//                     scheduleShipDate);
-                     scheduleShipDate,
-                     requestNo
-                     );
+//                       scheduleShipDate);
+                       scheduleShipDate,
+                       requestNo
+                       );
 // 2009-01-22 H.Itou Mod End
 
-            result  = (Number)data.get("result");  // 処理結果
-            revDate = (Date)data.get("revDate");   // 逆転日付
+              result  = (Number)data.get("result");  // 処理結果
+              revDate = (Date)data.get("revDate");   // 逆転日付
 
-            // API実行結果が1:エラーの場合
-            if (!XxwshConstants.RETURN_SUCCESS.equals(result))
-            {
-              // ロット逆転防止エラーフラグをYに設定
-              lotRevErrFlgRow[vo.getCurrentRowIndex()]     = XxcmnConstants.STRING_Y;
-              revDateRow[vo.getCurrentRowIndex()]          = revDate; // 逆転日付
-              // 警告メッセージで使用するShipTypeを設定(移動)
-              shipTypeRow[vo.getCurrentRowIndex()]         = XxwshConstants.TOKEN_NAME_SHIP_TO;
+              // API実行結果が1:エラーの場合
+              if (!XxwshConstants.RETURN_SUCCESS.equals(result))
+              {
+                // ロット逆転防止エラーフラグをYに設定
+                lotRevErrFlgRow[vo.getCurrentRowIndex()]     = XxcmnConstants.STRING_Y;
+                revDateRow[vo.getCurrentRowIndex()]          = revDate; // 逆転日付
+                // 警告メッセージで使用するShipTypeを設定(移動)
+                shipTypeRow[vo.getCurrentRowIndex()]         = XxwshConstants.TOKEN_NAME_SHIP_TO;
 
-              // 警告日付がNULLの場合
-              if (XxcmnUtility.isBlankOrNull(warningDate))
-              {
-                // 警告日付と警告区分に値をセットします。
-                warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
-                warningDate  = revDate;                            // 警告日付
-                  
-              // 警告日付が逆転日付より小さい日付の場合
-              } else if (XxcmnUtility.chkCompareDate(1, revDate, warningDate))
-              {
-                // 警告日付と警告区分に値をセットします。
-                warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
-                warningDate  = revDate;                            // 警告日付
+                // 警告日付がNULLの場合
+                if (XxcmnUtility.isBlankOrNull(warningDate))
+                {
+                  // 警告日付と警告区分に値をセットします。
+                  warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
+                  warningDate  = revDate;                            // 警告日付
+                    
+                // 警告日付が逆転日付より小さい日付の場合
+                } else if (XxcmnUtility.chkCompareDate(1, revDate, warningDate))
+                {
+                  // 警告日付と警告区分に値をセットします。
+                  warningClass = XxwshConstants.WARNING_CLASS_LOT;   // 警告区分
+                  warningDate  = revDate;                            // 警告日付
+                }
               }
+// 2016-02-18 S.Yamashita Add Start
             }
+// 2016-02-18 S.Yamashita Add End
           } // 呼出画面区分、商品区分、品目区分によりロット逆転防止チェック、鮮度条件チェック判断
         } // ロット管理品で製造年月日が設定されている場合のみロット逆転防止チェック、鮮度条件チェックを行う
         
