@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -87,6 +87,7 @@ AS
  *  2015-04-02    1.20  K.Kiriu          E_本稼働_12565本番障害対応
  *  2015-06-10    1.21  S.Yamashita      E_本稼働_12984対応
  *  2015-11-24    1.22  K.Kiriu          E_本稼働_13345対応
+ *  2016-02-02    1.23  H.Okada          E_本稼働_13456対応
  *
  *****************************************************************************************/
   --
@@ -193,6 +194,10 @@ AS
   /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
   cv_duns_number_approved   CONSTANT hz_parties.duns_number_c%TYPE                           := '25';    -- 顧客ステータス：25(SP承認済)
   /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
+  /* 2016.02.02 H.Okada E_本稼働_13456 START */
+  cv_vdms_interface_flag_ta CONSTANT xxcso_contract_managements.vdms_interface_flag%TYPE := '0';         -- 自販機S連携フラグ＝対象
+  cv_vdms_interface_flag_tg CONSTANT xxcso_contract_managements.vdms_interface_flag%TYPE := '1';         -- 自販機S連携フラグ＝未連携
+  /* 2016.02.02 H.Okada E_本稼働_13456 END */
   --
   -- メッセージコード
   cv_tkn_number_01 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011'; -- 業務処理日付取得エラー
@@ -4171,6 +4176,14 @@ AS
                                                 ,cv_flag_no, cv_batch_proc_status_norm
                                                 ,cv_batch_proc_status_err
                                           ) -- バッチ処理ステータス
+/* 2016.02.02 H.Okada E_本稼働_13456 START */
+            ,xcm.vdms_interface_flag    = CASE
+                                            WHEN xcm.vdms_interface_flag = cv_vdms_interface_flag_ta AND iv_err_flag = cv_flag_no THEN
+                                              cv_vdms_interface_flag_tg
+                                            ELSE
+                                              xcm.vdms_interface_flag
+                                          END  -- 自販機S連携フラグ
+/* 2016.02.02 H.Okada E_本稼働_13456 END */
             ,xcm.last_updated_by        = cn_last_updated_by        -- 最終更新者
             ,xcm.last_update_date       = cd_last_update_date       -- 最終更新日
             ,xcm.last_update_login      = cn_last_update_login      -- 最終更新ログイン
