@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  chk_supplier              F    V      仕入先マスタチェック
  *  chk_bank_account          F    V      銀行口座マスタチェック
  *  chk_bank_account_change   F    V      銀行口座マスタ変更チェック
+ *  chk_owner_change_use      F    V      オーナ変更物件使用チェック
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -55,6 +56,7 @@ AS
  *  2011/06/06    1.8   K.Kiriu          E_本稼動_01963対応
  *  2013/04/01    1.9   K.Kiriu          E_本稼動_10413対応
  *  2015/12/03    1.10  S.Yamashita      E_本稼動_13345対応
+ *  2016/01/06    1.11  K.Kiriu          E_本稼動_13456対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -245,6 +247,13 @@ AS
    ,ov_account_holder_name        OUT VARCHAR2         -- 口座名義漢字(マスタ)
   ) RETURN VARCHAR2;
 /* 2013/04/01 Ver1.9 K.kiriu E_本稼動_10413対応 END */
+/* 2016/01/06 Ver1.11 K.kiriu E_本稼動_13456対応 START */
+  -- オーナ変更物件使用チェック
+  FUNCTION chk_owner_change_use(
+    iv_install_code               IN  VARCHAR2         -- 物件コード
+   ,in_install_account_id         IN  NUMBER           -- 顧客ID
+  ) RETURN VARCHAR2;
+/* 2016/01/06 Ver1.11 K.kiriu E_本稼動_13456対応 END */
 --
 END xxcso_010003j_pkg;
 /
