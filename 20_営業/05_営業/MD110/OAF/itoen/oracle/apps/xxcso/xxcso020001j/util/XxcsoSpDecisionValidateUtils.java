@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.19
+* バージョン : 1.20
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -27,6 +27,7 @@
 * 2013-04-19 1.17 SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.18 SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 * 2014-12-15 1.19 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
+* 2016-01-07 1.20 SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1058,133 +1059,135 @@ public class XxcsoSpDecisionValidateUtils
 
 
   
-  /*****************************************************************************
-   * VD情報の検証
-   * @param txn         OADBTransactionインスタンス
-   * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
-   * @param submitFlag  提出用フラグ
-   * @return List       エラーリスト
-   *****************************************************************************
-   */
-  public static List validateVdInfo(
-    OADBTransaction                     txn
-   ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
-   ,boolean                             submitFlag
-  )
-  {
-    XxcsoUtils.debug(txn, "[START]");
-    
-    List errorList = new ArrayList();
-    String token1 = null;
-    
-    /////////////////////////////////////
-    // 各行を取得
-    /////////////////////////////////////
-    XxcsoSpDecisionHeaderFullVORowImpl headerRow
-      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
-
-    XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
-
-    String newoldType = headerRow.getNewoldType();
-    
-    /////////////////////////////////////
-    // VD情報：新／旧
-    /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_NEW_OLD;
-
-    if ( submitFlag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,headerRow.getNewoldType()
-           ,token1
-           ,0
-          );
-    }
-
-    /////////////////////////////////////
-    // VD情報：セレ数
-    /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_SELE_NUMBER;
-    errorList
-      = utils.checkStringToNumber(
-          errorList
-         ,headerRow.getSeleNumber()
-         ,token1
-         ,0
-         ,3
-         ,true
-         ,true
-
-         ,submitFlag
-         ,0
-        );
-
-    /////////////////////////////////////
-    // VD情報：メーカー名
-    /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_MAKER_NAME;
-
-    if ( submitFlag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,headerRow.getMakerCode()
-           ,token1
-           ,0
-          );
-    }
-
-    /////////////////////////////////////
-    // VD情報：規格内／外
-    /////////////////////////////////////
-    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
-            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-            + XxcsoSpDecisionConstants.TOKEN_VALUE_STD_TYPE;
-
-    if ( submitFlag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,headerRow.getStandardType()
-           ,token1
-           ,0
-          );
-    }
-
-    /////////////////////////////////////
-    // VD情報：機種コード
-    /////////////////////////////////////
-    if ( submitFlag )
-    {
-      if ( XxcsoSpDecisionConstants.NEW_OLD_NEW.equals(newoldType) )
-      {
-        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
-                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
-                + XxcsoSpDecisionConstants.TOKEN_VALUE_VENDOR_MODEL;
-        errorList
-          = utils.requiredCheck(
-              errorList
-             ,headerRow.getUnNumber()
-             ,token1
-             ,0
-            );
-      }
-    }
-    
-    XxcsoUtils.debug(txn, "[END]");
-
-    return errorList;
-  }
+// 2016-01-07 [E_本稼動_13456] Del Start
+//  /*****************************************************************************
+//   * VD情報の検証
+//   * @param txn         OADBTransactionインスタンス
+//   * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
+//   * @param submitFlag  提出用フラグ
+//   * @return List       エラーリスト
+//   *****************************************************************************
+//   */
+//  public static List validateVdInfo(
+//    OADBTransaction                     txn
+//   ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
+//   ,boolean                             submitFlag
+//  )
+//  {
+//    XxcsoUtils.debug(txn, "[START]");
+//    
+//    List errorList = new ArrayList();
+//    String token1 = null;
+//    
+//    /////////////////////////////////////
+//    // 各行を取得
+//    /////////////////////////////////////
+//    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+//      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+//
+//    XxcsoValidateUtils utils = XxcsoValidateUtils.getInstance(txn);
+//
+//    String newoldType = headerRow.getNewoldType();
+//    
+//    /////////////////////////////////////
+//    // VD情報：新／旧
+//    /////////////////////////////////////
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_NEW_OLD;
+//
+//    if ( submitFlag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,headerRow.getNewoldType()
+//           ,token1
+//           ,0
+//          );
+//    }
+//
+//    /////////////////////////////////////
+//    // VD情報：セレ数
+//    /////////////////////////////////////
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_SELE_NUMBER;
+//    errorList
+//      = utils.checkStringToNumber(
+//          errorList
+//         ,headerRow.getSeleNumber()
+//         ,token1
+//         ,0
+//         ,3
+//         ,true
+//         ,true
+//
+//         ,submitFlag
+//         ,0
+//        );
+//
+//    /////////////////////////////////////
+//    // VD情報：メーカー名
+//    /////////////////////////////////////
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_MAKER_NAME;
+//
+//    if ( submitFlag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,headerRow.getMakerCode()
+//           ,token1
+//           ,0
+//          );
+//    }
+//
+//    /////////////////////////////////////
+//    // VD情報：規格内／外
+//    /////////////////////////////////////
+//    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
+//            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//            + XxcsoSpDecisionConstants.TOKEN_VALUE_STD_TYPE;
+//
+//    if ( submitFlag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,headerRow.getStandardType()
+//           ,token1
+//           ,0
+//          );
+//    }
+//
+//    /////////////////////////////////////
+//    // VD情報：機種コード
+//    /////////////////////////////////////
+//    if ( submitFlag )
+//    {
+//      if ( XxcsoSpDecisionConstants.NEW_OLD_NEW.equals(newoldType) )
+//      {
+//        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_VD_INFO_REGION
+//                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+//                + XxcsoSpDecisionConstants.TOKEN_VALUE_VENDOR_MODEL;
+//        errorList
+//          = utils.requiredCheck(
+//              errorList
+//             ,headerRow.getUnNumber()
+//             ,token1
+//             ,0
+//            );
+//      }
+//    }
+//    
+//    XxcsoUtils.debug(txn, "[END]");
+//
+//    return errorList;
+//  }
+// 2016-01-07 [E_本稼動_13456] Del End
 
   
   /*****************************************************************************
@@ -6878,38 +6881,40 @@ public class XxcsoSpDecisionValidateUtils
     return returnValue;
  }
 // 2010-01-12 [E_本稼動_00823] Add End
-// 2013-04-19 [E_本稼動_09603] Add Start
-  /*****************************************************************************
-   * 契約の存在検証
-   * @param txn            OADBTransactionインスタンス
-   * @param contractexists 契約存在フラグ
-   *****************************************************************************
-   */
-  public static List validateContractExists(
-    OADBTransaction     txn
-   ,String              contractexists
-  )
-  {
-    XxcsoUtils.debug(txn, "[START]");
-
-    List errorList = new ArrayList();
-
-    if ( "N".equals(contractexists) )
-    {
-      OAException error
-            = XxcsoMessage.createErrorMessage(
-                XxcsoConstants.APP_XXCSO1_00648
-               ,XxcsoConstants.TOKEN_ACTION
-               ,XxcsoSpDecisionConstants.TOKEN_VALUE_REQUEST_CONC
-              );
-      errorList.add(error);
-    }
-
-    XxcsoUtils.debug(txn, "[END]");
-
-    return errorList;
-  }
-// 2013-04-19 [E_本稼動_09603] Add End
+// 2016-01-07 [E_本稼動_13456] Del Start
+//// 2013-04-19 [E_本稼動_09603] Add Start
+//  /*****************************************************************************
+//   * 契約の存在検証
+//   * @param txn            OADBTransactionインスタンス
+//   * @param contractexists 契約存在フラグ
+//   *****************************************************************************
+//   */
+//  public static List validateContractExists(
+//    OADBTransaction     txn
+//   ,String              contractexists
+//  )
+//  {
+//    XxcsoUtils.debug(txn, "[START]");
+//
+//    List errorList = new ArrayList();
+//
+//    if ( "N".equals(contractexists) )
+//    {
+//      OAException error
+//            = XxcsoMessage.createErrorMessage(
+//                XxcsoConstants.APP_XXCSO1_00648
+//               ,XxcsoConstants.TOKEN_ACTION
+//               ,XxcsoSpDecisionConstants.TOKEN_VALUE_REQUEST_CONC
+//              );
+//      errorList.add(error);
+//    }
+//
+//    XxcsoUtils.debug(txn, "[END]");
+//
+//    return errorList;
+//  }
+//// 2013-04-19 [E_本稼動_09603] Add End
+// 2016-01-07 [E_本稼動_13456] Del End
 // 2014-12-15 [E_本稼動_12565] Add Start
   /*****************************************************************************
    * 月の検証
