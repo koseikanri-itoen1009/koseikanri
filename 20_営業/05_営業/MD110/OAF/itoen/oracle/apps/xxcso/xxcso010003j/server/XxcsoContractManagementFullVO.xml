@@ -167,6 +167,10 @@ SELECT XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID
 -- 2015-01-19 [E_本稼動_12565] Add Start
       ,XxcsoContractManagementsEO.contract_other_custs_id AS contract_other_custs_id
 -- 2015-01-19 [E_本稼動_12565] Add End
+-- 2016-01-06 [E_本稼動_13456] Add Start
+      ,XxcsoContractManagementsEO.vdms_interface_flag AS vdms_interface_flag
+      ,XxcsoContractManagementsEO.vdms_interface_date AS vdms_interface_date
+-- 2016-01-06 [E_本稼動_13456] Add End
 FROM   XXCSO_CONTRACT_MANAGEMENTS XxcsoContractManagementsEO
       ,xxcso_employees_v2         xev
       ,xxcso_locations_v2         xlv
@@ -604,6 +608,18 @@ AND   xcasv.cust_account_id           = xsdc.customer_id
       <DesignTime>
          <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VdmsInterfaceFlag"
+      EntityAttrName="VdmsInterfaceFlag"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="VdmsInterfaceFlag" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="VdmsInterfaceDate"
+      EntityAttrName="VdmsInterfaceDate"
+      EntityUsage="XxcsoContractManagementsEO"
+      AliasName="VdmsInterfaceDate" >
    </ViewAttribute>
    <ViewLinkAccessor
       Name="XxcsoBm1DestinationFullVO"
