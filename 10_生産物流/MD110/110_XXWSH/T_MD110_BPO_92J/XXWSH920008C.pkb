@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2010/01/08   1.12  SCS北寒寺         本番稼働障害#701対応
  *  2010/01/28   1.13  SCS北寒寺         本番稼働障害#1320対応
  *  2010/02/26   1.14  SCS北寒寺         本番稼働障害#1612対応
+ *  2016/02/18   1.15  SCSK山下翔太      E_本稼動_13468対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4636,6 +4637,9 @@ AS
     iv_item_code     IN  VARCHAR2,     -- OPM品目コード
     in_lot_id        IN  NUMBER,       -- ロットID
     id_active_date   IN  DATE,         -- 有効日
+-- 2016/02/18 S.Yamashita Ver1.15 START
+    id_schedule_arrival_date IN  DATE, -- 着荷予定日
+-- 2016/02/18 S.Yamashita Ver1.15 END
     ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -4822,8 +4826,13 @@ AS
         AND  lm.item_id           = enable_lot.item_id
         AND  lm.lot_id            = enable_lot.lot_id
 -- 2010/01/08 M.Hokkanji Ver1.12 END
-      ORDER BY lm.attribute1 ASC,
-               lm.attribute2 ASC; 
+-- 2016/02/18 S.Yamashita Ver1.15 START
+--      ORDER BY lm.attribute1 ASC,
+        AND  TO_DATE( lm.attribute3, 'YYYY/MM/DD' ) > id_schedule_arrival_date
+      ORDER BY lm.attribute3 ASC, -- 賞味期限
+               lm.attribute1 ASC, -- 製造日
+-- 2016/02/18 S.Yamashita Ver1.15 END
+               lm.attribute2 ASC; -- 固有記号
 --
   BEGIN
 --
@@ -6043,6 +6052,9 @@ AS
                      , gr_demand_tbl(ln_d_cnt).shipping_item_code -- OPM品目コード
                      , NULL                                       -- ロットID
                      , gr_demand_tbl(ln_d_cnt).schedule_ship_date -- 有効日
+-- 2016/02/18 S.Yamashita Ver1.15 START
+                     , gr_demand_tbl(ln_d_cnt).schedule_arrival_date -- 着荷予定日
+-- 2016/02/18 S.Yamashita Ver1.15 END
                      , lv_errbuf                                  -- エラー・メッセージ           
                      , lv_retcode                                 -- リターン・コード             
                      , lv_errmsg                                  -- ユーザー・エラー・メッセージ 
@@ -6182,8 +6194,12 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
 --              IF ( (gr_check_tbl(1).warnning_date IS NULL)
 --                OR (gr_check_tbl(1).warnning_date <= ld_reversal_date ))
 --              THEN
-            -- ロット製造日 < 逆転日付の場合
-            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
+-- 2016/02/18 S.Yamashita Ver1.15 START
+--            -- ロット製造日 < 逆転日付の場合
+--            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
+            -- ロット賞味期限 < 逆転日付の場合
+            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).use_by_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
+-- 2016/02/18 S.Yamashita Ver1.15 END
               -- チェック処理結果を格納する
               IF ( ( gr_check_tbl(1).warnning_date IS NULL )
                 OR ( gr_check_tbl(1).warnning_date <= ld_reversal_date ) ) THEN
