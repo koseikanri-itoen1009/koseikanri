@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_contract_managements
  * Description     : 契約管理テーブル
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
  *  2009/03/04    1.1  S.Yoda        桁数変更（設置先顧客名）
  *  2015/01/19    1.2  S.Yamashita   [E_本稼動_12565]SP専決・契約書画面改修
+ *  2016/01/05    1.3  K.Kiriu       [E_本稼動_13456]自販機管理システム代替対応
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_contract_managements
 (
@@ -46,6 +47,10 @@ CREATE TABLE xxcso.xxcso_contract_managements
   install_code                    VARCHAR2(10),
   cooperate_flag                  VARCHAR2(1),
   batch_proc_status               VARCHAR2(1),
+-- 2016-01-05 [E_本稼動_13456] Add Start
+  vdms_interface_flag             VARCHAR2(1),
+  vdms_interface_date             DATE,
+-- 2016-01-05 [E_本稼動_13456] Add End
   created_by                      NUMBER(15)        NOT NULL,
   creation_date                   DATE              NOT NULL,
   last_updated_by                 NUMBER(15)        NOT NULL,
@@ -93,6 +98,10 @@ COMMENT ON COLUMN xxcso.xxcso_contract_managements.publish_dept_code            
 COMMENT ON COLUMN xxcso.xxcso_contract_managements.install_code                           IS '物件コード';
 COMMENT ON COLUMN xxcso.xxcso_contract_managements.cooperate_flag                         IS 'マスタ連携フラグ';
 COMMENT ON COLUMN xxcso.xxcso_contract_managements.batch_proc_status                      IS 'バッチ処理ステータス';
+-- 2016-01-05 [E_本稼動_13456] Add Start
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.vdms_interface_flag                    IS '自販機S連携フラグ';
+COMMENT ON COLUMN xxcso.xxcso_contract_managements.vdms_interface_date                    IS '自販機S連携日';
+-- 2016-01-05 [E_本稼動_13456] Add End
 COMMENT ON COLUMN xxcso.xxcso_contract_managements.created_by                             IS '作成者';
 COMMENT ON COLUMN xxcso.xxcso_contract_managements.creation_date                          IS '作成日';
 COMMENT ON COLUMN xxcso.xxcso_contract_managements.last_updated_by                        IS '最終更新者';
