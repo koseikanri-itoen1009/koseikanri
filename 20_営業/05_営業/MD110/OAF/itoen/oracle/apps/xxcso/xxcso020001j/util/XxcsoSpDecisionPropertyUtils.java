@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2013-04-19 1.7  SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.8  SCSK桐生和幸  [E_本稼動_11397]売価1円対応
 * 2014-12-15 1.9  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
+* 2016-01-07 1.10 SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -415,15 +416,17 @@ public class XxcsoSpDecisionPropertyUtils
       }
     }
 
-    /////////////////////////////////////
-    // VD情報リージョン
-    /////////////////////////////////////
-    // すべて入力可能
-    initRow.setNewoldTypeViewRender(               Boolean.FALSE );
-    initRow.setSeleNumberViewRender(               Boolean.FALSE );
-    initRow.setMakerCodeViewRender(                Boolean.FALSE );
-    initRow.setStandardTypeViewRender(             Boolean.FALSE );
-    initRow.setUnNumberViewRender(                 Boolean.FALSE );
+// 2016-01-07 [E_本稼動_13456] Del Start
+//    /////////////////////////////////////
+//    // VD情報リージョン
+//    /////////////////////////////////////
+//    // すべて入力可能
+//    initRow.setNewoldTypeViewRender(               Boolean.FALSE );
+//    initRow.setSeleNumberViewRender(               Boolean.FALSE );
+//    initRow.setMakerCodeViewRender(                Boolean.FALSE );
+//    initRow.setStandardTypeViewRender(             Boolean.FALSE );
+//    initRow.setUnNumberViewRender(                 Boolean.FALSE );
+// 2016-01-07 [E_本稼動_13456] Del End
 
     /////////////////////////////////////
     // 取引条件選択リージョン
@@ -768,36 +771,38 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setContractAddressLineRender(          Boolean.FALSE );
     initRow.setDelegateNameRender(                 Boolean.FALSE );
 
-    /////////////////////////////////////
-    // VD情報リージョン
-    /////////////////////////////////////
-    if ( Boolean.TRUE.equals(initRow.getRequestButtonRender()) )
-    {
-      // 発注依頼ボタンを押せるユーザーのみが入力可能
-      String newoldType = headerRow.getNewoldType();
-      if ( XxcsoSpDecisionConstants.NEW_OLD_OLD.equals(newoldType) )
-      {
-        // 旧台の場合は、入力不可
-        initRow.setNewoldTypeRender(               Boolean.FALSE );
-      }
-      else
-      {
-        initRow.setNewoldTypeViewRender(           Boolean.FALSE );
-      }
-      initRow.setSeleNumberViewRender(             Boolean.FALSE );
-      initRow.setMakerCodeViewRender(              Boolean.FALSE );
-      initRow.setStandardTypeViewRender(           Boolean.FALSE );
-      initRow.setUnNumberViewRender(               Boolean.FALSE );
-    }
-    else
-    {
-      // 発注依頼ボタンを押せないユーザーは入力不可
-      initRow.setNewoldTypeRender(                 Boolean.FALSE );
-      initRow.setSeleNumberRender(                 Boolean.FALSE );
-      initRow.setMakerCodeRender(                  Boolean.FALSE );
-      initRow.setStandardTypeRender(               Boolean.FALSE );
-      initRow.setUnNumberRender(                   Boolean.FALSE );
-    }
+// 2016-01-07 [E_本稼動_13456] Del Start
+//    /////////////////////////////////////
+//    // VD情報リージョン
+//    /////////////////////////////////////
+//    if ( Boolean.TRUE.equals(initRow.getRequestButtonRender()) )
+//    {
+//      // 発注依頼ボタンを押せるユーザーのみが入力可能
+//      String newoldType = headerRow.getNewoldType();
+//      if ( XxcsoSpDecisionConstants.NEW_OLD_OLD.equals(newoldType) )
+//      {
+//        // 旧台の場合は、入力不可
+//        initRow.setNewoldTypeRender(               Boolean.FALSE );
+//      }
+//      else
+//      {
+//        initRow.setNewoldTypeViewRender(           Boolean.FALSE );
+//      }
+//      initRow.setSeleNumberViewRender(             Boolean.FALSE );
+//      initRow.setMakerCodeViewRender(              Boolean.FALSE );
+//      initRow.setStandardTypeViewRender(           Boolean.FALSE );
+//      initRow.setUnNumberViewRender(               Boolean.FALSE );
+//    }
+//    else
+//    {
+//      // 発注依頼ボタンを押せないユーザーは入力不可
+//      initRow.setNewoldTypeRender(                 Boolean.FALSE );
+//      initRow.setSeleNumberRender(                 Boolean.FALSE );
+//      initRow.setMakerCodeRender(                  Boolean.FALSE );
+//      initRow.setStandardTypeRender(               Boolean.FALSE );
+//      initRow.setUnNumberRender(                   Boolean.FALSE );
+//    }
+// 2016-01-07 [E_本稼動_13456] Del End
 
     /////////////////////////////////////
     // 取引条件選択リージョン
@@ -1255,18 +1260,20 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setBm3InfoHdrRNRender(                 Boolean.FALSE );
     }
     
-    /////////////////////////////////////
-    //新台旧台区分により、表示／非表示を設定
-    /////////////////////////////////////
-    String newoldType = headerRow.getNewoldType();
-    if ( XxcsoSpDecisionConstants.NEW_OLD_NEW.equals(newoldType) )
-    {
-      initRow.setVdInfo3LayoutRender(                Boolean.FALSE );
-    }
-    else
-    {
-      initRow.setVdInfo3RequiredLayoutRender(        Boolean.FALSE );
-    }
+// 2016-01-07 [E_本稼動_13456] Del Start
+//    /////////////////////////////////////
+//    //新台旧台区分により、表示／非表示を設定
+//    /////////////////////////////////////
+//    String newoldType = headerRow.getNewoldType();
+//    if ( XxcsoSpDecisionConstants.NEW_OLD_NEW.equals(newoldType) )
+//    {
+//      initRow.setVdInfo3LayoutRender(                Boolean.FALSE );
+//    }
+//    else
+//    {
+//      initRow.setVdInfo3RequiredLayoutRender(        Boolean.FALSE );
+//    }
+// 2016-01-07 [E_本稼動_13456] Del End
 
     /////////////////////////////////////
     // 取引条件により、表示／非表示を設定
@@ -1763,51 +1770,53 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setRejectButtonRender(                 Boolean.FALSE );
     }
     
-    /////////////////////////////////////
-    // 発注依頼ボタンの表示／非表示を設定
-    /////////////////////////////////////
-    String publishBaseCode = installRow.getPublishBaseCode();
-    boolean requestEnabledFlag = false;
-    // 2011-04-25 [E_本稼動_07224] Add Start
-    // 発注依頼のみ可能な発注代行拠点取得
-    String actpobase_code  = initRow.getActPoBaseCode();
-    // 2011-04-25 [E_本稼動_07224] Add End
-    
-    if ( XxcsoSpDecisionConstants.STATUS_ENABLE.equals(status) )
-    {
-      if ( loginBaseCode != null )
-      {
-        if ( loginBaseCode.equals(appBaseCode) )
-        {
-          // ステータスが有効で、
-          // ログインユーザーの拠点コードと申請拠点が同じ場合は、
-          // 発注依頼ボタンは表示
-          requestEnabledFlag = true;
-        }
-
-        if ( loginBaseCode.equals(publishBaseCode) )
-        {
-          // ステータスが有効で、
-          // ログインユーザーの拠点コードと担当拠点が同じ場合は、
-          // 発注依頼ボタンは表示
-          requestEnabledFlag = true;
-        }
-        // 2011-04-25 [E_本稼動_07224] Add Start
-        if ( loginBaseCode.equals(actpobase_code) )
-        {
-          // ステータスが有効で、
-          // ログインユーザーの拠点コードと発注代行拠点が同じ場合は、
-          // 発注依頼ボタンは表示
-          requestEnabledFlag = true;
-        }
-        // 2011-04-25 [E_本稼動_07224] Add End
-      }
-    }
-
-    if ( ! requestEnabledFlag )
-    {
-      initRow.setRequestButtonRender(                Boolean.FALSE );
-    }
+// 2016-01-07 [E_本稼動_13456] Del Start
+//    /////////////////////////////////////
+//    // 発注依頼ボタンの表示／非表示を設定
+//    /////////////////////////////////////
+//    String publishBaseCode = installRow.getPublishBaseCode();
+//    boolean requestEnabledFlag = false;
+//    // 2011-04-25 [E_本稼動_07224] Add Start
+//    // 発注依頼のみ可能な発注代行拠点取得
+//    String actpobase_code  = initRow.getActPoBaseCode();
+//    // 2011-04-25 [E_本稼動_07224] Add End
+//    
+//    if ( XxcsoSpDecisionConstants.STATUS_ENABLE.equals(status) )
+//    {
+//      if ( loginBaseCode != null )
+//      {
+//        if ( loginBaseCode.equals(appBaseCode) )
+//        {
+//          // ステータスが有効で、
+//          // ログインユーザーの拠点コードと申請拠点が同じ場合は、
+//          // 発注依頼ボタンは表示
+//          requestEnabledFlag = true;
+//        }
+//
+//        if ( loginBaseCode.equals(publishBaseCode) )
+//        {
+//          // ステータスが有効で、
+//          // ログインユーザーの拠点コードと担当拠点が同じ場合は、
+//          // 発注依頼ボタンは表示
+//          requestEnabledFlag = true;
+//        }
+//        // 2011-04-25 [E_本稼動_07224] Add Start
+//        if ( loginBaseCode.equals(actpobase_code) )
+//        {
+//          // ステータスが有効で、
+//          // ログインユーザーの拠点コードと発注代行拠点が同じ場合は、
+//          // 発注依頼ボタンは表示
+//          requestEnabledFlag = true;
+//        }
+//        // 2011-04-25 [E_本稼動_07224] Add End
+//      }
+//    }
+//
+//    if ( ! requestEnabledFlag )
+//    {
+//      initRow.setRequestButtonRender(                Boolean.FALSE );
+//    }
+// 2016-01-07 [E_本稼動_13456] Del End
   }
 
 
@@ -1925,19 +1934,21 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setDelegateNameRender(               Boolean.TRUE  );
     initRow.setDelegateNameViewRender(           Boolean.TRUE  );
 
-    // VD情報リージョン
-    initRow.setNewoldTypeRender(                 Boolean.TRUE  );
-    initRow.setNewoldTypeViewRender(             Boolean.TRUE  );
-    initRow.setSeleNumberRender(                 Boolean.TRUE  );
-    initRow.setSeleNumberViewRender(             Boolean.TRUE  );
-    initRow.setMakerCodeRender(                  Boolean.TRUE  );
-    initRow.setMakerCodeViewRender(              Boolean.TRUE  );
-    initRow.setStandardTypeRender(               Boolean.TRUE  );
-    initRow.setStandardTypeViewRender(           Boolean.TRUE  );
-    initRow.setVdInfo3LayoutRender(              Boolean.TRUE  );
-    initRow.setVdInfo3RequiredLayoutRender(      Boolean.TRUE  );
-    initRow.setUnNumberRender(                   Boolean.TRUE  );
-    initRow.setUnNumberViewRender(               Boolean.TRUE  );
+// 2016-01-07 [E_本稼動_13456] Del Start
+//    // VD情報リージョン
+//    initRow.setNewoldTypeRender(                 Boolean.TRUE  );
+//    initRow.setNewoldTypeViewRender(             Boolean.TRUE  );
+//    initRow.setSeleNumberRender(                 Boolean.TRUE  );
+//    initRow.setSeleNumberViewRender(             Boolean.TRUE  );
+//    initRow.setMakerCodeRender(                  Boolean.TRUE  );
+//    initRow.setMakerCodeViewRender(              Boolean.TRUE  );
+//    initRow.setStandardTypeRender(               Boolean.TRUE  );
+//    initRow.setStandardTypeViewRender(           Boolean.TRUE  );
+//    initRow.setVdInfo3LayoutRender(              Boolean.TRUE  );
+//    initRow.setVdInfo3RequiredLayoutRender(      Boolean.TRUE  );
+//    initRow.setUnNumberRender(                   Boolean.TRUE  );
+//    initRow.setUnNumberViewRender(               Boolean.TRUE  );
+// 2016-01-07 [E_本稼動_13456] Del End
 
     // 取引条件選択リージョン
     initRow.setCondBizTypeRender(                Boolean.TRUE  );
@@ -2297,6 +2308,8 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setApproveButtonRender(              Boolean.TRUE  );
     initRow.setReturnButtonRender(               Boolean.TRUE  );
     initRow.setConfirmButtonRender(              Boolean.TRUE  );
-    initRow.setRequestButtonRender(              Boolean.TRUE  );
+// 2016-01-07 [E_本稼動_13456] Del Start
+//    initRow.setRequestButtonRender(              Boolean.TRUE  );
+// 2016-01-07 [E_本稼動_13456] Del End
   }
 }
