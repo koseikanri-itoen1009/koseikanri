@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoContractManagementFullVORowImpl
 * 概要説明   : 契約管理テーブル情報ビュー行オブジェクトクラス
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS小川浩    新規作成
 * 2015-02-02 1.1  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
+* 2016-01-06 1.2  SCSK桐生和幸 [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -75,9 +76,11 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
   protected static final int INSTANCEID = 45;
   protected static final int LATESTCONTRACTNUMBER = 46;
   protected static final int CONTRACTOTHERCUSTSID = 47;
-  protected static final int XXCSOBM1DESTINATIONFULLVO = 48;
-  protected static final int XXCSOBM2DESTINATIONFULLVO = 49;
-  protected static final int XXCSOBM3DESTINATIONFULLVO = 50;
+  protected static final int VDMSINTERFACEFLAG = 48;
+  protected static final int VDMSINTERFACEDATE = 49;
+  protected static final int XXCSOBM1DESTINATIONFULLVO = 50;
+  protected static final int XXCSOBM2DESTINATIONFULLVO = 51;
+  protected static final int XXCSOBM3DESTINATIONFULLVO = 52;
   protected static final int XXCSOBM1DESTINATIONFULLVO1 = 37;
   /**
    * 
@@ -1101,6 +1104,10 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
         return getLatestContractNumber();
       case CONTRACTOTHERCUSTSID:
         return getContractOtherCustsId();
+      case VDMSINTERFACEFLAG:
+        return getVdmsInterfaceFlag();
+      case VDMSINTERFACEDATE:
+        return getVdmsInterfaceDate();
       case XXCSOBM1DESTINATIONFULLVO:
         return getXxcsoBm1DestinationFullVO();
       case XXCSOBM2DESTINATIONFULLVO:
@@ -1261,10 +1268,52 @@ public class XxcsoContractManagementFullVORowImpl extends OAViewRowImpl
       case CONTRACTOTHERCUSTSID:
         setContractOtherCustsId((Number)value);
         return;
+      case VDMSINTERFACEFLAG:
+        setVdmsInterfaceFlag((String)value);
+        return;
+      case VDMSINTERFACEDATE:
+        setVdmsInterfaceDate((Date)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute VdmsInterfaceFlag
+   */
+  public String getVdmsInterfaceFlag()
+  {
+    return (String)getAttributeInternal(VDMSINTERFACEFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute VdmsInterfaceFlag
+   */
+  public void setVdmsInterfaceFlag(String value)
+  {
+    setAttributeInternal(VDMSINTERFACEFLAG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute VdmsInterfaceDate
+   */
+  public Date getVdmsInterfaceDate()
+  {
+    return (Date)getAttributeInternal(VDMSINTERFACEDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute VdmsInterfaceDate
+   */
+  public void setVdmsInterfaceDate(Date value)
+  {
+    setAttributeInternal(VDMSINTERFACEDATE, value);
   }
 
 }
