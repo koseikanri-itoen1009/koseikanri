@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決初期化用ユーティリティクラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2013-04-19 1.3  SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-01-31 1.4  SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 * 2014-12-15 1.5  SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
+* 2016-01-07 1.6  SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -406,14 +407,16 @@ public class XxcsoSpDecisionInitUtils
     // ヘッダ行のコピー
     XxcsoSpDecisionHeaderFullVORowImpl headerRow2
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo2.first();
-    headerRow.setNewoldType(            headerRow2.getNewoldType()            );
-    headerRow.setSeleNumber(            headerRow2.getSeleNumber()            );
-    headerRow.setMakerCode(             headerRow2.getMakerCode()             );
-    headerRow.setStandardType(          headerRow2.getStandardType()          );
-    headerRow.setUnNumber(              headerRow2.getUnNumber()              );
-// 2009-05-25 [ST障害T1_1136] Add Start
-    headerRow.setUnNumberId(            headerRow2.getUnNumberId()            );
-// 2009-05-25 [ST障害T1_1136] Add End
+// 2016-01-07 [E_本稼動_13456] Del Start
+//    headerRow.setNewoldType(            headerRow2.getNewoldType()            );
+//    headerRow.setSeleNumber(            headerRow2.getSeleNumber()            );
+//    headerRow.setMakerCode(             headerRow2.getMakerCode()             );
+//    headerRow.setStandardType(          headerRow2.getStandardType()          );
+//    headerRow.setUnNumber(              headerRow2.getUnNumber()              );
+//// 2009-05-25 [ST障害T1_1136] Add Start
+//    headerRow.setUnNumberId(            headerRow2.getUnNumberId()            );
+//// 2009-05-25 [ST障害T1_1136] Add End
+// 2016-01-07 [E_本稼動_13456] Del End
     headerRow.setInstallDate(           headerRow2.getInstallDate()           );
     headerRow.setLeaseCompany(          headerRow2.getLeaseCompany()          );
     headerRow.setConditionBusinessType( headerRow2.getConditionBusinessType() );
