@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_common_pkg2(body)
  * Description            :
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.6
+ * Version                : 1.8
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009-05-11    1.5  Masayuki.Sano    障害番号T1_0376対応(ダミー日付の日付変換時、書式指定)
  *  2009-06-25    1.6  Yuuki.Nakamura   障害番号T1_1425対応(文字化けチェック削除)
  *  2009-08-17    1.7  Yutaka.Kuboshima 障害番号0000818対応(BLOB変換関数修正)
+ *  2016-02-05    1.8  K.Kiriu          E_本稼動_13456対応(禁則文字チェック修正)
  *****************************************************************************************/
 --
   -- ===============================
@@ -251,29 +252,34 @@ AS
     cv_chk_scope_garbled     CONSTANT VARCHAR2(100) := 'GARBLED';                    -- 文字化けチェック
   --自販機システムチェック
   --半角文字
-    cn_chr_code_tab          CONSTANT NUMBER        := 9;                            -- '	'の文字コード
-    cn_chr_code_exmark       CONSTANT NUMBER        := 33;                           -- '!'の文字コード
-    cn_chr_code_plus         CONSTANT NUMBER        := 43;                           -- '+'の文字コード
-    cn_chr_code_colon        CONSTANT NUMBER        := 58;                           -- ':'の文字コード
-    cn_chr_code_atmark       CONSTANT NUMBER        := 64;                           -- '@'の文字コード
-    cn_chr_code_bracket      CONSTANT NUMBER        := 91;                           -- '['の文字コード
-    cn_chr_code_caret        CONSTANT NUMBER        := 94;                           -- '^'の文字コード
-    cn_chr_code_acsan        CONSTANT NUMBER        := 96;                           -- '`'の文字コード
-    cn_chr_code_brace        CONSTANT NUMBER        := 123;                          -- '{'の文字コード
-    cn_chr_code_tilde        CONSTANT NUMBER        := 126;                          -- '~'の文字コード
-  --全角文字
-    cn_chr_code_wavy_line    CONSTANT NUMBER        := 33120;                        -- '0'の文字コード
-    cn_chr_code_union        CONSTANT NUMBER        := 33214;                        -- '∪'の文字コード
-    cn_chr_code_intersection CONSTANT NUMBER        := 33215;                        -- '∩'の文字コード
-    cn_chr_code_corner       CONSTANT NUMBER        := 33242;                        -- '∠'の文字コード
-    cn_chr_code_vertical     CONSTANT NUMBER        := 33243;                        -- '⊥'の文字コード
-    cn_chr_code_combination  CONSTANT NUMBER        := 33247;                        -- '≡'の文字コード
-    cn_chr_code_route        CONSTANT NUMBER        := 33251;                        -- '√'の文字コード
-    cn_chr_code_because      CONSTANT NUMBER        := 33254;                        -- '∵'の文字コード^
-    cn_chr_code_integration  CONSTANT NUMBER        := 33255;                        -- '∫'の文字コード
-    cn_chr_code_maruone      CONSTANT NUMBER        := 34624;                        -- '①'の文字コード
-    cn_chr_code_some         CONSTANT NUMBER        := 33248;                        -- '≒'の文字コード
-    cn_chr_code_difference   CONSTANT NUMBER        := 34713;                        -- '⊿'の文字コード
+-- 2016-02-05 UPDATE Ver.1.8 By K.Kiriu Start
+--    cn_chr_code_tab          CONSTANT NUMBER        := 9;                            -- '	'の文字コード
+--    cn_chr_code_exmark       CONSTANT NUMBER        := 33;                           -- '!'の文字コード
+--    cn_chr_code_plus         CONSTANT NUMBER        := 43;                           -- '+'の文字コード
+--    cn_chr_code_colon        CONSTANT NUMBER        := 58;                           -- ':'の文字コード
+--    cn_chr_code_atmark       CONSTANT NUMBER        := 64;                           -- '@'の文字コード
+--    cn_chr_code_bracket      CONSTANT NUMBER        := 91;                           -- '['の文字コード
+--    cn_chr_code_caret        CONSTANT NUMBER        := 94;                           -- '^'の文字コード
+--    cn_chr_code_acsan        CONSTANT NUMBER        := 96;                           -- '`'の文字コード
+--    cn_chr_code_brace        CONSTANT NUMBER        := 123;                          -- '{'の文字コード
+--    cn_chr_code_tilde        CONSTANT NUMBER        := 126;                          -- '~'の文字コード
+--  --全角文字
+--    cn_chr_code_wavy_line    CONSTANT NUMBER        := 33120;                        -- '0'の文字コード
+--    cn_chr_code_union        CONSTANT NUMBER        := 33214;                        -- '∪'の文字コード
+--    cn_chr_code_intersection CONSTANT NUMBER        := 33215;                        -- '∩'の文字コード
+--    cn_chr_code_corner       CONSTANT NUMBER        := 33242;                        -- '∠'の文字コード
+--    cn_chr_code_vertical     CONSTANT NUMBER        := 33243;                        -- '⊥'の文字コード
+--    cn_chr_code_combination  CONSTANT NUMBER        := 33247;                        -- '≡'の文字コード
+--    cn_chr_code_route        CONSTANT NUMBER        := 33251;                        -- '√'の文字コード
+--    cn_chr_code_because      CONSTANT NUMBER        := 33254;                        -- '∵'の文字コード^
+--    cn_chr_code_integration  CONSTANT NUMBER        := 33255;                        -- '∫'の文字コード
+--    cn_chr_code_maruone      CONSTANT NUMBER        := 34624;                        -- '①'の文字コード
+--    cn_chr_code_some         CONSTANT NUMBER        := 33248;                        -- '≒'の文字コード
+--    cn_chr_code_difference   CONSTANT NUMBER        := 34713;                        -- '⊿'の文字コード
+    cn_ampersand             CONSTANT NUMBER        := 38;                           -- '&'の文字コード
+    cn_less_than_sign        CONSTANT NUMBER        := 60;                           -- '<'の文字コード
+    cn_greater_than_sign     CONSTANT NUMBER        := 62;                           -- '>'の文字コード
+-- 2016-02-05 UPDATE Ver.1.8 By K.Kiriu End
   --文字化けチェック
   --半角文字
     cn_chr_code_yen_mark     CONSTANT NUMBER        := 92;                           -- '\'の文字コード
@@ -314,15 +320,18 @@ AS
       --自販機システムチェックの場合
       IF (iv_check_scope = cv_chk_scope_machine) THEN
         --禁則文字チェック
-        IF ((ln_check_char BETWEEN cn_chr_code_colon AND cn_chr_code_atmark)
-          OR (ln_check_char BETWEEN cn_chr_code_exmark AND cn_chr_code_plus)
-          OR (ln_check_char BETWEEN cn_chr_code_bracket AND cn_chr_code_caret)
-          OR (ln_check_char BETWEEN cn_chr_code_brace AND cn_chr_code_tilde)
-          OR (ln_check_char IN (cn_chr_code_tab,cn_chr_code_acsan))
-          OR (ln_check_char BETWEEN cn_chr_code_maruone AND cn_chr_code_difference)
-          OR (ln_check_char IN (cn_chr_code_some,cn_chr_code_combination,cn_chr_code_integration,
-            cn_chr_code_route,cn_chr_code_vertical,cn_chr_code_corner,cn_chr_code_because,
-              cn_chr_code_intersection,cn_chr_code_union,cn_chr_code_wavy_line)))
+-- 2016-02-05 UPDATE Ver.1.8 By K.Kiriu Start
+--        IF ((ln_check_char BETWEEN cn_chr_code_colon AND cn_chr_code_atmark)
+--          OR (ln_check_char BETWEEN cn_chr_code_exmark AND cn_chr_code_plus)
+--          OR (ln_check_char BETWEEN cn_chr_code_bracket AND cn_chr_code_caret)
+--          OR (ln_check_char BETWEEN cn_chr_code_brace AND cn_chr_code_tilde)
+--          OR (ln_check_char IN (cn_chr_code_tab,cn_chr_code_acsan))
+--          OR (ln_check_char BETWEEN cn_chr_code_maruone AND cn_chr_code_difference)
+--          OR (ln_check_char IN (cn_chr_code_some,cn_chr_code_combination,cn_chr_code_integration,
+--            cn_chr_code_route,cn_chr_code_vertical,cn_chr_code_corner,cn_chr_code_because,
+--              cn_chr_code_intersection,cn_chr_code_union,cn_chr_code_wavy_line)))
+        IF (ln_check_char IN (cn_ampersand,cn_less_than_sign,cn_greater_than_sign) )
+-- 2016-02-05 UPDATE Ver.1.8 By K.Kiriu End
         THEN
           RETURN FALSE;
         END IF;
