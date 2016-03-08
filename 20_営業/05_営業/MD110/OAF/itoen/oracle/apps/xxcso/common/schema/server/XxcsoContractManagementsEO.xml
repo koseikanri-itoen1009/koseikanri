@@ -469,6 +469,29 @@
          <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </Attribute>
+   <Attribute
+      Name="VdmsInterfaceFlag"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnName="VDMS_INTERFACE_FLAG"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_CONTRACT_MANAGEMENTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="VdmsInterfaceDate"
+      Type="oracle.jbo.domain.Date"
+      ColumnName="VDMS_INTERFACE_DATE"
+      ColumnType="DATE"
+      SQLType="TIMESTAMP"
+      TableName="XXCSO_CONTRACT_MANAGEMENTS" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </Attribute>
    <AccessorAttribute
       Name="XxcsoDestinationsEO"
       Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractMngDestAO"
@@ -485,39 +508,6 @@
       Type="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractOtherCustsEOImpl" >
    </AccessorAttribute>
    <Key
-      Name="SysC00178623" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.ContractNumber" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00178623" />
-         <Attr Name="_checkCondition" Value="&#34;CONTRACT_NUMBER&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00178622" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.ContractManagementId" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00178622" />
-         <Attr Name="_checkCondition" Value="&#34;CONTRACT_MANAGEMENT_ID&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00178627" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.LastUpdatedBy" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00178627" />
-         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
       Name="SysC00178624" >
       <AttrArray Name="Attributes">
          <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.SpDecisionHeaderId" />
@@ -525,39 +515,6 @@
       <DesignTime>
          <Attr Name="_DBObjectName" Value="SYS_C00178624" />
          <Attr Name="_checkCondition" Value="&#34;SP_DECISION_HEADER_ID&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00191482" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.ContractNumber" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00191482" />
-         <Attr Name="_checkCondition" Value="&#34;CONTRACT_NUMBER&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00191484" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.CreatedBy" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00191484" />
-         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00191486" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.LastUpdatedBy" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00191486" />
-         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
          <Attr Name="_isCheck" Value="true" />
       </DesignTime>
    </Key>
@@ -573,6 +530,27 @@
       </DesignTime>
    </Key>
    <Key
+      Name="XxcsoContractManagementsPk" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.ContractManagementId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSO_CONTRACT_MANAGEMENTS_PK" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00178623" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.ContractNumber" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00178623" />
+         <Attr Name="_checkCondition" Value="&#34;CONTRACT_NUMBER&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
       Name="SysC00178628" >
       <AttrArray Name="Attributes">
          <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.LastUpdateDate" />
@@ -580,6 +558,39 @@
       <DesignTime>
          <Attr Name="_DBObjectName" Value="SYS_C00178628" />
          <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00178627" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00178627" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00191486" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00191486" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00178622" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.ContractManagementId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00178622" />
+         <Attr Name="_checkCondition" Value="&#34;CONTRACT_MANAGEMENT_ID&#34; IS NOT NULL" />
          <Attr Name="_isCheck" Value="true" />
       </DesignTime>
    </Key>
@@ -595,6 +606,17 @@
       </DesignTime>
    </Key>
    <Key
+      Name="SysC00191482" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.ContractNumber" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00191482" />
+         <Attr Name="_checkCondition" Value="&#34;CONTRACT_NUMBER&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
       Name="SysC00191485" >
       <AttrArray Name="Attributes">
          <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.CreationDate" />
@@ -606,13 +628,14 @@
       </DesignTime>
    </Key>
    <Key
-      Name="XxcsoContractManagementsPk" >
+      Name="SysC00191484" >
       <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.ContractManagementId" />
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractManagementsEO.CreatedBy" />
       </AttrArray>
       <DesignTime>
-         <Attr Name="_DBObjectName" Value="XXCSO_CONTRACT_MANAGEMENTS_PK" />
-         <Attr Name="_isPrimary" Value="true" />
+         <Attr Name="_DBObjectName" Value="SYS_C00191484" />
+         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
       </DesignTime>
    </Key>
    <Key
