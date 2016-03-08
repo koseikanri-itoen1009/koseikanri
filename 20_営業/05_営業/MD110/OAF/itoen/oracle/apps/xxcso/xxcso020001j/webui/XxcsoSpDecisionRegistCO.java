@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionSearchCO
 * 概要説明   : SP専決登録画面コントローラクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-03-23 1.1  SCS柳平直人  [ST障害T1_0163]課題No.115取り込み
 * 2009-08-24 1.2  SCS阿部大輔  [SCS障害0001104]申請区分チェック対応
 * 2015-01-30 1.3  SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
+* 2016-01-07 1.4  SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.webui;
@@ -348,33 +349,35 @@ public class XxcsoSpDecisionRegistCO extends OAControllerImpl
       );
     }
     
-    if ( pageContext.getParameter("RequestButton") != null )
-    {
-      // 発注依頼ボタン押下イベント
-      HashMap returnValue = (HashMap)am.invokeMethod("handleRequestButton");
-
-      HashMap params
-        = (HashMap)returnValue.get(XxcsoSpDecisionConstants.PARAM_URL_PARAM);
-      OAException msg
-        = (OAException)returnValue.get(XxcsoSpDecisionConstants.PARAM_MESSAGE);
-
-      params.put(
-        XxcsoConstants.TRANSACTION_KEY2
-        ,pageContext.getParameter(XxcsoConstants.TRANSACTION_KEY2)
-      );
-
-      XxcsoUtils.debug(pageContext, "URL PARAM = " + params.toString());
-      
-      pageContext.putDialogMessage(msg);
-      pageContext.forwardImmediately(
-        XxcsoConstants.FUNC_SP_DECISION_REGIST_PG
-       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
-       ,null
-       ,params
-       ,true
-       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
-      );
-    }
+// 2016-01-07 [E_本稼動_13456] Del Start
+//    if ( pageContext.getParameter("RequestButton") != null )
+//    {
+//      // 発注依頼ボタン押下イベント
+//      HashMap returnValue = (HashMap)am.invokeMethod("handleRequestButton");
+//
+//      HashMap params
+//        = (HashMap)returnValue.get(XxcsoSpDecisionConstants.PARAM_URL_PARAM);
+//      OAException msg
+//        = (OAException)returnValue.get(XxcsoSpDecisionConstants.PARAM_MESSAGE);
+//
+//      params.put(
+//        XxcsoConstants.TRANSACTION_KEY2
+//        ,pageContext.getParameter(XxcsoConstants.TRANSACTION_KEY2)
+//      );
+//
+//      XxcsoUtils.debug(pageContext, "URL PARAM = " + params.toString());
+//      
+//      pageContext.putDialogMessage(msg);
+//      pageContext.forwardImmediately(
+//        XxcsoConstants.FUNC_SP_DECISION_REGIST_PG
+//       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+//       ,null
+//       ,params
+//       ,true
+//       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+//      );
+//    }
+// 2016-01-07 [E_本稼動_13456] Del End
     
     if ( pageContext.getParameter("ScCalcButton") != null )
     {
