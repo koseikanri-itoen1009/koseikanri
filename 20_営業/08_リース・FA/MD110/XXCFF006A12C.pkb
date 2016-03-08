@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF006A12C(body)
  * Description      : リース契約情報連携
  * MD.050           : リース契約情報連携 MD050_CFF_006_A12
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/05/28    1.3   SCS礒崎          [障害T1_1224] 連携機能がエラーの際にCSVファイルが削除される。
  *  2009/07/03    1.4   SCS萱原          [障害00000136]対象件数が0件の場合、CSV取込時にエラーとなる
  *  2009/08/28    1.5   SCS渡辺          [統合テスト障害0001059(PT対応)]
+ *  2016/01/26    1.6   SCSK山下         E_本稼動_13456対応
  *
  *****************************************************************************************/
 --
@@ -110,9 +111,11 @@ AS
   --プロファイル
   cv_file_name_enter    CONSTANT VARCHAR2(30) := 'XXCFF1_FILE_NAME_ENTER';   --XXCFF: リース契約情報ファイル名称
   cv_file_dir_enter     CONSTANT VARCHAR2(30) := 'XXCFF1_FILE_DIR_ENTER';    --XXCFF: リース契約情報ファイル格納パス
-  cv_update_charge_code CONSTANT VARCHAR2(35) := 'XXCFF1_UPDATE_CHARGE_CODE';--XXCFF: 更新担当者コード
-  cv_update_post_code   CONSTANT VARCHAR2(35) := 'XXCFF1_UPDATE_POST_CODE';  --XXCFF: 担当部署コード
-  cv_update_program_id  CONSTANT VARCHAR2(35) := 'XXCFF1_UPDATE_PROGRAM_ID'; --XXCFF: 更新プログラムID
+-- E_本稼動_13456 2016/01/26 DEL START
+--  cv_update_charge_code CONSTANT VARCHAR2(35) := 'XXCFF1_UPDATE_CHARGE_CODE';--XXCFF: 更新担当者コード
+--  cv_update_post_code   CONSTANT VARCHAR2(35) := 'XXCFF1_UPDATE_POST_CODE';  --XXCFF: 担当部署コード
+--  cv_update_program_id  CONSTANT VARCHAR2(35) := 'XXCFF1_UPDATE_PROGRAM_ID'; --XXCFF: 更新プログラムID
+-- E_本稼動_13456 2016/01/26 DEL END
   -- トークン
   cv_tkn_table          CONSTANT VARCHAR2(20) := 'TABLE_NAME';
   cv_tkn_prof           CONSTANT VARCHAR2(15) := 'PROF_NAME';                -- プロファイル名
@@ -126,9 +129,11 @@ AS
   -- ===============================
   gn_file_name_enter    VARCHAR2(100) ;   --XXCFF: リース契約情報ファイル名称
   gn_file_dir_enter     VARCHAR2(500) ;   --XXCFF: リース契約情報ファイル格納パス
-  gn_update_charge_code VARCHAR2(30)  ;   --XXCFF: リース更新担当者コード
-  gn_update_post_code   VARCHAR2(30)  ;   --XXCFF: リース担当部署コード
-  gn_update_program_id  VARCHAR2(30)  ;   --XXCFF: リース更新プログラムID
+-- E_本稼動_13456 2016/01/26 DEL START
+--  gn_update_charge_code VARCHAR2(30)  ;   --XXCFF: リース更新担当者コード
+--  gn_update_post_code   VARCHAR2(30)  ;   --XXCFF: リース担当部署コード
+--  gn_update_program_id  VARCHAR2(30)  ;   --XXCFF: リース更新プログラムID
+-- E_本稼動_13456 2016/01/26 DEL END
   gd_sysdateb           DATE;             -- システム日付
   --
   -- ===============================
@@ -149,13 +154,22 @@ AS
             ,xch1.lease_company                 AS lease_company     --リース契約(現)リース会社
             ,xch1.lease_start_date              AS lease_start_date  --リース契約(現)リース開始日
             ,DECODE(xch1.lease_type,2,xcl1.gross_charge,1,xcl1.second_charge ) AS charge
-            ,xcl0.contract_number               AS contract_number0  --契約番号
-            ,xcl0.contract_line_num             AS contract_line_num0--契約枝番
-            ,xch1.contract_date                 AS contract_date     --契約日
-            ,xch1.contract_number               AS contract_number1  --契約日番号
-            ,xcl1.contract_line_num             AS contract_line_num1--契約枝番
-            ,xcl1.vd_if_date                    AS vd_if_date        --リース契約情報連携日時
+            ,xcl0.contract_number               AS contract_number0  --契約番号(原)
+            ,xcl0.contract_line_num             AS contract_line_num0--契約枝番(原)
+-- E_本稼動_13456 2016/01/26 DEL START
+--            ,xch1.contract_date                 AS contract_date     --契約日
+-- E_本稼動_13456 2016/01/26 DEL END
+            ,xch1.contract_number               AS contract_number1  --契約番号(現)
+            ,xcl1.contract_line_num             AS contract_line_num1--契約枝番(現)
+-- E_本稼動_13456 2016/01/26 DEL START
+--            ,xcl1.vd_if_date                    AS vd_if_date        --リース契約情報連携日時
+-- E_本稼動_13456 2016/01/26 DEL END
             ,xcl1.contract_line_id              AS contract_line_id  --契約明細内部id
+-- E_本稼動_13456 2016/01/26 ADD START
+            ,xch1.lease_type                    AS lease_type            --リース区分
+            ,xcl1.estimated_cash_price          AS estimated_cash_price  --見積現金購入価額
+            ,xcl0.lease_start_date              AS lease_start_date0     --リース契約(原)リース開始日
+-- E_本稼動_13456 2016/01/26 ADD END
     FROM     xxcff_object_headers   xoh                              --リース物件
             ,xxcff_contract_headers xch1                             --リース契約リース契約(現)
             ,xxcff_contract_lines   xcl1                             --リース契約明細リース契約(現)
@@ -171,10 +185,13 @@ AS
                        INDEX(XCL XXCFF_CONTRACT_LINES_U01)
                      */
 -- 0001059 2009/08/31 ADD END --
-                     xch.contract_header_id
-                    ,xcl.object_header_id
-                    ,xch.contract_number
-                    ,xcl.contract_line_num
+                     xch.contract_header_id AS contract_header_id
+                    ,xcl.object_header_id   AS object_header_id
+                    ,xch.contract_number    AS contract_number
+                    ,xcl.contract_line_num  AS contract_line_num
+-- E_本稼動_13456 2016/01/26 ADD START
+                    ,xch.lease_start_date   AS lease_start_date
+-- E_本稼動_13456 2016/01/26 ADD END
              FROM   xxcff_contract_headers  xch
                     ,xxcff_contract_lines   xcl                             --リース契約明細リース契約(原)
              WHERE  xch.contract_header_id = xcl.contract_header_id
@@ -182,7 +199,7 @@ AS
              AND    xch.lease_type         =  1
 -- 0001059 2009/08/31 ADD END --
              AND    xch.re_lease_times     =  0
-             ) xcl0
+             ) xcl0                                                  --リース契約リース契約(原)
     WHERE    xch1.contract_header_id = xcl1.contract_header_id
     AND      xoh.object_header_id    = xcl0.object_header_id(+)
     AND      xoh.object_header_id    = xcl1.object_header_id
@@ -371,62 +388,64 @@ AS
       RAISE global_api_expt;
     END IF;
     --
-    -- =====================================================
-    -- プロファイルから XXCFF: 更新担当者コード取得
-    -- =====================================================
-    gn_update_charge_code := FND_PROFILE.VALUE(cv_update_charge_code);
-    -- 取得エラー時
-    IF (gn_update_charge_code IS NULL) THEN
-      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg
-      (
-       cv_appl_short_name    -- 'XXCFF'
-      ,cv_msg_xxcff00020     -- プロファイル取得エラー
-      ,cv_tkn_prof           -- トークン'PROF_NAME'
-      ,cv_update_charge_code -- 更新担当者コード
-      )
-      ,1
-      ,5000);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
-    --
-    -- =====================================================
-    -- プロファイルから XXCFF: 担当部署コード取得
-    -- =====================================================
-    gn_update_post_code := FND_PROFILE.VALUE(cv_update_post_code);
-    -- 取得エラー時
-    IF (gn_update_post_code IS NULL) THEN
-      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg
-      (
-       cv_appl_short_name  -- 'XXCFF'
-      ,cv_msg_xxcff00020   -- プロファイル取得エラー
-      ,cv_tkn_prof         -- トークン'PROF_NAME'
-      ,cv_update_post_code -- 担当部署コード
-      )
-      ,1
-      ,5000);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
-    --
-    -- =====================================================
-    -- プロファイルから XXCFF: 更新プログラムID取得
-    -- =====================================================
-    gn_update_program_id := FND_PROFILE.VALUE(cv_update_program_id);
-    -- 取得エラー時
-    IF (gn_update_program_id IS NULL) THEN
-      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg
-      (
-       cv_appl_short_name   -- 'XXCFF'
-      ,cv_msg_xxcff00020    -- プロファイル取得エラー
-      ,cv_tkn_prof          -- トークン'PROF_NAME'
-      ,cv_update_program_id -- 更新プログラムID
-      )
-      ,1
-      ,5000);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+-- E_本稼動_13456 2016/01/26 DEL START
+--    -- =====================================================
+--    -- プロファイルから XXCFF: 更新担当者コード取得
+--    -- =====================================================
+--    gn_update_charge_code := FND_PROFILE.VALUE(cv_update_charge_code);
+--    -- 取得エラー時
+--    IF (gn_update_charge_code IS NULL) THEN
+--      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg
+--      (
+--       cv_appl_short_name    -- 'XXCFF'
+--      ,cv_msg_xxcff00020     -- プロファイル取得エラー
+--      ,cv_tkn_prof           -- トークン'PROF_NAME'
+--      ,cv_update_charge_code -- 更新担当者コード
+--      )
+--      ,1
+--      ,5000);
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+--    --
+--    -- =====================================================
+--    -- プロファイルから XXCFF: 担当部署コード取得
+--    -- =====================================================
+--    gn_update_post_code := FND_PROFILE.VALUE(cv_update_post_code);
+--    -- 取得エラー時
+--    IF (gn_update_post_code IS NULL) THEN
+--      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg
+--      (
+--       cv_appl_short_name  -- 'XXCFF'
+--      ,cv_msg_xxcff00020   -- プロファイル取得エラー
+--      ,cv_tkn_prof         -- トークン'PROF_NAME'
+--      ,cv_update_post_code -- 担当部署コード
+--      )
+--      ,1
+--      ,5000);
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+--    --
+--    -- =====================================================
+--    -- プロファイルから XXCFF: 更新プログラムID取得
+--    -- =====================================================
+--    gn_update_program_id := FND_PROFILE.VALUE(cv_update_program_id);
+--    -- 取得エラー時
+--    IF (gn_update_program_id IS NULL) THEN
+--      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg
+--      (
+--       cv_appl_short_name   -- 'XXCFF'
+--      ,cv_msg_xxcff00020    -- プロファイル取得エラー
+--      ,cv_tkn_prof          -- トークン'PROF_NAME'
+--      ,cv_update_program_id -- 更新プログラムID
+--      )
+--      ,1
+--      ,5000);
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- E_本稼動_13456 2016/01/26 DEL END
     --
   EXCEPTION
 --
@@ -634,12 +653,21 @@ AS
     cv_delimiter        CONSTANT VARCHAR2(1)  := ',';     -- CSV区切り文字
     cv_enclosed         CONSTANT VARCHAR2(2)  := '"';     -- 単語囲み文字
     cv_z                CONSTANT VARCHAR2(2)  := '00';    -- 固定値
+-- E_本稼動_13456 2016/01/26 ADD START
+    cv_minus            CONSTANT VARCHAR2(1)  := '-';     -- 固定値
+    cv_1                CONSTANT VARCHAR2(1)  := '1';     -- 固定値
+    cv_20               CONSTANT VARCHAR2(2)  := '20';    -- 固定値
+-- E_本稼動_13456 2016/01/26 ADD END
     cv_null             CONSTANT VARCHAR2(2)  := NULL;    -- 固定値
     -- *** ローカル変数 ***
     ln_target_cnt       NUMBER := 0;                      -- 対象件数
     ln_loop_cnt         NUMBER;                           -- ループカウンタ
     in_contract_line_id NUMBER;
     in_charge           NUMBER;
+-- E_本稼動_13456 2016/01/26 ADD START
+    ln_cash_price       NUMBER;                           -- 本体価格
+    lv_lease_no         VARCHAR2(20);                     -- リースNo
+-- E_本稼動_13456 2016/01/26 MOD END
     -- ファイル出力関連
     lf_file_hand        UTL_FILE.FILE_TYPE ;              -- ファイル・ハンドルの宣言
     lv_csv_text         VARCHAR2(32000) ;                 -- 出力１行分文字列変数
@@ -681,75 +709,159 @@ AS
           ELSE
             in_charge := SUBSTRB(gt_lease_data(ln_loop_cnt).charge ,-7 );
           END IF;
+-- E_本稼動_13456 2016/01/26 ADD START
+          -- 本体価格
+          ln_cash_price := NVL( gt_lease_data(ln_loop_cnt).estimated_cash_price , 0 );
+          IF ( LENGTH(ln_cash_price) > 7 ) THEN
+            ln_cash_price := SUBSTRB( ln_cash_price , -7 );
+          END IF;
+          -- リースNo
+          lv_lease_no := NULL;
+          IF ( gt_lease_data(ln_loop_cnt).lease_type = cv_1 ) THEN
+            -- 原契約の場合
+            lv_lease_no := gt_lease_data(ln_loop_cnt).contract_number0 || cv_minus || gt_lease_data(ln_loop_cnt).contract_line_num0;
+          ELSE
+            -- 再リースの場合
+            lv_lease_no := gt_lease_data(ln_loop_cnt).contract_number1 || cv_minus || gt_lease_data(ln_loop_cnt).contract_line_num1;
+          END IF;
+-- E_本稼動_13456 2016/01/26 ADD END
+-- E_本稼動_13456 2016/01/26 MOD START
+--          --
+--          -- 出力文字列作成
+--          lv_csv_text := 
+--             cv_enclosed ||  gt_lease_data(ln_loop_cnt).object_code       || cv_enclosed || cv_delimiter  -- 物件コード
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 機種
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 機番
+--          || cv_null                                                                     || cv_delimiter  -- 機器区分
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- メーカ
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 年式
+--          || cv_null                                                                     || cv_delimiter  -- セレ数
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 特殊機１
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 特殊機２
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 特殊機３
+--          || cv_null                                                                     || cv_delimiter  -- 初回設定日
+--          || cv_null                                                                     || cv_delimiter  -- カウンターNo
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 地区コード
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 拠点（部門）コード
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 作業会社コード
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 事業所コード
+--          || cv_null                                                                     || cv_delimiter  -- 最終作業伝票No
+--          || cv_null                                                                     || cv_delimiter  -- 最終作業区分
+--          || cv_null                                                                     || cv_delimiter  -- 最終作業進捗
+--          || cv_null                                                                     || cv_delimiter  -- 最終作業完了予定日
+--          || cv_null                                                                     || cv_delimiter  -- 最終作業完了日
+--          || cv_null                                                                     || cv_delimiter  -- 最終整備内容
+--          || cv_null                                                                     || cv_delimiter  -- 最終設置伝票No
+--          || cv_null                                                                     || cv_delimiter  -- 最終設置区分
+--          || cv_null                                                                     || cv_delimiter  -- 最終設置予定日
+--          || cv_null                                                                     || cv_delimiter  -- 最終設置進捗
+--          || cv_null                                                                     || cv_delimiter  -- 機器状態1
+--          || cv_null                                                                     || cv_delimiter  -- 機器状態2
+--          || cv_null                                                                     || cv_delimiter  -- 機器状態3
+--          || cv_null                                                                     || cv_delimiter  -- 入庫日
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 引揚会社コード
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 引揚事業所コード
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先名
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先担当者名
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先TEL1
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先TEL2
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先TEL3
+--          || cv_null                                                                     || cv_delimiter  -- 設置先郵便番号
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所1
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所2
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所3
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所4
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所5
+--          || cv_null                                                                     || cv_delimiter  -- 廃棄決裁日
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 転売廃棄業者
+--          || cv_null                                                                     || cv_delimiter  -- 転売廃棄伝票No
+--          || cv_enclosed || cv_z||gt_lease_data(ln_loop_cnt).lease_company||cv_enclosed  || cv_delimiter  -- 所有者
+--          ||        TO_CHAR(gt_lease_data(ln_loop_cnt).lease_start_date,'YYYYMMDD')      || cv_delimiter  -- リース開始日
+--          ||                in_charge                                                    || cv_delimiter  -- リース料
+--          || cv_enclosed || gt_lease_data(ln_loop_cnt).contract_number0   || cv_enclosed || cv_delimiter  -- 原契約番号
+--          ||                gt_lease_data(ln_loop_cnt).contract_line_num0 ||                cv_delimiter  -- 原契約番号枝番
+--          ||        TO_CHAR(gt_lease_data(ln_loop_cnt).contract_date   ,'YYYYMMDD')      || cv_delimiter  -- 現契約日
+--          || cv_enclosed || gt_lease_data(ln_loop_cnt).contract_number1   || cv_enclosed || cv_delimiter  -- 現契約番号
+--          ||                gt_lease_data(ln_loop_cnt).contract_line_num1                || cv_delimiter  -- 現契約番号枝番
+--          || cv_null                                                                     || cv_delimiter  -- 転売廃業状況フラグ
+--          || cv_null                                                                     || cv_delimiter  -- 転売完了区分
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 削除フラグ
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 作成担当者コード
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 作成部署コード
+--          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 作成プログラムID
+--          || cv_enclosed || gn_update_charge_code                         || cv_enclosed || cv_delimiter  -- 更新担当者コード
+--          || cv_enclosed || gn_update_post_code                           || cv_enclosed || cv_delimiter  -- 更新部署コード
+--          || cv_enclosed || gn_update_program_id                          || cv_enclosed || cv_delimiter  -- 更新プログラムID
+--          || cv_null                                                                     || cv_delimiter  -- 作成日時分秒
+--          || cv_null                                                                                      -- 更新日時分秒
+--          ;
           --
           -- 出力文字列作成
-          lv_csv_text := 
-             cv_enclosed ||  gt_lease_data(ln_loop_cnt).object_code       || cv_enclosed || cv_delimiter  -- 物件コード
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 機種
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 機番
-          || cv_null                                                                     || cv_delimiter  -- 機器区分
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- メーカ
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 年式
-          || cv_null                                                                     || cv_delimiter  -- セレ数
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 特殊機１
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 特殊機２
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 特殊機３
-          || cv_null                                                                     || cv_delimiter  -- 初回設定日
-          || cv_null                                                                     || cv_delimiter  -- カウンターNo
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 地区コード
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 拠点（部門）コード
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 作業会社コード
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 事業所コード
-          || cv_null                                                                     || cv_delimiter  -- 最終作業伝票No
-          || cv_null                                                                     || cv_delimiter  -- 最終作業区分
-          || cv_null                                                                     || cv_delimiter  -- 最終作業進捗
-          || cv_null                                                                     || cv_delimiter  -- 最終作業完了予定日
-          || cv_null                                                                     || cv_delimiter  -- 最終作業完了日
-          || cv_null                                                                     || cv_delimiter  -- 最終整備内容
-          || cv_null                                                                     || cv_delimiter  -- 最終設置伝票No
-          || cv_null                                                                     || cv_delimiter  -- 最終設置区分
-          || cv_null                                                                     || cv_delimiter  -- 最終設置予定日
-          || cv_null                                                                     || cv_delimiter  -- 最終設置進捗
-          || cv_null                                                                     || cv_delimiter  -- 機器状態1
-          || cv_null                                                                     || cv_delimiter  -- 機器状態2
-          || cv_null                                                                     || cv_delimiter  -- 機器状態3
-          || cv_null                                                                     || cv_delimiter  -- 入庫日
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 引揚会社コード
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 引揚事業所コード
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先名
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先担当者名
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先TEL1
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先TEL2
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先TEL3
-          || cv_null                                                                     || cv_delimiter  -- 設置先郵便番号
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所1
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所2
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所3
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所4
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 設置先住所5
-          || cv_null                                                                     || cv_delimiter  -- 廃棄決裁日
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 転売廃棄業者
-          || cv_null                                                                     || cv_delimiter  -- 転売廃棄伝票No
-          || cv_enclosed || cv_z||gt_lease_data(ln_loop_cnt).lease_company||cv_enclosed  || cv_delimiter  -- 所有者
-          ||        TO_CHAR(gt_lease_data(ln_loop_cnt).lease_start_date,'YYYYMMDD')      || cv_delimiter  -- リース開始日
-          ||                in_charge                                                    || cv_delimiter  -- リース料
-          || cv_enclosed || gt_lease_data(ln_loop_cnt).contract_number0   || cv_enclosed || cv_delimiter  -- 原契約番号
-          ||                gt_lease_data(ln_loop_cnt).contract_line_num0 ||                cv_delimiter  -- 原契約番号枝番
-          ||        TO_CHAR(gt_lease_data(ln_loop_cnt).contract_date   ,'YYYYMMDD')      || cv_delimiter  -- 現契約日
-          || cv_enclosed || gt_lease_data(ln_loop_cnt).contract_number1   || cv_enclosed || cv_delimiter  -- 現契約番号
-          ||                gt_lease_data(ln_loop_cnt).contract_line_num1                || cv_delimiter  -- 現契約番号枝番
-          || cv_null                                                                     || cv_delimiter  -- 転売廃業状況フラグ
-          || cv_null                                                                     || cv_delimiter  -- 転売完了区分
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 削除フラグ
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 作成担当者コード
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 作成部署コード
-          || cv_enclosed || cv_null                                       || cv_enclosed || cv_delimiter  -- 作成プログラムID
-          || cv_enclosed || gn_update_charge_code                         || cv_enclosed || cv_delimiter  -- 更新担当者コード
-          || cv_enclosed || gn_update_post_code                           || cv_enclosed || cv_delimiter  -- 更新部署コード
-          || cv_enclosed || gn_update_program_id                          || cv_enclosed || cv_delimiter  -- 更新プログラムID
-          || cv_null                                                                     || cv_delimiter  -- 作成日時分秒
-          || cv_null                                                                                      -- 更新日時分秒
+          lv_csv_text :=
+             cv_enclosed || gt_lease_data(ln_loop_cnt).object_code                         || cv_enclosed || cv_delimiter  -- 自販機CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 機種
+          || cv_enclosed || gt_lease_data(ln_loop_cnt).lease_company                       || cv_enclosed || cv_delimiter  -- ﾘｰｽ会社区分
+          || cv_enclosed || cv_z                                                           || cv_enclosed || cv_delimiter  -- ﾘｰｽ形態区分
+          || cv_enclosed || cv_20                                                          || cv_enclosed || cv_delimiter  -- ﾘｰｽ方式区分
+          || cv_enclosed || TO_CHAR(gt_lease_data(ln_loop_cnt).lease_start_date0,'YYYYMM') || cv_enclosed || cv_delimiter  -- ﾘｰｽ開始月
+          || cv_enclosed || lv_lease_no                                                    || cv_enclosed || cv_delimiter  -- ﾘｰｽNO
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 受付番号
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 受付番号枝番
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 会社CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 支店CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 営業所CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 大業種CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 小業種CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 室内外区分
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- ﾒｰｶｰ
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 機番
+          ||                ln_cash_price                                                                 || cv_delimiter  -- 本体価格
+          || cv_enclosed || TO_CHAR(gt_lease_data(ln_loop_cnt).lease_start_date,'YYYYMM')  || cv_enclosed || cv_delimiter  -- 新規契約年月
+          ||                cv_null                                                                       || cv_delimiter  -- ﾘｰｽ料率
+          ||                in_charge                                                                     || cv_delimiter  -- 月額ﾘｰｽ料
+          ||                cv_null                                                                       || cv_delimiter  -- 再契約ﾘｰｽ料
+          ||                cv_null                                                                       || cv_delimiter  -- 月額リース料金（変更前）
+          ||                cv_null                                                                       || cv_delimiter  -- ﾘｰｽ残高
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 再契約年月
+          ||                cv_null                                                                       || cv_delimiter  -- 再契約回数
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 再ﾘｰｽ開始月
+          ||                cv_null                                                                       || cv_delimiter  -- 前年保険限度額
+          ||                cv_null                                                                       || cv_delimiter  -- 保険限度額
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 前年保険決定日
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 保険決定日
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 初回設置日
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 初回支店CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 初回営業所CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 中途解約フラグ
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 中途解約日
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 確定日
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先名（社名）
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先ｶﾅ
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先TEL
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先都道府県CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先市区郡CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先住所
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 廃棄フラグ
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 仕入先
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 卸CD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- デポCD
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 契約状態区分
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 除却フラグ
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先郵便番号
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先住所１
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先住所２
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 設置先住所３
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- リース代理店会社区分
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- 端数計算方法_帳合料
+          ||                cv_null                                                                       || cv_delimiter  -- 帳合料率
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- ﾚｺｰﾄﾞ作成日
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- ﾚｺｰﾄﾞ作成PG
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- ﾚｺｰﾄﾞ作成者
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- ﾚｺｰﾄﾞ更新日
+          || cv_enclosed || cv_null                                                        || cv_enclosed || cv_delimiter  -- ﾚｺｰﾄﾞ更新PG
+          || cv_enclosed || cv_null                                                        || cv_enclosed                  -- ﾚｺｰﾄﾞ更新者
           ;
+-- E_本稼動_13456 2016/01/26 MOD END
           -- ====================================================
           -- ファイル書き込み
           -- ====================================================
