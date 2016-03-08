@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  chk_supplier              F    V      仕入先マスタチェック
  *  chk_bank_account          F    V      銀行口座マスタチェック
  *  chk_bank_account_change   F    V      銀行口座マスタ変更チェック
+ *  chk_owner_change_use      F    V      オーナ変更物件使用チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -62,6 +63,7 @@ AS
  *  2015/04/17    1.14  K.Kiriu          E_本稼動_13002対応
  *  2015/05/21    1.15  S.Yamashita      E_本稼動_12984対応
  *  2015/12/03    1.16  S.Yamashita      E_本稼動_13345対応
+ *  2016/01/06    1.17  K.Kiriu          E_本稼動_13456対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -2155,6 +2157,73 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_bank_account_change;
 /* 2013/04/01 Ver1.13 K.Kiriu E_本稼動_10413対応 END */
+/* 2016/01/06 Ver1.17 K.Kiriu E_本稼動_13456対応 START */
+  /**********************************************************************************
+   * Function Name    : chk_owner_change_use
+   * Description      : オーナ変更物件使用チェック
+   ***********************************************************************************/
+  FUNCTION chk_owner_change_use(
+    iv_install_code        IN  VARCHAR2  --物件コード
+   ,in_install_account_id  IN  NUMBER    --顧客ID
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_owner_change_use';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_status_cancel             VARCHAR2(1) := '9';  --契約取消
+    cv_batch_proc_status_err     VARCHAR2(1) := '2';  --マスタ連携エラー
+    cv_vdms_subject              VARCHAR2(1) := '0';  --自販機S連携対象
+    cv_vdms_processed            VARCHAR2(1) := '1';  --自販機S連携処理中
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1);
+    ln_count                     NUMBER;
+--
+  BEGIN
+--
+    --初期化
+    ln_count        := 0;
+    lv_return_value := 0;
+--
+    --オーナ変更契約の取得
+    SELECT /*+
+             INDEX( xcm xxcso_contract_managements_n07 )
+           */
+           COUNT('x')
+    INTO   ln_count
+    FROM   xxcso_contract_managements xcm
+    WHERE  xcm.install_code                   =  iv_install_code                       --同一物件コード
+    AND    xcm.install_account_id             <> in_install_account_id                 --自身の顧客以外
+    AND    xcm.status                         <> cv_status_cancel                      --取消された契約以外
+    AND    NVL( xcm.batch_proc_status, '0' )  <> cv_batch_proc_status_err              --マスタ連携でエラー以外
+    AND    xcm.vdms_interface_flag            IN (cv_vdms_subject, cv_vdms_processed ) --自販機S連携前か連携中
+    ;
+--
+    --データ有り
+    IF (ln_count >= 1) THEN
+      lv_return_value := '1';
+    --データなし
+    ELSE
+      lv_return_value := '0';
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_owner_change_use;
+/* 2016/01/06 Ver1.17 K.Kiriu E_本稼動_13456対応 END */
 --
 END xxcso_010003j_pkg;
 /
