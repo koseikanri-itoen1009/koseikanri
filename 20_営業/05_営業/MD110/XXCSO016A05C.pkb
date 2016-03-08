@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2010-05-19    1.18  T.Maruyama       E_本稼動_02787対応 先月末拠点CDの導出項目を売上拠点から前月売上拠点へ変更
  *  2015-07-23    1.19  S.Yamashita      E_本稼動_13237対応 
  *  2015-09-04    1.20  S.Yamashita      E_本稼動_09738対応 物件取得条件に論理削除フラグを追加
+ *  2016-01-22    1.21  K.Kiriu          E_本稼動_13456対応 自販機管理システム代替対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -127,15 +128,17 @@ AS
   cn_job_kbn_old_replace CONSTANT NUMBER        := 4;               -- 作業テーブルの作業区分(旧台代替:4)
 /*20090327_yabuki_T1_0193 END*/
   cn_completion_kbn      CONSTANT NUMBER        := 1;               -- 作業テーブルの完了区分(完了:1)
-  cv_category_kbn        CONSTANT VARCHAR2(10)  := '50';            -- 発注依頼明細情報ビューの引揚情報(引揚情報:50)
-/*20090327_yabuki_T1_0193 START*/
-  cv_category_kbn_new_rplc  CONSTANT VARCHAR2(10)  := '20';            -- 発注依頼明細情報ビューの新台代替情報(新台代替情報:20)
-  cv_category_kbn_old_rplc  CONSTANT VARCHAR2(10)  := '40';            -- 発注依頼明細情報ビューの旧台代替情報(旧台代替情報:40)
-/*20090327_yabuki_T1_0193 END*/
-/* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
-  cv_withdrawal_type_1   CONSTANT VARCHAR2(10)  := '1:引揚';        -- 発注依頼明細情報ビューの引揚(引揚:1)
-  cv_withdrawal_type_2   CONSTANT VARCHAR2(10)  := '2:一時引揚';    -- 発注依頼明細情報ビューの引揚(一時引揚:2)
-/* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL START
+--  cv_category_kbn        CONSTANT VARCHAR2(10)  := '50';            -- 発注依頼明細情報ビューの引揚情報(引揚情報:50)
+--/*20090327_yabuki_T1_0193 START*/
+--  cv_category_kbn_new_rplc  CONSTANT VARCHAR2(10)  := '20';            -- 発注依頼明細情報ビューの新台代替情報(新台代替情報:20)
+--  cv_category_kbn_old_rplc  CONSTANT VARCHAR2(10)  := '40';            -- 発注依頼明細情報ビューの旧台代替情報(旧台代替情報:40)
+--/*20090327_yabuki_T1_0193 END*/
+--/* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
+--  cv_withdrawal_type_1   CONSTANT VARCHAR2(10)  := '1:引揚';        -- 発注依頼明細情報ビューの引揚(引揚:1)
+--  cv_withdrawal_type_2   CONSTANT VARCHAR2(10)  := '2:一時引揚';    -- 発注依頼明細情報ビューの引揚(一時引揚:2)
+--/* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL END
   cv_instance_status     CONSTANT VARCHAR2(50)  := 'XXCSO1_INSTANCE_STATUS';  -- クイックコードのルックアップタイプ
   cv_enabled_flag        CONSTANT VARCHAR2(50)  := 'Y';             -- クイックコードの有効フラグ
   cv_jotai_kbn1_1        CONSTANT VARCHAR2(1)   := '1';             -- 機器状態１（1:稼働中）
@@ -978,40 +981,49 @@ AS
            )
     IS
       SELECT xiw.actual_work_date  actual_work_date -- 滞留開始日
-            ,xrl.category_kbn      category_kbn     -- カテゴリ区分
-            ,xiw.job_kbn           job_kbn          -- 作業区分
-            ,xrl.withdrawal_type   withdrawal_type  -- 引揚区分
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL START
+--            ,xrl.category_kbn      category_kbn     -- カテゴリ区分
+--            ,xiw.job_kbn           job_kbn          -- 作業区分
+--            ,xrl.withdrawal_type   withdrawal_type  -- 引揚区分
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL END
       FROM   xxcso_in_work_data        xiw -- 作業データテーブル
-            ,po_requisition_headers    prh -- 発注依頼ヘッダビュー
-            ,xxcso_requisition_lines_v xrl -- 発注依頼明細情報ビュー
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL START
+--            ,po_requisition_headers    prh -- 発注依頼ヘッダビュー
+--            ,xxcso_requisition_lines_v xrl -- 発注依頼明細情報ビュー
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL END
       WHERE  xiw.install2_processed_flag = cv_flag_yes
         AND  xiw.install_code2           = it_instll_cd
         AND  xiw.completion_kbn          = cn_completion_kbn
-        AND  TO_CHAR(xiw.po_req_number)  = prh.segment1
-        AND  prh.requisition_header_id   = xrl.requisition_header_id
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL START
+--        AND  TO_CHAR(xiw.po_req_number)  = prh.segment1
+--        AND  prh.requisition_header_id   = xrl.requisition_header_id
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL END
 -- 2015.07.23 S.Yamashita E_本稼動_13237対応 DEL START
 --        AND  xiw.line_num                = xrl.line_num
 -- 2015.07.23 S.Yamashita E_本稼動_13237対応 DEL END
-        AND  (
-               (
-                     xrl.category_kbn    = cv_category_kbn
-                 AND xiw.job_kbn         = cn_job_kbn
-                 AND ( 
-                          xrl.withdrawal_type = cv_withdrawal_type_1
-                       OR xrl.withdrawal_type = cv_withdrawal_type_2
-                     )
-               )
-             OR
-               (
-                     xrl.category_kbn = cv_category_kbn_new_rplc
-                 AND xiw.job_kbn      = cn_job_kbn_new_replace
-               )
-             OR
-               (
-                     xrl.category_kbn = cv_category_kbn_old_rplc
-                 AND xiw.job_kbn      = cn_job_kbn_old_replace
-               )
-             )
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 MOD START
+--        AND  (
+--               (
+--                     xrl.category_kbn    = cv_category_kbn
+--                 AND xiw.job_kbn         = cn_job_kbn
+--                 AND ( 
+--                          xrl.withdrawal_type = cv_withdrawal_type_1
+--                       OR xrl.withdrawal_type = cv_withdrawal_type_2
+--                     )
+--               )
+--             OR
+--               (
+--                     xrl.category_kbn = cv_category_kbn_new_rplc
+--                 AND xiw.job_kbn      = cn_job_kbn_new_replace
+--               )
+--             OR
+--               (
+--                     xrl.category_kbn = cv_category_kbn_old_rplc
+--                 AND xiw.job_kbn      = cn_job_kbn_old_replace
+--               )
+--             )
+        AND  xiw.job_kbn IN ( cn_job_kbn, cn_job_kbn_new_replace, cn_job_kbn_old_replace ) --引揚・新台代替・旧台代替
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 MOD END
       ORDER BY xiw.actual_work_date  DESC
      ;
     /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 END */
@@ -1410,22 +1422,24 @@ AS
 --          RAISE status_warn_expt;
           ln_actual_work_date := NULL;
         /* 2009.07.21 K.Hosoi 0000475対応 END */
-        END IF;
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL START
+--        END IF;
 --
-        -- カテゴリ区分 = '50'(引揚情報) 且つ 作業区分 = '5'(引揚)の場合
-        IF ( l_get_act_wk_dt_rec.category_kbn = cv_category_kbn
-          AND l_get_act_wk_dt_rec.job_kbn = cn_job_kbn ) THEN
---
-          -- 引揚区分 = '1: 引揚'の場合
-          IF ( l_get_act_wk_dt_rec.withdrawal_type = cv_withdrawal_type_1) THEN
-            -- 滞留開始日に、取得した実作業日を設定
-            ln_actual_work_date := l_get_act_wk_dt_rec.actual_work_date;
---
-          -- 引揚区分 = '2: 一時引揚'の場合
-          ELSE
-            -- 滞留開始日にNULLを設定
-            ln_actual_work_date := NULL;
-          END IF;
+--        -- カテゴリ区分 = '50'(引揚情報) 且つ 作業区分 = '5'(引揚)の場合
+--        IF ( l_get_act_wk_dt_rec.category_kbn = cv_category_kbn
+--          AND l_get_act_wk_dt_rec.job_kbn = cn_job_kbn ) THEN
+----
+--          -- 引揚区分 = '1: 引揚'の場合
+--          IF ( l_get_act_wk_dt_rec.withdrawal_type = cv_withdrawal_type_1) THEN
+--            -- 滞留開始日に、取得した実作業日を設定
+--            ln_actual_work_date := l_get_act_wk_dt_rec.actual_work_date;
+----
+--          -- 引揚区分 = '2: 一時引揚'の場合
+--          ELSE
+--            -- 滞留開始日にNULLを設定
+--            ln_actual_work_date := NULL;
+--          END IF;
+-- 2016.01.22 K.Kiriu E_本稼動_13456対応 DEL END
         ELSE
           -- 滞留開始日に、取得した実作業日を設定
           ln_actual_work_date := l_get_act_wk_dt_rec.actual_work_date;
