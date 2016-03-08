@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionInitVORowImpl
 * 概要説明   : SP専決初期化用ビュー行クラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-12-27 1.0  SCS小川浩     新規作成
 * 2011-04-25 1.1  SCS桐生和幸   [E_本稼動_07224]SP専決参照権限変更対応
 * 2014-12-30 1.2  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
+* 2016-01-07 1.3  SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -39,331 +40,328 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   protected static final int CONFIRMBUTTONRENDER = 10;
   protected static final int REJECTBUTTONRENDER = 11;
   protected static final int APPROVEBUTTONRENDER = 12;
-  protected static final int REQUESTBUTTONRENDER = 13;
-  protected static final int APPLICATIONTYPEVIEWRENDER = 14;
-  protected static final int APPLICATIONTYPERENDER = 15;
-  protected static final int INSTALLACCTNUMBERVIEWRENDER = 16;
-  protected static final int INSTALLACCTNUMBER1RENDER = 17;
-  protected static final int INSTALLACCTNUMBER2RENDER = 18;
-  protected static final int INSTALLPARTYNAMEVIEWRENDER = 19;
-  protected static final int INSTALLPARTYNAMERENDER = 20;
-  protected static final int INSTALLPARTYNAMEALTVIEWRENDER = 21;
-  protected static final int INSTALLPARTYNAMEALTRENDER = 22;
-  protected static final int INSTALLNAMEVIEWRENDER = 23;
-  protected static final int INSTALLNAMERENDER = 24;
-  protected static final int INSTALLPOSTCDFVIEWRENDER = 25;
-  protected static final int INSTALLPOSTCDFRENDER = 26;
-  protected static final int INSTALLPOSTCDSVIEWRENDER = 27;
-  protected static final int INSTALLPOSTCDSRENDER = 28;
-  protected static final int INSTALLSTATEVIEWRENDER = 29;
-  protected static final int INSTALLSTATERENDER = 30;
-  protected static final int INSTALLCITYVIEWRENDER = 31;
-  protected static final int INSTALLCITYRENDER = 32;
-  protected static final int INSTALLADDRESS1VIEWRENDER = 33;
-  protected static final int INSTALLADDRESS1RENDER = 34;
-  protected static final int INSTALLADDRESS2VIEWRENDER = 35;
-  protected static final int INSTALLADDRESS2RENDER = 36;
-  protected static final int INSTALLADDRESSLINEVIEWRENDER = 37;
-  protected static final int INSTALLADDRESSLINERENDER = 38;
-  protected static final int BIZCONDTYPEVIEWRENDER = 39;
-  protected static final int BIZCONDTYPERENDER = 40;
-  protected static final int BUSINESSTYPEVIEWRENDER = 41;
-  protected static final int BUSINESSTYPERENDER = 42;
-  protected static final int INSTALLLOCATIONVIEWRENDER = 43;
-  protected static final int INSTALLLOCATIONRENDER = 44;
-  protected static final int EXTREFOPCLTYPEVIEWRENDER = 45;
-  protected static final int EXTREFOPCLTYPERENDER = 46;
-  protected static final int EMPLOYEENUMBERVIEWRENDER = 47;
-  protected static final int EMPLOYEENUMBERRENDER = 48;
-  protected static final int PUBLISHBASECODEVIEWRENDER = 49;
-  protected static final int PUBLISHBASECODERENDER = 50;
-  protected static final int INSTALLDATEREQUIREDVIEWRENDER = 51;
-  protected static final int INSTALLDATEREQUIREDRENDER = 52;
-  protected static final int INSTALLDATEVIEWRENDER = 53;
-  protected static final int INSTALLDATERENDER = 54;
-  protected static final int LEASECOMPANYVIEWRENDER = 55;
-  protected static final int LEASECOMPANYRENDER = 56;
-  protected static final int SAMEINSTALLACCTFLAGVIEWRENDER = 57;
-  protected static final int SAMEINSTALLACCTFLAGRENDER = 58;
-  protected static final int CONTRACTNUMBERVIEWRENDER = 59;
-  protected static final int CONTRACTNUMBER1RENDER = 60;
-  protected static final int CONTRACTNUMBER2RENDER = 61;
-  protected static final int CONTRACTNAMEVIEWRENDER = 62;
-  protected static final int CONTRACTNAMERENDER = 63;
-  protected static final int CONTRACTNAMEALTVIEWRENDER = 64;
-  protected static final int CONTRACTNAMEALTRENDER = 65;
-  protected static final int CONTRACTPOSTCDFVIEWRENDER = 66;
-  protected static final int CONTRACTPOSTCDFRENDER = 67;
-  protected static final int CONTRACTPOSTCDSVIEWRENDER = 68;
-  protected static final int CONTRACTPOSTCDSRENDER = 69;
-  protected static final int CONTRACTSTATEVIEWRENDER = 70;
-  protected static final int CONTRACTSTATERENDER = 71;
-  protected static final int CONTRACTCITYVIEWRENDER = 72;
-  protected static final int CONTRACTCITYRENDER = 73;
-  protected static final int CONTRACTADDRESS1VIEWRENDER = 74;
-  protected static final int CONTRACTADDRESS1RENDER = 75;
-  protected static final int CONTRACTADDRESS2VIEWRENDER = 76;
-  protected static final int CONTRACTADDRESS2RENDER = 77;
-  protected static final int CONTRACTADDRESSLINEVIEWRENDER = 78;
-  protected static final int CONTRACTADDRESSLINERENDER = 79;
-  protected static final int DELEGATENAMEVIEWRENDER = 80;
-  protected static final int DELEGATENAMERENDER = 81;
-  protected static final int NEWOLDTYPEVIEWRENDER = 82;
-  protected static final int NEWOLDTYPERENDER = 83;
-  protected static final int SELENUMBERVIEWRENDER = 84;
-  protected static final int SELENUMBERRENDER = 85;
-  protected static final int MAKERCODEVIEWRENDER = 86;
-  protected static final int MAKERCODERENDER = 87;
-  protected static final int STANDARDTYPEVIEWRENDER = 88;
-  protected static final int STANDARDTYPERENDER = 89;
-  protected static final int VDINFO3REQUIREDLAYOUTRENDER = 90;
-  protected static final int VDINFO3LAYOUTRENDER = 91;
-  protected static final int UNNUMBERVIEWRENDER = 92;
-  protected static final int UNNUMBERRENDER = 93;
-  protected static final int CONDBIZTYPEVIEWRENDER = 94;
-  protected static final int CONDBIZTYPERENDER = 95;
-  protected static final int SALESCONDITIONHDRRNRENDER = 96;
-  protected static final int SCBM2GRPRENDER = 97;
-  protected static final int SCCONTRIBUTEGRPRENDER = 98;
-  protected static final int SCACTIONFLRNRENDER = 99;
-  protected static final int SCTABLEFOOTERRENDER = 100;
-  protected static final int CONTAINERCONDITIONHDRRNRENDER = 101;
-  protected static final int ALLCONTAINERTYPEVIEWRENDER = 102;
-  protected static final int ALLCONTAINERTYPERENDER = 103;
-  protected static final int ALLCCADVTBLRNRENDER = 104;
-  protected static final int ALLCCBM2GRPRENDER = 105;
-  protected static final int ALLCCCONTRIBUTEGRPRENDER = 106;
-  protected static final int ALLCCACTIONFLRNRENDER = 107;
-  protected static final int SELCCADVTBLRNRENDER = 108;
-  protected static final int SELCCBM2GRPRENDER = 109;
-  protected static final int SELCCCONTRIBUTEGRPRENDER = 110;
-  protected static final int SELCCACTIONFLRNRENDER = 111;
-  protected static final int CONTRACTYEARDATEVIEWRENDER = 112;
-  protected static final int CONTRACTYEARDATERENDER = 113;
-  protected static final int INSTALLSUPPORTAMTVIEWRENDER = 114;
-  protected static final int INSTALLSUPPORTAMTRENDER = 115;
-  protected static final int INSTALLSUPPORTAMT2VIEWRENDER = 116;
-  protected static final int INSTALLSUPPORTAMT2RENDER = 117;
-  protected static final int PAYMENTCYCLEVIEWRENDER = 118;
-  protected static final int PAYMENTCYCLERENDER = 119;
-  protected static final int ELECSTARTREQUIREDLABELRENDER = 120;
-  protected static final int ELECSTARTLABELRENDER = 121;
-  protected static final int ELECTRICITYTYPEVIEWRENDER = 122;
-  protected static final int ELECTRICITYTYPERENDER = 123;
-  protected static final int ELECTRICITYAMOUNTVIEWRENDER = 124;
-  protected static final int ELECTRICITYAMOUNTRENDER = 125;
-  protected static final int ELECAMOUNTLABELRENDER = 126;
-  protected static final int CONDITIONREASONVIEWRENDER = 127;
-  protected static final int CONDITIONREASONRENDER = 128;
-  protected static final int BM1INFOHDRRNRENDER = 129;
-  protected static final int BM1SENDTYPEVIEWRENDER = 130;
-  protected static final int BM1SENDTYPERENDER = 131;
-  protected static final int BM1VENDORNUMBERVIEWRENDER = 132;
-  protected static final int BM1VENDORNUMBER1RENDER = 133;
-  protected static final int BM1VENDORNUMBER2RENDER = 134;
-  protected static final int BM1VENDORNAMEVIEWRENDER = 135;
-  protected static final int BM1VENDORNAMERENDER = 136;
-  protected static final int BM1VENDORNAMEALTVIEWRENDER = 137;
-  protected static final int BM1VENDORNAMEALTRENDER = 138;
-  protected static final int BM1TRANSFERTYPELAYOUTRENDER = 139;
-  protected static final int BM1TRANSFERTYPEVIEWRENDER = 140;
-  protected static final int BM1TRANSFERTYPERENDER = 141;
-  protected static final int BM1PAYMENTTYPEVIEWRENDER = 142;
-  protected static final int BM1PAYMENTTYPERENDER = 143;
-  protected static final int BM1INQUIRYBASELAYOUTRENDER = 144;
-  protected static final int BM1POSTALCODELAYOUTRENDER = 145;
-  protected static final int BM1POSTCDFVIEWRENDER = 146;
-  protected static final int BM1POSTCDFRENDER = 147;
-  protected static final int BM1POSTCDSVIEWRENDER = 148;
-  protected static final int BM1POSTCDSRENDER = 149;
-  protected static final int BM1STATEVIEWRENDER = 150;
-  protected static final int BM1STATERENDER = 151;
-  protected static final int BM1CITYVIEWRENDER = 152;
-  protected static final int BM1CITYRENDER = 153;
-  protected static final int BM1ADDRESS1VIEWRENDER = 154;
-  protected static final int BM1ADDRESS1RENDER = 155;
-  protected static final int BM1ADDRESS2VIEWRENDER = 156;
-  protected static final int BM1ADDRESS2RENDER = 157;
-  protected static final int BM1ADDRESSLINEVIEWRENDER = 158;
-  protected static final int BM1ADDRESSLINERENDER = 159;
-  protected static final int BM2INFOHDRRNRENDER = 160;
-  protected static final int CONTRIBUTEINFOHDRRNRENDER = 161;
-  protected static final int BM2VENDORNUMBERVIEWRENDER = 162;
-  protected static final int BM2VENDORNUMBER1RENDER = 163;
-  protected static final int BM2VENDORNUMBER2RENDER = 164;
-  protected static final int BM2VENDORNAMEVIEWRENDER = 165;
-  protected static final int BM2VENDORNAMERENDER = 166;
-  protected static final int BM2VENDORNAMEALTVIEWRENDER = 167;
-  protected static final int BM2VENDORNAMEALTRENDER = 168;
-  protected static final int BM2POSTALCODELAYOUTRENDER = 169;
-  protected static final int BM2POSTCDFVIEWRENDER = 170;
-  protected static final int BM2POSTCDFRENDER = 171;
-  protected static final int BM2POSTCDSVIEWRENDER = 172;
-  protected static final int BM2POSTCDSRENDER = 173;
-  protected static final int BM2STATEVIEWRENDER = 174;
-  protected static final int BM2STATERENDER = 175;
-  protected static final int BM2CITYVIEWRENDER = 176;
-  protected static final int BM2CITYRENDER = 177;
-  protected static final int BM2ADDRESS1VIEWRENDER = 178;
-  protected static final int BM2ADDRESS1RENDER = 179;
-  protected static final int BM2ADDRESS2VIEWRENDER = 180;
-  protected static final int BM2ADDRESS2RENDER = 181;
-  protected static final int BM2ADDRESSLINEVIEWRENDER = 182;
-  protected static final int BM2ADDRESSLINERENDER = 183;
-  protected static final int BM2TRANSFERTYPELAYOUTRENDER = 184;
-  protected static final int BM2TRANSFERTYPEVIEWRENDER = 185;
-  protected static final int BM2TRANSFERTYPERENDER = 186;
-  protected static final int BM2PAYMENTTYPEVIEWRENDER = 187;
-  protected static final int BM2PAYMENTTYPERENDER = 188;
-  protected static final int BM2INQUIRYBASELAYOUTRENDER = 189;
-  protected static final int BM3INFOHDRRNRENDER = 190;
-  protected static final int BM3VENDORNUMBERVIEWRENDER = 191;
-  protected static final int BM3VENDORNUMBER1RENDER = 192;
-  protected static final int BM3VENDORNUMBER2RENDER = 193;
-  protected static final int BM3VENDORNAMEVIEWRENDER = 194;
-  protected static final int BM3VENDORNAMERENDER = 195;
-  protected static final int BM3VENDORNAMEALTVIEWRENDER = 196;
-  protected static final int BM3VENDORNAMEALTRENDER = 197;
-  protected static final int BM3POSTALCODELAYOUTRENDER = 198;
-  protected static final int BM3POSTCDFVIEWRENDER = 199;
-  protected static final int BM3POSTCDFRENDER = 200;
-  protected static final int BM3POSTCDSVIEWRENDER = 201;
-  protected static final int BM3POSTCDSRENDER = 202;
-  protected static final int BM3STATEVIEWRENDER = 203;
-  protected static final int BM3STATERENDER = 204;
-  protected static final int BM3CITYVIEWRENDER = 205;
-  protected static final int BM3CITYRENDER = 206;
-  protected static final int BM3ADDRESS1VIEWRENDER = 207;
-  protected static final int BM3ADDRESS1RENDER = 208;
-  protected static final int BM3ADDRESS2VIEWRENDER = 209;
-  protected static final int BM3ADDRESS2RENDER = 210;
-  protected static final int BM3ADDRESSLINEVIEWRENDER = 211;
-  protected static final int BM3ADDRESSLINERENDER = 212;
-  protected static final int BM3TRANSFERTYPELAYOUTRENDER = 213;
-  protected static final int BM3TRANSFERTYPEVIEWRENDER = 214;
-  protected static final int BM3TRANSFERTYPERENDER = 215;
-  protected static final int BM3PAYMENTTYPEVIEWRENDER = 216;
-  protected static final int BM3PAYMENTTYPERENDER = 217;
-  protected static final int BM3INQUIRYBASELAYOUTRENDER = 218;
-  protected static final int REFLECTCONTRACTBUTTONRENDER = 219;
-  protected static final int CNTRCTELECSPACER2RENDER = 220;
-  protected static final int OTHERCONTENTVIEWRENDER = 221;
-  protected static final int OTHERCONTENTRENDER = 222;
-  protected static final int CALCPROFITBUTTONRENDER = 223;
-  protected static final int SALESMONTHVIEWRENDER = 224;
-  protected static final int SALESMONTHRENDER = 225;
-  protected static final int BMRATEVIEWRENDER = 226;
-  protected static final int BMRATERENDER = 227;
-  protected static final int LEASECHARGEMONTHVIEWRENDER = 228;
-  protected static final int LEASECHARGEMONTHRENDER = 229;
-  protected static final int CONSTRUCTIONCHARGEVIEWRENDER = 230;
-  protected static final int CONSTRUCTIONCHARGERENDER = 231;
-  protected static final int ELECTRICITYAMTMONTHVIEWRENDER = 232;
-  protected static final int ELECTRICITYAMTMONTHRENDER = 233;
-  protected static final int ATTACHACTIONFLRNRENDER = 234;
-  protected static final int ACTPOBASECODE = 235;
-  protected static final int CONTRACTYEARMONTHRENDER = 236;
-  protected static final int CONTRACTYEARMONTHVIEWRENDER = 237;
-  protected static final int CONTRACTSTARTYEARRENDER = 238;
-  protected static final int CONTRACTSTARTYEARVIEWRENDER = 239;
-  protected static final int CONTRACTSTARTMONTHRENDER = 240;
-  protected static final int CONTRACTSTARTMONTHVIEWRENDER = 241;
-  protected static final int CONTRACTENDYEARRENDER = 242;
-  protected static final int CONTRACTENDYEARVIEWRENDER = 243;
-  protected static final int CONTRACTENDMONTHRENDER = 244;
-  protected static final int CONTRACTENDMONTHVIEWRENDER = 245;
-  protected static final int BIDDINGITEMRENDER = 246;
-  protected static final int BIDDINGITEMVIEWRENDER = 247;
-  protected static final int CANCELLBEFOREMATURITYRENDER = 248;
-  protected static final int CANCELLBEFOREMATURITYVIEWRENDER = 249;
-  protected static final int ADASSETSTYPERENDER = 250;
-  protected static final int ADASSETSTYPEVIEWRENDER = 251;
-  protected static final int OTHERCONDITIONRLRN06RENDER = 252;
-  protected static final int ADASSETSAMTRENDER = 253;
-  protected static final int ADASSETSAMTVIEWRENDER = 254;
-  protected static final int ADASSETSTHISTIMERENDER = 255;
-  protected static final int ADASSETSTHISTIMEVIEWRENDER = 256;
-  protected static final int ADASSETSPAYMENTYEARRENDER = 257;
-  protected static final int ADASSETSPAYMENTYEARVIEWRENDER = 258;
-  protected static final int ADASSETSPAYMENTDATERENDER = 259;
-  protected static final int ADASSETSPAYMENTDATEVIEWRENDER = 260;
-  protected static final int OTHERCONDITIONRLRN07RENDER = 261;
-  protected static final int TAXTYPERENDER = 262;
-  protected static final int TAXTYPEVIEWRENDER = 263;
-  protected static final int INSTALLSUPPTYPERENDER = 264;
-  protected static final int INSTALLSUPPTYPEVIEWRENDER = 265;
-  protected static final int INSTALLSUPPPAYMENTTYPERENDER = 266;
-  protected static final int INSTALLSUPPPAYMENTTYPEVIEWRENDER = 267;
-  protected static final int INSTALLSUPPAMTRENDER = 268;
-  protected static final int INSTALLSUPPAMTVIEWRENDER = 269;
-  protected static final int INSTALLSUPPTHISTIMERENDER = 270;
-  protected static final int INSTALLSUPPTHISTIMEVIEWRENDER = 271;
-  protected static final int INSTALLSUPPPAYMENTYEARRENDER = 272;
-  protected static final int INSTALLSUPPPAYMENTYEARVIEWRENDER = 273;
-  protected static final int INSTALLSUPPPAYMENTDATERENDER = 274;
-  protected static final int INSTALLSUPPPAYMENTDATEVIEWRENDER = 275;
-  protected static final int ELECTRICTYPERENDER = 276;
-  protected static final int ELECTRICTYPEVIEWRENDER = 277;
-  protected static final int ELECTRICPAYMENTTYPERENDER = 278;
-  protected static final int ELECTRICPAYMENTTYPEVIEWRENDER = 279;
-  protected static final int ELECTRICPAYMENTCHANGETYPERENDER = 280;
-  protected static final int ELECTRICPAYMENTCHANGETYPEVIEWRENDER = 281;
-  protected static final int ELECTRICPAYMENTCYCLERENDER = 282;
-  protected static final int ELECTRICPAYMENTCYCLEVIEWRENDER = 283;
-  protected static final int ELECTRICCLOSINGDATERENDER = 284;
-  protected static final int ELECTRICCLOSINGDATEVIEWRENDER = 285;
-  protected static final int ELECTRICTRANSMONTHRENDER = 286;
-  protected static final int ELECTRICTRANSMONTHVIEWRENDER = 287;
-  protected static final int ELECTRICTRANSDATERENDER = 288;
-  protected static final int ELECTRICTRANSDATEVIEWRENDER = 289;
-  protected static final int ELECTRICTRANSNAMERENDER = 290;
-  protected static final int ELECTRICTRANSNAMEVIEWRENDER = 291;
-  protected static final int ELECTRICTRANSNAMEALTRENDER = 292;
-  protected static final int ELECTRICTRANSNAMEALTVIEWRENDER = 293;
-  protected static final int INTROCHGTYPERENDER = 294;
-  protected static final int INTROCHGTYPEVIEWRENDER = 295;
-  protected static final int INTROCHGTYPEHDRRNRENDER = 296;
-  protected static final int INTROCHGPAYMENTTYPERENDER = 297;
-  protected static final int INTROCHGPAYMENTTYPEVIEWRENDER = 298;
-  protected static final int INTROCHGAMTRENDER = 299;
-  protected static final int INTROCHGAMTVIEWRENDER = 300;
-  protected static final int INTROCHGTHISTIMERENDER = 301;
-  protected static final int INTROCHGTHISTIMEVIEWRENDER = 302;
-  protected static final int INTROCHGPAYMENTYEARRENDER = 303;
-  protected static final int INTROCHGPAYMENTYEARVIEWRENDER = 304;
-  protected static final int INTROCHGPAYMENTDATERENDER = 305;
-  protected static final int INTROCHGPAYMENTDATEVIEWRENDER = 306;
-  protected static final int INTROCHGPERSALESPRICERENDER = 307;
-  protected static final int INTROCHGPERSALESPRICEVIEWRENDER = 308;
-  protected static final int INTROCHGPERPIECERENDER = 309;
-  protected static final int INTROCHGPERPIECEVIEWRENDER = 310;
-  protected static final int INTROCHGCLOSINGDATERENDER = 311;
-  protected static final int INTROCHGCLOSINGDATEVIEWRENDER = 312;
-  protected static final int INTROCHGTRANSMONTHRENDER = 313;
-  protected static final int INTROCHGTRANSMONTHVIEWRENDER = 314;
-  protected static final int INTROCHGTRANSDATERENDER = 315;
-  protected static final int INTROCHGTRANSDATEVIEWRENDER = 316;
-  protected static final int INTROCHGTRANSNAMERENDER = 317;
-  protected static final int INTROCHGTRANSNAMEVIEWRENDER = 318;
-  protected static final int INTROCHGTRANSNAMEALTRENDER = 319;
-  protected static final int INTROCHGTRANSNAMEALTVIEWRENDER = 320;
-  protected static final int INSTALLSUPPPAYMENTTYPEHDRRNRENDER = 321;
-  protected static final int INSTALLSUPPTHISTIMELABELRENDER = 322;
-  protected static final int INSTALLSUPPTHISTIMEENDLABELRENDER = 323;
-  protected static final int INSTALLSUPPPAYMENTYEARENDLABEL1RENDER = 324;
-  protected static final int INSTALLSUPPPAYMENTYEARENDLABEL2RENDER = 325;
-  protected static final int ELECTRICPAYMENTTYPEHDRRNRENDER = 326;
-  protected static final int ELECTRICINFORIRN02RENDER = 327;
-  protected static final int ELECTRICINFORIRN03RENDER = 328;
-  protected static final int ELECTRICINFORIRN04RENDER = 329;
-  protected static final int ELECTRICINFORIRN05RENDER = 330;
-  protected static final int ELECTRICINFORIRN06RENDER = 331;
-  protected static final int INTROCHGINFORIRN01RENDER = 332;
-  protected static final int INTROCHGINFORIRN02RENDER = 333;
-  protected static final int INTROCHGPERSALESPRICELABELRENDER = 334;
-  protected static final int INTROCHGPERPIECELABELRENDER = 335;
-  protected static final int INTROCHGPERSALESPRICEENDLABELRENDER = 336;
-  protected static final int INTROCHGPERPIECEENDLABELRENDER = 337;
+  protected static final int APPLICATIONTYPEVIEWRENDER = 13;
+  protected static final int APPLICATIONTYPERENDER = 14;
+  protected static final int INSTALLACCTNUMBERVIEWRENDER = 15;
+  protected static final int INSTALLACCTNUMBER1RENDER = 16;
+  protected static final int INSTALLACCTNUMBER2RENDER = 17;
+  protected static final int INSTALLPARTYNAMEVIEWRENDER = 18;
+  protected static final int INSTALLPARTYNAMERENDER = 19;
+  protected static final int INSTALLPARTYNAMEALTVIEWRENDER = 20;
+  protected static final int INSTALLPARTYNAMEALTRENDER = 21;
+  protected static final int INSTALLNAMEVIEWRENDER = 22;
+  protected static final int INSTALLNAMERENDER = 23;
+  protected static final int INSTALLPOSTCDFVIEWRENDER = 24;
+  protected static final int INSTALLPOSTCDFRENDER = 25;
+  protected static final int INSTALLPOSTCDSVIEWRENDER = 26;
+  protected static final int INSTALLPOSTCDSRENDER = 27;
+  protected static final int INSTALLSTATEVIEWRENDER = 28;
+  protected static final int INSTALLSTATERENDER = 29;
+  protected static final int INSTALLCITYVIEWRENDER = 30;
+  protected static final int INSTALLCITYRENDER = 31;
+  protected static final int INSTALLADDRESS1VIEWRENDER = 32;
+  protected static final int INSTALLADDRESS1RENDER = 33;
+  protected static final int INSTALLADDRESS2VIEWRENDER = 34;
+  protected static final int INSTALLADDRESS2RENDER = 35;
+  protected static final int INSTALLADDRESSLINEVIEWRENDER = 36;
+  protected static final int INSTALLADDRESSLINERENDER = 37;
+  protected static final int BIZCONDTYPEVIEWRENDER = 38;
+  protected static final int BIZCONDTYPERENDER = 39;
+  protected static final int BUSINESSTYPEVIEWRENDER = 40;
+  protected static final int BUSINESSTYPERENDER = 41;
+  protected static final int INSTALLLOCATIONVIEWRENDER = 42;
+  protected static final int INSTALLLOCATIONRENDER = 43;
+  protected static final int EXTREFOPCLTYPEVIEWRENDER = 44;
+  protected static final int EXTREFOPCLTYPERENDER = 45;
+  protected static final int EMPLOYEENUMBERVIEWRENDER = 46;
+  protected static final int EMPLOYEENUMBERRENDER = 47;
+  protected static final int PUBLISHBASECODEVIEWRENDER = 48;
+  protected static final int PUBLISHBASECODERENDER = 49;
+  protected static final int INSTALLDATEREQUIREDVIEWRENDER = 50;
+  protected static final int INSTALLDATEREQUIREDRENDER = 51;
+  protected static final int INSTALLDATEVIEWRENDER = 52;
+  protected static final int INSTALLDATERENDER = 53;
+  protected static final int LEASECOMPANYVIEWRENDER = 54;
+  protected static final int LEASECOMPANYRENDER = 55;
+  protected static final int SAMEINSTALLACCTFLAGVIEWRENDER = 56;
+  protected static final int SAMEINSTALLACCTFLAGRENDER = 57;
+  protected static final int CONTRACTNUMBERVIEWRENDER = 58;
+  protected static final int CONTRACTNUMBER1RENDER = 59;
+  protected static final int CONTRACTNUMBER2RENDER = 60;
+  protected static final int CONTRACTNAMEVIEWRENDER = 61;
+  protected static final int CONTRACTNAMERENDER = 62;
+  protected static final int CONTRACTNAMEALTVIEWRENDER = 63;
+  protected static final int CONTRACTNAMEALTRENDER = 64;
+  protected static final int CONTRACTPOSTCDFVIEWRENDER = 65;
+  protected static final int CONTRACTPOSTCDFRENDER = 66;
+  protected static final int CONTRACTPOSTCDSVIEWRENDER = 67;
+  protected static final int CONTRACTPOSTCDSRENDER = 68;
+  protected static final int CONTRACTSTATEVIEWRENDER = 69;
+  protected static final int CONTRACTSTATERENDER = 70;
+  protected static final int CONTRACTCITYVIEWRENDER = 71;
+  protected static final int CONTRACTCITYRENDER = 72;
+  protected static final int CONTRACTADDRESS1VIEWRENDER = 73;
+  protected static final int CONTRACTADDRESS1RENDER = 74;
+  protected static final int CONTRACTADDRESS2VIEWRENDER = 75;
+  protected static final int CONTRACTADDRESS2RENDER = 76;
+  protected static final int CONTRACTADDRESSLINEVIEWRENDER = 77;
+  protected static final int CONTRACTADDRESSLINERENDER = 78;
+  protected static final int DELEGATENAMEVIEWRENDER = 79;
+  protected static final int DELEGATENAMERENDER = 80;
+  protected static final int NEWOLDTYPEVIEWRENDER = 81;
+  protected static final int NEWOLDTYPERENDER = 82;
+  protected static final int SELENUMBERVIEWRENDER = 83;
+  protected static final int SELENUMBERRENDER = 84;
+  protected static final int MAKERCODEVIEWRENDER = 85;
+  protected static final int MAKERCODERENDER = 86;
+  protected static final int STANDARDTYPEVIEWRENDER = 87;
+  protected static final int STANDARDTYPERENDER = 88;
+  protected static final int UNNUMBERVIEWRENDER = 89;
+  protected static final int UNNUMBERRENDER = 90;
+  protected static final int CONDBIZTYPEVIEWRENDER = 91;
+  protected static final int CONDBIZTYPERENDER = 92;
+  protected static final int SALESCONDITIONHDRRNRENDER = 93;
+  protected static final int SCBM2GRPRENDER = 94;
+  protected static final int SCCONTRIBUTEGRPRENDER = 95;
+  protected static final int SCACTIONFLRNRENDER = 96;
+  protected static final int SCTABLEFOOTERRENDER = 97;
+  protected static final int CONTAINERCONDITIONHDRRNRENDER = 98;
+  protected static final int ALLCONTAINERTYPEVIEWRENDER = 99;
+  protected static final int ALLCONTAINERTYPERENDER = 100;
+  protected static final int ALLCCADVTBLRNRENDER = 101;
+  protected static final int ALLCCBM2GRPRENDER = 102;
+  protected static final int ALLCCCONTRIBUTEGRPRENDER = 103;
+  protected static final int ALLCCACTIONFLRNRENDER = 104;
+  protected static final int SELCCADVTBLRNRENDER = 105;
+  protected static final int SELCCBM2GRPRENDER = 106;
+  protected static final int SELCCCONTRIBUTEGRPRENDER = 107;
+  protected static final int SELCCACTIONFLRNRENDER = 108;
+  protected static final int CONTRACTYEARDATEVIEWRENDER = 109;
+  protected static final int CONTRACTYEARDATERENDER = 110;
+  protected static final int INSTALLSUPPORTAMTVIEWRENDER = 111;
+  protected static final int INSTALLSUPPORTAMTRENDER = 112;
+  protected static final int INSTALLSUPPORTAMT2VIEWRENDER = 113;
+  protected static final int INSTALLSUPPORTAMT2RENDER = 114;
+  protected static final int PAYMENTCYCLEVIEWRENDER = 115;
+  protected static final int PAYMENTCYCLERENDER = 116;
+  protected static final int ELECSTARTREQUIREDLABELRENDER = 117;
+  protected static final int ELECSTARTLABELRENDER = 118;
+  protected static final int ELECTRICITYTYPEVIEWRENDER = 119;
+  protected static final int ELECTRICITYTYPERENDER = 120;
+  protected static final int ELECTRICITYAMOUNTVIEWRENDER = 121;
+  protected static final int ELECTRICITYAMOUNTRENDER = 122;
+  protected static final int ELECAMOUNTLABELRENDER = 123;
+  protected static final int CONDITIONREASONVIEWRENDER = 124;
+  protected static final int CONDITIONREASONRENDER = 125;
+  protected static final int BM1INFOHDRRNRENDER = 126;
+  protected static final int BM1SENDTYPEVIEWRENDER = 127;
+  protected static final int BM1SENDTYPERENDER = 128;
+  protected static final int BM1VENDORNUMBERVIEWRENDER = 129;
+  protected static final int BM1VENDORNUMBER1RENDER = 130;
+  protected static final int BM1VENDORNUMBER2RENDER = 131;
+  protected static final int BM1VENDORNAMEVIEWRENDER = 132;
+  protected static final int BM1VENDORNAMERENDER = 133;
+  protected static final int BM1VENDORNAMEALTVIEWRENDER = 134;
+  protected static final int BM1VENDORNAMEALTRENDER = 135;
+  protected static final int BM1TRANSFERTYPELAYOUTRENDER = 136;
+  protected static final int BM1TRANSFERTYPEVIEWRENDER = 137;
+  protected static final int BM1TRANSFERTYPERENDER = 138;
+  protected static final int BM1PAYMENTTYPEVIEWRENDER = 139;
+  protected static final int BM1PAYMENTTYPERENDER = 140;
+  protected static final int BM1INQUIRYBASELAYOUTRENDER = 141;
+  protected static final int BM1POSTALCODELAYOUTRENDER = 142;
+  protected static final int BM1POSTCDFVIEWRENDER = 143;
+  protected static final int BM1POSTCDFRENDER = 144;
+  protected static final int BM1POSTCDSVIEWRENDER = 145;
+  protected static final int BM1POSTCDSRENDER = 146;
+  protected static final int BM1STATEVIEWRENDER = 147;
+  protected static final int BM1STATERENDER = 148;
+  protected static final int BM1CITYVIEWRENDER = 149;
+  protected static final int BM1CITYRENDER = 150;
+  protected static final int BM1ADDRESS1VIEWRENDER = 151;
+  protected static final int BM1ADDRESS1RENDER = 152;
+  protected static final int BM1ADDRESS2VIEWRENDER = 153;
+  protected static final int BM1ADDRESS2RENDER = 154;
+  protected static final int BM1ADDRESSLINEVIEWRENDER = 155;
+  protected static final int BM1ADDRESSLINERENDER = 156;
+  protected static final int BM2INFOHDRRNRENDER = 157;
+  protected static final int CONTRIBUTEINFOHDRRNRENDER = 158;
+  protected static final int BM2VENDORNUMBERVIEWRENDER = 159;
+  protected static final int BM2VENDORNUMBER1RENDER = 160;
+  protected static final int BM2VENDORNUMBER2RENDER = 161;
+  protected static final int BM2VENDORNAMEVIEWRENDER = 162;
+  protected static final int BM2VENDORNAMERENDER = 163;
+  protected static final int BM2VENDORNAMEALTVIEWRENDER = 164;
+  protected static final int BM2VENDORNAMEALTRENDER = 165;
+  protected static final int BM2POSTALCODELAYOUTRENDER = 166;
+  protected static final int BM2POSTCDFVIEWRENDER = 167;
+  protected static final int BM2POSTCDFRENDER = 168;
+  protected static final int BM2POSTCDSVIEWRENDER = 169;
+  protected static final int BM2POSTCDSRENDER = 170;
+  protected static final int BM2STATEVIEWRENDER = 171;
+  protected static final int BM2STATERENDER = 172;
+  protected static final int BM2CITYVIEWRENDER = 173;
+  protected static final int BM2CITYRENDER = 174;
+  protected static final int BM2ADDRESS1VIEWRENDER = 175;
+  protected static final int BM2ADDRESS1RENDER = 176;
+  protected static final int BM2ADDRESS2VIEWRENDER = 177;
+  protected static final int BM2ADDRESS2RENDER = 178;
+  protected static final int BM2ADDRESSLINEVIEWRENDER = 179;
+  protected static final int BM2ADDRESSLINERENDER = 180;
+  protected static final int BM2TRANSFERTYPELAYOUTRENDER = 181;
+  protected static final int BM2TRANSFERTYPEVIEWRENDER = 182;
+  protected static final int BM2TRANSFERTYPERENDER = 183;
+  protected static final int BM2PAYMENTTYPEVIEWRENDER = 184;
+  protected static final int BM2PAYMENTTYPERENDER = 185;
+  protected static final int BM2INQUIRYBASELAYOUTRENDER = 186;
+  protected static final int BM3INFOHDRRNRENDER = 187;
+  protected static final int BM3VENDORNUMBERVIEWRENDER = 188;
+  protected static final int BM3VENDORNUMBER1RENDER = 189;
+  protected static final int BM3VENDORNUMBER2RENDER = 190;
+  protected static final int BM3VENDORNAMEVIEWRENDER = 191;
+  protected static final int BM3VENDORNAMERENDER = 192;
+  protected static final int BM3VENDORNAMEALTVIEWRENDER = 193;
+  protected static final int BM3VENDORNAMEALTRENDER = 194;
+  protected static final int BM3POSTALCODELAYOUTRENDER = 195;
+  protected static final int BM3POSTCDFVIEWRENDER = 196;
+  protected static final int BM3POSTCDFRENDER = 197;
+  protected static final int BM3POSTCDSVIEWRENDER = 198;
+  protected static final int BM3POSTCDSRENDER = 199;
+  protected static final int BM3STATEVIEWRENDER = 200;
+  protected static final int BM3STATERENDER = 201;
+  protected static final int BM3CITYVIEWRENDER = 202;
+  protected static final int BM3CITYRENDER = 203;
+  protected static final int BM3ADDRESS1VIEWRENDER = 204;
+  protected static final int BM3ADDRESS1RENDER = 205;
+  protected static final int BM3ADDRESS2VIEWRENDER = 206;
+  protected static final int BM3ADDRESS2RENDER = 207;
+  protected static final int BM3ADDRESSLINEVIEWRENDER = 208;
+  protected static final int BM3ADDRESSLINERENDER = 209;
+  protected static final int BM3TRANSFERTYPELAYOUTRENDER = 210;
+  protected static final int BM3TRANSFERTYPEVIEWRENDER = 211;
+  protected static final int BM3TRANSFERTYPERENDER = 212;
+  protected static final int BM3PAYMENTTYPEVIEWRENDER = 213;
+  protected static final int BM3PAYMENTTYPERENDER = 214;
+  protected static final int BM3INQUIRYBASELAYOUTRENDER = 215;
+  protected static final int REFLECTCONTRACTBUTTONRENDER = 216;
+  protected static final int CNTRCTELECSPACER2RENDER = 217;
+  protected static final int OTHERCONTENTVIEWRENDER = 218;
+  protected static final int OTHERCONTENTRENDER = 219;
+  protected static final int CALCPROFITBUTTONRENDER = 220;
+  protected static final int SALESMONTHVIEWRENDER = 221;
+  protected static final int SALESMONTHRENDER = 222;
+  protected static final int BMRATEVIEWRENDER = 223;
+  protected static final int BMRATERENDER = 224;
+  protected static final int LEASECHARGEMONTHVIEWRENDER = 225;
+  protected static final int LEASECHARGEMONTHRENDER = 226;
+  protected static final int CONSTRUCTIONCHARGEVIEWRENDER = 227;
+  protected static final int CONSTRUCTIONCHARGERENDER = 228;
+  protected static final int ELECTRICITYAMTMONTHVIEWRENDER = 229;
+  protected static final int ELECTRICITYAMTMONTHRENDER = 230;
+  protected static final int ATTACHACTIONFLRNRENDER = 231;
+  protected static final int ACTPOBASECODE = 232;
+  protected static final int CONTRACTYEARMONTHRENDER = 233;
+  protected static final int CONTRACTYEARMONTHVIEWRENDER = 234;
+  protected static final int CONTRACTSTARTYEARRENDER = 235;
+  protected static final int CONTRACTSTARTYEARVIEWRENDER = 236;
+  protected static final int CONTRACTSTARTMONTHRENDER = 237;
+  protected static final int CONTRACTSTARTMONTHVIEWRENDER = 238;
+  protected static final int CONTRACTENDYEARRENDER = 239;
+  protected static final int CONTRACTENDYEARVIEWRENDER = 240;
+  protected static final int CONTRACTENDMONTHRENDER = 241;
+  protected static final int CONTRACTENDMONTHVIEWRENDER = 242;
+  protected static final int BIDDINGITEMRENDER = 243;
+  protected static final int BIDDINGITEMVIEWRENDER = 244;
+  protected static final int CANCELLBEFOREMATURITYRENDER = 245;
+  protected static final int CANCELLBEFOREMATURITYVIEWRENDER = 246;
+  protected static final int ADASSETSTYPERENDER = 247;
+  protected static final int ADASSETSTYPEVIEWRENDER = 248;
+  protected static final int OTHERCONDITIONRLRN06RENDER = 249;
+  protected static final int ADASSETSAMTRENDER = 250;
+  protected static final int ADASSETSAMTVIEWRENDER = 251;
+  protected static final int ADASSETSTHISTIMERENDER = 252;
+  protected static final int ADASSETSTHISTIMEVIEWRENDER = 253;
+  protected static final int ADASSETSPAYMENTYEARRENDER = 254;
+  protected static final int ADASSETSPAYMENTYEARVIEWRENDER = 255;
+  protected static final int ADASSETSPAYMENTDATERENDER = 256;
+  protected static final int ADASSETSPAYMENTDATEVIEWRENDER = 257;
+  protected static final int OTHERCONDITIONRLRN07RENDER = 258;
+  protected static final int TAXTYPERENDER = 259;
+  protected static final int TAXTYPEVIEWRENDER = 260;
+  protected static final int INSTALLSUPPTYPERENDER = 261;
+  protected static final int INSTALLSUPPTYPEVIEWRENDER = 262;
+  protected static final int INSTALLSUPPPAYMENTTYPERENDER = 263;
+  protected static final int INSTALLSUPPPAYMENTTYPEVIEWRENDER = 264;
+  protected static final int INSTALLSUPPAMTRENDER = 265;
+  protected static final int INSTALLSUPPAMTVIEWRENDER = 266;
+  protected static final int INSTALLSUPPTHISTIMERENDER = 267;
+  protected static final int INSTALLSUPPTHISTIMEVIEWRENDER = 268;
+  protected static final int INSTALLSUPPPAYMENTYEARRENDER = 269;
+  protected static final int INSTALLSUPPPAYMENTYEARVIEWRENDER = 270;
+  protected static final int INSTALLSUPPPAYMENTDATERENDER = 271;
+  protected static final int INSTALLSUPPPAYMENTDATEVIEWRENDER = 272;
+  protected static final int ELECTRICTYPERENDER = 273;
+  protected static final int ELECTRICTYPEVIEWRENDER = 274;
+  protected static final int ELECTRICPAYMENTTYPERENDER = 275;
+  protected static final int ELECTRICPAYMENTTYPEVIEWRENDER = 276;
+  protected static final int ELECTRICPAYMENTCHANGETYPERENDER = 277;
+  protected static final int ELECTRICPAYMENTCHANGETYPEVIEWRENDER = 278;
+  protected static final int ELECTRICPAYMENTCYCLERENDER = 279;
+  protected static final int ELECTRICPAYMENTCYCLEVIEWRENDER = 280;
+  protected static final int ELECTRICCLOSINGDATERENDER = 281;
+  protected static final int ELECTRICCLOSINGDATEVIEWRENDER = 282;
+  protected static final int ELECTRICTRANSMONTHRENDER = 283;
+  protected static final int ELECTRICTRANSMONTHVIEWRENDER = 284;
+  protected static final int ELECTRICTRANSDATERENDER = 285;
+  protected static final int ELECTRICTRANSDATEVIEWRENDER = 286;
+  protected static final int ELECTRICTRANSNAMERENDER = 287;
+  protected static final int ELECTRICTRANSNAMEVIEWRENDER = 288;
+  protected static final int ELECTRICTRANSNAMEALTRENDER = 289;
+  protected static final int ELECTRICTRANSNAMEALTVIEWRENDER = 290;
+  protected static final int INTROCHGTYPERENDER = 291;
+  protected static final int INTROCHGTYPEVIEWRENDER = 292;
+  protected static final int INTROCHGTYPEHDRRNRENDER = 293;
+  protected static final int INTROCHGPAYMENTTYPERENDER = 294;
+  protected static final int INTROCHGPAYMENTTYPEVIEWRENDER = 295;
+  protected static final int INTROCHGAMTRENDER = 296;
+  protected static final int INTROCHGAMTVIEWRENDER = 297;
+  protected static final int INTROCHGTHISTIMERENDER = 298;
+  protected static final int INTROCHGTHISTIMEVIEWRENDER = 299;
+  protected static final int INTROCHGPAYMENTYEARRENDER = 300;
+  protected static final int INTROCHGPAYMENTYEARVIEWRENDER = 301;
+  protected static final int INTROCHGPAYMENTDATERENDER = 302;
+  protected static final int INTROCHGPAYMENTDATEVIEWRENDER = 303;
+  protected static final int INTROCHGPERSALESPRICERENDER = 304;
+  protected static final int INTROCHGPERSALESPRICEVIEWRENDER = 305;
+  protected static final int INTROCHGPERPIECERENDER = 306;
+  protected static final int INTROCHGPERPIECEVIEWRENDER = 307;
+  protected static final int INTROCHGCLOSINGDATERENDER = 308;
+  protected static final int INTROCHGCLOSINGDATEVIEWRENDER = 309;
+  protected static final int INTROCHGTRANSMONTHRENDER = 310;
+  protected static final int INTROCHGTRANSMONTHVIEWRENDER = 311;
+  protected static final int INTROCHGTRANSDATERENDER = 312;
+  protected static final int INTROCHGTRANSDATEVIEWRENDER = 313;
+  protected static final int INTROCHGTRANSNAMERENDER = 314;
+  protected static final int INTROCHGTRANSNAMEVIEWRENDER = 315;
+  protected static final int INTROCHGTRANSNAMEALTRENDER = 316;
+  protected static final int INTROCHGTRANSNAMEALTVIEWRENDER = 317;
+  protected static final int INSTALLSUPPPAYMENTTYPEHDRRNRENDER = 318;
+  protected static final int INSTALLSUPPTHISTIMELABELRENDER = 319;
+  protected static final int INSTALLSUPPTHISTIMEENDLABELRENDER = 320;
+  protected static final int INSTALLSUPPPAYMENTYEARENDLABEL1RENDER = 321;
+  protected static final int INSTALLSUPPPAYMENTYEARENDLABEL2RENDER = 322;
+  protected static final int ELECTRICPAYMENTTYPEHDRRNRENDER = 323;
+  protected static final int ELECTRICINFORIRN02RENDER = 324;
+  protected static final int ELECTRICINFORIRN03RENDER = 325;
+  protected static final int ELECTRICINFORIRN04RENDER = 326;
+  protected static final int ELECTRICINFORIRN05RENDER = 327;
+  protected static final int ELECTRICINFORIRN06RENDER = 328;
+  protected static final int INTROCHGINFORIRN01RENDER = 329;
+  protected static final int INTROCHGINFORIRN02RENDER = 330;
+  protected static final int INTROCHGPERSALESPRICELABELRENDER = 331;
+  protected static final int INTROCHGPERPIECELABELRENDER = 332;
+  protected static final int INTROCHGPERSALESPRICEENDLABELRENDER = 333;
+  protected static final int INTROCHGPERPIECEENDLABELRENDER = 334;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -493,8 +491,6 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return getRejectButtonRender();
       case APPROVEBUTTONRENDER:
         return getApproveButtonRender();
-      case REQUESTBUTTONRENDER:
-        return getRequestButtonRender();
       case APPLICATIONTYPEVIEWRENDER:
         return getApplicationTypeViewRender();
       case APPLICATIONTYPERENDER:
@@ -647,10 +643,6 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return getStandardTypeViewRender();
       case STANDARDTYPERENDER:
         return getStandardTypeRender();
-      case VDINFO3REQUIREDLAYOUTRENDER:
-        return getVdInfo3RequiredLayoutRender();
-      case VDINFO3LAYOUTRENDER:
-        return getVdInfo3LayoutRender();
       case UNNUMBERVIEWRENDER:
         return getUnNumberViewRender();
       case UNNUMBERRENDER:
@@ -1192,9 +1184,6 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
       case APPROVEBUTTONRENDER:
         setApproveButtonRender((Boolean)value);
         return;
-      case REQUESTBUTTONRENDER:
-        setRequestButtonRender((Boolean)value);
-        return;
       case APPLICATIONTYPEVIEWRENDER:
         setApplicationTypeViewRender((Boolean)value);
         return;
@@ -1422,12 +1411,6 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return;
       case STANDARDTYPERENDER:
         setStandardTypeRender((Boolean)value);
-        return;
-      case VDINFO3REQUIREDLAYOUTRENDER:
-        setVdInfo3RequiredLayoutRender((Boolean)value);
-        return;
-      case VDINFO3LAYOUTRENDER:
-        setVdInfo3LayoutRender((Boolean)value);
         return;
       case UNNUMBERVIEWRENDER:
         setUnNumberViewRender((Boolean)value);
@@ -2315,23 +2298,7 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
     setAttributeInternal(APPROVEBUTTONRENDER, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute RequestButtonRender
-   */
-  public Boolean getRequestButtonRender()
-  {
-    return (Boolean)getAttributeInternal(REQUESTBUTTONRENDER);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute RequestButtonRender
-   */
-  public void setRequestButtonRender(Boolean value)
-  {
-    setAttributeInternal(REQUESTBUTTONRENDER, value);
-  }
 
   /**
    * 
@@ -6075,41 +6042,9 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
     setAttributeInternal(INSTALLDATEREQUIREDRENDER, value);
   }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute VdInfo3RequiredLayoutRender
-   */
-  public Boolean getVdInfo3RequiredLayoutRender()
-  {
-    return (Boolean)getAttributeInternal(VDINFO3REQUIREDLAYOUTRENDER);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute VdInfo3RequiredLayoutRender
-   */
-  public void setVdInfo3RequiredLayoutRender(Boolean value)
-  {
-    setAttributeInternal(VDINFO3REQUIREDLAYOUTRENDER, value);
-  }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute VdInfo3LayoutRender
-   */
-  public Boolean getVdInfo3LayoutRender()
-  {
-    return (Boolean)getAttributeInternal(VDINFO3LAYOUTRENDER);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute VdInfo3LayoutRender
-   */
-  public void setVdInfo3LayoutRender(Boolean value)
-  {
-    setAttributeInternal(VDINFO3LAYOUTRENDER, value);
-  }
 
   /**
    * 
