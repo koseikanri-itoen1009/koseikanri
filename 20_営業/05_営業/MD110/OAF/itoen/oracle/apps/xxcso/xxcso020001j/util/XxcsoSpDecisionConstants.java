@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2014-01-31 1.9  SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 * 2014-03-13 1.10 SCSK桐生和幸 [E_本稼動_11670]税率変更警告メッセージ出力対応
 * 2014-12-15 1.11 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
+* 2016-01-07 1.12 SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -50,10 +51,12 @@ public class XxcsoSpDecisionConstants
    ,"InstallLocationLayout"
    ,"PublishBaseLayout"
    ,"ContractPostalCodeLayout"
-   ,"VdInfo1Layout"
-   ,"VdInfo2Layout"
-   ,"VdInfo3Layout"
-   ,"VdInfo3RequiredLayout"
+// 2016-01-07 [E_本稼動_13456] Del Start
+//   ,"VdInfo1Layout"
+//   ,"VdInfo2Layout"
+//   ,"VdInfo3Layout"
+//   ,"VdInfo3RequiredLayout"
+// 2016-01-07 [E_本稼動_13456] Del End
    ,"Bm1PostalCodeLayout"
    ,"Bm1TransferTypeLayout"
    ,"Bm1PaymentTypeLayout"
@@ -87,9 +90,11 @@ public class XxcsoSpDecisionConstants
    ,"InstallLocationLayout"
    ,"PublishBaseLayout"
    ,"ContractPostalCodeLayout"
-   ,"VdInfo1Layout"
-   ,"VdInfo2Layout"
-   ,"VdInfo3RequiredLayout"
+// 2016-01-07 [E_本稼動_13456] Del Start
+//   ,"VdInfo1Layout"
+//   ,"VdInfo2Layout"
+//   ,"VdInfo3RequiredLayout"
+// 2016-01-07 [E_本稼動_13456] Del End
    ,"Bm1PostalCodeLayout"
 // 2010-03-01 [E_本稼動_01678] Add Start
 //   ,"Bm1TransferTypeLayout"
@@ -176,19 +181,21 @@ public class XxcsoSpDecisionConstants
   public static final String BIZ_COND_OFF_SET_VD = "24";
   public static final String BIZ_COND_FULL_VD    = "25";
 
-  /*****************************************************************************
-   * 新／旧
-   *****************************************************************************
-   */
-  public static final String NEW_OLD_NEW         = "1";
-  public static final String NEW_OLD_OLD         = "2";
-
-  /*****************************************************************************
-   * 規格内／外
-   *****************************************************************************
-   */
-  public static final String STANDARD_TYPE_STD   = "1";
-  public static final String STANDARD_TYPE_EXT   = "2";
+// 2016-01-07 [E_本稼動_13456] Del Start
+//  /*****************************************************************************
+//   * 新／旧
+//   *****************************************************************************
+//   */
+//  public static final String NEW_OLD_NEW         = "1";
+//  public static final String NEW_OLD_OLD         = "2";
+//
+//  /*****************************************************************************
+//   * 規格内／外
+//   *****************************************************************************
+//   */
+//  public static final String STANDARD_TYPE_STD   = "1";
+//  public static final String STANDARD_TYPE_EXT   = "2";
+// 2016-01-07 [E_本稼動_13456] Del End
 
   /*****************************************************************************
    * 取引条件
@@ -321,9 +328,11 @@ public class XxcsoSpDecisionConstants
   public static final String OPERATION_RETURN  = "RETURN";
   public static final String OPERATION_APPROVE = "APPROVE";
   public static final String OPERATION_REJECT  = "REJECT";
-  // 2009-08-24 [障害0001104] Add Start
-  public static final String OPERATION_REQUEST = "REQUEST";
-  // 2009-08-24 [障害0001104] Add End
+// 2016-01-07 [E_本稼動_13456] Del Start
+//  // 2009-08-24 [障害0001104] Add Start
+//  public static final String OPERATION_REQUEST = "REQUEST";
+//  // 2009-08-24 [障害0001104] Add End
+// 2016-01-07 [E_本稼動_13456] Del End
   
   /*****************************************************************************
    * オペレーションモード
@@ -370,8 +379,10 @@ public class XxcsoSpDecisionConstants
     TOKEN_VALUE_APPROVE               = "承認";
   public static final String
     TOKEN_VALUE_REJECT                = "否決";
-  public static final String
-    TOKEN_VALUE_REQUEST_CONC          = "発注依頼登録処理";
+// 2016-01-07 [E_本稼動_13456] Del Start
+//  public static final String
+//    TOKEN_VALUE_REQUEST_CONC          = "発注依頼登録処理";
+// 2016-01-07 [E_本稼動_13456] Del End
   public static final String
     TOKEN_VALUE_START                 = "起動";
 // 2010-01-20 [E_本稼動_01176] Add Start
@@ -416,18 +427,20 @@ public class XxcsoSpDecisionConstants
     TOKEN_VALUE_CNTR_PARTY_NAME_ALT   = "契約先名カナ(半角)";
   public static final String
     TOKEN_VALUE_DELEGATE              = "代表者(全角)";
-  public static final String
-    TOKEN_VALUE_NEW_OLD               = "新／旧";
-  public static final String
-    TOKEN_VALUE_MAKER_NAME            = "メーカー名";
-  public static final String
-    TOKEN_VALUE_STD_TYPE              = "規格内／外";
-  public static final String
-    TOKEN_VALUE_SELE_NUMBER           = "セレ数";
-  public static final String
-    TOKEN_VALUE_MAKER_CODE            = "メーカー名";
-  public static final String
-    TOKEN_VALUE_VENDOR_MODEL          = "機種コード";
+// 2016-01-07 [E_本稼動_13456] Del Start
+//  public static final String
+//    TOKEN_VALUE_NEW_OLD               = "新／旧";
+//  public static final String
+//    TOKEN_VALUE_MAKER_NAME            = "メーカー名";
+//  public static final String
+//    TOKEN_VALUE_STD_TYPE              = "規格内／外";
+//  public static final String
+//    TOKEN_VALUE_SELE_NUMBER           = "セレ数";
+//  public static final String
+//    TOKEN_VALUE_MAKER_CODE            = "メーカー名";
+//  public static final String
+//    TOKEN_VALUE_VENDOR_MODEL          = "機種コード";
+// 2016-01-07 [E_本稼動_13456] Del End
   public static final String
     TOKEN_VALUE_COND_BIZ              = "取引条件";
   public static final String
@@ -528,8 +541,10 @@ public class XxcsoSpDecisionConstants
     TOKEN_VALUE_CALC_LINE             = "定価換算率計算";
   public static final String
     TOKEN_VALUE_APPR_AUTH_LEVEL_CHK   = "承認権限レベル判定";
-  public static final String
-    TOKEN_VALUE_IB_REQUEST            = "自販機（什器）発注依頼データ連携機能";
+// 2016-01-07 [E_本稼動_13456] Del Start
+//  public static final String
+//    TOKEN_VALUE_IB_REQUEST            = "自販機（什器）発注依頼データ連携機能";
+// 2016-01-07 [E_本稼動_13456] Del End
   public static final String
     TOKEN_VALUE_CONV_NUMBER_SEPARATE  = "数値のセパレート変換";
   public static final String
