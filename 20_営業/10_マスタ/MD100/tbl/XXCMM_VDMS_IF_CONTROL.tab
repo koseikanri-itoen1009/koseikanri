@@ -1,0 +1,54 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcmm_vdms_if_control
+ * Description     : 自販機S連携制御
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2016/02/08    1.0   K.Kiriu      初回作成
+ ************************************************************************/
+CREATE TABLE xxcmm.xxcmm_vdms_if_control (
+   control_id               NUMBER       NOT NULL
+  ,vdms_interface_date      DATE
+  ,created_by               NUMBER(15,0) NOT NULL
+  ,creation_date            DATE         NOT NULL
+  ,last_updated_by          NUMBER(15,0) NOT NULL
+  ,last_update_date         DATE         NOT NULL
+  ,last_update_login        NUMBER(15,0)
+  ,request_id               NUMBER(15,0)
+  ,program_application_id   NUMBER(15,0)
+  ,program_id               NUMBER(15,0)
+  ,program_update_date      DATE
+  ,CONSTRAINT xxcmm_vdms_if_control_pk PRIMARY KEY ( control_id )
+   USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 8 STORAGE ( INITIAL 64K)
+/
+COMMENT ON TABLE  xxcmm.xxcmm_vdms_if_control                         IS '自販機S連携制御'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.control_id              IS '制御ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.vdms_interface_date     IS '自販機S連携日時'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.created_by              IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.creation_date           IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.last_updated_by         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.last_update_date        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.last_update_login       IS '最終更新ログイン';
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.request_id              IS '要求ID';
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.program_application_id  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.program_id              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_vdms_if_control.program_update_date     IS 'プログラム更新日'
+/
