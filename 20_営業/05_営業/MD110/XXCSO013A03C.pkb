@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO013A03C(body)
  * Description      : 固定資産の物件をリース・FA領域に連携するOIFデータを作成します。
  * MD.050           : CSI→FAインタフェース：（OUT）固定資産資産情報 <MD050_CSO_013_A03>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  * 2014/06/10    1.0   Kazuyuki Kiriu   新規作成
+ * 2016/02/09    1.1   H.Okada          E_本稼動_13456対応
  *
  *****************************************************************************************/
 --
@@ -164,6 +165,9 @@ AS
   cv_dclr_place             CONSTANT VARCHAR2(10)  := 'DCLR_PLACE';     -- 申告地
   cv_assets_cost            CONSTANT VARCHAR2(13)  := 'VD_SHUTOKU_KG';  -- 取得価格
   cv_disposed_date          CONSTANT VARCHAR2(14)  := 'HAIKIKESSAI_DT'; -- 廃棄決済日
+/* 2016.02.09 H.Okada E_本稼働_13456 ADD START */
+  cv_fa_move_date           CONSTANT VARCHAR2(12)  := 'FA_MOVE_DATE';   -- 固定資産移動日
+/* 2016.02.09 H.Okada E_本稼働_13456 ADD END */
   -- 属性値
   cv_lease_type_assets      CONSTANT VARCHAR2(1)   := '4';              -- リース区分(固定資産税)
   cv_disposed_approve       CONSTANT VARCHAR2(1)   := '9';              -- 廃棄決裁フラグ(廃棄決裁済)
@@ -217,6 +221,9 @@ AS
     ,account_number          xxcso_ib_info_h.account_number%TYPE           -- 顧客コード
     ,declaration_place       xxcso_ib_info_h.declaration_place%TYPE        -- 申告地
     ,disposal_intaface_flag  xxcso_ib_info_h.disposal_intaface_flag%TYPE   -- 廃棄決裁フラグ
+/* 2016.02.09 H.Okada E_本稼働_13456 ADD START */
+    ,fa_move_date            DATE                                          -- 固定資産移動日
+/* 2016.02.09 H.Okada E_本稼働_13456 ADD END */
   );
   -- INV 工場返品倉替先コード取得用配列変数
   g_mfg_fctory_cd      gt_mfg_fctory_code_ttype;
@@ -1413,31 +1420,33 @@ AS
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
-    -- 実作業日取得カーソル
-    CURSOR get_act_date
-    IS
-      SELECT TO_DATE( MAX( xiwd.actual_work_date ), cv_yyyymmdd )  actual_work_date
-      FROM   xxcso_in_work_data xiwd
-      WHERE  xiwd.completion_kbn   =  cn_1       -- 完了
-      AND    (
-               ( xiwd.po_req_number    IS NOT NULL )
-               AND
-               ( xiwd.po_req_number <> cv_0 )
-             )                                   -- EBSより発生した作業(店内移動以外)
-      AND    (
-                (
-                  ( xiwd.install_code1           = iv_new_data.install_code )  -- 設置用物件
-                  AND
-                  ( xiwd.install1_processed_flag = cv_yes )  -- 物件反映済
-                )
-                OR
-                (
-                  ( xiwd.install_code2           = iv_new_data.install_code )  -- 引揚用物件
-                  AND
-                  ( xiwd.install2_processed_flag = cv_yes )  -- 物件反映済
-                )
-             )
-      ;
+/* 2016.02.09 H.Okada E_本稼働_13456 DEL START */
+--    -- 実作業日取得カーソル
+--    CURSOR get_act_date
+--    IS
+--      SELECT TO_DATE( MAX( xiwd.actual_work_date ), cv_yyyymmdd )  actual_work_date
+--      FROM   xxcso_in_work_data xiwd
+--      WHERE  xiwd.completion_kbn   =  cn_1       -- 完了
+--      AND    (
+--               ( xiwd.po_req_number    IS NOT NULL )
+--               AND
+--               ( xiwd.po_req_number <> cv_0 )
+--             )                                   -- EBSより発生した作業(店内移動以外)
+--      AND    (
+--                (
+--                  ( xiwd.install_code1           = iv_new_data.install_code )  -- 設置用物件
+--                  AND
+--                  ( xiwd.install1_processed_flag = cv_yes )  -- 物件反映済
+--                )
+--                OR
+--                (
+--                  ( xiwd.install_code2           = iv_new_data.install_code )  -- 引揚用物件
+--                  AND
+--                  ( xiwd.install2_processed_flag = cv_yes )  -- 物件反映済
+--                )
+--             )
+--      ;
+/* 2016.02.09 H.Okada E_本稼働_13456 DEL END */
 --
   BEGIN
 --
@@ -1472,10 +1481,14 @@ AS
          OR
          ( iv_old_data.base_code = gt_withdraw_base_code )  -- 旧拠点が引揚拠点=旧台設置
       THEN
-        -- EBSより連携された作業の最新より実作業日を取得
-        OPEN  get_act_date;
-        FETCH get_act_date INTO ld_move_date;
-        CLOSE get_act_date;
+/* 2016.02.09 H.Okada E_本稼働_13456 MOD START */
+--        -- EBSより連携された作業の最新より実作業日を取得
+--        OPEN  get_act_date;
+--        FETCH get_act_date INTO ld_move_date;
+--        CLOSE get_act_date;
+        -- 物件マスタの固定資産移動日を設定（作業による移動）
+        ld_move_date := iv_new_data.fa_move_date;
+/* 2016.02.09 H.Okada E_本稼働_13456 MOD END */
       -- それ以外（一般拠点から一般拠点への変更）
       ELSE
         -------------------------------------
@@ -1695,6 +1708,19 @@ AS
             ,TO_DATE( cii.attribute3, cv_yyyymmddhhmmdd_sla )
                                            new_first_install_date     -- 新_初回設置日
             ,TRUNC(cii.creation_date)      new_creation_date          -- 新_作成日(新古台用)
+/* 2016.02.09 H.Okada E_本稼働_13456 ADD START */
+            ,TO_DATE( ( 
+               SELECT civ.attribute_value  attribute_value
+               FROM   csi_i_extended_attribs  ciea  -- 設置機器拡張属性定義情報テーブル
+                     ,csi_iea_values          civ   -- 設置機器拡張属性値情報テーブル
+               WHERE  ciea.attribute_level = gt_attribute_level
+               AND    ciea.attribute_code  = cv_fa_move_date
+               AND    civ.instance_id      = cii.instance_id
+               AND    ciea.attribute_id    = civ.attribute_id
+               AND    NVL( ciea.active_start_date, gd_process_date ) <= gd_process_date
+               AND    NVL( ciea.active_end_date,   gd_process_date ) >= gd_process_date
+             ), cv_yyyymmdd_sla )          new_fa_move_date           -- 新_固定資産移動日
+/* 2016.02.09 H.Okada E_本稼働_13456 ADD END */
             ,xiih.manufacturer_name        old_manufacturer_name      -- 旧_メーカー名
             ,xiih.age_type                 old_age_type               -- 旧_年式
             ,xiih.un_number                old_model                  -- 旧_機種
@@ -2007,6 +2033,9 @@ AS
       g_new_data_rec.install_name        := l_get_new_old_data_rec.new_installation_place;   -- 設置先名
       g_new_data_rec.install_address     := l_get_new_old_data_rec.new_installation_address; -- 設置先住所
       g_new_data_rec.logical_delete_flag := l_get_new_old_data_rec.new_active_flag;          -- 論理削除フラグ
+/* 2016.02.09 H.Okada E_本稼働_13456 ADD START */
+      g_new_data_rec.fa_move_date        := l_get_new_old_data_rec.new_fa_move_date;         -- 固定資産移動日
+/* 2016.02.09 H.Okada E_本稼働_13456 ADD END */
       --
       -- 顧客コード
       IF (l_get_new_old_data_rec.new_customer_class_code = cv_cust_class_10) THEN
