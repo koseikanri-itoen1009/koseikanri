@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractManagementsEOImpl
 * 概要説明   : 契約管理テーブルエンティティクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2009-01-22 1.0  SCS小川浩  新規作成
 * 2010-02-09 1.1  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
 * 2015-02-02 1.2  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
+* 2016-01-06 1.3  SCSK桐生和幸 [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -79,8 +80,12 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
   protected static final int PROGRAMID = 34;
   protected static final int PROGRAMUPDATEDATE = 35;
   protected static final int CONTRACTOTHERCUSTSID = 36;
-  protected static final int XXCSODESTINATIONSEO = 37;
-  protected static final int XXCSOCONTRACTOTHERCUSTSEO = 38;
+  protected static final int VDMSINTERFACEFLAG = 37;
+  protected static final int VDMSINTERFACEDATE = 38;
+  protected static final int XXCSODESTINATIONSEO = 39;
+  protected static final int XXCSOCONTRACTOTHERCUSTSEO = 40;
+
+
 
 
 
@@ -137,6 +142,8 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
     }
     return mDefinitionObject;
   }
+
+
 
 
 
@@ -1167,6 +1174,10 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
         return getProgramUpdateDate();
       case CONTRACTOTHERCUSTSID:
         return getContractOtherCustsId();
+      case VDMSINTERFACEFLAG:
+        return getVdmsInterfaceFlag();
+      case VDMSINTERFACEDATE:
+        return getVdmsInterfaceDate();
       case XXCSODESTINATIONSEO:
         return getXxcsoDestinationsEO();
       case XXCSOCONTRACTOTHERCUSTSEO:
@@ -1292,6 +1303,12 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
       case CONTRACTOTHERCUSTSID:
         setContractOtherCustsId((Number)value);
         return;
+      case VDMSINTERFACEFLAG:
+        setVdmsInterfaceFlag((String)value);
+        return;
+      case VDMSINTERFACEDATE:
+        setVdmsInterfaceDate((Date)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -1330,6 +1347,43 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
     setAttributeInternal(XXCSOCONTRACTOTHERCUSTSEO, value);
   }
 
+
+  /**
+   * 
+   * Gets the attribute value for VdmsInterfaceFlag, using the alias name VdmsInterfaceFlag
+   */
+  public String getVdmsInterfaceFlag()
+  {
+    return (String)getAttributeInternal(VDMSINTERFACEFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for VdmsInterfaceFlag
+   */
+  public void setVdmsInterfaceFlag(String value)
+  {
+    setAttributeInternal(VDMSINTERFACEFLAG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for VdmsInterfaceDate, using the alias name VdmsInterfaceDate
+   */
+  public Date getVdmsInterfaceDate()
+  {
+    return (Date)getAttributeInternal(VDMSINTERFACEDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for VdmsInterfaceDate
+   */
+  public void setVdmsInterfaceDate(Date value)
+  {
+    setAttributeInternal(VDMSINTERFACEDATE, value);
+  }
+
   /**
    * 
    * Creates a Key object based on given key constituents
@@ -1338,6 +1392,7 @@ public class XxcsoContractManagementsEOImpl extends OAPlsqlEntityImpl
   {
     return new Key(new Object[] {contractManagementId});
   }
+
 
 
 
