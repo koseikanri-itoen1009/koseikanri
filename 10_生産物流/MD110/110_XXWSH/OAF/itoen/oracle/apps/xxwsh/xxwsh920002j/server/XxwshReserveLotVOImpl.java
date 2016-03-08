@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshReserveLotVOImpl
 * 概要説明   : 手持数・引当可能数一覧(ロット管理品)リージョンビューオブジェクト
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-12-25 1.0  二瓶　大輔     新規作成 本番#771対応
 * 2009-12-04 1.1  伊藤  ひとみ   本稼動障害#11対応
 * 2010-01-05 1.2  伊藤  ひとみ   本稼動障害#861対応
+* 2016-02-18 1.3  山下  翔太     E_本稼動_13468対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.xxwsh920002j.server;
@@ -22,7 +23,7 @@ import com.sun.java.util.collections.HashMap;
 /***************************************************************************
  * 手持数・引当可能数一覧(ロット管理品)リージョンビューオブジェクトクラスです。
  * @author  ORACLE 二瓶　大輔
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxwshReserveLotVOImpl extends OAViewObjectImpl
@@ -170,8 +171,11 @@ public class XxwshReserveLotVOImpl extends OAViewObjectImpl
         if (XxwshConstants.ITEM_TYPE_PROD.equals(itemClass))
         {
           // Order BY句生成
-          orderByClause.append(" production_date asc "); // 製造日(昇順)
-          orderByClause.append(",expiration_date asc "); // 賞味期限(昇順)
+// 2016-02-18 S.Yamashita Mod Start E_本稼動_13468
+//          orderByClause.append(" production_date asc "); // 製造日(昇順)
+          orderByClause.append(" expiration_date asc "); // 賞味期限(昇順)
+          orderByClause.append(",production_date asc "); // 製造日(昇順)
+// 2016-02-18 S.Yamashita Mod End   E_本稼動_13468
           orderByClause.append(",uniqe_sign asc ");      // 固有記号(昇順)
         } else
         {
