@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_in_item_data
  * Description     : 物件データワークテーブル
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2016/02/05    1.2  S.Niki        [E_本稼動_13456]自販機管理システム代替対応
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_in_item_data
 (
@@ -79,6 +80,11 @@ CREATE TABLE xxcso.xxcso_in_item_data
   update_program_id               VARCHAR2(10),
   creation_date_time              DATE,
   update_date_time                DATE,
+-- Ver1.2 Add Start
+  lease_type                      VARCHAR2(1)
+  declaration_place               VARCHAR2(5),
+  get_price                       NUMBER(10),
+-- Ver1.2 Add End
   created_by                      NUMBER(15)        NOT NULL,
   creation_date                   DATE              NOT NULL,
   last_updated_by                 NUMBER(15)        NOT NULL,
@@ -161,6 +167,11 @@ COMMENT ON COLUMN xxcso.xxcso_in_item_data.update_section_name                  
 COMMENT ON COLUMN xxcso.xxcso_in_item_data.update_program_id                      IS '更新プログラムＩＤ';
 COMMENT ON COLUMN xxcso.xxcso_in_item_data.creation_date_time                     IS '作成日時時分秒';
 COMMENT ON COLUMN xxcso.xxcso_in_item_data.update_date_time                       IS '更新日時時分秒';
+-- Ver1.2 Add Start
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.lease_type                             IS 'リース区分';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.declaration_place                      IS '申告地';
+COMMENT ON COLUMN xxcso.xxcso_in_item_data.get_price                              IS '取得価格';
+-- Ver1.2 Add End
 COMMENT ON COLUMN xxcso.xxcso_in_item_data.created_by                             IS '作成者';
 COMMENT ON COLUMN xxcso.xxcso_in_item_data.creation_date                          IS '作成日';
 COMMENT ON COLUMN xxcso.xxcso_in_item_data.last_updated_by                        IS '最終更新者';
