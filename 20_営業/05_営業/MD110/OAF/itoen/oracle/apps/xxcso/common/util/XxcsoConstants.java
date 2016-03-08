@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.25
+* バージョン : 1.26
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -35,6 +35,7 @@
 * 2014-12-15 1.23 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 * 2015-09-08 1.24 SCSK桐生和幸 [E_本稼動_13307]ルート一括登録画面仕様変更対応
 * 2015-11-25 1.25 SCSK山下翔太 [E_本稼動_13345]オーナ変更マスタ連携エラー対応
+* 2016-01-07 1.26 SCSK桐生和幸 [E_本稼動_13456]自販機管理システム代替対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -247,9 +248,11 @@ public class XxcsoConstants
 // 2013-04-01 [E_本稼動_10413] Add Start
   public static final String APP_XXCSO1_00646    = "APP-XXCSO1-00646";
 // 2013-04-01 [E_本稼動_10413] Add End
-// 2013-04-19 [E_本稼動_09603] Add Start
-  public static final String APP_XXCSO1_00648    = "APP-XXCSO1-00648";
-// 2013-04-19 [E_本稼動_09603] Add End
+// 2016-01-07 Ver1.26 [E_本稼動_13456] Del Start
+//// 2013-04-19 [E_本稼動_09603] Add Start
+//  public static final String APP_XXCSO1_00648    = "APP-XXCSO1-00648";
+//// 2013-04-19 [E_本稼動_09603] Add End
+// 2016-01-07 Ver1.26 [E_本稼動_13456] Del End
 // 2014-03-13 [E_本稼動_11670] Add Start
   public static final String APP_XXCSO1_00661    = "APP-XXCSO1-00661";
 // 2014-03-13 [E_本稼動_11670] Add End
@@ -269,6 +272,9 @@ public class XxcsoConstants
   public static final String APP_XXCSO1_00791    = "APP-XXCSO1-00791";
   public static final String APP_XXCSO1_00792    = "APP-XXCSO1-00792";
 // 2015-11-25 Ver1.25 [E_本稼動_13345] Add End
+// 2016-01-07 Ver1.26 [E_本稼動_13456] Add Start
+  public static final String APP_XXCSO1_00795    = "APP-XXCSO1-00795";
+// 2016-01-07 Ver1.26 [E_本稼動_13456] Add End
 
   /*****************************************************************************
    * トークン名
