@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM005A04C(body)
  * Description      : 所属マスタIF出力（自販機管理）
  * MD.050           : 所属マスタIF出力（自販機管理） MD050_CMM_005_A04
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/10/02    1.9   Shigeto.Niki     障害I_E_542、E_T3_00469の対応
  *  2011/03/23    1.10  Naoki.Horigome   E_本稼動_02541、02550対応
  *  2011/11/11    1.11  Atsushi.Shirakawa E_本稼動_08398対応
+ *  2016/02/05    1.12  Shigeto.Niki     E_本稼動_13456対応
  *
  *****************************************************************************************/
 --
@@ -107,7 +108,12 @@ AS
 --ver.1.2 2009/03/09 mod by Yuuki.Nakamura end
   cv_pro_out_file_fil CONSTANT VARCHAR2(50) := 'XXCMM1_005A04_OUT_FILE_FIL';  -- CSVファイル名
 -- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
-  cv_aff_dept_dummy_cd CONSTANT VARCHAR2(50)  := 'XXCMM1_AFF_DEPT_DUMMY_CD';    -- AFFダミー部門コード
+-- Ver1.12 del start
+--  cv_aff_dept_dummy_cd CONSTANT VARCHAR2(50)  := 'XXCMM1_AFF_DEPT_DUMMY_CD';    -- AFFダミー部門コード
+-- Ver1.12 del end
+-- Ver1.12 add start
+  cv_pro_gv_bumon_cd  CONSTANT VARCHAR2(50)  := 'XXCMM1_GV_BUMON_CD';          -- グリーンバリュー部門コード
+-- Ver1.12 add end
 -- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
   -- ■ メッセージ・コード（エラー）
   cv_msg_00002        CONSTANT VARCHAR2(20) := 'APP-XXCMM1-00002';            -- プロファイル取得エラー
@@ -132,7 +138,9 @@ AS
   cv_error_msg        CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90006';            -- エラー終了全ロールバック
   -- ■ トークン
   cv_tok_ng_profile   CONSTANT VARCHAR2(10) := 'NG_PROFILE';
-  cv_tok_ffv_set_name CONSTANT VARCHAR2(15) := 'FFV_SET_NAME';                -- 値セット名
+-- Ver1.12 del start
+--  cv_tok_ffv_set_name CONSTANT VARCHAR2(15) := 'FFV_SET_NAME';                -- 値セット名
+-- Ver1.12 del end
   cv_tok_count        CONSTANT VARCHAR2(10) := 'COUNT';
   cv_tok_ng_word      CONSTANT VARCHAR2(10) := 'NG_WORD';
   cv_tok_ng_data      CONSTANT VARCHAR2(10) := 'NG_DATA';
@@ -143,7 +151,10 @@ AS
   cv_tvl_out_file_dir CONSTANT VARCHAR2(70) := 'XXCMM:所属マスタ（自販機管理）連携用CSVファイル出力先';
   cv_tvl_out_file_fil CONSTANT VARCHAR2(70) := 'XXCMM:所属マスタ（自販機管理）連携用CSVファイル名';
   cv_tvl_ffv_set_name CONSTANT VARCHAR2(20) := 'XX03_DEPARTMENT';
-  cv_tvl_dept_code    CONSTANT VARCHAR2(20) := '所属コード'; 
+-- Ver1.12 mod start
+--  cv_tvl_dept_code    CONSTANT VARCHAR2(20) := '所属コード'; 
+  cv_tvl_dept_code    CONSTANT VARCHAR2(20) := '営業所CD'; 
+-- Ver1.12 mod end
   cv_tvl_update_from  CONSTANT VARCHAR2(20) := '最終更新日(from)';
   cv_tvl_update_to    CONSTANT VARCHAR2(20) := '最終更新日(to)  ';
   cv_tvl_auto_st      CONSTANT VARCHAR2(20) := '[]:自動取得値['; -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名_自動(開始)
@@ -151,7 +162,12 @@ AS
   cv_tvl_para_st      CONSTANT VARCHAR2(1)  := '[';              -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名(開始)
   cv_tvl_para_en      CONSTANT VARCHAR2(1)  := ']';              -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名(終了)
 -- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
-  cv_tvl_dummy_code   CONSTANT VARCHAR2(50)  := 'AFFダミー部門コード';        -- AFFダミー部門コード
+-- Ver1.12 del start
+--  cv_tvl_dummy_code   CONSTANT VARCHAR2(50)  := 'AFFダミー部門コード';        -- AFFダミー部門コード
+-- Ver1.12 del end
+-- Ver1.12 add start
+  cv_tvl_gv_bumon_cd  CONSTANT VARCHAR2(50)  := 'グリーンバリュー部門コード'; -- グリーンバリュー部門コード
+-- Ver1.12 add end
 -- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
   -- ■ その他
   cv_date_format      CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
@@ -169,7 +185,18 @@ AS
   cv_cust_sts_stop    CONSTANT VARCHAR2(2)  := '90';                          -- 顧客ステータス(中止決裁済)
 -- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
 -- 2011/03/23 Ver1.10 add start by Naoki.Horigome
-  cv_asterisk         CONSTANT VARCHAR2(2)  := '＊';
+-- Ver1.12 del start
+--  cv_asterisk         CONSTANT VARCHAR2(2)  := '＊';
+-- Ver1.12 del end
+-- Ver1.12 add start
+  cv_cust_class_base  CONSTANT VARCHAR2(1)  := '1';                           -- 顧客区分(拠点)
+  cv_user_div_base    CONSTANT VARCHAR2(2)  := '02';                          -- 利用者区分(拠点)
+  cv_level_base       CONSTANT VARCHAR2(1)  := '2';                           -- 所属レベル(拠点)
+  cv_level_other      CONSTANT VARCHAR2(1)  := '4';                           -- 所属レベル(拠点以外)
+  cv_delete_flg       CONSTANT VARCHAR2(1)  := '0';                           -- 削除フラグ
+  cv_comp_cd_gv       CONSTANT VARCHAR2(1)  := 'G';                           -- 会社コード(GV)
+  cv_comp_cd_other    CONSTANT VARCHAR2(1)  := 'I';                           -- 会社コード(GV以外)
+-- Ver1.12 add end
 -- 2011/03/23 Ver1.10 add end   by Naoki.Horigome
 -- 
   -- ===============================
@@ -178,35 +205,43 @@ AS
   -- 所属マスタIF出力（自販機管理）レイアウト
   TYPE output_data_rtype IS RECORD
   (
-     dpt_cd                xxcmm_hierarchy_dept_v.dpt6_cd%TYPE                 -- 部門コード
-    ,dpt_name              xxcmm_hierarchy_dept_v.dpt6_name%TYPE               -- 部門名称
-    ,dpt_abbreviate        xxcmm_hierarchy_dept_v.dpt6_abbreviate%TYPE         -- 部門略称
--- 2009/10/02 Ver1.9 mod start by Shigeto.Niki
---     ,dpt_sort_num          xxcmm_hierarchy_dept_v.dpt6_sort_num%TYPE           -- 並び順
-    ,dpt_div               xxcmm_hierarchy_dept_v.dpt6_div%TYPE                -- 部門区分
---     ,district_cd           xxcmm_hierarchy_dept_v.dpt6_old_cd%TYPE             -- 地区コード
-    ,main_base_code        xxcmm_hierarchy_dept_v.dpt6_old_cd%TYPE             -- 最新本部コード
--- 2009/10/02 Ver1.9 mod end by Shigeto.Niki
-    ,xhdv_last_update_date xxcmm_hierarchy_dept_v.last_update_date%TYPE        -- 最終更新日
-    ,user_div              hz_cust_accounts.attribute8%TYPE                    -- 利用者区分
-    ,customer_class_code   hz_cust_accounts.customer_class_code%TYPE           -- 顧客区分
-    ,start_date_active     xxcmn_parties.start_date_active%TYPE                -- 適用開始日
-    ,end_date_active       xxcmn_parties.end_date_active%TYPE                  -- 適用終了日
-    ,party_name            xxcmn_parties.party_name%TYPE                       -- 正式名
-    ,party_short_name      xxcmn_parties.party_short_name%TYPE                 -- 略称
-    ,party_name_alt        xxcmn_parties.party_name_alt%TYPE                   -- カナ名
-    ,address_line1         xxcmn_parties.address_line1%TYPE                    -- 住所１
-    ,address_line2         xxcmn_parties.address_line2%TYPE                    -- 住所２
-    ,zip                   xxcmn_parties.zip%TYPE                              -- 郵便番号
-    ,phone                 xxcmn_parties.phone%TYPE                            -- 電話番号
-    ,fax                   xxcmn_parties.fax%TYPE                              -- FAX番号
-    ,xpty_last_update_date xxcmn_parties.last_update_date%TYPE                 -- 最終更新日
-    ,flex_value_set_id     xxcmm_hierarchy_dept_v.flex_value_set_id%TYPE       -- 値セットID
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-    ,stop_approval_date    xxcmm_cust_accounts.stop_approval_date%TYPE         -- 中止決裁日
-    ,customer_status       hz_parties.duns_number_c%TYPE                       -- 顧客ステータス
-    ,hp_last_update_date   hz_parties.last_update_date%TYPE                    -- 最終更新日
--- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
+-- Ver1.12 mod start
+--     dpt_cd                xxcmm_hierarchy_dept_v.dpt6_cd%TYPE                 -- 部門コード
+--    ,dpt_name              xxcmm_hierarchy_dept_v.dpt6_name%TYPE               -- 部門名称
+--    ,dpt_abbreviate        xxcmm_hierarchy_dept_v.dpt6_abbreviate%TYPE         -- 部門略称
+---- 2009/10/02 Ver1.9 mod start by Shigeto.Niki
+----     ,dpt_sort_num          xxcmm_hierarchy_dept_v.dpt6_sort_num%TYPE           -- 並び順
+--    ,dpt_div               xxcmm_hierarchy_dept_v.dpt6_div%TYPE                -- 部門区分
+----     ,district_cd           xxcmm_hierarchy_dept_v.dpt6_old_cd%TYPE             -- 地区コード
+--    ,main_base_code        xxcmm_hierarchy_dept_v.dpt6_old_cd%TYPE             -- 最新本部コード
+---- 2009/10/02 Ver1.9 mod end by Shigeto.Niki
+--    ,xhdv_last_update_date xxcmm_hierarchy_dept_v.last_update_date%TYPE        -- 最終更新日
+--    ,user_div              hz_cust_accounts.attribute8%TYPE                    -- 利用者区分
+--    ,customer_class_code   hz_cust_accounts.customer_class_code%TYPE           -- 顧客区分
+--    ,start_date_active     xxcmn_parties.start_date_active%TYPE                -- 適用開始日
+--    ,end_date_active       xxcmn_parties.end_date_active%TYPE                  -- 適用終了日
+--    ,party_name            xxcmn_parties.party_name%TYPE                       -- 正式名
+--    ,party_short_name      xxcmn_parties.party_short_name%TYPE                 -- 略称
+--    ,party_name_alt        xxcmn_parties.party_name_alt%TYPE                   -- カナ名
+--    ,address_line1         xxcmn_parties.address_line1%TYPE                    -- 住所１
+--    ,address_line2         xxcmn_parties.address_line2%TYPE                    -- 住所２
+--    ,zip                   xxcmn_parties.zip%TYPE                              -- 郵便番号
+--    ,phone                 xxcmn_parties.phone%TYPE                            -- 電話番号
+--    ,fax                   xxcmn_parties.fax%TYPE                              -- FAX番号
+--    ,xpty_last_update_date xxcmn_parties.last_update_date%TYPE                 -- 最終更新日
+--    ,flex_value_set_id     xxcmm_hierarchy_dept_v.flex_value_set_id%TYPE       -- 値セットID
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+--    ,stop_approval_date    xxcmm_cust_accounts.stop_approval_date%TYPE         -- 中止決裁日
+--    ,customer_status       hz_parties.duns_number_c%TYPE                       -- 顧客ステータス
+--    ,hp_last_update_date   hz_parties.last_update_date%TYPE                    -- 最終更新日
+---- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
+     blg_level             VARCHAR2(2)                                         -- 所属レベル
+    ,brc_cd                VARCHAR2(2)                                         -- 支店CD
+    ,dpt_cd                hz_cust_accounts.account_number%TYPE                -- 営業所CD
+    ,dpt_short_name        hz_cust_accounts.account_name%TYPE                  -- (HOST)支店出張所名略称
+    ,dpt_name              hz_parties.party_name%TYPE                          -- (HOST)支店営業所名
+    ,comp_cd               VARCHAR2(1)                                         -- 会社CD
+-- Ver1.12 mod end
   );
 --
   -- 所属マスタIF出力（自販機管理）レイアウト テーブルタイプ
@@ -217,7 +252,9 @@ AS
   -- ===============================
   gv_process_date       VARCHAR2(50);     -- 業務日付(フォーマット：YYYY/MM/DD)
 -- 2011/03/23 Ver1.10 add start by Naoki.Horigome
-  gv_next_proc_date     VARCHAR2(8);      -- 翌業務日付(フォーマット：YYYYMMDD)
+-- Ver1.12 del start
+--  gv_next_proc_date     VARCHAR2(8);      -- 翌業務日付(フォーマット：YYYYMMDD)
+-- Ver1.12 del end
 -- 2011/03/23 Ver1.10 add end   by Naoki.Horigome
   -- 入力パラメータ
   gv_update_from        VARCHAR2(50);     -- 最終更新日(FROM)
@@ -226,7 +263,12 @@ AS
   gv_csv_file_dir       fnd_profile_option_values.profile_option_value%TYPE;  -- CSVファイル出力先
   gv_csv_file_name      fnd_profile_option_values.profile_option_value%TYPE;  -- CSVファイル名
 -- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
-  gv_aff_dept_dummy_cd  fnd_profile_option_values.profile_option_value%TYPE;  -- AFFダミー部門コード
+-- Ver1.12 del start
+--  gv_aff_dept_dummy_cd  fnd_profile_option_values.profile_option_value%TYPE;  -- AFFダミー部門コード
+-- Ver1.12 del end
+-- Ver1.12 add start
+  gv_gv_bumon_cd        fnd_profile_option_values.profile_option_value%TYPE;  -- 拠点コード(GV)
+-- Ver1.12 add end
 -- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
   gf_file_handler       UTL_FILE.FILE_TYPE;                                   -- CSVファイル出力用ハンドラ
   gt_out_tab            output_data_ttype;                                    -- 所属マスタIF出力データ
@@ -303,20 +345,37 @@ AS
     END IF;
 --
 -- 2009/04/20 Ver1.3 add start by Yutaka.Kuboshima
-    -- XXCMM:AFFダミー部門コードを取得
-    gv_aff_dept_dummy_cd := FND_PROFILE.VALUE(cv_aff_dept_dummy_cd);
-    -- XXCMM:AFFダミー部門コードの取得内容チェック
-    IF ( gv_aff_dept_dummy_cd IS NULL) THEN
+-- Ver1.12 del start
+--    -- XXCMM:AFFダミー部門コードを取得
+--    gv_aff_dept_dummy_cd := FND_PROFILE.VALUE(cv_aff_dept_dummy_cd);
+--    -- XXCMM:AFFダミー部門コードの取得内容チェック
+--    IF ( gv_aff_dept_dummy_cd IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name_xxcmm    -- マスタ
+--                     ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
+--                     ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
+--                     ,iv_token_value1 => cv_tvl_dummy_code    -- 値      :AFFダミー部門コード
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+-- Ver1.12 del end
+-- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
+-- Ver1.12 add start
+    -- XXCMM:グリーンバリュー部門コードを取得
+    gv_gv_bumon_cd := FND_PROFILE.VALUE(cv_pro_gv_bumon_cd);
+    -- XXCMM:グリーンバリューの取得内容チェック
+    IF ( gv_gv_bumon_cd IS NULL) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name_xxcmm    -- マスタ
                      ,iv_name         => cv_msg_00002         -- エラー  :プロファイル取得エラー
                      ,iv_token_name1  => cv_tok_ng_profile    -- トークン:NG_PROFILE
-                     ,iv_token_value1 => cv_tvl_dummy_code    -- 値      :AFFダミー部門コード
+                     ,iv_token_value1 => cv_tvl_gv_bumon_cd   -- 値      :グリーンバリュー部門コード
                    );
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
--- 2009/04/20 Ver1.3 add end by Yutaka.Kuboshima
+-- Ver1.12 add end
     --==============================================================
     --２．CSVファイル存在チェックを行います。
     --==============================================================
@@ -344,10 +403,12 @@ AS
     gv_process_date := TO_CHAR(xxccp_common_pkg2.get_process_date, cv_date_format);
 --
 -- 2011/03/23 Ver1.10 add start by Naoki.Horigome
-    --==============================================================
-    --４．翌業務日付を取得します。
-    --==============================================================
-    gv_next_proc_date := TO_CHAR(xxccp_common_pkg2.get_process_date + 1, cv_date_format2);
+-- Ver1.12 del start
+--    --==============================================================
+--    --４．翌業務日付を取得します。
+--    --==============================================================
+--    gv_next_proc_date := TO_CHAR(xxccp_common_pkg2.get_process_date + 1, cv_date_format2);
+-- Ver1.12 del end
 -- 2011/03/23 Ver1.10 add end   by Naoki.Horigome
 --
     --==============================================================
@@ -661,104 +722,137 @@ AS
        id_last_update_date_from DATE
       ,id_last_update_date_to   DATE)
     IS
-      SELECT xhdv.dpt6_cd                  dpt_cd                 -- 部門コード
-            ,xhdv.dpt6_name                dpt_name               -- 部門名称
-            ,xhdv.dpt6_abbreviate          dpt_abbreviate         -- 部門略称
--- 2009/10/02 Ver1.9 mod start by Shigeto.Niki
---             ,xhdv.dpt6_sort_num            dpt_sort_num           -- 並び順
-            ,xhdv.dpt6_div                 dpt_div                -- 部門区分
---             ,xhdv.dpt6_old_cd              district_cd            -- 地区コード
-               -- 最新本部コードを取得
-            ,  CASE
-                 WHEN (xhdv.dpt6_start_date_active IS NULL) THEN xhdv.dpt6_old_cd  --新本部コード
-                 WHEN (xhdv.dpt6_start_date_active <= TO_CHAR(id_last_update_date_to + 1, cv_date_format2 ) )
-                                                            THEN xhdv.dpt6_new_cd  --新本部コード
-                 ELSE                                            xhdv.dpt6_old_cd  --旧本部コード
-               END                                           AS  main_base_code    --最新本部コード
--- 2009/10/02 Ver1.9 mod end by Shigeto.Niki            
-            ,xhdv.last_update_date         xhdv_last_update_date  -- 最終更新日
-            ,hzac.attribute8               user_div               -- 利用者区分
-            ,hzac.customer_class_code      customer_class_code    -- 顧客区分
-            ,xpty.start_date_active        start_date_active      -- 適用開始日
-            ,xpty.end_date_active          end_date_active        -- 適用終了日
-            ,xpty.party_name               party_name             -- 正式名
-            ,xpty.party_short_name         party_short_name       -- 略称
-            ,xpty.party_name_alt           party_name_alt         -- カナ名
-            ,xpty.address_line1            address_line1          -- 住所１
-            ,xpty.address_line2            address_line2          -- 住所２
-            ,xpty.zip                      zip                    -- 郵便番号
-            ,xpty.phone                    phone                  -- 電話番号
-            ,xpty.fax                      fax                    -- FAX番号
-            ,xpty.last_update_date         xpty_last_update_date  -- 最終更新日
-            ,xhdv.flex_value_set_id        flex_value_set_id      -- 値セットID
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-            ,xca.stop_approval_date        stop_approval_date     -- 中止決裁日
-            ,hp.duns_number_c              customer_status        -- 顧客ステータス
-            ,hp.last_update_date           hp_last_update_date    -- 最終更新日
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
---
--- 2009/09/02 Ver1.8 modify start by Yutaka.Kuboshima
---      FROM   xxcmm_hierarchy_dept_v   xhdv  -- (TABLE)部門階層ビュー
-      FROM   xxcmm_hierarchy_dept_all_v xhdv  -- (TABLE)全部門階層ビュー
--- 2009/09/02 Ver1.8 modify end by Yutaka.Kuboshima
---
-            ,hz_cust_accounts         hzac  -- (TABLE)顧客マスタ
-            ,xxcmn_parties            xpty  -- (TABLE)パーティアドオンマスタ
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-            ,xxcmm_cust_accounts      xca   -- (TABLE)顧客追加情報マスタ
-            ,hz_parties               hp    -- (TABLE)パーティマスタ
--- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
-            ,fnd_lookup_values        flv   -- (TABLE)クイックコード
--- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-      WHERE  xhdv.dpt6_cd             = hzac.account_number
-      AND    hzac.customer_class_code = '1' -- 抽出対象：拠点
-      AND    hzac.party_id            = xpty.party_id
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-      AND    hzac.party_id            = hp.party_id
-      AND    hzac.cust_account_id     = xca.customer_id
--- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
-      AND    flv.lookup_type(+)       = cv_lookup_area
-      AND    flv.enabled_flag(+)      = cv_y_flag
-      AND    flv.language(+)          = cv_language_ja
-      AND    flv.lookup_code(+)       = SUBSTRB((CASE
-                                                   WHEN (xhdv.dpt6_start_date_active IS NULL) THEN xhdv.dpt6_old_cd
-                                                   WHEN (xhdv.dpt6_start_date_active <= TO_CHAR(id_last_update_date_to + 1,
-                                                                                                  cv_date_format2 ) )
-                                                                                              THEN xhdv.dpt6_new_cd
-                                                   ELSE                                            xhdv.dpt6_old_cd
-                                                 END), 1, 4)
--- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
--- 2009/06/05 Ver1.6 delete start by Yutaka.Kuboshima
---      AND    xpty.start_date_active BETWEEN id_last_update_date_from
---                                        AND id_last_update_date_to
--- 2009/06/05 Ver1.6 delete end by Yutaka.Kuboshima
-      AND    (  ( xhdv.last_update_date BETWEEN id_last_update_date_from
-                                            AND id_last_update_date_to  )
-             OR ( xpty.last_update_date BETWEEN id_last_update_date_from 
-                                            AND id_last_update_date_to  )
--- 2009/10/02 Ver1.9 add start by Shigeto.Niki
-             OR ( xhdv.dpt6_start_date_active BETWEEN TO_CHAR(id_last_update_date_from + 1, cv_date_format2 ) 
-                                                  AND TO_CHAR(id_last_update_date_to + 1, cv_date_format2 ) ) 
--- 2009/10/02 Ver1.9 add end by Shigeto.Niki
--- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
-             OR ( flv.last_update_date  BETWEEN id_last_update_date_from 
-                                            AND id_last_update_date_to  )
--- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-             OR (  hp.last_update_date  BETWEEN id_last_update_date_from
-                                            AND id_last_update_date_to
-               AND hp.duns_number_c = cv_cust_sts_stop ) )
--- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
--- 2009/06/09 Ver1.7 add start by Yutaka.Kuboshima
-      AND    xpty.start_date_active = (SELECT MAX(xpv.start_date_active)
-                                       FROM xxcmn_parties xpv
-                                       WHERE xpv.party_id = xpty.party_id)
--- 2009/06/09 Ver1.7 add end by Yutaka.Kuboshima
+-- Ver1.12 mod start
+--      SELECT xhdv.dpt6_cd                  dpt_cd                 -- 部門コード
+--            ,xhdv.dpt6_name                dpt_name               -- 部門名称
+--            ,xhdv.dpt6_abbreviate          dpt_abbreviate         -- 部門略称
+---- 2009/10/02 Ver1.9 mod start by Shigeto.Niki
+----             ,xhdv.dpt6_sort_num            dpt_sort_num           -- 並び順
+--            ,xhdv.dpt6_div                 dpt_div                -- 部門区分
+----             ,xhdv.dpt6_old_cd              district_cd            -- 地区コード
+--               -- 最新本部コードを取得
+--            ,  CASE
+--                 WHEN (xhdv.dpt6_start_date_active IS NULL) THEN xhdv.dpt6_old_cd  --新本部コード
+--                 WHEN (xhdv.dpt6_start_date_active <= TO_CHAR(id_last_update_date_to + 1, cv_date_format2 ) )
+--                                                            THEN xhdv.dpt6_new_cd  --新本部コード
+--                 ELSE                                            xhdv.dpt6_old_cd  --旧本部コード
+--               END                                           AS  main_base_code    --最新本部コード
+---- 2009/10/02 Ver1.9 mod end by Shigeto.Niki            
+--            ,xhdv.last_update_date         xhdv_last_update_date  -- 最終更新日
+--            ,hzac.attribute8               user_div               -- 利用者区分
+--            ,hzac.customer_class_code      customer_class_code    -- 顧客区分
+--            ,xpty.start_date_active        start_date_active      -- 適用開始日
+--            ,xpty.end_date_active          end_date_active        -- 適用終了日
+--            ,xpty.party_name               party_name             -- 正式名
+--            ,xpty.party_short_name         party_short_name       -- 略称
+--            ,xpty.party_name_alt           party_name_alt         -- カナ名
+--            ,xpty.address_line1            address_line1          -- 住所１
+--            ,xpty.address_line2            address_line2          -- 住所２
+--            ,xpty.zip                      zip                    -- 郵便番号
+--            ,xpty.phone                    phone                  -- 電話番号
+--            ,xpty.fax                      fax                    -- FAX番号
+--            ,xpty.last_update_date         xpty_last_update_date  -- 最終更新日
+--            ,xhdv.flex_value_set_id        flex_value_set_id      -- 値セットID
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+--            ,xca.stop_approval_date        stop_approval_date     -- 中止決裁日
+--            ,hp.duns_number_c              customer_status        -- 顧客ステータス
+--            ,hp.last_update_date           hp_last_update_date    -- 最終更新日
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+----
+---- 2009/09/02 Ver1.8 modify start by Yutaka.Kuboshima
+----      FROM   xxcmm_hierarchy_dept_v   xhdv  -- (TABLE)部門階層ビュー
+--      FROM   xxcmm_hierarchy_dept_all_v xhdv  -- (TABLE)全部門階層ビュー
+---- 2009/09/02 Ver1.8 modify end by Yutaka.Kuboshima
+----
+--            ,hz_cust_accounts         hzac  -- (TABLE)顧客マスタ
+--            ,xxcmn_parties            xpty  -- (TABLE)パーティアドオンマスタ
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+--            ,xxcmm_cust_accounts      xca   -- (TABLE)顧客追加情報マスタ
+--            ,hz_parties               hp    -- (TABLE)パーティマスタ
+---- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
+--            ,fnd_lookup_values        flv   -- (TABLE)クイックコード
+---- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+--      WHERE  xhdv.dpt6_cd             = hzac.account_number
+--      AND    hzac.customer_class_code = '1' -- 抽出対象：拠点
+--      AND    hzac.party_id            = xpty.party_id
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+--      AND    hzac.party_id            = hp.party_id
+--      AND    hzac.cust_account_id     = xca.customer_id
+---- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
+--      AND    flv.lookup_type(+)       = cv_lookup_area
+--      AND    flv.enabled_flag(+)      = cv_y_flag
+--      AND    flv.language(+)          = cv_language_ja
+--      AND    flv.lookup_code(+)       = SUBSTRB((CASE
+--                                                   WHEN (xhdv.dpt6_start_date_active IS NULL) THEN xhdv.dpt6_old_cd
+--                                                   WHEN (xhdv.dpt6_start_date_active <= TO_CHAR(id_last_update_date_to + 1,
+--                                                                                                  cv_date_format2 ) )
+--                                                                                              THEN xhdv.dpt6_new_cd
+--                                                   ELSE                                            xhdv.dpt6_old_cd
+--                                                 END), 1, 4)
+---- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+---- 2009/06/05 Ver1.6 delete start by Yutaka.Kuboshima
+----      AND    xpty.start_date_active BETWEEN id_last_update_date_from
+----                                        AND id_last_update_date_to
+---- 2009/06/05 Ver1.6 delete end by Yutaka.Kuboshima
+--      AND    (  ( xhdv.last_update_date BETWEEN id_last_update_date_from
+--                                            AND id_last_update_date_to  )
+--             OR ( xpty.last_update_date BETWEEN id_last_update_date_from 
+--                                            AND id_last_update_date_to  )
+---- 2009/10/02 Ver1.9 add start by Shigeto.Niki
+--             OR ( xhdv.dpt6_start_date_active BETWEEN TO_CHAR(id_last_update_date_from + 1, cv_date_format2 ) 
+--                                                  AND TO_CHAR(id_last_update_date_to + 1, cv_date_format2 ) ) 
+---- 2009/10/02 Ver1.9 add end by Shigeto.Niki
+---- 2011/11/11 Ver1.11 add start by Atsushi.Shirakawa
+--             OR ( flv.last_update_date  BETWEEN id_last_update_date_from 
+--                                            AND id_last_update_date_to  )
+---- 2011/11/11 Ver1.11 add end by Atsushi.Shirakawa
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+--             OR (  hp.last_update_date  BETWEEN id_last_update_date_from
+--                                            AND id_last_update_date_to
+--               AND hp.duns_number_c = cv_cust_sts_stop ) )
+---- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
+---- 2009/06/09 Ver1.7 add start by Yutaka.Kuboshima
+--      AND    xpty.start_date_active = (SELECT MAX(xpv.start_date_active)
+--                                       FROM xxcmn_parties xpv
+--                                       WHERE xpv.party_id = xpty.party_id)
+---- 2009/06/09 Ver1.7 add end by Yutaka.Kuboshima
+--      ORDER BY
+--             xhdv.dpt6_cd ASC
+--      ;
+      SELECT DECODE(hca.attribute8
+                   ,cv_user_div_base  ,cv_level_base -- 拠点の場合は「2」
+                   ,cv_level_other                   -- 拠点以外は「4」
+             )                           AS blg_level           -- 所属レベル
+            ,SUBSTRB(hl.address3, 1, 2)  AS brc_cd              -- 支店CD
+            ,hca.account_number          AS dpt_cd              -- 営業所CD
+            ,hca.account_name            AS dpt_short_name      -- (HOST)支店出張所名略称
+            ,hp.party_name               AS dpt_name            -- (HOST)支店営業所名
+            ,DECODE(hca.account_number
+                   ,gv_gv_bumon_cd  ,cv_comp_cd_gv   -- GVの場合は「G」
+                   ,cv_comp_cd_other                 -- GV以外は「I」
+             )                           AS comp_cd             -- 会社CD
+      FROM   hz_cust_accounts         hca   -- 顧客マスタ
+            ,hz_parties               hp    -- パーティマスタ
+            ,hz_party_sites           hps   -- パーティサイト
+            ,hz_cust_acct_sites       hcas  -- 顧客サイト
+            ,hz_locations             hl    -- 顧客事業所
+      WHERE  hca.party_id             = hp.party_id
+      AND    hca.customer_class_code  = cv_cust_class_base    -- 拠点
+      AND    hca.cust_account_id      = hcas.cust_account_id
+      AND    hcas.party_site_id       = hps.party_site_id
+      AND    hps.location_id          = hl.location_id
+      AND    (  ( hca.last_update_date BETWEEN id_last_update_date_from
+                                           AND id_last_update_date_to  )
+             OR ( hp.last_update_date  BETWEEN id_last_update_date_from 
+                                           AND id_last_update_date_to  )
+             OR ( hl.last_update_date  BETWEEN id_last_update_date_from
+                                           AND id_last_update_date_to  )  )
       ORDER BY
-             xhdv.dpt6_cd ASC
+             hca.account_number ASC
       ;
+-- Ver1.12 mod end
 --
   BEGIN
 --
@@ -855,46 +949,54 @@ AS
     -- 文字
     cv_sep                  CONSTANT VARCHAR2(1)   := ',';          -- 区切り文字
     cv_dqu                  CONSTANT VARCHAR2(1)   := '"';          -- ダブルクォーテーション
-    cv_hyphen               CONSTANT VARCHAR2(1)   := '-';          -- ハイフン
-    -- デフォルト文字数
-    cv_def_phone_len        CONSTANT NUMBER        := 6; 
+-- Ver1.12 mod start
+--    cv_hyphen               CONSTANT VARCHAR2(1)   := '-';          -- ハイフン
+--    -- デフォルト文字数
+--    cv_def_phone_len        CONSTANT NUMBER        := 6; 
+--    -- 項目
+--    cv_term_code            CONSTANT VARCHAR2(4)   := '0000';       -- チームコード
+--    cv_stop_using_flg       CONSTANT VARCHAR2(1)   := '0';          -- 利用停止フラグ
+--    cv_create_prep_code     CONSTANT VARCHAR2(5)   := '99999';      -- 作成担当者コード
+--    cv_create_dept          CONSTANT VARCHAR2(6)   := '999999';     -- 作成部署
+--    cv_create_prog_id       CONSTANT VARCHAR2(10)  := 'BUKKEN_2UD'; -- 作成プログラムID
+--    cv_update_prep_code     CONSTANT VARCHAR2(5)   := '99999';      -- 更新担当者コード
+--    cv_update_dept          CONSTANT VARCHAR2(6)   := '999999';     -- 更新部署
+--    cv_update_prog_id       CONSTANT VARCHAR2(10)  := 'BUKKEN_2UD'; -- 更新プログラムID
+--    -- フォーマット
+---- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
+----    cv_last_update_fmt      CONSTANT VARCHAR2(10)  := 'DDHH24MISS'; -- 最終更新日時時分秒フォーマット
+--    cv_last_update_fmt      CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS'; -- 最終更新日時年月日時分秒フォーマット
+---- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
     -- 項目
-    cv_term_code            CONSTANT VARCHAR2(4)   := '0000';       -- チームコード
-    cv_stop_using_flg       CONSTANT VARCHAR2(1)   := '0';          -- 利用停止フラグ
-    cv_create_prep_code     CONSTANT VARCHAR2(5)   := '99999';      -- 作成担当者コード
-    cv_create_dept          CONSTANT VARCHAR2(6)   := '999999';     -- 作成部署
-    cv_create_prog_id       CONSTANT VARCHAR2(10)  := 'BUKKEN_2UD'; -- 作成プログラムID
-    cv_update_prep_code     CONSTANT VARCHAR2(5)   := '99999';      -- 更新担当者コード
-    cv_update_dept          CONSTANT VARCHAR2(6)   := '999999';     -- 更新部署
-    cv_update_prog_id       CONSTANT VARCHAR2(10)  := 'BUKKEN_2UD'; -- 更新プログラムID
-    -- フォーマット
--- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
---    cv_last_update_fmt      CONSTANT VARCHAR2(10)  := 'DDHH24MISS'; -- 最終更新日時時分秒フォーマット
-    cv_last_update_fmt      CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS'; -- 最終更新日時年月日時分秒フォーマット
--- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
+    cv_delete_flg             CONSTANT VARCHAR2(1)   := '0';          -- 削除フラグ
+-- Ver1.12 mod end
     -- *** ローカル変数 ***
     lv_outline              VARCHAR2(2400);                         -- 出力内容(行)
     ln_idx                  NUMBER;
-    -- 一時変数
-    ln_phone_st             NUMBER; -- 抽出する電話番号の開始位置
-    ln_phone_len            NUMBER; -- 抽出する電話番号の文字数
-    ln_hyphen_idx           NUMBER; -- 次ハイフンの位置
+-- Ver1.12 del start
+--    -- 一時変数
+--    ln_phone_st             NUMBER; -- 抽出する電話番号の開始位置
+--    ln_phone_len            NUMBER; -- 抽出する電話番号の文字数
+--    ln_hyphen_idx           NUMBER; -- 次ハイフンの位置
+-- Ver1.12 del end
     -- 項目
-    lv_dept_code            VARCHAR2(4);                -- 所属コード
-    lv_address_line         VARCHAR2(60);               -- 所属住所
-    lv_phone_1              xxcmn_parties.phone%TYPE;   -- 電話番号1
-    lv_phone_2              xxcmn_parties.phone%TYPE;   -- 電話番号2
-    lv_phone_3              xxcmn_parties.phone%TYPE;   -- 電話番号3
-    lv_district_code        VARCHAR2(6);                -- 地区コード
-    lv_district_name        VARCHAR2(16);               -- 地区名称
--- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
---    lv_last_update_date     VARCHAR2(8);                -- 最終更新日時時分秒
-    lv_last_update_date     VARCHAR2(14);                -- 最終更新日時年月日時分秒時分秒
--- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
---
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-    lv_end_date_active      VARCHAR2(8);
--- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
+    lv_dept_code            VARCHAR2(4);                -- 営業所CD
+-- Ver1.12 del start
+--    lv_address_line         VARCHAR2(60);               -- 所属住所
+--    lv_phone_1              xxcmn_parties.phone%TYPE;   -- 電話番号1
+--    lv_phone_2              xxcmn_parties.phone%TYPE;   -- 電話番号2
+--    lv_phone_3              xxcmn_parties.phone%TYPE;   -- 電話番号3
+--    lv_district_code        VARCHAR2(6);                -- 地区コード
+--    lv_district_name        VARCHAR2(16);               -- 地区名称
+---- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
+----    lv_last_update_date     VARCHAR2(8);                -- 最終更新日時時分秒
+--    lv_last_update_date     VARCHAR2(14);                -- 最終更新日時年月日時分秒時分秒
+---- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
+----
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+--    lv_end_date_active      VARCHAR2(8);
+---- 2009/06/05 Ver1.6 add end by Yutaka.Kuboshima
+-- Ver1.12 del end
 --
   BEGIN
 --
@@ -909,211 +1011,247 @@ AS
     --==============================================================
     <<output_csv_loop>>
     FOR ln_idx IN 1 .. gn_target_cnt LOOP
-      -- ■ 所属コードを取得
+      -- ■ 営業所CDを取得
       lv_dept_code := SUBSTRB(gt_out_tab(ln_idx).dpt_cd, 1, 4);
 --
-      -- ■ 所属住所を取得
-      lv_address_line := SUBSTRB(gt_out_tab(ln_idx).address_line1 || gt_out_tab(ln_idx).address_line2, 1, 60);
---
-      -- ■ 市外局番を取得
-      IF ( gt_out_tab(ln_idx).phone IS NULL ) THEN
-        lv_phone_1    := NULL;
-      ELSE
-        -- 抽出開始位置を算出
-        ln_phone_st   := 1;
-        -- "-"の位置を取得
-        ln_hyphen_idx := INSTRB(gt_out_tab(ln_idx).phone, cv_hyphen, ln_phone_st, 1);
-        -- パーティアドオンの電話番号の市外局番を取得
-        -- ･"-"が見つかった   ⇒ 開始位置0"-"の位置までを抽出
-        -- ･"-"が見つからない ⇒ 6文字固定
-        IF ( ln_hyphen_idx > 0 ) THEN
-          ln_phone_len := ln_hyphen_idx; 
-          lv_phone_1   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, ln_phone_len); 
-        ELSE
-          lv_phone_1   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, cv_def_phone_len);
-        END IF;
-      END IF;
---
-      -- ■ 市内局番を取得
-      IF ( lv_phone_1 IS NULL ) THEN
-        lv_phone_2    := NULL;
-      ELSE
-        -- 抽出開始位置を算出
-        ln_phone_st   := ln_phone_st + LENGTHB(lv_phone_1);
-        -- "-"の位置を取得(市外局番の次文字以降)
-        ln_hyphen_idx := INSTRB(gt_out_tab(ln_idx).phone, cv_hyphen, ln_phone_st, 1);
-        -- パーティアドオンの電話番号の市内局番を取得
-        -- ･"-"が見つかった   ⇒ 市外局番の次文字0"-"の位置
-        -- ･"-"が見つからない ⇒ 6文字固定
-        IF ( ln_hyphen_idx > 0 ) THEN
-          ln_phone_len := ln_hyphen_idx - ln_phone_st + 1; 
-          lv_phone_2   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, ln_phone_len);
-        ELSE
-          lv_phone_2   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, cv_def_phone_len);
-        END IF;
-      END IF;
---
-      -- ■ 加入者番号を取得
-      IF ( lv_phone_2 IS NULL ) THEN
-        lv_phone_3   := NULL;
-      ELSE
-        -- 抽出開始位置を算出
-        ln_phone_st  := ln_phone_st + LENGTHB(lv_phone_2);
-        -- パーティアドオンの電話番号の加入者番号を取得(市内局番の次文字0末端)
-        ln_phone_len := LENGTHB(gt_out_tab(ln_idx).phone) - ln_phone_st + 1;
-        lv_phone_3   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, ln_phone_len);
-      END IF;
---
-      -- ■ 地区名称を取得
--- 2009/10/13 Ver1.9 mod start by Shigeto.Niki
---        IF ( gt_out_tab(ln_idx).district_cd IS NOT NULL ) THEN
-        IF ( gt_out_tab(ln_idx).main_base_code IS NOT NULL ) THEN
--- 2009/10/13 Ver1.9 mod end by Shigeto.Niki
-        BEGIN
--- 2009/05/21 Ver1.5 modify start by Yutaka.Kuboshima
---          SELECT SUBSTRB(ffvl.attribute4, 1, 16)
---          INTO   lv_district_name
---          FROM   fnd_flex_values   ffvl
---          WHERE  ffvl.flex_value_set_id = gt_out_tab(ln_idx).flex_value_set_id
---          AND    ffvl.flex_value        = gt_out_tab(ln_idx).district_cd
--- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
---        SELECT SUBSTRB(flv.meaning, 1, 16)
-        SELECT NVL(SUBSTRB(flv.meaning, 1, 16), cv_asterisk)
--- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
-        INTO lv_district_name
-        FROM fnd_lookup_values flv
-        WHERE flv.lookup_type  = cv_lookup_area
-          AND flv.enabled_flag = cv_y_flag
-          AND flv.language     = cv_language_ja
--- 2009/10/13 Ver1.9 mod start by Shigeto.Niki
---          AND flv.lookup_code  = gt_out_tab(ln_idx).district_cd
-          AND flv.lookup_code  = SUBSTRB(gt_out_tab(ln_idx).main_base_code, 1 ,4)
--- 2009/10/13 Ver1.9 mod end by Shigeto.Niki
-          ;
--- 2009/05/21 Ver1.5 modify end by Yutaka.Kuboshima
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
--- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
---            lv_district_name := '';
-            lv_district_name := cv_asterisk;
--- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
-          WHEN OTHERS THEN
-            RAISE global_api_others_expt;
-        END;
-      ELSE
--- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
---        lv_district_name := '';
-        lv_district_name := cv_asterisk;
--- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
-      END IF;
---
-      -- ■ 最終更新日時時分秒を取得
-      IF ( gt_out_tab(ln_idx).xhdv_last_update_date > gt_out_tab(ln_idx).xpty_last_update_date ) THEN
--- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
---        lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xhdv_last_update_date, cv_last_update_fmt);
-        IF ( gt_out_tab(ln_idx).xhdv_last_update_date > gt_out_tab(ln_idx).hp_last_update_date ) THEN
-          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xhdv_last_update_date, cv_last_update_fmt);
-        ELSE
-          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).hp_last_update_date, cv_last_update_fmt);
-        END IF;
--- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
-      ELSE
--- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
---        lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xpty_last_update_date, cv_last_update_fmt);
-        IF ( gt_out_tab(ln_idx).xpty_last_update_date > gt_out_tab(ln_idx).hp_last_update_date ) THEN
-          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xpty_last_update_date, cv_last_update_fmt);
-        ELSE
-          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).hp_last_update_date, cv_last_update_fmt);
-        END IF;
--- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
-      END IF;
---
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-      -- ■ 適用終了日を取得
-      IF ( gt_out_tab(ln_idx).customer_status = cv_cust_sts_stop ) THEN
-        lv_end_date_active := TO_CHAR(gt_out_tab(ln_idx).stop_approval_date, cv_date_format2);
-      ELSE
-        lv_end_date_active := TO_CHAR(gt_out_tab(ln_idx).end_date_active, cv_date_format2);
-      END IF;
--- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
---
-      -- ■ 出力データ作成
-      -- 1.利用者区分
-      lv_outline := cv_dqu || SUBSTRB(gt_out_tab(ln_idx).user_div, 1, 2) || cv_dqu;
-      -- 2.所属コード
+-- Ver1.12 mod start
+--      -- ■ 所属住所を取得
+--      lv_address_line := SUBSTRB(gt_out_tab(ln_idx).address_line1 || gt_out_tab(ln_idx).address_line2, 1, 60);
+----
+--      -- ■ 市外局番を取得
+--      IF ( gt_out_tab(ln_idx).phone IS NULL ) THEN
+--        lv_phone_1    := NULL;
+--      ELSE
+--        -- 抽出開始位置を算出
+--        ln_phone_st   := 1;
+--        -- "-"の位置を取得
+--        ln_hyphen_idx := INSTRB(gt_out_tab(ln_idx).phone, cv_hyphen, ln_phone_st, 1);
+--        -- パーティアドオンの電話番号の市外局番を取得
+--        -- ･"-"が見つかった   ⇒ 開始位置0"-"の位置までを抽出
+--        -- ･"-"が見つからない ⇒ 6文字固定
+--        IF ( ln_hyphen_idx > 0 ) THEN
+--          ln_phone_len := ln_hyphen_idx; 
+--          lv_phone_1   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, ln_phone_len); 
+--        ELSE
+--          lv_phone_1   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, cv_def_phone_len);
+--        END IF;
+--      END IF;
+----
+--      -- ■ 市内局番を取得
+--      IF ( lv_phone_1 IS NULL ) THEN
+--        lv_phone_2    := NULL;
+--      ELSE
+--        -- 抽出開始位置を算出
+--        ln_phone_st   := ln_phone_st + LENGTHB(lv_phone_1);
+--        -- "-"の位置を取得(市外局番の次文字以降)
+--        ln_hyphen_idx := INSTRB(gt_out_tab(ln_idx).phone, cv_hyphen, ln_phone_st, 1);
+--        -- パーティアドオンの電話番号の市内局番を取得
+--        -- ･"-"が見つかった   ⇒ 市外局番の次文字0"-"の位置
+--        -- ･"-"が見つからない ⇒ 6文字固定
+--        IF ( ln_hyphen_idx > 0 ) THEN
+--          ln_phone_len := ln_hyphen_idx - ln_phone_st + 1; 
+--          lv_phone_2   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, ln_phone_len);
+--        ELSE
+--          lv_phone_2   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, cv_def_phone_len);
+--        END IF;
+--      END IF;
+----
+--      -- ■ 加入者番号を取得
+--      IF ( lv_phone_2 IS NULL ) THEN
+--        lv_phone_3   := NULL;
+--      ELSE
+--        -- 抽出開始位置を算出
+--        ln_phone_st  := ln_phone_st + LENGTHB(lv_phone_2);
+--        -- パーティアドオンの電話番号の加入者番号を取得(市内局番の次文字0末端)
+--        ln_phone_len := LENGTHB(gt_out_tab(ln_idx).phone) - ln_phone_st + 1;
+--        lv_phone_3   := SUBSTRB(gt_out_tab(ln_idx).phone, ln_phone_st, ln_phone_len);
+--      END IF;
+----
+--      -- ■ 地区名称を取得
+---- 2009/10/13 Ver1.9 mod start by Shigeto.Niki
+----        IF ( gt_out_tab(ln_idx).district_cd IS NOT NULL ) THEN
+--        IF ( gt_out_tab(ln_idx).main_base_code IS NOT NULL ) THEN
+---- 2009/10/13 Ver1.9 mod end by Shigeto.Niki
+--        BEGIN
+---- 2009/05/21 Ver1.5 modify start by Yutaka.Kuboshima
+----          SELECT SUBSTRB(ffvl.attribute4, 1, 16)
+----          INTO   lv_district_name
+----          FROM   fnd_flex_values   ffvl
+----          WHERE  ffvl.flex_value_set_id = gt_out_tab(ln_idx).flex_value_set_id
+----          AND    ffvl.flex_value        = gt_out_tab(ln_idx).district_cd
+---- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
+----        SELECT SUBSTRB(flv.meaning, 1, 16)
+--        SELECT NVL(SUBSTRB(flv.meaning, 1, 16), cv_asterisk)
+---- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
+--        INTO lv_district_name
+--        FROM fnd_lookup_values flv
+--        WHERE flv.lookup_type  = cv_lookup_area
+--          AND flv.enabled_flag = cv_y_flag
+--          AND flv.language     = cv_language_ja
+---- 2009/10/13 Ver1.9 mod start by Shigeto.Niki
+----          AND flv.lookup_code  = gt_out_tab(ln_idx).district_cd
+--          AND flv.lookup_code  = SUBSTRB(gt_out_tab(ln_idx).main_base_code, 1 ,4)
+---- 2009/10/13 Ver1.9 mod end by Shigeto.Niki
+--          ;
+---- 2009/05/21 Ver1.5 modify end by Yutaka.Kuboshima
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+---- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
+----            lv_district_name := '';
+--            lv_district_name := cv_asterisk;
+---- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
+--          WHEN OTHERS THEN
+--            RAISE global_api_others_expt;
+--        END;
+--      ELSE
+---- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
+----        lv_district_name := '';
+--        lv_district_name := cv_asterisk;
+---- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
+--      END IF;
+----
+--      -- ■ 最終更新日時時分秒を取得
+--      IF ( gt_out_tab(ln_idx).xhdv_last_update_date > gt_out_tab(ln_idx).xpty_last_update_date ) THEN
+---- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
+----        lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xhdv_last_update_date, cv_last_update_fmt);
+--        IF ( gt_out_tab(ln_idx).xhdv_last_update_date > gt_out_tab(ln_idx).hp_last_update_date ) THEN
+--          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xhdv_last_update_date, cv_last_update_fmt);
+--        ELSE
+--          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).hp_last_update_date, cv_last_update_fmt);
+--        END IF;
+---- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
+--      ELSE
+---- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
+----        lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xpty_last_update_date, cv_last_update_fmt);
+--        IF ( gt_out_tab(ln_idx).xpty_last_update_date > gt_out_tab(ln_idx).hp_last_update_date ) THEN
+--          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).xpty_last_update_date, cv_last_update_fmt);
+--        ELSE
+--          lv_last_update_date := TO_CHAR(gt_out_tab(ln_idx).hp_last_update_date, cv_last_update_fmt);
+--        END IF;
+---- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
+--      END IF;
+----
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+--      -- ■ 適用終了日を取得
+--      IF ( gt_out_tab(ln_idx).customer_status = cv_cust_sts_stop ) THEN
+--        lv_end_date_active := TO_CHAR(gt_out_tab(ln_idx).stop_approval_date, cv_date_format2);
+--      ELSE
+--        lv_end_date_active := TO_CHAR(gt_out_tab(ln_idx).end_date_active, cv_date_format2);
+--      END IF;
+---- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
+----
+--      -- ■ 出力データ作成
+--      -- 1.利用者区分
+--      lv_outline := cv_dqu || SUBSTRB(gt_out_tab(ln_idx).user_div, 1, 2) || cv_dqu;
+--      -- 2.所属コード
+--      lv_outline := lv_outline || cv_sep || cv_dqu || lv_dept_code || cv_dqu;
+--      -- 3.チームコード
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_term_code  || cv_dqu;
+--      -- 4.適用開始日
+---- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
+----      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).start_date_active, cv_date_format2);
+--      lv_outline := lv_outline || cv_sep || gv_next_proc_date;
+---- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
+--      -- 5.適用終了日
+---- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
+----      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).end_date_active, cv_date_format2);
+--      lv_outline := lv_outline || cv_sep || lv_end_date_active;
+---- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
+--      -- 6.所属名（正式名）
+--      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).party_name, 1, 40) || cv_dqu;
+--      -- 7.所属名（略称）
+--      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).party_short_name, 1, 20) || cv_dqu;
+--      -- 8.所属名（カナ）
+--      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).party_name_alt, 1, 20) || cv_dqu;
+--      -- 9.チーム名（正式名）
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+--      -- 10.チーム名（略称）
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+--      -- 11.作業担当者コード１
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+--      -- 12.作業担当者コード２
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+--      -- 13.所属住所
+--      lv_outline := lv_outline || cv_sep || cv_dqu || lv_address_line || cv_dqu;
+--      -- 14.郵便番号
+---- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
+----      lv_outline := lv_outline || cv_sep || SUBSTRB(gt_out_tab(ln_idx).zip, 1, 20);
+--      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).zip, 1, 7) || cv_dqu;
+---- 2009/04/20 Ver1.3 modify end by Yutaka.Kuboshima
+--      -- 15.電話番号１
+--      lv_outline := lv_outline || cv_sep || cv_dqu || lv_phone_1 || cv_dqu;
+--      -- 16.電話番号２
+--      lv_outline := lv_outline || cv_sep || cv_dqu || lv_phone_2 || cv_dqu;
+--      -- 17.電話番号３
+--      lv_outline := lv_outline || cv_sep || cv_dqu || lv_phone_3 || cv_dqu;
+--      -- 18.ＦＡＸ番号
+--      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).fax, 1, 15) || cv_dqu;
+---- 2009/10/13 Ver1.9 mod start by Shigeto.Niki
+--      -- 19.地区コード
+----       lv_outline := lv_outline || cv_sep || cv_dqu || lv_district_code || cv_dqu;
+--      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).main_base_code, 1 ,6) || cv_dqu;
+---- 2009/10/13 Ver1.9 mod end by Shigeto.Niki
+--      -- 20.地区名称
+--      lv_outline := lv_outline || cv_sep || cv_dqu || lv_district_name || cv_dqu;
+--      -- 21.申請先コード
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+--      -- 22.依頼先利用者区分
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+--      -- 23.依頼先所属コード
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+--      -- 24.利用停止フラグ
+--      lv_outline := lv_outline || cv_sep || cv_stop_using_flg;
+--      -- 25.作成担当者コード
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_create_prep_code || cv_dqu;
+--      -- 26.作成部署
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_create_dept || cv_dqu;
+--      -- 27.作成プログラムＩＤ
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_create_prog_id || cv_dqu;
+--      -- 28.更新担当者コード
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_update_prep_code || cv_dqu;
+--      -- 29.更新部署コード
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_update_dept || cv_dqu;
+--      -- 30.更新プログラムＩＤ
+--      lv_outline := lv_outline || cv_sep || cv_dqu || cv_update_prog_id || cv_dqu;
+--      -- 31.作成日時時分秒
+--      lv_outline := lv_outline || cv_sep;
+--      -- 32.更新日時時分秒
+--      lv_outline := lv_outline || cv_sep || lv_last_update_date;
+      -- 所属レベル
+      lv_outline := cv_dqu || gt_out_tab(ln_idx).blg_level || cv_dqu;
+      -- 支店CD
+      lv_outline := lv_outline || cv_sep || cv_dqu || gt_out_tab(ln_idx).brc_cd || cv_dqu;
+      -- ブロック
+      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+      -- 営業所CD
       lv_outline := lv_outline || cv_sep || cv_dqu || lv_dept_code || cv_dqu;
-      -- 3.チームコード
-      lv_outline := lv_outline || cv_sep || cv_dqu || cv_term_code  || cv_dqu;
-      -- 4.適用開始日
--- 2011/03/23 Ver1.10 mod start by Naoki.Horigome
---      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).start_date_active, cv_date_format2);
-      lv_outline := lv_outline || cv_sep || gv_next_proc_date;
--- 2011/03/23 Ver1.10 mod end   by Naoki.Horigome
-      -- 5.適用終了日
--- 2009/06/05 Ver1.6 modify start by Yutaka.Kuboshima
---      lv_outline := lv_outline || cv_sep || TO_CHAR(gt_out_tab(ln_idx).end_date_active, cv_date_format2);
-      lv_outline := lv_outline || cv_sep || lv_end_date_active;
--- 2009/06/05 Ver1.6 modify end by Yutaka.Kuboshima
-      -- 6.所属名（正式名）
-      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).party_name, 1, 40) || cv_dqu;
-      -- 7.所属名（略称）
-      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).party_short_name, 1, 20) || cv_dqu;
-      -- 8.所属名（カナ）
-      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).party_name_alt, 1, 20) || cv_dqu;
-      -- 9.チーム名（正式名）
+      -- (HOST)支店出張所名略称
+      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).dpt_short_name, 1, 40) || cv_dqu;
+      -- (HOST)支店営業所名
+      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).dpt_name, 1, 40) || cv_dqu;
+      -- (HOST)出力順１
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
-      -- 10.チーム名（略称）
+      -- (HOST)出力順２
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
-      -- 11.作業担当者コード１
+      -- (HOST)出力順３
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
-      -- 12.作業担当者コード２
+      -- (HOST)旧支店
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
-      -- 13.所属住所
-      lv_outline := lv_outline || cv_sep || cv_dqu || lv_address_line || cv_dqu;
-      -- 14.郵便番号
--- 2009/04/20 Ver1.3 modify start by Yutaka.Kuboshima
---      lv_outline := lv_outline || cv_sep || SUBSTRB(gt_out_tab(ln_idx).zip, 1, 20);
-      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).zip, 1, 7) || cv_dqu;
--- 2009/04/20 Ver1.3 modify end by Yutaka.Kuboshima
-      -- 15.電話番号１
-      lv_outline := lv_outline || cv_sep || cv_dqu || lv_phone_1 || cv_dqu;
-      -- 16.電話番号２
-      lv_outline := lv_outline || cv_sep || cv_dqu || lv_phone_2 || cv_dqu;
-      -- 17.電話番号３
-      lv_outline := lv_outline || cv_sep || cv_dqu || lv_phone_3 || cv_dqu;
-      -- 18.ＦＡＸ番号
-      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).fax, 1, 15) || cv_dqu;
--- 2009/10/13 Ver1.9 mod start by Shigeto.Niki
-      -- 19.地区コード
---       lv_outline := lv_outline || cv_sep || cv_dqu || lv_district_code || cv_dqu;
-      lv_outline := lv_outline || cv_sep || cv_dqu || SUBSTRB(gt_out_tab(ln_idx).main_base_code, 1 ,6) || cv_dqu;
--- 2009/10/13 Ver1.9 mod end by Shigeto.Niki
-      -- 20.地区名称
-      lv_outline := lv_outline || cv_sep || cv_dqu || lv_district_name || cv_dqu;
-      -- 21.申請先コード
+      -- (HOST)旧出張所
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
-      -- 22.依頼先利用者区分
+      -- ホストデータ登録年月日８桁
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
-      -- 23.依頼先所属コード
+      -- ホストデータ更新年月日８桁
       lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
-      -- 24.利用停止フラグ
-      lv_outline := lv_outline || cv_sep || cv_stop_using_flg;
-      -- 25.作成担当者コード
-      lv_outline := lv_outline || cv_sep || cv_dqu || cv_create_prep_code || cv_dqu;
-      -- 26.作成部署
-      lv_outline := lv_outline || cv_sep || cv_dqu || cv_create_dept || cv_dqu;
-      -- 27.作成プログラムＩＤ
-      lv_outline := lv_outline || cv_sep || cv_dqu || cv_create_prog_id || cv_dqu;
-      -- 28.更新担当者コード
-      lv_outline := lv_outline || cv_sep || cv_dqu || cv_update_prep_code || cv_dqu;
-      -- 29.更新部署コード
-      lv_outline := lv_outline || cv_sep || cv_dqu || cv_update_dept || cv_dqu;
-      -- 30.更新プログラムＩＤ
-      lv_outline := lv_outline || cv_sep || cv_dqu || cv_update_prog_id || cv_dqu;
-      -- 31.作成日時時分秒
-      lv_outline := lv_outline || cv_sep;
-      -- 32.更新日時時分秒
-      lv_outline := lv_outline || cv_sep || lv_last_update_date;
+      -- 削除フラグ
+      lv_outline := lv_outline || cv_sep || cv_dqu || cv_delete_flg ||cv_dqu;
+      -- 会社コード
+      lv_outline := lv_outline || cv_sep || cv_dqu || gt_out_tab(ln_idx).comp_cd || cv_dqu;
+      -- 対応支店CD
+      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+      -- 対応出張所CD
+      lv_outline := lv_outline || cv_sep || cv_dqu || cv_dqu;
+-- Ver1.12 mod end
 --
       -- ■ 出力データをcsvファイルに出力する。
       BEGIN
@@ -1124,9 +1262,9 @@ AS
                           iv_application  => cv_app_name_xxcmm    -- マスタ
                          ,iv_name         => cv_msg_00009         -- エラー  :CSVデータ出力エラー
                          ,iv_token_name1  => cv_tok_ng_word       -- トークン:NG_WORD
-                         ,iv_token_value1 => cv_tvl_dept_code     -- 値      :所属コード
+                         ,iv_token_value1 => cv_tvl_dept_code     -- 値      :営業所CD
                          ,iv_token_name2  => cv_tok_ng_data       -- トークン:NG_DATA
-                         ,iv_token_value2 => lv_dept_code         -- 値      :所属コード(データ)
+                         ,iv_token_value2 => lv_dept_code         -- 値      :営業所CD(データ)
                        );
           lv_errbuf := lv_errmsg;
           RAISE global_api_expt;
