@@ -8,10 +8,10 @@
 フルベンダー用SP専決画面用の属性セットファイルです。
 
 修正履歴
-2008/12/22  小川浩        新規作成-->
+2008/12/22  小川浩        新規作成
+2016/01/07  山下翔太      E_本稼動_13456対応-->
 <package version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <attributeSet docName="PageLayoutRN" windowTitle="SP専決入力／更新／承認" title="SP専決入力／更新／承認"/>
-   <attributeSet docName="RequestButton" prompt="発注依頼"/>
    <attributeSet docName="ConfirmButton" prompt="確認"/>
    <attributeSet docName="ReturnButton" prompt="返却"/>
    <attributeSet docName="ApproveButton" prompt="承認"/>
@@ -66,16 +66,6 @@
    <attributeSet docName="ContractAddress2" prompt="住所2(全角)"/>
    <attributeSet docName="ContractAddressLine" prompt="電話番号(00-0000-0000)"/>
    <attributeSet docName="DelegateName" prompt="代表者(全角)"/>
-   <attributeSet docName="VdInfoHdrRN" text="VD情報"/>
-   <attributeSet docName="VdInfo1Layout" prompt="新／旧"/>
-   <attributeSet docName="NewoldType" shortDesc="新／旧区分"/>
-   <attributeSet docName="SeleNumber" prompt="セレ数"/>
-   <attributeSet docName="VdInfo2Layout" prompt="メーカー名"/>
-   <attributeSet docName="MakerCode" shortDesc="メーカー名"/>
-   <attributeSet docName="StandardTypeLabel" prompt="規格内／外"/>
-   <attributeSet docName="StandardType" shortDesc="規格内／外"/>
-   <attributeSet docName="VdInfo3Layout" prompt="機種コード"/>
-   <attributeSet docName="UnNumber" shortDesc="機種コード"/>
    <attributeSet docName="ConditionBusinessInfoHdrRN" text="取引条件"/>
    <attributeSet docName="ConditionBusinessInfoHint" text="取引条件は必ず税込みで入力して下さい。"/>
    <attributeSet docName="SelectConditionBusinessHdrRN" text="* 取引条件選択"/>
