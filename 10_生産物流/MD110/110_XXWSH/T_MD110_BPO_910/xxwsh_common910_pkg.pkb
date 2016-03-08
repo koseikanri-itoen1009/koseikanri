@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.37
+ * Version                : 1.38
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2009/03/19   1.32  SCS   飯田甫     [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *  2009/04/23   1.33  SCS   風間由紀   [リードタイム算出] 本番障害#1398対応
  *  2009/10/15   1.37  SCS   伊藤ひとみ [ロット逆転防止チェック] 本番障害#1661対応
+ *  2016/02/18   1.38  SCSK  菅原大輔   [ロット逆転防止チェック] E_本稼動_13468対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2538,25 +2539,43 @@ AS
     -- エラー変数
     lv_err_cd             VARCHAR2(30);
     --
-    ld_max_manufact_date           ic_lots_mst.attribute1%TYPE;           -- 最大製造年月日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    ld_max_manufact_date           ic_lots_mst.attribute1%TYPE;           -- 最大製造年月日
+    ld_max_best_before_date        ic_lots_mst.attribute3%TYPE;           -- 最大賞味期限
+-- 2016/02/18 D.Sugahara Mod End 1.38
 -- 2009/10/15 H.Itou Mod Start 本番障害#1661
 --    lv_parent_item_no              xxcmn_item_mst2_v.item_no%TYPE;        -- 親品目コード
     lv_parent_item_id              xxcmn_item_mst2_v.parent_item_id%TYPE; -- 親品目ID
 -- 2009/10/15 H.Itou Mod End
     --
-    ld_max_ship_manufact_date      DATE;                                  -- 出荷指示製造年月日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    ld_max_ship_manufact_date      DATE;                                  -- 出荷指示製造年月日
+    ld_max_ship_best_before_date   DATE;                                  -- 出荷指示賞味期限
+-- 2016/02/18 D.Sugahara Mod End 1.38
     ld_max_ship_arrival_date       xxwsh_order_headers_all.arrival_date%type;
                                                                           -- 最大着荷日(出荷)
-    ld_max_rship_manufact_date     DATE;                                  -- 出荷実績製造年月日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    ld_max_rship_manufact_date     DATE;                                  -- 出荷実績製造年月日
+--    --
+--    ld_max_move_manufact_date      DATE;                                  -- 移動指示製造年月日
+    ld_max_rship_best_before_date  DATE;                                  -- 出荷実績賞味期限
     --
-    ld_max_move_manufact_date      DATE;                                  -- 移動指示製造年月日
+    ld_max_move_best_before_date   DATE;                                  -- 移動指示賞味期限
+-- 2016/02/18 D.Sugahara Mod End 1.38
     ld_max_move_arrival_date       xxinv_mov_req_instr_headers.actual_arrival_date%type;
                                                                           -- 最大着荷日(移動)
-    ld_max_rmove_manufact_date     DATE;                                  -- 移動実績製造年月日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    ld_max_rmove_manufact_date     DATE;                                  -- 移動実績製造年月日
+--    --
+--    ld_max_onhand_manufact_date    DATE;                                  -- 手持製造年月日
+--    --
+--    ld_check_manufact_date         DATE;                                  -- チェック日付
+    ld_max_rmove_best_before_date  DATE;                                  -- 移動実績賞味期限
     --
-    ld_max_onhand_manufact_date    DATE;                                  -- 手持製造年月日
+    ld_max_onhand_best_before_date DATE;                                  -- 手持賞味期限
     --
-    ld_check_manufact_date         DATE;                                  -- チェック日付
+    ld_check_best_before_date      DATE;                                  -- チェック日付
+-- 2016/02/18 D.Sugahara Mod End 1.38
     --
     ln_result                      NUMBER;                                -- 結果
 --
@@ -2648,12 +2667,16 @@ AS
     END IF;
     --
     /**********************************
-     *  製造年月日取得(D-2)           *
+     *  賞味期限取得(D-2)           *
      **********************************/
-    -- OPMロットマスタから当該ロットの製造年月日を取得
+    -- OPMロットマスタから当該ロットの賞味期限を取得
     BEGIN
-      SELECT fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd )   -- 最大製造年月日
-      INTO   ld_max_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--      SELECT fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd )   -- 最大製造年月日
+--      INTO   ld_max_manufact_date
+      SELECT fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd )  ilm_attribute3 -- 最大賞味期限
+      INTO   ld_max_best_before_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
       FROM   ic_lots_mst              ilm,                             -- OPMロットマスタ
              xxcmn_item_mst2_v        ximv                             -- OPM品目情報VIEW2
       WHERE  ximv.item_no             = iv_item_no                     -- 品目コード
@@ -2721,9 +2744,14 @@ AS
        -- 1. 出荷指示情報の取得
       IF ( iv_lot_biz_class = cv_ship_plan ) THEN
         BEGIN
-          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ))
-                                                                            -- 出荷指示製造年月日
-          INTO    ld_max_ship_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ))
+--                                                                            -- 出荷指示製造年月日
+--          INTO    ld_max_ship_manufact_date
+          SELECT  MAX( fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd )) max_ilm_attribute3
+                                                                            -- 出荷指示賞味期限
+          INTO    ld_max_ship_best_before_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
           FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
                   xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
                   xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
@@ -2744,7 +2772,10 @@ AS
 --            AND   xola.shipping_item_code       IN  ( iv_item_no, lv_parent_item_no )
             AND   xola.shipping_item_code       IN                               -- 品目コード
                   -- 親品目と親品目に紐付く子品目(2階層まで)
-                 (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                 (SELECT ximv.item_no
+                 (SELECT ximv.item_no ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -2796,11 +2827,17 @@ AS
           AND   xola.shipped_quantity            >  0                           -- 出荷実績数量0以上
           ;
 */
-        SELECT  MAX( arrival_date )                                    -- 最大着荷日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        SELECT  MAX( arrival_date )                                    -- 最大着荷日
+        SELECT  MAX( arrival_date )  max_arrival_date                         -- 最大着荷日
+-- 2016/02/18 D.Sugahara Mod End 1.38
         INTO    ld_max_ship_arrival_date
         FROM
           (SELECT /*+ leading(xoha) index(xoha xxwsh_oh_n27) */
-                  xoha.arrival_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                  xoha.arrival_date
+                  xoha.arrival_date  arrival_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
           FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
                   xxwsh_order_lines_all          xola,                        -- 受注明細アドオン
                   xxwsh_oe_transaction_types2_v  xottv                        -- 受注タイプ
@@ -2818,7 +2855,10 @@ AS
 --            AND   xola.shipping_item_code         IN  ( iv_item_no, lv_parent_item_no )  -- 出荷品目
             AND   xola.shipping_item_code       IN                               -- 品目コード
                   -- 親品目と親品目に紐付く子品目(2階層まで)
-                 (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                 (SELECT ximv.item_no
+                 (SELECT ximv.item_no  ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -2834,7 +2874,10 @@ AS
             AND   xola.shipped_quantity            >  0                         -- 出荷実績数量0以上
           UNION ALL
           SELECT  /*+ leading(xoha) index(xoha xxwsh_oh_n13) */
-                  xoha.arrival_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                  xoha.arrival_date
+                  xoha.arrival_date  arrival_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
           FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
                   xxwsh_order_lines_all          xola,                        -- 受注明細アドオン
                   xxwsh_oe_transaction_types2_v  xottv                        -- 受注タイプ
@@ -2853,7 +2896,10 @@ AS
 --            AND   xola.shipping_item_code         IN  ( iv_item_no, lv_parent_item_no )  -- 出荷品目
             AND   xola.shipping_item_code       IN                               -- 出荷品目
                   -- 親品目と親品目に紐付く子品目(2階層まで)
-                 (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                 (SELECT ximv.item_no
+                 (SELECT ximv.item_no  ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -2914,11 +2960,18 @@ AS
             AND   ilm.item_id                      =  xmld.item_id                -- OPM品目ID
             ;
 */
-          SELECT  MAX( fnd_date.string_to_date( attribute1, gv_yyyymmdd ) )
-          INTO    ld_max_rship_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--          SELECT  MAX( fnd_date.string_to_date( attribute1, gv_yyyymmdd ) )
+--          INTO    ld_max_rship_manufact_date
+          SELECT  MAX( fnd_date.string_to_date( ilm_attribute3, gv_yyyymmdd ) )
+          INTO    ld_max_rship_best_before_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
           FROM
             (SELECT /*+ leading(xoha xola) index(xoha xxwsh_oh_n27) */
-                    ilm.attribute1
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                    ilm.attribute1
+                    ilm.attribute3    ilm_attribute3
+-- 2016/02/18 D.Sugahara Mod End 1.38
             FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
                     xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
                     xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
@@ -2943,7 +2996,10 @@ AS
 --              AND   xola.shipping_item_code       IN ( iv_item_no, lv_parent_item_no ) -- 品目コード
               AND   xola.shipping_item_code       IN                               -- 品目コード
                     -- 親品目と親品目に紐付く子品目(2階層まで)
-                   (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                   (SELECT ximv.item_no
+                   (SELECT ximv.item_no ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                     FROM   xxcmn_item_mst2_v ximv
                     WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                     AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -2966,7 +3022,10 @@ AS
 -- 2009/01/22 H.Itou Add End
             UNION ALL
             SELECT  /*+ leading(xoha xola) index(xoha xxwsh_oh_n13) */
-                    ilm.attribute1
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                    ilm.attribute1
+                    ilm.attribute3    ilm_attribute3
+-- 2016/02/18 D.Sugahara Mod End 1.38
             FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
                     xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
                     xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
@@ -2988,7 +3047,10 @@ AS
 --              AND   xola.shipping_item_code       IN ( iv_item_no, lv_parent_item_no ) -- 品目コード
               AND   xola.shipping_item_code       IN                               -- 品目コード
                     -- 親品目と親品目に紐付く子品目(2階層まで)
-                   (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                   (SELECT ximv.item_no
+                   (SELECT ximv.item_no ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                     FROM   xxcmn_item_mst2_v ximv
                     WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                     AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3027,9 +3089,14 @@ AS
       IF ( iv_lot_biz_class = cv_move_plan ) THEN
         --
         BEGIN
-          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
-                                                                -- 移動指示製造年月日
-          INTO    ld_max_move_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+--                                                                -- 移動指示製造年月日
+--          INTO    ld_max_move_manufact_date
+          SELECT  MAX( fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd ) )  ilm_attribute3
+                                                                -- 移動指示賞味期限
+          INTO    ld_max_move_best_before_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
           FROM    xxinv_mov_req_instr_headers    xmrih,         -- 移動依頼/指示ヘッダ（アドオン）
                   xxinv_mov_req_instr_lines      xmril,         -- 移動依頼/指示明細（アドオン）
                   xxinv_mov_lot_details          xmld,          -- 移動ロット詳細
@@ -3046,7 +3113,10 @@ AS
 --                                               lv_parent_item_no )             -- 品目コード
             AND   xmril.item_code       IN                               -- 品目コード
                   -- 親品目と親品目に紐付く子品目(2階層まで)
-                 (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                 (SELECT ximv.item_no
+                 (SELECT ximv.item_no  ximv_item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3078,8 +3148,12 @@ AS
       --
       -- 4. 手持数量情報の取得
       BEGIN
-        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
-        INTO    ld_max_onhand_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+--        INTO    ld_max_onhand_manufact_date
+        SELECT  MAX( fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd ) ) ilm_attribute3
+        INTO    ld_max_onhand_best_before_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
         FROM    ic_loct_inv              ili,                      -- OPM手持数量
                 ic_lots_mst              ilm,                      -- OPMロットマスタ
                 xxcmn_item_mst2_v        ximv,                     -- OPM品目情報VIEW2
@@ -3088,7 +3162,10 @@ AS
 --        WHERE   ximv.item_no  IN( iv_item_no, lv_parent_item_no )  -- 品目コード
         WHERE   ximv.item_no       IN                               -- 品目コード
                 -- 親品目と親品目に紐付く子品目(2階層まで)
-               (SELECT ximv1.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--               (SELECT ximv1.item_no
+               (SELECT ximv1.item_no  ximv1_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                 FROM   xxcmn_item_mst2_v ximv1
                 WHERE  ximv1.start_date_active <= TRUNC(id_standard_date)
                 AND    ximv1.end_date_active   >= TRUNC(id_standard_date)
@@ -3116,8 +3193,12 @@ AS
       --
       -- 5. 移動実績情報の取得
       BEGIN
-        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
-        INTO    ld_max_rmove_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+--        INTO    ld_max_rmove_manufact_date
+        SELECT  MAX( fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd ) )  ilm_attribute3
+        INTO    ld_max_rmove_best_before_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
         FROM    xxinv_mov_req_instr_headers    xmrih,         -- 移動依頼/指示ヘッダ（アドオン）
                 xxinv_mov_req_instr_lines      xmril,         -- 移動依頼/指示明細（アドオン）
                 xxinv_mov_lot_details          xmld,          -- 移動ロット詳細
@@ -3131,7 +3212,9 @@ AS
 --          AND   xmril.item_code          IN( iv_item_no, lv_parent_item_no )  -- 品目コード
           AND   xmril.item_code       IN                               -- 品目コード
                 -- 親品目と親品目に紐付く子品目(2階層まで)
-               (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+               (SELECT ximv.item_no ximv_item_no 
+-- 2016/02/18 D.Sugahara Mod End 1.38
                 FROM   xxcmn_item_mst2_v ximv
                 WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                 AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3169,45 +3252,78 @@ AS
     CASE iv_lot_biz_class
       -- ロット逆転処理種別が「1」の場合
       WHEN ( cv_ship_plan  ) THEN
-        -- 「出荷指示製造年月日」「出荷実績製造年月日」のうち最大
-        ld_check_manufact_date
-                 := GREATEST( NVL(ld_max_ship_manufact_date,  cv_mindate),
-                              NVL(ld_max_rship_manufact_date, cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        -- 「出荷指示製造年月日」「出荷実績製造年月日」のうち最大
+--        ld_check_manufact_date
+--                 := GREATEST( NVL(ld_max_ship_manufact_date,  cv_mindate),
+--                              NVL(ld_max_rship_manufact_date, cv_mindate) );
+        -- 「出荷指示賞味期限」「出荷実績賞味期限」のうち最大
+        ld_check_best_before_date
+                 := GREATEST( NVL(ld_max_ship_best_before_date,  cv_mindate),
+                              NVL(ld_max_rship_best_before_date, cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod End 1.38
         --
         --
       -- ロット逆転処理種別が「2」の場合
       WHEN ( cv_ship_result ) THEN
-        ld_check_manufact_date := ld_max_rship_manufact_date;
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        ld_check_manufact_date := ld_max_rship_manufact_date;
+        ld_check_best_before_date := NVL(ld_max_rship_best_before_date, cv_mindate);
+-- 2016/02/18 D.Sugahara Mod End 1.38
         --
         --
       -- ロット逆転処理種別が「5」の場合
       WHEN ( cv_move_plan   ) THEN
-        -- 「移動指示製造年月日」「移動実績製造年月日」「手持製造年月日」のうち最大
-        ld_check_manufact_date
-                 := GREATEST( NVL(ld_max_move_manufact_date,   cv_mindate),
-                              NVL(ld_max_rmove_manufact_date,  cv_mindate),
-                              NVL(ld_max_onhand_manufact_date, cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        -- 「移動指示製造年月日」「移動実績製造年月日」「手持製造年月日」のうち最大
+--        ld_check_manufact_date
+--                 := GREATEST( NVL(ld_max_move_manufact_date,   cv_mindate),
+--                              NVL(ld_max_rmove_manufact_date,  cv_mindate),
+--                              NVL(ld_max_onhand_manufact_date, cv_mindate) );
+        -- 「移動指示賞味期限」「移動実績賞味期限」「手持賞味期限」のうち最大
+        ld_check_best_before_date
+                 := GREATEST( NVL(ld_max_move_best_before_date,   cv_mindate),
+                              NVL(ld_max_rmove_best_before_date,  cv_mindate),
+                              NVL(ld_max_onhand_best_before_date, cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod End 1.38
         --
         --
       -- ロット逆転処理種別が「6」の場合
       WHEN ( cv_move_result ) THEN
-        -- 移動実績製造年月日」「手持製造年月日」のうち最大
-        ld_check_manufact_date
-                 := GREATEST( NVL(ld_max_rmove_manufact_date  ,cv_mindate),
-                              NVL(ld_max_onhand_manufact_date ,cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        -- 移動実績製造年月日」「手持製造年月日」のうち最大
+--        ld_check_manufact_date
+--                 := GREATEST( NVL(ld_max_rmove_manufact_date  ,cv_mindate),
+--                              NVL(ld_max_onhand_manufact_date ,cv_mindate) );
+        -- 移動実績賞味期限」「手持賞味期限」のうち最大
+        ld_check_best_before_date
+                 := GREATEST( NVL(ld_max_rmove_best_before_date  ,cv_mindate),
+                              NVL(ld_max_onhand_best_before_date ,cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod End 1.38
     END CASE;
     --
-    -- 「チェック日付」＞ 「最大製造年月日」ならば、ロット逆転
-    IF ( ( ld_check_manufact_date <= ld_max_manufact_date )
-      OR ( ld_check_manufact_date IS NULL                ) ) THEN
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    -- 「チェック日付」＞ 「最大製造年月日」ならば、ロット逆転
+--    IF ( ( ld_check_manufact_date <= ld_max_manufact_date )
+--      OR ( ld_check_manufact_date IS NULL                ) ) THEN
+    -- 「チェック日付」＞ 「最大賞味期限」ならば、ロット逆転
+    IF ( ( ld_check_best_before_date <= ld_max_best_before_date )
+      OR ( ld_check_best_before_date IS NULL                ) ) THEN
+-- 2016/02/18 D.Sugahara Mod End 1.38
       on_result         :=  ln_result_success;                     -- 処理結果
 -- 2009/01/26 D.Nihei Mod Start 本番#936対応 正常の場合も逆転日付を返却するように修正
 --      on_reversal_date  :=  NULL;                                  -- 逆転日付
-      on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--      on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付
+      on_reversal_date  :=  ld_check_best_before_date;                -- 逆転日付
+-- 2016/02/18 D.Sugahara Mod End 1.38
 -- 2009/01/26 D.Nihei Mod End
     ELSE
       on_result         :=  ln_result_error;                       -- 処理結果
-      on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--      on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付
+      on_reversal_date  :=  ld_check_best_before_date;                -- 逆転日付
+-- 2016/02/18 D.Sugahara Mod End 1.38
     END IF;
       --
     /**********************************
@@ -3334,25 +3450,43 @@ AS
     -- エラー変数
     lv_err_cd             VARCHAR2(30);
     --
-    ld_max_manufact_date           ic_lots_mst.attribute1%TYPE;           -- 最大製造年月日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    ld_max_manufact_date           ic_lots_mst.attribute1%TYPE;           -- 最大製造年月日
+    ld_max_best_before_date        ic_lots_mst.attribute3%TYPE;           -- 最大賞味期限
+-- 2016/02/18 D.Sugahara Mod End 1.38
 -- 2009/10/15 H.Itou Mod Start 本番障害#1661
 --    lv_parent_item_no              xxcmn_item_mst2_v.item_no%TYPE;        -- 親品目コード
     lv_parent_item_id              xxcmn_item_mst2_v.parent_item_id%TYPE; -- 親品目ID
 -- 2009/10/15 H.Itou Mod End
     --
-    ld_max_ship_manufact_date      DATE;                                  -- 出荷指示製造年月日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    ld_max_ship_manufact_date      DATE;                                  -- 出荷指示製造年月日
+    ld_max_ship_best_before_date   DATE;                                  -- 出荷指示賞味期限
+-- 2016/02/18 D.Sugahara Mod End 1.38
     ld_max_ship_arrival_date       xxwsh_order_headers_all.arrival_date%type;
                                                                           -- 最大着荷日(出荷)
-    ld_max_rship_manufact_date     DATE;                                  -- 出荷実績製造年月日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    ld_max_rship_manufact_date     DATE;                                  -- 出荷実績製造年月日
+--    --
+--    ld_max_move_manufact_date      DATE;                                  -- 移動指示製造年月日
+    ld_max_rship_best_before_date  DATE;                                  -- 出荷実績賞味期限
     --
-    ld_max_move_manufact_date      DATE;                                  -- 移動指示製造年月日
+    ld_max_move_best_before_date   DATE;                                  -- 移動指示賞味期限
+-- 2016/02/18 D.Sugahara Mod End 1.38
     ld_max_move_arrival_date       xxinv_mov_req_instr_headers.actual_arrival_date%type;
                                                                           -- 最大着荷日(移動)
-    ld_max_rmove_manufact_date     DATE;                                  -- 移動実績製造年月日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    ld_max_rmove_manufact_date     DATE;                                  -- 移動実績製造年月日
+--    --
+--    ld_max_onhand_manufact_date    DATE;                                  -- 手持製造年月日
+--    --
+--    ld_check_manufact_date         DATE;                                  -- チェック日付
+    ld_max_rmove_best_before_date  DATE;                                  -- 移動実績賞味期限
     --
-    ld_max_onhand_manufact_date    DATE;                                  -- 手持製造年月日
+    ld_max_onhand_best_before_date DATE;                                  -- 手持賞味期限
     --
-    ld_check_manufact_date         DATE;                                  -- チェック日付
+    ld_check_best_before_date      DATE;                                  -- チェック日付
+-- 2016/02/18 D.Sugahara Mod End 1.38
     --
     ln_result                      NUMBER;                                -- 結果
 --
@@ -3457,8 +3591,12 @@ AS
      **********************************/
     -- OPMロットマスタから当該ロットの製造年月日を取得
     BEGIN
-      SELECT fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd )   -- 最大製造年月日
-      INTO   ld_max_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--      SELECT fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd )   -- 最大製造年月日
+--      INTO   ld_max_manufact_date
+      SELECT fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd )  ilm_attribute3 -- 最大賞味期限
+      INTO   ld_max_best_before_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
       FROM   ic_lots_mst              ilm,                             -- OPMロットマスタ
              xxcmn_item_mst2_v        ximv                             -- OPM品目情報VIEW2
       WHERE  ximv.item_no             = iv_item_no                     -- 品目コード
@@ -3526,9 +3664,14 @@ AS
        -- 1. 出荷指示情報の取得
       IF ( iv_lot_biz_class = cv_ship_plan ) THEN
         BEGIN
-          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ))
-                                                                            -- 出荷指示製造年月日
-          INTO    ld_max_ship_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ))
+--                                                                            -- 出荷指示製造年月日
+--          INTO    ld_max_ship_manufact_date
+          SELECT  MAX( fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd )) max_ilm_attribute3
+                                                                            -- 出荷指示賞味期限
+          INTO    ld_max_ship_best_before_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
           FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
                   xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
                   xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
@@ -3548,7 +3691,10 @@ AS
             AND   xola.order_header_id           =  xoha.order_header_id         -- 受注ヘッダID
             AND   xola.shipping_item_code       IN                               -- 品目コード
                   -- 親品目と親品目に紐付く子品目(2階層まで)
-                 (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                 (SELECT ximv.item_no
+                 (SELECT ximv.item_no ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3576,11 +3722,17 @@ AS
       --
       -- 2-1. 入力パラメータに合致する最大の着荷日を取得
       BEGIN
-        SELECT  MAX( arrival_date )                                    -- 最大着荷日
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        SELECT  MAX( arrival_date )                                    -- 最大着荷日
+        SELECT  MAX( arrival_date )  max_arrival_date                         -- 最大着荷日
+-- 2016/02/18 D.Sugahara Mod End 1.38
         INTO    ld_max_ship_arrival_date
         FROM
           (SELECT /*+ leading(xoha) index(xoha xxwsh_oh_n27) */
-                  xoha.arrival_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                  xoha.arrival_date
+                  xoha.arrival_date  arrival_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
           FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
                   xxwsh_order_lines_all          xola,                        -- 受注明細アドオン
                   xxwsh_oe_transaction_types2_v  xottv                        -- 受注タイプ
@@ -3597,7 +3749,10 @@ AS
             AND   xola.order_header_id             =  xoha.order_header_id      -- 受注ヘッダID
             AND   xola.shipping_item_code       IN                               -- 品目コード
                   -- 親品目と親品目に紐付く子品目(2階層まで)
-                 (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                 (SELECT ximv.item_no
+                 (SELECT ximv.item_no  ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3612,7 +3767,10 @@ AS
             AND   xola.shipped_quantity            >  0                         -- 出荷実績数量0以上
           UNION ALL
           SELECT  /*+ leading(xoha) index(xoha xxwsh_oh_n13) */
-                  xoha.arrival_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                  xoha.arrival_date
+                  xoha.arrival_date  arrival_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
           FROM    xxwsh_order_headers_all        xoha,                        -- 受注ヘッダアドオン
                   xxwsh_order_lines_all          xola,                        -- 受注明細アドオン
                   xxwsh_oe_transaction_types2_v  xottv                        -- 受注タイプ
@@ -3630,7 +3788,10 @@ AS
             AND   xola.order_header_id             =  xoha.order_header_id      -- 受注ヘッダID
             AND   xola.shipping_item_code       IN                               -- 出荷品目
                   -- 親品目と親品目に紐付く子品目(2階層まで)
-                 (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                 (SELECT ximv.item_no
+                 (SELECT ximv.item_no  ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3654,11 +3815,18 @@ AS
       -- 2-2. 上記で取得した最大着荷日に紐づくのロットの最大製造日を取得
       IF ( ld_max_ship_arrival_date IS NOT NULL ) THEN
         BEGIN
-          SELECT  MAX( fnd_date.string_to_date( attribute1, gv_yyyymmdd ) )
-          INTO    ld_max_rship_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--          SELECT  MAX( fnd_date.string_to_date( attribute1, gv_yyyymmdd ) )
+--          INTO    ld_max_rship_manufact_date
+          SELECT  MAX( fnd_date.string_to_date( ilm_attribute3, gv_yyyymmdd ) )
+          INTO    ld_max_rship_best_before_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
           FROM
             (SELECT /*+ leading(xoha xola) index(xoha xxwsh_oh_n27) */
-                    ilm.attribute1
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                    ilm.attribute1
+                    ilm.attribute3    ilm_attribute3
+-- 2016/02/18 D.Sugahara Mod End 1.38
             FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
                     xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
                     xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
@@ -3678,7 +3846,10 @@ AS
               AND   xola.order_header_id           =  xoha.order_header_id    -- 受注ヘッダID
               AND   xola.shipping_item_code       IN                               -- 品目コード
                     -- 親品目と親品目に紐付く子品目(2階層まで)
-                   (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                   (SELECT ximv.item_no
+                   (SELECT ximv.item_no ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                     FROM   xxcmn_item_mst2_v ximv
                     WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                     AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3698,7 +3869,10 @@ AS
               AND   xmld.actual_quantity           >  0                       -- 実績数量
             UNION ALL
             SELECT  /*+ leading(xoha xola) index(xoha xxwsh_oh_n13) */
-                    ilm.attribute1
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                    ilm.attribute1
+                    ilm.attribute3    ilm_attribute3
+-- 2016/02/18 D.Sugahara Mod End 1.38
             FROM    xxwsh_order_headers_all        xoha,                      -- 受注ヘッダアドオン
                     xxwsh_order_lines_all          xola,                      -- 受注明細アドオン
                     xxinv_mov_lot_details          xmld,                      -- 移動ロット詳細
@@ -3719,7 +3893,10 @@ AS
               AND   xola.order_header_id           =  xoha.order_header_id    -- 受注ヘッダID
               AND   xola.shipping_item_code       IN                               -- 品目コード
                     -- 親品目と親品目に紐付く子品目(2階層まで)
-                   (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                   (SELECT ximv.item_no
+                   (SELECT ximv.item_no ximv_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                     FROM   xxcmn_item_mst2_v ximv
                     WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                     AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3754,9 +3931,14 @@ AS
       IF ( iv_lot_biz_class = cv_move_plan ) THEN
         --
         BEGIN
-          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
-                                                                -- 移動指示製造年月日
-          INTO    ld_max_move_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--          SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+--                                                                -- 移動指示製造年月日
+--          INTO    ld_max_move_manufact_date
+          SELECT  MAX( fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd ) )  ilm_attribute3
+                                                                -- 移動指示賞味期限
+          INTO    ld_max_move_best_before_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
           FROM    xxinv_mov_req_instr_headers    xmrih,         -- 移動依頼/指示ヘッダ（アドオン）
                   xxinv_mov_req_instr_lines      xmril,         -- 移動依頼/指示明細（アドオン）
                   xxinv_mov_lot_details          xmld,          -- 移動ロット詳細
@@ -3771,7 +3953,10 @@ AS
             AND   xmril.mov_hdr_id          =  xmrih.mov_hdr_id          -- 移動ヘッダID
             AND   xmril.item_code       IN                               -- 品目コード
                   -- 親品目と親品目に紐付く子品目(2階層まで)
-                 (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--                 (SELECT ximv.item_no
+                 (SELECT ximv.item_no  ximv_item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
                   FROM   xxcmn_item_mst2_v ximv
                   WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                   AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3802,15 +3987,22 @@ AS
       --
       -- 4. 手持数量情報の取得
       BEGIN
-        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
-        INTO    ld_max_onhand_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+--        INTO    ld_max_onhand_manufact_date
+        SELECT  MAX( fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd ) ) ilm_attribute3
+        INTO    ld_max_onhand_best_before_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
         FROM    ic_loct_inv              ili,                      -- OPM手持数量
                 ic_lots_mst              ilm,                      -- OPMロットマスタ
                 xxcmn_item_mst2_v        ximv,                     -- OPM品目情報VIEW2
                 xxcmn_item_locations_v   xilv                      -- OPM保管場所情報VIEW
         WHERE   ximv.item_no       IN                               -- 品目コード
                 -- 親品目と親品目に紐付く子品目(2階層まで)
-               (SELECT ximv1.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--               (SELECT ximv1.item_no
+               (SELECT ximv1.item_no  ximv1_item_no
+-- 2016/02/18 D.Sugahara Mod End 1.38
                 FROM   xxcmn_item_mst2_v ximv1
                 WHERE  ximv1.start_date_active <= TRUNC(id_standard_date)
                 AND    ximv1.end_date_active   >= TRUNC(id_standard_date)
@@ -3837,8 +4029,12 @@ AS
       --
       -- 5. 移動実績情報の取得
       BEGIN
-        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
-        INTO    ld_max_rmove_manufact_date
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        SELECT  MAX( fnd_date.string_to_date( ilm.attribute1, gv_yyyymmdd ) )
+--        INTO    ld_max_rmove_manufact_date
+        SELECT  MAX( fnd_date.string_to_date( ilm.attribute3, gv_yyyymmdd ) )  ilm_attribute3
+        INTO    ld_max_rmove_best_before_date
+-- 2016/02/18 D.Sugahara Mod End 1.38
         FROM    xxinv_mov_req_instr_headers    xmrih,         -- 移動依頼/指示ヘッダ（アドオン）
                 xxinv_mov_req_instr_lines      xmril,         -- 移動依頼/指示明細（アドオン）
                 xxinv_mov_lot_details          xmld,          -- 移動ロット詳細
@@ -3851,7 +4047,9 @@ AS
           AND   xmril.mov_hdr_id          =  xmrih.mov_hdr_id          -- 移動ヘッダID
           AND   xmril.item_code       IN                               -- 品目コード
                 -- 親品目と親品目に紐付く子品目(2階層まで)
-               (SELECT ximv.item_no
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+               (SELECT ximv.item_no ximv_item_no 
+-- 2016/02/18 D.Sugahara Mod End 1.38
                 FROM   xxcmn_item_mst2_v ximv
                 WHERE  ximv.start_date_active <= TRUNC(id_standard_date)
                 AND    ximv.end_date_active   >= TRUNC(id_standard_date)
@@ -3888,42 +4086,72 @@ AS
     CASE iv_lot_biz_class
       -- ロット逆転処理種別が「1」の場合
       WHEN ( cv_ship_plan  ) THEN
-        -- 「出荷指示製造年月日」「出荷実績製造年月日」のうち最大
-        ld_check_manufact_date
-                 := GREATEST( NVL(ld_max_ship_manufact_date,  cv_mindate),
-                              NVL(ld_max_rship_manufact_date, cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        -- 「出荷指示製造年月日」「出荷実績製造年月日」のうち最大
+--        ld_check_manufact_date
+--                 := GREATEST( NVL(ld_max_ship_manufact_date,  cv_mindate),
+--                              NVL(ld_max_rship_manufact_date, cv_mindate) );
+        -- 「出荷指示賞味期限」「出荷実績賞味期限」のうち最大
+        ld_check_best_before_date
+                 := GREATEST( NVL(ld_max_ship_best_before_date,  cv_mindate),
+                              NVL(ld_max_rship_best_before_date, cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod End 1.38
         --
         --
       -- ロット逆転処理種別が「2」の場合
       WHEN ( cv_ship_result ) THEN
-        ld_check_manufact_date := ld_max_rship_manufact_date;
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        ld_check_manufact_date := ld_max_rship_manufact_date;
+        ld_check_best_before_date := ld_max_rship_best_before_date;
+-- 2016/02/18 D.Sugahara Mod End 1.38
         --
         --
       -- ロット逆転処理種別が「5」の場合
       WHEN ( cv_move_plan   ) THEN
-        -- 「移動指示製造年月日」「移動実績製造年月日」「手持製造年月日」のうち最大
-        ld_check_manufact_date
-                 := GREATEST( NVL(ld_max_move_manufact_date,   cv_mindate),
-                              NVL(ld_max_rmove_manufact_date,  cv_mindate),
-                              NVL(ld_max_onhand_manufact_date, cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        -- 「移動指示製造年月日」「移動実績製造年月日」「手持製造年月日」のうち最大
+--        ld_check_manufact_date
+--                 := GREATEST( NVL(ld_max_move_manufact_date,   cv_mindate),
+--                              NVL(ld_max_rmove_manufact_date,  cv_mindate),
+--                              NVL(ld_max_onhand_manufact_date, cv_mindate) );
+        -- 「移動指示賞味期限」「移動実績賞味期限」「手持賞味期限」のうち最大
+        ld_check_best_before_date
+                 := GREATEST( NVL(ld_max_move_best_before_date,   cv_mindate),
+                              NVL(ld_max_rmove_best_before_date,  cv_mindate),
+                              NVL(ld_max_onhand_best_before_date, cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod End 1.38
         --
         --
       -- ロット逆転処理種別が「6」の場合
       WHEN ( cv_move_result ) THEN
-        -- 移動実績製造年月日」「手持製造年月日」のうち最大
-        ld_check_manufact_date
-                 := GREATEST( NVL(ld_max_rmove_manufact_date  ,cv_mindate),
-                              NVL(ld_max_onhand_manufact_date ,cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--        -- 移動実績製造年月日」「手持製造年月日」のうち最大
+--        ld_check_manufact_date
+--                 := GREATEST( NVL(ld_max_rmove_manufact_date  ,cv_mindate),
+--                              NVL(ld_max_onhand_manufact_date ,cv_mindate) );
+        -- 移動実績賞味期限」「手持賞味期限」のうち最大
+        ld_check_best_before_date
+                 := GREATEST( NVL(ld_max_rmove_best_before_date  ,cv_mindate),
+                              NVL(ld_max_onhand_best_before_date ,cv_mindate) );
+-- 2016/02/18 D.Sugahara Mod End 1.38
     END CASE;
     --
-    -- 「チェック日付」＞ 「最大製造年月日」ならば、ロット逆転
-    IF ( ( ld_check_manufact_date <= ld_max_manufact_date )
-      OR ( ld_check_manufact_date IS NULL                ) ) THEN
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--    -- 「チェック日付」＞ 「最大製造年月日」ならば、ロット逆転
+--    IF ( ( ld_check_manufact_date <= ld_max_manufact_date )
+--      OR ( ld_check_manufact_date IS NULL                ) ) THEN
+    -- 「チェック日付」＞ 「最大賞味期限」ならば、ロット逆転
+    IF ( ( ld_check_best_before_date <= ld_max_best_before_date )
+      OR ( ld_check_best_before_date IS NULL                ) ) THEN
+-- 2016/02/18 D.Sugahara Mod End 1.38
       on_result         :=  ln_result_success;                     -- 処理結果
       on_reversal_date  :=  NULL;                                  -- 逆転日付
     ELSE
       on_result         :=  ln_result_error;                       -- 処理結果
-      on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付
+-- 2016/02/18 D.Sugahara Mod Start 1.38
+--      on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付
+      on_reversal_date  :=  ld_check_best_before_date;                -- 逆転日付
+-- 2016/02/18 D.Sugahara Mod End 1.38
     END IF;
       --
     /**********************************
