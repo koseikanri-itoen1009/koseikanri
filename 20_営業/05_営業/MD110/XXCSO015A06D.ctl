@@ -6,7 +6,7 @@
 -- BR.050        : T_BR050_CCO_200_自販_物件ファイル
 -- MD.050        : なし
 -- MD.070        : なし
--- Version       : 1.0
+-- Version       : 1.1
 --
 -- Target Table  : XXCSO_IN_ITEM_DATA
 --
@@ -15,6 +15,7 @@
 --  Date          Ver.    Editor           Description
 -- ------------- ------- ---------------- ---------------------------------------------------------
 --  2008/12/1    1.0     kyo              新規作成
+--  2016/02/05   1.1     S.Niki           [E_本稼動_13456]自販機管理システム代替対応
 --
 -- ************************************************************************************************
 --
@@ -91,6 +92,11 @@ FIELDS TERMINATED BY "," TRAILING NULLCOLS
     UPDATE_PROGRAM_ID              CHAR OPTIONALLY ENCLOSED BY '"',     -- 更新プログラムＩＤ
     CREATION_DATE_TIME             DATE "yyyymmddhh24miss",             -- 作成日時時分秒
     UPDATE_DATE_TIME               DATE "yyyymmddhh24miss",             -- 更新日時時分秒
+-- Ver1.1 Add Start
+    LEASE_TYPE                     CHAR OPTIONALLY ENCLOSED BY '"',     -- リース区分
+    DECLARATION_PLACE              CHAR OPTIONALLY ENCLOSED BY '"',     -- 申告地
+    GET_PRICE                      INTEGER EXTERNAL,                    -- 取得価格
+-- Ver1.1 Add End
     CREATED_BY                     "FND_GLOBAL.USER_ID",                -- 作成者
     CREATION_DATE                  SYSDATE,                             -- 作成日
     LAST_UPDATED_BY                "FND_GLOBAL.USER_ID",                -- 最終更新者
