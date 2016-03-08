@@ -195,16 +195,6 @@ WHERE   xev.user_id = fnd_global.user_id
       SQLType="BIT" >
    </ViewAttribute>
    <ViewAttribute
-      Name="RequestButtonRender"
-      IsQueriable="false"
-      IsPersistent="false"
-      Type="java.lang.Boolean"
-      ColumnType="$none$"
-      AliasName="REQUESTBUTTONRENDER"
-      Passivate="true"
-      SQLType="BIT" >
-   </ViewAttribute>
-   <ViewAttribute
       Name="ApplicationTypeViewRender"
       IsQueriable="false"
       IsPersistent="false"
@@ -881,24 +871,6 @@ WHERE   xev.user_id = fnd_global.user_id
    </ViewAttribute>
    <ViewAttribute
       Name="StandardTypeRender"
-      IsQueriable="false"
-      IsPersistent="false"
-      Type="java.lang.Boolean"
-      ColumnType="$none$"
-      AliasName="VIEW_ATTR"
-      SQLType="BIT" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="VdInfo3RequiredLayoutRender"
-      IsQueriable="false"
-      IsPersistent="false"
-      Type="java.lang.Boolean"
-      ColumnType="$none$"
-      AliasName="VIEW_ATTR"
-      SQLType="BIT" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="VdInfo3LayoutRender"
       IsQueriable="false"
       IsPersistent="false"
       Type="java.lang.Boolean"
