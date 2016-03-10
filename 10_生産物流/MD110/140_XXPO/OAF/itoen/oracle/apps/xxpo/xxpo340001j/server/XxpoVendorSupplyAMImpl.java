@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2009-02-18 1.5  伊藤ひとみ   本番障害#1096,1178対応
 * 2009-03-02 1.6  伊藤ひとみ   本番障害#32対応
 * 2015-10-06 1.7  山下翔太     E_本稼動_13238対応
+* 2016-02-12 1.8  山下翔太     E_本稼動_13451対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -925,6 +926,49 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     }    
   }
 
+// 2016-02-12 S.Yamashita Add Start
+  /***************************************************************************
+   * ロット重複チェックを行うメソッドです。(登録画面用)
+   * @param exceptions - エラーリスト
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void lotFactoryCheck(
+    ArrayList exceptions
+  ) throws OAException 
+  {
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // データ取得
+    Number itemId        = (Number)vendorSupplyMakeRow.getAttribute("ItemId");      // 品目ID
+    Date   productedDate = (Date)vendorSupplyMakeRow.getAttribute("ProductedDate"); // 製造日
+    String koyuCode      = (String)vendorSupplyMakeRow.getAttribute("KoyuCode");    // 固有記号
+    String factoryCode   = (String)vendorSupplyMakeRow.getAttribute("FactoryCode"); // 工場コード
+
+    // ロット重複確認チェック
+    if (XxpoUtility.chkLotFactory(
+          getOADBTransaction(), // トランザクション
+          itemId,               // 品目ID
+          productedDate,        // 製造日 
+          koyuCode,             // 固有記号
+          factoryCode           // 工場コード
+          )
+        )
+    {
+      // ロットが重複する場合(戻り値がTRUEの場合)
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,
+                            vendorSupplyMakeVo.getName(),
+                            vendorSupplyMakeRow.getKey(),
+                            null,
+                            null,
+                            XxcmnConstants.APPL_XXPO,
+                            XxpoConstants.XXPO40038));
+    }
+  }
+// 2016-02-12 S.Yamashita Add End
   /***************************************************************************
    * 引当可能数量チェックを行うメソッドです。(登録画面用)
    * @param exceptions - エラーリスト
@@ -1724,6 +1768,21 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 //      }      
 //    }
 // 2015-10-06 S.Yamashita Del End
+// 2016-02-12 S.Yamashita Add Start
+    // ******************************* //
+    // *   ロット重複チェック    * //
+    // ******************************* //
+    // 新規登録かつ 品目区分が5：製品の場合、実行
+    if (XxpoConstants.PROCESS_FLAG_I.equals(processFlag) && XxpoConstants.ITEM_CLASS_PROD.equals(itemClassCode))
+    {
+      lotFactoryCheck(exceptions);
+      // 例外があった場合、例外メッセージを出力し、処理終了
+      if (exceptions.size() > 0)
+      {
+        OAException.raiseBundledOAException(exceptions);
+      }
+    }
+// 2016-02-12 S.Yamashita Add End
     
     // ******************************* //
     // *   引当可能数量チェック      * //
