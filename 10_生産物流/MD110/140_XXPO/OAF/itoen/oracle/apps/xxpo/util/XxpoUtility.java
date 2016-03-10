@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.29
+* バージョン : 1.30
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -37,6 +37,7 @@
 * 2009-07-08 1.27 伊藤ひとみ   本番障害#1566対応
 * 2011-06-01 1.28 窪和重       本番障害#1786対応
 * 2015-10-05 1.29 山下翔太     E_本稼動_13238対応
+* 2016-02-12 1.30 山下翔太     E_本稼動_13451対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -572,6 +573,105 @@ public class XxpoUtility
       return true;
     }
   } // chkLotMst
+// 2016-02-12 S.Yamashita Add Start
+  /*****************************************************************************
+   * ロット重複チェックを行います。
+   * @param trans            - トランザクション
+   * @param itemId           - 品目ID
+   * @param manufacturedDate - 製造日
+   * @param koyuCode         - 固有記号
+   * @param factoryCode      - 工場コード
+   * @return boolean  - ロットが存在する場合   true
+   *                  - ロットが存在しない場合 false
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static boolean chkLotFactory(
+    OADBTransaction trans,
+    Number itemId,
+    Date   manufacturedDate,
+    String koyuCode,
+    String factoryCode
+  ) throws OAException
+  {
+    String apiName   = "chkLotFactory"; // API名
+    String plSqlRet;                   // PL/SQL戻り値
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                              );
+    sb.append("  SELECT TO_CHAR(COUNT(1)) "                         ); // ロットカウント数
+    sb.append("  INTO   :1 "                                        ); 
+    sb.append("  FROM   xxpo_vendor_supply_txns xvst "              ); // 外注出来高実績
+    sb.append("  WHERE  xvst.item_id    = :2 "                      ); // 品目ID
+    sb.append("  AND    xvst.producted_date = :3 "                  ); // 製造日
+    sb.append("  AND    xvst.koyu_code = :4 "                       ); // 固有記号
+    sb.append("  AND    xvst.factory_code = :5; "                   ); // 工場コード
+    sb.append("END; "                                               );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(itemId));             // 品目ID
+      cstmt.setDate(3, XxcmnUtility.dateValue(manufacturedDate)); // 製造日
+      cstmt.setString(4, koyuCode);                               // 固有記号
+      cstmt.setString(5, factoryCode);                            // 工場コード
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR); // ロットカウント数
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      plSqlRet = cstmt.getString(1);
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    // PL/SQL戻り値が0の場合(重複ロットが存在しない場合) false
+    if ("0".equals(plSqlRet))
+    {
+      return false;
+    
+    // PL/SQL戻り値が0以外の場合(重複ロットが存在する場合) true
+    } else
+    {
+      return true;
+    }
+  } // chkLotFactory
+// 2016-02-12 S.Yamashita Add End
 // 2015-10-05 S.Yamashita Add Start
   /*****************************************************************************
    * ロット情報を取得します。
