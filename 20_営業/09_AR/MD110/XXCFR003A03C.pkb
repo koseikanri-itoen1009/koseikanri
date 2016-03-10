@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.140
+ * Version          : 1.150
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *                                                        使用していない変数の削除
  *  2013/01/17    1.130 SCSK 中野 徹也  [障害本稼動09964] 請求書再作成時の仕様見直し対応
  *  2013/06/10    1.140 SCSK 中野 徹也  [障害本稼動09964再対応] 請求書再作成時の仕様見直し対応
+ *  2016/03/02    1.150 SCSK 小路 恭弘  [障害本稼動13510] 請求書に表示されない品目がある
  *
  *****************************************************************************************/
 --
@@ -1640,7 +1641,9 @@ AS
             AND    xxel.sales_class = fscl.lookup_code(+)
             AND    mtib.segment1 = icmb.item_no(+)
             AND    icmb.item_id  = xxmb.item_id(+)
-            AND    xxmb.active_flag(+) = 'Y'
+-- Del 2016.03.02 Ver1.150 Start
+--            AND    xxmb.active_flag(+) = 'Y'
+-- Del 2016.03.02 Ver1.150 End
             AND    xih.cutoff_date >= NVL(TRUNC(xxmb.start_date_active), xih.cutoff_date)
             AND    xih.cutoff_date <= NVL(xxmb.end_date_active, xih.cutoff_date)
             AND    icmb.item_id = xxib.item_id(+)
@@ -2068,7 +2071,9 @@ AS
             AND    xxel.sales_class = fscl.lookup_code(+)
             AND    mtib.segment1 = icmb.item_no(+)
             AND    icmb.item_id  = xxmb.item_id(+)
-            AND    xxmb.active_flag(+) = 'Y'
+-- Del 2016.03.02 Ver1.150 Start
+--            AND    xxmb.active_flag(+) = 'Y'
+-- Del 2016.03.02 Ver1.150 End
             AND    xih.cutoff_date >= NVL(TRUNC(xxmb.start_date_active), xih.cutoff_date)
             AND    xih.cutoff_date <= NVL(xxmb.end_date_active, xih.cutoff_date)
             AND    icmb.item_id = xxib.item_id(+)
