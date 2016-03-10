@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A01R(body)
  * Description      : 倉替伝票
  * MD.050           : 倉替伝票 MD050_COI_002_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/12/14    1.3   N.Abe            [E_本稼動_00385]倉替抽出方法修正
  *  2009/12/25    1.4   N.Abe            [E_本稼動_00610]パフォーマンス対応
  *  2012/08/03    1.5   K.Nakamura       [E_本稼動_09899]A4への印刷方式追記
+ *  2016/03/02    1.6   Y.Shoji          [E_本稼動_13510]OPM品目アドオンの適用フラグ条件を削除
  *
  *****************************************************************************************/
 --
@@ -843,7 +844,9 @@ AS
       AND    xim.item_id                    = iim.item_id                                   -- 品目ID
       AND    TRUNC( mmt.transaction_date ) BETWEEN TRUNC( xim.start_date_active )           -- 適用開始日
       AND    TRUNC( NVL( xim.end_date_active, mmt.transaction_date ) )                      -- 終了日
-      AND    xim.active_flag                = cv_flag                                       -- 使用可能フラグ
+-- == 2016/03/02 V1.6 Deleted START ===============================================================
+--      AND    xim.active_flag                = cv_flag                                       -- 使用可能フラグ
+-- == 2016/03/02 V1.6 Deleted END   ===============================================================
 -- == 2009/12/14 V1.3 Added START ===============================================================
       AND    mmt.primary_quantity           < 0                                             -- 数量マイナス(出庫)
 -- == 2009/12/14 V1.3 Added END   ===============================================================
@@ -922,7 +925,9 @@ AS
       AND    xim.item_id                    = iim.item_id                                   -- 品目ID
       AND    TRUNC( mmt.transaction_date ) BETWEEN TRUNC( xim.start_date_active )           -- 適用開始日
       AND    TRUNC( NVL( xim.end_date_active, mmt.transaction_date ) )                      -- 終了日
-      AND    xim.active_flag                = cv_flag                                       -- 使用可能フラグ
+-- == 2016/03/02 V1.6 Deleted START ===============================================================
+--      AND    xim.active_flag                = cv_flag                                       -- 使用可能フラグ
+-- == 2016/03/02 V1.6 Deleted END   ===============================================================
       AND    flv2.lookup_type               = cv_mfg_fctory_cd                              -- 参照タイプ
       AND    flv2.lookup_code               = mmt.attribute2                                -- 参照コード
       AND    flv2.enabled_flag              = cv_flag                                       -- 使用可能フラグ
