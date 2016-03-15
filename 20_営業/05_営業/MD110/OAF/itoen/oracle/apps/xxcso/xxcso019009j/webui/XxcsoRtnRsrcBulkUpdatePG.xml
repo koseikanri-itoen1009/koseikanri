@@ -110,7 +110,7 @@
                                                       <lovMap id="SaleBaseCodeMap" lovItem="SaleBaseCode" resultTo="formSaleBaseCode" useForValidation="no"/>
                                                       <lovMap id="RsvSaleBaseCodeMap" lovItem="RsvSaleBaseCode" resultTo="formRsvSaleBaseCode" useForValidation="no"/>
                                                       <lovMap id="RsvSaleBaseActDateMap" lovItem="RsvSaleBaseActDate" resultTo="formRsvSaleBaseActDate" useForValidation="no"/>
-                                                      <lovMap id="CustomerClassCode" lovItem="CustomerClassCode" resultTo="formCustomerClassCode"/>
+                                                      <lovMap id="CustomerClassCode" lovItem="CustomerClassCode" resultTo="formCustomerClassCode" useForValidation="no"/>
                                                    </lovMappings>
                                                 </oa:messageLovInput>
                                              </ui:contents>
