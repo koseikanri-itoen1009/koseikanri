@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.22
+ * Version          : 1.24
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -55,6 +55,8 @@ AS
  *  2009/02/27    1.20 SCS    M.Hokkanji 本番障害#1228対応
  *  2009/04/17    1.21 SCS    H.Itou     本番障害#1398対応
  *  2009/04/20    1.22 SCS    H.Itou     本番障害#1398再対応
+ *  2014/11/07    1.23 SCSK   D.Sugahara E_本稼動_11448対応
+ *  2016/02/17    1.24 SCSK   D.Sugahara E_本稼動_11448再対応（混載不備）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5820,6 +5822,15 @@ debug_log(FND_FILE.LOG,'小口配送情報作成処理終了');
     ln_tab_ins_idx            NUMBER DEFAULT 0;   -- 自動配車混載中間テーブル登録用カウンタ
 --
 debug_cnt number default 0;
+-- v1.23 Add Start E_本稼動_11448
+    lv_grp_max_ship_methods   xxcmn_ship_methods.ship_method%TYPE;            -- group最大配送区分
+    ln_drink_deadweight       xxcmn_ship_methods.drink_deadweight%TYPE;       -- ドリンク積載重量
+    ln_leaf_deadweight        xxcmn_ship_methods.leaf_deadweight%TYPE;        -- リーフ積載重量
+    ln_drink_loading_capacity xxcmn_ship_methods.drink_loading_capacity%TYPE; -- ドリンク積載容積
+    ln_leaf_loading_capacity  xxcmn_ship_methods.leaf_loading_capacity%TYPE;  -- リーフ積載容積
+    ln_palette_max_qty        xxcmn_ship_methods.palette_max_qty%TYPE;        -- パレット最大枚数
+    return_cd                 VARCHAR2(1);                                    -- 共通関数戻り値
+-- v1.23 Add End
 --
     -- *** ローカル・カーソル ***
     CURSOR get_intensive_cur IS
@@ -6033,6 +6044,9 @@ debug_log(FND_FILE.LOG,'--------------------------');
       , iv_entering_despatching_code2 IN xxcmn_delivery_lt_v.entering_despatching_code2%TYPE
       , iv_weight_capa_class          IN xxwsh_intensive_carriers_tmp.weight_capacity_class%TYPE
       , in_order_num                  IN NUMBER
+-- v1.24 Add Start E_本稼動_11448(再)
+      , iv_ship_method_max            IN xxcmn_delivery_lt_v.ship_method%TYPE
+-- v1.24 Add End E_本稼動_11448(再)
       , ov_ship_method_class          OUT NOCOPY xxcmn_delivery_lt_v.ship_method%TYPE
       , on_next_weight_capacity       OUT NOCOPY NUMBER
       , ov_errbuf                     OUT NOCOPY VARCHAR2  -- エラー・メッセージ --# 固定 #
@@ -6496,6 +6510,9 @@ debug_cnt number default 0;
         ) union_flg
         WHERE union_sel.sel_flg = union_flg.min_flg
         AND   union_sel.ship_method = union_flg.ship_method
+-- v1.24 Add Start E_本稼動_11448(再) 基準明細の最大配送区分以下で検索する条件追加
+        AND   union_sel.ship_method <= iv_ship_method_max
+-- v1.24 Add End E_本稼動_11448(再)
         ORDER BY union_sel.ship_method DESC
        ;
       -- 2008/07/14 Mod ↑
@@ -6651,6 +6668,9 @@ debug_log(FND_FILE.LOG,'7-2検索回数：'|| ln_order_num_cnt);
 --              , iv_weight_capa_class          => first_intensive_sum_weight -- 重量容積区分
 -- Ver1.5 M.Hokkanji End
               , in_order_num                  => ln_order_num_cnt           -- 検索順
+-- v1.24 Add Start E_本稼動_11448(再)
+              , iv_ship_method_max            => lt_intensive_tab(ln_parent_no).max_shipping_method_code  --最大配送区分
+-- v1.24 Add End E_本稼動_11448(再)
               , ov_ship_method_class          => lt_ship_method_cls         -- 次の配送区分
               , on_next_weight_capacity       => ln_next_weight_capacity    -- 積載重量／容積
               , ov_errbuf                     => lv_errbuf
@@ -7699,49 +7719,110 @@ debug_log(FND_FILE.LOG,'3-5-2-1混載可否判定処理：配送区分');
                     lv_cdkbn_2  :=  gv_cdkbn_storage; -- 倉庫
                   END IF;
 --
-                  -- ※次レコードの配送区分に基準明細の配送区分が含まれているかチェック
-debug_log(FND_FILE.LOG,'3-5-2-2※次レコードの配送区分に基準明細の配送区分が含まれているかチェック');
+-- v1.23 Mod Start E_本稼動_11448
+--                  -- ※次レコードの配送区分に基準明細の配送区分が含まれているかチェック
+--debug_log(FND_FILE.LOG,'3-5-2-2※次レコードの配送区分に基準明細の配送区分が含まれているかチェック');
+                  -- ※次レコードの配送区分 <= 基準明細の配送区分となっているかチェック
+debug_log(FND_FILE.LOG,'3-5-2-2※次レコードの配送区分 <= 基準明細の配送区分となっているかチェック');
+-- v1.23 Mod End
 debug_log(FND_FILE.LOG,'cdkbn_1(from)= '||gv_cdkbn_storage);
 debug_log(FND_FILE.LOG,'despatching_code1(from)= '||first_deliver_from);
 debug_log(FND_FILE.LOG,'cdkbn_2(to)= '||lv_cdkbn_2);
 debug_log(FND_FILE.LOG,'despatching_code2(to)= '||lt_intensive_tab(ln_loop_cnt).deliver_to);
 debug_log(FND_FILE.LOG,'lt_ship_method_cls= '||lt_ship_method_cls);
-                  get_consolidated_flag(
-                        iv_code_class1                => gv_cdkbn_storage      -- コード区分１
+-- v1.23 Mod Start E_本稼動_11448
+--                  get_consolidated_flag(
+--                        iv_code_class1                => gv_cdkbn_storage      -- コード区分１
 --20080714 mod                      , iv_entering_despatching_code1 => first_deliver_to   -- 入出庫場所１
-                      , iv_entering_despatching_code1 => first_deliver_from               -- 入出庫場所１
-                      , iv_code_class2                => lv_cdkbn_2         -- コード区分２
-                      , iv_entering_despatching_code2 => lt_intensive_tab(ln_loop_cnt).deliver_to
+--                      , iv_entering_despatching_code1 => first_deliver_from               -- 入出庫場所１
+--                      , iv_code_class2                => lv_cdkbn_2         -- コード区分２
+--                      , iv_entering_despatching_code2 => lt_intensive_tab(ln_loop_cnt).deliver_to
                                                                             -- 入出庫場所２
-                      , iv_ship_method                => lt_ship_method_cls -- 配送区分
-                      , ov_consolidate_flag           => lv_consolid_flag_ships
+--                      , iv_ship_method                => lt_ship_method_cls -- 配送区分
+--                      , ov_consolidate_flag           => lv_consolid_flag_ships
                                                                             -- 混載可否フラグ:配送区分
-                      , ov_errbuf                     => lv_errbuf
-                      , ov_retcode                    => lv_retcode
-                      , ov_errmsg                     => lv_errmsg
-                  );
-                  IF (lv_retcode = gv_status_error) THEN
-                    gv_err_key  :=  lv_cdkbn_1
-                                    || gv_msg_comma ||
-                                    first_deliver_to
-                                    || gv_msg_comma ||
-                                    lv_cdkbn_2
-                                    || gv_msg_comma ||
-                                    lt_intensive_tab(ln_loop_cnt).deliver_to
-                                    || gv_msg_comma ||
-                                    lt_ship_method_cls
-                                    ;
+--                      , ov_errbuf                     => lv_errbuf
+--                      , ov_retcode                    => lv_retcode
+--                      , ov_errmsg                     => lv_errmsg
+--                  );
+--                  IF (lv_retcode = gv_status_error) THEN
+--                    gv_err_key  :=  lv_cdkbn_1
+--                                    || gv_msg_comma ||
+--                                    first_deliver_to
+--                                    || gv_msg_comma ||
+--                                    lv_cdkbn_2
+--                                    || gv_msg_comma ||
+--                                    lt_intensive_tab(ln_loop_cnt).deliver_to
+--                                    || gv_msg_comma ||
+--                                    lt_ship_method_cls
+--                                    ;
                     -- エラーメッセージ取得
-                    lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
-                                    gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
-                                  , gv_msg_xxwsh_11810  -- メッセージ：APP-XXWSH-11810 共通関数エラー
-                                  , gv_fnc_name         -- トークン：FNC_NAME
-                                  , 'get_consolidated_flag' -- 関数名
-                                  , gv_tkn_key              -- トークン：KEY
-                                  , gv_err_key              -- 関数実行キー
-                                 ),1,5000);
-                    RAISE global_api_expt;
+--                    lv_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg(
+--                                    gv_xxwsh            -- モジュール名略称：XXWSH 出荷・引当/配車
+--                                  , gv_msg_xxwsh_11810  -- メッセージ：APP-XXWSH-11810 共通関数エラー
+--                                  , gv_fnc_name         -- トークン：FNC_NAME
+--                                  , 'get_consolidated_flag' -- 関数名
+--                                  , gv_tkn_key              -- トークン：KEY
+--                                  , gv_err_key              -- 関数実行キー
+--                                 ),1,5000);
+--                    RAISE global_api_expt;
+--                  END IF;
+                  -- 共通関数：最大配送区分算出関数
+                  --初期化
+                  lv_consolid_flag_ships := cv_consolid_false; -- 混載許可フラグ：不許可
+debug_log(FND_FILE.LOG,'最大配送区分算出関数 呼出前 :lv_consolid_flag_ships= '||lv_consolid_flag_ships);
+                  return_cd := xxwsh_common_pkg.get_max_ship_method(
+                              iv_code_class1                => gv_cdkbn_storage,          -- コード区分1
+                              iv_entering_despatching_code1 => first_deliver_from,        -- 入出庫場所1
+                              iv_code_class2                => lv_cdkbn_2,                -- コード区分2
+                              iv_entering_despatching_code2 => lt_intensive_tab(ln_loop_cnt).deliver_to,
+                                                                                          -- 入出庫場所2
+                              iv_prod_class                 => gv_prod_class,             -- 商品区分
+                              iv_weight_capacity_class      => lt_intensive_tab(ln_loop_cnt).weight_capacity_class,
+                                                                                          -- 重量容積区分
+                              iv_auto_process_type          => cv_allocation,             -- 自動配車対象区分
+                              id_standard_date              => lt_intensive_tab(ln_loop_cnt).schedule_ship_date,
+                                                                                          -- 基準日
+                              ov_max_ship_methods           => lv_grp_max_ship_methods,   -- 最大配送区分
+                              on_drink_deadweight           => ln_drink_deadweight,       -- ドリンク積載重量
+                              on_leaf_deadweight            => ln_leaf_deadweight,        -- リーフ積載重量
+                              on_drink_loading_capacity     => ln_drink_loading_capacity, -- ドリンク積載容積
+                              on_leaf_loading_capacity      => ln_leaf_loading_capacity,  -- リーフ積載容積
+                              on_palette_max_qty            => ln_palette_max_qty         -- パレット最大枚数
+                              );
+--
+                  IF  (return_cd = gv_error)
+                    OR (lv_grp_max_ship_methods IS NULL)
+                  THEN
+--
+                    -- エラーメッセージ取得
+                    lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                   gv_xxwsh                      -- モジュール名略称：XXWSH 出荷・引当/配車
+                                 , gv_msg_xxwsh_11802            -- 最大配送区分取得エラー
+                                 , gv_tkn_from                   -- トークン'FROM'
+                                 , first_deliver_from            -- 入出庫場所1
+                                 , gv_tkn_to                     -- トークン'TO'
+                                 , lt_intensive_tab(ln_loop_cnt).deliver_to
+                                                                 -- 入出庫場所2
+                                 , gv_tkn_codekbn1               -- トークン'CODEKBN1'
+                                 , gv_cdkbn_storage              -- コード区分1
+                                 , gv_tkn_codekbn2               -- トークン'CODEKBN2'
+                                 , lv_cdkbn_2                    -- コード区分2
+                                ) ,1 ,5000);
+--
+                     RAISE global_api_expt;
+--
                   END IF;
+--
+                  -- 配送区分と最大配送区分を比較する
+                  IF (lv_grp_max_ship_methods >= lt_ship_method_cls) THEN
+--
+debug_log(FND_FILE.LOG,'配送区分と最大配送区分を比較(比較元（基準）、比較先）＝'||lt_ship_method_cls||','||lv_grp_max_ship_methods);
+                    -- 混載を許可
+                    lv_consolid_flag_ships := cn_consolid_parmit;
+--
+                  END IF;
+-- v1.23 Mod End
 --
                 END IF;
 --
