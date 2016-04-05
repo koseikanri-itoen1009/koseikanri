@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2014/10/16    1.18  Y.Enokido        [E_本稼動_09378]納品者の有効チェックを行う
  *  2014/11/27    1.19  K.Nakatsu        [E_本稼動_12599]汎用エラーリストテーブルへの出力追加
  *  2015/01/29    1.20  H.Wajima         [E_本稼働_12599]HWリプレースによるパフォーマンス対応反映
+ *  2016/03/01    1.21  S.Niki           [E_本稼働_13480]納品書チェックリスト対応
  *
  *****************************************************************************************/
 --
@@ -419,6 +420,18 @@ AS
   TYPE g_tab_gt_input_class        IS TABLE OF xxcos_vd_column_headers.input_class%TYPE
     INDEX BY PLS_INTEGER;   -- 入力区分
 --****************************** 2009/04/22 1.7 T.Kitajima ADD  END  ******************************--
+--****************************** Ver.1.21 ADD START ******************************--
+  TYPE g_tab_ttl_sales_amt         IS TABLE OF xxcos_vd_column_headers.total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- 総販売金額
+  TYPE g_tab_cs_ttl_sales_amt      IS TABLE OF xxcos_vd_column_headers.cash_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- 現金売りトータル販売金額
+  TYPE g_tab_pp_ttl_sales_amt      IS TABLE OF xxcos_vd_column_headers.ppcard_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- PPカードトータル販売金額
+  TYPE g_tab_id_ttl_sales_amt      IS TABLE OF xxcos_vd_column_headers.idcard_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- IDカードトータル販売金額
+  TYPE g_tab_hht_received_flag     IS TABLE OF xxcos_vd_column_headers.hht_received_flag%TYPE
+    INDEX BY PLS_INTEGER;   -- HHT受信フラグ
+--****************************** Ver.1.21 ADD END ******************************--
 --
   -- VDコラム別取引明細テーブル登録用変数
   TYPE g_tab_order_nol_hht         IS TABLE OF xxcos_vd_column_lines.order_no_hht%TYPE
@@ -535,6 +548,13 @@ AS
   gt_tax_include        g_tab_tax_include;              -- 税込金額
   gt_red_black_flag     g_tab_red_black_flag;           -- 赤黒フラグ
   gt_cancel_correct     g_tab_cancel_correct_class;     -- 取消・訂正区分
+--****************************** Ver.1.21 ADD START ******************************--
+  gt_ttl_sales_amt      g_tab_ttl_sales_amt;            -- 総販売金額
+  gt_cs_ttl_sales_amt   g_tab_cs_ttl_sales_amt;         -- 現金売りトータル販売金額
+  gt_pp_ttl_sales_amt   g_tab_pp_ttl_sales_amt;         -- PPカードトータル販売金額
+  gt_id_ttl_sales_amt   g_tab_id_ttl_sales_amt;         -- IDカードトータル販売金額
+  gt_hht_received_flag  g_tab_hht_received_flag;        -- HHT受信フラグ
+--****************************** Ver.1.21 ADD END   ******************************--
 --
   -- VDコラム別取引明細テーブル登録データ
   gt_order_nol_hht      g_tab_order_nol_hht;            -- 受注No.(HHT)
@@ -590,6 +610,13 @@ AS
   gt_dev_set_forward_date           g_tab_forward_date;             -- 連携日付
   gt_dev_set_vd_results_for_f       g_tab_vd_results_forward_f;  -- ベンダ納品実績情報連携済フラグ
   gt_dev_set_cancel_correct         g_tab_cancel_correct_class;     -- 取消・訂正区分
+--****************************** Ver.1.21 ADD START ******************************--
+  gt_dev_set_ttl_sales_amt          g_tab_ttl_sales_amt;            -- 総販売金額
+  gt_dev_set_cs_ttl_sales_amt       g_tab_cs_ttl_sales_amt;         -- 現金売りトータル販売金額
+  gt_dev_set_pp_ttl_sales_amt       g_tab_pp_ttl_sales_amt;         -- PPカードトータル販売金額
+  gt_dev_set_id_ttl_sales_amt       g_tab_id_ttl_sales_amt;         -- IDカードトータル販売金額
+  gt_dev_set_hht_received_flag      g_tab_hht_received_flag;        -- HHT受信フラグ
+--****************************** Ver.1.21 ADD END   ******************************--
   gt_dev_set_created_by             g_tab_created_by;               -- 作成者
   gt_dev_set_creation_date          g_tab_creation_date;            -- 作成日
   gt_dev_set_last_updated_by        g_tab_last_updated_by;          -- 最終更新者
@@ -2100,6 +2127,13 @@ AS
             forward_date,                   -- 連携日付
             vd_results_forward_flag,        -- ベンダ納品実績情報連携済フラグ
             cancel_correct_class,           -- 取消・訂正区分
+--****************************** Ver.1.21 ADD START ******************************--
+            total_sales_amt,                -- 総販売金額
+            cash_total_sales_amt,           -- 現金売りトータル販売金額
+            ppcard_total_sales_amt,         -- PPカードトータル販売金額
+            idcard_total_sales_amt,         -- IDカードトータル販売金額
+            hht_received_flag,              -- HHT受信フラグ
+--****************************** Ver.1.21 ADD END   ******************************--
             created_by,                     -- 作成者
             creation_date,                  -- 作成日
             last_updated_by,                -- 最終更新者
@@ -2148,6 +2182,13 @@ AS
             NULL,                           -- 連携日付
             'N',                            -- ベンダ納品実績情報連携済フラグ
             gt_cancel_correct(i),           -- 取消・訂正区分
+--****************************** Ver.1.21 ADD START ******************************--
+            NULL,                           -- 総販売金額
+            NULL,                           -- 現金売りトータル販売金額
+            NULL,                           -- PPカードトータル販売金額
+            NULL,                           -- IDカードトータル販売金額
+            NULL,                           -- HHT受信フラグ
+--****************************** Ver.1.21 ADD END   ******************************--
             cn_created_by,                  -- 作成者
             cd_creation_date,               -- 作成日
             cn_last_updated_by,             -- 最終更新者
@@ -2642,16 +2683,23 @@ AS
                  NULL                            forward_date,              -- 31.連携日付
                  'N'                             vd_results_forward_flag,   -- 32.ベンダ納品実績情報連携済フラグ
                  head.cancel_correct_class       cancel_correct_class,      -- 33.取消・訂正区分
-                 cn_created_by                   created_by,                -- 34.作成者
-                 cd_creation_date                creation_date,             -- 35.作成日
-                 cn_last_updated_by              last_updated_by,           -- 36.最終更新者
-                 cd_last_update_date             last_update_date,          -- 37.最終更新日
-                 cn_last_update_login            last_update_login,         -- 38.最終更新ログイン
-                 cn_request_id                   request_id,                -- 39.要求ID
-                 cn_program_application_id       program_application_id,    -- 40.コンカレント・プログラム・アプリケーションID
-                 cn_program_id                   program_id,                -- 41.コンカレント・プログラムID
-                 cd_program_update_date          program_update_date,       -- 42.プログラム更新日
-                 lt_inv_row_id                   row_id                     -- 43.行ID
+--****************************** Ver.1.21 ADD START ******************************--
+                 head.total_sales_amt            total_sales_amt,           -- 34.総販売金額
+                 head.cash_total_sales_amt       cash_total_sales_amt,      -- 35.現金売りトータル販売金額
+                 head.ppcard_total_sales_amt     ppcard_total_sales_amt,    -- 36.PPカードトータル販売金額
+                 head.idcard_total_sales_amt     idcard_total_sales_amt,    -- 37.IDカードトータル販売金額
+                 head.hht_received_flag          hht_received_flag,         -- 38.HHT受信フラグ
+--****************************** Ver.1.21 ADD END   ******************************--
+                 cn_created_by                   created_by,                -- 39.作成者
+                 cd_creation_date                creation_date,             -- 40.作成日
+                 cn_last_updated_by              last_updated_by,           -- 41.最終更新者
+                 cd_last_update_date             last_update_date,          -- 42.最終更新日
+                 cn_last_update_login            last_update_login,         -- 43.最終更新ログイン
+                 cn_request_id                   request_id,                -- 44.要求ID
+                 cn_program_application_id       program_application_id,    -- 45.コンカレント・プログラム・アプリケーションID
+                 cn_program_id                   program_id,                -- 46.コンカレント・プログラムID
+                 cd_program_update_date          program_update_date,       -- 47.プログラム更新日
+                 lt_inv_row_id                   row_id                     -- 48.行ID
           INTO   gt_dev_set_order_noh_hht(lt_data_count)
                  ,gt_dev_set_digestion_ln(lt_data_count)
                  ,gt_dev_set_order_no_ebs(lt_data_count)
@@ -2685,6 +2733,13 @@ AS
                  ,gt_dev_set_forward_date(lt_data_count)
                  ,gt_dev_set_vd_results_for_f(lt_data_count)
                  ,gt_dev_set_cancel_correct(lt_data_count)
+--****************************** Ver.1.21 ADD START ******************************--
+                 ,gt_dev_set_ttl_sales_amt(lt_data_count)
+                 ,gt_dev_set_cs_ttl_sales_amt(lt_data_count)
+                 ,gt_dev_set_pp_ttl_sales_amt(lt_data_count)
+                 ,gt_dev_set_id_ttl_sales_amt(lt_data_count)
+                 ,gt_dev_set_hht_received_flag(lt_data_count)
+--****************************** Ver.1.21 ADD END   ******************************--
                  ,gt_dev_set_created_by(lt_data_count)
                  ,gt_dev_set_creation_date(lt_data_count)
                  ,gt_dev_set_last_updated_by(lt_data_count)
@@ -2875,6 +2930,13 @@ AS
                  forward_date,                   -- 連携日付
                  vd_results_forward_flag,        -- ベンダ納品実績情報連携済フラグ
                  cancel_correct_class,           -- 取消・訂正区分
+--****************************** Ver.1.21 ADD START ******************************--
+                 total_sales_amt,                -- 総販売金額
+                 cash_total_sales_amt,           -- 現金売りトータル販売金額
+                 ppcard_total_sales_amt,         -- PPカードトータル販売金額
+                 idcard_total_sales_amt,         -- IDカードトータル販売金額
+                 hht_received_flag,              -- HHT受信フラグ
+--****************************** Ver.1.21 ADD END   ******************************--
                  created_by,                     -- 作成者
                  creation_date,                  -- 作成日
                  last_updated_by,                -- 最終更新者
@@ -2924,6 +2986,13 @@ AS
                  gt_dev_set_forward_date(i),
                  gt_dev_set_vd_results_for_f(i),
                  gt_dev_set_cancel_correct(i),
+--****************************** Ver.1.21 ADD START ******************************--
+                 gt_dev_set_ttl_sales_amt(i),
+                 gt_dev_set_cs_ttl_sales_amt(i),
+                 gt_dev_set_pp_ttl_sales_amt(i),
+                 gt_dev_set_id_ttl_sales_amt(i),
+                 gt_dev_set_hht_received_flag(i),
+--****************************** Ver.1.21 ADD END   ******************************--
                  gt_dev_set_created_by(i),
                  gt_dev_set_creation_date(i),
                  gt_dev_set_last_updated_by(i),
