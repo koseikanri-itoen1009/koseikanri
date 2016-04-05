@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,6 +17,8 @@ AS
  *  money_data_entry       入金データ抽出(A-5)、納品データ登録（入金データ）(A-6)
  *  execute_svf            SVF起動(A-7)
  *  delete_rpt_wrk_data    帳票ワークテーブルデータ削除(A-8)
+ *  update_rpt_wrk_data    帳票ワークテーブルデータ更新(A-9)
+ *  ins_no_data_msg        0件メッセージ登録(A-10)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -75,6 +77,7 @@ AS
  *  2012/03/30    1.23  Y.Horikawa       [E_本稼動_09039]パフォーマンス改善対応
  *  2013/04/12    1.24  T.Ishiwata       [E_本稼動_10660]入金データ更新項目追加対応
  *  2013/07/03    1.25  T.Shimoji        [E_本稼動_10904]消費税増税対応
+ *  2016/03/08    1.26  S.Niki           [E_本稼動_13480]売上金額差異リスト追加
  *
  *****************************************************************************************/
 --
@@ -192,6 +195,9 @@ AS
   cv_tkn_para_delivery_base     CONSTANT VARCHAR2(100) := 'PARAM2';             -- 拠点
   cv_tkn_para_dlv_by_code       CONSTANT VARCHAR2(100) := 'PARAM3';             -- 営業員
   cv_tkn_para_hht_invoice       CONSTANT VARCHAR2(100) := 'PARAM4';             -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+  cv_tkn_para_output_type       CONSTANT VARCHAR2(100) := 'PARAM5';             -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
 -- 2009/12/17 Ver.1.19 Add Start
   cv_tkn_hht_invoice_no         CONSTANT VARCHAR2(100) := 'HHT_INVOICE_NO';     -- 納品伝票番号
   cv_tkn_customer_number        CONSTANT VARCHAR2(100) := 'CUSTOMER_NUMBER';    -- 顧客
@@ -269,6 +275,12 @@ AS
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
   cv_fmt_time_default           CONSTANT  VARCHAR2(7)                                     :=  'HH24:MI';
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
+-- ************* Ver.1.26 ADD START *************--
+  -- 出力区分
+  cv_output_type_2              CONSTANT VARCHAR2(1)   := '2';   -- 売上金額差異リスト
+  -- HHT受信フラグ
+  cv_hht_received               CONSTANT VARCHAR2(1)   := 'Y';   -- HHT受信データ
+-- ************* Ver.1.26 ADD END   *************--
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -309,6 +321,9 @@ AS
     iv_delivery_base_code IN      VARCHAR2,         -- 拠点
     iv_dlv_by_code        IN      VARCHAR2,         -- 営業員
     iv_hht_invoice_no     IN      VARCHAR2,         -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+    iv_output_type        IN      VARCHAR2,         -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
     ov_errbuf             OUT     VARCHAR2,         -- エラー・メッセージ                  --# 固定 #
     ov_retcode            OUT     VARCHAR2,         -- リターン・コード                    --# 固定 #
     ov_errmsg             OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ        --# 固定 #
@@ -367,7 +382,12 @@ AS
                      iv_token_name3  => cv_tkn_para_dlv_by_code,
                      iv_token_value3 => iv_dlv_by_code,
                      iv_token_name4  => cv_tkn_para_hht_invoice,
-                     iv_token_value4 => iv_hht_invoice_no
+-- ************* Ver.1.26 MOD START *************--
+--                     iv_token_value4 => iv_hht_invoice_no
+                     iv_token_value4 => iv_hht_invoice_no,
+                     iv_token_name5  => cv_tkn_para_output_type,
+                     iv_token_value5 => iv_output_type
+-- ************* Ver.1.26 MOD END   *************--
                      );
 --
     FND_FILE.PUT_LINE(
@@ -460,6 +480,9 @@ AS
     iv_delivery_base_code IN      VARCHAR2,         -- 拠点
     iv_dlv_by_code        IN      VARCHAR2,         -- 営業員
     iv_hht_invoice_no     IN      VARCHAR2,         -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+    iv_output_type        IN      VARCHAR2,         -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
     ov_errbuf             OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg             OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -994,6 +1017,9 @@ AS
                               ,icp_delivery_base_code  VARCHAR2   -- 拠点
                               ,icp_dlv_by_code         VARCHAR2   -- 営業員
                               ,icp_hht_invoice_no      VARCHAR2   -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+                              ,icp_output_type         VARCHAR2   -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
                             )
     IS
       SELECT
@@ -1092,6 +1118,10 @@ AS
 -- 2011/03/07 Ver.1.21 S.Ochiai ADD Start
         ,infh.order_invoice_number                 AS order_number                    -- オーダーNo
 -- 2011/03/07 Ver.1.21 S.Ochiai ADD End
+-- ************* Ver.1.26 ADD START *************--
+        ,infh.total_sales_amt                      AS total_sales_amt                 -- 総販売金額
+        ,infh.cash_card_sales_amt                  AS cash_card_sales_amt             -- 現金・カード販売金額
+-- ************* Ver.1.26 ADD END   *************--
       FROM
          hz_cust_accounts         base          -- 顧客マスタ_拠点
         ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
@@ -1159,6 +1189,11 @@ AS
                     AND seh.dlv_invoice_number = icp_hht_invoice_no )
                 OR (    icp_hht_invoice_no    IS NULL ) )                                       -- パラメータの伝票番号
 -- 2009/09/01 Ver.1.15 M.Sano Mod End
+-- ************* Ver.1.26 ADD START *************--
+           AND (   (    icp_output_type         = cv_output_type_2
+                    AND seh.hht_received_flag   = cv_hht_received  )
+                OR (    icp_output_type        != cv_output_type_2 ) )                          -- パラメータの出力区分
+-- ************* Ver.1.26 ADD END   *************--
            AND seh.sales_exp_header_id   = sel.sales_exp_header_id
            AND sel.item_code             = diit.lookup_code(+)
            GROUP BY
@@ -1211,6 +1246,18 @@ AS
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
              ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT納品入力日時
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
+-- ************* Ver.1.26 ADD START *************--
+             ,MAX( NVL( seh.total_sales_amt,0 ) )
+                                              AS total_sales_amt              -- 総販売金額
+             ,CASE seh.card_sale_class
+                WHEN ct_cash THEN
+                  MAX( NVL( seh.cash_total_sales_amt,0 ) )
+                WHEN ct_card THEN
+                  MAX( NVL( seh.ppcard_total_sales_amt,0 )
+                     + NVL( seh.idcard_total_sales_amt,0 ) )
+                ELSE 0
+              END                             AS cash_card_sales_amt          -- 現金・カード販売金額
+-- ************* Ver.1.26 ADD END *************--
            FROM
               xxcos_sales_exp_headers   seh          -- 販売実績ヘッダテーブル
            WHERE
@@ -1223,6 +1270,11 @@ AS
                     AND seh.dlv_invoice_number = icp_hht_invoice_no )
                 OR (    icp_hht_invoice_no    IS NULL ) )                                      -- パラメータの伝票番号
 -- 2009/09/01 Ver.1.15 M.Sano Mod End
+-- ************* Ver.1.26 ADD START *************--
+           AND (   (    icp_output_type         = cv_output_type_2
+                    AND seh.hht_received_flag   = cv_hht_received  )
+                OR (    icp_output_type        != cv_output_type_2 ) )                         -- パラメータの出力区分
+-- ************* Ver.1.26 ADD END   *************--
            GROUP BY
               seh.delivery_date                      -- 納品日
 -- 2011/03/07 Ver.1.21 S.Ochiai ADD Start
@@ -1338,6 +1390,11 @@ AS
                     AND seh.dlv_invoice_number = icp_hht_invoice_no )
                 OR (    icp_hht_invoice_no    IS NULL ) )                           -- パラメータの伝票番号
 -- 2009/09/01 Ver.1.15 M.Sano Mod End
+-- ************* Ver.1.26 ADD START *************--
+           AND (   (    icp_output_type         = cv_output_type_2
+                    AND seh.hht_received_flag   = cv_hht_received  )
+                OR (    icp_output_type        != cv_output_type_2 ) )              -- パラメータの出力区分
+-- ************* Ver.1.26 ADD END   *************--
            AND seh.ship_to_customer_code = cust.account_number                      -- 販売実績ヘッダ＝顧客マスタ_顧客
            AND cust.customer_class_code  IN ( ct_cust_class_customer , ct_cust_class_customer_u )  
                                                                                     -- 顧客区分IN 顧客,上様顧客
@@ -1643,6 +1700,9 @@ AS
                                ,iv_delivery_base_code   -- 拠点
                                ,iv_dlv_by_code          -- 営業員
                                ,iv_hht_invoice_no       -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+                               ,iv_output_type          -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
                              );
       -- バルクフェッチ
       FETCH get_sale_data_cur BULK COLLECT INTO lt_get_sale_data;
@@ -2001,6 +2061,14 @@ AS
 -- 2011/03/07 Ver.1.21 S.Ochiai ADD Start
         gt_dlv_chk_list(ln_num).order_number              := lt_get_sale_data(in_no).order_number;
 -- 2011/03/07 Ver.1.21 S.Ochiai ADD End
+-- ************* Ver.1.26 ADD START *************--
+        -- 総販売金額
+        gt_dlv_chk_list(ln_num).total_sales_amt              := lt_get_sale_data(in_no).total_sales_amt;
+        -- 現金・カード販売金額
+        gt_dlv_chk_list(ln_num).cash_card_sales_amt          := lt_get_sale_data(in_no).cash_card_sales_amt;
+        -- 出力区分
+        gt_dlv_chk_list(ln_num).output_type                  := iv_output_type;
+-- ************* Ver.1.26 ADD END   *************--
 /*        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
           AND
              lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
@@ -2171,6 +2239,9 @@ AS
     iv_delivery_base_code IN      VARCHAR2,         -- 拠点
     iv_dlv_by_code        IN      VARCHAR2,         -- 営業員
     iv_hht_invoice_no     IN      VARCHAR2,         -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+    iv_output_type        IN      VARCHAR2,         -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
     ov_errbuf             OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg             OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2298,6 +2369,9 @@ AS
              ,h_and_c                             -- H/C
              ,payment_class                       -- 入金区分
              ,payment_amount                      -- 入金額
+-- ************* Ver.1.26 ADD START *************--
+             ,output_type                         -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
              ,created_by                          -- 作成者
              ,creation_date                       -- 作成日
              ,last_updated_by                     -- 最終更新者
@@ -2380,6 +2454,9 @@ AS
           ,NULL                                   -- H/C
           ,pacl.meaning                           -- 入金区分
           ,pay.payment_amount                     -- 入金額
+-- ************* Ver.1.26 ADD START *************--
+          ,iv_output_type                         -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
           ,cn_created_by                          -- 作成者
           ,cd_creation_date                       -- 作成日
           ,cn_last_updated_by                     -- 最終更新者
@@ -2672,7 +2749,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_nodata_msg    VARCHAR2(5000);
+-- ************* Ver.1.26 DEL START *************--
+--    lv_nodata_msg    VARCHAR2(5000);
+-- ************* Ver.1.26 DEL END   *************--
     lv_file_name     VARCHAR2(5000);
     lv_api_name      VARCHAR2(5000);
 --
@@ -2689,10 +2768,12 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    --==================================
-    -- 1.明細0件用メッセージ取得
-    --==================================
-    lv_nodata_msg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata_err );
+-- ************* Ver.1.26 DEL START *************--
+--    --==================================
+--    -- 1.明細0件用メッセージ取得
+--    --==================================
+--    lv_nodata_msg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata_err );
+-- ************* Ver.1.26 DEL END   *************--
 --
     --出力ファイル編集
     lv_file_name  := cv_file_id || TO_CHAR( SYSDATE, cv_fmt_date )
@@ -2718,7 +2799,10 @@ AS
                                           iv_doc_name     => NULL,
                                           iv_printer_name => NULL,
                                           iv_request_id   => TO_CHAR( cn_request_id ),
-                                          iv_nodata_msg   => lv_nodata_msg,
+-- ************* Ver.1.26 MOD START *************--
+--                                          iv_nodata_msg   => lv_nodata_msg,
+                                          iv_nodata_msg   => NULL,
+-- ************* Ver.1.26 MOD END   *************--
                                           iv_svf_param1   => NULL,
                                           iv_svf_param2   => NULL,
                                           iv_svf_param3   => NULL,
@@ -2901,7 +2985,275 @@ AS
 --
   END delete_rpt_wrk_data;
 --
+-- ************* Ver.1.26 ADD START *************--
+  /**********************************************************************************
+   * Procedure Name   : update_rpt_wrk_data
+   * Description      : 帳票ワークテーブルデータ更新(A-9)
+   ***********************************************************************************/
+  PROCEDURE update_rpt_wrk_data(
+    iv_delivery_date  IN  VARCHAR2,         -- 納品日
+    ov_errbuf         OUT VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode        OUT VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg         OUT VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_rpt_wrk_data'; -- プログラム名
 --
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ld_delivery_date       DATE;   -- パラメータ変換後の納品日
+--
+    -- *** ローカル・カーソル ***
+    --  ロック取得用
+    CURSOR lock_cur
+    IS
+      SELECT xrdcl.rowid  AS row_id
+      FROM   xxcos_rep_dlv_chk_list xrdcl
+      WHERE  xrdcl.request_id   =   cn_request_id
+      AND  ( xrdcl.sudstance_total_amount  = xrdcl.cash_card_sales_amt
+        OR   xrdcl.sudstance_total_amount  = 0
+        OR   xrdcl.cash_card_sales_amt     = 0
+           )
+      FOR UPDATE NOWAIT
+    ;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==================================
+    -- 1.帳票ワークテーブルロック
+    --==================================
+    ld_delivery_date := TO_DATE(iv_delivery_date, cv_fmt_date_default);
+--
+    -- カーソルOPEN
+    OPEN  lock_cur;
+    CLOSE lock_cur;
+--
+    --==================================
+    -- 2.帳票ワークテーブル削除
+    --==================================
+    BEGIN
+      DELETE
+      FROM   xxcos_rep_dlv_chk_list xrdcl
+      WHERE  xrdcl.request_id   =   cn_request_id
+      AND  ( xrdcl.sudstance_total_amount  = xrdcl.cash_card_sales_amt
+        OR   xrdcl.sudstance_total_amount  = 0
+        OR   xrdcl.cash_card_sales_amt     = 0
+           )
+      ;
+      -- 対象件数取得
+      gn_target_cnt := gn_target_cnt - SQL%ROWCOUNT;
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- データ削除エラーメッセージ
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_request_id );
+        xxcos_common_pkg.makeup_key_info( ov_errbuf      => lv_errbuf           -- エラー・メッセージ
+                                         ,ov_retcode     => lv_retcode          -- リターン・コード
+                                         ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
+                                         ,ov_key_info    => gv_key_info         -- キー情報
+                                         ,iv_item_name1  => gv_tkn1             -- 要求ID
+                                         ,iv_data_value1 => cn_request_id
+                                        );
+--
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_list_work_table );
+        lv_errmsg := xxccp_common_pkg.get_msg( cv_application
+                                              ,cv_msg_delete_data_err
+                                              ,cv_tkn_table
+                                              ,gv_tkn1
+                                              ,cv_tkn_key_data
+                                              ,gv_key_info
+                                             );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+--
+    END;
+--
+  EXCEPTION
+--
+    -- ロックエラー
+    WHEN lock_expt THEN
+      gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_list_work_table );
+      lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_lock_err, cv_tkn_table, gv_tkn1 );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+      IF ( lock_cur%ISOPEN ) THEN
+        CLOSE lock_cur;
+      END IF;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_rpt_wrk_data;
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_no_data_msg
+   * Description      : 0件メッセージ登録(A-10)
+   ***********************************************************************************/
+  PROCEDURE ins_no_data_msg(
+    iv_output_type  IN  VARCHAR2,         -- 出力区分
+    ov_errbuf       OUT VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode      OUT VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg       OUT VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_no_data_msg'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_nodata_msg    VARCHAR2(5000);
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==================================
+    -- 1.0件メッセージ取得
+    --==================================
+    lv_nodata_msg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata_err );
+--
+    --==================================
+    -- 2.0件メッセージ登録
+    --==================================
+    BEGIN
+      INSERT INTO
+        xxcos_rep_dlv_chk_list
+          (
+              record_id                           -- レコードID
+             ,sudstance_total_amount              -- 売上額
+             ,sale_discount_amount                -- 売上値引額
+             ,consumption_tax_total_amount        -- 消費税金額合計
+             ,total_sales_amt                     -- 総販売金額
+             ,cash_card_sales_amt                 -- 現金・カード販売金額
+             ,output_type                         -- 出力区分
+             ,no_data_message                     -- 0件メッセージ
+             ,created_by                          -- 作成者
+             ,creation_date                       -- 作成日
+             ,last_updated_by                     -- 最終更新者
+             ,last_update_date                    -- 最終更新日
+             ,last_update_login                   -- 最終更新ログイン
+             ,request_id                          -- 要求ＩＤ
+             ,program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+             ,program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+             ,program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
+          )VALUES(
+              xxcos_rep_dlv_chk_list_s01.NEXTVAL  -- レコードID
+             ,0                                   -- 売上額
+             ,0                                   -- 売上値引額
+             ,0                                   -- 消費税金額合計
+             ,0                                   -- 総販売金額
+             ,0                                   -- 現金・カード販売金額
+             ,iv_output_type                      -- 出力区分
+             ,lv_nodata_msg                       -- 0件メッセージ
+             ,cn_created_by                       -- 作成者
+             ,cd_creation_date                    -- 作成日
+             ,cn_last_updated_by                  -- 最終更新者
+             ,cd_last_update_date                 -- 最終更新日
+             ,cn_last_update_login                -- 最終更新ログイン
+             ,cn_request_id                       -- 要求ＩＤ
+             ,cn_program_application_id           -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+             ,cn_program_id                       -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+             ,cd_program_update_date              -- ﾌﾟﾛｸﾞﾗﾑ更新日
+          );
+    EXCEPTION
+      WHEN OTHERS THEN
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_list_work_table );
+        gv_tkn2   := NULL;
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                                               cv_application
+                                              ,cv_msg_insert_data_err
+                                              ,cv_tkn_table
+                                              ,gv_tkn1
+                                              ,cv_tkn_key_data
+                                              ,gv_tkn2
+                                             );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_no_data_msg;
+--
+-- ************* Ver.1.26 ADD END   *************--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -2911,6 +3263,9 @@ AS
     iv_delivery_base_code IN      VARCHAR2,         -- 拠点
     iv_dlv_by_code        IN      VARCHAR2,         -- 営業員
     iv_hht_invoice_no     IN      VARCHAR2,         -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+    iv_output_type        IN      VARCHAR2,         -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
     ov_errbuf             OUT     VARCHAR2,         -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT     VARCHAR2,         -- リターン・コード             --# 固定 #
     ov_errmsg             OUT     VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2975,6 +3330,9 @@ AS
       ,iv_delivery_base_code   -- 拠点
       ,iv_dlv_by_code          -- 営業員
       ,iv_hht_invoice_no       -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+      ,iv_output_type          -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
       ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
       ,lv_retcode              -- リターン・コード             --# 固定 #
       ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2994,6 +3352,9 @@ AS
       ,iv_delivery_base_code   -- 拠点
       ,iv_dlv_by_code          -- 営業員
       ,iv_hht_invoice_no       -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+      ,iv_output_type          -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
       ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
       ,lv_retcode              -- リターン・コード             --# 固定 #
       ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3012,6 +3373,9 @@ AS
       ,iv_delivery_base_code   -- 拠点
       ,iv_dlv_by_code          -- 営業員
       ,iv_hht_invoice_no       -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+      ,iv_output_type          -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
       ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
       ,lv_retcode              -- リターン・コード             --# 固定 #
       ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3021,9 +3385,46 @@ AS
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
+-- ************* Ver.1.26 ADD START *************--
+    -- 対象件数が0件ではない、かつ出力区分が「2」の場合、
+    -- 出力対象外レコードを削除します。
+    IF ( gn_target_cnt != 0
+       AND iv_output_type = cv_output_type_2 ) THEN
+      --  ===============================
+      --  帳票ワークテーブルデータ更新(A-9)
+      --  ===============================
+      update_rpt_wrk_data(
+         iv_delivery_date        -- 納品日
+        ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
+        ,lv_retcode              -- リターン・コード             --# 固定 #
+        ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+--
+      -- エラー処理
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+-- ************* Ver.1.26 ADD END   *************--
 --
     -- 対象件数が0件であった場合、「明細0件用メッセージ」を出力します。
     IF ( gn_target_cnt = 0 ) THEN
+-- ************* Ver.1.26 ADD START *************--
+      --  ===============================
+      --  0件メッセージ登録(A-10)
+      --  ===============================
+      ins_no_data_msg(
+         iv_output_type          -- 出力区分
+        ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
+        ,lv_retcode              -- リターン・コード             --# 固定 #
+        ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+--
+      -- エラー処理
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+-- ************* Ver.1.26 ADD END   *************--
       lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata_err );
       FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
       ov_retcode := cv_status_warn;
@@ -3115,7 +3516,11 @@ AS
     iv_delivery_date      IN  VARCHAR2,         --  納品日
     iv_delivery_base_code IN  VARCHAR2,         --  拠点
     iv_dlv_by_code        IN  VARCHAR2,         --  営業員
-    iv_hht_invoice_no     IN  VARCHAR2          --  HHT伝票No
+-- ************* Ver.1.26 MOD START *************--
+--    iv_hht_invoice_no     IN  VARCHAR2          --  HHT伝票No
+    iv_hht_invoice_no     IN  VARCHAR2,        --  HHT伝票No
+    iv_output_type        IN  VARCHAR2         -- 出力区分
+-- ************* Ver.1.26 MOD END   *************--
   )
 --
 --
@@ -3174,6 +3579,9 @@ AS
       ,iv_delivery_base_code   -- 拠点
       ,iv_dlv_by_code          -- 営業員
       ,iv_hht_invoice_no       -- HHT伝票No
+-- ************* Ver.1.26 ADD START *************--
+      ,iv_output_type          -- 出力区分
+-- ************* Ver.1.26 ADD END   *************--
       ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
       ,lv_retcode              -- リターン・コード             --# 固定 #
       ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
