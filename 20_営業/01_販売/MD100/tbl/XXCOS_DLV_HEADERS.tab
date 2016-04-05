@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_DLV_HEADERS
  * Description : 納品ヘッダテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS S.Miyakoshi  新規作成
  *  2011/03/16    1.1   SCS S.Ochiai     [E_本稼動_06590] オーダーNo追加
+ *  2016/03/01    1.2   SCSK S.Niki      [E_本稼働_13480] 納品書チェックリスト対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_DLV_HEADERS
@@ -49,6 +50,13 @@ CREATE TABLE XXCOS.XXCOS_DLV_HEADERS
 -- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
   ORDER_NUMBER                 VARCHAR2(16),                   --オーダーNo
 -- 2011/03/16 Ver.1.1 S.Ochiai ADD End
+-- Ver.1.2 ADD Start
+  TOTAL_SALES_AMT              NUMBER(8),                      -- 総販売金額
+  CASH_TOTAL_SALES_AMT         NUMBER(8),                      -- 現金売りトータル販売金額
+  PPCARD_TOTAL_SALES_AMT       NUMBER(8),                      -- PPカードトータル販売金額
+  IDCARD_TOTAL_SALES_AMT       NUMBER(8),                      -- IDカードトータル販売金額
+  HHT_RECEIVED_FLAG            VARCHAR2(1),                    -- HHT受信フラグ
+-- Ver.1.2 ADD End
   CREATED_BY                   NUMBER(15)    NOT NULL,         --作成者
   CREATION_DATE                DATE          NOT NULL,         --作成日
   LAST_UPDATED_BY              NUMBER(15)    NOT NULL,         --最終更新者
@@ -96,6 +104,13 @@ COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.CANCEL_CORRECT_CLASS      IS '取消・訂
 -- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.ORDER_NUMBER              IS 'オーダーNo';
 -- 2011/03/16 Ver.1.1 S.Ochiai ADD End
+-- Ver.1.2 ADD Start
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.TOTAL_SALES_AMT           IS '総販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.CASH_TOTAL_SALES_AMT      IS '現金売りトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.PPCARD_TOTAL_SALES_AMT    IS 'PPカードトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.IDCARD_TOTAL_SALES_AMT    IS 'IDカードトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.HHT_RECEIVED_FLAG         IS 'HHT受信フラグ';
+-- Ver.1.2 ADD End
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.CREATED_BY                IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.CREATION_DATE             IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS.LAST_UPDATED_BY           IS '最終更新者';
