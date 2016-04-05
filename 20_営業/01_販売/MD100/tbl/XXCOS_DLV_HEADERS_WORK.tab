@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_DLV_HEADERS_WORK
  * Description : ”[•iƒwƒbƒ_ƒ[ƒNƒe[ƒuƒ‹
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS S.Miyakoshi  V‹Kì¬
  *  2011/03/16    1.1   SCS S.Ochiai     [E_–{‰Ò“®_06590] ƒI[ƒ_[No’Ç‰Á
+ *  2016/02/15    1.2   SCSK S.Niki      [E_–{‰Ò“®_13480] ”[•i‘ƒ`ƒFƒbƒNƒŠƒXƒg‘Î‰ž
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_DLV_HEADERS_WORK
@@ -43,6 +44,12 @@ CREATE TABLE XXCOS.XXCOS_DLV_HEADERS_WORK
 -- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
   ORDER_NUMBER                 VARCHAR2(16),                     --ƒI[ƒ_[No
 -- 2011/03/16 Ver.1.1 S.Ochiai ADD End
+-- Ver.1.2 ADD Start
+  TOTAL_SALES_AMT              NUMBER(8),                        --‘”Ì”„‹àŠz
+  CASH_TOTAL_SALES_AMT         NUMBER(8),                        --Œ»‹à”„‚èƒg[ƒ^ƒ‹”Ì”„‹àŠz
+  PPCARD_TOTAL_SALES_AMT       NUMBER(8),                        --PPƒJ[ƒhƒg[ƒ^ƒ‹”Ì”„‹àŠz
+  IDCARD_TOTAL_SALES_AMT       NUMBER(8),                        --IDƒJ[ƒhƒg[ƒ^ƒ‹”Ì”„‹àŠz
+-- Ver.1.2 ADD End
   RECEIVE_DATE                 DATE,                             --ŽóM“úŽž
   CREATED_BY                   NUMBER(15)    NOT NULL,           --ì¬ŽÒ
   CREATION_DATE                DATE          NOT NULL,           --ì¬“ú
@@ -85,6 +92,12 @@ COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.DEPARTMENT_SCREEN_CLASS   IS '•S‰
 -- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.ORDER_NUMBER              IS 'ƒI[ƒ_[No';
 -- 2011/03/16 Ver.1.1 S.Ochiai ADD End
+-- Ver.1.2 ADD Start
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.TOTAL_SALES_AMT           IS '‘”Ì”„‹àŠz';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CASH_TOTAL_SALES_AMT      IS 'Œ»‹à”„‚èƒg[ƒ^ƒ‹”Ì”„‹àŠz';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.PPCARD_TOTAL_SALES_AMT    IS 'PPƒJ[ƒhƒg[ƒ^ƒ‹”Ì”„‹àŠz';
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.IDCARD_TOTAL_SALES_AMT    IS 'IDƒJ[ƒhƒg[ƒ^ƒ‹”Ì”„‹àŠz';
+-- Ver.1.2 ADD End
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.RECEIVE_DATE              IS 'ŽóM“úŽž';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CREATED_BY                IS 'ì¬ŽÒ';
 COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.CREATION_DATE             IS 'ì¬“ú';
