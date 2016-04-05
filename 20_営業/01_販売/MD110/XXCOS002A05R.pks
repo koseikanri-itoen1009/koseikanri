@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R(spec)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *                                       [E_本稼動_00522]売上値引きが表示されない対応
  *                                       [E_本稼動_00532]納品実績データの重複表示対応
  *  2010/01/07    1.20  N.Maeda          [E_本稼動_00849] 値引のみデータ対応
+ *  2016/02/29    1.21  S.Niki           [E_本稼動_13480]売上金額差異リスト追加
  *
  *****************************************************************************************/
 --
@@ -74,7 +75,11 @@ AS
     iv_delivery_date      IN  VARCHAR2,         --  納品日
     iv_delivery_base_code IN  VARCHAR2,         --  拠点
     iv_dlv_by_code        IN  VARCHAR2,         --  営業員
-    iv_hht_invoice_no     IN  VARCHAR2          --  HHT伝票No
+/* Ver.1.21 Mod Start */
+--    iv_hht_invoice_no     IN  VARCHAR2          --  HHT伝票No
+    iv_hht_invoice_no     IN  VARCHAR2,         --  HHT伝票No
+    iv_output_type        IN  VARCHAR2          --  出力区分
+/* Ver.1.21 Mod End   */
   );
 END XXCOS002A05R;
 /
