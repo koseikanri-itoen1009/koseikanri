@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_VD_COLUMN_HEADERS
  * Description : VDコラム別取引ヘッダテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS S.Miyakoshi 新規作成
  *  2009/02/13    1.1   SCS K.Sekiguchi VD_RESULTS_FORWARD_FLAGカラム追加
+ *  2016/03/02    1.2   SCSK S.Niki     [E_本稼動_13480]納品書チェックリスト対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_VD_COLUMN_HEADERS
@@ -48,6 +49,13 @@ CREATE TABLE XXCOS.XXCOS_VD_COLUMN_HEADERS
   FORWARD_DATE                    DATE,                                       --連携日付
   VD_RESULTS_FORWARD_FLAG         VARCHAR2(1),                                --ベンダ納品実績情報連携済フラグ
   CANCEL_CORRECT_CLASS            VARCHAR2(1),                                --取消・訂正区分
+/* Ver.1.2 Add Start */
+  TOTAL_SALES_AMT                 NUMBER(8),                                  --総販売金額
+  CASH_TOTAL_SALES_AMT            NUMBER(8),                                  --現金売りトータル販売金額
+  PPCARD_TOTAL_SALES_AMT          NUMBER(8),                                  --PPカードトータル販売金額
+  IDCARD_TOTAL_SALES_AMT          NUMBER(8),                                  --IDカードトータル販売金額
+  HHT_RECEIVED_FLAG               VARCHAR2(1),                                --HHT受信フラグ
+/* Ver.1.2 Add End   */
   CREATED_BY                      NUMBER(15)    NOT NULL,                     --作成者
   CREATION_DATE                   DATE          NOT NULL,                     --作成日
   LAST_UPDATED_BY                 NUMBER(15)    NOT NULL,                     --最終更新者
@@ -94,6 +102,13 @@ COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.FORWARD_FLAG                  IS
 COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.FORWARD_DATE                  IS '連携日付';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.VD_RESULTS_FORWARD_FLAG       IS 'ベンダ納品実績情報連携済フラグ';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.CANCEL_CORRECT_CLASS          IS '取消・訂正区分';
+/* Ver.1.2 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.TOTAL_SALES_AMT               IS '総販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.CASH_TOTAL_SALES_AMT          IS '現金売りトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.PPCARD_TOTAL_SALES_AMT        IS 'PPカードトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.IDCARD_TOTAL_SALES_AMT        IS 'IDカードトータル販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.HHT_RECEIVED_FLAG             IS 'HHT受信フラグ';
+/* Ver.1.2 Add End   */
 COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.CREATED_BY                    IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.CREATION_DATE                 IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.LAST_UPDATED_BY               IS '最終更新者';
