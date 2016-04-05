@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2011/03/16    1.26  S.Ochiai         [E_本稼動_06589,06590] 売上区分＝９（補填）の許可
  *                                                              オーダーNoの追加
  *  2013/09/06    1.27  R.Watanabe       [E_本稼動_10904⑩]消費税区分の参照先変更
+ *  2016/03/01    1.28  S.Niki           [E_本稼動_13480] 納品書チェックリスト対応
  *
  *****************************************************************************************/
 --
@@ -259,6 +260,9 @@ AS
   cv_card            CONSTANT VARCHAR2(1)   := '1';                    -- カード売区分＝1:カード
   cv_cash            CONSTANT VARCHAR2(1)   := '0';                    -- カード売区分＝0:現金
 --****************************** 2010/01/18 1.21 M.Uehara ADD END   *******************************--
+-- Ver.1.28 ADD Start
+  cv_hht_received    CONSTANT VARCHAR2(1)   := 'Y';                    -- HHT受信フラグ＝Y:HHT受信データ
+-- Ver.1.28 ADD End
 --
   -- クイックコードタイプ
   cv_qck_typ_status  CONSTANT VARCHAR2(30)  := 'XXCOS1_CUS_STATUS_MST_001_A01';   -- 顧客ステータス
@@ -307,7 +311,14 @@ AS
 -- 2011/03/16 Ver.1.26 S.Ochiai MOD Start
 --      depart_screen     xxcos_dlv_headers.department_screen_class%TYPE  -- 百貨店画面種別
       depart_screen     xxcos_dlv_headers.department_screen_class%TYPE, -- 百貨店画面種別
-      order_number      xxcos_dlv_headers.order_number%TYPE             -- オーダーNo
+-- Ver.1.28 MOD Start
+--      order_number      xxcos_dlv_headers.order_number%TYPE             -- オーダーNo
+      order_number      xxcos_dlv_headers.order_number%TYPE,            -- オーダーNo
+      ttl_sales_amt     xxcos_dlv_headers.total_sales_amt%TYPE,         -- 総販売金額
+      cs_ttl_sales_amt  xxcos_dlv_headers.cash_total_sales_amt%TYPE,    -- 現金売りトータル販売金額
+      pp_ttl_sales_amt  xxcos_dlv_headers.ppcard_total_sales_amt%TYPE,  -- PPカードトータル販売金額
+      id_ttl_sales_amt  xxcos_dlv_headers.idcard_total_sales_amt%TYPE   -- IDカードトータル販売金額
+-- Ver.1.28 MOD End
 -- 2011/03/16 Ver.1.26 S.Ochiai MOD End
     );
   TYPE g_tab_headwk_data IS TABLE OF g_rec_headwk_data INDEX BY PLS_INTEGER;
@@ -458,6 +469,16 @@ AS
   TYPE g_tab_head_order_number      IS TABLE OF xxcos_dlv_headers.order_number%TYPE
     INDEX BY PLS_INTEGER;   -- オーダーNo
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD End
+-- Ver.1.28 ADD Start
+  TYPE g_tab_head_ttl_sales_amt     IS TABLE OF xxcos_dlv_headers.total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- 総販売金額
+  TYPE g_tab_head_cs_ttl_sales_amt  IS TABLE OF xxcos_dlv_headers.cash_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- 現金売りトータル販売金額
+  TYPE g_tab_head_pp_ttl_sales_amt  IS TABLE OF xxcos_dlv_headers.ppcard_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- PPカードトータル販売金額
+  TYPE g_tab_head_id_ttl_sales_amt  IS TABLE OF xxcos_dlv_headers.idcard_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- IDカードトータル販売金額
+-- Ver.1.28 ADD End
 --
   -- 納品明細データ登録用変数
   TYPE g_tab_line_order_no_hht     IS TABLE OF xxcos_dlv_lines.order_no_hht%TYPE
@@ -603,6 +624,12 @@ AS
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
   gt_head_order_number      g_tab_head_order_number;        -- オーダーNo
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD End
+-- Ver.1.28 ADD Start
+  gt_head_ttl_sales_amt     g_tab_head_ttl_sales_amt;       -- 総販売金額
+  gt_head_cs_ttl_sales_amt  g_tab_head_cs_ttl_sales_amt;    -- 現金売りトータル販売金額
+  gt_head_pp_ttl_sales_amt  g_tab_head_pp_ttl_sales_amt;    -- PPカードトータル販売金額
+  gt_head_id_ttl_sales_amt  g_tab_head_id_ttl_sales_amt;    -- IDカードトータル販売金額
+-- Ver.1.28 ADD End
 --
   -- 納品明細テーブル登録データ
   gt_line_order_no_hht      g_tab_line_order_no_hht;        -- 受注No.（HHT）
@@ -936,7 +963,14 @@ AS
 -- 2011/03/16 Ver.1.26 S.Ochiai MOD Start
 --             TRIM( headers.department_screen_class ) department_screen_class   -- 百貨店画面種別
              TRIM( headers.department_screen_class ) department_screen_class,  -- 百貨店画面種別
-             headers.order_number                    order_number              -- オーダーNo
+-- Ver.1.28 MOD Start
+--             headers.order_number                    order_number              -- オーダーNo
+             headers.order_number                    order_number,             -- オーダーNo
+             headers.total_sales_amt                 ttl_sales_amt,            -- 総販売金額
+             headers.cash_total_sales_amt            cs_ttl_sales_amt,         -- 現金売りトータル販売金額
+             headers.ppcard_total_sales_amt          pp_ttl_sales_amt,         -- PPカードトータル販売金額
+             headers.idcard_total_sales_amt          id_ttl_sales_amt          -- IDカードトータル販売金額
+-- Ver.1.28 MOD End
 -- 2011/03/16 Ver.1.26 S.Ochiai MOD End
       FROM   xxcos_dlv_headers_work           headers                   -- 納品ヘッダワークテーブル
       ORDER BY order_no_hht
@@ -1928,6 +1962,12 @@ AS
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
     lt_order_number         xxcos_dlv_headers.order_number%TYPE;               -- オーダーNo
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD End
+-- Ver.1.28 ADD Start
+    lt_ttl_sales_amt        xxcos_dlv_headers.total_sales_amt%TYPE;          -- 総販売金額
+    lt_cs_ttl_sales_amt     xxcos_dlv_headers.cash_total_sales_amt%TYPE;     -- 現金売りトータル販売金額
+    lt_pp_ttl_sales_amt     xxcos_dlv_headers.ppcard_total_sales_amt%TYPE;   -- PPカードトータル販売金額
+    lt_id_ttl_sales_amt     xxcos_dlv_headers.idcard_total_sales_amt%TYPE;   -- IDカードトータル販売金額
+-- Ver.1.28 ADD End
 --
     -- 納品明細データ変数
     lt_order_nol_hht        xxcos_dlv_lines.order_no_hht%TYPE;                 -- 受注No.(HHT)
@@ -2057,6 +2097,12 @@ AS
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
       lt_order_number     := gt_headers_work_data(ck_no).order_number;        -- オーダーNo
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD End
+-- Ver.1.28 ADD Start
+      lt_ttl_sales_amt    := gt_headers_work_data(ck_no).ttl_sales_amt;       -- 総販売金額
+      lt_cs_ttl_sales_amt := gt_headers_work_data(ck_no).cs_ttl_sales_amt;    -- 現金売りトータル販売金額
+      lt_pp_ttl_sales_amt := gt_headers_work_data(ck_no).pp_ttl_sales_amt;    -- PPカードトータル販売金額
+      lt_id_ttl_sales_amt := gt_headers_work_data(ck_no).id_ttl_sales_amt;    -- IDカードトータル販売金額
+-- Ver.1.28 ADD End
 --
   /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
       -- 初期化 --
@@ -3930,6 +3976,12 @@ AS
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
         gt_head_order_number(ln_header_ok_no)    := lt_order_number;         -- オーダーNo
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD End
+-- Ver.1.28 ADD Start
+        gt_head_ttl_sales_amt(ln_header_ok_no)    := lt_ttl_sales_amt;       -- 総販売金額
+        gt_head_cs_ttl_sales_amt(ln_header_ok_no) := lt_cs_ttl_sales_amt;    -- 現金売りトータル販売金額
+        gt_head_pp_ttl_sales_amt(ln_header_ok_no) := lt_pp_ttl_sales_amt;    -- PPカードトータル販売金額
+        gt_head_id_ttl_sales_amt(ln_header_ok_no) := lt_id_ttl_sales_amt;    -- IDカードトータル販売金額
+-- Ver.1.28 ADD End
         gt_resource_id(ln_header_ok_no)          := lt_resource_id;          -- リソースID
         gt_party_id(ln_header_ok_no)             := lt_party_id;             -- パーティID
         gt_party_name(ln_header_ok_no)           := lt_customer_name;        -- 顧客名称
@@ -4270,6 +4322,13 @@ AS
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
             order_number,
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD End
+-- Ver.1.28 ADD Start
+            total_sales_amt,
+            cash_total_sales_amt,
+            ppcard_total_sales_amt,
+            idcard_total_sales_amt,
+            hht_received_flag,
+-- Ver.1.28 ADD End
             created_by,
             creation_date,
             last_updated_by,
@@ -4316,6 +4375,13 @@ AS
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD Start
             gt_head_order_number(i),                     -- オーダーNo
 -- 2011/03/16 Ver.1.26 S.Ochiai ADD End
+-- Ver.1.28 ADD Start
+            gt_head_ttl_sales_amt(i),                    -- 総販売金額
+            gt_head_cs_ttl_sales_amt(i),                 -- 現金売りトータル販売金額
+            gt_head_pp_ttl_sales_amt(i),                 -- PPカードトータル販売金額
+            gt_head_id_ttl_sales_amt(i),                 -- IDカードトータル販売金額
+            cv_hht_received,                             -- HHT受信フラグ
+-- Ver.1.28 ADD End
             cn_created_by,                               -- 作成者
             cd_creation_date,                            -- 作成日
             cn_last_updated_by,                          -- 最終更新者
