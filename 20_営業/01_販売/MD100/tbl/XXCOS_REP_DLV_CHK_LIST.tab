@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_DLV_CHK_LIST
  * Description : 納品書チェックリスト帳票ワークテーブル
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -16,6 +16,7 @@
  *                                                             CARD_AMOUNT(NUMBER(9,2)→NUMBER(13,2))
  *  2009/12/12    1.2   SCS N.Maeda      [E_本稼動_000140]     VISIT_TIME,DLV_INVOICE_LINE_NUMBERの追加
  *  2011/03/15    1.3   SCS S.Ochiai     [E_本稼動_06590] オーダー№追加連携対応
+ *  2016/03/08    1.4   SCSK S.Niki      [E_本稼動_13480] 納品書チェックリスト対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
@@ -60,6 +61,12 @@ CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
 -- 2011/03/15 Ver.1.3 S.Ochiai ADD Start
     ORDER_NUMBER                  VARCHAR2(16),                                --オーダーNo
 -- 2011/03/15 Ver.1.3 S.Ochiai ADD End
+-- Ver.1.4 ADD Start
+    TOTAL_SALES_AMT               NUMBER(8,0),                                 --総販売金額
+    CASH_CARD_SALES_AMT           NUMBER(9,0),                                 --現金・カード販売金額
+    OUTPUT_TYPE                   VARCHAR2(1),                                 --出力区分
+    NO_DATA_MESSAGE               VARCHAR2(40),                                --0件メッセージ
+-- Ver.1.4 ADD End
     CREATED_BY                    NUMBER(15,0)    NOT NULL,                    --作成者
     CREATION_DATE                 DATE            NOT NULL,                    --作成日
     LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,                    --最終更新者
@@ -113,6 +120,12 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.DLV_INVOICE_LINE_NUMBER         I
 -- 2011/03/15 Ver.1.3 S.Ochiai ADD Start
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.ORDER_NUMBER                    IS 'オーダーNo';
 -- 2011/03/15 Ver.1.3 S.Ochiai ADD End
+-- Ver.1.4 ADD Start
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.TOTAL_SALES_AMT                 IS '総販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CASH_CARD_SALES_AMT             IS '現金・カード販売金額';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.OUTPUT_TYPE                     IS '出力区分';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.NO_DATA_MESSAGE                 IS '0件メッセージ';
+-- Ver.1.4 ADD End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATED_BY                      IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATION_DATE                   IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.LAST_UPDATED_BY                 IS '最終更新者';
