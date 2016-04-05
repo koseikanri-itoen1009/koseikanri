@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2012/08/27    1.25    T.Makuta         [E_本稼動_10008] PT対応
  *  2013/10/18    1.26    K.Nakamura       [E_本稼動_10904] 消費税増税対応
  *  2014/01/29    1.27    K.Nakamura       [E_本稼動_11449] 消費税率取得基準日を検収日⇒オリジナル検収日に変更
+ *  2016/02/26    1.28    S.Niki           [E_本稼動_13480] 納品書チェックリスト対応
  *
  *****************************************************************************************/
 --
@@ -384,7 +385,15 @@ AS
       department_screen_class      xxcos_vd_column_headers.department_screen_class%TYPE,  -- 百貨店画面種別
       digestion_vd_rate_maked_date xxcos_vd_column_headers.digestion_vd_rate_maked_date%TYPE, -- 消化VD掛率作成済年月日
       red_black_flag               xxcos_vd_column_headers.red_black_flag%TYPE,            -- 赤黒フラグ
-      cancel_correct_class         xxcos_vd_column_headers.cancel_correct_class%TYPE      --取消・訂正区分
+-- ************* Ver.1.28 MOD START *************--
+--      cancel_correct_class         xxcos_vd_column_headers.cancel_correct_class%TYPE      --取消・訂正区分
+      cancel_correct_class         xxcos_vd_column_headers.cancel_correct_class%TYPE,     --取消・訂正区分
+      ttl_sales_amt                xxcos_vd_column_headers.total_sales_amt%TYPE,          -- 総販売金額
+      cs_ttl_sales_amt             xxcos_vd_column_headers.cash_total_sales_amt%TYPE,     -- 現金売りトータル販売金額
+      pp_ttl_sales_amt             xxcos_vd_column_headers.ppcard_total_sales_amt%TYPE,   -- PPカードトータル販売金額
+      id_ttl_sales_amt             xxcos_vd_column_headers.idcard_total_sales_amt%TYPE,   -- IDカードトータル販売金額
+      hht_received_flag            xxcos_vd_column_headers.hht_received_flag%TYPE         -- HHT受信フラグ
+-- ************* Ver.1.28 MOD END   *************--
     );
   TYPE g_tab_vd_c_head_data IS TABLE OF g_rec_vd_c_head_data INDEX BY PLS_INTEGER;
 --
@@ -533,6 +542,18 @@ AS
     INDEX BY PLS_INTEGER;   --HHT伝票No.(HHT伝票No?、納品伝票No?)
   TYPE g_tab_head_input_class       IS TABLE OF xxcos_sales_exp_headers.input_class%TYPE
     INDEX BY PLS_INTEGER;   --入力区分
+-- ************* Ver.1.28 ADD START *************--
+  TYPE g_tab_head_ttl_sales_amt     IS TABLE OF xxcos_sales_exp_headers.total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- 総販売金額
+  TYPE g_tab_head_cs_ttl_sales_amt  IS TABLE OF xxcos_sales_exp_headers.cash_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- 現金売りトータル販売金額
+  TYPE g_tab_head_pp_ttl_sales_amt  IS TABLE OF xxcos_sales_exp_headers.ppcard_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- PPカードトータル販売金額
+  TYPE g_tab_head_id_ttl_sales_amt  IS TABLE OF xxcos_sales_exp_headers.idcard_total_sales_amt%TYPE
+    INDEX BY PLS_INTEGER;   -- IDカードトータル販売金額
+  TYPE g_tab_head_hht_received_flag IS TABLE OF xxcos_sales_exp_headers.hht_received_flag%TYPE
+    INDEX BY PLS_INTEGER;   -- HHT受信フラグ
+-- ************* Ver.1.28 ADD END   *************--
   --明細データ登録用変数
   TYPE g_tab_line_sales_exp_line_id      IS TABLE OF xxcos_sales_exp_lines.sales_exp_line_id%TYPE
     INDEX BY PLS_INTEGER;   --販売実績明細ID
@@ -646,6 +667,13 @@ AS
   gt_head_order_no_hht            g_tab_head_order_no_hht;      -- 受注No.(HHT)(受注No(HHT))  
   gt_head_hht_invoice_no          g_tab_head_hht_invoice_no;    -- HHT伝票No.(HHT伝票No?、納品伝票No?)
   gt_head_input_class             g_tab_head_input_class;       -- 入力区分
+-- ************* Ver.1.28 ADD START *************--
+  gt_head_ttl_sales_amt           g_tab_head_ttl_sales_amt;        -- 総販売金額
+  gt_head_cs_ttl_sales_amt        g_tab_head_cs_ttl_sales_amt;     -- 現金売りトータル販売金額
+  gt_head_pp_ttl_sales_amt        g_tab_head_pp_ttl_sales_amt;     -- PPカードトータル販売金額
+  gt_head_id_ttl_sales_amt        g_tab_head_id_ttl_sales_amt;     -- IDカードトータル販売金額
+  gt_head_hht_received_flag       g_tab_head_hht_received_flag;    -- HHT受信フラグ
+-- ************* Ver.1.28 ADD END   *************--
 --
   --明細データ格納変数
   gt_line_sales_exp_line_id       g_tab_line_sales_exp_line_id;      -- 販売実績明細ID
@@ -1327,15 +1355,22 @@ AS
                         dlv_by_code,                   --38.納品者コード
                         create_class,                  --39.作成元区分
                         business_date,                 --40.登録業務日付
-                        created_by,                    --41.作成者
-                        creation_date,                 --42.作成日
-                        last_updated_by,               --43.最終更新者
-                        last_update_date,              --44.最終更新日
-                        last_update_login,             --45.最終更新ﾛｸﾞｲﾝ
-                        request_id,                    --46.要求ID
-                        program_application_id,        --47.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-                        program_id,                    --48.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-                        program_update_date )          --49.ﾌﾟﾛｸﾞﾗﾑ更新日
+-- ************* Ver.1.28 ADD START *************--
+                        total_sales_amt,               --41.総販売金額
+                        cash_total_sales_amt,          --42.現金売りトータル販売金額
+                        ppcard_total_sales_amt,        --43.PPカードトータル販売金額
+                        idcard_total_sales_amt,        --44.IDカードトータル販売金額
+                        hht_received_flag,             --45.HHT受信フラグ
+-- ************* Ver.1.28 ADD END   *************--
+                        created_by,                    --46.作成者
+                        creation_date,                 --47.作成日
+                        last_updated_by,               --48.最終更新者
+                        last_update_date,              --49.最終更新日
+                        last_update_login,             --50.最終更新ﾛｸﾞｲﾝ
+                        request_id,                    --51.要求ID
+                        program_application_id,        --52.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                        program_id,                    --53.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                        program_update_date )          --54.ﾌﾟﾛｸﾞﾗﾑ更新日
                       VALUES(
                         gt_head_id( i ),                    --1.販売実績ヘッダID
                         gt_head_hht_invoice_no( i ),        --2.HHT伝票番号
@@ -1387,15 +1422,22 @@ AS
                         gt_head_dlv_by_code( i ),           --38.納品者コード
                         gt_head_create_class( i ),          --39.作成元区分
                         gt_head_business_date( i ),         --40.登録業務日付
-                        cn_created_by,                 --41.作成者
-                        cd_creation_date,              --42.作成日
-                        cn_last_updated_by,            --43.最終更新者
-                        cd_last_update_date,           --44.最終更新日
-                        cn_last_update_login,          --45.最終更新ﾛｸﾞｲﾝ
-                        cn_request_id,                 --46.要求ID
-                        cn_program_application_id,     --47.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-                        cn_program_id,                 --48.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-                        cd_program_update_date );      --49.ﾌﾟﾛｸﾞﾗﾑ更新日
+-- ************* Ver.1.28 ADD START *************--
+                        gt_head_ttl_sales_amt( i ),         --41.総販売金額
+                        gt_head_cs_ttl_sales_amt( i ),      --42.現金売りトータル販売金額
+                        gt_head_pp_ttl_sales_amt( i ),      --43.PPカードトータル販売金額
+                        gt_head_id_ttl_sales_amt( i ),      --44.IDカードトータル販売金額
+                        gt_head_hht_received_flag( i ),     --45.HHT受信フラグ
+-- ************* Ver.1.28 ADD END   *************--
+                        cn_created_by,                 --46.作成者
+                        cd_creation_date,              --47.作成日
+                        cn_last_updated_by,            --48.最終更新者
+                        cd_last_update_date,           --49.最終更新日
+                        cn_last_update_login,          --50.最終更新ﾛｸﾞｲﾝ
+                        cn_request_id,                 --51.要求ID
+                        cn_program_application_id,     --52.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+                        cn_program_id,                 --53.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+                        cd_program_update_date );      --54.ﾌﾟﾛｸﾞﾗﾑ更新日
     EXCEPTION
       WHEN OTHERS THEN
 --******************************* 2009/06/01 N.Maeda Var1.14 MOD START ***************************************
@@ -1491,6 +1533,13 @@ AS
 -- ************** 2009/04/16 1.10 N.Maeda ADD START ****************************************************************
   lt_cash_receiv_base_code        xxcos_cust_hierarchy_v.cash_receiv_base_code%TYPE;   -- 入金拠点コード
 -- ************** 2009/04/16 1.10 N.Maeda ADD  END  ****************************************************************
+-- ************* Ver.1.28 ADD START *************--
+  lt_ttl_sales_amt                xxcos_vd_column_headers.total_sales_amt%TYPE;        -- 総販売金額
+  lt_cs_ttl_sales_amt             xxcos_vd_column_headers.cash_total_sales_amt%TYPE;   -- 現金売りトータル販売金額
+  lt_pp_ttl_sales_amt             xxcos_vd_column_headers.ppcard_total_sales_amt%TYPE; -- PPカードトータル販売金額
+  lt_id_ttl_sales_amt             xxcos_vd_column_headers.idcard_total_sales_amt%TYPE; -- IDカードトータル販売金額
+  lt_hht_received_flag            xxcos_vd_column_headers.hht_received_flag%TYPE;      -- HHT受信フラグ
+-- ************* Ver.1.28 ADD END   *************--
 --
   --明細情報格納変数
   lt_lin_order_no_hht             xxcos_vd_column_lines.order_no_hht%TYPE;             --受注No.(HHT)
@@ -1670,6 +1719,13 @@ AS
       lt_digestion_rate_maked_date    := gt_vd_c_headers_data(ck_no).digestion_vd_rate_maked_date; --消化VD掛率作成済年月日
       lt_red_black_flag               := gt_vd_c_headers_data(ck_no).red_black_flag;         --赤黒フラグ
       lt_cancel_correct_class         := gt_vd_c_headers_data(ck_no).cancel_correct_class;   --取消・訂正区分
+-- ************* Ver.1.28 ADD START *************--
+      lt_ttl_sales_amt                := gt_vd_c_headers_data(ck_no).ttl_sales_amt;          --総販売金額
+      lt_cs_ttl_sales_amt             := gt_vd_c_headers_data(ck_no).cs_ttl_sales_amt;       --現金売りトータル販売金額
+      lt_pp_ttl_sales_amt             := gt_vd_c_headers_data(ck_no).pp_ttl_sales_amt;       --PPカードトータル販売金額
+      lt_id_ttl_sales_amt             := gt_vd_c_headers_data(ck_no).id_ttl_sales_amt;       --IDカードトータル販売金額
+      lt_hht_received_flag            := gt_vd_c_headers_data(ck_no).hht_received_flag;      --HHT受信フラグ
+-- ************* Ver.1.28 ADD END   *************--
 --
 -- ****************** 2009/09/03 1.18 N.Maeda ADD START ************** --
       --==================================
@@ -3502,6 +3558,13 @@ AS
         gt_head_open_dlv_date( gn_header_ck_no )           := lt_open_dlv_date;
         gt_head_open_inspect_date( gn_header_ck_no )       := lt_open_inspect_date;
 --******************************* 2009/06/01 N.Maeda Var1.14 ADD END   ***************************************
+-- Ver.1.28 ADD Start
+        gt_head_ttl_sales_amt( gn_header_ck_no )           := lt_ttl_sales_amt;             -- 総販売金額
+        gt_head_cs_ttl_sales_amt( gn_header_ck_no )        := lt_cs_ttl_sales_amt;          -- 現金売りトータル販売金額
+        gt_head_pp_ttl_sales_amt( gn_header_ck_no )        := lt_pp_ttl_sales_amt;          -- PPカードトータル販売金額
+        gt_head_id_ttl_sales_amt( gn_header_ck_no )        := lt_id_ttl_sales_amt;          -- IDカードトータル販売金額
+        gt_head_hht_received_flag( gn_header_ck_no )       := lt_hht_received_flag;         -- HHT受信フラグ
+-- Ver.1.28 ADD End
         gn_header_ck_no := gn_header_ck_no + 1;
         ln_header_ck_no := ln_header_ck_no + 1;
 --******************************* 2009/04/16 N.Maeda Var1.10 ADD START ***************************************
@@ -3706,7 +3769,15 @@ AS
            vch.department_screen_class,       -- 百貨店画面種別
            vch.digestion_vd_rate_maked_date,  -- 消化VD掛率作成済年月日
            vch.red_black_flag,                -- 赤黒フラグ
-           vch.cancel_correct_class           -- 取消・訂正区分
+-- Ver.1.28 MOD Start
+--           vch.cancel_correct_class           -- 取消・訂正区分
+           vch.cancel_correct_class,          -- 取消・訂正区分
+           vch.total_sales_amt         AS ttl_sales_amt,      -- 総販売金額
+           vch.cash_total_sales_amt    AS cs_ttl_sales_amt,   -- 現金売りトータル販売金額
+           vch.ppcard_total_sales_amt  AS pp_ttl_sales_amt,   -- PPカードトータル販売金額
+           vch.idcard_total_sales_amt  AS id_ttl_sales_amt,   -- IDカードトータル販売金額
+           vch.hht_received_flag       AS hht_received_flag   -- HHT受信フラグ
+-- Ver.1.28 MOD End
 ---- ****************************** 2009/07/29 N.Maeda Var1.15 MOD START ***************************************
     FROM   xxcos_vd_column_headers vch        -- VDコラム別取引情報ヘッダ情報
     WHERE  vch.system_class  IN ( cv_system_class_fs_vd, cv_system_class_fs_vd_s )
