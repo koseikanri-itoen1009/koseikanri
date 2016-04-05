@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_SALES_EXP_HEADERS
  * Description : 販売実績ヘッダテーブル
- * Version     : 1.3
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -13,6 +13,7 @@
  *  2009/05/13    1.1   SCS N.Maeda    入金拠点コードのNOT NULL制約削除
  *  2011/01/11    1.2   SCS H.Sekine   管轄拠点の追加
  *  2011/03/24    1.3   SCS Oukou      [E_本稼動_06573]商品別販売実績送信済フラグ、商品別販売実績送信日の追加
+ *  2016/03/03    1.4   SCSK S.Niki    [E_本稼動_13480]納品書チェックリスト対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_SALES_EXP_HEADERS
@@ -64,6 +65,13 @@ CREATE TABLE XXCOS.XXCOS_SALES_EXP_HEADERS
   ITEM_SALES_SEND_FLAG           VARCHAR2(1)             ,                     --  商品別販売実績送信済フラグ
   ITEM_SALES_SEND_DATE           DATE                    ,                     --  商品別販売実績送信日
 /* 2011/03/24 Ver.1.3 Add End   */
+/* Ver.1.4 Add Start */
+  TOTAL_SALES_AMT                NUMBER(8)               ,                     --  総販売金額
+  CASH_TOTAL_SALES_AMT           NUMBER(8)               ,                     --  現金売りトータル販売金額
+  PPCARD_TOTAL_SALES_AMT         NUMBER(8)               ,                     --  PPカードトータル販売金額
+  IDCARD_TOTAL_SALES_AMT         NUMBER(8)               ,                     --  IDカードトータル販売金額
+  HHT_RECEIVED_FLAG              VARCHAR2(1)             ,                     --  HHT受信フラグ
+/* Ver.1.4 Add End   */
   CREATED_BY                     NUMBER(15)    NOT NULL  ,                     --  作成者
   CREATION_DATE                  DATE          NOT NULL  ,                     --  作成日
   LAST_UPDATED_BY                NUMBER(15)    NOT NULL  ,                     --  最終更新者
@@ -124,6 +132,13 @@ COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.HEAD_SALES_BRANCH              I
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ITEM_SALES_SEND_FLAG           IS  '商品別販売実績送信済フラグ'           ;
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.ITEM_SALES_SEND_DATE           IS  '商品別販売実績送信日'                 ;
 /* 2011/03/24 Ver.1.3 Add End   */
+/* Ver.1.4 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.TOTAL_SALES_AMT                IS  '総販売金額'                           ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CASH_TOTAL_SALES_AMT           IS  '現金売りトータル販売金額'             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.PPCARD_TOTAL_SALES_AMT         IS  'PPカードトータル販売金額'             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.IDCARD_TOTAL_SALES_AMT         IS  'IDカードトータル販売金額'             ;
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.HHT_RECEIVED_FLAG              IS  'HHT受信フラグ'                        ;
+/* Ver.1.4 Add End   */
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CREATED_BY                     IS  '作成者'                               ;
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.CREATION_DATE                  IS  '作成日'                               ;
 COMMENT ON COLUMN XXCOS.XXCOS_SALES_EXP_HEADERS.LAST_UPDATED_BY                IS  '最終更新者'                           ;
