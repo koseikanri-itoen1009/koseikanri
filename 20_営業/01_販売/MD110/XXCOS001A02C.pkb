@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (body)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/10/02    1.9   N.Maeda          [0001378]エラーリスト出力桁数編集
  *  2010/02/01    1.10  N.Maeda          [E_本稼動_01353] 入金日-AR会計期間妥当性チェック、出力内容修正
  *  2011/02/23    1.11  Y.Nishino        [E_本稼動_02246] 入金データ登録情報に納品先拠点コードを追加する
+ *  2016/03/10    1.12  H.Okada          [E_本稼動_13485] 入金ワークテーブル削除処理以降のエラーメッセージ修正
  *
  *****************************************************************************************/
 --
@@ -148,6 +149,9 @@ AS
   cv_msg_cust_st     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10077';  -- 顧客ステータス
   cv_msg_busi_low    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10078';  -- 業態（小分類）
   cv_msg_parameter   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90008';  -- コンカレント入力パラメータなし
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+  cv_msg_del_sql     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00221';  -- SQLエラーメッセージ
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
   -- トークン
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE';             -- テーブル名
   cv_tkn_colmun      CONSTANT VARCHAR2(20)  := 'COLMUN';            -- テーブル列名
@@ -156,6 +160,10 @@ AS
   cv_tkn_profile     CONSTANT VARCHAR2(20)  := 'PROFILE';           -- プロファイル名
   cv_tkn_del_flag    CONSTANT VARCHAR2(1)   := 'N';
   cv_tkn_yes         CONSTANT VARCHAR2(1)   := 'Y';
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+  cv_tkn_no          CONSTANT VARCHAR2(1)   := 'N';
+  cv_tkn_sqlerr      CONSTANT VARCHAR2(20)  := 'SQL_ERR';           -- SQLエラー
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
 --
   cv_general         CONSTANT VARCHAR2(1)   := NULL;                -- 百貨店用HHT区分＝NULL：一般拠点
   cv_depart          CONSTANT VARCHAR2(1)   := '1';                 -- 百貨店用HHT区分＝1：百貨店
@@ -290,6 +298,9 @@ AS
 --****************************** 2009/06/19 1.6 T.kitajima ADD  END  ******************************--
   gd_max_date             DATE;                          -- MAX日付
 --
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+  gv_part_comp_err_flag    VARCHAR2(1);                   -- 一部処理（入金データの取込まで完了）後エラーフラグ
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -366,6 +377,9 @@ AS
       ,buff   => ''
     );
 --
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+   gv_part_comp_err_flag := cv_tkn_no;  -- 一部処理後エラーフラグの初期化
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1812,8 +1826,18 @@ AS
 --
       -- エラー処理（データ削除エラー）
       WHEN OTHERS THEN
-        lv_tkn    := xxccp_common_pkg.get_msg( cv_application, cv_msg_paywk_tab );
-        lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_del, cv_tkn_table, lv_tkn );
+/* 2016.03.10 H.Okada E_本稼働_13485対応 MOD START */
+--        lv_tkn    := xxccp_common_pkg.get_msg( cv_application, cv_msg_paywk_tab );
+--        lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_del, cv_tkn_table, lv_tkn );
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                        ,iv_name         => cv_msg_del_sql    --メッセージコード
+                        ,iv_token_name1  => cv_tkn_table
+                        ,iv_token_value1 => cv_msg_paywk_tab  -- テーブル名
+                        ,iv_token_name2  => cv_tkn_sqlerr
+                        ,iv_token_value2 => SQLERRM           -- SQLERRM
+                      ),1,5000);
+/* 2016.03.10 H.Okada E_本稼働_13485対応 MOD END */
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
 --
@@ -2128,6 +2152,9 @@ AS
 --
       END IF;
 --
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+      COMMIT;  --TRUNCATE前に明示的にコミット
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
       -- ============================================
       -- 入金ワークテーブルのレコード削除 (A-5)
       -- ============================================
@@ -2138,6 +2165,9 @@ AS
 --
       --エラー処理
       IF ( lv_retcode = cv_status_error ) THEN
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+        gv_part_comp_err_flag := cv_tkn_yes; -- 一部処理（入金の取込）完了後エラー
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
         RAISE global_process_expt;
       END IF;
 --
@@ -2160,6 +2190,9 @@ AS
 --
     --エラー処理
     IF ( lv_retcode = cv_status_error ) THEN
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+      gv_part_comp_err_flag := cv_tkn_yes; -- 一部処理（入金の取込）完了後エラー
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
       RAISE global_process_expt;
     END IF;
 --
@@ -2213,6 +2246,9 @@ AS
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+    cv_error_msg2      CONSTANT VARCHAR2(100) := 'APP-XXCOS1-10079'; -- 一部処理後エラー終了メッセージ
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -2313,11 +2349,24 @@ AS
     ELSIF( lv_retcode = cv_status_error ) THEN
       lv_message_code := cv_error_msg;
     END IF;
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+    -- 入金ワークテーブルの削除以降でエラーの場合は、出力するエラーメッセージを変更する
+    IF ( gv_part_comp_err_flag = cv_tkn_yes ) THEN
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_error_msg2
+                     );
+    -- 正常終了・警告終了・通常のエラー
+    ELSE
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
     --
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => lv_message_code
-                   );
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                      ,iv_name         => lv_message_code
+                     );
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD START */
+    END IF;
+/* 2016.03.10 H.Okada E_本稼働_13485対応 ADD END */
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
@@ -2346,3 +2395,4 @@ AS
 --
 END XXCOS001A02C;
 /
+
