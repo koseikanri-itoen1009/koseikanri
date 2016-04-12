@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_common_pkg2(body)
  * Description            :
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.8
+ * Version                : 1.9
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009-06-25    1.6  Yuuki.Nakamura   障害番号T1_1425対応(文字化けチェック削除)
  *  2009-08-17    1.7  Yutaka.Kuboshima 障害番号0000818対応(BLOB変換関数修正)
  *  2016-02-05    1.8  K.Kiriu          E_本稼動_13456対応(禁則文字チェック修正)
+ *  2016-04-04    1.9  K.Kiriu          E_本稼動_13456追加対応(禁則文字チェック修正)
  *****************************************************************************************/
 --
   -- ===============================
@@ -276,7 +277,9 @@ AS
 --    cn_chr_code_maruone      CONSTANT NUMBER        := 34624;                        -- '①'の文字コード
 --    cn_chr_code_some         CONSTANT NUMBER        := 33248;                        -- '≒'の文字コード
 --    cn_chr_code_difference   CONSTANT NUMBER        := 34713;                        -- '⊿'の文字コード
-    cn_ampersand             CONSTANT NUMBER        := 38;                           -- '&'の文字コード
+-- 2016-04-04 DELETE Ver.1.9 By K.Kiriu Start
+--    cn_ampersand             CONSTANT NUMBER        := 38;                           -- '&'の文字コード
+-- 2016-04-04 DELETE Ver.1.9 By K.Kiriu End
     cn_less_than_sign        CONSTANT NUMBER        := 60;                           -- '<'の文字コード
     cn_greater_than_sign     CONSTANT NUMBER        := 62;                           -- '>'の文字コード
 -- 2016-02-05 UPDATE Ver.1.8 By K.Kiriu End
@@ -330,7 +333,10 @@ AS
 --          OR (ln_check_char IN (cn_chr_code_some,cn_chr_code_combination,cn_chr_code_integration,
 --            cn_chr_code_route,cn_chr_code_vertical,cn_chr_code_corner,cn_chr_code_because,
 --              cn_chr_code_intersection,cn_chr_code_union,cn_chr_code_wavy_line)))
-        IF (ln_check_char IN (cn_ampersand,cn_less_than_sign,cn_greater_than_sign) )
+-- 2016-04-04 UPDATE Ver.1.9 By K.Kiriu Start
+--        IF (ln_check_char IN (cn_ampersand,cn_less_than_sign,cn_greater_than_sign) )
+        IF (ln_check_char IN (cn_less_than_sign,cn_greater_than_sign) )
+-- 2016-04-04 UPDATE Ver.1.9 By K.Kiriu End
 -- 2016-02-05 UPDATE Ver.1.8 By K.Kiriu End
         THEN
           RETURN FALSE;
