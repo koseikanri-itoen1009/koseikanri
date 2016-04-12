@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A02C(body)
  * Description      : 社員データ連携(自販機)
  * MD.050           : 社員データ連携(自販機) MD050_CMM_002_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/09/09    1.1   SCS 久保島 豊    障害0000337 従業員の抽出条件を変更
  *                                       ( 4(ダミー)以外 -> 1(社員)または3(派遣社員) )
  *  2016/02/24    1.2   SCSK 小路 恭弘   E_本稼動_13456対応
+ *  2016/03/24    1.3   SCSK 岡田 英輝   E_本稼動_13456追加対応
  *
  *****************************************************************************************/
 --
@@ -120,10 +121,10 @@ AS
   cv_tkn_param2             CONSTANT VARCHAR2(10)  := '終了日';
   cv_tkn_param3             CONSTANT VARCHAR2(20)  := '入力パラメータ';
   cv_tkn_ng_value           CONSTANT VARCHAR2(10)  := 'NG_VALUE';                   -- 項目名
--- 2016/02/24 Ver1.2 Add Start
+---- 2016/02/24 Ver1.2 Add Start
   cv_tkn_department_code    CONSTANT VARCHAR2(15)  := 'DEPARTMENT_CODE';            -- 拠点
   cv_tkn_employee_number    CONSTANT VARCHAR2(15)  := 'EMPLOYEE_NUMBER';            -- 従業員
--- 2016/02/24 Ver1.2 Add End
+---- 2016/03/16 Ver1.2 Add End
   -- メッセージ区分
   cv_msg_kbn_cmm            CONSTANT VARCHAR2(5)   := 'XXCMM';
   cv_msg_kbn_ccp            CONSTANT VARCHAR2(5)   := 'XXCCP';
@@ -218,6 +219,10 @@ AS
   );
   -- 社員データを格納するテーブル型の定義
   TYPE data_tbl  IS TABLE OF data_rec INDEX BY BINARY_INTEGER;
+-- 2016/03/24 Ver1.3 Add Start
+  -- 拠点別の承認者を格納するテーブル型の定義
+  TYPE g_base_applover_ttype IS TABLE OF per_people_f.employee_number%TYPE INDEX BY VARCHAR2(4);
+-- 2016/03/24 Ver1.3 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -239,6 +244,9 @@ AS
   gv_date_to                VARCHAR2(10);         -- 入力パラメータ：終了日
   gt_data_tbl               data_tbl;             -- 結合配列の定義
   gv_param_output_flg       VARCHAR2(1);          -- 入力パラメータ出力フラグ(出力前:0、出力後:1)
+-- 2016/03/24 Ver1.3 Add Start
+  gt_base_applover_tab      g_base_applover_ttype; -- 拠点別承認者
+-- 2016/03/24 Ver1.3 Add End
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -362,6 +370,50 @@ AS
     AND      a.period_of_service_id = t.period_of_service_id
     ORDER BY p.employee_number
   ;
+-- 2016/03/24 Ver1.3 Add Start
+  -- 拠点承認者データ
+  CURSOR get_base_approver_cur(
+     id_issue_date     DATE
+    ,iv_base_code      VARCHAR2
+  )
+  IS
+  SELECT xev.employee_number  employee_number
+  FROM   xxcso_employees_v2   xev
+        ,fnd_lookup_values flv
+  WHERE  (
+           (
+             (TO_DATE(xev.issue_date, cv_date_format_yyyymmdd) <= TRUNC(id_issue_date))
+             AND
+             (xev.work_base_code_new = iv_base_code)
+           )
+           OR
+           (
+             (TO_DATE(xev.issue_date, cv_date_format_yyyymmdd) > TRUNC(id_issue_date))
+             AND
+             (xev.work_base_code_old = iv_base_code)
+           )
+         )
+   AND   flv.lookup_type  =  cv_approve_code
+   AND   flv.lookup_code  =  CASE
+                               WHEN (TO_DATE(xev.issue_date, cv_date_format_yyyymmdd) <= TRUNC(id_issue_date)) THEN
+                                 xev.position_code_new
+                               ELSE
+                                 xev.position_code_old
+                             END
+   AND   flv.enabled_flag =  cv_y
+   AND   flv.language     =  ct_user_lang
+   AND   gd_process_date  BETWEEN flv.start_date_active
+                          AND     NVL( flv.end_date_active, gd_process_date )
+  ORDER BY
+         CASE
+           WHEN (TO_DATE(xev.issue_date, cv_date_format_yyyymmdd) <= TRUNC(id_issue_date)) THEN
+             xev.position_code_new
+           ELSE
+             xev.position_code_old
+         END
+        ,xev.employee_number
+  ;
+-- 2016/03/24 Ver1.3 Add End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -1007,8 +1059,10 @@ AS
     lv_approve_flg           VARCHAR2(1);                               -- 承認者コード存在フラグ
     lv_position_code_flg     VARCHAR2(1);                               -- 役職コード
     lt_position_code         fnd_lookup_values.lookup_code%TYPE;        -- 職位コード
-    lt_position_code_new     xxcso_employees_v2.position_code_new%TYPE; -- 職位コード（新）
-    lt_position_code_old     xxcso_employees_v2.position_code_old%TYPE; -- 職位コード（旧）
+-- 2016/03/24 Ver1.3 Del Start
+--    lt_position_code_new     xxcso_employees_v2.position_code_new%TYPE; -- 職位コード（新）
+--    lt_position_code_old     xxcso_employees_v2.position_code_old%TYPE; -- 職位コード（旧）
+-- 2016/03/24 Ver1.3 Del End
     ld_announce_date_check   DATE;                                      -- 発令日判断用日付
     ln_authorizer_count      NUMBER;                                    -- 承認者数
 -- 2016/02/24 Ver1.2 Add End
@@ -1024,6 +1078,9 @@ AS
 --    lv_announce_date         xxcmm_out_people_d_dispenser.announce_date%TYPE;
 --    lv_out_flag              xxcmm_out_people_d_dispenser.out_flag%TYPE;
 -- 2016/02/24 Ver1.2 Del End
+-- 2016/02/24 Ver1.2 Add Start
+    lt_approve_employee      per_people_f.employee_number%TYPE;         -- 承認者
+-- 2016/02/24 Ver1.2 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1507,7 +1564,7 @@ AS
               --========================================
               -- 禁則文字が存在しなかった場合
               -- 妥当性チェック(A-3-7)
-              -- 承認者数チェック(A-3-8)
+              -- 承認者チェック(A-3-8)
               -- CSVファイル出力(A-4)
               -- 差分連携用日付更新(アサインメントマスタ)(A-6)
               -- 正常件数のカウント
@@ -1550,13 +1607,17 @@ AS
               -- 発令日<=発令日判断用日付の時、職位コード（新）をセット
               IF (TO_DATE(gt_data_tbl(ln_loop_cnt).ass_attribute2, cv_date_format_yyyymmdd) <= TRUNC(ld_announce_date_check)) THEN
                 lt_position_code     := gt_data_tbl(ln_loop_cnt).attribute11;
-                lt_position_code_new := gt_data_tbl(ln_loop_cnt).attribute11;
-                lt_position_code_old := gt_data_tbl(ln_loop_cnt).attribute11;
+-- 2016/03/24 Ver1.3 Del Start
+--                lt_position_code_new := gt_data_tbl(ln_loop_cnt).attribute11;
+--                lt_position_code_old := gt_data_tbl(ln_loop_cnt).attribute11;
+-- 2016/03/24 Ver1.3 Del End
               -- 発令日>発令日判断用日付の時、職位コード（旧）をセット
               ELSIF (TO_DATE(gt_data_tbl(ln_loop_cnt).ass_attribute2, cv_date_format_yyyymmdd) > TRUNC(ld_announce_date_check)) THEN
                 lt_position_code     := gt_data_tbl(ln_loop_cnt).attribute13;
-                lt_position_code_new := gt_data_tbl(ln_loop_cnt).attribute13;
-                lt_position_code_old := gt_data_tbl(ln_loop_cnt).attribute13;
+-- 2016/03/24 Ver1.3 Del Start
+--                lt_position_code_new := gt_data_tbl(ln_loop_cnt).attribute13;
+--                lt_position_code_old := gt_data_tbl(ln_loop_cnt).attribute13;
+-- 2016/03/24 Ver1.3 Del End
               END IF;
 --
               -- 初期化
@@ -1583,56 +1644,109 @@ AS
               END;
 --
               --========================================
-              -- 承認者数チェック(A-3-8)
+              -- 承認者チェック(A-3-8)
               --========================================
               IF ( lv_approve_flg = cv_y ) THEN
-                BEGIN
-                  SELECT COUNT(0) authorizer_count
-                  INTO   ln_authorizer_count
-                  FROM   xxcso_employees_v2  xev
-                  WHERE  (
-                          (
-                           (TO_DATE(xev.issue_date, cv_date_format_yyyymmdd) <= TRUNC(ld_announce_date_check))
-                           AND
-                           (xev.work_base_code_new = gt_data_tbl(ln_loop_cnt).attribute28)
-                           AND
-                           (xev.position_code_new  = lt_position_code_new)
-                          )
-                          OR
-                          (
-                           (TO_DATE(xev.issue_date, cv_date_format_yyyymmdd) > TRUNC(ld_announce_date_check))
-                           AND
-                           (xev.work_base_code_old = gt_data_tbl(ln_loop_cnt).attribute28)
-                           AND
-                           (xev.position_code_old  = lt_position_code_old)
-                          )
-                         )
-                  ;
-                EXCEPTION
-                  WHEN OTHERS THEN
-                  RAISE global_api_others_expt;
-                END;
---
-                -- 承認者数が複数存在する場合
-                IF ( ln_authorizer_count > 1 ) THEN
-                  lv_errmsg := xxccp_common_pkg.get_msg(
-                                   iv_application  => cv_msg_kbn_cmm                             -- 'XXCMM'
-                                  ,iv_name         => cv_msg_00224                               -- 承認者複数警告
-                                  ,iv_token_name1  => cv_tkn_department_code                     -- トークン(DEPARTMENT_CODE)
-                                  ,iv_token_value1 => gt_data_tbl(ln_loop_cnt).attribute28       -- 起票部門
-                                  ,iv_token_name2  => cv_tkn_employee_number                     -- トークン(EMPLOYEE_NUMBER)
-                                  ,iv_token_value2 => gt_data_tbl(ln_loop_cnt).employee_number   -- 従業員番号
-                                 );
-                  FND_FILE.PUT_LINE(
-                     which  => FND_FILE.OUTPUT
-                    ,buff   => lv_errmsg
-                  );
-                  -- 警告フラグにオンをセット
-                  gv_warn_flg := '1';
-                  lv_position_code_flg := cv_position_code_0;
+-- 2016/03/24 Ver1.3 Mod Start
+--                BEGIN
+--                  SELECT COUNT(0) authorizer_count
+--                  INTO   ln_authorizer_count
+--                  FROM   xxcso_employees_v2  xev
+--                  WHERE  (
+--                          (
+--                           (TO_DATE(xev.issue_date, cv_date_format_yyyymmdd) <= TRUNC(ld_announce_date_check))
+--                           AND
+--                           (xev.work_base_code_new = gt_data_tbl(ln_loop_cnt).attribute28)
+--                           AND
+--                           (xev.position_code_new  = lt_position_code_new)
+--                          )
+--                          OR
+--                          (
+--                           (TO_DATE(xev.issue_date, cv_date_format_yyyymmdd) > TRUNC(ld_announce_date_check))
+--                           AND
+--                           (xev.work_base_code_old = gt_data_tbl(ln_loop_cnt).attribute28)
+--                           AND
+--                           (xev.position_code_old  = lt_position_code_old)
+--                          )
+--                         )
+--                  ;
+--                EXCEPTION
+--                  WHEN OTHERS THEN
+--                  RAISE global_api_others_expt;
+--                END;
+----
+--                -- 承認者数が複数存在する場合
+--                IF ( ln_authorizer_count > 1 ) THEN
+--                  lv_errmsg := xxccp_common_pkg.get_msg(
+--                                   iv_application  => cv_msg_kbn_cmm                             -- 'XXCMM'
+--                                  ,iv_name         => cv_msg_00224                               -- 承認者複数警告
+--                                  ,iv_token_name1  => cv_tkn_department_code                     -- トークン(DEPARTMENT_CODE)
+--                                  ,iv_token_value1 => gt_data_tbl(ln_loop_cnt).attribute28       -- 起票部門
+--                                  ,iv_token_name2  => cv_tkn_employee_number                     -- トークン(EMPLOYEE_NUMBER)
+--                                  ,iv_token_value2 => gt_data_tbl(ln_loop_cnt).employee_number   -- 従業員番号
+--                                 );
+--                  FND_FILE.PUT_LINE(
+--                     which  => FND_FILE.OUTPUT
+--                    ,buff   => lv_errmsg
+--                  );
+--                  -- 警告フラグにオンをセット
+--                  gv_warn_flg := '1';
+--                  lv_position_code_flg := cv_position_code_0;
+--                ELSE
+--                  lv_position_code_flg := cv_position_code_1;
+--                END IF;
+                -- 既に拠点単位で承認者を取得している場合
+                IF ( gt_base_applover_tab.EXISTS(gt_data_tbl(ln_loop_cnt).attribute28) ) THEN
+                  -- 承認者の判定
+                  IF ( gt_base_applover_tab(gt_data_tbl(ln_loop_cnt).attribute28) = gt_data_tbl(ln_loop_cnt).employee_number ) THEN
+                    lv_position_code_flg := cv_position_code_1;
+                  ELSE
+                    lv_position_code_flg := cv_position_code_0;
+                  END IF;
+                -- 拠点単位で承認者を取得していない場合
                 ELSE
-                  lv_position_code_flg := cv_position_code_1;
+                  -- 拠点の承認者(最上位の職位者)を取得する
+                  OPEN get_base_approver_cur(
+                     ld_announce_date_check
+                    ,gt_data_tbl(ln_loop_cnt).attribute28
+                  );
+                  FETCH get_base_approver_cur INTO lt_approve_employee;
+                  CLOSE get_base_approver_cur;
+--
+                  -- 拠点の承認者が取得できた場合
+                  IF ( lt_approve_employee IS NOT NULL ) THEN
+                    -- 配列に承認者を格納
+                    gt_base_applover_tab(gt_data_tbl(ln_loop_cnt).attribute28) := lt_approve_employee;
+                    -- 承認者の判定
+                    IF ( gt_base_applover_tab(gt_data_tbl(ln_loop_cnt).attribute28) = gt_data_tbl(ln_loop_cnt).employee_number ) THEN
+                      lv_position_code_flg := cv_position_code_1;
+                    ELSE
+                      lv_position_code_flg := cv_position_code_0;
+                    END IF;
+                    -- 初期化
+                    lt_approve_employee := NULL;
+                  -- 拠点の承認者が取得できない場合
+                  ELSE
+                    -- メッセージ生成
+                    lv_errmsg := xxccp_common_pkg.get_msg(
+                                     iv_application  => cv_msg_kbn_cmm                             -- 'XXCMM'
+                                    ,iv_name         => cv_msg_00224                               -- 承認者複数警告
+                                    ,iv_token_name1  => cv_tkn_employee_number                     -- トークン(EMPLOYEE_NUMBER)
+                                    ,iv_token_value1 => gt_data_tbl(ln_loop_cnt).employee_number   -- 従業員番号
+                                    ,iv_token_name2  => cv_tkn_department_code                     -- トークン(DEPARTMENT_CODE)
+                                    ,iv_token_value2 => gt_data_tbl(ln_loop_cnt).attribute28       -- 起票部門
+                                   );
+                    -- メッセージ出力
+                    FND_FILE.PUT_LINE(
+                       which  => FND_FILE.OUTPUT
+                      ,buff   => lv_errmsg
+                    );
+                    --
+                    gv_warn_flg          := '1';                -- 警告フラグにオンをセット
+                    lv_position_code_flg := cv_position_code_0; -- (HOST)役職コード:0(承認者以外)
+                  END IF;
                 END IF;
+-- 2016/03/24 Ver1.3 Mod End
               END IF;
 --
 -- 2016/02/24 Ver1.2 Add End
