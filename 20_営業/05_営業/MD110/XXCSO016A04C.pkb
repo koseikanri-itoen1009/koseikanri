@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009-12-11    1.12  K.Hosoi          障害対応(E_本稼動_00413)
  *  2010-04-08    1.13  Daisuke.Abe      障害対応(E_本稼動_02021)
  *  2011-08-05    1.14  K.Kiriu          障害対応(E_本稼動_06766)
+ *  2016-04-13    1.15  S.Yamashita      障害対応(E_本稼動_13558)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -195,6 +196,9 @@ AS
 /* 2009.12.02 T.Maruyama E_本稼動_00081対応 END */
 --
   cv_w                   CONSTANT VARCHAR2(1)   := 'w';  -- CSVファイルオープンモード
+/* 2016-04-13 Ver1.15 Add Start */
+  cv_categorized_1       CONSTANT VARCHAR2(1)   := '1';  -- インスタンスタイプコード（自動販売機）
+/* 2016-04-13 Ver1.15 Add END   */
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -1173,7 +1177,13 @@ AS
                 AND   ciia.owner_party_id           = io_get_data_rec.source_object_id
                 AND   ciia.instance_status_id       = cis.instance_status_id
                 AND   cis.name                      <> iv_ib_del_stts
-              ORDER BY  ciia.install_date
+                /* 2016-04-13 Ver1.15 Add Start */
+                AND   ciia.instance_type_code       = cv_categorized_1
+                /* 2016-04-13 Ver1.15 Add END   */
+              /* 2016-04-13 Ver1.15 Mod Start */
+--              ORDER BY  ciia.install_date
+              ORDER BY  ciia.install_date DESC
+              /* 2016-04-13 Ver1.15 Mod End   */
             ) ciib
       WHERE   ROWNUM = 1
       ;
