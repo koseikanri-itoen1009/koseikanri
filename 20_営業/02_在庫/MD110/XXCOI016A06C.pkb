@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2015/12/16    1.7   S.Yamashita      E_本稼動_13340対応
  *  2015/12/24    1.8   S.Yamashita      E_本稼動_13401対応
  *  2016/02/25    1.9   S.Yamashita      E_本稼動_13478対応
+ *  2016/04/15    1.10  S.Niki           E_本稼動_13552対応
  *
  *****************************************************************************************/
 --
@@ -4790,14 +4791,24 @@ AS
     ;
     -- 引当情報（ヘッダ）カーソル
     CURSOR l_reserve_cur( in_header_id      NUMBER
+-- Add Ver1.10 Start
+                        , iv_order_number   VARCHAR2  -- 受注番号
+-- Add Ver1.10 End
                         , in_parent_item_id NUMBER )
     IS
-      SELECT DISTINCT
+-- Mod Ver1.10 Start
+--      SELECT DISTINCT
+      SELECT /*+ INDEX(xlri xxcoi_lot_reserve_info_n02) */
+             DISTINCT
+-- Mod Ver1.10 End
              xlri.slip_num          AS slip_num     -- 伝票No
            , xlri.customer_id       AS customer_id  -- 顧客ID
            , xlri.arrival_date      AS arrival_date -- 着日
       FROM   xxcoi_lot_reserve_info xlri
       WHERE  xlri.header_id      = in_header_id
+-- Add Ver1.10 Start
+      AND    xlri.order_number   = iv_order_number
+-- Add Ver1.10 End
       AND    xlri.parent_item_id = in_parent_item_id
     ;
     -- 受注親品目総数取得カーソル
@@ -4818,35 +4829,65 @@ AS
     ;
     -- 引当親品目総数取得カーソル
     CURSOR l_reserve_item_cur( in_header_id      NUMBER
+-- Add Ver1.10 Start
+                             , iv_order_number   VARCHAR2  -- 受注番号
+-- Add Ver1.10 End
                              , in_parent_item_id NUMBER
                              , iv_subinventory   VARCHAR2 )
     IS
-      SELECT NVL(SUM(xlri.summary_qty), 0)  AS summary_qty  -- 引当総数
+-- Mod Ver1.10 Start
+--      SELECT NVL(SUM(xlri.summary_qty), 0)  AS summary_qty  -- 引当総数
+      SELECT /*+ INDEX(xlri xxcoi_lot_reserve_info_n02) */
+             NVL(SUM(xlri.summary_qty), 0)  AS summary_qty  -- 引当総数
+-- Mod Ver1.10 End
       FROM   xxcoi_lot_reserve_info         xlri
       WHERE  xlri.header_id      = in_header_id
+-- Add Ver1.10 Start
+      AND    xlri.order_number   = iv_order_number
+-- Add Ver1.10 End
       AND    xlri.parent_item_id = in_parent_item_id
       AND    xlri.whse_code      = iv_subinventory
     ;
 -- Add Ver1.2 Start
     -- 引当親品目総数取得カーソル2
     CURSOR l_reserve_item2_cur( in_header_id     NUMBER
+-- Add Ver1.10 Start
+                             , iv_order_number   VARCHAR2  -- 受注番号
+-- Add Ver1.10 End
                              , in_parent_item_id NUMBER
                              , iv_subinventory   VARCHAR2 )
     IS
-      SELECT NVL(SUM(xlri.summary_qty), 0)  AS summary_qty  -- 引当総数
+-- Mod Ver1.10 Start
+--      SELECT NVL(SUM(xlri.summary_qty), 0)  AS summary_qty  -- 引当総数
+      SELECT /*+ INDEX(xlri xxcoi_lot_reserve_info_n02) */
+             NVL(SUM(xlri.summary_qty), 0)  AS summary_qty  -- 引当総数
+-- Mod Ver1.10 End
       FROM   xxcoi_lot_reserve_info         xlri
       WHERE  xlri.header_id      = in_header_id
+-- Add Ver1.10 Start
+      AND    xlri.order_number   = iv_order_number
+-- Add Ver1.10 End
       AND    xlri.parent_item_id = in_parent_item_id
       AND    xlri.whse_code      = iv_subinventory
     ;
 -- Add Ver1.2 End
     -- ロット別引当情報更新用カーソル
     CURSOR l_upd_reserve_cur( in_header_id NUMBER
+-- Add Ver1.10 Start
+                            , iv_order_number  VARCHAR2  -- 受注番号
+-- Add Ver1.10 End
                             , in_line_id   NUMBER )
     IS
-      SELECT xlri.lot_reserve_info_id  AS lot_reserve_info_id
+-- Mod Ver1.10 Start
+--      SELECT xlri.lot_reserve_info_id  AS lot_reserve_info_id
+      SELECT /*+ INDEX(xlri xxcoi_lot_reserve_info_n02) */
+             xlri.lot_reserve_info_id  AS lot_reserve_info_id
+-- Mod Ver1.10 End
       FROM   xxcoi_lot_reserve_info xlri
       WHERE  xlri.header_id = in_header_id
+-- Add Ver1.10 Start
+      AND    xlri.order_number = iv_order_number
+-- Add Ver1.10 End
       AND    xlri.line_id   = in_line_id
     ;
 -- Add Ver1.9 S.Yamashita Start
@@ -4926,6 +4967,9 @@ AS
         --==============================================================
         -- 引当情報（ヘッダ）取得
         OPEN l_reserve_cur( in_header_id      => l_order_rec.header_id
+-- Add Ver1.10 Start
+                          , iv_order_number   => TO_CHAR( l_order_rec.order_number ) -- 受注番号
+-- Add Ver1.10 End
                           , in_parent_item_id => l_order_rec.parent_item_id );
         FETCH l_reserve_cur INTO l_reserve_rec;
         CLOSE l_reserve_cur;
@@ -4990,6 +5034,9 @@ AS
           --
           -- 引当親品目総数取得
           OPEN l_reserve_item_cur( in_header_id      => l_order_rec.header_id
+-- Add Ver1.10 Start
+                                 , iv_order_number   => TO_CHAR( l_order_rec.order_number )
+-- Add Ver1.10 End
                                  , in_parent_item_id => lt_parent_item_id
                                  , iv_subinventory   => lt_subinventory );
           FETCH l_reserve_item_cur INTO l_reserve_item_rec;
@@ -5010,6 +5057,9 @@ AS
                 -- ロット別引当情報削除用ループ
                 << del_reserve_loop >>
                 FOR l_del_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
+-- Add Ver1.10 Start
+                                                          , iv_order_number => TO_CHAR( l_order_rec.order_number )
+-- Add Ver1.10 End
                                                           , in_line_id   => l_order_rec.line_id ) LOOP
                   -- 同一IDを取得していない場合
                   IF ( g_del_id_tab.EXISTS( l_del_reserve_rec.lot_reserve_info_id ) = FALSE ) THEN
@@ -5037,6 +5087,9 @@ AS
                   -- ロット別引当情報削除用ループ
                   << del_reserve_loop >>
                   FOR l_del_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
+-- Add Ver1.10 Start
+                                                            , iv_order_number => TO_CHAR( l_order_rec.order_number )
+-- Add Ver1.10 End
                                                             , in_line_id   => l_order_rec.line_id ) LOOP
                     -- 同一IDを取得していない場合
                     IF ( g_del_id_tab.EXISTS( l_del_reserve_rec.lot_reserve_info_id ) = FALSE ) THEN
@@ -5077,6 +5130,9 @@ AS
                     -- ロット別引当情報削除用ループ
                     << del_reserve_loop >>
                     FOR l_del_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
+-- Add Ver1.10 Start
+                                                              , iv_order_number => TO_CHAR( l_order_rec.order_number )
+-- Add Ver1.10 End
                                                               , in_line_id   => l_order_rec.line_id ) LOOP
                       -- 同一IDを取得していない場合
                       IF ( g_del_id_tab.EXISTS( l_del_reserve_rec.lot_reserve_info_id ) = FALSE ) THEN
@@ -5170,6 +5226,9 @@ AS
                   --
                   -- 引当親品目総数取得2
                   OPEN l_reserve_item2_cur( in_header_id      => l_order_rec.header_id
+-- Add Ver1.10 Start
+                                          , iv_order_number   => TO_CHAR( l_order_rec.order_number )
+-- Add Ver1.10 End
                                           , in_parent_item_id => lt_parent_item_id
                                           , iv_subinventory   => gv_subinventory_code );
                   FETCH l_reserve_item2_cur INTO l_reserve_item2_rec;
@@ -5376,6 +5435,9 @@ AS
               -- ロット別引当情報更新用ループ
               << upd_reserve_loop >>
               FOR l_upd_reserve_rec IN l_upd_reserve_cur( in_header_id => l_order_rec.header_id
+-- Add Ver1.10 Start
+                                                        , iv_order_number => TO_CHAR( l_order_rec.order_number )
+-- Add Ver1.10 End
                                                         , in_line_id   => l_order_rec.line_id ) LOOP
                 ln_ins_cnt := ln_ins_cnt + 1;
                 gt_lot_id_tab(ln_ins_cnt) := l_upd_reserve_rec.lot_reserve_info_id;
