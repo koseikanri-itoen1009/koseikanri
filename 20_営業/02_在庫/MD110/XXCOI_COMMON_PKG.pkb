@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *  2015/03/05    1.13  Y.Nagasue        [E_本稼動_12237]倉庫管理システム対応 ST・受入テスト課題対応
  *  2015/03/30    1.14  K.Nakamura       [E_本稼動_12237]倉庫管理システム対応（不具合対応）
  *  2015/11/11    1.15  S.Yamashita      [E_本稼動_13356]パフォーマンス改善対応
+ *  2016/04/15    1.16  S.Niki           [E_本稼動_13552]パフォーマンス改善対応（ロット別手持数量反映）
  *
  *****************************************************************************************/
 --
@@ -6773,7 +6774,11 @@ AS
 --
 -- == 2015/03/05 Ver1.13 Y.Nagasue START ====================================
       -- 引当情報取得
-      SELECT NVL(SUM(xlri.case_qty), 0)    case_qty_sum    -- ケース数（合計）
+-- == Ver1.16 Mod START ===================================
+--      SELECT NVL(SUM(xlri.case_qty), 0)    case_qty_sum    -- ケース数（合計）
+      SELECT /*+ INDEX(xlri xxcoi_lot_reserve_info_n03) */
+             NVL(SUM(xlri.case_qty), 0)    case_qty_sum    -- ケース数（合計）
+-- == Ver1.16 Mod END   ===================================
             ,NVL(SUM(xlri.singly_qty), 0)  singly_qty_sum  -- バラ数（合計）
             ,NVL(SUM(xlri.summary_qty), 0) summary_qty_sum -- 取引数量（合計）
       INTO   ln_reserve_case_qty
