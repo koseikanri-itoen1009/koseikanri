@@ -1,0 +1,48 @@
+/*****************************************************************************************
+ * Copyright c 2011, SCSK Corporation. All rights reserved.
+ *
+ * Table Name  : XXCOS_TMP_CONF_DLV_LIST_CUST
+ * Description : 納品確定データ出力顧客情報一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2016/03/15    1.0   S.Yamashita      新規作成 [E_本稼働_13436]
+ *
+ **************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcos.xxcos_tmp_conf_dlv_list_cust
+(
+   customer_id          NUMBER           --顧客ID
+  ,customer_code        VARCHAR2(9)      --顧客コード
+  ,customer_name        VARCHAR2(360)    --顧客名
+  ,deli_center_code     VARCHAR2(8)      --EDI納品センターコード
+  ,deli_center_name     VARCHAR2(20)     --EDI納品センター名
+  ,edi_district_code    VARCHAR2(8)      --EDI地区コード（EDI)
+  ,edi_district_name    VARCHAR2(40)     --EDI地区名（EDI)
+  ,edi_district_kana    VARCHAR2(20)     --EDI地区名カナ（EDI)
+  ,delivery_base_code   VARCHAR2(4)      --納品拠点コード
+  ,delivery_base_name   VARCHAR2(360)    --納品拠点名
+  ,chain_store_code     VARCHAR2(4)      --チェーン店コード（EDI）
+  ,store_code           VARCHAR2(10)     --店舗コード
+  ,tsukagatazaiko_div   VARCHAR2(2)      --通過在庫型区分
+  ,subinventory         VARCHAR2(10)     --保管場所
+)
+ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  xxcos.xxcos_tmp_conf_dlv_list_cust                        IS '納品確定データ出力顧客情報一時表';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.customer_id            IS '顧客ID';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.customer_code          IS '顧客コード';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.customer_name          IS '顧客名';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.deli_center_code       IS 'EDI納品センターコード';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.deli_center_name       IS 'EDI納品センター名';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.edi_district_code      IS 'EDI地区コード（EDI)';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.edi_district_name      IS 'EDI地区名（EDI)';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.edi_district_kana      IS 'EDI地区名カナ（EDI)';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.delivery_base_code     IS '納品拠点コード';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.delivery_base_name     IS '納品拠点名';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.chain_store_code       IS 'チェーン店コード（EDI）';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.store_code             IS '店舗コード';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.tsukagatazaiko_div     IS '通過在庫型区分';
+COMMENT ON COLUMN xxcos.xxcos_tmp_conf_dlv_list_cust.subinventory           IS '保管場所';
