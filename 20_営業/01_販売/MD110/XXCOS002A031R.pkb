@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(body)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *                         新規貢献売上実績情報集計＆反映処理(A-9)
  *  update_results_of_business
  *                         各種件数取得＆反映処理(A-10)
+ *  update_policy_group_py 政策群別 前年売上実績 集計、反映処理(A-17,A-18)
  *  insert_section_total   課集計情報生成(A-11)
  *  insert_base_total      拠点集計情報生成(A-12)
  *  delete_off_the_subject_info
@@ -51,6 +52,7 @@ AS
  *  2011/02/21    1.11  H.Sasaki         [E_本稼動_05896]政策群情報の２重表示抑止
  *  2011/04/04    1.12  H.Sasaki         [E_本稼動_02252]退職者データの出力制御
  *  2015/03/16    1.13  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
+ *  2016/04/15    1.14  K.Kiriu          [E_本稼動_13586]営業成績表に前年の売上と粗利率を追加
  *
  *****************************************************************************************/
 --
@@ -205,6 +207,12 @@ AS
   --  会計期間名取得エラーメッセージ
   ct_msg_xxcoi1_10399           CONSTANT  fnd_new_messages.message_name%TYPE              :=  'APP-XXCOI1-10399';
 -- == 2015/03/16 V1.13 Added END   =================================================================
+/* 2016/04/15 Ver1.14 Add Start */
+  --  営業成績表 政策群別 前年売上実績集計件数
+  ct_msg_update_policy_group_py CONSTANT  fnd_new_messages.message_name%TYPE              :=  'APP-XXCOS1-10596';
+  --  業務日付取得エラーメッセージ
+  cv_msg_proc_date_err          CONSTANT  fnd_new_messages.message_name%TYPE              :=  'APP-XXCOS1-00014';
+/* 2016/04/15 Ver1.14 Add End   */
 --
   --＠プロファイル名称
   --  XXCOS:ダミー営業グループコード
@@ -412,6 +420,10 @@ AS
   --  クローズ
   cv_c                          CONSTANT  VARCHAR2(1) := 'C';
 -- == 2015/03/16 V1.13 Added END   ==============================================================
+/* 2016/04/15 Ver1.14 Add Start */
+  --＠ 1年前
+  cn_previous_year              CONSTANT  PLS_INTEGER := 12;
+/* 2016/04/15 Ver1.14 Add End   */
 --
   --  ===============================
   --  ユーザー定義プライベート型
@@ -430,6 +442,10 @@ AS
       --  更新件数(各種営業件数)
       update_results_of_business          PLS_INTEGER := 0,
       --  登録件数(課 集計情報)
+/* 2016/04/15 Ver1.14 Mod Start */
+      --  更新件数(政策群別売上実績前年)
+      update_policy_group_py              PLS_INTEGER := 0,
+/* 2016/04/15 Ver1.14 Mod End   */
       insert_section_total                PLS_INTEGER := 0,
       --  登録件数(拠点 集計情報)
       insert_base_total                   PLS_INTEGER := 0,
@@ -470,6 +486,10 @@ AS
   gn_common_operating_days                PLS_INTEGER;
   --  共通データ．経過日数
   gn_common_lapsed_days                   PLS_INTEGER;
+/* 2016/04/15 Ver1.14 Add Start */
+  -- 業務日付
+  gd_process_date                         DATE;
+/* 2016/04/15 Ver1.14 Add End   */
   --  ===============================
   --  ユーザー定義プライベート・カーソル
   --  ===============================
@@ -605,6 +625,20 @@ AS
     --==================================
     -- 3.プロファイル値取得
     --==================================
+/* 2016/04/15 Ver1.14 Add Start */
+    -- 業務日付
+    gd_process_date := xxccp_common_pkg2.get_process_date;
+--
+    IF ( gd_process_date IS NULL ) THEN
+      -- 業務日付取得エラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application => ct_xxcos_appl_short_name
+                    ,iv_name        => cv_msg_proc_date_err
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+/* 2016/04/15 Ver1.14 Add End   */
     --  XXCOS:ダミー営業グループコード
     gt_prof_dummy_sales_group := FND_PROFILE.VALUE( ct_prof_dummy_sales_group );
 --
@@ -2602,6 +2636,161 @@ AS
 --
   END update_results_of_business;
 --
+/* 2016/04/15 Ver1.14 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : update_policy_group_py
+   * Description      : 政策群別 前年売上実績 集計、反映処理(A-17,A-18)
+   ***********************************************************************************/
+  PROCEDURE update_policy_group_py(
+    ov_errbuf         OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode        OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg         OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_policy_group_py'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_previous_year_month   VARCHAR2(6);                      -- パラメータ納品日の前年同月
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- パラメータ納品日の前年同月を取得
+    lv_previous_year_month :=  TO_CHAR( ADD_MONTHS(gd_common_base_date, - cn_previous_year), cv_fmt_years);
+--
+    --==================================
+    -- 2.データ更新  （政策群別 前年売上実績）
+    --==================================
+    BEGIN
+      UPDATE  xxcos_rep_bus_perf  xrbp
+      SET     (
+              -- previous year policy group
+              prev_year_sale_amount,
+              prev_year_business_cost,
+              -- who column
+              last_updated_by,
+              last_update_date,
+              last_update_login,
+              request_id,
+              program_application_id,
+              program_id,
+              program_update_date
+              )
+              =
+              (
+              SELECT /*+
+                       LEADING( xcrv.fa xcrv.efdfce lvsg_lv3 xcrv.hopeb xcrv.hop xcrv.hp xcrv.hca  rbsgsp )
+                       USE_NL( xcrv.fa xcrv.efdfce lvsg_lv3 xcrv.hopeb xcrv.hop xcrv.hp xcrv.hca  rbsgsp )
+                       INDEX( rbsgsp xxcos_rep_bus_s_sum_py_n02 )
+                     */
+                     SUM(rbsgsp.sale_amount)    AS  sale_amount
+                    ,SUM(rbsgsp.business_cost)  AS  business_cost
+                    ,cn_last_updated_by         AS  last_updated_by
+                    ,cd_last_update_date        AS  last_update_date
+                    ,cn_last_update_login       AS  last_update_login
+                    ,cn_request_id              AS  request_id
+                    ,cn_program_application_id  AS  program_application_id
+                    ,cn_program_id              AS  program_id
+                    ,cd_program_update_date     AS  program_update_date
+              FROM   xxcso_cust_resources_v       xcrv
+                    ,xxcos_rep_bus_s_group_sum_py rbsgsp
+                    ,xxcos_lookup_values_v        lvsg_lv3
+              WHERE  lvsg_lv3.lookup_type        =       ct_qct_s_group_type
+              AND    lvsg_lv3.attribute2         =       cv_band_dff2_lv3
+              AND    lvsg_lv3.attribute1         =       xrbp.policy_group
+              AND    gd_process_date             BETWEEN NVL(lvsg_lv3.start_date_active, gd_process_date)
+                                                 AND     NVL(lvsg_lv3.end_date_active,   gd_process_date)
+              AND    xcrv.employee_number        =       xrbp.employee_num
+              AND    gd_process_date             BETWEEN xcrv.start_date_active
+                                                 AND     NVL(xcrv.end_date_active, gd_process_date)
+              AND    xcrv.account_number         =       rbsgsp.customer_code
+              AND    rbsgsp.dlv_month            =       lv_previous_year_month  -- パラメータ納品日の前年同月
+              AND    rbsgsp.work_days           <=       gn_common_lapsed_days   -- パラメータ納品日の経過日数
+              AND    rbsgsp.policy_group_code    =       lvsg_lv3.lookup_code
+              )
+      WHERE   xrbp.request_id                    = cn_request_id
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf    := SQLERRM;
+        -- メッセージ生成
+        ov_errmsg    := SUBSTRB( xxccp_common_pkg.get_msg(
+                                  iv_application => ct_xxcos_appl_short_name,
+                                  iv_name        => ct_msg_update_data_err,
+                                  iv_token_name1 => cv_tkn_table_name,
+                                  iv_token_value1=> ct_msg_rpt_wrk_tbl,
+                                  iv_token_name2 => cv_tkn_key_data,
+                                  iv_token_value2=> lv_errbuf
+                               ), 1, 5000);
+        --  後続データの 処理は中止となる為、当箇所でのエラー発生時は常に１件
+        gn_error_cnt := 1;
+        RAISE global_update_data_expt;
+    END;
+--
+    --  更新件数カウント
+    g_counter_rec.update_policy_group_py := SQL%ROWCOUNT;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    --*** データ更新例外ハンドラ ***
+    WHEN global_update_data_expt THEN
+      ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_policy_group_py;
+
+/* 2016/04/15 Ver1.14 Add End   */
   /**********************************************************************************
    * Procedure Name   : insert_section_total
    * Description      : 課集計情報生成(A-11)
@@ -2776,6 +2965,10 @@ AS
               group_name,
               sale_amount,
               business_cost,
+/* 2016/04/15 Ver1.14 Add Start */
+              prev_year_sale_amount,
+              prev_year_business_cost,
+/* 2016/04/15 Ver1.14 Add End   */
               created_by,
               creation_date,
               last_updated_by,
@@ -2893,6 +3086,10 @@ AS
               work.group_name                                                       AS  group_name,
               work.sale_amount                                                      AS  sale_amount,
               work.business_cost                                                    AS  business_cost,
+/* 2016/04/15 Ver1.14 Add Start */
+              work.prev_year_sale_amount                                            AS  prev_year_sale_amount,
+              work.prev_year_business_cost                                          AS  prev_year_business_cost,
+/* 2016/04/15 Ver1.14 Add End   */
               cn_created_by                                                         AS  created_by,
               cd_creation_date                                                      AS  creation_date,
               cn_last_updated_by                                                    AS  last_updated_by,
@@ -3001,7 +3198,12 @@ AS
                       xrbp.policy_group                                             AS  policy_group,
                       xrbp.group_name                                               AS  group_name,
                       sum(xrbp.sale_amount)                                         AS  sale_amount,
-                      sum(xrbp.business_cost)                                       AS  business_cost
+/* 2016/04/15 Ver1.14 Mod Start */
+--                      sum(xrbp.business_cost)                                       AS  business_cost
+                      sum(xrbp.business_cost)                                       AS  business_cost,
+                      sum(xrbp.prev_year_sale_amount)                               AS  prev_year_sale_amount,
+                      sum(xrbp.prev_year_business_cost)                             AS  prev_year_business_cost
+/* 2016/04/15 Ver1.14 Mod End   */
               FROM    xxcos_rep_bus_perf            xrbp
               WHERE   xrbp.request_id               =       cn_request_id
               AND     xrbp.sum_data_class           =       ct_sum_data_cls_employee
@@ -3242,6 +3444,10 @@ AS
               group_name,
               sale_amount,
               business_cost,
+/* 2016/04/15 Ver1.14 Add Start */
+              prev_year_sale_amount,
+              prev_year_business_cost,
+/* 2016/04/15 Ver1.14 Add End   */
               created_by,
               creation_date,
               last_updated_by,
@@ -3374,6 +3580,10 @@ AS
               work.group_name                                                       AS  group_name,
               work.sale_amount                                                      AS  sale_amount,
               work.business_cost                                                    AS  business_cost,
+/* 2016/04/15 Ver1.14 Add Start */
+              work.prev_year_sale_amount                                            AS  prev_year_sale_amount,
+              work.prev_year_business_cost                                          AS  prev_year_business_cost,
+/* 2016/04/15 Ver1.14 Add End   */
               cn_created_by                                                         AS  created_by,
               cd_creation_date                                                      AS  creation_date,
               cn_last_updated_by                                                    AS  last_updated_by,
@@ -3482,7 +3692,12 @@ AS
                       xrbp.policy_group                                             AS  policy_group,
                       xrbp.group_name                                               AS  group_name,
                       sum(xrbp.sale_amount)                                         AS  sale_amount,
-                      sum(xrbp.business_cost)                                       AS  business_cost
+/* 2016/04/15 Ver1.14 Mod Start */
+--                      sum(xrbp.business_cost)                                       AS  business_cost
+                      sum(xrbp.business_cost)                                       AS  business_cost,
+                      sum(xrbp.prev_year_sale_amount)                               AS  prev_year_sale_amount,
+                      sum(xrbp.prev_year_business_cost)                             AS  prev_year_business_cost
+/* 2016/04/15 Ver1.14 Mod End   */
               FROM    xxcos_rep_bus_perf            xrbp
               WHERE   xrbp.request_id               =       cn_request_id
               AND     xrbp.sum_data_class           =       ct_sum_data_cls_employee
@@ -4193,6 +4408,22 @@ AS
        which  =>  FND_FILE.LOG
       ,buff   =>  lv_errmsg
     );
+/* 2016/04/15 Ver1.14 Add Start */
+    --==================================
+    -- 3-2.処理件数メッセージ編集  （政策群別前年売上実績集計件数）
+    --==================================
+    lv_errmsg := xxccp_common_pkg.get_msg(
+      iv_application => ct_xxcos_appl_short_name,
+      iv_name        => ct_msg_update_policy_group_py,
+      iv_token_name1 => cv_tkn_update_count,
+      iv_token_value1=> g_counter_rec.update_policy_group_py
+      );
+    --  処理件数メッセージ出力
+    FND_FILE.PUT_LINE(
+       which  =>  FND_FILE.LOG
+      ,buff   =>  lv_errmsg
+    );
+/* 2016/04/15 Ver1.14 Add End   */
 --
     --==================================
     -- 4.処理件数メッセージ編集  （新規貢献売上実績情報集計件数）
@@ -4473,6 +4704,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+/* 2016/04/15 Ver1.14 Add Start */
+    --  ===============================
+    --  政策群別 売上実績 前年集計、反映処理(A-17,A-18)
+    --  ===============================
+    update_policy_group_py(
+       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode  -- リターン・コード             --# 固定 #
+      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF  ( lv_retcode = cv_status_error  ) THEN
+      --  (エラー処理)
+      RAISE global_process_expt;
+    END IF;
+/* 2016/04/15 Ver1.14 Add End   */
     --  ===============================
     --  課集計情報生成(A-11)
     --  ===============================
