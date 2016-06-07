@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A05C(body)
  * Description      : 品目一括登録ワークテーブルに取込まれた品目一括登録データを品目テーブルに登録します。
  * MD.050           : 品目一括登録 CMM_004_A05
- * Version          : Issue3.14
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *                                                      重量/体積,ITFコード,配数,段数,商品分類,ボール入数
  *  2010/02/25    1.19  Shigeto.Niki     E_本稼動_01589 品目カテゴリ割当(バラ茶区分)の固定値セットを解除
  *  2010/03/09    1.20  Y.Kuboshima      E_本稼動_01619 項目：適用開始日の追加
+ *  2016/06/02    1.21  Shigeto.Niki     E_本稼動_13652 OPM品目マスタの設定値修正
  *
  *****************************************************************************************/
 --
@@ -1759,6 +1760,15 @@ AS
     l_opm_item_rec.lot_suffix               := l_set_parent_item_rec.lot_suffix;                    -- ロット・サフィックス(子品目の場合、親値継承項目)
 --    l_opm_item_rec.sublot_prefix            := NULL;                                                -- サブロット・プレフィックス
 --    l_opm_item_rec.sublot_suffix            := NULL;                                                -- サブロット・サフィックス
+-- Ver1.21 Add start
+    l_opm_item_rec.sales_class              := gv_product_div;                                      -- 売上(商品区分初期値)
+    l_opm_item_rec.purch_class              := gv_inout_div;                                        -- 購買(内外区分初期値)
+    l_opm_item_rec.itemcost_class           := gv_item_div;                                         -- 原価(品目区分初期値)
+    --
+    l_opm_item_rec.sales_category_id        := i_item_ctg_rec.pd_category_id;                       -- 売上カテゴリID
+    l_opm_item_rec.purch_category_id        := i_item_ctg_rec.ind_category_id;                      -- 購買カテゴリID
+    l_opm_item_rec.cost_category_id         := i_item_ctg_rec.itd_category_id;                      -- 原価カテゴリID
+-- Ver1.21 Add End
     --
     -- OPM品目登録
     xxcmm_004common_pkg.ins_opm_item(
