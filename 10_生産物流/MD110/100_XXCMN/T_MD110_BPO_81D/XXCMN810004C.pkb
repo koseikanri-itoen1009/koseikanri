@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMN810004C(body)
  * Description      : CSVアップロードから品目マスタを一括登録します。
  * MD.050           : 品目マスタ一括アップロード T_MD050_BPO_810
- * Version          : Issue1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/11/20    1.0   K.Boku           main新規作成
  *  2013/04/18    1.1   S.Niki           [E_本稼動_10588]  倉庫品目チェック、設定値修正
+ *  2016/06/02    1.2   S.Niki           [E_本稼動_13652]  OPM品目マスタの設定値修正
  *
  *****************************************************************************************/
 --
@@ -978,6 +979,15 @@ AS
     ELSE
       l_opm_item_rec.autolot_active_indicator   := cv_autolot_active_indicate_0;         -- 自動ロット採番有効
     END IF;
+-- Ver.1.2 S.Niki ADD START
+    l_opm_item_rec.sales_class              := i_wk_item_rec.product_div;                -- 売上(商品区分)
+    l_opm_item_rec.purch_class              := i_wk_item_rec.inout_class;                -- 購買(内外区分)
+    l_opm_item_rec.itemcost_class           := i_wk_item_rec.item_class;                 -- 原価(品目区分)
+    --
+    l_opm_item_rec.sales_category_id        := i_item_ctg_rec.pd_category_id;            -- 売上カテゴリID
+    l_opm_item_rec.purch_category_id        := i_item_ctg_rec.ind_category_id;           -- 購買カテゴリID
+    l_opm_item_rec.cost_category_id         := i_item_ctg_rec.itd_category_id;           -- 原価カテゴリID
+-- Ver.1.2 S.Niki ADD END
     l_opm_item_rec.created_by               := gn_created_by;                            -- 作成者
     l_opm_item_rec.creation_date            := gd_creation_date;                         -- 作成日
     l_opm_item_rec.last_updated_by          := gn_last_updated_by;                       -- 最終更新者
