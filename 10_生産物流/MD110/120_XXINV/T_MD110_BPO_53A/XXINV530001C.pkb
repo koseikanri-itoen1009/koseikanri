@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸結果インターフェース
  * MD.050           : 棚卸(T_MD050_BPO_530)
  * MD.070           : 結果インターフェース(T_MD070_BPO_53A)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  *  ----------------------------------------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/12/08    1.10  K.Kumamoto       修正(本番障害#570対応：棚卸連番をTO_NUMBER)
  *  2008/12/11    1.11  H.Itou           修正(本番障害#632対応：#570修正漏れ)
  *  2009/02/09    1.12  A.Shiina         修正(本番障害#1117対応：在庫クローズチェック追加)
+ *  2016/06/15    1.13  Y.Shoji          E_本稼動_13563対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1940,7 +1941,10 @@ AS
 -- 2008/12/06 H.Itou Add End
                 AND    ilm.attribute2 = inv_if_rec(i).proper_mark--固有記号
                 AND    ilm.item_id = ln_item_id --品目ID
-                AND ROWNUM  = 1;
+-- 2016/06/15 Y.Shoji Mod Start
+--                AND ROWNUM  = 1;
+                ;
+-- 2016/06/15 Y.Shoji Mod End
                 --
                 IF  (lv_limit_date IS NOT NULL) THEN
                   IF  (FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format) !=
@@ -2018,6 +2022,64 @@ AS
                   -- 警告メッセージPL/SQL表投入
                   gn_err_msg_cnt := gn_err_msg_cnt + 1;
                   warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+-- 2016/06/15 Y.Shoji Add Start
+                WHEN TOO_MANY_ROWS THEN
+                  BEGIN
+                    SELECT
+                      ilm.lot_id     AS lot_id      -- ロットID
+                     ,ilm.lot_no     AS lot_no      -- ロットNO
+                     ,ilm.attribute3 AS limit_date  -- 賞味期限
+                     ,ilm.attribute1 AS maker_date  -- 製造日
+                     ,ilm.attribute2 AS proper_mark -- 固有記号
+                    INTO
+                      ln_lot_id               -- ロットID
+                     ,lv_lot_no               -- ロットNO
+                     ,lv_limit_date           -- 賞味期限
+                     ,lv_maker_date           -- 製造日
+                     ,lv_proper_mark          -- 固有記号
+                    FROM   ic_lots_mst ilm
+                    WHERE  FND_DATE.STRING_TO_DATE(ilm.attribute1, gc_char_d_format) = ld_maker_date             -- 製造日
+                    AND    ilm.attribute2                                            = inv_if_rec(i).proper_mark -- 固有記号
+                    AND    ilm.item_id                                               = ln_item_id                -- 品目
+                    AND    FND_DATE.STRING_TO_DATE(ilm.attribute3, gc_char_d_format) = ld_limit_date             -- 賞味期限
+                    ;
+                  EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                      IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
+                        inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)
+                      END IF;
+                      --データダンプ取得
+                      IF  (lb_dump_flag  = FALSE)  THEN
+                        proc_get_data_dump(
+                          if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                         ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                         ,ov_errbuf  => lv_errbuf
+                         ,ov_retcode => lv_retcode
+                         ,ov_errmsg  => lv_errmsg);
+                        -- エラーの場合
+                        IF (lv_retcode = gv_status_error) THEN
+                          RAISE global_api_expt;
+                        ELSE
+                          lv_retcode  := gv_status_warn;
+                        END IF;
+                        -- 警告データダンプPL/SQL表投入
+                        gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                        warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                        lb_dump_flag :=  TRUE;
+                      END IF;
+--
+                      -- 警告エラーメッセージ取得(OPMロットマスタに該当データが存在しません。(項目：OBJECT))
+                      lv_msg_col  :=  gv_maker_date_col || '、' || gv_proper_mark_col || '、' || gv_limit_date_col;
+                      lv_errmsg := xxcmn_common_pkg.get_msg(
+                                    iv_application  => gv_xxinv,
+                                    iv_name         => 'APP-XXINV-10108',
+                                    iv_token_name1  => 'OBJECT',
+                                    iv_token_value1 => lv_msg_col);
+                      -- 警告メッセージPL/SQL表投入
+                      gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                      warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+                  END;
+-- 2016/06/15 Y.Shoji Add End
               END;
             END IF;--ドリンク終了
 --
@@ -2150,7 +2212,10 @@ AS
 -- 2008/12/06 H.Itou Add End
                 AND    ilm.attribute2 = inv_if_rec(i).proper_mark --固有記号
                 AND    ilm.item_id = ln_item_id
-                AND ROWNUM  = 1;
+-- 2016/06/15 Y.Shoji Mod Start
+--                AND ROWNUM  = 1;
+                ;
+-- 2016/06/15 Y.Shoji Mod End
                 --ロットマスタが存在する場合に賞味期限が不一致の場合
                 IF  (lv_limit_date IS NOT NULL) THEN
                   IF  (FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format) !=
@@ -2282,6 +2347,61 @@ AS
                       gn_err_msg_cnt := gn_err_msg_cnt + 1;
                       warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
                   END;
+-- 2016/06/15 Y.Shoji Add Start
+                WHEN TOO_MANY_ROWS THEN
+                  BEGIN
+                    SELECT
+                      ilm.lot_id     AS lot_id     -- ロットID
+                     ,ilm.lot_no     AS lot_no     -- ロットNO
+                     ,ilm.attribute3 AS limit_date -- 賞味期限
+                     ,ilm.attribute1 AS maker_date -- 製造年月日
+                    INTO
+                      ln_lot_id               -- ロットID
+                     ,lv_lot_no               -- ロットNO
+                     ,lv_limit_date           -- 賞味期限
+                     ,lv_maker_date           -- 製造年月日
+                    FROM   ic_lots_mst ilm
+                    WHERE  FND_DATE.STRING_TO_DATE(ilm.attribute1, gc_char_d_format) = ld_maker_date             -- 製造日
+                    AND    ilm.attribute2                                            = inv_if_rec(i).proper_mark -- 固有記号
+                    AND    ilm.item_id                                               = ln_item_id                -- 品目
+                    AND    FND_DATE.STRING_TO_DATE(ilm.attribute3, gc_char_d_format) = ld_limit_date             -- 賞味期限
+                    ;
+                  EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                      IF  (inv_if_rec(i).sts != gv_sts_ng  )  THEN
+                        inv_if_rec(i).sts  :=  gv_sts_hr;  --ロットマスタ未登録エラー(保留)
+                      END IF;
+                      --データダンプ取得
+                      IF  (lb_dump_flag  = FALSE)  THEN
+                        proc_get_data_dump(
+                          if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+                         ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+                         ,ov_errbuf  => lv_errbuf
+                         ,ov_retcode => lv_retcode
+                         ,ov_errmsg  => lv_errmsg);
+                        -- エラーの場合
+                        IF (lv_retcode = gv_status_error) THEN
+                          RAISE global_api_expt;
+                        ELSE
+                          lv_retcode  := gv_status_warn;
+                        END IF;
+                        -- 警告データダンプPL/SQL表投入
+                        gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                        warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+                        lb_dump_flag :=  TRUE;
+                      END IF;
+                      -- 警告エラーメッセージ取得(OPMロットマスタに該当データが存在しません(項目：OBJECT))
+                      lv_msg_col  :=  gv_maker_date_col || '、' || gv_proper_mark_col || '、' || gv_limit_date_col;
+                      lv_errmsg := xxcmn_common_pkg.get_msg(
+                                    iv_application  => gv_xxinv,
+                                    iv_name         => 'APP-XXINV-10108',
+                                    iv_token_name1  => 'OBJECT',
+                                    iv_token_value1 => lv_msg_col);
+                      -- 警告メッセージPL/SQL表投入
+                      gn_err_msg_cnt := gn_err_msg_cnt + 1;
+                      warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+                  END;
+-- 2016/06/15 Y.Shoji Add End
               END;
             END IF;--リーフ終了
           END IF;
