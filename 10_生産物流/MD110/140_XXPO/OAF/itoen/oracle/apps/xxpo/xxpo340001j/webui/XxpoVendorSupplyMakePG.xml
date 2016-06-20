@@ -1,6 +1,6 @@
 <?xml version = '1.0' encoding = 'UTF-8'?>
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
-<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <content>
       <!--*[Enter Javadoc like developer documentation, delete this line once you fill the included template.] [Put a one line description of the region here.] [Put a brief description of the usage of the region here.] @param [Parameter_name] [Put parameter use here.] @param [Parameter_name] [Put parameter use here.] @see [Put any additional links apart from controller class and BC4J objects directly referenced by this region]-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxpo.xxpo340001j.server.XxpoVendorSupplyAM" windowTitle="外注出来高報告" title="外注出来高報告：登録" controllerClass="itoen.oracle.apps.xxpo.xxpo340001j.webui.XxpoVendorSupplyMakeCO">
@@ -188,9 +188,35 @@
                                           <oa:messageStyledText id="TxtUseByDatePrompt" prompt="賞味期限"/>
                                        </ui:contents>
                                     </oa:cellFormat>
-                                    <oa:cellFormat id="LotCell0501" columnSpan="2">
+                                    <oa:cellFormat id="LotCell0501">
                                        <ui:contents>
                                           <oa:messageStyledText id="TxtUseByDate" shortDesc="賞味期限" dataType="DATE" viewName="XxpoVendorSupplyMakeVO1" viewAttr="UseByDate" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="LotCell0502" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:flowLayout id="LotFrow0502">
+                                             <ui:contents>
+                                                <oa:rowLayout id="LotRow0502">
+                                                   <ui:contents>
+                                                      <oa:cellFormat id="LotCell05021" securityMode="standard" rendered="true">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="TxtChangedUseByDatePrompt" prompt="変更賞味期限"/>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                      <oa:cellFormat id="LotCell05022" securityMode="standard">
+                                                         <ui:contents>
+                                                            <oa:messageTextInput id="TxtChangedUseByDate" dataType="DATE" shortDesc="変更賞味期限" columns="12" maximumLength="10" styleClass="LegendText" viewName="XxpoVendorSupplyMakeVO1" viewAttr="ChangedUseByDate" readOnly="${oa.XxpoVendorSupplyMakePVO1.ChangedUseByDateReadOnly}">
+                                                               <ui:primaryClientAction>
+                                                                  <ui:firePartialAction unvalidated="true" event="ChangedUseByDateChanged"/>
+                                                               </ui:primaryClientAction>
+                                                            </oa:messageTextInput>
+                                                         </ui:contents>
+                                                      </oa:cellFormat>
+                                                   </ui:contents>
+                                                </oa:rowLayout>
+                                             </ui:contents>
+                                          </oa:flowLayout>
                                        </ui:contents>
                                     </oa:cellFormat>
                                  </ui:contents>
