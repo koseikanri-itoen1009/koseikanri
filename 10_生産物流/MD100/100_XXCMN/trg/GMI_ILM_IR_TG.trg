@@ -42,6 +42,9 @@ BEGIN
     WHERE item_id    = :NEW.item_id
       AND attribute1 = :NEW.attribute1
       AND attribute2 = :NEW.attribute2
+-- 2016-06-09 S.Yamashita Add Start
+      AND attribute3 = :NEW.attribute3
+-- 2016-06-09 S.Yamashita Add End
     ;
 --
     IF ( ln_count > 0 ) THEN
@@ -54,7 +57,10 @@ EXCEPTION
     /* FND_LOG_MESSAGESテーブルへメッセージ出力 */
     FND_LOG.STRING( 6
                   , cv_tg_name
-                  , '主キーが重複するロットが作成される恐れがありました。 品目ID：' || :NEW.ITEM_ID || ' 製造年月日：' || :NEW.ATTRIBUTE1 || ' 固有記号：' || :NEW.ATTRIBUTE2);
+-- 2016-06-09 S.Yamashita Mod Start
+--                  , '主キーが重複するロットが作成される恐れがありました。 品目ID：' || :NEW.ITEM_ID || ' 製造年月日：' || :NEW.ATTRIBUTE1 || ' 固有記号：' || :NEW.ATTRIBUTE2);
+                  , '主キーが重複するロットが作成される恐れがありました。 品目ID：' || :NEW.ITEM_ID || ' 製造年月日：' || :NEW.ATTRIBUTE1 || ' 固有記号：' || :NEW.ATTRIBUTE2 || ' 賞味期限：' || :NEW.ATTRIBUTE3);
+-- 2016-06-09 S.Yamashita Add Start
     /* 共通例外処理 */
     APP_EXCEPTION.RAISE_EXCEPTION( 'ORA'
                                  , '-20000'
