@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.30
+* バージョン : 1.31
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -38,6 +38,7 @@
 * 2011-06-01 1.28 窪和重       本番障害#1786対応
 * 2015-10-05 1.29 山下翔太     E_本稼動_13238対応
 * 2016-02-12 1.30 山下翔太     E_本稼動_13451対応
+* 2016-05-16 1.31 山下翔太     E_本稼動_13563対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -581,6 +582,8 @@ public class XxpoUtility
    * @param manufacturedDate - 製造日
    * @param koyuCode         - 固有記号
    * @param factoryCode      - 工場コード
+   * @param useByDate        - 賞味期限
+   * @param changedUseByDate - 変更賞味期限
    * @return boolean  - ロットが存在する場合   true
    *                  - ロットが存在しない場合 false
    * @throws OAException - OA例外
@@ -591,6 +594,10 @@ public class XxpoUtility
     Date   manufacturedDate,
     String koyuCode,
     String factoryCode
+// 2016-05-16 v1.31 S.Yamashita Add Start
+   ,Date   useByDate
+   ,Date   changedUseByDate
+// 2016-05-16 v1.31 S.Yamashita Add End
   ) throws OAException
   {
     String apiName   = "chkLotFactory"; // API名
@@ -602,10 +609,19 @@ public class XxpoUtility
     sb.append("  SELECT TO_CHAR(COUNT(1)) "                         ); // ロットカウント数
     sb.append("  INTO   :1 "                                        ); 
     sb.append("  FROM   xxpo_vendor_supply_txns xvst "              ); // 外注出来高実績
+// 2016-05-16 v1.31 S.Yamashita Add Start
+    sb.append("        ,ic_lots_mst ilm "                           ); // OPMロットマスタ
+// 2016-05-16 v1.31 S.Yamashita Add End
     sb.append("  WHERE  xvst.item_id    = :2 "                      ); // 品目ID
     sb.append("  AND    xvst.producted_date = :3 "                  ); // 製造日
     sb.append("  AND    xvst.koyu_code = :4 "                       ); // 固有記号
-    sb.append("  AND    xvst.factory_code = :5; "                   ); // 工場コード
+// 2016-05-16 v1.31 S.Yamashita Mod Start
+//    sb.append("  AND    xvst.factory_code = :5; "                   ); // 工場コード
+    sb.append("  AND    xvst.factory_code = :5 "                    ); // 工場コード
+    sb.append("  AND    ilm.attribute3 = TO_CHAR( :6, 'YYYY/MM/DD' ) " ); // 変更賞味期限
+    sb.append("  AND    xvst.lot_id = ilm.lot_id "                  );
+    sb.append("  ; "                                                );
+// 2016-05-16 v1.31 S.Yamashita Mod End
     sb.append("END; "                                               );
 
     //PL/SQL設定
@@ -619,6 +635,17 @@ public class XxpoUtility
       cstmt.setDate(3, XxcmnUtility.dateValue(manufacturedDate)); // 製造日
       cstmt.setString(4, koyuCode);                               // 固有記号
       cstmt.setString(5, factoryCode);                            // 工場コード
+// 2016-05-16 v1.31 S.Yamashita Add Start
+      if (!XxcmnUtility.isBlankOrNull(changedUseByDate))
+      {
+        // 変更賞味期限がNULLでない場合
+        cstmt.setDate(6, XxcmnUtility.dateValue(changedUseByDate));                     // 変更賞味期限
+      }else
+      {
+        // 変更賞味期限がNULLの場合
+        cstmt.setDate(6, XxcmnUtility.dateValue(useByDate));                           // 賞味期限
+      }
+// 2016-05-16 v1.31 S.Yamashita Add End
       
       // パラメータ設定(OUTパラメータ)
       cstmt.registerOutParameter(1, Types.VARCHAR); // ロットカウント数
@@ -679,6 +706,8 @@ public class XxpoUtility
    * @param  itemId           - 品目ID
    * @param  manufacturedDate - 製造日
    * @param  koyuCode         - 固有記号
+   * @param  useByDate        - 賞味期限
+   * @param  changedUseByDate - 変更賞味期限
    * @return HashMap          - ロット情報
    * @throws OAException      - OA例外
    ****************************************************************************/
@@ -687,6 +716,10 @@ public class XxpoUtility
     Number itemId,
     Date   manufacturedDate,
     String koyuCode
+// 2016-05-16 v1.31 S.Yamashita Add Start
+   ,Date   useByDate
+   ,Date   changedUseByDate
+// 2016-05-16 v1.31 S.Yamashita Add End
   ) throws OAException
   {
     String  apiName    = "getLotMst";   // API名
@@ -706,7 +739,10 @@ public class XxpoUtility
     sb.append("  FROM   ic_lots_mst ilm "                              ); // OPMロットマスタ
     sb.append("  WHERE  ilm.item_id    = :5 "                          ); // 品目ID
     sb.append("  AND    ilm.attribute1 = TO_CHAR( :6, 'YYYY/MM/DD' ) " ); // 製造日
-    sb.append("  AND    ilm.attribute2 = :7; "                         ); // 固有記号
+    sb.append("  AND    ilm.attribute2 = :7 "                         ); // 固有記号
+// 2016-05-16 v1.31 S.Yamashita Add Start
+    sb.append("  AND   ilm.attribute3  = TO_CHAR( :8, 'YYYY/MM/DD' ); " ); // 賞味期限
+// 2016-05-16 v1.31 S.Yamashita Add End
     sb.append("EXCEPTION "                                             );
     sb.append("  WHEN NO_DATA_FOUND THEN "                             );
     sb.append("    NULL; "                                             );
@@ -722,6 +758,18 @@ public class XxpoUtility
       cstmt.setInt(5, XxcmnUtility.intValue(itemId));             // 品目ID
       cstmt.setDate(6, XxcmnUtility.dateValue(manufacturedDate)); // 製造日
       cstmt.setString(7, koyuCode);                               // 固有記号
+
+// 2016-05-16 v1.31 S.Yamashita Add Start
+    if (!XxcmnUtility.isBlankOrNull(changedUseByDate))
+    {
+      // 変更賞味期限がNULLでない場合
+      cstmt.setDate(8, XxcmnUtility.dateValue(changedUseByDate)); // 変更賞味期限
+    }else
+    {
+      // 変更賞味期限がNULLの場合
+      cstmt.setDate(8, XxcmnUtility.dateValue(useByDate));        // 賞味期限
+    }
+// 2016-05-16 v1.31 S.Yamashita Add End
       
       // パラメータ設定(OUTパラメータ)
       cstmt.registerOutParameter(1, Types.VARCHAR); // ロットNo
@@ -1567,6 +1615,9 @@ public class XxpoUtility
     String lotStatus         = (String)params.get("LotStatus");  // ロットステータス
     String vendorCode        = (String)params.get("VendorCode"); // 取引先コード
     String productResultType = (String)params.get("ProductResultType"); // 処理タイプ
+// 2016-05-16 v1.31 S.Yamashita Add Start
+    Date changedUseByDate    = (Date)params.get("ChangedUseByDate"); // 変更賞味期限
+// 2016-05-16 v1.31 S.Yamashita Add End
 
     HashMap retHashMap = new HashMap(); // 戻り値
     retHashMap.put("RetFlag", XxcmnConstants.RETURN_NOT_EXE);
@@ -1607,6 +1658,17 @@ public class XxpoUtility
     {
       sb.append("  lr_lot_in.attribute24      := '3'; "                         ); // 作成区分
     }    
+// 2016-05-16 v1.31 S.Yamashita Add Start
+    // 変更賞味期限が設定されている場合かつ、賞味期限!=変更賞味期限の場合
+    if ((!XxcmnUtility.isBlankOrNull(changedUseByDate))
+       && (!changedUseByDate.equals(useByDate)))
+    {
+      sb.append("  lr_lot_in.attribute25      := TO_CHAR(:10,'YYYY/MM/DD'); "   ); // 変更賞味期限
+    }else
+    {
+      sb.append("  lr_lot_in.attribute25      := :10; "                         ); // 変更賞味期限
+    }
+// 2016-05-16 v1.31 S.Yamashita Add End
                  // API:ロット作成実行
     sb.append("  GMIPAPI.CREATE_LOT(  "                                         );
     sb.append("     p_api_version      => ln_api_version_number "               ); // IN:APIのバージョン番号
@@ -1616,10 +1678,16 @@ public class XxpoUtility
     sb.append("    ,p_lot_rec          => lr_lot_in "                           ); // IN:作成するロット情報を指定
     sb.append("    ,x_ic_lots_mst_row  => lr_lot_out "                          ); // OUT:作成されたロット情報が返却
     sb.append("    ,x_ic_lots_cpg_row  => lr_lot_cpg_out "                      ); // OUT:作成されたロット情報が返却
-    sb.append("    ,x_return_status    => :10 "                                  ); // OUT:終了ステータス( 'S'-正常終了, 'E'-例外発生, 'U'-システム例外発生)
-    sb.append("    ,x_msg_count        => :11 "                                 ); // OUT:メッセージ・スタック数
-    sb.append("    ,x_msg_data         => :12); "                               ); // OUT:メッセージ   
-    sb.append("  :13 := lr_lot_out.lot_id; "                                    ); // ロットID  
+// 2016-05-16 v1.31 S.Yamashita Mod Start
+//    sb.append("    ,x_return_status    => :10 "                                  ); // OUT:終了ステータス( 'S'-正常終了, 'E'-例外発生, 'U'-システム例外発生)
+//    sb.append("    ,x_msg_count        => :11 "                                 ); // OUT:メッセージ・スタック数
+//    sb.append("    ,x_msg_data         => :12); "                               ); // OUT:メッセージ   
+//    sb.append("  :13 := lr_lot_out.lot_id; "                                    ); // ロットID  
+    sb.append("    ,x_return_status    => :11 "                                  ); // OUT:終了ステータス( 'S'-正常終了, 'E'-例外発生, 'U'-システム例外発生)
+    sb.append("    ,x_msg_count        => :12 "                                 ); // OUT:メッセージ・スタック数
+    sb.append("    ,x_msg_data         => :13); "                               ); // OUT:メッセージ   
+    sb.append("  :14 := lr_lot_out.lot_id; "                                    ); // ロットID  
+// 2016-05-16 v1.31 S.Yamashita Mod End
     sb.append("END; "                                                           );
     
     //PL/SQLの設定を行います
@@ -1638,26 +1706,52 @@ public class XxpoUtility
       cstmt.setString(7, stockValue);                          // 在庫単価
       cstmt.setString(8, lotStatus);                           // ロットステータス
       cstmt.setString(9, vendorCode);                          // 取引先コード
+// 2016-05-16 v1.31 S.Yamashita Add Start
+    // 変更賞味期限が設定されている場合かつ、賞味期限!=変更賞味期限の場合
+    if ((!XxcmnUtility.isBlankOrNull(changedUseByDate))
+       && (!changedUseByDate.equals(useByDate)))
+    {
+      cstmt.setDate(5 , XxcmnUtility.dateValue(changedUseByDate)); // 賞味期限
+      cstmt.setDate(10, XxcmnUtility.dateValue(changedUseByDate)); // 変更賞味期限
+    }else
+    {
+      cstmt.setString(10, ""); // 変更賞味期限
+    }
+// 2016-05-16 v1.31 S.Yamashita Add End
       
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(10,  Types.VARCHAR); // リターンステータス
-      cstmt.registerOutParameter(11, Types.INTEGER); // メッセージカウント
-      cstmt.registerOutParameter(12, Types.VARCHAR); // メッセージ
-      cstmt.registerOutParameter(13, Types.INTEGER); // ロットID
+// 2016-05-16 v1.31 S.Yamashita Mod Start
+//      cstmt.registerOutParameter(10,  Types.VARCHAR); // リターンステータス
+//      cstmt.registerOutParameter(11, Types.INTEGER); // メッセージカウント
+//      cstmt.registerOutParameter(12, Types.VARCHAR); // メッセージ
+//      cstmt.registerOutParameter(13, Types.INTEGER); // ロットID
+      cstmt.registerOutParameter(11,  Types.VARCHAR); // リターンステータス
+      cstmt.registerOutParameter(12, Types.INTEGER); // メッセージカウント
+      cstmt.registerOutParameter(13, Types.VARCHAR); // メッセージ
+      cstmt.registerOutParameter(14, Types.INTEGER); // ロットID
+// 2016-05-16 v1.31 S.Yamashita Mod End
 
       //PL/SQL実行
       cstmt.execute();
 
       // 戻り値取得
-      String retStatus = cstmt.getString(10);  // リターンステータス
-      int msgCnt       = cstmt.getInt(11);   // メッセージカウント
-      String msgData   = cstmt.getString(12); // メッセージ
+// 2016-05-16 v1.31 S.Yamashita Mod Start
+//      String retStatus = cstmt.getString(10);  // リターンステータス
+//      int msgCnt       = cstmt.getInt(11);   // メッセージカウント
+//      String msgData   = cstmt.getString(12); // メッセージ
+      String retStatus = cstmt.getString(11);  // リターンステータス
+      int msgCnt       = cstmt.getInt(12);   // メッセージカウント
+      String msgData   = cstmt.getString(13); // メッセージ
+// 2016-05-16 v1.31 S.Yamashita Mod End
 
       // 正常終了の場合
       if (XxcmnConstants.API_STATUS_SUCCESS.equals(retStatus)) 
       {
         // ロットID、リターンコード正常をセット
-        retHashMap.put("LotId", cstmt.getObject(13));
+// 2016-05-16 v1.31 S.Yamashita Mod Start
+//        retHashMap.put("LotId", cstmt.getObject(13));
+        retHashMap.put("LotId", cstmt.getObject(14));
+// 2016-05-16 v1.31 S.Yamashita Mod End
         retHashMap.put("RetFlag", XxcmnConstants.RETURN_SUCCESS);
 
       // 正常終了でない場合、エラー  
