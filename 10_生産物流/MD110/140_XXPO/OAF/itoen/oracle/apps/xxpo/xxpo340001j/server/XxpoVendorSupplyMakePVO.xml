@@ -12,7 +12,7 @@
    Passivate="All"
    UseGlueCode="false" >
    <DesignTime>
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
@@ -116,6 +116,16 @@
    </ViewAttribute>
    <ViewAttribute
       Name="GoDisabled"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ChangedUseByDateReadOnly"
       IsQueriable="false"
       IsPersistent="false"
       Precision="255"
