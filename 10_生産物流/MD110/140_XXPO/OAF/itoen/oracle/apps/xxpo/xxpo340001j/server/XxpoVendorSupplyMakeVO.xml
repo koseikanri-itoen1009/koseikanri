@@ -53,6 +53,9 @@ SELECT xvst.txns_id                 txns_id             -- 実績ID
 -- 2009-02-18 H.Itou Add Start 本番障害#1096
       ,ilm.attribute22              qt_inspect_req_no   -- 検査依頼No
 -- 2009-02-18 H.Itou Add End
+-- 2016-06-09 S.Yamashita Add Start
+      ,TO_DATE(ilm.attribute25,'YYYY/MM/DD') changed_use_by_date  -- 変更賞味期限
+-- 2016-06-09 S.Yamashita Add End
 FROM   xxpo_vendor_supply_txns      xvst                -- 外注出来高実績
       ,xxcmn_item_mst2_v            ximv                -- OPM品目情報2V
       ,xxcmn_vendors2_v             xvv                 -- 仕入先情報2V
@@ -75,7 +78,7 @@ AND    xvv.start_date_active  <= TRUNC(xvst.manufactured_date) -- 適用開始日 <= 
 AND    xvv.end_date_active    >= TRUNC(xvst.manufactured_date)
    ]]></SQLQuery>
    <DesignTime>
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
@@ -520,6 +523,16 @@ AND    xvv.end_date_active    >= TRUNC(xvst.manufactured_date)
       AliasName="QT_INSPECT_REQ_NO"
       Expression="QT_INSPECT_REQ_NO"
       SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ChangedUseByDate"
+      IsPersistent="false"
+      Precision="32"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="CHANGED_USE_BY_DATE"
+      Expression="CHANGED_USE_BY_DATE"
+      SQLType="DATE" >
    </ViewAttribute>
    <ViewAttribute
       Name="StockQty"
