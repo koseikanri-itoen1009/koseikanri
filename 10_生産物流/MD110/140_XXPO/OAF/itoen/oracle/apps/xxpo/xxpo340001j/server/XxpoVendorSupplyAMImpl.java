@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2009-03-02 1.6  伊藤ひとみ   本番障害#32対応
 * 2015-10-06 1.7  山下翔太     E_本稼動_13238対応
 * 2016-02-12 1.8  山下翔太     E_本稼動_13451対応
+* 2016-06-09 1.9  山下翔太     E_本稼動_13563対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -302,6 +303,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
         readOnlyRow.setAttribute("CorrectedQuantityReadOnly", Boolean.FALSE); // 訂正数量入力可        
       }
     }
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    readOnlyRow.setAttribute("ChangedUseByDateReadOnly", Boolean.TRUE); // 変更賞味期限入力不可
+// 2016-06-09 v1.9 S.Yamashita Add End
   }
 
   /***************************************************************************
@@ -482,11 +486,23 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
     // 1行目を取得
     OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    // 外注出来高実績:登録PVO取得
+    OAViewObject vendorSupplyMakePvo = getXxpoVendorSupplyMakePVO1();
+    // 1行目を取得
+    OARow readOnlyRow = (OARow)vendorSupplyMakePvo.first();
+// 2016-06-09 v1.9 S.Yamashita Add End
+    
     // データ取得
     String itemClassCode = (String)vendorSupplyMakeRow.getAttribute("ItemClassCode");// 品目区分
     Number itemId        = (Number)vendorSupplyMakeRow.getAttribute("ItemId");       // 品目ID
     Date productedDate   = (Date)vendorSupplyMakeRow.getAttribute("ProductedDate");  // 製造日
     String koyuCode      = (String)vendorSupplyMakeRow.getAttribute("KoyuCode");     // 固有記号
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    Date useByDate        = (Date)vendorSupplyMakeRow.getAttribute("UseByDate");         // 賞味期限
+    Date changedUseByDate = (Date)vendorSupplyMakeRow.getAttribute("ChangedUseByDate");  // 変更賞味期限
+// 2016-06-09 v1.9 S.Yamashita Add End
     
     // 品目区分が5：製品の場合
     if (XxpoConstants.ITEM_CLASS_PROD.equals(itemClassCode))
@@ -497,12 +513,19 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
                     itemId,               // 品目ID
                     productedDate,        // 製造日
                     koyuCode              // 固有記号
+// 2016-06-09 v1.9 S.Yamashita Add Start
+                   ,useByDate             // 賞味期限
+                   ,changedUseByDate      // 変更賞味期限
+// 2016-06-09 v1.9 S.Yamashita Add End
                   );
       // 外注出来高情報:登録VOにセット
       vendorSupplyMakeRow.setAttribute("LotNumber"      , retHashMap.get("LotNumber"));      // ロットNo
       vendorSupplyMakeRow.setAttribute("LotId"          , retHashMap.get("LotId"));          // ロットID
       vendorSupplyMakeRow.setAttribute("LotStatus"      , retHashMap.get("LotStatus"));      // ロットステータス
       vendorSupplyMakeRow.setAttribute("QtInspectReqNo" , retHashMap.get("QtInspectReqNo")); // 品質検査依頼No
+// 2016-06-09 v1.9 S.Yamashita Add Start
+      readOnlyRow.setAttribute("ChangedUseByDateReadOnly",  Boolean.FALSE); // 変更賞味期限入力可
+// 2016-06-09 v1.9 S.Yamashita Add End
     }else
     {
       // 品目区分が「5:製品」以外の場合はNULLをセット
@@ -511,6 +534,11 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       vendorSupplyMakeRow.setAttribute("LotId"          , ""); // ロットID
       vendorSupplyMakeRow.setAttribute("LotStatus"      , ""); // ロットステータス
       vendorSupplyMakeRow.setAttribute("QtInspectReqNo" , ""); // 品質検査依頼No
+// 2016-06-09 v1.9 S.Yamashita Add Start
+      vendorSupplyMakeRow.setAttribute("ChangedUseByDate" , ""); // 変更賞味期限
+      
+      readOnlyRow.setAttribute("ChangedUseByDateReadOnly",  Boolean.TRUE);  // 変更賞味期限入力不可
+// 2016-06-09 v1.9 S.Yamashita Add End
     }
   }
 // 2015-10-06 S.Yamashita Add End
@@ -946,6 +974,10 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     Date   productedDate = (Date)vendorSupplyMakeRow.getAttribute("ProductedDate"); // 製造日
     String koyuCode      = (String)vendorSupplyMakeRow.getAttribute("KoyuCode");    // 固有記号
     String factoryCode   = (String)vendorSupplyMakeRow.getAttribute("FactoryCode"); // 工場コード
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    Date useByDate        = (Date)vendorSupplyMakeRow.getAttribute("UseByDate");         // 賞味期限
+    Date changedUseByDate = (Date)vendorSupplyMakeRow.getAttribute("ChangedUseByDate");  // 変更賞味期限
+// 2016-06-09 v1.9 S.Yamashita Add End
 
     // ロット重複確認チェック
     if (XxpoUtility.chkLotFactory(
@@ -954,6 +986,10 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
           productedDate,        // 製造日 
           koyuCode,             // 固有記号
           factoryCode           // 工場コード
+// 2016-06-09 v1.9 S.Yamashita Add Start
+         ,useByDate             // 賞味期限
+         ,changedUseByDate      // 変更賞味期限
+// 2016-06-09 v1.9 S.Yamashita Add End
           )
         )
     {
@@ -1173,6 +1209,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     params.put("ProductedDate",     vendorSupplyMakeRow.getAttribute("ProductedDate"));     // 製造日
     params.put("KoyuCode",          vendorSupplyMakeRow.getAttribute("KoyuCode"));          // 固有記号
     params.put("UseByDate",         vendorSupplyMakeRow.getAttribute("UseByDate"));         // 賞味期限
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    params.put("ChangedUseByDate",  vendorSupplyMakeRow.getAttribute("ChangedUseByDate"));  // 変更賞味期限
+// 2016-06-09 v1.9 S.Yamashita Add End
     params.put("Quantity",          vendorSupplyMakeRow.getAttribute("Quantity"));          // 数量
     params.put("ProductedQuantity", vendorSupplyMakeRow.getAttribute("ProductedQuantity")); // 出来高数量
     params.put("CorrectedQuantity", vendorSupplyMakeRow.getAttribute("CorrectedQuantity")); // 訂正数量
@@ -1588,6 +1627,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     vendorSupplyMakeRow.setAttribute("LotStatus",       ""); // ロットステータス
     vendorSupplyMakeRow.setAttribute("QtInspectReqNo",  ""); // 品質検査依頼No
 // 2015-10-06 S.Yamashita Add End
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    vendorSupplyMakeRow.setAttribute("ChangedUseByDate" , ""); // 変更賞味期限
+// 2016-06-09 v1.9 S.Yamashita Add End
 
     // 入力制御
     readOnlyChangedMake();
@@ -1599,6 +1641,15 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
    */
   public void factoryCodeChanged()
   {
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // 変更賞味期限をリセット
+    vendorSupplyMakeRow.setAttribute("ChangedUseByDate" , "");
+// 2016-06-09 v1.9 S.Yamashita Add End
+
     // 固有記号取得
     getKoyuCode(); 
 // 2015-10-06 S.Yamashita Add Start
@@ -1616,6 +1667,15 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     // 必須入力切替
     requiredChanged();
         
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // 変更賞味期限をリセット
+    vendorSupplyMakeRow.setAttribute("ChangedUseByDate" , "");
+// 2016-06-09 v1.9 S.Yamashita Add End
+
     // 固有記号取得
     getKoyuCode(); 
         
@@ -1633,6 +1693,14 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
    */
   public void manufacturedDateChanged()
   {        
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // 変更賞味期限をリセット
+    vendorSupplyMakeRow.setAttribute("ChangedUseByDate" , "");
+// 2016-06-09 v1.9 S.Yamashita Add End
     // 固有記号取得
     getKoyuCode();
 
@@ -1653,6 +1721,14 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
    */
   public void productedDateChanged()
   {
+// 2016-06-09 v1.9 S.Yamashita Add Start
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // 変更賞味期限をリセット
+    vendorSupplyMakeRow.setAttribute("ChangedUseByDate" , "");
+// 2016-06-09 v1.9 S.Yamashita Add End
 // 2009-02-18 H.Itou Add Start 本番障害#1178
     // 固有記号取得
     getKoyuCode(); 
@@ -1665,6 +1741,18 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     getLotMst();
 // 2015-10-06 S.Yamashita Add End
   }
+
+// 2016-06-09 v1.9 S.Yamashita Add Start
+  /***************************************************************************
+   * 変更賞味期限変更時処理です。(登録画面用)
+   ***************************************************************************
+   */
+  public void changedUseByDateChanged()
+  {
+    // ロット情報取得
+    getLotMst();
+  }
+// 2016-06-09 v1.9 S.Yamashita Add End
 
   /***************************************************************************
    * 登録・更新時のチェックを行います。(登録画面用)
