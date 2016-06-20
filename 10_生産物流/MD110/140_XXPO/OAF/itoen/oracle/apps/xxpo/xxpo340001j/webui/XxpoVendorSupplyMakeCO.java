@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyMakeCO
 * 概要説明   : 外注出来高報告:登録コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-08 1.0  伊藤 ひとみ   新規作成
 * 2008-05-07      伊藤 ひとみ   変更要求対応(#86,90)、内部変更要求対応(#28,29,41)
+* 2016-05-11 1.1  山下 翔太     E_本稼動_13563対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.webui;
@@ -303,6 +304,13 @@ public class XxpoVendorSupplyMakeCO extends XxcmnOAControllerImpl
         am.invokeMethod("productedDateChanged");  
  
       }
+// 2016-05-11 v1.1 S.Yamashita Add Start
+      else if ("ChangedUseByDateChanged".equals(pageContext.getParameter(EVENT_PARAM)))
+      {
+        // 変更賞味期限変更時処理
+        am.invokeMethod("changedUseByDateChanged");
+      }
+// 2016-05-11 v1.1 S.Yamashita Add End
 
     // 例外が発生した場合  
     } catch(OAException oae)
