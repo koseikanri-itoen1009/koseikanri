@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2013/04/12    1.24  T.Ishiwata       [E_本稼動_10660]入金データ更新項目追加対応
  *  2013/07/03    1.25  T.Shimoji        [E_本稼動_10904]消費税増税対応
  *  2016/03/08    1.26  S.Niki           [E_本稼動_13480]売上金額差異リスト追加
+ *  2016/06/17    1.27  S.Niki           [E_本稼動_13674]0件メッセージ時の出力項目追加
  *
  *****************************************************************************************/
 --
@@ -3129,10 +3130,15 @@ AS
    * Description      : 0件メッセージ登録(A-10)
    ***********************************************************************************/
   PROCEDURE ins_no_data_msg(
-    iv_output_type  IN  VARCHAR2,         -- 出力区分
-    ov_errbuf       OUT VARCHAR2,         -- エラー・メッセージ           --# 固定 #
-    ov_retcode      OUT VARCHAR2,         -- リターン・コード             --# 固定 #
-    ov_errmsg       OUT VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
+-- ************* Ver.1.27 ADD START *************--
+    iv_delivery_date      IN  VARCHAR2,         -- 納品日
+    iv_delivery_base_code IN  VARCHAR2,         -- 拠点
+    iv_dlv_by_code        IN  VARCHAR2,         -- 営業員
+-- ************* Ver.1.27 ADD END   *************--
+    iv_output_type        IN  VARCHAR2,         -- 出力区分
+    ov_errbuf             OUT VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode            OUT VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg             OUT VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -3153,7 +3159,12 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_nodata_msg    VARCHAR2(5000);
+    lv_nodata_msg      VARCHAR2(5000);
+-- ************* Ver.1.27 ADD START *************--
+    ld_delivery_date   DATE;           -- パラメータ変換後の納品日
+    lv_base_name       VARCHAR2(40);   -- 拠点名称
+    lv_employee_name   VARCHAR2(40);   -- 営業員氏名
+-- ************* Ver.1.27 ADD END   *************--
 --
     -- *** ローカル・カーソル ***
 --
@@ -3172,14 +3183,64 @@ AS
     --==================================
     lv_nodata_msg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata_err );
 --
+-- ************* Ver.1.27 ADD START *************--
+    -- 初期化
+    lv_base_name     := NULL;
+    lv_employee_name := NULL;
+    -- パラメータ.納品日を日付変換
+    ld_delivery_date := TO_DATE( iv_delivery_date, cv_fmt_date_default );
+--
     --==================================
-    -- 2.0件メッセージ登録
+    -- 2.拠点名称取得
+    --==================================
+    BEGIN
+      SELECT SUBSTRB( hp.party_name, 1, 40 )  AS base_name
+      INTO   lv_base_name
+      FROM   hz_cust_accounts    hca  -- 顧客マスタ
+            ,hz_parties          hp   -- パーティ
+      WHERE  hca.party_id            = hp.party_id
+      AND    hca.customer_class_code = ct_cust_class_base
+      AND    hca.account_number      = iv_delivery_base_code  -- パラメータ.拠点
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END;
+--
+    --==================================
+    -- 3.営業員氏名取得
+    --==================================
+    -- パラメータ.営業員に値が設定されている場合
+    IF ( iv_dlv_by_code IS NOT NULL ) THEN
+      BEGIN
+        SELECT SUBSTRB( per_information18||' '||per_information19, 1, 40 )  AS employee_name
+        INTO   lv_employee_name
+        FROM   per_all_people_f    papf  -- 従業員マスタ
+        WHERE  papf.employee_number  = iv_dlv_by_code         -- パラメータ.営業員
+        AND    ld_delivery_date     >= papf.effective_start_date
+        AND    ld_delivery_date     <= papf.effective_end_date
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+    END IF;
+-- ************* Ver.1.27 ADD END   *************--
+    --==================================
+    -- 4.0件メッセージ登録
     --==================================
     BEGIN
       INSERT INTO
         xxcos_rep_dlv_chk_list
           (
               record_id                           -- レコードID
+-- ************* Ver.1.27 ADD START *************--
+             ,target_date                         -- 対象日付
+             ,base_code                           -- 拠点コード
+             ,base_name                           -- 拠点名称
+             ,employee_num                        -- 営業員コード
+             ,employee_name                       -- 営業員氏名
+-- ************* Ver.1.27 ADD END   *************--
              ,sudstance_total_amount              -- 売上額
              ,sale_discount_amount                -- 売上値引額
              ,consumption_tax_total_amount        -- 消費税金額合計
@@ -3198,6 +3259,13 @@ AS
              ,program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
           )VALUES(
               xxcos_rep_dlv_chk_list_s01.NEXTVAL  -- レコードID
+-- ************* Ver.1.27 ADD START *************--
+             ,ld_delivery_date                    -- 対象日付
+             ,iv_delivery_base_code               -- 拠点コード
+             ,lv_base_name                        -- 拠点名称
+             ,iv_dlv_by_code                      -- 営業員コード
+             ,lv_employee_name                    -- 営業員氏名
+-- ************* Ver.1.27 ADD END   *************--
              ,0                                   -- 売上額
              ,0                                   -- 売上値引額
              ,0                                   -- 消費税金額合計
@@ -3414,7 +3482,13 @@ AS
       --  0件メッセージ登録(A-10)
       --  ===============================
       ins_no_data_msg(
-         iv_output_type          -- 出力区分
+-- ************* Ver.1.27 MOD START *************--
+--         iv_output_type          -- 出力区分
+         iv_delivery_date        -- 納品日
+        ,iv_delivery_base_code   -- 拠点
+        ,iv_dlv_by_code          -- 営業員
+        ,iv_output_type          -- 出力区分
+-- ************* Ver.1.27 MOD END   *************--
         ,lv_errbuf               -- エラー・メッセージ           --# 固定 #
         ,lv_retcode              -- リターン・コード             --# 固定 #
         ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
