@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *                                       重量容積の計算でパレット重量加算を削除する
  *  2009/04/24    1.20  H.Itou           本番#1398対応
  *  2009/12/15    1.21  H.Itou           本稼動障害#XXXX対応
+ *  2016/06/01    1.22  K.Kiriu          E_本稼動_13659対応
  *
  *****************************************************************************************/
 --
@@ -207,8 +208,10 @@ AS
   ------------------------------
   -- プロファイル関連
   ------------------------------
-  -- 事業所コード（伊藤園産業）
-  gc_prof_loc_cd_sg           CONSTANT VARCHAR2(22)   := 'XXWSH_LOCATION_CODE_SG' ;
+-- 2016/06/01 K.Kiriu v1.22 del start
+--  -- 事業所コード（伊藤園産業）
+--  gc_prof_loc_cd_sg           CONSTANT VARCHAR2(22)   := 'XXWSH_LOCATION_CODE_SG' ;
+-- 2016/06/01 K.Kiriu v1.22 del end
   -- 会社名（伊藤園）
   gc_prof_company_nm          CONSTANT VARCHAR2(18)   := 'XXWSH_COMPANY_NAME' ;
   -- 出荷重量単位
@@ -217,6 +220,16 @@ AS
   gc_prof_capacity_uom        CONSTANT VARCHAR2(18)   := 'XXWSH_CAPACITY_UOM' ;
   -- 商品区分
   gc_prof_name_item_div       CONSTANT VARCHAR2(30)   := 'XXCMN_ITEM_DIV_SECURITY' ;
+-- 2016/06/01 K.Kiriu v1.22 add start
+  -- 事業所コード62C_01_ドリンク(運送発注元)
+  gc_prof_62c01_loc_cd_dr     CONSTANT VARCHAR2(28)   := 'XXWSH_62C01_LOCATION_CODE_DR';
+  -- 事業所コード62C_01_リーフ(運送発注元)
+  gc_prof_62c01_loc_cd_lf     CONSTANT VARCHAR2(28)   := 'XXWSH_62C01_LOCATION_CODE_LF';
+  -- 事業所コード62C_02_ドリンク(運送依頼元)
+  gc_prof_62c02_loc_cd_dr     CONSTANT VARCHAR2(28)   := 'XXWSH_62C02_LOCATION_CODE_DR';
+  -- 事業所コード62C_02_リーフ(運送依頼元)
+  gc_prof_62c02_loc_cd_lf     CONSTANT VARCHAR2(28)   := 'XXWSH_62C02_LOCATION_CODE_LF';
+-- 2016/06/01 K.Kiriu v1.22 add end
   ------------------------------
   -- エラーメッセージ関連
   ------------------------------
@@ -228,13 +241,22 @@ AS
   gc_msg_id_not_get_prof      CONSTANT  VARCHAR2(15)  := 'APP-XXWSH-12301' ;  -- ﾌﾟﾛﾌｧｲﾙ取得ｴﾗｰ
   gc_msg_id_no_data           CONSTANT  VARCHAR2(15)  := 'APP-XXCMN-10122' ;  -- 帳票0件エラー
   gc_msg_id_shime_time        COnSTANT  VARCHAR2(15)  := 'APP-XXWSH-12256' ;  -- 締め日付未入力
+-- 2016/06/01 K.Kiriu v1.22 add start
+  gc_mst_prof_value           CONSTANT  VARCHAR2(15)  := 'APP-XXWSH-13191' ;  -- プロファイル値不正エラー
+  gc_msg_62c01_loc_cd_dr      CONSTANT  VARCHAR2(15)  := 'APP-XXWSH-33309' ;  -- 文言(XXWSH:事業所コード62C_01_ドリンク)
+  gc_msg_62c01_loc_cd_lf      CONSTANT  VARCHAR2(15)  := 'APP-XXWSH-33310' ;  -- 文言(XXWSH:事業所コード62C_01_リーフ)
+  gc_msg_62c02_loc_cd_dr      CONSTANT  VARCHAR2(15)  := 'APP-XXWSH-33311' ;  -- 文言(XXWSH:事業所コード62C_02_ドリンク)
+  gc_msg_62c02_loc_cd_lf      CONSTANT  VARCHAR2(15)  := 'APP-XXWSH-33312' ;  -- 文言(XXWSH:事業所コード62C_02_リーフ)
+-- 2016/06/01 K.Kiriu v1.22 add end
   --メッセージ-トークン名
   gc_msg_tkn_nm_parmeta       CONSTANT  VARCHAR2(10)  := 'PARMETA' ;          -- パラメータ名
   gc_msg_tkn_nm_prof          CONSTANT  VARCHAR2(10)  := 'PROF_NAME' ;        -- プロファイル名
   --メッセージ-トークン値
   gc_msg_tkn_val_parmeta1     CONSTANT  VARCHAR2(20)  := '運送業者' ;
   gc_msg_tkn_val_parmeta2     CONSTANT  VARCHAR2(20)  := '確定通知実施日' ;
-  gc_msg_tkn_val_prof_prod1   CONSTANT  VARCHAR2(30)  := 'XXWSH:事業所コード(伊藤園産業)' ;
+-- 2016/06/01 K.Kiriu v1.22 del start
+--  gc_msg_tkn_val_prof_prod1   CONSTANT  VARCHAR2(30)  := 'XXWSH:事業所コード(伊藤園産業)' ;
+-- 2016/06/01 K.Kiriu v1.22 del end
   gc_msg_tkn_val_prof_prod2   CONSTANT  VARCHAR2(30)  := '会社名(伊藤園)' ;
   gc_msg_tkn_val_prof_prod3   CONSTANT  VARCHAR2(30)  := 'XXWSH:出荷重量単位' ;
   gc_msg_tkn_val_prof_prod4   CONSTANT  VARCHAR2(30)  := 'XXWSH:出荷容積単位' ;
@@ -365,7 +387,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
-  gv_loc_cd_sg          VARCHAR2(20);                               -- 伊藤園産業事業所コード
+-- 2016/06/01 K.Kiriu v1.22 del start
+--  gv_loc_cd_sg          VARCHAR2(20);                               -- 伊藤園産業事業所コード
+-- 2016/06/01 K.Kiriu v1.22 del end
   gv_company_nm         VARCHAR2(20);                               -- 会社名
   gv_uom_weight         VARCHAR2(3);                                -- 出荷重量単位
   gv_uom_capacity       VARCHAR2(3);                                -- 出荷容積単位
@@ -374,7 +398,9 @@ AS
   gv_report_title       VARCHAR2(20) ;                              -- 帳票タイトル
   gt_xml_data_table     XML_DATA ;                                  -- XMLデータ
   gt_param              rec_param_data ;                            -- 入力パラメータ情報
-  gv_dept_cd            VARCHAR2(10) ;                              -- 担当部署
+-- 2016/06/01 K.Kiriu v1.22 del start
+--  gv_dept_cd            VARCHAR2(10) ;                              -- 担当部署
+-- 2016/06/01 K.Kiriu v1.22 del end
   -- MOD START 2008/06/04 NAKADA gv_user_nmを新規に追加。gv_dept_nmを担当部署名用とし、桁数変更
   gv_dept_nm            VARCHAR2(20) ;                              -- 担当部署名
   gv_user_nm            VARCHAR2(14) ;                              -- 担当者
@@ -392,6 +418,10 @@ AS
   gv_irai_fax_value          xxcmn_locations_all.fax%TYPE ;           -- FAX番号
   gv_irai_cat_value          xxcmn_locations_all.location_name%TYPE ; -- 部署名称
   gv_irai_cat_value_full     VARCHAR2(74);                            -- 部署名称＋会社名
+-- 2016/06/01 K.Kiriu v1.22 add start
+  gv_62c01_loc_cd            fnd_profile_option_values.profile_option_value%TYPE;  --運送発注元事業所コード
+  gv_62c02_loc_cd            fnd_profile_option_values.profile_option_value%TYPE;  --運送依頼元事業所コード
+-- 2016/06/01 K.Kiriu v1.22 add end
 --
   gv_prod_kbn           VARCHAR2(1);                                  -- 商品区分
 --
@@ -425,6 +455,9 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+-- 2016/06/01 K.Kiriu v1.22 add start
+    lv_tkn_msg         VARCHAR2(2000); -- トークン取得用
+-- 2016/06/01 K.Kiriu v1.22 add end
     -- *** ローカル・例外処理 ***
     prm_check_expt     EXCEPTION ;     -- パラメータチェック例外
     get_prof_expt      EXCEPTION ;     -- プロファイル取得例外
@@ -445,16 +478,18 @@ AS
     -- ====================================================
     -- プロファイル値取得(F-1)
     -- ====================================================
-    -- 「XXWSH:事業所コード（伊藤園産業）」
-    gv_loc_cd_sg := FND_PROFILE.VALUE(gc_prof_loc_cd_sg) ;
-    IF (gv_loc_cd_sg IS NULL) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
-                                            ,gc_msg_id_not_get_prof
-                                            ,gc_msg_tkn_nm_prof
-                                            ,gc_msg_tkn_val_prof_prod1
-                                           ) ;
-      RAISE get_prof_expt ;
-    END IF ;
+-- 2016/06/01 K.Kiriu v1.22 del start
+--    -- 「XXWSH:事業所コード（伊藤園産業）」
+--    gv_loc_cd_sg := FND_PROFILE.VALUE(gc_prof_loc_cd_sg) ;
+--    IF (gv_loc_cd_sg IS NULL) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+--                                            ,gc_msg_id_not_get_prof
+--                                            ,gc_msg_tkn_nm_prof
+--                                            ,gc_msg_tkn_val_prof_prod1
+--                                           ) ;
+--      RAISE get_prof_expt ;
+--    END IF ;
+-- 2016/06/01 K.Kiriu v1.22 del end
 --
     -- 「XXWSH:会社名（伊藤園）」
     gv_company_nm := FND_PROFILE.VALUE(gc_prof_company_nm) ;
@@ -569,6 +604,85 @@ AS
 --      END IF ;
 --    END IF ;
 -- 2008/10/27 del end 1.13
+-- 2016/06/01 K.Kiriu v1.22 add start
+    -- パラメータ運送依頼元印字区分が印字あり(内部ユーザ)の場合
+    IF ( gt_param.iv_unsou_irai_inzi_kbn = gc_trans_req_prt_enable ) THEN
+      -- 職責：商品区分(セキュリティ)がリーフの場合
+      IF ( gv_prod_kbn = gc_prod_cd_leaf ) THEN
+        --「XXWSH:事業所コード62C_01_リーフ」(運送発注元事業所)
+        gv_62c01_loc_cd := FND_PROFILE.VALUE(gc_prof_62c01_loc_cd_lf) ;
+        IF (gv_62c01_loc_cd IS NULL) THEN
+          -- トークン取得
+          lv_tkn_msg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                 ,gc_msg_62c01_loc_cd_lf
+                                                ) ;
+          -- メッセージ生成
+          lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                ,gc_msg_id_not_get_prof
+                                                ,gc_msg_tkn_nm_prof
+                                                ,lv_tkn_msg
+                                               ) ;
+          RAISE get_prof_expt ;
+        END IF ;
+        --「XXWSH:事業所コード62C_02_リーフ」(運送依頼元事業所)
+        gv_62c02_loc_cd := FND_PROFILE.VALUE(gc_prof_62c02_loc_cd_lf) ;
+        IF (gv_62c02_loc_cd IS NULL) THEN
+          -- トークン取得
+          lv_tkn_msg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                 ,gc_msg_62c02_loc_cd_lf
+                                                ) ;
+          -- メッセージ生成
+          lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                ,gc_msg_id_not_get_prof
+                                                ,gc_msg_tkn_nm_prof
+                                                ,lv_tkn_msg
+                                               ) ;
+          RAISE get_prof_expt ;
+        END IF ;
+      -- 職責：商品区分(セキュリティ)がドリンクの場合
+      ELSIF ( gv_prod_kbn = gc_prod_cd_drink) THEN
+        --「XXWSH:事業所コード62C_01_ドリンク」(運送発注元事業所)
+        gv_62c01_loc_cd := FND_PROFILE.VALUE(gc_prof_62c01_loc_cd_dr) ;
+        IF (gv_62c01_loc_cd IS NULL) THEN
+          -- トークン取得
+          lv_tkn_msg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                 ,gc_msg_62c01_loc_cd_dr
+                                                ) ;
+          -- メッセージ生成
+          lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                ,gc_msg_id_not_get_prof
+                                                ,gc_msg_tkn_nm_prof
+                                                ,lv_tkn_msg
+                                               ) ;
+          RAISE get_prof_expt ;
+        END IF ;
+        --「XXWSH:事業所コード62C_02_ドリンク」(運送依頼元事業所)
+        gv_62c02_loc_cd := FND_PROFILE.VALUE(gc_prof_62c02_loc_cd_dr) ;
+        IF (gv_62c02_loc_cd IS NULL) THEN
+          -- トークン取得
+          lv_tkn_msg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                 ,gc_msg_62c02_loc_cd_dr
+                                                ) ;
+          -- メッセージ生成
+          lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                                ,gc_msg_id_not_get_prof
+                                                ,gc_msg_tkn_nm_prof
+                                                ,lv_tkn_msg
+                                               ) ;
+          RAISE get_prof_expt ;
+        END IF ;
+      -- 職責：商品区分(セキュリティ)がリーフでもドリンクでもない場合
+      ELSE
+        -- 職責：商品区分(セキュリティ)不正エラー
+        lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                              ,gc_mst_prof_value
+                                              ,gc_msg_tkn_nm_prof
+                                              ,gc_msg_tkn_val_prof_prod5
+                                             ) ;
+        RAISE get_prof_expt ;
+      END IF;
+    END IF;
+-- 2016/06/01 K.Kiriu v1.22 add end
     -- パラメータ締め実施日が未入力の場合に、締め実施時間FromかToに入力があった場合、
     -- エラーとする。
     IF ( gt_param.iv_shime_date IS NULL ) THEN
@@ -598,8 +712,10 @@ AS
     -- ====================================================
     -- 担当者情報取得
     -- ====================================================
-    -- 担当部署コード
-    gv_dept_cd := SUBSTRB(xxcmn_common_pkg.get_user_dept_code(FND_GLOBAL.USER_ID), 1, 10) ;
+-- 2016/06/01 K.Kiriu v1.22 del start
+--    -- 担当部署コード
+--    gv_dept_cd := SUBSTRB(xxcmn_common_pkg.get_user_dept_code(FND_GLOBAL.USER_ID), 1, 10) ;
+-- 2016/06/01 K.Kiriu v1.22 del end
 --
     --担当部署名
     -- ADD START 2008/06/04 NAKADA
@@ -616,7 +732,10 @@ AS
       -- 住所、電話番号、部署正式名取得
       xxcmn_common_pkg.get_dept_info
       (
-         iv_dept_cd           =>  gv_loc_cd_sg          -- プロファイルより伊藤園産業の事業所コード
+-- 2016/06/01 K.Kiriu v1.22 mod start
+--         iv_dept_cd           =>  gv_loc_cd_sg          -- プロファイルより伊藤園産業の事業所コード
+         iv_dept_cd           =>  gv_62c01_loc_cd         -- プロファイルより事業所コード(職責による)
+-- 2016/06/01 K.Kiriu v1.22 mod end
         ,id_appl_date         =>  SYSDATE               -- 基準日
         ,ov_postal_code       =>  gv_hchu_postal_code   -- 郵便番号
         ,ov_address           =>  gv_hchu_address_value -- 住所
@@ -635,7 +754,10 @@ AS
       -- 住所、電話番号、部署正式名取得
       xxcmn_common_pkg.get_dept_info
       (
-         iv_dept_cd           =>  gv_dept_cd            -- 担当部署
+-- 2016/06/01 K.Kiriu v1.22 mod start
+--         iv_dept_cd           =>  gv_dept_cd            -- 担当部署
+         iv_dept_cd           =>  gv_62c02_loc_cd       -- プロファイルより事業所コード(職責による)
+-- 2016/06/01 K.Kiriu v1.22 mod end
         ,id_appl_date         =>  SYSDATE               -- 基準日
         ,ov_postal_code       =>  gv_irai_postal_code   -- 郵便番号
         ,ov_address           =>  gv_irai_address_value -- 住所
