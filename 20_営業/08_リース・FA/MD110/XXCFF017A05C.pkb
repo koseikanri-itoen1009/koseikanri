@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF017A05C(body)
  * Description      : 自販機減価償却振替
  * MD.050           : MD050_CFF_017_A05_自販機減価償却振替
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/08/01    1.0   SCSK川元善博     新規作成
  *  2014/11/07    1.1   SCSK小路恭弘     E_本稼動_12563
+ *  2016/06/23    1.2   SCSK小路恭弘     E_本稼動_13662
  *
  *****************************************************************************************/
 --
@@ -442,6 +443,10 @@ AS
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
     cv_flag_on           CONSTANT VARCHAR2(1)  := 'Y';
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD END
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD START
+    cv_process_type_102  CONSTANT VARCHAR2(3)  := '102'; -- ステータス：確定
+    cv_process_type_103  CONSTANT VARCHAR2(3)  := '103'; -- ステータス：移動
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD END
 --
     -- *** ローカル変数 ***
 --
@@ -502,13 +507,19 @@ AS
       ,gv_je_cat_vending                             AS user_je_category_name -- 仕訳カテゴリ名
       ,gv_je_src_vending                             AS user_je_source_name   -- 仕訳ソース名
       ,gcc.segment1                                  AS segment1              -- 会社コード
-      ,xvoh.department_code                          AS segment2              -- 部門コード
+-- 2016/06/23 Ver.1.2 Y.Shouji MOD START
+--      ,xvoh.department_code                          AS segment2              -- 部門コード
+      ,xvohi1.department_code                        AS segment2              -- 部門コード
+-- 2016/06/23 Ver.1.2 Y.Shouji MOD END
       ,gv_account_vending                            AS segment3              -- 科目コード
       ,gv_sub_account_vending                        AS segment4              -- 補助科目コード
 -- 2014/11/07 Ver.1.1 Y.Shouji MOD START
 --      ,xvoh.customer_code                            AS segment5              -- 顧客コード
       ,(CASE WHEN les_class_v.vd_cust_flag = cv_flag_on THEN
-                  xvoh.customer_code ELSE cv_ptnr_cd_dammy END)
+-- 2016/06/23 Ver.1.2 Y.Shouji MOD START
+--                  xvoh.customer_code ELSE cv_ptnr_cd_dammy END)
+                  xvohi1.customer_code ELSE cv_ptnr_cd_dammy END)
+-- 2016/06/23 Ver.1.2 Y.Shouji MOD END
                                                      AS segment5              -- 顧客コード
 -- 2014/11/07 Ver.1.1 Y.Shouji MOD END
       ,cv_busi_cd_dammy                              AS segment6              -- 企業コード
@@ -530,6 +541,9 @@ AS
       ,fa_distribution_history fdh
       ,gl_code_combinations    gcc
       ,xxcff_vd_object_headers xvoh
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD START
+      ,xxcff_vd_object_histories xvohi1
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD END
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
       ,xxcff_lease_class_v     les_class_v   -- リース種別ビュー
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD END
@@ -548,6 +562,15 @@ AS
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
     AND xvoh.lease_class        = les_class_v.lease_class_code
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD END
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD START
+    AND xvoh.object_header_id   = xvohi1.object_header_id
+    AND xvohi1.history_num      = (SELECT MAX(xvohi2.history_num)    -- 会計期間以前の最新の履歴番号
+                                   FROM   xxcff_vd_object_histories xvohi2       -- 自販機物件履歴2
+                                   WHERE  xvohi2.object_header_id = xvohi1.object_header_id
+                                   AND    ( xvohi2.process_type = cv_process_type_102                            -- 処理区分：確定
+                                     OR     ( xvohi2.process_type      =  cv_process_type_103                             -- 処理区分：移動
+                                       AND    TRUNC(xvohi2.moved_date) <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))))  -- 移動日
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD END
     UNION ALL
     SELECT
        'NEW'                                       AS status                -- ステータス
@@ -560,13 +583,19 @@ AS
       ,gv_je_cat_vending                           AS user_je_category_name -- 仕訳カテゴリ名
       ,gv_je_src_vending                           AS user_je_source_name   -- 仕訳ソース名
       ,gcc.segment1                                AS segment1              -- 会社コード
-      ,xvoh.department_code                        AS segment2              -- 部門コード
+-- 2016/06/23 Ver.1.2 Y.Shouji MOD START
+--      ,xvoh.department_code                          AS segment2              -- 部門コード
+      ,xvohi1.department_code                      AS segment2              -- 部門コード
+-- 2016/06/23 Ver.1.2 Y.Shouji MOD END
       ,gv_account_vending                          AS segment3              -- 科目コード
       ,gv_sub_account_vending                      AS segment4              -- 補助科目コード
 -- 2014/11/07 Ver.1.1 Y.Shouji MOD START
 --      ,xvoh.customer_code                          AS segment5              -- 顧客コード
       ,(CASE WHEN les_class_v.vd_cust_flag = cv_flag_on THEN
-                  xvoh.customer_code ELSE cv_ptnr_cd_dammy END)
+-- 2016/06/23 Ver.1.2 Y.Shouji MOD START
+--                  xvoh.customer_code ELSE cv_ptnr_cd_dammy END)
+                  xvohi1.customer_code ELSE cv_ptnr_cd_dammy END)
+-- 2016/06/23 Ver.1.2 Y.Shouji MOD END
                                                    AS segment5              -- 顧客コード
 -- 2014/11/07 Ver.1.1 Y.Shouji MOD END
       ,cv_busi_cd_dammy                            AS segment6              -- 企業コード
@@ -612,6 +641,9 @@ AS
       ,fa_distribution_history fdh
       ,gl_code_combinations    gcc
       ,xxcff_vd_object_headers xvoh
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD START
+      ,xxcff_vd_object_histories xvohi1
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD END
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
       ,xxcff_lease_class_v     les_class_v   -- リース種別ビュー
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD END
@@ -642,6 +674,15 @@ AS
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
     AND xvoh.lease_class        = les_class_v.lease_class_code
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD END
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD START
+    AND xvoh.object_header_id   = xvohi1.object_header_id
+    AND xvohi1.history_num      = (SELECT MAX(xvohi2.history_num)    -- 会計期間以前の最新の履歴番号
+                                   FROM   xxcff_vd_object_histories xvohi2       -- 自販機物件履歴2
+                                   WHERE  xvohi2.object_header_id = xvohi1.object_header_id
+                                   AND    ( xvohi2.process_type = cv_process_type_102                            -- 処理区分：確定
+                                     OR     ( xvohi2.process_type      =  cv_process_type_103                             -- 処理区分：移動
+                                       AND    TRUNC(xvohi2.moved_date) <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))))  -- 移動日
+-- 2016/06/23 Ver.1.2 Y.Shouji ADD END
     ;
 --
     -- 件数設定
