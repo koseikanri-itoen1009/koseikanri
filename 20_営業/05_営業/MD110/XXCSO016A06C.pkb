@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_016_A06_情報系-EBSインターフェース：(OUT)什器移動明細
  *                    
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  create_csv_rec              CSVファイル出力 (A-8)
  *  update_wk_data_tbl          作業データテーブル更新 (A-8-1)
  *  close_csv_file              CSVファイルクローズ処理 (A-9)
+ *  update_wk_no_target         対象外データ更新処理 (A-11)
  *  submain                     メイン処理プロシージャ
  *                                什器移動明細データ抽出 (A-6)
  *  main                        コンカレント実行ファイル登録プロシージャ
@@ -41,6 +42,7 @@ AS
  *  2009-11-25    1.5   Daisuke.Abe      E_本稼動_00045対応
  *  2009-12-09    1.6   Kazuyo.Hosoi     E_本稼動_00219対応
  *  2010-01-15    1.7   Kazuyo.Hosoi     E_本稼動_01178対応
+ *  2016-07-06    1.8   Kazuyuki.Kiriu   E_本稼動_13716対応
  *
  *****************************************************************************************/
 --
@@ -131,6 +133,11 @@ AS
   /* 2009.12.09 K.Hosoi E_本稼動_00219 対応 START */
   cv_tkn_number_15    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00587';     -- データ操作エラーメッセージ
   /* 2009.12.09 K.Hosoi E_本稼動_00219 対応 END */
+  /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 START */
+  cv_tkn_number_16    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00337';     -- データ更新エラー
+  cv_tkn_number_17    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00802';     -- 作業ワークテーブル(文言)
+  cv_tkn_number_18    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00278';     -- ロックエラー
+  /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 END   */
   -- トークンコード
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';            -- SQLエラーメッセージ
   cv_tkn_err_message     CONSTANT VARCHAR2(20) := 'ERR_MESSAGE';       -- SQLエラーメッセージ
@@ -156,10 +163,16 @@ AS
   cv_tkn_seq_no         CONSTANT VARCHAR2(20) := 'SEQ_NO';              -- シーケンス番号
   cv_tkn_slip_branch_no CONSTANT VARCHAR2(20) := 'SLIP_BRANCH_NO';      -- 伝票枝番
   /* 2009.12.09 K.Hosoi E_本稼動_00219 対応 START */
+  /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 START */
+  cv_tkn_error_message  CONSTANT VARCHAR2(20) := 'ERROR_MESSAGE';       -- SQLエラーメッセージ
+  /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 END   */
 --
   cb_true                CONSTANT BOOLEAN := TRUE;
   cb_false               CONSTANT BOOLEAN := FALSE;
 --
+  /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 START */
+  cn_request_data        CONSTANT NUMBER  := 0;                         -- 依頼データ
+  /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 END   */
   -- DEBUG_LOG用メッセージ
   
   cv_debug_msg1           CONSTANT VARCHAR2(200) := '<< システム日付取得処理 >>';
@@ -1699,6 +1712,139 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END close_csv_file;
+  /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 START */
+--
+  /**********************************************************************************
+   * Procedure Name   : update_wk_no_target
+   * Description      : 対象外データ更新処理 (A-11)
+   ***********************************************************************************/
+  PROCEDURE update_wk_no_target(
+     id_process_date IN  DATE                 -- 業務処理日
+    ,ov_errbuf       OUT NOCOPY VARCHAR2      -- エラー・メッセージ           --# 固定 #
+    ,ov_retcode      OUT NOCOPY VARCHAR2      -- リターン・コード             --# 固定 #
+    ,ov_errmsg       OUT NOCOPY VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100) := 'update_wk_no_target'; -- プログラム名
+    --
+    cv_no_target         CONSTANT VARCHAR2(1)     := 'S';  -- 情報系連携済フラグ（対象外）
+    cv_no                CONSTANT VARCHAR2(1)     := 'N';  -- 情報系連携済フラグ（未連携）
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    -- *** ローカル・レコード ***
+    -- *** ローカル・カーソル ***
+    CURSOR lock_cur IS
+      SELECT /*+
+               INDEX( xiw XXCSO_IN_WORK_DATA_N13 )
+             */
+             xiw.seq_no seq_no
+      FROM   xxcso_in_work_data xiw
+      WHERE  xiw.slip_branch_no       = cn_request_data -- 依頼データ
+      AND    xiw.infos_interface_flag = cv_no           -- 処理されていないデータ
+      FOR UPDATE NOWAIT
+      ;
+    -- *** ローカル例外 ***
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    -- 作業データテーブルの情報系連携済フラグ、情報系連携日を更新
+    BEGIN
+--
+      -- ロック
+      OPEN   lock_cur;
+      CLOSE  lock_cur;
+--
+      -- 更新
+      UPDATE /*+
+               INDEX( xiw XXCSO_IN_WORK_DATA_N13 )
+             */
+             xxcso_in_work_data xiw -- 作業データテーブル
+      SET    xiw.infos_interface_flag   = cv_no_target              -- 情報系連携済フラグ
+            ,xiw.infos_interface_date   = id_process_date           -- 情報系連携日
+            ,xiw.last_updated_by        = cn_last_updated_by        -- 最終更新者
+            ,xiw.last_update_date       = cd_last_update_date       -- 最終更新日
+            ,xiw.last_update_login      = cn_last_update_login      -- 最終更新ログイン
+            ,xiw.request_id             = cn_request_id             -- 要求ID
+            ,xiw.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+            ,xiw.program_id             = cn_program_id             -- コンカレント・プログラムID
+            ,xiw.program_update_date    = cd_program_update_date    -- プログラム更新日
+      WHERE  xiw.slip_branch_no       = cn_request_data         -- 依頼データ
+      AND    xiw.infos_interface_flag = cv_no                   -- 処理されていないデータ
+      ;
+    EXCEPTION
+      WHEN global_lock_expt THEN
+        -- ロック失敗した場合の例外
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name       -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_18  -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_table      -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_number_17  -- トークン値1
+                       ,iv_token_name2  => cv_tkn_err_msg    -- トークンコード2
+                       ,iv_token_value2 => SQLERRM           -- トークン値2
+                     );
+        --
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      -- 更新に失敗した場合の例外
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name          -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_16     -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action        -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_number_17     -- トークン値1
+                       ,iv_token_name2  => cv_tkn_error_message -- トークンコード2
+                       ,iv_token_value2 => SQLERRM              -- トークン値2
+                     );
+        --
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+        --
+    END;
+    --
+  EXCEPTION
+    --
+    --#################################  固定例外処理部 START   ####################################
+    --
+    WHEN global_api_expt THEN
+      -- *** 共通関数例外ハンドラ ***
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+      --
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+      -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END update_wk_no_target;
+  /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 END   */
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -1802,6 +1948,9 @@ AS
     /* 2010.01.15 K.Hosoi E_本稼動_01178 対応 START */
     --          );
               )
+    /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 START */
+        AND   xiwd.slip_branch_no <> cn_request_data   --依頼データは対象外
+    /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 END   */
         AND   xiwd.completion_kbn = cn_cmplt;
     /* 2010.01.15 K.Hosoi E_本稼動_01178 対応 END */
     /* 2009.12.09 K.Hosoi E_本稼動_00219 対応 END */
@@ -2101,6 +2250,20 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+    /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 START */
+    -- ========================================
+    -- A-11.対象外データ更新処理
+    -- ========================================
+    update_wk_no_target(
+       id_process_date => ld_process_date  -- 業務処理日
+      ,ov_errbuf       => lv_errbuf        -- エラー・メッセージ            --# 固定 #
+      ,ov_retcode      => lv_retcode       -- リターン・コード              --# 固定 #
+      ,ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+      );
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+    /* 2016.07.06 K.Kiriu E_本稼動_13716 対応 END   */
 --
   EXCEPTION
 --
