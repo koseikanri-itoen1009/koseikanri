@@ -1,0 +1,107 @@
+CREATE TABLE xxcfr.xxcfr_rep_st_inv_ex_tax_c_l
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_rep_st_inv_ex_tax_c_l
+ * Description     : 標準請求書税抜帳票内訳印刷単位Cワークテーブル明細
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2016/3/10     1.0  SCSK 小路恭弘  初回作成
+ ************************************************************************/
+( 
+  report_id                VARCHAR2(20)                  ,     -- 帳票ID
+  issue_date               VARCHAR2(20)                  ,     -- 発行日付
+  zip_code                 VARCHAR2(50)                  ,     -- 郵便番号
+  send_address1            VARCHAR2(120)                 ,     -- 住所１
+  send_address2            VARCHAR2(240)                 ,     -- 住所２
+  send_address3            VARCHAR2(240)                 ,     -- 住所３
+  bill_cust_code           VARCHAR2(30)                  ,     -- 顧客コード
+  bill_cust_name           VARCHAR2(360)                 ,     -- 顧客名
+  location_name            VARCHAR2(360)                 ,     -- 担当拠点名
+  location_code            VARCHAR2(30)                  ,     -- 担当拠点コード
+  phone_num                VARCHAR2(50)                  ,     -- 電話番号
+  target_date              VARCHAR2(10)                  ,     -- 対象年月
+  payment_cust_code        VARCHAR2(30)                  ,     -- 売掛管理コード
+  payment_cust_name        VARCHAR2(360)                 ,     -- 売掛管理顧客名
+  ar_concat_text           VARCHAR2(80)                  ,     -- 売掛管理コード連結文字列
+  payment_due_date         VARCHAR2(20)                  ,     -- 入金予定日
+  bank_account             VARCHAR2(300)                 ,     -- 振込口座
+  ship_cust_code           VARCHAR2(30)                  ,     -- 納品先顧客コード
+  ship_cust_name           VARCHAR2(360)                 ,     -- 納品先顧客名
+  store_code               VARCHAR2(10)                  ,     -- 店舗コード
+  store_code_sort          VARCHAR2(10)                  ,     -- 店舗コード(ソート用)
+  ship_account_number      VARCHAR2(30)                  ,     -- 納品先顧客コード(ソート用)
+  slip_date                VARCHAR2(12)                  ,     -- 伝票日付
+  slip_num                 VARCHAR2(30)                  ,     -- 伝票No
+  slip_sum                 NUMBER                        ,     -- 伝票金額
+  slip_tax_sum             NUMBER                        ,     -- 伝票税額
+  tax_rate                 NUMBER                        ,     -- 消費税率(編集用)
+  tax_rate1                NUMBER                        ,     -- 消費税率1
+  ex_tax_charge1           NUMBER                        ,     -- 当月お買上げ額1
+  tax_sum1                 NUMBER                        ,     -- 消費税額1
+  tax_rate2                NUMBER                        ,     -- 消費税率2
+  ex_tax_charge2           NUMBER                        ,     -- 当月お買上げ額2
+  tax_sum2                 NUMBER                        ,     -- 消費税額2
+  outsourcing_flag         VARCHAR2(1)                   ,     -- 業者委託フラグ
+  created_by               NUMBER(15)     NOT NULL       ,     -- 作成者
+  creation_date            DATE           NOT NULL       ,     -- 作成日
+  last_updated_by          NUMBER(15)     NOT NULL       ,     -- 最終更新者
+  last_update_date         DATE           NOT NULL       ,     -- 最終更新日
+  last_update_login        NUMBER(15)                    ,     -- 最終更新ログイン
+  request_id               NUMBER(15)                    ,     -- 要求ID
+  program_application_id   NUMBER(15)                    ,     -- コンカレント・プログラム・アプリケーションID
+  program_id               NUMBER(15)                    ,     -- コンカレント・プログラムID
+  program_update_date      DATE                                -- プログラム更新日
+)
+;
+--
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.report_id                      IS '帳票ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.issue_date                     IS '発行日付';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.zip_code                       IS '郵便番号';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.send_address1                  IS '住所１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.send_address2                  IS '住所２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.send_address3                  IS '住所３';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.bill_cust_code                 IS '顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.bill_cust_name                 IS '顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.location_code                  IS '担当拠点コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.location_name                  IS '担当拠点名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.phone_num                      IS '電話番号';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.target_date                    IS '対象年月';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.payment_cust_code              IS '売掛管理コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.payment_cust_name              IS '売掛管理顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.ar_concat_text                 IS '売掛管理コード連結文字列';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.payment_due_date               IS '入金予定日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.bank_account                   IS '振込口座';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.ship_cust_code                 IS '納品先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.ship_cust_name                 IS '納品先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.store_code                     IS '店舗コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.store_code_sort                IS '店舗コード(ソート用)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.ship_account_number            IS '納品先顧客コード(ソート用)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.slip_date                      IS '伝票日付';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.slip_num                       IS '伝票No';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.slip_sum                       IS '伝票金額';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.slip_tax_sum                   IS '伝票税額';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.tax_rate                       IS '消費税率(編集用)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.tax_rate1                      IS '消費税率１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.ex_tax_charge1                 IS '当月お買上げ額１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.tax_sum1                       IS '消費税額１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.tax_rate2                      IS '消費税率２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.ex_tax_charge2                 IS '当月お買上げ額２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.tax_sum2                       IS '消費税額２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.outsourcing_flag               IS '業者委託フラグ';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.created_by                     IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.creation_date                  IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.last_updated_by                IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.last_update_date               IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.last_update_login              IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.request_id                     IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.program_application_id         IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.program_id                     IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_c_l.program_update_date            IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfr.xxcfr_rep_st_inv_ex_tax_c_l IS '標準請求書税抜帳票内訳印刷単位Cワークテーブル明細';
