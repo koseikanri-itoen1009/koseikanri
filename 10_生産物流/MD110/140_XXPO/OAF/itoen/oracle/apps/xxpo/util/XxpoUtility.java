@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.31
+* バージョン : 1.32
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -39,6 +39,7 @@
 * 2015-10-05 1.29 山下翔太     E_本稼動_13238対応
 * 2016-02-12 1.30 山下翔太     E_本稼動_13451対応
 * 2016-05-16 1.31 山下翔太     E_本稼動_13563対応
+* 2016-07-06 1.32 山下翔太     E_本稼動_13563追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -699,6 +700,118 @@ public class XxpoUtility
     }
   } // chkLotFactory
 // 2016-02-12 S.Yamashita Add End
+// 2016-07-06 S.Yamashita Add Start
+  /*****************************************************************************
+   * 複数賞味期限チェックを行います。
+   * @param trans            - トランザクション
+   * @param itemId           - 品目ID
+   * @param manufacturedDate - 製造日
+   * @param koyuCode         - 固有記号
+   * @return string   - チェックNGの場合   既存ロットの賞味期限
+   *                  - チェックOKの場合   null
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String chkUseByDate(
+    OADBTransaction trans,
+    Number itemId,            // 品目ID
+    Date   manufacturedDate,  // 製造日
+    String koyuCode           // 固有記号
+  ) throws OAException
+  {
+    String  apiName       = "chkUseByDate";  // API名
+    String  useByDate     = ""; // 賞味期限
+    String  prodClassCode = ""; // 商品区分
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                                    );
+    sb.append("  SELECT ilm.attribute3 AS use_by_date "                   ); // 賞味期限
+    sb.append("        ,xicv.prod_class_code AS prod_class_code "         ); // 商品区分
+    sb.append("  INTO   :1 "                                              );
+    sb.append("        ,:2 "                                              );
+    sb.append("  FROM   ic_lots_mst ilm "                                 ); // ロットマスタ
+    sb.append("        ,xxcmn_item_categories5_v xicv "                   ); // 品目カテゴリビュー
+    sb.append("  WHERE  xicv.item_id = :3 "                               ); // 品目ID
+    sb.append("  AND    xicv.item_id = ilm.item_id(+) "                   );
+    sb.append("  AND    ilm.attribute1(+) = TO_CHAR( :4, 'YYYY/MM/DD' ) " ); // 製造日
+    sb.append("  AND    ilm.attribute2(+) = :5 "                          ); // 固有記号
+    sb.append("  AND    ROWNUM = 1 "                                      );
+    sb.append("  ; "                                                      );
+    sb.append("END; "                                                     );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(3, XxcmnUtility.intValue(itemId));             // 品目ID
+      cstmt.setDate(4, XxcmnUtility.dateValue(manufacturedDate)); // 製造日
+      cstmt.setString(5, koyuCode);                               // 固有記号
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR); // 賞味期限
+      cstmt.registerOutParameter(2, Types.VARCHAR); // 商品区分
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      useByDate     = cstmt.getString(1); // 賞味期限
+      prodClassCode = cstmt.getString(2); // 商品区分
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    // 商品区分がリーフの場合 null
+    if ("1".equals(prodClassCode))
+    {
+      return null;
+    
+    // 商品区分がドリンクの場合
+    } else
+    {
+      // ロットが取得できない場合 null
+      if (XxcmnUtility.isBlankOrNull(useByDate))
+      {
+        return null;
+      }else
+      // ロットが取得できた場合 既存ロットの賞味期限
+      {
+        return useByDate;
+      }
+    }
+  } // chkUseByDate
+// 2016-07-06 S.Yamashita Add End
 // 2015-10-05 S.Yamashita Add Start
   /*****************************************************************************
    * ロット情報を取得します。
