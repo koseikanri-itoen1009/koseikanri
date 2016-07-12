@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2009-05-12 1.8  吉元  強樹     本番障害#1458対応
 * 2011-06-01 1.9  窪    和重     本番障害#1786対応
 * 2016-02-12 1.10 山下  翔太     E_本稼動_13451対応
+* 2016-06-30 1.11 山下  翔太     E_本稼動_13563追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -259,6 +260,10 @@ public class XxpoConstants
   /** メッセージ：APP-XXPO-40038 ロット重複エラー */
   public static final String XXPO40038   = "APP-XXPO-40038";
 // 2016-02-12 v1.10 S.Yamashita Add End E_本稼動_13451
+// 2016-06-30 v1.11 S.Yamashita Add Start E_本稼動_13563
+  /** メッセージ：APP-XXPO-40039 複数賞味期限エラー */
+  public static final String XXPO40039   = "APP-XXPO-40039";
+// 2016-06-30 v1.11 S.Yamashita Add End E_本稼動_13563
 
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
@@ -292,6 +297,10 @@ public class XxpoConstants
   /** トークン：ITEM_VALUE */
   public static final String ITEM_VALUE        = "ITEM_VALUE";
 // 2009-02-06 H.Itou Add END
+// 2016-06-30 v1.11 S.Yamashita Add Start E_本稼動_13563
+/** トークン：USE_BY_DATE */
+  public static final String USE_BY_DATE       = "USE_BY_DATE";
+// 2016-06-30 v1.11 S.Yamashita Add End E_本稼動_13563
   /** トークン名称：取引先 */
   public static final String TOKEN_NAME_ENTRY  = "取引先";
   /** トークン名称：出来高報告 */
