@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 * 2015-10-06 1.7  山下翔太     E_本稼動_13238対応
 * 2016-02-12 1.8  山下翔太     E_本稼動_13451対応
 * 2016-06-09 1.9  山下翔太     E_本稼動_13563対応
+* 2016-06-30 1.10 山下翔太     E_本稼動_13563追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -1005,6 +1006,47 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     }
   }
 // 2016-02-12 S.Yamashita Add End
+// 2016-06-30 S.Yamashita Add Start
+  /***************************************************************************
+   * 複数賞味期限チェックを行うメソッドです。(登録画面用)
+   * @param exceptions - エラーリスト
+   * @throws OAException - OA例外
+   ***************************************************************************/
+  public void useByDateCheck(
+    ArrayList exceptions
+  ) throws OAException 
+  {
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // データ取得
+    Number itemId        = (Number)vendorSupplyMakeRow.getAttribute("ItemId");      // 品目ID
+    Date   productedDate = (Date)vendorSupplyMakeRow.getAttribute("ProductedDate"); // 製造日
+    String koyuCode      = (String)vendorSupplyMakeRow.getAttribute("KoyuCode");    // 固有記号
+    Date useByDate        = (Date)vendorSupplyMakeRow.getAttribute("UseByDate");         // 賞味期限
+    Date changedUseByDate = (Date)vendorSupplyMakeRow.getAttribute("ChangedUseByDate");  // 変更賞味期限
+
+    // 複数賞味期限チェック
+    String lotUseByDate = XxpoUtility.chkUseByDate(
+                            getOADBTransaction(), // トランザクション
+                            itemId,               // 品目ID
+                            productedDate,        // 製造日 
+                            koyuCode              // 固有記号
+                          );
+    // ドリンクかつ1製造日-複数賞味期限の場合(戻り値がNULLでない場合) 
+    if (!XxcmnUtility.isBlankOrNull(lotUseByDate)){
+      // エラーメッセージトークン取得
+      MessageToken[] tokens = {new MessageToken(XxpoConstants.USE_BY_DATE,lotUseByDate)};
+      
+      // エラーメッセージ出力
+      exceptions.add( new OAException(
+                            XxcmnConstants.APPL_XXPO,
+                            XxpoConstants.XXPO40039,
+                            tokens));
+    }
+  }
+// 2016-06-30 S.Yamashita Add End
   /***************************************************************************
    * 引当可能数量チェックを行うメソッドです。(登録画面用)
    * @param exceptions - エラーリスト
@@ -1565,6 +1607,12 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       // *  必須切替処理       * //
       // *********************** //
       requiredChanged();
+// 2016-06-30 S.Yamashita Add Start
+      // *********************** //
+      // *  賞味期限取得処理   * //
+      // *********************** //
+      getUseByDate();
+// 2016-06-30 S.Yamashita Add End
     }
   }
 
@@ -1857,18 +1905,32 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 //    }
 // 2015-10-06 S.Yamashita Del End
 // 2016-02-12 S.Yamashita Add Start
-    // ******************************* //
-    // *   ロット重複チェック    * //
-    // ******************************* //
     // 新規登録かつ 品目区分が5：製品の場合、実行
     if (XxpoConstants.PROCESS_FLAG_I.equals(processFlag) && XxpoConstants.ITEM_CLASS_PROD.equals(itemClassCode))
     {
+      // ******************************* //
+      // *   ロット重複チェック    * //
+      // ******************************* //
       lotFactoryCheck(exceptions);
       // 例外があった場合、例外メッセージを出力し、処理終了
       if (exceptions.size() > 0)
       {
         OAException.raiseBundledOAException(exceptions);
       }
+// 2016-06-30 S.Yamashita Add Start
+      // 既存ロットが存在しない場合
+      if (XxcmnUtility.isBlankOrNull(params.get("LotNumber")))
+      {
+        // ******************************* //
+        // *   複数賞味期限チェック      * //
+        // ******************************* //
+        useByDateCheck(exceptions);
+        if (exceptions.size() > 0)
+        {
+          OAException.raiseBundledOAException(exceptions);
+        }
+      }
+// 2016-06-30 S.Yamashita Add End
     }
 // 2016-02-12 S.Yamashita Add End
     
