@@ -7,7 +7,7 @@ AS
  * Description      : 運賃アドオンマスタ取込処理
  * MD.050           : 運賃計算（マスタ） T_MD050_BPO_720
  * MD.070           : 運賃アドオンマスタ取込処理（72E）T_MD070_BPO_72E
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------ ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/01/09    1.0   Y.Kanami         新規作成
  *  2008/11/11    1.1   N.Fukuda         統合指摘#589対応
  *  2009/04/03    1.2   A.Shiina         本番#432対応
+ *  2016/06/22    1.3   S.Niki           E_本稼動_13659対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -195,6 +196,10 @@ AS
   gn_ins_tab_cnt      NUMBER := 0;   -- 登録用PL/SQL表カウント
   gn_upd_tab_cnt      NUMBER := 0;   -- 更新用PL/SQL表カウント
   gn_err_msg_cnt      NUMBER := 0;   -- 警告エラーメッセージ表カウント
+--
+-- v1.3 ADD START
+  gv_prod_div         VARCHAR2(1);   -- 商品区分
+-- v1.3 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : get_lock
@@ -478,7 +483,10 @@ AS
         , xdci.delivery_weight                    -- 重量
         , xdci.start_date_active                  -- 適用開始日
       FROM  xxwip_delivery_charges_if xdci        -- 運賃アドオンマスタインタフェース
-      WHERE xdci.request_id = it_request_id       -- 要求ID
+      WHERE xdci.request_id   = it_request_id     -- 要求ID
+-- v1.3 ADD START
+        AND xdci.goods_classe = gv_prod_div       -- 商品区分
+-- v1.3 ADD END
       GROUP BY 
           xdci.p_b_classe                         -- 支払請求区分
         , xdci.goods_classe                       -- 商品区分
@@ -1163,7 +1171,10 @@ AS
             , xdci.shipping_expenses        -- 運送費
             , xdci.leaf_consolid_add        -- リーフ混載割増
       FROM  xxwip_delivery_charges_if xdci  -- 運賃アドオンインタフェース
-      WHERE xdci.request_id = it_request_id -- 要求ID
+      WHERE xdci.request_id   = it_request_id  -- 要求ID
+-- v1.3 ADD START
+        AND xdci.goods_classe = gv_prod_div    -- 商品区分
+-- v1.3 ADD END
         AND NOT EXISTS(
                   SELECT  'X'
                   FROM    xxwip_delivery_charges xdc                           -- 運賃アドオンマスタ
@@ -1355,7 +1366,10 @@ AS
             , xdci.shipping_expenses        -- 運送費
             , xdci.leaf_consolid_add        -- リーフ混載割増
       FROM  xxwip_delivery_charges_if xdci  -- 運賃アドオンインタフェース
-      WHERE xdci.request_id = it_request_id -- 要求ID
+      WHERE xdci.request_id   = it_request_id   -- 要求ID
+-- v1.3 ADD START
+        AND xdci.goods_classe = gv_prod_div     -- 商品区分
+-- v1.3 ADD END
         AND EXISTS(
                   SELECT  'X'
                   FROM  xxwip_delivery_charges xdc  -- 運賃アドオンマスタ
@@ -1785,6 +1799,9 @@ AS
           ,   xdc.start_date_active       -- 適用開始日
           ,   xdc.end_date_active         -- 適用終了日
       FROM    xxwip_delivery_charges xdc  -- 運賃アドオンマスタ
+-- v1.3 ADD START
+      WHERE   xdc.goods_classe = gv_prod_div -- 商品区分
+-- v1.3 ADD END
       ORDER BY
               p_b_classe                  -- 支払請求区分
           ,   goods_classe                -- 商品区分
@@ -2095,7 +2112,10 @@ AS
     FORALL ln_count IN 1..request_id_tab.COUNT
       DELETE /*+ INDEX( xdci xxwip_deli_char_if_n01 ) */             -- 2008/11/11 統合指摘#589 Add
       FROM xxwip_delivery_charges_if xdci          -- 運賃アドオンマスタインタフェース
-      WHERE   xdci.request_id = request_id_tab(ln_count)  -- 要求ID
+      WHERE   xdci.request_id   = request_id_tab(ln_count)  -- 要求ID
+-- v1.3 ADD START
+        AND   xdci.goods_classe = gv_prod_div               -- 商品区分
+-- v1.3 ADD END
       ;
 --
   EXCEPTION
@@ -2234,6 +2254,9 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- v1.3 ADD START
+    iv_prod_div   IN  VARCHAR2,     --   商品区分
+-- v1.3 ADD END
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2274,7 +2297,10 @@ AS
                SELECT /*+ INDEX( xdci xxwip_deli_char_if_n01 ) */       -- 2008/11/11 統合指摘#589 Add
                       'X'
                FROM   xxwip_delivery_charges_if xdci    -- 運賃アドオンマスタインタフェース
-               WHERE  xdci.request_id = fcr.request_id  -- 要求ID
+               WHERE  xdci.request_id   = fcr.request_id  -- 要求ID
+-- v1.3 ADD START
+               AND    xdci.goods_classe = gv_prod_div     -- 商品区分
+-- v1.3 ADD END
                AND    ROWNUM = 1
              )
       ORDER BY fcr.request_id                           -- 要求ID
@@ -2295,6 +2321,10 @@ AS
     gn_error_cnt  := 0; -- エラー件数
     gn_warn_cnt   := 0; -- スキップ件数
 --
+-- v1.3 ADD START
+    -- 入力パラメータ.商品区分をグローバル変数に格納
+    gv_prod_div   := iv_prod_div;
+-- v1.3 ADD END
     -- ===============================
     -- E-1.要求ID取得処理
     -- ===============================
@@ -2526,7 +2556,11 @@ AS
 --
   PROCEDURE main(
     errbuf        OUT VARCHAR2, --   エラー・メッセージ  --# 固定 #
-    retcode       OUT VARCHAR2  --   リターン・コード    --# 固定 #
+-- v1.3 MOD START
+--    retcode       OUT VARCHAR2  --   リターン・コード    --# 固定 #
+    retcode       OUT VARCHAR2, --   リターン・コード    --# 固定 #
+    iv_prod_div   IN  VARCHAR2  --   商品区分
+-- v1.3 MOD END
   )
 --
 --
@@ -2587,6 +2621,9 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
+-- v1.3 ADD START
+      iv_prod_div, --   商品区分
+-- v1.3 ADD END
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg);  -- ユーザー・エラー・メッセージ --# 固定 #
