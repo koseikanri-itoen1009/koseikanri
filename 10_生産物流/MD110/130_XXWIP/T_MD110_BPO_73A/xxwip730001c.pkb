@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : xxwip730001a(spec)
+ * Package Name     : xxwip730001c(body)
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -85,7 +85,8 @@ AS
  *
  *  update_exch_deliv_head 洗替運賃アドオンマスタ一括更新(A-47)
  *  delete_exch_deliv_head 洗替運賃アドオンマスタ一括削除(A-48)
- *  delete_exch_deliv_mst  洗替運賃マスタ一括更新    2009/04/07 add
+ *  delete_exch_deliv_mst  洗替運賃マスタ一括更新(A-48-1)
+ *  delete_deli_cleaning   配車組換削除(A-35-2)
  *
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
@@ -122,6 +123,7 @@ AS
  *  2009/05/07    1.25 Oracle 野村       本番#432対応
  *  2009/05/14    1.26 Oracle 野村       本番#432対応
  *  2009/05/29    1.27 Oracle 野村       本番#1505対応
+ *  2016/06/22    1.28 SCSK 仁木         E_本稼動_13659対応
  *
  *****************************************************************************************/
 --
@@ -232,7 +234,11 @@ AS
   gv_ktg_no                   CONSTANT VARCHAR2(1) := 'N';
 --
   -- コンカレントNo(運賃計算用コントロール)
-  gv_con_no_deliv             CONSTANT VARCHAR2(1) := '1';  -- 1:支払運賃データ自動作成
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+--  gv_con_no_deliv             CONSTANT VARCHAR2(1) := '1';  -- 1:支払運賃データ自動作成
+  gv_con_no_deliv_lef         CONSTANT VARCHAR2(1) := '1';  -- 1:運賃計算（リーフ）
+  gv_con_no_deliv_drk         CONSTANT VARCHAR2(1) := '2';  -- 2:運賃計算（ドリンク）
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
   -- 支払請求区分
   gv_pay                      CONSTANT VARCHAR2(1) := '1';  -- 1:支払
   gv_claim                    CONSTANT VARCHAR2(1) := '2';  -- 2:請求
@@ -1064,6 +1070,11 @@ AS
   gn_deliv_ins_cnt           NUMBER := 0;            -- 運賃ヘッダアドオン登録件数
   gn_deliv_del_cnt           NUMBER := 0;            -- 運賃ヘッダアドオン登録件数
 --
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+  gv_prod_div            VARCHAR2(1);       -- 商品区分
+  gv_con_no_deliv        VARCHAR2(1);       -- コンカレントNo
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
+--
   /**********************************************************************************
    * Procedure Name   : chk_param_proc
    * Description      : パラメータチェック処理(A-1)
@@ -1163,6 +1174,9 @@ AS
    ***********************************************************************************/
   PROCEDURE get_init(
     iv_exchange_type IN         VARCHAR2,     -- 洗替区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+    iv_prod_div      IN         VARCHAR2,     -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
     ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1225,6 +1239,17 @@ AS
     gn_prog_appl_id     := FND_GLOBAL.PROG_APPL_ID;    -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
     gn_conc_program_id  := FND_GLOBAL.CONC_PROGRAM_ID; -- コンカレント・プログラムID
 --
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+    -- 入力項目.商品区分をグローバル変数に格納
+    gv_prod_div         := iv_prod_div;                -- 商品区分
+--
+    -- 商品区分からコンカレントNo取得
+   IF ( gv_prod_div = gv_prod_class_lef ) THEN
+     gv_con_no_deliv := gv_con_no_deliv_lef;  -- リーフ
+   ELSE
+     gv_con_no_deliv := gv_con_no_deliv_drk;  -- ドリンク
+   END IF;
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
     -- **************************************************
     -- *** 運賃計算用コントロールより前回処理日付を取得
     -- **************************************************
@@ -1451,28 +1476,28 @@ AS
     --運賃用運送業者マスタ
     CURSOR get_xdco_cur
     IS
-      SELECT  delivery_company_id
-      FROM    xxwip_delivery_company
-      WHERE   pay_change_flg = gv_target_y  -- 支払変更フラグ
+      SELECT  xdco.delivery_company_id AS delivery_company_id
+      FROM    xxwip_delivery_company xdco
+      WHERE   xdco.pay_change_flg = gv_target_y  -- 支払変更フラグ
       FOR UPDATE NOWAIT
       ;
 --
     -- 配送距離マスタ
     CURSOR get_xddi_cur
     IS
-      SELECT  delivery_distance_id
-      FROM    xxwip_delivery_distance
-      WHERE   change_flg = gv_target_y      -- 変更フラグ
+      SELECT  xdd.delivery_distance_id AS delivery_distance_id
+      FROM    xxwip_delivery_distance xdd
+      WHERE   xdd.change_flg     = gv_target_y      -- 変更フラグ
       FOR UPDATE NOWAIT
       ;
 --
     -- 運賃マスタ
     CURSOR get_xdch_cur
     IS
-      SELECT  delivery_charges_id
-      FROM    xxwip_delivery_charges
-      WHERE   p_b_classe = gv_pay
-      AND     change_flg = gv_target_y      -- 変更フラグ
+      SELECT  xdch.delivery_charges_id AS delivery_charges_id
+      FROM    xxwip_delivery_charges xdch
+      WHERE   xdch.p_b_classe    = gv_pay
+      AND     xdch.change_flg    = gv_target_y      -- 変更フラグ
       FOR UPDATE NOWAIT
       ;
 --
@@ -1820,6 +1845,9 @@ AS
       AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
       AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
       AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND   xoha.prod_class          = gv_prod_div                          -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       AND   xdec.payments_judgment_classe = gv_pay_judg_c    -- 支払判断区分（着日）
       AND   NVL(xoha.arrival_date, xoha.schedule_arrival_date)
                                                >=  gd_target_date -- 着荷日(着荷予定日)
@@ -1896,6 +1924,9 @@ AS
       AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
       AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
       AND   xoha.order_type_id       = otta.transaction_type_id             -- 受注タイプID
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND   xoha.prod_class          = gv_prod_div                          -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       AND   xdec.payments_judgment_classe = gv_pay_judg_c    -- 支払判断区分（着日）
       AND   NVL(xoha.arrival_date, xoha.schedule_arrival_date)
                                                >=  gd_target_date -- 着荷日(着荷予定日)
@@ -1972,6 +2003,9 @@ AS
       AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
       AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
       AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND   xoha.prod_class          = gv_prod_div                          -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       AND   xdec.payments_judgment_classe = gv_pay_judg_g    -- 支払判断区分（発日）
       AND   xoha.shipped_date >=  gd_target_date             -- 出荷日
       AND   otta.attribute1  = gv_shikyu          -- 支給依頼
@@ -2047,6 +2081,9 @@ AS
       AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                    -- 適用開始日
       AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                    -- 適用終了日
       AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND   xoha.prod_class          = gv_prod_div                          -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       AND   xdec.payments_judgment_classe = gv_pay_judg_g    -- 支払判断区分（発日）
       AND   xoha.shipped_date >=  gd_target_date             -- 出荷日
       AND   otta.attribute1  = gv_shipping        -- 出荷依頼
@@ -3347,6 +3384,9 @@ AS
       AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
       AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
       AND   xmrih.delivery_no IS NOT NULL                 -- 配送No
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND   xmrih.item_class = gv_prod_div                                    -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
       AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
       AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
@@ -3417,6 +3457,9 @@ AS
       AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
       AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
       AND   xmrih.delivery_no IS NOT NULL                 -- 配送No
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND   xmrih.item_class = gv_prod_div                                    -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       AND   xmrih.item_class = xdec.goods_classe                              -- 商品区分
       AND   xmrih.actual_freight_carrier_code = xdec.delivery_company_code    -- 運送業者
       AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                      -- 適用開始日
@@ -5084,6 +5127,9 @@ AS
                                                  >=  gd_target_date -- 着荷日(着荷予定日)
         -- 受注タイプ情報VIEW2
         AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND   xoha.prod_class          = gv_prod_div              -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
         AND   otta.attribute1  = gv_shikyu            -- 支給依頼
         AND   otta.attribute3  = '0'                -- 自動作成発注区分「NO」
         AND (
@@ -5132,6 +5178,9 @@ AS
                                                  >=  gd_target_date           -- 着荷日(着荷予定日)
         -- 受注タイプ情報VIEW2
         AND   xoha.order_type_id       = otta.transaction_type_id   -- 受注タイプID
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND   xoha.prod_class          = gv_prod_div                -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
         AND   otta.attribute1  = gv_shipping             -- 出荷依頼
         AND   xoha.result_deliver_to  IS NOT NULL                   -- 出荷先_実績
         AND (
@@ -5179,6 +5228,9 @@ AS
         AND   xoha.shipped_date >=  gd_target_date                            -- 出荷日
         -- 受注タイプ情報VIEW2
         AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND   xoha.prod_class          = gv_prod_div              -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
         AND   otta.attribute1  = gv_shikyu            -- 支給依頼
         AND   otta.attribute3 = '0'                -- 自動作成発注区分「NO」
         AND (
@@ -5226,6 +5278,9 @@ AS
         AND   xoha.shipped_date >=  gd_target_date                            -- 出荷日
         -- 受注タイプ情報VIEW2
         AND   xoha.order_type_id       = otta.transaction_type_id -- 受注タイプID
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND   xoha.prod_class          = gv_prod_div              -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
         AND   otta.attribute1  = gv_shipping           -- 出荷依頼
         AND   xoha.result_deliver_to  IS NOT NULL                 -- 出荷先_実績
         AND (
@@ -5269,6 +5324,9 @@ AS
 --        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
 --        AND   xdec.payments_judgment_classe = gv_pay_judg_c                     -- 支払判断区分（着日）
 -- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND   xmrih.item_class = gv_prod_div                                      -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
         AND   NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) 
                                                   >=  gd_target_date            -- 入庫実績日(入庫予定日)
        AND (
@@ -5309,6 +5367,9 @@ AS
 --        AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                      -- 適用終了日
 --        AND   xdec.payments_judgment_classe = gv_pay_judg_g                     -- 支払判断区分（発日）
 -- *----------* 2009/05/29 Ver.1.27 本番#1505対応 end   *----------*
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND   xmrih.item_class = gv_prod_div                                      -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
         AND   xmrih.actual_ship_date    >=  gd_target_date                      -- 出庫実績日
        AND (
               ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付
@@ -7118,6 +7179,9 @@ AS
       AND   xcs.non_slip_class IN ( gv_non_slip_slp     --  伝票なし配車
                                   , gv_non_slip_can)    --  伝票なし配車解除
       AND   xcs.prod_class          = xdec.goods_classe                   -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND   xcs.prod_class          = gv_prod_div                         -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       AND   xcs.result_freight_carrier_code = xdec.delivery_company_code  -- 運送業者
       AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                  -- 適用開始日
       AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                  -- 適用終了日
@@ -7159,6 +7223,9 @@ AS
       AND   xcs.non_slip_class IN ( gv_non_slip_slp     --  伝票なし配車
                                   , gv_non_slip_can)    --  伝票なし配車解除
       AND   xcs.prod_class          = xdec.goods_classe                   -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND   xcs.prod_class          = gv_prod_div                         -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       AND   xcs.result_freight_carrier_code = xdec.delivery_company_code  -- 運送業者
       AND   xdec.start_date_active  <= TRUNC(gd_sysdate)                  -- 適用開始日
       AND   xdec.end_date_active    >= TRUNC(gd_sysdate)                  -- 適用終了日
@@ -9440,6 +9507,9 @@ AS
                 , xxwip_delivery_distance     xdd     -- 配送距離アドオンマスタ
             WHERE xdl.judgement_date         >= gd_target_date                -- 判断日 >= 締日
             AND   xdl.goods_classe            = xdd.goods_classe              -- 配送距離：商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+            AND   xdl.goods_classe            = gv_prod_div                   -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
             AND   xdl.delivery_company_code   = xdd.delivery_company_code     -- 配送距離：運送業者
             AND   xdl.whs_code                = xdd.origin_shipment           -- 配送距離：出庫倉庫
             AND   xdl.code_division           = xdd.code_division             -- 配送距離：コード区分
@@ -9460,6 +9530,9 @@ AS
                 , xxwip_delivery_company      xdc     -- 運賃用運送業者アドオンマスタ
             WHERE xdl.judgement_date         >= gd_target_date                -- 判断日 >= 締日
             AND   xdl.goods_classe            = xdc.goods_classe              -- 運送業者：商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+            AND   xdl.goods_classe            = gv_prod_div                   -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
             AND   xdl.delivery_company_code   = xdc.delivery_company_code     -- 運送業者：運送業者
             AND   TRUNC(xdl.judgement_date)  >= xdc.start_date_active         -- 運送業者：適用開始日
             AND   TRUNC(xdl.judgement_date)  <= xdc.end_date_active           -- 運送業者：適用終了日
@@ -10518,7 +10591,10 @@ AS
             , NULL                      -- 運賃：混載変更フラグ
     BULK COLLECT INTO gt_exch_deliv_tab
     FROM  xxwip_deliverys         xd    -- 運賃ヘッダアドオン
-    WHERE xd.p_b_classe = gv_pay                      -- 支払請求区分（支払）
+    WHERE xd.p_b_classe      = gv_pay                 -- 支払請求区分（支払）
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+    AND   xd.goods_classe    = gv_prod_div            -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
     AND   xd.judgement_date >= gd_target_date         -- 判断日 >= 締め日
     ORDER BY delivery_no;
 --
@@ -11502,7 +11578,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : delete_exch_deliv_mst
-   * Description      : 洗替運賃マスタ一括更新
+   * Description      : 洗替運賃マスタ一括更新(A-48-1)
    ***********************************************************************************/
   PROCEDURE delete_exch_deliv_mst(
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -11552,43 +11628,52 @@ AS
     --
 --
     --運賃用運送業者マスタ
-      UPDATE xxwip_delivery_company
-      SET    pay_change_flg          = gv_target_n                -- 支払変更フラグ（N）
-           , last_updated_by         = gn_user_id                 -- 最終更新者
-           , last_update_date        = gd_sysdate                 -- 最終更新日
-           , last_update_login       = gn_login_id                -- 最終更新ログイン
-           , request_id              = gn_conc_request_id         -- 要求ID
-           , program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
-           , program_id              = gn_conc_program_id         -- コンカレント・プログラムID
-           , program_update_date     = gd_sysdate                 -- プログラム更新日
-      WHERE  pay_change_flg = gv_target_y   -- 支払変更フラグ
+      UPDATE xxwip_delivery_company xdco
+      SET    xdco.pay_change_flg          = gv_target_n                -- 支払変更フラグ（N）
+           , xdco.last_updated_by         = gn_user_id                 -- 最終更新者
+           , xdco.last_update_date        = gd_sysdate                 -- 最終更新日
+           , xdco.last_update_login       = gn_login_id                -- 最終更新ログイン
+           , xdco.request_id              = gn_conc_request_id         -- 要求ID
+           , xdco.program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+           , xdco.program_id              = gn_conc_program_id         -- コンカレント・プログラムID
+           , xdco.program_update_date     = gd_sysdate                 -- プログラム更新日
+      WHERE  xdco.pay_change_flg = gv_target_y   -- 支払変更フラグ
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND  xdco.goods_classe            = gv_prod_div                -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       ;
 --
     -- 配送距離マスタ
-      UPDATE  xxwip_delivery_distance
-      SET     change_flg              = gv_target_n                -- 変更フラグ（N）
-            , last_updated_by         = gn_user_id                 -- 最終更新者
-            , last_update_date        = gd_sysdate                 -- 最終更新日
-            , last_update_login       = gn_login_id                -- 最終更新ログイン
-            , request_id              = gn_conc_request_id         -- 要求ID
-            , program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
-            , program_id              = gn_conc_program_id         -- コンカレント・プログラムID
-            , program_update_date     = gd_sysdate                 -- プログラム更新日
-      WHERE   change_flg = gv_target_y      -- 変更フラグ
+      UPDATE  xxwip_delivery_distance xdd
+      SET     xdd.change_flg              = gv_target_n                -- 変更フラグ（N）
+            , xdd.last_updated_by         = gn_user_id                 -- 最終更新者
+            , xdd.last_update_date        = gd_sysdate                 -- 最終更新日
+            , xdd.last_update_login       = gn_login_id                -- 最終更新ログイン
+            , xdd.request_id              = gn_conc_request_id         -- 要求ID
+            , xdd.program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+            , xdd.program_id              = gn_conc_program_id         -- コンカレント・プログラムID
+            , xdd.program_update_date     = gd_sysdate                 -- プログラム更新日
+      WHERE   xdd.change_flg = gv_target_y      -- 変更フラグ
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND   xdd.goods_classe            = gv_prod_div                -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       ;
 --
     -- 運賃マスタ
-      UPDATE  xxwip_delivery_charges
-      SET     change_flg = gv_target_n                             -- 変更フラグ（N）
-            , last_updated_by         = gn_user_id                 -- 最終更新者
-            , last_update_date        = gd_sysdate                 -- 最終更新日
-            , last_update_login       = gn_login_id                -- 最終更新ログイン
-            , request_id              = gn_conc_request_id         -- 要求ID
-            , program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
-            , program_id              = gn_conc_program_id         -- コンカレント・プログラムID
-            , program_update_date     = gd_sysdate                 -- プログラム更新日
-      WHERE   change_flg = gv_target_y      -- 変更フラグ（Y）
-      AND     p_b_classe = gv_pay           -- 支払請求区分:支払
+      UPDATE  xxwip_delivery_charges xdch
+      SET     xdch.change_flg = gv_target_n                             -- 変更フラグ（N）
+            , xdch.last_updated_by         = gn_user_id                 -- 最終更新者
+            , xdch.last_update_date        = gd_sysdate                 -- 最終更新日
+            , xdch.last_update_login       = gn_login_id                -- 最終更新ログイン
+            , xdch.request_id              = gn_conc_request_id         -- 要求ID
+            , xdch.program_application_id  = gn_prog_appl_id            -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
+            , xdch.program_id              = gn_conc_program_id         -- コンカレント・プログラムID
+            , xdch.program_update_date     = gd_sysdate                 -- プログラム更新日
+      WHERE   xdch.change_flg = gv_target_y      -- 変更フラグ（Y）
+      AND     xdch.p_b_classe = gv_pay           -- 支払請求区分:支払
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      AND     xdch.goods_classe            = gv_prod_div                -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       ;
 --
   EXCEPTION
@@ -11618,7 +11703,7 @@ AS
 -- ##### 20081210 Ver.1.16 本番#401対応 START #####
   /**********************************************************************************
    * Procedure Name   : delete_deli_cleaning
-   * Description      : 配車組換削除
+   * Description      : 配車組換削除(A-35-2)
    ***********************************************************************************/
   PROCEDURE delete_deli_cleaning(
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -11668,6 +11753,9 @@ AS
       -- **************************************************
       DELETE FROM  xxwip_deliverys xd        -- 運賃ヘッダアドオン
         WHERE  xd.dispatch_type = gv_car_normal  -- 通常配車
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+        AND    xd.goods_classe  = gv_prod_div    -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
         AND    NOT EXISTS (SELECT 'x'
                            FROM   xxwip_delivery_lines xdl
                            WHERE  xd.delivery_no = xdl.delivery_no);
@@ -11710,6 +11798,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_exchange_type  IN         VARCHAR2,     -- 洗い替え区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+    iv_prod_div       IN         VARCHAR2,     -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
     ov_errbuf         OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode        OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg         OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -11776,6 +11867,9 @@ AS
     -- =========================================
     get_init(
       iv_exchange_type,  -- 洗い替え区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      iv_prod_div,       -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -12300,7 +12394,11 @@ AS
   PROCEDURE main(
     errbuf            OUT NOCOPY VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode           OUT NOCOPY VARCHAR2,      --   リターン・コード    --# 固定 #
-    iv_exchange_type  IN         VARCHAR2       --   荒い替え区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+--    iv_exchange_type  IN         VARCHAR2       --   荒い替え区分
+    iv_exchange_type  IN         VARCHAR2,      --   洗替区分
+    iv_prod_div       IN         VARCHAR2       --   商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
   )
 --
 --###########################  固定部 START   ###########################
@@ -12363,6 +12461,9 @@ AS
     -- ===============================================
     submain(
       iv_exchange_type,  -- 洗い替え区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+      iv_prod_div,       -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
