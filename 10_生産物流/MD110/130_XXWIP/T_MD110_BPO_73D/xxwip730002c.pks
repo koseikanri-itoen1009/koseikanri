@@ -7,7 +7,7 @@ AS
  * Description      : 運賃更新
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_733
  * MD.070           : 運賃更新 T_MD070_BPO_73D
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2008/10/24    1.4  Oracle 野村 正幸  統合#408対応
  *  2009/04/10    1.5  SCS    伊藤ひとみ 本番#432対応
  *  2009/05/01    1.6  SCS    伊藤ひとみ 本番#432(指摘5)対応
+ *  2016/06/22    1.7  SCSK   仁木重人   E_本稼動_13659対応
  *
  *****************************************************************************************/
 --
@@ -33,7 +34,10 @@ AS
   PROCEDURE main(
     errbuf             OUT  NOCOPY VARCHAR2  --   エラーメッセージ #固定#
    ,retcode            OUT  NOCOPY VARCHAR2  --   エラーコード     #固定#
-   ,iv_exchange_type   IN          VARCHAR2  --   洗替区分
+   ,iv_exchange_type   IN          VARCHAR2                --   洗替区分
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+   ,iv_prod_div        IN          VARCHAR2  DEFAULT NULL  --   商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
    );
 END xxwip730002c;
 /
