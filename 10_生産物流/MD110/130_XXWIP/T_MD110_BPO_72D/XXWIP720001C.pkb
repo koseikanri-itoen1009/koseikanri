@@ -7,7 +7,7 @@ AS
  * Description      : 配送距離アドオンマスタ取込処理
  * MD.050           : 運賃計算（マスタ） T_MD050_BPO_720
  * MD.070           : 配送距離アドオンマスタ取込処理(72D) T_MD070_BPO_72D
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2007/12/12    1.0   H.Itou           新規作成
  *  2008/09/02    1.1   A.Shiina         内部変更要求#204対応
  *  2009/04/03    1.2   A.Shiina         本番#432対応
+ *  2016/06/22    1.3   K.Kiriu          E_本稼動_13659対応
  *
  *****************************************************************************************/
 --
@@ -216,6 +217,9 @@ AS
   gn_upd_tab_cnt      NUMBER := 0;   -- 更新用PL/SQL表カウント
   gn_request_id_cnt   NUMBER := 0;   -- 要求IDカウント
 --
+-- v1.3 ADD START
+  gv_prod_div         VARCHAR2(1);   -- 商品区分
+-- v1.3 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : get_lock
@@ -477,6 +481,9 @@ AS
             ,xddi.shipping_address_code              -- 配送先コード
       FROM   xxwip_delivery_distance_if  xddi        -- 配送距離アドオンマスタインタフェース
       WHERE  xddi.request_id = it_request_id         -- 要求ID
+-- v1.3 ADD START
+      AND    xddi.goods_classe = gv_prod_div         -- 商品区分
+-- v1.3 ADD END
       GROUP BY 
              xddi.goods_classe          -- 商品区分
             ,xddi.delivery_company_code -- 運送業者コード
@@ -848,7 +855,7 @@ AS
 --
       -- 対象データなしメッセージ取得
       get_no_data_msg;
-    END IF;
+    END IF;	
 --
     -- ===============================
     -- 運送業者チェック
@@ -1454,6 +1461,9 @@ AS
             ,xddi.actual_distance             actual_distance              -- 実際距離
       FROM   xxwip_delivery_distance_if  xddi        -- 配送距離アドオンマスタインタフェース
       WHERE  xddi.request_id = it_request_id         -- 要求ID
+-- v1.3 ADD START
+      AND    xddi.goods_classe = gv_prod_div         -- 商品区分
+-- v1.3 ADD END
       AND    NOT EXISTS(                             -- 配送距離アドオンマスタのキー項目に存在しないデータ
              SELECT 1
              FROM   xxwip_delivery_distance   xdd    -- 配送距離アドオンマスタ
@@ -1651,6 +1661,9 @@ AS
             ,xddi.actual_distance             actual_distance              -- 実際距離
       FROM   xxwip_delivery_distance_if  xddi        -- 配送距離アドオンマスタインタフェース
       WHERE  xddi.request_id = it_request_id         -- 要求ID
+-- v1.3 ADD START
+      AND    xddi.goods_classe = gv_prod_div         -- 商品区分
+-- v1.3 ADD END
       AND    EXISTS(                                 -- 配送距離アドオンマスタのキー項目に存在するデータ
              SELECT 1
              FROM   xxwip_delivery_distance   xdd    -- 配送距離アドオンマスタ
@@ -2083,6 +2096,9 @@ AS
             ,xdd.start_date_active     start_date_active     -- 適用開始日
             ,xdd.end_date_active       end_date_active       -- 適用終了日
       FROM   xxwip_delivery_distance  xdd
+-- v1.3 ADD START
+      WHERE  xdd.goods_classe       =  gv_prod_div           -- 商品区分
+-- v1.3 ADD END
       ORDER BY
              goods_classe          -- 商品区分
             ,delivery_company_code -- 運送業者コード
@@ -2330,7 +2346,10 @@ AS
     -- ===============================
     FORALL ln_count IN 1..request_id_tab.COUNT
       DELETE xxwip_delivery_distance_if xddi             -- 配送距離アドオンマスタインタフェース
-      WHERE  xddi.request_id = request_id_tab(ln_count)  -- 要求ID
+      WHERE  xddi.request_id    = request_id_tab(ln_count)  -- 要求ID
+-- v1.3 ADD START
+      AND    xddi.goods_classe  = gv_prod_div               -- 商品区分
+-- v1.3 ADD END
       ;
 --
 --
@@ -2467,6 +2486,9 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- v1.3 ADD START
+    iv_prod_div   IN  VARCHAR2,     --   商品区分
+-- v1.3 ADD END
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2504,8 +2526,11 @@ AS
       WHERE  EXISTS (
                SELECT 1
                FROM   xxwip_delivery_distance_if xddi   -- 配送距離アドオンマスタインタフェース
-               WHERE  xddi.request_id = fcr.request_id  -- 要求ID
-               AND    ROWNUM          = 1
+               WHERE  xddi.request_id   = fcr.request_id  -- 要求ID
+-- v1.3 ADD START
+               AND    xddi.goods_classe = gv_prod_div     -- 商品区分
+-- v1.3 ADD END
+               AND    ROWNUM            = 1
              )
       ORDER BY request_id
     ;
@@ -2525,6 +2550,10 @@ AS
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
 --
+-- v1.3 ADD START
+    -- 入力パラメータ.商品区分をグローバル変数に格納
+    gv_prod_div   := iv_prod_div;
+-- v1.3 ADD END
     -- ===============================
     -- D-1.要求ID取得処理
     -- ===============================
@@ -2757,7 +2786,11 @@ AS
 --
   PROCEDURE main(
     errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
-    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+-- v1.3 MOD START
+--    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_prod_div   IN  VARCHAR2       --   商品区分
+-- v1.3 MOD END
   )
 --
 --
@@ -2818,6 +2851,9 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
+-- v1.3 ADD START
+      iv_prod_div, -- 商品区分
+-- v1.3 ADD END
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg);  -- ユーザー・エラー・メッセージ --# 固定 #
