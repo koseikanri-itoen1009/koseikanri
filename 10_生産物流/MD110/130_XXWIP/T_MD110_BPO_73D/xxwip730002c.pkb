@@ -7,7 +7,7 @@ AS
  * Description      : 運賃更新
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_733
  * MD.070           : 運賃更新 T_MD070_BPO_73D
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/10/24    1.4  Oracle 野村 正幸  統合#408対応
  *  2009/04/10    1.5  SCS    伊藤ひとみ 本番#432対応
  *  2009/05/01    1.6  SCS    伊藤ひとみ 本番#432(指摘5)対応
+ *  2016/06/22    1.7  SCSK   仁木重人   E_本稼動_13659対応
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,10 @@ AS
   gv_msg_wip_00010           CONSTANT VARCHAR2(15) := 'APP-XXWIP-00010'; -- 運賃ﾍｯﾀﾞｱﾄﾞｵﾝ処理件数
   gv_msg_wip_10008           CONSTANT VARCHAR2(15) := 'APP-XXWIP-10008'; -- 必須項目未入力エラー
   gv_msg_wip_10004           CONSTANT VARCHAR2(15) := 'APP-XXWIP-10004'; -- ロック詳細メッセージ
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+  gv_msg_wip_10067           CONSTANT VARCHAR2(15) := 'APP-XXWIP-10067'; -- プロファイル取得エラー
+  gv_msg_wip_10090           CONSTANT VARCHAR2(15) := 'APP-XXWIP-10090'; -- 文言：商品区分（セキュリティ）
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
 --
   -- トークン
   gv_tkn_item                CONSTANT VARCHAR2(10) := 'ITEM';
@@ -126,6 +131,9 @@ AS
   gv_tkn_table               CONSTANT VARCHAR2(10) := 'TABLE';
   gv_tkn_key                 CONSTANT VARCHAR2(10) := 'KEY';
   gv_tkn_cnt                 CONSTANT VARCHAR2(10) := 'CNT';
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+  gv_tkn_ng_profile          CONSTANT VARCHAR2(10) := 'NG_PROFILE';
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
 --
   -- トークン値
   gv_exchange_type_name      CONSTANT VARCHAR2(30) := '洗替区分';
@@ -135,6 +143,11 @@ AS
   gv_deli_comp_name          CONSTANT VARCHAR2(50) := '運賃用運送業者アドオンマスタ';
   gv_deli_charges_name       CONSTANT VARCHAR2(50) := '運賃アドオンマスタ';
 -- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
+--
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+  -- プロファイル
+  gv_prof_item_div_sec       CONSTANT VARCHAR2(50) := 'XXCMN_ITEM_DIV_SECURITY';  -- プロファイル：商品区分（セキュリティ）
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
 --
   -- YESNO区分
   gv_ktg_yes                 CONSTANT VARCHAR2(1) := 'Y';
@@ -149,7 +162,11 @@ AS
   gv_mixed_code_1            CONSTANT VARCHAR2(1) := '1';   -- 1:混載
   gv_mixed_code_2            CONSTANT VARCHAR2(1) := '2';   -- 2:混載以外
   -- コンカレントNo(運賃計算用コントロール)
-  gv_con_no_deli             CONSTANT VARCHAR2(1) := '2';   -- 2:運賃更新
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+--  gv_con_no_deli             CONSTANT VARCHAR2(1) := '2';   -- 2:運賃更新
+  gv_con_no_deli_lef         CONSTANT VARCHAR2(1) := '5';   -- 5:請求更新(リーフ)
+  gv_con_no_deli_drk         CONSTANT VARCHAR2(1) := '6';   -- 6:請求更新(ドリンク)
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
   -- 商品区分
   gv_prod_class_lef          CONSTANT VARCHAR2(1) := '1';   -- 1:リーフ
   gv_prod_class_drk          CONSTANT VARCHAR2(1) := '2';   -- 2:ドリンク
@@ -644,6 +661,11 @@ AS
   gd_last_process_date   DATE;             -- 前回処理日付
   gv_closed_day          VARCHAR2(1);      -- 締日判定
 --
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+  gv_prod_div            VARCHAR2(1);      -- 商品区分
+  gv_con_no_deli         VARCHAR2(1);      -- コンカレントNo
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
+--
   /**********************************************************************************
    * Procedure Name   : cal_money_proc
    * Description      : 金額計算処理(機能詳細番号無し)
@@ -1035,6 +1057,9 @@ AS
    * Description      : 関連データ取得(D-2)
    ***********************************************************************************/
   PROCEDURE get_init(
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+    iv_prod_div      IN         VARCHAR2,     -- 商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
     ov_errbuf        OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode       OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg        OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1051,6 +1076,17 @@ AS
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
 --###########################  固定部 END   ####################################
+--
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    lv_tkn_msg         VARCHAR2(2000); -- トークン取得用
+    -- *** ローカル・例外処理 ***
+    get_prof_expt      EXCEPTION ;     -- プロファイル取得例外
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
 --
   BEGIN
 --
@@ -1072,6 +1108,39 @@ AS
     gn_prog_appl_id     := FND_GLOBAL.PROG_APPL_ID;    -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
     gn_conc_program_id  := FND_GLOBAL.CONC_PROGRAM_ID; -- コンカレント・プログラムID
 --
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+    gv_prod_div         := NULL;                       -- 商品区分
+--
+    -- 入力項目.商品区分がNULLの場合、プロファイル値を設定
+    IF ( iv_prod_div IS NULL ) THEN
+      -- プロファイル値取得
+      gv_prod_div := FND_PROFILE.VALUE(gv_prof_item_div_sec);
+      -- プロファイル値がNULLの場合
+      IF ( gv_prod_div IS NULL ) THEN
+        -- トークン取得
+        lv_tkn_msg := xxcmn_common_pkg.get_msg( gv_msg_kbn_wip
+                                               ,gv_msg_wip_10090
+                                              ) ;
+        -- メッセージ生成
+        lv_errmsg  := xxcmn_common_pkg.get_msg( gv_msg_kbn_wip
+                                               ,gv_msg_wip_10067
+                                               ,gv_tkn_ng_profile
+                                               ,lv_tkn_msg
+                                              ) ;
+        RAISE get_prof_expt ;
+      END IF;
+    ELSE
+      -- 入力項目.商品区分を設定
+      gv_prod_div := iv_prod_div; -- 商品区分
+    END IF;
+--
+    -- 商品区分からコンカレントNo取得
+    IF ( gv_prod_div = gv_prod_class_lef ) THEN
+      gv_con_no_deli := gv_con_no_deli_lef;  -- リーフ
+    ELSE
+      gv_con_no_deli := gv_con_no_deli_drk;  -- ドリンク
+    END IF;
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
     -- 運賃計算用コントロールより前回処理日付を取得
     BEGIN
       SELECT xdc.last_process_date    -- 前回処理日付
@@ -1096,6 +1165,13 @@ AS
     END;
 --
   EXCEPTION
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+    -- *** プロファイル取得例外ハンドラ ***
+    WHEN get_prof_expt THEN
+      ov_errmsg  := lv_errmsg ;
+      ov_errbuf  := lv_errmsg ;
+      ov_retcode := gv_status_error ;
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1229,24 +1305,24 @@ AS
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_lock_xd IS
-      SELECT xd.deliverys_header_id
+      SELECT xd.deliverys_header_id AS deliverys_header_id
       FROM   xxwip_deliverys xd
-      WHERE  xd.p_b_classe = gv_paycharge_type_2
+      WHERE  xd.p_b_classe        = gv_paycharge_type_2
       FOR UPDATE NOWAIT;
 -- ##### 20090410 Ver.1.5 本番#432対応 START #####
     -- 運賃用運送業者アドオンマスタロック取得
     CURSOR cur_lock_xdco IS
-      SELECT xdco.delivery_company_id
+      SELECT xdco.delivery_company_id AS delivery_company_id
       FROM   xxwip_delivery_company xdco              -- 運賃用運送業者アドオンマスタ
       WHERE  xdco.bill_change_flg = gv_change_flg_on  -- 請求変更フラグ:ON
       FOR UPDATE NOWAIT;
 --
     -- 運賃アドオンマスタロック取得
     CURSOR cur_lock_xdch IS
-      SELECT xdch.delivery_charges_id
+      SELECT xdch.delivery_charges_id AS delivery_charges_id
       FROM   xxwip_delivery_charges xdch              -- 運賃アドオンマスタ
-      WHERE  xdch.change_flg = gv_change_flg_on       -- 変更フラグ:ON
-      AND    xdch.p_b_classe = gv_paycharge_type_2    -- 支払請求区分:請求
+      WHERE  xdch.change_flg      = gv_change_flg_on      -- 変更フラグ:ON
+      AND    xdch.p_b_classe      = gv_paycharge_type_2   -- 支払請求区分:請求
       FOR UPDATE NOWAIT;
 -- ##### 20090410 Ver.1.5 本番#432対応 END   #####
 --
@@ -1436,6 +1512,9 @@ AS
              xxwip_delivery_company xdc  -- 運賃用運送業者アドオンマスタ
       WHERE  xd.p_b_classe            =  gv_paycharge_type_1
       AND    xd.defined_flag          =  gv_defined_yes
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+      AND    xd.goods_classe          =  gv_prod_div                      -- 商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
       AND    xd.goods_classe          =  xdc.goods_classe(+)
       AND    xd.delivery_company_code =  xdc.delivery_company_code(+)
       AND    xd.judgement_date        >= xdc.start_date_active(+)
@@ -2230,6 +2309,9 @@ AS
 --      AND    xd.dispatch_type IN (gv_dispatch_type_1,gv_dispatch_type_2)    -- 2008/07/11
 -- ##### 20090410 Ver.1.5 本番#432対応 DEL END   #####
       AND    xd.goods_classe IS NOT NULL
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+      AND    xd.goods_classe          =  gv_prod_div                      -- 商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
       AND    xd.goods_classe          =  xdc.goods_classe(+)
       AND    xd.delivery_company_code =  xdc.delivery_company_code(+)
       AND    xd.judgement_date        >= xdc.start_date_active(+)
@@ -2608,6 +2690,9 @@ AS
           ,xdco.program_id             = gn_conc_program_id        -- コンカレント・プログラムID
           ,xdco.program_update_date    = gd_sysdate                -- プログラム更新日
     WHERE  xdco.bill_change_flg        = gv_change_flg_on          -- 請求変更フラグ:ON
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+    AND    xdco.goods_classe           = gv_prod_div               -- 商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
     ;
 --
     -- 運賃アドオンマスタ変更フラグをOFFに変更
@@ -2622,6 +2707,9 @@ AS
           ,xdch.program_update_date    = gd_sysdate                -- プログラム更新日
     WHERE  xdch.change_flg             = gv_change_flg_on          -- 変更フラグ:ON
     AND    xdch.p_b_classe             = gv_paycharge_type_2       -- 支払請求区分:請求
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+    AND    xdch.goods_classe           = gv_prod_div               -- 商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
     ;
 --
   EXCEPTION
@@ -2652,6 +2740,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_exchange_type  IN         VARCHAR2,     -- 洗替区分
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+    iv_prod_div       IN         VARCHAR2,     -- 商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
     ov_errbuf         OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode        OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg         OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2716,6 +2807,9 @@ AS
     -- 関連データ取得(D-2)
     -- =========================================
     get_init(
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+      iv_prod_div,       -- 商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2943,7 +3037,11 @@ AS
   PROCEDURE main(
     errbuf            OUT NOCOPY VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode           OUT NOCOPY VARCHAR2,      --   リターン・コード    --# 固定 #
-    iv_exchange_type  IN         VARCHAR2       --   洗替区分
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+--    iv_exchange_type  IN         VARCHAR2       --   洗替区分
+    iv_exchange_type  IN         VARCHAR2,               --   洗替区分
+    iv_prod_div       IN         VARCHAR2  DEFAULT NULL  --   商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
   )
 --
 --###########################  固定部 START   ###########################
@@ -3012,6 +3110,9 @@ AS
     -- ===============================================
     submain(
       iv_exchange_type,  -- 洗替区分
+-- ##### Ver.1.7 E_本稼動_13659対応 START #####
+      iv_prod_div,       -- 商品区分
+-- ##### Ver.1.7 E_本稼動_13659対応 END   #####
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3034,7 +3135,7 @@ AS
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_sep_msg);
 --
     -- =========================================
-    -- メッセージ出力(D-15)
+    -- メッセージ出力(D-16)
     -- =========================================
     -- 1.運賃ヘッダアドオン処理件数メッセージ
     lv_message := xxcmn_common_pkg.get_msg(gv_msg_kbn_wip, gv_msg_wip_00010);
