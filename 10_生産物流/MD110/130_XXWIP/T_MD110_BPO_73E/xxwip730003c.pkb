@@ -7,7 +7,7 @@ AS
  * Description      : 運賃アドオンインタフェース取込処理
  * MD.050           : 運賃計算（トランザクション）       T_MD050_BPO_732
  * MD.070           : 運賃アドオンインタフェース取込処理 T_MD070_BPO_73E
- * Version          : 1.7
+ * Version          : 1.8
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -37,6 +37,7 @@ AS
  *  2008/09/16    1.5  Oracle 吉田 夏樹  T_S_570 対応
  *  2008/12/01    1.6  Oracle 野村 正幸  本番#303対応
  *  2009/03/03    1.7  野村 正幸         本番#1239対応
+ *  2016/06/24    1.8  S.Niki            E_本稼動_13659対応
  *
  *****************************************************************************************/
 --
@@ -129,6 +130,10 @@ AS
   -- 支払請求区分
   gv_p_b_cls_pay       CONSTANT VARCHAR2(1) := '1';                   -- 支払
   gv_p_b_cls_bil       CONSTANT VARCHAR2(1) := '2';                   -- 請求
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+  -- ダミー
+  gv_dummy             CONSTANT VARCHAR2(1) := 'X';                   -- ダミー
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -468,11 +473,18 @@ AS
   gn_bil_deliv_no_cnt      NUMBER;          -- 請求データ削除用PL/SQL表カウンター
   gn_deliv_if_del_cnt      NUMBER;          -- 削除用運賃アドオンインタフェースカウンター
 --
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+  gv_prod_div              VARCHAR2(1);     -- 商品区分
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
+--
   /**********************************************************************************
    * Procedure Name   : get_related_date
    * Description      : 関連データ取得(E-1)
    ***********************************************************************************/
   PROCEDURE get_related_date(
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+    iv_prod_div   IN  VARCHAR2,     --   商品区分
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -525,6 +537,10 @@ AS
     gn_prog_appl_id     := FND_GLOBAL.PROG_APPL_ID;    -- ｺﾝｶﾚﾝﾄ・ﾌﾟﾛｸﾞﾗﾑ・ｱﾌﾟﾘｹｰｼｮﾝID
     gn_conc_program_id  := FND_GLOBAL.CONC_PROGRAM_ID; -- コンカレント・プログラムID
 --
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+    -- 入力項目.商品区分をグローバル変数に格納
+    gv_prod_div         := iv_prod_div;                -- 商品区分
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
 --
     -- ***********************************************
     -- プロファイル：運賃データ保留期間 取得
@@ -728,10 +744,27 @@ AS
              xdi.picking_charge,         -- 16.ピッキング料
              xdi.consolid_surcharge,     -- 17.混載割増金額
              xdi.total_amount,           -- 18.合計
-             xdi.creation_date,          -- 19作成日
+             xdi.creation_date,          -- 19.作成日
              xdi.last_update_date        -- 20.最終更新日
       BULK COLLECT INTO gt_deliv_if_tbl
       FROM    xxwip_deliverys_if xdi     -- 運賃アドオンインタフェース
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+      WHERE  EXISTS (SELECT /*+ INDEX(xd XXWIP_DELIVERYS_N01) */
+                            gv_dummy
+                     FROM   xxwip_deliverys  xd    -- 運賃ヘッダアドオン
+                     WHERE  xdi.delivery_company_code = xd.delivery_company_code   -- 運送業者
+                     AND    xdi.delivery_no           = xd.delivery_no             -- 配送No
+                     AND    xdi.p_b_classe            = xd.p_b_classe              -- 支払請求区分
+                     AND    xd.goods_classe           = gv_prod_div                -- 商品区分
+             )
+         OR  NOT EXISTS (SELECT /*+ INDEX(xd2 XXWIP_DELIVERYS_N01) */
+                                gv_dummy
+                         FROM   xxwip_deliverys  xd2    -- 運賃ヘッダアドオン
+                         WHERE  xdi.delivery_company_code = xd2.delivery_company_code   -- 運送業者
+                         AND    xdi.delivery_no           = xd2.delivery_no             -- 配送No
+                         AND    xdi.p_b_classe            = xd2.p_b_classe              -- 支払請求区分
+             )
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
       ORDER BY xdi.delivery_id
       FOR UPDATE NOWAIT;
 --
@@ -930,25 +963,25 @@ AS
              xd.judgement_date,           -- 7.判断日
              xd.goods_classe,             -- 8.商品区分
              xd.charged_amount,           -- 9.請求運賃
-             xd.contract_rate,            --   契約運賃
-             xd.balance,                  -- 10.差額
-             xd.total_amount,             -- 11.合計
-             xd.many_rate,                -- 12.諸料金
-             xd.distance,                 -- 13.最長距離
-             xd.delivery_classe,          -- 14.配送区分
-             xd.qty1,                     -- 15.個数1
-             xd.qty2,                     -- 16.個数2
-             xd.delivery_weight1,         -- 17.重量1
-             xd.delivery_weight2,         -- 18.重量2
-             xd.consolid_surcharge,       -- 19.混載割増金額
-             xd.congestion_charge,        -- 20.通行料
-             xd.picking_charge,           -- 21.ピッキング料
-             xd.consolid_qty,             -- 22.混載数
-             xd.output_flag,              -- 23.差異区分
-             xd.defined_flag,             -- 24.支払確定区分
-             xd.return_flag,              -- 25.支払確定戻
-             xd.form_update_flag,         -- 26.画面更新有無
-             xd.outside_up_count          -- 27.外部業者変更
+             xd.contract_rate,            -- 10.契約運賃
+             xd.balance,                  -- 11.差額
+             xd.total_amount,             -- 12.合計
+             xd.many_rate,                -- 13.諸料金
+             xd.distance,                 -- 14.最長距離
+             xd.delivery_classe,          -- 15.配送区分
+             xd.qty1,                     -- 16.個数1
+             xd.qty2,                     -- 17.個数2
+             xd.delivery_weight1,         -- 18.重量1
+             xd.delivery_weight2,         -- 19.重量2
+             xd.consolid_surcharge,       -- 20.混載割増金額
+             xd.congestion_charge,        -- 21.通行料
+             xd.picking_charge,           -- 22.ピッキング料
+             xd.consolid_qty,             -- 23.混載数
+             xd.output_flag,              -- 24.差異区分
+             xd.defined_flag,             -- 25.支払確定区分
+             xd.return_flag,              -- 26.支払確定戻
+             xd.form_update_flag,         -- 27.画面更新有無
+             xd.outside_up_count          -- 28.外部業者変更
       INTO   gt_deliv_head_tbl(gn_deliv_head_cnt)
       FROM   xxwip_deliverys xd           -- 運賃ヘッダーアドオン
       WHERE  xd.delivery_company_code = ir_deliv_if_rec.delivery_company_code
@@ -2306,6 +2339,9 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+    iv_prod_div   IN  VARCHAR2,     --   商品区分
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2370,6 +2406,9 @@ AS
     -- 関連データ取得(E-1)
     -- =========================================
     get_related_date(
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+      iv_prod_div,       -- 商品区分
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2529,7 +2568,11 @@ AS
 --
   PROCEDURE main(
     errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
-    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+--    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_prod_div   IN  VARCHAR2       --   商品区分
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
   )
 --
 --
@@ -2590,6 +2633,9 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
+-- ##### Ver.1.8 E_本稼動_13659対応 START #####
+      iv_prod_div, -- 商品区分
+-- ##### Ver.1.8 E_本稼動_13659対応 END   #####
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg);  -- ユーザー・エラー・メッセージ --# 固定 #
