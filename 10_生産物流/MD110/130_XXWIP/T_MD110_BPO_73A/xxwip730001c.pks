@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : xxwip730001a(spec)
+ * Package Name     : xxwip730001c(spec)
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2009/05/07    1.25 Oracle 野村       本番#432対応
  *  2009/05/14    1.26 Oracle 野村       本番#432対応
  *  2009/05/29    1.27 Oracle 野村       本番#1505対応
+ *  2016/06/22    1.28 SCSK 仁木         E_本稼動_13659対応
  *
  *****************************************************************************************/
 --
@@ -54,7 +55,11 @@ AS
   PROCEDURE main(
     errbuf            OUT    VARCHAR2,         -- エラーメッセージ #固定#
     retcode           OUT    VARCHAR2,         -- エラーコード     #固定#
-    iv_exchange_type  IN     VARCHAR2          -- 洗替区分
+-- ##### Ver.1.28 E_本稼動_13659対応 START #####
+--    iv_exchange_type  IN     VARCHAR2          -- 洗替区分
+    iv_exchange_type  IN     VARCHAR2,         -- 洗替区分
+    iv_prod_div       IN     VARCHAR2          -- 商品区分
+-- ##### Ver.1.28 E_本稼動_13659対応 END   #####
   );
 END xxwip730001c;
 /
