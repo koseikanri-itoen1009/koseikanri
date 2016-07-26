@@ -8,6 +8,8 @@
 ##                                                                            ##
 ##   [作成/更新履歴]                                                          ##
 ##        作成者  ：   SCSK 小山             2015/06/12 1.0.0                 ##
+##        更新者  ：   SCSK 小山             2016/06/21 1.0.1                 ##
+##                  E_本稼動_13681対応 監視対象ユーザ未指定対応               ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -127,7 +129,10 @@ AND    flv.lookup_code     = fcpv.concurrent_program_name
 AND    fcpv.concurrent_program_id = fcr.concurrent_program_id
 AND    fcpv.application_id = fcr.program_application_id
 AND    fcr.phase_code     in ('R','P')
-AND    flv.attribute3      = fu.user_name
+-- Ver1.0.1 2016-06-21 MOD Start
+-- AND    flv.attribute3,fu.user_name      = fu.user_name
+AND    NVL(flv.attribute3,fu.user_name) = fu.user_name
+-- Ver1.0.1 2016-06-21 MOD End
 AND    fu.user_id          = fcr.requested_by
 AND   (
         ( TRUNC(SYSDATE,'MI') >= TO_DATE(TO_CHAR(SYSDATE,'YYYY/MM/DD')||' ' ||flv.attribute2,'YYYY/MM/DD HH24:MI'))
