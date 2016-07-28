@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2016-02-12 1.8  山下翔太     E_本稼動_13451対応
 * 2016-06-09 1.9  山下翔太     E_本稼動_13563対応
 * 2016-06-30 1.10 山下翔太     E_本稼動_13563追加対応
+* 2016-07-25 1.11 山下翔太     E_本稼動_13785対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -522,7 +523,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       // 外注出来高情報:登録VOにセット
       vendorSupplyMakeRow.setAttribute("LotNumber"      , retHashMap.get("LotNumber"));      // ロットNo
       vendorSupplyMakeRow.setAttribute("LotId"          , retHashMap.get("LotId"));          // ロットID
-      vendorSupplyMakeRow.setAttribute("LotStatus"      , retHashMap.get("LotStatus"));      // ロットステータス
+// 2016-07-25 v1.11 S.Yamashita Del Start
+//      vendorSupplyMakeRow.setAttribute("LotStatus"      , retHashMap.get("LotStatus"));      // ロットステータス
+// 2016-07-25 v1.11 S.Yamashita Del End
       vendorSupplyMakeRow.setAttribute("QtInspectReqNo" , retHashMap.get("QtInspectReqNo")); // 品質検査依頼No
 // 2016-06-09 v1.9 S.Yamashita Add Start
       readOnlyRow.setAttribute("ChangedUseByDateReadOnly",  Boolean.FALSE); // 変更賞味期限入力可
@@ -533,7 +536,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       // 外注出来高情報:登録VOにセット
       vendorSupplyMakeRow.setAttribute("LotNumber"      , ""); // ロットNo
       vendorSupplyMakeRow.setAttribute("LotId"          , ""); // ロットID
-      vendorSupplyMakeRow.setAttribute("LotStatus"      , ""); // ロットステータス
+// 2016-07-25 v1.11 S.Yamashita Del Start
+//      vendorSupplyMakeRow.setAttribute("LotStatus"      , ""); // ロットステータス
+// 2016-07-25 v1.11 S.Yamashita Del End
       vendorSupplyMakeRow.setAttribute("QtInspectReqNo" , ""); // 品質検査依頼No
 // 2016-06-09 v1.9 S.Yamashita Add Start
       vendorSupplyMakeRow.setAttribute("ChangedUseByDate" , ""); // 変更賞味期限
@@ -1672,7 +1677,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 // 2015-10-06 S.Yamashita Add Start
     vendorSupplyMakeRow.setAttribute("LotNumber",       ""); // ロットNo
     vendorSupplyMakeRow.setAttribute("LotId",           ""); // ロットID
-    vendorSupplyMakeRow.setAttribute("LotStatus",       ""); // ロットステータス
+// 2016-07-25 v1.11 S.Yamashita Del Start
+//    vendorSupplyMakeRow.setAttribute("LotStatus",       ""); // ロットステータス
+// 2016-07-25 v1.11 S.Yamashita Del End
     vendorSupplyMakeRow.setAttribute("QtInspectReqNo",  ""); // 品質検査依頼No
 // 2015-10-06 S.Yamashita Add End
 // 2016-06-09 v1.9 S.Yamashita Add Start
