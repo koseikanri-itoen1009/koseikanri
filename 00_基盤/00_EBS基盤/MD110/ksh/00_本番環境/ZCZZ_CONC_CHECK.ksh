@@ -10,6 +10,8 @@
 ##        作成者  ：   SCSK 小山             2015/06/12 1.0.0                 ##
 ##        更新者  ：   SCSK 小山             2016/06/21 1.0.1                 ##
 ##                  E_本稼動_13681対応 監視対象ユーザ未指定対応               ##
+##                ：   SCSK 小山             2016/08/12 1.0.2                 ##
+##                  E_本稼動_13681再対応 文字化け対応                         ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -38,6 +40,10 @@ L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #ログファイル格納ディレクトリ
 L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #ログ名
 L_zczzcomn=`/bin/dirname $0`"/ZCZZCOMN.env"     #共通環境変数ファイル名
 
+## Ver1.0.2 2016-08-12 MOD Start
+### 環境変数設定 ###
+export NLS_LANG=American_America.JA16SJIS       #SQLの結果を文字化けさせない設定
+## Ver1.0.2 2016-08-12 MOD End
 ##シェル固有環境変数用
 LIMIT_OVER_LIST=/uspg/jp1/zc/shl/${L_kankyoumei}/tmp/ZCZZ_CONC_CHECK_temp.lst    #対象リスト一時ファイル
 
@@ -105,6 +111,9 @@ set lines 200
 set pages 500
 col name format a50
 alter session set nls_date_format='yyyy/mm/dd hh24:mi:ss';
+-- Ver1.0.2 2016-08-12 MOD Start
+alter session set nls_language='Japanese';
+-- Ver1.0.2 2016-08-12 MOD End
 set head off
 set feedback off
 spool ${LIMIT_OVER_LIST}
