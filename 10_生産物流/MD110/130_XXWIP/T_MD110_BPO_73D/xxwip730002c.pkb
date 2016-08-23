@@ -7,7 +7,7 @@ AS
  * Description      : 運賃更新
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_733
  * MD.070           : 運賃更新 T_MD070_BPO_73D
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/04/10    1.5  SCS    伊藤ひとみ 本番#432対応
  *  2009/05/01    1.6  SCS    伊藤ひとみ 本番#432(指摘5)対応
  *  2016/06/22    1.7  SCSK   仁木重人   E_本稼動_13659対応
+ *  2016/08/12    1.8  SCSK   桐生和幸   E_本稼動_13808対応
  *
  *****************************************************************************************/
 --
@@ -1303,18 +1304,23 @@ AS
     lv_lock_err_tbl_name VARCHAR2(100);  -- ロックエラー発生テーブル名
 -- ##### 20090410 Ver.1.5 本番#432対応 ADD END   #####
 --
-    -- *** ローカル・カーソル ***
-    CURSOR cur_lock_xd IS
-      SELECT xd.deliverys_header_id AS deliverys_header_id
-      FROM   xxwip_deliverys xd
-      WHERE  xd.p_b_classe        = gv_paycharge_type_2
-      FOR UPDATE NOWAIT;
+-- ##### Ver.1.8 E_本稼動_13808対応 START #####
+--    -- *** ローカル・カーソル ***
+--    CURSOR cur_lock_xd IS
+--      SELECT xd.deliverys_header_id AS deliverys_header_id
+--      FROM   xxwip_deliverys xd
+--      WHERE  xd.p_b_classe        = gv_paycharge_type_2
+--      FOR UPDATE NOWAIT;
+-- ##### Ver.1.8 E_本稼動_13808対応 END   #####
 -- ##### 20090410 Ver.1.5 本番#432対応 START #####
     -- 運賃用運送業者アドオンマスタロック取得
     CURSOR cur_lock_xdco IS
       SELECT xdco.delivery_company_id AS delivery_company_id
       FROM   xxwip_delivery_company xdco              -- 運賃用運送業者アドオンマスタ
       WHERE  xdco.bill_change_flg = gv_change_flg_on  -- 請求変更フラグ:ON
+-- ##### Ver.1.8 E_本稼動_13808対応 START #####
+      AND    xdco.goods_classe    = gv_prod_div       -- 商品区分
+-- ##### Ver.1.8 E_本稼動_13808対応 END   #####
       FOR UPDATE NOWAIT;
 --
     -- 運賃アドオンマスタロック取得
@@ -1323,6 +1329,9 @@ AS
       FROM   xxwip_delivery_charges xdch              -- 運賃アドオンマスタ
       WHERE  xdch.change_flg      = gv_change_flg_on      -- 変更フラグ:ON
       AND    xdch.p_b_classe      = gv_paycharge_type_2   -- 支払請求区分:請求
+-- ##### Ver.1.8 E_本稼動_13808対応 START #####
+      AND    xdch.goods_classe    = gv_prod_div       -- 商品区分
+-- ##### Ver.1.8 E_本稼動_13808対応 END   #####
       FOR UPDATE NOWAIT;
 -- ##### 20090410 Ver.1.5 本番#432対応 END   #####
 --
@@ -1343,18 +1352,20 @@ AS
 --    -- 運賃ヘッダアドオンのレコードロックを取得
 --    OPEN cur_lock_xd;
 --
-    -- ==================================
-    -- 運賃ヘッダアドオンロックを取得
-    -- ==================================
-    BEGIN
-      OPEN  cur_lock_xd;
-      CLOSE cur_lock_xd;
---
-    EXCEPTION
-      WHEN lock_expt THEN
-        lv_lock_err_tbl_name := gv_deli_name;
-        RAISE lock_expt;
-    END;
+-- ##### Ver.1.8 E_本稼動_13808対応 START #####
+--    -- ==================================
+--    -- 運賃ヘッダアドオンロックを取得
+--    -- ==================================
+--    BEGIN
+--      OPEN  cur_lock_xd;
+--      CLOSE cur_lock_xd;
+----
+--    EXCEPTION
+--      WHEN lock_expt THEN
+--        lv_lock_err_tbl_name := gv_deli_name;
+--        RAISE lock_expt;
+--    END;
+-- ##### Ver.1.8 E_本稼動_13808対応 END   #####
 --
     -- 洗替区分YESの場合、マスタのロック取得
     IF (iv_exchange_type = gv_ktg_yes) THEN
@@ -1509,6 +1520,9 @@ AS
              NVL(xdc.bill_picking_amount, 0) -- 請求ピッキング単価
       BULK COLLECT INTO gt_extraction_xd
       FROM   xxwip_deliverys        xd,  -- 運賃ヘッダアドオン
+-- ##### Ver.1.8 E_本稼動_13808対応 START #####
+             xxwip_deliverys        xdl, -- 運賃ヘッダアドオン(請求データロック用)
+-- ##### Ver.1.8 E_本稼動_13808対応 END   #####
              xxwip_delivery_company xdc  -- 運賃用運送業者アドオンマスタ
       WHERE  xd.p_b_classe            =  gv_paycharge_type_1
       AND    xd.defined_flag          =  gv_defined_yes
@@ -1522,7 +1536,21 @@ AS
       AND    xd.judgement_date        >= ld_first_day
       AND    xd.last_update_date      >  gd_last_process_date
       AND    xd.last_update_date      <= gd_sysdate
-      ORDER BY xd.delivery_no;
+-- ##### Ver.1.8 E_本稼動_13808対応 START #####
+      AND    xd.delivery_no            = xdl.delivery_no(+)
+      AND    xdl.p_b_classe(+)         = gv_paycharge_type_2
+--      ORDER BY xd.delivery_no;
+      ORDER BY xd.delivery_no
+      FOR UPDATE OF xdl.deliverys_header_id, xd.deliverys_header_id NOWAIT
+      ;
+--
+    EXCEPTION
+      WHEN lock_expt THEN       -- ロック取得エラー
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wip, gv_msg_wip_10004,
+                                              gv_tkn_table,   gv_deli_name);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+-- ##### Ver.1.8 E_本稼動_13808対応 END   #####
     END;
 --
   EXCEPTION
@@ -2317,7 +2345,19 @@ AS
       AND    xd.judgement_date        >= xdc.start_date_active(+)
       AND    xd.judgement_date        <= xdc.end_date_active(+)
       AND    xd.judgement_date        >= ld_first_day
-      ORDER BY xd.delivery_no;
+-- ##### Ver.1.8 E_本稼動_13808対応 START #####
+--      ORDER BY xd.delivery_no;
+      ORDER BY xd.delivery_no
+      FOR UPDATE OF xd.deliverys_header_id NOWAIT
+      ;
+--
+    EXCEPTION
+      WHEN lock_expt THEN       -- ロック取得エラー
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wip, gv_msg_wip_10004,
+                                              gv_tkn_table,   gv_deli_name);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+-- ##### Ver.1.8 E_本稼動_13808対応 END   #####
     END;
 --
   EXCEPTION
