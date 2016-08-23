@@ -44,6 +44,10 @@ CREATE OR REPLACE VIEW APPS.XXSKY_工順マスタ_現在_V
 ,作業部署名
 ,納品倉庫
 ,納品倉庫名
+-- 2016/07/01 S.Yamashita Add Start E_本稼動_13689
+,生産バッチ情報IF対象フラグ
+,生産バッチ情報IF対象フラグ名
+-- 2016/07/01 S.Yamashita Add End E_本稼動_13689
 ,作成者
 ,作成日
 ,最終更新者
@@ -218,6 +222,15 @@ SELECT  GRB.routing_no                 --工順番号
          FROM ic_whse_mst IWM02  --倉庫(納品倉庫名)
          WHERE IWM02.whse_code = GRB.attribute21
         ) IWM02_whse_name
+-- 2016/07/01 S.Yamashita Add Start E_本稼動_13689
+       ,grb.attribute22 AS s_batch_if_flag --生産バッチ情報IF対象フラグ
+       ,(SELECT flv.meaning
+         FROM fnd_lookup_values flv  --クイックコード(XXCMN_YESNO)
+         WHERE flv.language    = 'JA'
+           AND flv.lookup_type = 'XXCMN_YESNO'
+           AND flv.lookup_code = grb.attribute22
+        ) s_batch_if_name            --生産バッチ情報IF対象フラグ名
+-- 2016/07/01 S.Yamashita Add End E_本稼動_13689
        --,FU_CB.user_name                --作成者
        ,(SELECT FU_CB.user_name
          FROM fnd_user FU_CB  --ユーザーマスタ(created_by名称取得用)
