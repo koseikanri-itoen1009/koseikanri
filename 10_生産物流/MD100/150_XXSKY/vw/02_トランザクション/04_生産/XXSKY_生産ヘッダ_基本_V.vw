@@ -220,7 +220,10 @@ FROM
                ,GMD.last_update_date                             -- 最終更新日(支給依頼情報IF明細)
                ,GMD.last_update_login                            -- 最終更新ログイン
                 --名称取得用基準日
-               ,NVL( TO_DATE( GMD.attribute11 ), TRUNC( GBH.plan_start_date ) )    --NVL( 生産日, 計画開始日 )
+-- 2016/06/21 S.Yamashita Mod Start
+--               ,NVL( TO_DATE( GMD.attribute11 ), TRUNC( GBH.plan_start_date ) )    --NVL( 生産日, 計画開始日 )
+               ,NVL( TO_DATE( GMD.attribute11,'YYYY/MM/DD' ), TRUNC( GBH.plan_start_date ) )    --NVL( 生産日, 計画開始日 )
+-- 2016/06/21 S.Yamashita Mod End
                                                   act_date       -- 生産日 (⇒品目名称取得で使用)
           FROM
                  gme_batch_header            GBH                 -- 生産バッチ
