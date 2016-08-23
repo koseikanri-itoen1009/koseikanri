@@ -209,7 +209,10 @@ FROM
                              ,XMD.plan_type                 plan_type          -- ロット_予定区分
                              ,XMD.plan_number               plan_number        -- ロット_予定番号
                               --名称取得用基準日
-                             ,NVL( TO_DATE( GMDF.attribute11 ), GBH.plan_start_date )    --NVL( 生産日, 計画開始日 )
+-- 2016/06/21 S.Yamashita Mod Start
+--                             ,NVL( TO_DATE( GMDF.attribute11 ), GBH.plan_start_date )    --NVL( 生産日, 計画開始日 )
+                             ,NVL( TO_DATE( GMDF.attribute11, 'YYYY/MM/DD' ), GBH.plan_start_date )    --NVL( 生産日, 計画開始日 )
+-- 2016/06/21 S.Yamashita Mod ENd
                                                             act_date           -- 生産日 (⇒品目名称取得で使用)
                         FROM
                               gme_batch_header              GBH                -- 生産バッチ
@@ -296,7 +299,10 @@ FROM
                   ,NULL                        plan_type          -- ロット_予定区分
                   ,NULL                        plan_number        -- ロット_予定番号
                    --名称取得用基準日
-                  ,NVL( TO_DATE( GMDF.attribute11 ), TRUNC( GBH.plan_start_date ) )    --NVL( 生産日, 計画開始日 )
+-- 2016/06/21 S.Yamashita Mod Start
+--                  ,NVL( TO_DATE( GMDF.attribute11 ), TRUNC( GBH.plan_start_date ) )    --NVL( 生産日, 計画開始日 )
+                  ,NVL( TO_DATE( GMDF.attribute11, 'YYYY/MM/DD' ), TRUNC( GBH.plan_start_date ) )    --NVL( 生産日, 計画開始日 )
+-- 2016/06/21 S.Yamashita Mod End
                                                act_date           -- 生産日 (⇒品目名称取得で使用)
              FROM
                    gme_batch_header            GBH                -- 生産バッチ
