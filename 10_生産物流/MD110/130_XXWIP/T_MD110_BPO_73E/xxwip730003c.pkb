@@ -7,13 +7,12 @@ AS
  * Description      : 運賃アドオンインタフェース取込処理
  * MD.050           : 運賃計算（トランザクション）       T_MD050_BPO_732
  * MD.070           : 運賃アドオンインタフェース取込処理 T_MD070_BPO_73E
- * Version          : 1.8
+ * Version          : 1.9
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  get_related_date       関連データ取得(E-1)
- *  get_lock               ロック取得(E-2)
  *  get_deliv_if_date      運賃アドオンインタフェースデータ取得(E-3)
  *  chk_object             更新対象チェック(E-4)
  *  get_deliv_cal_date     運賃計算用データ取得(E-5)
@@ -38,6 +37,7 @@ AS
  *  2008/12/01    1.6  Oracle 野村 正幸  本番#303対応
  *  2009/03/03    1.7  野村 正幸         本番#1239対応
  *  2016/06/24    1.8  S.Niki            E_本稼動_13659対応
+ *  2016/08/16    1.9  S.Yamashita       E_本稼動_13808対応
  *
  *****************************************************************************************/
 --
@@ -590,91 +590,93 @@ AS
 --
   END get_related_date;
 --
-  /**********************************************************************************
-   * Procedure Name   : get_lock
-   * Description      : ロック取得(E-2)
-   ***********************************************************************************/
-  PROCEDURE get_lock(
-    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
-    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
-    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_lock'; -- プログラム名
---
---#####################  固定ローカル変数宣言部 START   ########################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := gv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
---
-    -- *********************************************
-    -- 運賃ヘッダーアドオンのロック取得
-    -- *********************************************
-    -- ロック取得失敗の場合
-    IF (NOT(xxcmn_common_pkg.get_tbl_lock(
-          gv_wip_msg_kbn,        -- スキーマ名
-          gv_tbl_n_deliv_head))) -- テーブル名
-    THEN
-      -- ロックエラー詳細メッセージの出力
-      lv_errmsg := xxcmn_common_pkg.get_msg(gv_wip_msg_kbn,
-                                            gv_wip_msg_73e_004,
-                                            gv_tkn_table,
-                                            gv_deliv_head_name);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := gv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
-      ov_retcode := gv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
-      ov_retcode := gv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END get_lock;
+-- ##### Ver.1.9 E_本稼動_13808対応 START #####
+--  /**********************************************************************************
+--   * Procedure Name   : get_lock
+--   * Description      : ロック取得(E-2)
+--   ***********************************************************************************/
+--  PROCEDURE get_lock(
+--    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+--    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+--    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_lock'; -- プログラム名
+----
+----#####################  固定ローカル変数宣言部 START   ########################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := gv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+----
+--    -- *********************************************
+--    -- 運賃ヘッダーアドオンのロック取得
+--    -- *********************************************
+--    -- ロック取得失敗の場合
+--    IF (NOT(xxcmn_common_pkg.get_tbl_lock(
+--          gv_wip_msg_kbn,        -- スキーマ名
+--          gv_tbl_n_deliv_head))) -- テーブル名
+--    THEN
+--      -- ロックエラー詳細メッセージの出力
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_wip_msg_kbn,
+--                                            gv_wip_msg_73e_004,
+--                                            gv_tkn_table,
+--                                            gv_deliv_head_name);
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode := gv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+--      ov_retcode := gv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+--      ov_retcode := gv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END get_lock;
+-- ##### Ver.1.9 E_本稼動_13808対応 END   #####
 --
 --
   /**********************************************************************************
@@ -986,9 +988,28 @@ AS
       FROM   xxwip_deliverys xd           -- 運賃ヘッダーアドオン
       WHERE  xd.delivery_company_code = ir_deliv_if_rec.delivery_company_code
       AND    xd.delivery_no           = ir_deliv_if_rec.delivery_no
-      AND    xd.p_b_classe            = ir_deliv_if_rec.p_b_classe;
+-- ##### Ver.1.9 E_本稼動_13808対応 START #####
+--      AND    xd.p_b_classe            = ir_deliv_if_rec.p_b_classe;
+      AND    xd.p_b_classe            = ir_deliv_if_rec.p_b_classe
+      FOR UPDATE NOWAIT
+      ;
+-- ##### Ver.1.9 E_本稼動_13808対応 END   #####
 --
     EXCEPTION
+-- ##### Ver.1.9 E_本稼動_13808対応 START #####
+      WHEN lock_expt THEN       -- ロック取得エラー
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_wip_msg_kbn,
+                                              gv_wip_msg_73e_004,
+                                              gv_tkn_table,
+                                              gv_deliv_head_name);
+        lv_errbuf := lv_errmsg;
+        -- ## LOCK_KEY_INFO ##
+        FND_FILE.PUT_LINE(FND_FILE.LOG, '[LOCK_KEY_INFO] delivery_company_code: ' || ir_deliv_if_rec.delivery_company_code
+                                        || ', delivery_no: ' || ir_deliv_if_rec.delivery_no
+                                        || ', p_b_classe: ' || ir_deliv_if_rec.p_b_classe
+                          );
+        RAISE global_api_expt;
+-- ##### Ver.1.9 E_本稼動_13808対応 END   #####
       WHEN NO_DATA_FOUND THEN   -- データなしエラー
         lv_head_date_flg := gv_ktg_no;
 --
@@ -2416,16 +2437,18 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- =========================================
-    -- ロック取得(E-2)
-    -- =========================================
-    get_lock(
-      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-      lv_retcode,        -- リターン・コード             --# 固定 #
-      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
+-- ##### Ver.1.9 E_本稼動_13808対応 START #####
+--    -- =========================================
+--    -- ロック取得(E-2)
+--    -- =========================================
+--    get_lock(
+--      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--      lv_retcode,        -- リターン・コード             --# 固定 #
+--      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--    IF (lv_retcode = gv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+-- ##### Ver.1.9 E_本稼動_13808対応 END   #####
 --
     -- =========================================
     -- 運賃アドオンインタフェースデータ取得(E-3)
