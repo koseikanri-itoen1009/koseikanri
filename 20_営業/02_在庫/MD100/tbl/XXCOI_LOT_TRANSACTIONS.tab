@@ -3,7 +3,7 @@
  *
  * Table Name      : XXCOI_LOT_TRANSACTIONS
  * Description     : ロット別取引明細
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2014/10/03    1.0   Y.Nagasue        新規作成
  *  2015/03/10    1.1   Y.Nagasue        [E_本稼動_12237]倉庫管理システム追加対応
+ *  2016/08/05    1.2   S.Yamashita      E_本稼動_13680対応
  *
  ************************************************************************/
 CREATE TABLE xxcoi.xxcoi_lot_transactions (
@@ -46,6 +47,9 @@ CREATE TABLE xxcoi.xxcoi_lot_transactions (
     ,reason                         VARCHAR2(1000)
     ,fix_user_code                  VARCHAR2(30)
     ,fix_user_name                  VARCHAR2(360)
+-- 2016/06/22 Ver1.2 Add Start
+    ,wf_delivery_flag               VARCHAR2(1)
+-- 2016/06/22 Ver1.2 Add End
     ,created_by                     NUMBER(15,0)  NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15,0)  NOT NULL
@@ -123,6 +127,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.fix_user_code                    
 /
 COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.fix_user_name                           IS '確定者名'
 /
+-- 2016/06/22 Ver1.2 Add Start
+COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.wf_delivery_flag                        IS 'WF配信済フラグ'
+/
+-- 2016/06/22 Ver1.2 Add End
 COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.created_by                              IS '作成者'
 /
 COMMENT ON COLUMN xxcoi.xxcoi_lot_transactions.creation_date                           IS '作成日'
