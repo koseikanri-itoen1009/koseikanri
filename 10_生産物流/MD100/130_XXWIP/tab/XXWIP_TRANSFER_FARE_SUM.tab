@@ -6,8 +6,12 @@ CREATE TABLE xxwip.xxwip_transfer_fare_sum
   goods_classe            VARCHAR2(1)   NOT NULL,
   jurisdicyional_hub      VARCHAR2(4)   NOT NULL,
   actual_qty              NUMBER(9,0)   NOT NULL,
-  leaf_amount             NUMBER(10,0),
-  drink_amount            NUMBER(10,0),
+-- Mod Ver1.1 Start
+--  leaf_amount             NUMBER(10,0),
+--  drink_amount            NUMBER(10,0),
+  leaf_amount             NUMBER(12,0),
+  drink_amount            NUMBER(12,0),
+-- Mod Ver1.1 End
   created_by              NUMBER(15,0)  NOT NULL,
   creation_date           DATE          NOT NULL,
   last_updated_by         NUMBER(15,0)  NOT NULL,
