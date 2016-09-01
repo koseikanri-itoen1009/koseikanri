@@ -12,7 +12,10 @@ CREATE TABLE xxwip.xxwip_transfer_fare_inf
   price                   NUMBER(7,1)     NOT NULL,
   calc_qry                NUMBER(9,0)     NOT NULL,
   actual_qty              NUMBER(9,0)     NOT NULL,
-  amount                  NUMBER(10,0)    NOT NULL,
+-- Mod Ver.1.1 Start
+--  amount                  NUMBER(10,0)    NOT NULL,
+  amount                  NUMBER(12,0)    NOT NULL,
+-- Mod Ver.1.1 End
   created_by              NUMBER(15,0)    NOT NULL,
   creation_date           DATE            NOT NULL,
   last_updated_by         NUMBER(15,0)    NOT NULL,
