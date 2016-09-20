@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A03R (body)
  * Description      : 原価割れチェックリスト
  * MD.050           : 原価割れチェックリスト MD050_COS_009_A03
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2011/06/20    1.12  T.Ishiwata       [E_本稼動_07097]異常掛率卸価格チェック対応
  *  2012/01/24    1.13  T.Yoshimoto      [E_本稼動_08679]出力区分追加対応
  *  2015/03/16    1.14  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
+ *  2016/08/25    1.15  K.Kiriu          [E_本稼動_13807]データ0件時のヘッダ出力対応
  *
  *****************************************************************************************/
 --
@@ -1025,6 +1026,11 @@ AS
     ln_old_fixed_price        xxcmm_system_items_b_hst.fixed_price%TYPE;  --定価・旧
     lv_fixed_er_flg           VARCHAR2(1);                                --定価取得エラーフラグ
 -- 2011/06/20 Ver1.12 T.Ishiwata Add End
+-- Add 1.15 Start
+    lt_nodata_msg             xxcos_rep_cost_div_list.no_data_message%TYPE;  -- 明細0件用メッセージ
+    ln_data_cnt               NUMBER := 0;                                   -- データ件数（対象なしメッセージ用以外）
+    lb_base_data_flg          BOOLEAN;                                       -- 拠点データ存在フラグ
+-- Add 1.15 End
 --
     -- *** ローカル・カーソル ***
     CURSOR data_cur
@@ -1984,6 +1990,13 @@ AS
     ld_process_first_day      := TRUNC( gd_proc_date, cv_mm );
     -- 業務日付の前月の1日を取得
     ld_proc_process_first_day := TRUNC( ADD_MONTHS( gd_proc_date, -1 ), cv_mm );
+-- Add 1.15 Start
+    --明細0件用メッセージ取得
+    lt_nodata_msg  :=  xxccp_common_pkg.get_msg(
+      iv_application        =>  cv_xxcos_short_name,
+      iv_name               =>  cv_msg_no_data_err
+    );
+-- Add 1.15 End
 -- ************************ 2010/05/24 Y.Kuboshima Ver1.10 ADD END   *********************** --
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
     FOR i IN 1..g_base_info_tab.COUNT LOOP
@@ -1992,6 +2005,9 @@ AS
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
     --フラグ初期化
     lb_ext_flg      := FALSE;
+-- Add 1.15 Start
+    lb_base_data_flg := FALSE;
+-- Add 1.15 End
 -- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
     -- 出力区分が"1"(両方)または"2"(原価割れのみ)の場合
     IF (iv_output_type IN (lv_output_type_1, lv_output_type_2)) THEN
@@ -2054,6 +2070,13 @@ AS
         g_report_data_tab(ln_idx).unit_price_check_mark  := l_data_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
         g_report_data_tab(ln_idx).unit_price_check_sort  := l_data_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
 -- 2011/06/20 Ver1.12 T.Ishiwata Add End
+-- Add 1.15 Strat
+        g_report_data_tab(ln_idx).no_data_message        := NULL;                        -- 0件メッセージ
+        -- データ件数カウント
+        ln_data_cnt      := ln_data_cnt + 1;
+        -- 拠点単位にデータあり
+        lb_base_data_flg := TRUE;
+-- Add 1.15 End
         --営業原価先行チェック
         IF ( l_data_rec.biz_cost IS NULL ) THEN
           --警告件数計上
@@ -2201,6 +2224,13 @@ AS
               g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;            --ﾌﾟﾛｸﾞﾗﾑ更新日
               g_report_data_tab(ln_idx).unit_price_check_mark  := l_rate_check_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
               g_report_data_tab(ln_idx).unit_price_check_sort  := l_rate_check_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
+-- Add 1.15 Start
+              g_report_data_tab(ln_idx).no_data_message        := NULL;                               -- 0件メッセージ
+              -- データ件数カウント
+              ln_data_cnt      := ln_data_cnt + 1;
+              -- 拠点単位にデータあり
+              lb_base_data_flg := TRUE;
+-- Add 1.15 End
             END;
           END IF;
         ELSE
@@ -2251,6 +2281,13 @@ AS
             g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;              --ﾌﾟﾛｸﾞﾗﾑ更新日
             g_report_data_tab(ln_idx).unit_price_check_mark  := l_rate_check_rec.unit_price_check_mark; --異常掛率卸価格チェック(表示用)
             g_report_data_tab(ln_idx).unit_price_check_sort  := l_rate_check_rec.unit_price_check_sort; --異常掛率卸価格チェック(ソート用)
+-- Add 1.15 Start
+            g_report_data_tab(ln_idx).no_data_message        := NULL;                                -- 0件メッセージ
+            -- データ件数カウント
+            ln_data_cnt      := ln_data_cnt + 1;
+            -- 拠点単位にデータあり
+            lb_base_data_flg := TRUE;
+-- Add 1.15 End
           END;
         END IF;
      END LOOP get_rate_check_data;
@@ -2258,13 +2295,63 @@ AS
 -- 2012/01/24 v1.13 T.Yoshimoto Add Start E_本稼動_08679
     END IF;
 -- 2012/01/24 v1.13 T.Yoshimoto Add End
+-- Add 1.15 Start
+      -- 拠点単位でデータが存在しない場合
+      IF ( lb_base_data_flg = FALSE ) THEN
+        -- 拠点単位で、データなしメッセージ出力用のデータを作成する。
+        BEGIN
+          SELECT
+            xxcos_rep_cost_div_list_s01.NEXTVAL     redord_id
+          INTO
+            lt_record_id
+          FROM
+            dual
+          ;
+        END;
+        --
+        ln_idx := ln_idx + 1;
+        g_report_data_tab(ln_idx).record_id              := lt_record_id;                    --レコードID
+        g_report_data_tab(ln_idx).base_code              := gv_base_code;                    --拠点コード
+        g_report_data_tab(ln_idx).base_name              := SUBSTRB( gv_base_name, 1, 40 );  --拠点名称
+        g_report_data_tab(ln_idx).dlv_date_start         := id_dlv_date_from;                --納品日開始
+        g_report_data_tab(ln_idx).dlv_date_end           := id_dlv_date_to;                  --納品日終了
+        g_report_data_tab(ln_idx).inv_cl_char            := gt_inv_cl_char;                  --在庫確定印字文字
+        g_report_data_tab(ln_idx).employee_base_code     := NULL;                            --営業担当者コード
+        g_report_data_tab(ln_idx).employee_base_name     := NULL;                            --営業担当者名
+        g_report_data_tab(ln_idx).deliver_to_code        := NULL;                            --出荷先コード
+        g_report_data_tab(ln_idx).deliver_to_name        := NULL;                            --出荷先名
+        g_report_data_tab(ln_idx).dlv_date               := NULL;                            --納品日
+        g_report_data_tab(ln_idx).dlv_invoice_number     := NULL;                            --納品伝票番号
+        g_report_data_tab(ln_idx).item_code              := NULL;                            --品目コード
+        g_report_data_tab(ln_idx).order_item_name        := NULL;                            --受注品名
+        g_report_data_tab(ln_idx).quantity               := NULL;                            --数量
+        g_report_data_tab(ln_idx).uom_code               := NULL;                            --単位
+        g_report_data_tab(ln_idx).dlv_unit_price         := NULL;                            --納品単価
+        g_report_data_tab(ln_idx).sale_amount            := NULL;                            --売上金額
+        g_report_data_tab(ln_idx).created_by             := cn_created_by;                   --作成者
+        g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                --作成日
+        g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;              --最終更新者
+        g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;             --最終更新日
+        g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;            --最終更新ﾛｸﾞｲﾝ
+        g_report_data_tab(ln_idx).request_id             := cn_request_id;                   --要求ID
+        g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;       --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        g_report_data_tab(ln_idx).program_id             := cn_program_id;                   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;          --ﾌﾟﾛｸﾞﾗﾑ更新日
+        g_report_data_tab(ln_idx).unit_price_check_mark  := NULL;                            --異常掛率卸価格チェック(表示用)
+        g_report_data_tab(ln_idx).unit_price_check_sort  := NULL;                            --異常掛率卸価格チェック(ソート用)
+        g_report_data_tab(ln_idx).no_data_message        := lt_nodata_msg;                   -- 0件メッセージ
+      END IF;
+-- Add 1.15 End
 --
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD START ************************ --
     END LOOP;
 -- ************************ 2010/01/18 S.Miyakoshi Var1.8 ADD  END  ************************ --
 --
     --処理件数カウント
-    gn_target_cnt := g_report_data_tab.COUNT;
+-- Mod 1.15 Start
+--    gn_target_cnt := g_report_data_tab.COUNT;
+    gn_target_cnt := ln_data_cnt;  --対象なしメッセージ用データ以外の件数
+-- Mod 1.15 End
 --
   EXCEPTION
 --
@@ -2434,7 +2521,10 @@ AS
     END;
 --
     --正常件数取得
-    gn_normal_cnt := g_report_data_tab.COUNT;
+-- Mod 1.15 Start
+--    gn_normal_cnt := g_report_data_tab.COUNT;
+    gn_normal_cnt := gn_target_cnt;  -- 成功件数＝対象件数（対象なしデータメッセージ用以外）とする
+-- Mod 1.15 End
 --
   EXCEPTION
     --*** 処理対象データ登録例外 ***
@@ -2505,7 +2595,9 @@ AS
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
-    lv_nodata_msg       VARCHAR2(5000);   --明細0件用メッセージ
+-- Del 1.15 Start
+--    lv_nodata_msg       VARCHAR2(5000);   --明細0件用メッセージ
+-- Del 1.15 End
     lv_file_name        VARCHAR2(100);    --出力ファイル名
     lv_tkn_vl_api_name  VARCHAR2(100);    --API名
 --
@@ -2517,11 +2609,13 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    --明細0件用メッセージ取得
-    lv_nodata_msg           :=  xxccp_common_pkg.get_msg(
-      iv_application        =>  cv_xxcos_short_name,
-      iv_name               =>  cv_msg_no_data_err
-    );
+-- Del 1.15 Start
+--    --明細0件用メッセージ取得
+--    lv_nodata_msg           :=  xxccp_common_pkg.get_msg(
+--      iv_application        =>  cv_xxcos_short_name,
+--      iv_name               =>  cv_msg_no_data_err
+--    );
+-- Del 1.15 End
 --
     --出力ファイル名編集
     lv_file_name := cv_report_id || TO_CHAR( SYSDATE, cv_yyyymmdd ) || TO_CHAR( cn_request_id ) || cv_extension;
@@ -2543,7 +2637,10 @@ AS
       iv_doc_name             =>  NULL,
       iv_printer_name         =>  NULL,
       iv_request_id           =>  TO_CHAR( cn_request_id ),
-      iv_nodata_msg           =>  lv_nodata_msg,
+-- Mod 1.15 Start
+--      iv_nodata_msg           =>  lv_nodata_msg,
+      iv_nodata_msg           =>  NULL,
+-- Mod 1.15 End
       iv_svf_param1           =>  NULL,
       iv_svf_param2           =>  NULL,
       iv_svf_param3           =>  NULL,
