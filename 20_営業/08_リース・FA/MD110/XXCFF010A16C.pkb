@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF010A16C(body)
  * Description      : リース仕訳作成
  * MD.050           : MD050_CFF_010_A16_リース仕訳作成
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/05/27    1.5   SCS山岸謙一      [障害T1_1223]顧客コードの仕訳への設定は自販機のみとする改修
  *  2013/07/22    1.6   SCSK中野徹也     [E_本稼動_10871]消費税増税対応
  *  2014/01/28    1.7   SCSK中野徹也     [E_本稼動_11170]支払利息計上時の不具合対応
+ *  2016/09/16    1.8   SCSK小路恭弘     [E_本稼動_13658]障害対応分
  *
  *****************************************************************************************/
 --
@@ -249,6 +250,9 @@ AS
 -- T1_0356 2009/04/17 ADD START --
   -- ***物件ステータス
   cv_object_status_105  CONSTANT VARCHAR2(3) := '105';  -- 移動
+-- 2016/09/16 Ver.1.8 Y.Shoji ADD Start
+  cv_object_status_106  CONSTANT VARCHAR2(3) := '106';  -- 物件情報変更
+-- 2016/09/16 Ver.1.8 Y.Shoji ADD End
 --
   -- ***オンライン終了時間
   cv_online_end_time  CONSTANT VARCHAR2(8) := '24:00:00';  
@@ -2344,6 +2348,10 @@ AS
 -- T1_0356 2009/04/17 ADD START --
     lv_department_code  xxcff_object_histories.department_code%TYPE;  --管理部門
 -- T1_0356 2009/04/17 ADD END   --
+-- 2016/09/16 Ver.1.8 Y.Shoji ADD Start
+    lv_owner_company    xxcff_object_histories.m_owner_company%TYPE;  --移動元本社／工場
+    lv_customer_code    xxcff_object_histories.customer_code%TYPE;    --顧客コード
+-- 2016/09/16 Ver.1.8 Y.Shoji ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2441,22 +2449,61 @@ AS
       g_charge_tax_tab(gn_pay_plan_target_cnt)         := g_get_pay_plan_data_rec.charge_tax;          -- リース料_消費税
       g_tax_code_tab(gn_pay_plan_target_cnt)           := g_get_pay_plan_data_rec.tax_code;            -- 税コード
 --
-      --リース物件履歴が取得できる場合はリース物件履歴の移動元管理部門を設定する。
+      --リース物件履歴が取得できる場合はリース物件履歴の移動元管理部門、移動元本社／工場を設定する。
       BEGIN
-        SELECT   xoh.m_department_code
+-- 2016/09/16 Ver.1.8 Y.Shoji MOD Start
+--        SELECT   xoh.m_department_code
+--        INTO     lv_department_code
+--        FROM     xxcff_object_histories xoh
+--        WHERE    xoh.object_header_id =  g_get_pay_plan_data_rec.object_header_id
+--        AND      xoh.creation_date    >  gd_base_date
+--        AND      xoh.object_status    =  cv_object_status_105
+--        AND      rownum = 1
+--        ORDER BY creation_date ASC;
+        SELECT   xoh1.m_department_code  m_department_code  -- 移動元管理部門
+                ,xoh1.m_owner_company    m_owner_company    -- 移動元本社／工場
         INTO     lv_department_code
-        FROM     xxcff_object_histories xoh
-        WHERE    xoh.object_header_id =  g_get_pay_plan_data_rec.object_header_id
-        AND      xoh.creation_date    >  gd_base_date
-        AND      xoh.object_status    =  cv_object_status_105
-        AND      rownum = 1
-        ORDER BY creation_date ASC;
+                ,lv_owner_company
+        FROM     (SELECT xoh.m_department_code  m_department_code
+                        ,xoh.m_owner_company    m_owner_company
+                  FROM   xxcff_object_histories xoh
+                  WHERE  xoh.object_header_id =  g_get_pay_plan_data_rec.object_header_id
+                  AND    xoh.creation_date    >  gd_base_date
+                  AND    xoh.object_status    =  cv_object_status_105
+                  ORDER BY xoh.creation_date ASC
+                 ) xoh1
+        WHERE    rownum = 1;
+-- 2016/09/16 Ver.1.8 Y.Shoji MOD END
       --該当データが存在しない場合はリース物件の管理部門を設定する。
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           lv_department_code := g_get_pay_plan_data_rec.department_code; 
+-- 2016/09/16 Ver.1.8 Y.Shoji ADD Start
+          lv_owner_company   := g_get_pay_plan_data_rec.owner_company;
+-- 2016/09/16 Ver.1.8 Y.Shoji ADD End
       END;
       g_department_code_tab(gn_pay_plan_target_cnt) := lv_department_code; --管理部門を再設定する。
+-- 2016/09/16 Ver.1.8 Y.Shoji ADD Start
+      g_owner_company_tab(gn_pay_plan_target_cnt)   := lv_owner_company;   --本社／工場を再設定する。
+--
+      --リース物件履歴が取得できる場合はリース物件履歴の顧客コードを設定する。
+      BEGIN
+        SELECT   xoh1.customer_code  customer_code  -- 顧客コード
+        INTO     lv_customer_code
+        FROM     (SELECT xoh.customer_code  customer_code
+                  FROM   xxcff_object_histories xoh
+                  WHERE  xoh.object_header_id =  g_get_pay_plan_data_rec.object_header_id
+                  AND    xoh.creation_date    <  gd_base_date
+                  AND    xoh.object_status    =  cv_object_status_106
+                  ORDER BY xoh.creation_date DESC
+                 ) xoh1
+        WHERE    rownum = 1;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_customer_code := g_get_pay_plan_data_rec.customer_code;
+      END;
+      g_customer_code_tab(gn_pay_plan_target_cnt) := lv_customer_code; --顧客コードを再設定する。
+-- 2016/09/16 Ver.1.8 Y.Shoji ADD End
     END LOOP;
 -- T1_0356 2009/04/17 END  --
 --
