@@ -7,19 +7,20 @@ AS
  * Package Name     : XXCFF003A05C(body)
  * Description      : 支払計画作成
  * MD.050           : MD050_CFF_003_A05_支払計画作成.doc
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
- *  get_process_date       業務処理日付取得処理           (A-1)
- *  chk_data_validy        入力項目チェック処理           (A-2)
- *  get_contract_info      リース契約情報抽出処理         (A-3)
- *  ins_pat_planning       リース支払計画作成処理         (A-5)
- *  upd_pat_planning       リース支払計画控除額変更処理   (A-6)
- *  can_pat_planning       リース支払計画中途解約処理     (A-7)
- *  del_pat_planning       リース支払計画削除処理         (A-8)
+ *  get_process_date       業務処理日付取得処理                      (A-1)
+ *  chk_data_validy        入力項目チェック処理                      (A-2)
+ *  get_contract_info      リース契約情報抽出処理                    (A-3)
+ *  ins_pat_plan_class11   リース支払計画作成処理 （自販機・原契約） (A-10)
+ *  ins_pat_planning       リース支払計画作成処理                    (A-5)
+ *  upd_pat_planning       リース支払計画控除額変更処理              (A-6)
+ *  can_pat_planning       リース支払計画中途解約処理                (A-7)
+ *  del_pat_planning       リース支払計画削除処理                    (A-8)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -36,6 +37,7 @@ AS
  * 2009/7/9       1.2   SCS萱原伸哉     [統合テスト障害00000417]中途解約日更新時の条件変更
  * 2011/12/19     1.3   SCSK中村健一    [E_本稼動_08123] 中途解約時の更新条件変更
  * 2012/2/6       1.4   SCSK菅原大輔    [E_本稼動_08356] 支払計画作成時の会計期間比較条件変更 
+ * 2016/9/6       1.5   SCSK小路恭弘    [E_本稼動_13658] 耐用年数変更対応
  *
  *****************************************************************************************/
 --
@@ -134,9 +136,21 @@ AS
   cv_msg_cff_50028   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50028';  -- 契約明細内部ID
   cv_msg_cff_50088   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50088';  -- リース支払計画
 --
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+  --プロファイル
+  cv_set_of_bks_id   CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID';   --XXCFF: リース契約情報ファイル名称
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+  cv_lease_class11   CONSTANT VARCHAR2(2) := '11';       -- リース種別：1（自販機）
+  cv_lease_type1     CONSTANT VARCHAR2(1) := '1';        -- リース区分：1（原契約）
+  cv_lease_type2     CONSTANT VARCHAR2(1) := '2';        -- リース区分：2（再リース）
+--
+  -- 日付フォーマット
+  cv_format_yyyymm   CONSTANT VARCHAR2(7) := 'YYYY-MM';  -- YYYY-MMフォーマット
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -166,6 +180,11 @@ AS
 -- == 2011/12/19 V1.3 Added START ======================================================================================
   gd_cancellation_date        xxcff_contract_lines.cancellation_date%TYPE;         -- 中途解約日
 -- == 2011/12/19 V1.3 Added END   ======================================================================================
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+  gt_re_lease_times           xxcff_contract_headers.re_lease_times%TYPE;          -- 再リース回数
+  gt_original_cost_type1      xxcff_contract_lines.original_cost_type1%TYPE;       -- リース負債額_原契約
+  gt_original_cost_type2      xxcff_contract_lines.original_cost_type2%TYPE;       -- リース負債額_再リース
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
 --
   /**********************************************************************************
    * Procedure Name   : get_process_date
@@ -395,6 +414,11 @@ AS
 -- == 2011/12/19 V1.3 Added START ======================================================================================
            ,xcl.cancellation_date         -- 中途解約日
 -- == 2011/12/19 V1.3 Added END   ======================================================================================
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+           ,xch.re_lease_times            -- 再リース回数
+           ,xcl.original_cost_type1       -- リース負債額_原契約
+           ,xcl.original_cost_type2       -- リース負債額_再リース
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
     INTO    gn_payment_frequency          -- 支払回数
            ,gn_lease_class                -- リース種別
            ,gn_lease_type                 -- リース区分
@@ -419,6 +443,11 @@ AS
 -- == 2011/12/19 V1.3 Added START ======================================================================================
            ,gd_cancellation_date          -- 中途解約日
 -- == 2011/12/19 V1.3 Added END   ======================================================================================
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+           ,gt_re_lease_times             -- 再リース回数
+           ,gt_original_cost_type1        -- リース負債額_原契約
+           ,gt_original_cost_type2        -- リース負債額_再リース
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
     FROM    xxcff_contract_headers  xch   -- リース契約
            ,xxcff_contract_lines    xcl   -- リース契約明細
     WHERE  xcl.contract_header_id  = xch.contract_header_id
@@ -445,6 +474,519 @@ AS
 --
   END get_contract_info;
 --
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+ /**********************************************************************************
+   * Procedure Name   : ins_pat_plan_class11
+   * Description      : リース支払計画作成処理 （自販機・原契約） (A-10)
+   ***********************************************************************************/
+  PROCEDURE ins_pat_plan_class11(
+    in_contract_line_id    IN  NUMBER            -- 契約明細内部ID
+   ,ov_errbuf              OUT NOCOPY VARCHAR2   -- エラー・メッセージ
+   ,ov_retcode             OUT NOCOPY VARCHAR2   -- リターン・コード
+   ,ov_errmsg              OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_pat_plan_class11'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    --*** ローカル定数 ***
+    cv_gn_lease_type1        CONSTANT VARCHAR2(1) := '1';  -- '原契約'
+    cv_accounting_if_flag1   CONSTANT VARCHAR2(1) := '1';  -- '未送信'
+    cv_accounting_if_flag2   CONSTANT VARCHAR2(1) := '2';  -- '送信済'
+    cn_last_payment_date     CONSTANT NUMBER(2)   :=  31;  -- '31日'
+    cv_payment_type_0        CONSTANT VARCHAR2(1) := '0';  -- '月'
+    cn_payment_frequency85   CONSTANT NUMBER(2)   :=  85;  -- 支払回数：85回
+    cv_const_9               CONSTANT VARCHAR2(1) := '9';  -- '対象外'
+--
+    --*** ローカル変数 ***
+    ln_cnt                   NUMBER;      -- 処理対象件数
+    ln_month                 NUMBER;      -- 月数
+--
+    ln_calc_interested_rate  xxcff_contract_lines.calc_interested_rate%TYPE; -- 計算利子率
+    ld_payment_date          xxcff_pay_planning.payment_date%TYPE;           -- 支払日
+    ld_period_name           xxcff_pay_planning.period_name%TYPE;            -- 会計期間
+    ln_lease_charge          xxcff_pay_planning.lease_charge%TYPE;           -- リース料
+    ln_tax_charge            xxcff_pay_planning.lease_tax_charge%TYPE;       -- リース料_消費税額
+    ln_lease_deduction       xxcff_pay_planning.lease_deduction%TYPE;        -- リース控除額
+    ln_lease_tax_deduction   xxcff_pay_planning.lease_tax_deduction%TYPE;    -- リース控除額_消費税
+    ln_op_charge             xxcff_pay_planning.op_charge%TYPE;              -- ＯＰリース料
+    ln_op_tax_charge         xxcff_pay_planning.op_tax_charge%TYPE;          -- ＯＰリース料額_消費税
+    ln_fin_debt              xxcff_pay_planning.fin_debt%TYPE;               -- ＦＩＮリース債務額
+    ln_fin_tax_debt          xxcff_pay_planning.fin_tax_debt%TYPE;           -- ＦＩＮリース債務額_消費税
+    ln_fin_interest_due      xxcff_pay_planning.fin_interest_due%TYPE;       -- ＦＩＮリース支払利息
+    ln_fin_debt_rem          xxcff_pay_planning.fin_debt_rem%TYPE;           -- ＦＩＮリース債務残
+    ln_fin_tax_debt_rem      xxcff_pay_planning.fin_tax_debt_rem%TYPE;       -- ＦＩＮリース債務残_消費税
+    lt_debt_re               xxcff_pay_planning.debt_re%TYPE;                -- リース債務額_再リース
+    lt_interest_due_re       xxcff_pay_planning.interest_due_re%TYPE;        -- リース支払利息_再リース
+    lt_debt_rem_re           xxcff_pay_planning.debt_rem_re%TYPE;            -- リース債務残_再リース
+    ln_payment_match_flag    xxcff_pay_planning.payment_match_flag%TYPE;     -- 照合済フラグ
+    ln_accounting_if_flag    xxcff_pay_planning.accounting_if_flag%TYPE;     -- 会計IFフラグ
+    lv_close_period_name     xxcff_lease_closed_periods.period_name%TYPE;    -- リース月次締期間（締められた最終月）
+    ln_set_of_book_id        gl_sets_of_books.set_of_books_id%TYPE;          -- 会計帳簿ID
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    CURSOR pay_data_cur
+    IS
+      SELECT payment_frequency payment_frequency
+      FROM   xxcff_pay_planning xpp
+      WHERE  xpp.contract_line_id   = in_contract_line_id
+      FOR UPDATE OF xpp.payment_frequency NOWAIT;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************************
+    -- 1.リース支払計画をロックする
+    -- ***************************************************
+--
+    BEGIN
+    --カーソルのオープン
+      OPEN pay_data_cur;
+      CLOSE pay_data_cur;
+--
+    EXCEPTION
+      WHEN lock_expt THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       cv_app_kbn_cff
+                     , cv_msg_cff_00007
+                     , cv_tk_cff_00101_01
+                     , cv_msg_cff_50088
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+    -- ==================================
+    -- 2.支払計画が存在する場合は削除する
+    -- ==================================
+    DELETE
+    FROM xxcff_pay_planning xpp
+    WHERE  xpp.contract_line_id  = in_contract_line_id;
+--
+    -- ==================================
+    -- 3.会計帳簿IDを取得
+    -- ==================================
+    ln_set_of_book_id := TO_NUMBER(fnd_profile.value(cv_set_of_bks_id));
+--
+    -- ========================================
+    -- 4.リース月次締め期間より現会計期間の取得
+    -- ========================================
+    BEGIN
+--
+      SELECT TO_CHAR(TO_DATE(period_name ,cv_format_yyyymm) ,cv_format_yyyymm) period_name  -- リース月次締め期間
+      INTO   lv_close_period_name                                                           -- 締られた最終月
+      FROM   xxcff_lease_closed_periods xlcp                                                -- リース月次締め期間
+      WHERE  xlcp.set_of_books_id = ln_set_of_book_id                                       -- 会計帳簿ID
+      AND    xlcp.period_name IS NOT NULL
+      ;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff                       -- XXCFF
+                                                      ,cv_msg_cff_00194                     -- リース月次締期間取得エラー
+                                                      ,cv_tk_cff_00194_01                   -- 帳簿ID：BOOK_ID
+                                                      ,TO_CHAR(ln_set_of_book_id))
+                                                      ,1
+                                                      ,5000);
+        lv_errbuf := CHR(10) || lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+    -- ==================================
+    -- 5.支払計画の作成（支払回数85回分）
+    -- ==================================
+    --初期化
+    ln_cnt := 1;
+--
+    --計算利子率は月率にする
+    ln_calc_interested_rate := round(gn_calc_interested_rate/12,7);
+--
+    -- 該当件数分ループする
+    FOR ln_cnt IN 1..cn_payment_frequency85 LOOP
+--
+      -- ==============================
+      -- #5.支払日
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ld_payment_date := gn_first_payment_date;
+      -- 原契約2回目分
+      ELSIF (ln_cnt = 2) THEN
+        ld_payment_date := gn_second_payment_date;
+      -- 原契約その他、再リース分
+      ELSE
+        --3回目支払日が31日
+        IF (gn_third_payment_date = cn_last_payment_date) THEN
+          ld_payment_date := LAST_DAY(ADD_MONTHS(gn_second_payment_date,ln_cnt-2));
+        --3回目支払日が31日以外
+        ELSE
+          ld_payment_date := ADD_MONTHS(gn_second_payment_date,ln_cnt-2);
+        END IF;
+      END IF;
+--
+      -- ==============================
+      -- #4.会計期間
+      -- ==============================
+      ld_period_name := TO_CHAR(ld_payment_date,cv_format_yyyymm);
+--
+      -- ==============================
+      -- #6.リース料
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_lease_charge := gn_first_charge;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_lease_charge := gn_second_charge;
+      -- 再リース分
+      ELSE
+        ln_lease_charge := 0;
+      END IF;
+--
+      -- ==============================
+      -- #7.リース料_消費税
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_tax_charge := gn_first_tax_charge;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_tax_charge := gn_second_tax_charge;
+      -- 再リース分
+      ELSE
+        ln_tax_charge := 0;
+      END IF;
+--
+      -- ==============================
+      -- #8.リース控除額
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_lease_deduction := gn_first_deduction;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_lease_deduction := gn_second_deduction;
+      -- 再リース分
+      ELSE
+        ln_lease_deduction := 0;
+      END IF;
+--
+      -- ==============================
+      -- #9.リース控除額_消費税
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_lease_tax_deduction := gn_first_tax_deduction;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_lease_tax_deduction := gn_second_tax_deduction;
+      -- 再リース分
+      ELSE
+        ln_lease_tax_deduction := 0;
+      END IF;
+--
+      -- ==============================
+      -- #10.ＯＰリース料
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_op_charge := gn_first_charge - gn_first_deduction;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_op_charge := gn_second_charge - gn_second_deduction;
+      -- 再リース1回目分
+      ELSIF (ln_cnt = 61) THEN
+        ln_op_charge := TRUNC((gn_second_charge - gn_second_deduction) * 12 / 12);
+      -- 再リース2回目分
+      ELSIF (ln_cnt = 73) THEN
+        ln_op_charge := TRUNC((gn_second_charge - gn_second_deduction) * 12 / 14);
+      -- 再リース3回目分
+      ELSIF (ln_cnt = 85) THEN
+        ln_op_charge := TRUNC((gn_second_charge - gn_second_deduction) * 12 / 18);
+      -- 再リースその他分
+      ELSE
+        ln_op_charge := 0;
+      END IF;
+--
+      -- ==============================
+      -- #11.ＯＰリース料額_消費税額
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_op_tax_charge := gn_first_tax_charge - gn_first_tax_deduction;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_op_tax_charge := gn_second_tax_charge - gn_second_tax_deduction;
+      -- 再リース分
+      ELSE
+        ln_op_tax_charge := 0;
+      END IF;
+--
+      -- ==============================
+      -- #14.ＦＩＮリース支払利息
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_fin_interest_due := ROUND(gt_original_cost_type1 * ln_calc_interested_rate);
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_fin_interest_due := ROUND(ln_fin_debt_rem * ln_calc_interested_rate);
+      -- 再リース分
+      ELSE
+        ln_fin_interest_due := 0;
+      END IF;
+--
+      -- ==============================
+      -- #12.ＦＩＮリース債務額
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_fin_debt := gn_first_charge - gn_first_deduction - ln_fin_interest_due;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_fin_debt := gn_second_charge - gn_second_deduction - ln_fin_interest_due;
+      -- 再リース分
+      ELSE
+        ln_fin_debt := 0;
+      END IF;
+--
+      -- ==============================
+      -- #13.ＦＩＮリース債務額_消費税
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+          ln_fin_tax_debt := gn_first_tax_charge - gn_first_tax_deduction;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_fin_tax_debt := gn_second_tax_charge - gn_second_tax_deduction;
+      -- 再リース分
+      ELSE
+        ln_fin_tax_debt := 0;
+      END IF;
+--
+      -- ==============================
+      -- #15.ＦＩＮリース債務残
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_fin_debt_rem := gt_original_cost_type1 - ln_fin_debt;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_fin_debt_rem := ln_fin_debt_rem - ln_fin_debt;
+        -- 支払回数が60回で0にならない場合
+        IF ((ln_cnt = 60) AND (ln_fin_debt_rem <> 0)) THEN
+            -- ＦＩＮリース債務額
+            ln_fin_debt := ln_fin_debt +  ln_fin_debt_rem;
+            -- 支払利息
+            ln_fin_interest_due := ln_fin_interest_due - ln_fin_debt_rem;
+            -- ＦＩＮリース債務残
+            ln_fin_debt_rem := 0;
+        -- 支払回数が2-59回の時
+        ELSE
+          -- マイナスになった場合
+          IF (ln_fin_debt_rem < 0) THEN
+            ln_fin_debt_rem := 0;
+          END IF;
+        END IF;
+      -- 再リース分
+      ELSE
+        ln_fin_debt_rem := 0;
+      END IF;
+--
+      -- ==============================
+      -- #16.ＦＩＮリース債務残_消費税
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        ln_fin_tax_debt_rem := gn_gross_tax_charge - gn_gross_tax_deduction - ln_fin_tax_debt;
+      -- 原契約1回目以外分
+      ELSIF (ln_cnt BETWEEN 2 AND 60) THEN
+        ln_fin_tax_debt_rem := ln_fin_tax_debt_rem - ln_fin_tax_debt;
+        -- マイナスになった場合
+        IF (ln_fin_tax_debt_rem < 0) THEN
+          ln_fin_tax_debt_rem := 0;
+        END IF;
+      -- 再リース分
+      ELSE
+        ln_fin_tax_debt_rem := 0;
+      END IF;
+--
+      -- ==============================
+      -- #18.リース支払利息_再リース
+      -- ==============================
+      -- 原契約1回目分
+      IF (ln_cnt = 1) THEN
+        lt_interest_due_re := ROUND(gt_original_cost_type2 * ln_calc_interested_rate);
+      ELSE
+        lt_interest_due_re := ROUND(lt_debt_rem_re * ln_calc_interested_rate);
+      END IF;
+--
+      -- ==============================
+      -- #17.リース債務額_再リース
+      -- ==============================
+      IF (ln_cnt BETWEEN 1 AND 60) THEN
+        lt_debt_re := - lt_interest_due_re;
+      ELSE
+        lt_debt_re := ln_op_charge - lt_interest_due_re;
+      END IF;
+--
+      -- ==============================
+      -- #19.リース債務残_再リース
+      -- ==============================
+      IF (ln_cnt = 1) THEN
+        lt_debt_rem_re := gt_original_cost_type2 - lt_debt_re;
+      ELSE
+        lt_debt_rem_re := lt_debt_rem_re - lt_debt_re;
+        -- 支払回数が85回で0にならない場合
+        IF ((ln_cnt = 85) AND (lt_debt_rem_re <> 0)) THEN
+          -- 17.リース債務額_再リース
+          lt_debt_re := lt_debt_re + lt_debt_rem_re;
+          -- 18.リース支払利息_再リース
+          lt_interest_due_re := lt_interest_due_re - lt_debt_rem_re;
+          -- 19.リース債務残_再リース
+          lt_debt_rem_re := 0;
+        -- 支払回数が2-84回の時
+        ELSE
+          -- マイナスになった場合
+          IF (lt_debt_rem_re < 0) THEN
+            lt_debt_rem_re := 0;
+          END IF;
+        END IF;
+      END IF;
+--
+      -- ==============================
+      -- #20.会計IFフラグ
+      -- ==============================
+      IF ( ld_period_name <= lv_close_period_name ) THEN
+        ln_accounting_if_flag := cv_accounting_if_flag2;
+      ELSE
+        ln_accounting_if_flag := cv_accounting_if_flag1;
+      END IF;
+--
+      -- ==============================
+      -- #21.照合済フラグ
+      -- ==============================
+      -- 原契約分
+      IF (ln_cnt BETWEEN 1 AND 60) THEN
+        ln_payment_match_flag := cv_const_0;
+      -- 再リース分
+      ELSE
+        ln_payment_match_flag := cv_const_9;
+      END IF;
+--
+      -- ==================================
+      -- 支払計画の登録
+      -- ==================================
+      INSERT INTO xxcff_pay_planning(
+         contract_line_id                                 -- 1.契約明細内部ID
+       , payment_frequency                                -- 2.支払回数
+       , contract_header_id                               -- 3.契約内部ID
+       , period_name                                      -- 4.会計期間
+       , payment_date                                     -- 5.支払日
+       , lease_charge                                     -- 6.リース料
+       , lease_tax_charge                                 -- 7.リース料_消費税
+       , lease_deduction                                  -- 8.リース控除額
+       , lease_tax_deduction                              -- 9.リース控除額_消費税
+       , op_charge                                        -- 10.ＯＰリース料
+       , op_tax_charge                                    -- 11.ＯＰリース料額_消費税
+       , fin_debt                                         -- 12.ＦＩＮリース債務額
+       , fin_tax_debt                                     -- 13.ＦＩＮリース債務額_消費税
+       , fin_interest_due                                 -- 14.ＦＩＮリース支払利息
+       , fin_debt_rem                                     -- 15.ＦＩＮリース債務残
+       , fin_tax_debt_rem                                 -- 16.ＦＩＮリース債務残_消費税
+       , debt_re                                          -- 17.リース債務額_再リース
+       , interest_due_re                                  -- 18.リース支払利息_再リース
+       , debt_rem_re                                      -- 19.リース債務残_再リース
+       , accounting_if_flag                               -- 20.会計ＩＦフラグ
+       , payment_match_flag                               -- 21.照合済フラグ
+       , created_by                                       -- 22.作成者
+       , creation_date                                    -- 23.作成日
+       , last_updated_by                                  -- 24.最終更新者
+       , last_update_date                                 -- 25.最終更新日
+       , last_update_login                                -- 26.最終更新ﾛｸﾞｲﾝ
+       , request_id                                       -- 27.要求ID
+       , program_application_id                           -- 28.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+       , program_id                                       -- 29.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+       , program_update_date                              -- 30.ﾌﾟﾛｸﾞﾗﾑ更新日
+      ) VALUES (
+         gn_contract_line_id                              -- 1.契約内部明細ID
+       , ln_cnt                                           -- 2.支払回数
+       , gn_contract_header_id                            -- 3.契約内部ID
+       , ld_period_name                                   -- 4.会計期間
+       , ld_payment_date                                  -- 5.支払日
+       , ln_lease_charge                                  -- 6.リース料
+       , ln_tax_charge                                    -- 7.リース料_消費税
+       , ln_lease_deduction                               -- 8.リース控除額 
+       , ln_lease_tax_deduction                           -- 9.リース控除額_消費税額
+       , ln_op_charge                                     -- 10.ＯＰリース料
+       , ln_op_tax_charge                                 -- 11.ＯＰリース料額_消費税
+       , ln_fin_debt                                      -- 12.ＦＩＮリース債務額
+       , ln_fin_tax_debt                                  -- 13.ＦＩＮリース債務額_消費税
+       , ln_fin_interest_due                              -- 14.ＦＩＮリース支払利息
+       , ln_fin_debt_rem                                  -- 15.ＦＩＮリース債務残
+       , ln_fin_tax_debt_rem                              -- 16.ＦＩＮリース債務残_消費税
+       , lt_debt_re                                       -- 17.リース債務額_再リース
+       , lt_interest_due_re                               -- 18.リース支払利息_再リース
+       , lt_debt_rem_re                                   -- 19.リース債務残_再リース
+       , ln_accounting_if_flag                            -- 20.会計ＩＦフラグ
+       , ln_payment_match_flag                            -- 21.照合済フラグ
+       , cn_created_by                                    -- 22.作成者
+       , cd_creation_date                                 -- 23.作成日
+       , cn_last_updated_by                               -- 24.最終更新者
+       , cd_last_update_date                              -- 25.最終更新日
+       , cn_last_update_login                             -- 26.最終更新ﾛｸﾞｲﾝ
+       , cn_request_id                                    -- 27.要求ID
+       , cn_program_application_id                        -- 28.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+       , cn_program_id                                    -- 29.ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+       , cd_program_update_date                           -- 30.ﾌﾟﾛｸﾞﾗﾑ更新日
+      );
+    END LOOP;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+  EXCEPTION
+  -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_pat_plan_class11;
+--
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
  /**********************************************************************************
    * Procedure Name   : ins_pat_planning
    * Description      : リース支払計画作成処理 (A-5)
@@ -850,6 +1392,9 @@ AS
 --
     --*** ローカル定数 ***
     cv_accounting_if_flag1   CONSTANT VARCHAR2(1) := '1';  -- '未送信'
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+    cv_payment_match_flag9   CONSTANT VARCHAR2(1) := '9';  -- '対象外'
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
 --
     --*** ローカル変数 ***
     ln_payment_frequency     xxcff_contract_headers.payment_frequency%TYPE;  --支払回数
@@ -863,6 +1408,9 @@ AS
       SELECT lease_charge         --リース料
       FROM   xxcff_pay_planning xpp
       WHERE  xpp.contract_line_id  =  in_contract_line_id
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+      AND    xpp.payment_match_flag <> cv_payment_match_flag9
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
       AND    xpp.payment_frequency >= ln_payment_frequency
       FOR UPDATE OF xpp.lease_charge NOWAIT;
 --
@@ -932,6 +1480,9 @@ AS
          , xpp.program_id              = cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
          , xpp.program_update_date     = cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
     WHERE  xpp.contract_line_id   =  in_contract_line_id
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+    AND    xpp.payment_match_flag <> cv_payment_match_flag9
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
     AND    xpp.payment_frequency  >= ln_payment_frequency;
 --  
   EXCEPTION
@@ -987,9 +1538,18 @@ AS
     --*** ローカル定数 ***
     cv_accounting_if_flag0   CONSTANT VARCHAR2(1) := '0';  -- '対象外'    
     cv_accounting_if_flag1   CONSTANT VARCHAR2(1) := '1';  -- '未送信'    
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+    cn_re_lease_times1       CONSTANT NUMBER(1)   :=  1;   -- '再リース1回目'
+    cn_re_lease_times2       CONSTANT NUMBER(1)   :=  2;   -- '再リース2回目'
+    cn_re_lease_times3       CONSTANT NUMBER(1)   :=  3;   -- '再リース3回目'
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
 --
     --*** ローカル変数 ***
     ln_payment_frequency     xxcff_contract_headers.payment_frequency%TYPE;  --支払回数
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
+    lt_payment_frequency2    xxcff_pay_planning.payment_frequency%TYPE;  -- 支払回数（再リース用）
+    lt_contract_line_id      xxcff_pay_planning.contract_line_id%TYPE;   -- 契約明細内部ID
+-- 2016/09/06 Ver.1.5 Y.Shoji ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -998,8 +1558,15 @@ AS
     IS
       SELECT xpp.payment_frequency
       FROM   xxcff_pay_planning xpp
-      WHERE  xpp.contract_line_id   =  in_contract_line_id
-      AND    xpp.payment_frequency  >= ln_payment_frequency
+-- 2016/09/06 Ver.1.5 Y.Shoji MOD Start
+--      WHERE  xpp.contract_line_id   =  in_contract_line_id
+--      AND    xpp.payment_frequency  >= ln_payment_frequency
+      WHERE  ( xpp.contract_line_id   =  in_contract_line_id
+        AND    xpp.payment_frequency  >= ln_payment_frequency)
+      OR     ( lt_payment_frequency2  IS NOT NULL
+        AND    xpp.contract_line_id   =  lt_contract_line_id
+        AND    xpp.payment_frequency  >  lt_payment_frequency2)
+-- 2016/09/06 Ver.1.5 Y.Shoji MOD End
       FOR UPDATE OF xpp.payment_frequency NOWAIT;
 --
     -- *** ローカル・レコード ***
@@ -1030,13 +1597,54 @@ AS
     --支払回数が取得できない場合は０を設定する
     ln_payment_frequency  := NVL(ln_payment_frequency,0);
 --
-    --該当データが存在しない場合
-    IF (ln_payment_frequency = 0) THEN
-      RETURN;  
+-- 2016/09/06 Ver.1.5 Y.Shoji MOD Start
+--    --該当データが存在しない場合
+--    IF (ln_payment_frequency = 0) THEN
+--      RETURN;  
+--    END IF;
+    -- ***************************************************
+    -- 2.リース種別が11、リース区分が2、再リース回数が1～3の場合、
+    --   原契約分の支払回数のMIN値を取得する
+    -- ***************************************************
+    lt_payment_frequency2  := 0;
+--
+    IF (  gn_lease_class    =  cv_lease_class11 
+      AND gn_lease_type     =  cv_lease_type2
+      AND gt_re_lease_times IN (cn_re_lease_times1 ,cn_re_lease_times2 ,cn_re_lease_times3) ) THEN
+--
+      BEGIN
+        SELECT xpp.contract_line_id
+              ,MIN(xpp.payment_frequency)
+        INTO   lt_contract_line_id
+              ,lt_payment_frequency2
+        FROM   xxcff_pay_planning      xpp   -- リース支払計画
+              ,xxcff_contract_headers  xch   -- リース契約ヘッダ
+              ,xxcff_contract_lines    xcl1  -- リース契約明細1（原契約）
+              ,xxcff_contract_lines    xcl2  -- リース契約明細2（再リース）
+        WHERE  xcl2.contract_line_id   =  in_contract_line_id     -- 入力項目. 契約明細内部ID
+        AND    xcl2.object_header_id   =  xcl1.object_header_id
+        AND    xcl1.contract_header_id =  xch.contract_header_id
+        AND    xch.lease_type          =  cv_lease_type1                                  -- 原契約
+        AND    xcl1.contract_line_id   =  xpp.contract_line_id
+        AND    xpp.period_name         >= TO_CHAR(gd_cancellation_date ,cv_format_yyyymm) -- 中途解約日
+        AND    xpp.accounting_if_flag  =  cv_accounting_if_flag1                          -- 未送信
+        GROUP BY xpp.contract_line_id
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          --支払回数が取得できない場合は0を設定する
+          lt_payment_frequency2  := NVL(lt_payment_frequency2 ,0);
+      END;
     END IF;
 --
+    --該当データが存在しない場合
+    IF (ln_payment_frequency = 0 AND lt_payment_frequency2 = 0) THEN
+      RETURN;  
+    END IF;
+-- 2016/09/06 Ver.1.5 Y.Shoji MOD End
+--
     -- ***************************************************
-    -- 2.リース支払計画をロックする
+    -- 3.リース支払計画をロックする
     -- ***************************************************
     BEGIN
     --カーソルのオープン
@@ -1056,7 +1664,7 @@ AS
     END;
 --    
     -- ***************************************************
-    -- 3.リース支払計画を対象外にする
+    -- 4.リース支払計画を対象外にする
     -- ***************************************************
     --
     UPDATE xxcff_pay_planning xpp  -- リース支払計画
@@ -1068,11 +1676,20 @@ AS
          , xpp.program_application_id  = cn_program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
          , xpp.program_id              = cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
          , xpp.program_update_date     = cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
-    WHERE  xpp.contract_line_id        = in_contract_line_id
+-- 2016/09/06 Ver.1.5 Y.Shoji MOD Start
+--    WHERE  xpp.contract_line_id        = in_contract_line_id
 -- 00000417 2009/07/09 ADD START
-      AND    xpp.payment_match_flag =  cv_const_0
+--      AND    xpp.payment_match_flag =  cv_const_0
 -- 00000417 2009/07/09 ADD END
-    AND    xpp.payment_frequency      >= ln_payment_frequency;
+--    AND    xpp.payment_frequency      >= ln_payment_frequency;
+    WHERE  ( xpp.contract_line_id   =  in_contract_line_id
+      AND    xpp.payment_match_flag =  cv_const_0
+      AND    xpp.payment_frequency  >= ln_payment_frequency)
+    OR     ( lt_payment_frequency2  IS NOT NULL
+      AND    xpp.contract_line_id   =  lt_contract_line_id
+      AND    xpp.payment_frequency  >  lt_payment_frequency2)
+    ;
+-- 2016/09/06 Ver.1.5 Y.Shoji MOD End
 --  
   EXCEPTION
 --
@@ -1293,14 +1910,37 @@ AS
     END IF;
 --
     -- ==================================
-    -- リース支払計画作成処理      (A-5)
+    -- リース支払計画作成処理
     -- ==================================
     IF (iv_shori_type = cv_shori_type1) THEN
-      ins_pat_planning(
-        in_contract_line_id, -- 契約明細内部ID
-        lv_errbuf,           -- エラー・メッセージ           --# 固定 #
-        lv_retcode,          -- リターン・コード             --# 固定 #
-        lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
+-- 2016/09/06 Ver.1.5 Y.Shoji MOD Start
+--      ins_pat_planning(
+--        in_contract_line_id, -- 契約明細内部ID
+--        lv_errbuf,           -- エラー・メッセージ           --# 固定 #
+--        lv_retcode,          -- リターン・コード             --# 固定 #
+--        lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
+      -- リース種別:11（自販機）、リース区分：1（原契約）の場合
+      IF (  gn_lease_class = cv_lease_class11
+        AND gn_lease_type  = cv_lease_type1  ) THEN
+        -- ==============================================
+        -- リース支払計画作成処理 （自販機・原契約） (A-10)
+        -- ==============================================
+        ins_pat_plan_class11(
+          in_contract_line_id, -- 契約明細内部ID
+          lv_errbuf,           -- エラー・メッセージ           --# 固定 #
+          lv_retcode,          -- リターン・コード             --# 固定 #
+          lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
+      ELSE
+        -- ==================================
+        -- リース支払計画作成処理      (A-5)
+        -- ==================================
+        ins_pat_planning(
+          in_contract_line_id, -- 契約明細内部ID
+          lv_errbuf,           -- エラー・メッセージ           --# 固定 #
+          lv_retcode,          -- リターン・コード             --# 固定 #
+          lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
+      END IF;
+-- 2016/09/06 Ver.1.5 Y.Shoji MOD End
     -- ==================================
     -- リース支払計画控除額変更処理 (A-6)
     -- ==================================
