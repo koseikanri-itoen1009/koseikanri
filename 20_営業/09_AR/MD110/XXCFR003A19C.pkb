@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税抜(店舗別内訳)
  * MD.050           : MD050_CFR_003_A19_標準請求書税抜(店舗別内訳)
  * MD.070           : MD050_CFR_003_A19_標準請求書税抜(店舗別内訳)
- * Version          : 1.90
+ * Version          : 1.91
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2014/03/27    1.70 SCSK 山下 翔太   障害票「E_本稼動_11617」対応
  *  2015/07/31    1.80 SCSK 小路 恭弘   障害票「E_本稼動_12963」対応
  *  2016/04/04    1.90 SCSK 小路 恭弘   障害票「E_本稼動_13511」対応
+ *  2016/09/06    1.91 SCSK 小路 恭弘   障害票「E_本稼動_13849」対応
  *
  *****************************************************************************************/
 --
@@ -824,6 +825,9 @@ AS
    * Description      : ワークテーブルデータ更新(A-11)
    ***********************************************************************************/
   PROCEDURE update_work_table(
+-- Add 2016.09.06 Ver1.91 Start
+    iv_tax_output_type     IN VARCHAR2,   -- 税別内訳出力区分
+-- Add 2016.09.06 Ver1.91 End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -846,6 +850,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cn_no_tax          CONSTANT NUMBER := 0;
+-- Add 2016.09.06 Ver1.91 Start
+    cv_tax_op_type_yes CONSTANT VARCHAR2(1) := '2';            -- 税別内訳出力あり
+-- Add 2016.09.06 Ver1.91 End
 --
     -- *** ローカル変数 ***
     lt_bill_cust_code  xxcfr_rep_st_invoice_ex_tax_d.bill_cust_code%TYPE;
@@ -1252,8 +1259,11 @@ AS
 --        lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
 --        RAISE global_api_expt;
 --    END;
-    -- 登録データが存在する場合
-    IF ( gn_target_cnt <> 0 ) THEN
+-- Mod 2016.09.06 Ver1.91 Start
+    -- 登録データが存在する、かつ税別内訳出力ありの場合
+--    IF ( gn_target_cnt <> 0 ) THEN
+    IF ( gn_target_cnt <> 0 AND iv_tax_output_type = cv_tax_op_type_yes ) THEN
+-- Mod 2016.09.06 Ver1.91 End
       <<edit_loop>>
       FOR update_work_rec IN update_work_cur LOOP
 --
@@ -1325,8 +1335,11 @@ AS
 --
 -- Add 2015.07.31 Ver1.80 Start
     -- 2.税別の消費税額、及び、当月お買上げ額を計算し標準請求書税抜帳票内訳印刷単位Aワークテーブルヘッダを更新
-    -- 明細0件フラグA＝2である場合
-    IF ( gv_target_a_flag = cv_taget_flag_2 ) THEN
+-- Mod 2016.09.06 Ver1.91 Start
+    -- 明細0件フラグA＝2である、かつ税別内訳出力ありの場合
+--    IF ( gv_target_a_flag = cv_taget_flag_2 ) THEN
+    IF ( gv_target_a_flag = cv_taget_flag_2 AND iv_tax_output_type = cv_tax_op_type_yes ) THEN
+-- Mod 2016.09.06 Ver1.91 End
       -- 変数の初期化
       ln_cust_cnt := 0;
       ln_int      := 0;
@@ -1475,6 +1488,12 @@ AS
           RAISE global_api_expt;
       END;
 --
+-- Add 2016.09.06 Ver1.91 Start
+    END IF;
+--
+    -- -- 明細0件フラグA＝2である場合
+    IF ( gv_target_a_flag = cv_taget_flag_2 ) THEN
+-- Add 2016.09.06 Ver1.91 End
       -- 4.当月お買上げ額と消費税額を計算し標準請求書税抜帳票内訳印刷単位Aワークテーブル明細を更新
       -- 変数の初期化
       ln_int      := 0;
@@ -1515,8 +1534,11 @@ AS
       END;
     END IF;
 --
-    -- 明細0件フラグB＝2である場合
-    IF ( gv_target_b_flag = cv_taget_flag_2 ) THEN
+-- Mod 2016.09.06 Ver1.91 Start
+    -- 明細0件フラグB＝2である、かつ税別内訳出力ありの場合
+--    IF ( gv_target_b_flag = cv_taget_flag_2 ) THEN
+    IF ( gv_target_b_flag = cv_taget_flag_2 AND iv_tax_output_type = cv_tax_op_type_yes ) THEN
+-- Mod 2016.09.06 Ver1.91 End
       -- 5.税別の消費税額、及び、当月お買上げ額を計算し標準請求書税抜帳票内訳印刷単位Bワークテーブルヘッダを更新
       -- 変数の初期化
       ln_cust_cnt := 0;
@@ -1666,6 +1688,12 @@ AS
           RAISE global_api_expt;
       END;
 --
+-- Add 2016.09.06 Ver1.91 Start
+    END IF;
+--
+    -- -- 明細0件フラグB＝2である場合
+    IF ( gv_target_b_flag = cv_taget_flag_2 ) THEN
+-- Add 2016.09.06 Ver1.91 End
       -- 7.当月お買上げ額と消費税額を計算し標準請求書税抜帳票内訳印刷単位Bワークテーブル明細を更新
       -- 変数の初期化
       ln_int      := 0;
@@ -1711,8 +1739,11 @@ AS
     -- 8.税別の消費税額、及び、当月お買上げ額を計算し、
     --   標準請求書税抜帳票内訳印刷単位Cワークテーブルヘッダと
     --   標準請求書税抜帳票内訳印刷単位Cワークテーブル明細を更新
+-- Mod 2016.09.06 Ver1.91 Start
     -- 明細0件フラグC＝2である場合
-    IF ( gv_target_c_flag = cv_taget_flag_2 ) THEN
+--    IF ( gv_target_c_flag = cv_taget_flag_2 ) THEN
+    IF ( gv_target_c_flag = cv_taget_flag_2 AND iv_tax_output_type = cv_tax_op_type_yes ) THEN
+-- Mod 2016.09.06 Ver1.91 End
       -- 変数の初期化
       ln_cust_cnt := 0;
       ln_int      := 0;
@@ -1855,7 +1886,9 @@ AS
     -- 請求書出力区分
     cv_inv_prt_type     CONSTANT VARCHAR2(1)  := '1';                       -- 1.伊藤園標準
 -- Add 2013.11.25 Ver1.60 Start
-    cv_tax_op_type_yes  CONSTANT VARCHAR2(1)  := '2';                      -- 2.税別内訳出力あり
+-- Del 2016.09.06 Ver1.91 Start
+--    cv_tax_op_type_yes  CONSTANT VARCHAR2(1)  := '2';                      -- 2.税別内訳出力あり
+-- Del 2016.09.06 Ver1.91 End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
     -- 業者委託フラグ
@@ -5292,21 +5325,36 @@ AS
         OR ( gv_target_c_flag = cv_taget_flag_2 ) ) THEN
 -- Mod 2016.04.04 Ver1.90 End
 -- Mod 2015.07.31 Ver1.80 End
-        --税別内訳出力ありの場合、税別の金額を編集する
-        IF ( iv_tax_output_type = cv_tax_op_type_yes ) THEN
-          -- =====================================================
-          --  ワークテーブルデータ更新  (A-11)
-          -- =====================================================
-          update_work_table(
-             lv_errbuf             -- エラー・メッセージ           --# 固定 #
-            ,lv_retcode            -- リターン・コード             --# 固定 #
-            ,lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
-          );
-          IF (lv_retcode = cv_status_error) THEN
-            --(エラー処理)
-            RAISE update_work_expt;
-          END IF;
+-- Mod 2016.09.06 Ver1.91 Start
+--        --税別内訳出力ありの場合、税別の金額を編集する
+--        IF ( iv_tax_output_type = cv_tax_op_type_yes ) THEN
+--          -- =====================================================
+--          --  ワークテーブルデータ更新  (A-11)
+--          -- =====================================================
+--          update_work_table(
+--             lv_errbuf             -- エラー・メッセージ           --# 固定 #
+--            ,lv_retcode            -- リターン・コード             --# 固定 #
+--            ,lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+--          );
+--          IF (lv_retcode = cv_status_error) THEN
+--            --(エラー処理)
+--            RAISE update_work_expt;
+--          END IF;
+--        END IF;
+        -- =====================================================
+        --  ワークテーブルデータ更新  (A-11)
+        -- =====================================================
+        update_work_table(
+           iv_tax_output_type    -- 税別内訳出力区分
+          ,lv_errbuf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode            -- リターン・コード             --# 固定 #
+          ,lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          --(エラー処理)
+          RAISE update_work_expt;
         END IF;
+-- Mod 2016.09.06 Ver1.91 End
 -- Add 2013.11.25 Ver1.60 End
       END IF;
 --
