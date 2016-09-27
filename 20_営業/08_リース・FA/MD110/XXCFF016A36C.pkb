@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF016A36C(body)
  * Description      : リース契約明細メンテナンス
  * MD.050           : MD050_CFF_016_A36_リース契約明細メンテナンス.
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2013/07/11    1.1   SCSK 中村         E_本稼動_10871 消費税対応
  *  2014/01/31    1.2   SCSK 中野         E_本稼動_11242 リース契約明細更新の不具合対応
  *  2014/05/19    1.3   SCSK 中野         E_本稼動_11852 控除額更新不具合対応
+ *  2016/08/22    1.4   SCSK郭            E_本稼動_13658 自販機耐用年数変更対応
  *
  *****************************************************************************************/
 --
@@ -175,6 +176,9 @@ AS
   cv_acct_if_flag_sent   CONSTANT VARCHAR2(1)   := '2';                 -- 送信済
   -- 照合済みフラグ
   cv_paymtch_flag_admin  CONSTANT VARCHAR2(1)   := '1';                 -- 照合済
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+  cv_payment_match_flag_9 CONSTANT VARCHAR2(1)  := '9';                 -- 対象外
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -220,6 +224,9 @@ AS
   gt_contract_date        xxcff_contract_headers.contract_date%TYPE;       -- TO_DATE(TO_CHAR(リース契約日,'YYYY/MM')||'/01','YYYY/MM/DD')
   gt_lease_type           xxcff_contract_headers.lease_type%TYPE;          -- リース区分
   gt_payment_frequency    xxcff_contract_headers.payment_frequency%TYPE;   -- 支払回数
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+  gt_lease_class          xxcff_contract_headers.lease_class%TYPE;         -- リース種別
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
 --
   gr_param               gr_param_rec;
 --
@@ -541,6 +548,9 @@ AS
           ,xpp.program_update_date    = cd_program_update_date          -- プログラム更新日
       WHERE xpp.contract_line_id      = gt_contract_line_id
       AND   xpp.period_name           = gt_period_name
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+      AND   xpp.payment_match_flag    != cv_payment_match_flag_9        -- 照合済フラグ（対象外）
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -568,6 +578,9 @@ AS
           ,xpp.program_update_date    = cd_program_update_date          -- プログラム更新日
       WHERE xpp.contract_line_id      = gt_contract_line_id
       AND   xpp.period_name           < gt_period_name
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+      AND   xpp.payment_match_flag    != cv_payment_match_flag_9        -- 照合済フラグ（対象外）
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -645,6 +658,10 @@ AS
     lt_present_value                xxcff_contract_lines.present_value%TYPE;                 -- 現在価値
     lt_original_cost                xxcff_contract_lines.original_cost%TYPE;                 -- 取得価額
     lt_calc_interested_rate         xxcff_contract_lines.calc_interested_rate%TYPE;          -- 計算利子率
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+    lt_original_cost_type1          xxcff_contract_lines.original_cost_type1%TYPE;           -- リース負債額_原契約
+    lt_original_cost_type2          xxcff_contract_lines.original_cost_type2%TYPE;           -- リース負債額_再リース
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -680,11 +697,18 @@ AS
      ,in_estimated_cash_price        => lt_estimated_cash_price          -- 5.見積現金購入価額
      ,in_life_in_months              => gt_life_in_months                -- 6.法定耐用年数
      ,id_contract_ym                 => gt_contract_date                 -- 7.契約年月
-     ,ov_lease_kind                  => lt_lease_kind                    -- 8.リース種類
-     ,on_present_value_discount_rate => lt_present_value_discount_rate   -- 9.現在価値割引率
-     ,on_present_value               => lt_present_value                 -- 10.現在価値
-     ,on_original_cost               => lt_original_cost                 -- 11.取得価額
-     ,on_calc_interested_rate        => lt_calc_interested_rate          -- 12.計算利子率
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+     ,iv_lease_class                 => gt_lease_class                   -- 8.リース種別
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
+     ,ov_lease_kind                  => lt_lease_kind                    -- 9.リース種類
+     ,on_present_value_discount_rate => lt_present_value_discount_rate   -- 10.現在価値割引率
+     ,on_present_value               => lt_present_value                 -- 11.現在価値
+     ,on_original_cost               => lt_original_cost                 -- 12.取得価額
+     ,on_calc_interested_rate        => lt_calc_interested_rate          -- 13.計算利子率
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+     ,on_original_cost_type1         => lt_original_cost_type1           -- 14.リース負債額_原契約
+     ,on_original_cost_type2         => lt_original_cost_type2           -- 15.リース負債額_再リース
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
      ,ov_errbuf                      => lv_errbuf
      ,ov_retcode                     => lv_retcode
      ,ov_errmsg                      => lv_errmsg
@@ -708,6 +732,10 @@ AS
       UPDATE xxcff_contract_lines xcl
       SET  xcl.present_value               = lt_present_value                -- 現在価値
           ,xcl.original_cost               = lt_original_cost                -- 取得価額
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+          ,xcl.original_cost_type1         = lt_original_cost_type1          -- リース負債額_原契約
+          ,xcl.original_cost_type2         = lt_original_cost_type2          -- リース負債額_再リース
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
           ,xcl.calc_interested_rate        = lt_calc_interested_rate         -- 計算利子率
           ,xcl.present_value_discount_rate = lt_present_value_discount_rate  -- 現在価値割引率
 -- Del 2014/01/31 Ver.1.2 Start
@@ -1064,6 +1092,10 @@ AS
         ,present_value                              -- 現在価値
         ,life_in_months                             -- 法定耐用年数
         ,original_cost                              -- 取得価額
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+        ,original_cost_type1                        -- リース負債額_原契約
+        ,original_cost_type2                        -- リース負債額_再リース
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
         ,calc_interested_rate                       -- 計算利子率
         ,object_header_id                           -- 物件内部ID
         ,asset_category                             -- 資産種類
@@ -1116,6 +1148,10 @@ AS
         ,xcl.present_value
         ,xcl.life_in_months
         ,xcl.original_cost
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+        ,xcl.original_cost_type1
+        ,xcl.original_cost_type2
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
         ,xcl.calc_interested_rate
         ,xcl.object_header_id
         ,xcl.asset_category
@@ -1181,6 +1217,11 @@ AS
         ,payment_match_flag         -- 照合済フラグ
         ,run_period_name            -- 実行会計期間
         ,run_line_num               -- 実行枝番
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+        ,debt_re                    -- リース債務額_再リース
+        ,interest_due_re            -- リース支払利息_再リース
+        ,debt_rem_re                -- リース債務残_再リース
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
         ,created_by                 -- 作成者
         ,creation_date              -- 作成日
         ,last_updated_by            -- 最終更新者
@@ -1211,6 +1252,11 @@ AS
         ,xpp.payment_match_flag
         ,gt_period_name
         ,lv_run_line_num
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+        ,xpp.debt_re
+        ,xpp.interest_due_re
+        ,xpp.debt_rem_re
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
         ,xpp.created_by
         ,xpp.creation_date
         ,xpp.last_updated_by
@@ -1992,6 +2038,9 @@ AS
         ,TRUNC(xch.contract_date, cv_format_m) AS contract_date
         ,xch.lease_type                        AS lease_type
         ,xch.payment_frequency                 AS payment_frequency
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+        ,xch.lease_class                       AS lease_class
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
       INTO
          gt_contract_line_id           -- 契約明細内部ID
         ,gt_first_charge               -- 初回月額リース料_リース料
@@ -2010,6 +2059,9 @@ AS
         ,gt_contract_date              -- リース契約日
         ,gt_lease_type                 -- リース区分
         ,gt_payment_frequency          -- 支払回数
+-- 2016/08/22 Ver.1.4 Y.Koh ADD Start
+        ,gt_lease_class                -- リース種別
+-- 2016/08/22 Ver.1.4 Y.Koh ADD End
       FROM
          xxcff_contract_lines    xcl   -- リース契約明細
         ,xxcff_contract_headers  xch   -- リース契約ヘッダ
