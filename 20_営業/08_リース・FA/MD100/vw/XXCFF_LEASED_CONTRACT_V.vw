@@ -92,15 +92,25 @@ AS
             FROM   XXCFF_PAY_PLANNING XPAY
             WHERE  XCL.CONTRACT_LINE_ID       = XPAY.CONTRACT_LINE_ID(+)
             AND    XPAY.ACCOUNTING_IF_FLAG(+) = '1'
+--ÅyE_ñ{â“ìÆ_13658ÅzMOD START S.Niki
+--            GROUP BY 
+--                   XPAY.CONTRACT_LINE_ID  ),0) XPP
+            AND    XPAY.PAYMENT_MATCH_FLAG(+) <> '9'  --'9'(îÒï\é¶)ÇèúäO
             GROUP BY 
-                   XPAY.CONTRACT_LINE_ID  ),0) XPP
+                   XPAY.CONTRACT_LINE_ID  ),0) AS NOT_LEASE_TIMES
+--ÅyE_ñ{â“ìÆ_13658ÅzMOD END S.Niki
       ,NVL((SELECT 
                SUM(XPAY.LEASE_CHARGE)        AS NOT_CHARGE
             FROM   XXCFF_PAY_PLANNING XPAY
             WHERE  XCL.CONTRACT_LINE_ID       = XPAY.CONTRACT_LINE_ID(+)
             AND    XPAY.ACCOUNTING_IF_FLAG(+) = '1'
+--ÅyE_ñ{â“ìÆ_13658ÅzMOD START S.Niki
+--            GROUP BY 
+--                   XPAY.CONTRACT_LINE_ID  ),0) XPP
+            AND    XPAY.PAYMENT_MATCH_FLAG(+) <> '9'  --'9'(îÒï\é¶)ÇèúäO
             GROUP BY 
-                   XPAY.CONTRACT_LINE_ID  ),0) XPP
+                   XPAY.CONTRACT_LINE_ID  ),0) AS NOT_CHARGE
+--ÅyE_ñ{â“ìÆ_13658ÅzMOD END S.Niki
 --ÅyE_ñ{â“ìÆ_10871ÅzMOD START Nakano
 --      ,XCH.TAX_CODE                        AS TAX_CODE
 --      ,( SELECT APT.DESCRIPTION
