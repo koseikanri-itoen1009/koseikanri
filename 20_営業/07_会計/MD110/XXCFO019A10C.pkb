@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A10C(body)
  * Description      : “dq’ •ëƒŠ[ƒXæˆø‚Ìî•ñŒnƒVƒXƒeƒ€˜AŒg
  * MD.050           : MD050_CFO_019_A10_“dq’ •ëƒŠ[ƒXæˆø‚Ìî•ñŒnƒVƒXƒeƒ€˜AŒg
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2012-09-20    1.0   K.Nakamura       V‹Kì¬
  *  2012-11-26    1.1   K.Nakamura       [E_–{‰Ò“®_10112‘Î‰]T4ŒŸØƒpƒtƒH[ƒ}ƒ“ƒXáŠQ‘Î‰
  *  2012-12-19    1.2   T.Osawa          [E_–{‰Ò“®_10112‘Î‰]’ŠoğŒ•ÏX
+ *  2016-08-25    1.3   SCSKŠs           [E_–{‰Ò“®_13658‘Î‰]©”Ì‹@‘Ï—p”N”•ÏX
  *
  *****************************************************************************************/
 --
@@ -1892,10 +1893,17 @@ AS
            , xpp.lease_tax_deduction                                    AS lease_tax_deduction         -- ƒŠ[ƒXTœŠz_Á”ïÅ
            , xpp.op_charge                                              AS op_charge                   -- ‚n‚oƒŠ[ƒX—¿
            , xpp.op_tax_charge                                          AS op_tax_charge               -- ‚n‚oƒŠ[ƒX—¿Šz_Á”ïÅ
-           , xpp.fin_debt                                               AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+-- 2016/08/25 Ver.1.3 Y.Koh MOD Start
+--           , xpp.fin_debt                                               AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+           , NVL(xpp.fin_debt,0)         + NVL(xpp.debt_re,0)           AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+-- 2016/08/25 Ver.1.3 Y.Koh MOD End
            , xpp.fin_tax_debt                                           AS fin_tax_debt                -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz_Á”ïÅ
-           , xpp.fin_interest_due                                       AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
-           , xpp.fin_debt_rem                                           AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+-- 2016/08/25 Ver.1.3 Y.Koh MOD Start
+--           , xpp.fin_interest_due                                       AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
+           , NVL(xpp.fin_interest_due,0) + NVL(xpp.interest_due_re,0)   AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
+--           , xpp.fin_debt_rem                                           AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+           , NVL(xpp.fin_debt_rem,0)     + NVL(xpp.debt_rem_re,0)       AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+-- 2016/08/25 Ver.1.3 Y.Koh MOD End
            , xpp.fin_tax_debt_rem                                       AS fin_tax_debt_rem            -- ‚e‚h‚mƒŠ[ƒXÂ–±c_Á”ïÅ
            , DECODE(xft1.transaction_type, cv_transaction_type_1
                                          , DECODE(xpp.payment_frequency, cv_transaction_type_1
@@ -2031,10 +2039,17 @@ AS
            , xpp.lease_tax_deduction                                    AS lease_tax_deduction         -- ƒŠ[ƒXTœŠz_Á”ïÅ
            , xpp.op_charge                                              AS op_charge                   -- ‚n‚oƒŠ[ƒX—¿
            , xpp.op_tax_charge                                          AS op_tax_charge               -- ‚n‚oƒŠ[ƒX—¿Šz_Á”ïÅ
-           , xpp.fin_debt                                               AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+-- 2016/08/25 Ver.1.3 Y.Koh MOD Start
+--           , xpp.fin_debt                                               AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+           , NVL(xpp.fin_debt,0)         + NVL(xpp.debt_re,0)           AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+-- 2016/08/25 Ver.1.3 Y.Koh MOD End
            , xpp.fin_tax_debt                                           AS fin_tax_debt                -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz_Á”ïÅ
-           , xpp.fin_interest_due                                       AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
-           , xpp.fin_debt_rem                                           AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+-- 2016/08/25 Ver.1.3 Y.Koh MOD Start
+--           , xpp.fin_interest_due                                       AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
+           , NVL(xpp.fin_interest_due,0) + NVL(xpp.interest_due_re,0)   AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
+--           , xpp.fin_debt_rem                                           AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+           , NVL(xpp.fin_debt_rem,0)     + NVL(xpp.debt_rem_re,0)       AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+-- 2016/08/25 Ver.1.3 Y.Koh MOD End
            , xpp.fin_tax_debt_rem                                       AS fin_tax_debt_rem            -- ‚e‚h‚mƒŠ[ƒXÂ–±c_Á”ïÅ
            , DECODE(xft1.transaction_type, cv_transaction_type_1
                                          , DECODE(xpp.payment_frequency, cv_transaction_type_1
@@ -2165,10 +2180,17 @@ AS
            , xpp.lease_tax_deduction                                    AS lease_tax_deduction         -- ƒŠ[ƒXTœŠz_Á”ïÅ
            , xpp.op_charge                                              AS op_charge                   -- ‚n‚oƒŠ[ƒX—¿
            , xpp.op_tax_charge                                          AS op_tax_charge               -- ‚n‚oƒŠ[ƒX—¿Šz_Á”ïÅ
-           , xpp.fin_debt                                               AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+-- 2016/08/25 Ver.1.3 Y.Koh MOD Start
+--           , xpp.fin_debt                                               AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+           , NVL(xpp.fin_debt,0)         + NVL(xpp.debt_re,0)           AS fin_debt                    -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz
+-- 2016/08/25 Ver.1.3 Y.Koh MOD End
            , xpp.fin_tax_debt                                           AS fin_tax_debt                -- ‚e‚h‚mƒŠ[ƒXÂ–±Šz_Á”ïÅ
-           , xpp.fin_interest_due                                       AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
-           , xpp.fin_debt_rem                                           AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+-- 2016/08/25 Ver.1.3 Y.Koh MOD Start
+--           , xpp.fin_interest_due                                       AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
+           , NVL(xpp.fin_interest_due,0) + NVL(xpp.interest_due_re,0)   AS fin_interest_due            -- ‚e‚h‚mƒŠ[ƒXx•¥—˜‘§
+--           , xpp.fin_debt_rem                                           AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+           , NVL(xpp.fin_debt_rem,0)     + NVL(xpp.debt_rem_re,0)       AS fin_debt_rem                -- ‚e‚h‚mƒŠ[ƒXÂ–±c
+-- 2016/08/25 Ver.1.3 Y.Koh MOD End
            , xpp.fin_tax_debt_rem                                       AS fin_tax_debt_rem            -- ‚e‚h‚mƒŠ[ƒXÂ–±c_Á”ïÅ
            , DECODE(xft1.transaction_type, cv_transaction_type_1
                                          , DECODE(xpp.payment_frequency, cv_transaction_type_1
