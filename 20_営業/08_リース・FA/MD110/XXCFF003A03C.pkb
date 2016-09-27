@@ -6,19 +6,21 @@ AS
  * Package Name     : XXCFF003A03C(body)
  * Description      : リース種類判定
  * MD.050           : MD050_CFF_003_A03_リース種類判定
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ---- ----- --------------------------------------------------
  *  Name                     Type  Ret   Description
  * ------------------------- ---- ----- --------------------------------------------------
- *  check_in_param            P          入力項目チェック処理    (A-1)
- *  judge_lease_type          F    VAR   リース区分判定処理      (A-2)
- *  calc_discount_rate        P          現在価値割引率算定処理  (A-3)
- *  calc_present_value        F    NUM   現在価値算定処理        (A-4)
- *  judge_lease_kind          F    VAR   リース種類判定処理      (A-5)
- *  calc_original_cost        F    NUM   取得価額算定処理        (A-6)
- *  calc_interested_rate      P          計算利子率算定処理      (A-7)
+ *  check_in_param            P          入力項目チェック処理         (A-1)
+ *  judge_lease_type          F    VAR   リース区分判定処理           (A-2)
+ *  calc_discount_rate        P          現在価値割引率算定処理       (A-3)
+ *  calc_present_value_re     F    NUM   再リース現在価値算定処理     (A-9)
+ *  calc_debt_lease           P          リース負債額算定処理         (A-8)
+ *  calc_present_value        F    NUM   現在価値算定処理             (A-4)
+ *  judge_lease_kind          F    VAR   リース種類判定処理           (A-5)
+ *  calc_original_cost        F    NUM   取得価額算定処理             (A-6)
+ *  calc_interested_rate      P          計算利子率算定処理           (A-7)
  *  main                      P          コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
@@ -26,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-12-04    1.0   SCS 増子 秀幸    新規作成
+ *  2016-08-10    1.1   SCSK 仁木 重人   [E_本稼動_13658]自販機耐用年数変更対応
  *
  *****************************************************************************************/
 --
@@ -106,6 +109,9 @@ AS
   cv_msg_cff_50109   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50109';  -- ２回目以降月額リース料
   cv_msg_cff_50110   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50110';  -- 見積現金購入価額
   cv_msg_cff_50111   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50111';  -- 契約年月
+-- Ver.1.1 ADD Start
+  cv_msg_cff_50041   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50041';  -- リース種別
+-- Ver.1.1 ADD End
 --
   -- リース区分
   cv_lease_type_1    CONSTANT VARCHAR2(1)  := '1';        -- 1:原契約
@@ -120,6 +126,14 @@ AS
   cn_calc_rate_max   CONSTANT NUMBER       := 0.5;        -- 計算利子率MAX値:50%
   cn_calc_rate_min   CONSTANT NUMBER       := 0.0000001;  -- 計算利子率MIN値:0.00001%
 --
+-- Ver.1.1 ADD Start
+  -- リース種別
+  cv_lease_class_11  CONSTANT VARCHAR2(2)  := '11';       -- 11:自動販売機
+  -- 再リース分支払回数
+  cn_first_freq      CONSTANT NUMBER       := 61;         -- 再リース１回目
+  cn_second_freq     CONSTANT NUMBER       := 73;         -- 再リース２回目
+  cn_third_freq      CONSTANT NUMBER       := 85;         -- 再リース３回目
+-- Ver.1.1 ADD End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -140,6 +154,9 @@ AS
     in_estimated_cash_price IN  NUMBER,      -- 5.見積現金購入価額
     in_life_in_months       IN  NUMBER,      -- 6.法定耐用年数
     id_contract_ym          IN  DATE,        -- 7.契約年月
+-- Ver.1.1 ADD Start
+    iv_lease_class          IN  VARCHAR2,    -- 8.リース種別
+-- Ver.1.1 ADD End
     ov_errbuf               OUT VARCHAR2,    -- エラー・メッセージ
     ov_retcode              OUT VARCHAR2,    -- リターン・コード
     ov_errmsg               OUT VARCHAR2     -- ユーザー・エラー・メッセージ
@@ -261,6 +278,19 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
+-- Ver.1.1 ADD Start
+    -- 8.リース種別
+    IF (iv_lease_class IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+                     iv_name         => cv_msg_cff_00005,    -- メッセージコード
+                     iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
+                     iv_token_value1 => cv_msg_cff_50041     -- トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+-- Ver.1.1 ADD End
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -557,6 +587,176 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END calc_discount_rate;
+-- Ver.1.1 ADD Start
+  /**********************************************************************************
+   * Function Name    : calc_present_value_re
+   * Description      : 再リース現在価値算定処理 (A-9)
+   ***********************************************************************************/
+  FUNCTION calc_present_value_re(
+    in_second_charge               IN  NUMBER,      -- 1.２回目以降月額リース料
+    in_calc_rate                   IN  NUMBER       -- 2.計算率
+  )
+  RETURN NUMBER                                     -- 再リース現在価値
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'calc_present_value_re';  -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_first_charge_re  NUMBER;  -- 再リース１回目リース料
+    ln_second_charge_re NUMBER;  -- 再リース２回目リース料
+    ln_third_charge_re  NUMBER;  -- 再リース３回目リース料
+    ln_re_lease_value   NUMBER;  -- 再リース分の現在価値
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+    -- 初期化
+    ln_re_lease_value := 0 ;
+--
+    -- 再リース分のリース料を算出
+    ln_first_charge_re  := in_second_charge;                       -- 再リース１回目リース料
+    ln_second_charge_re := TRUNC( in_second_charge * 12 / 14 );    -- 再リース２回目リース料
+    ln_third_charge_re  := TRUNC( in_second_charge * 12 / 18 );    -- 再リース３回目リース料
+--
+    -- 再リース分の現在価値を算出
+    ln_re_lease_value   := TRUNC( ln_first_charge_re  / POWER( (1 + in_calc_rate), cn_first_freq  ) )
+                        +  TRUNC( ln_second_charge_re / POWER( (1 + in_calc_rate), cn_second_freq ) )
+                        +  TRUNC( ln_third_charge_re  / POWER( (1 + in_calc_rate), cn_third_freq  ) )
+    ;
+--
+    RETURN ln_re_lease_value;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,2000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END calc_present_value_re;
+--
+  /**********************************************************************************
+   * Procedure Name   : calc_debt_lease
+   * Description      : リース負債額算定処理 (A-8)
+   ***********************************************************************************/
+  PROCEDURE calc_debt_lease(
+    in_estimated_cash_price   IN  NUMBER,      -- 1.見積現金購入価額
+    in_present_value          IN  NUMBER,      -- 2.現在価値割引額
+    iv_lease_class            IN  VARCHAR2,    -- 3.リース種別
+    in_second_charge          IN  NUMBER,      -- 4.２回目以降月額リース料
+    in_calc_interested_rate   IN  NUMBER,      -- 5.計算利子率
+    on_original_cost_type1    OUT NUMBER,      -- 6.リース負債額_原契約
+    on_original_cost_type2    OUT NUMBER,      -- 7.リース負債額_再リース
+    ov_errbuf                 OUT VARCHAR2,    -- エラー・メッセージ
+    ov_retcode                OUT VARCHAR2,    -- リターン・コード
+    ov_errmsg                 OUT VARCHAR2     -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100) := 'calc_debt_lease';  -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_original_cost    NUMBER;  -- 取得価額
+    ln_re_lease_value   NUMBER;  -- 再リース分の現在価値
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ローカル変数初期化
+--
+    -- リース種別が「自動販売機」以外の場合は処理スキップ
+    IF ( iv_lease_class <> cv_lease_class_11 ) THEN
+      -- リース負債額_原契約
+      on_original_cost_type1 := 0;
+      -- リース負債額_再リース
+      on_original_cost_type2 := 0;
+      RETURN;
+    END IF;
+--
+    -- 現在価値と見積現金購入価額を比較し、低い方を取得価額に設定
+    IF (in_present_value <= in_estimated_cash_price) THEN
+      ln_original_cost := in_present_value;
+    ELSE
+      ln_original_cost := in_estimated_cash_price;
+    END IF;
+--
+    --========================================
+    --  再リース現在価値算定処理 (A-9)
+    --========================================
+    ln_re_lease_value  := calc_present_value_re(
+                            in_second_charge,                -- ２回目以降月額リース料
+                            in_calc_interested_rate / 12     -- 計算利子率
+                          );
+--
+    -- リース負債額_原契約
+    on_original_cost_type1 := ln_original_cost - ln_re_lease_value;
+    -- リース負債額_再リース
+    on_original_cost_type2 := ln_re_lease_value;
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END calc_debt_lease;
+-- Ver.1.1 ADD End
   /**********************************************************************************
    * Function Name    : calc_present_value
    * Description      : 現在価値算定処理 (A-4)
@@ -565,7 +765,12 @@ AS
     in_payment_frequency           IN  NUMBER,      -- 1.支払回数
     in_first_charge                IN  NUMBER,      -- 2.初回月額リース料
     in_second_charge               IN  NUMBER,      -- 3.２回目以降月額リース料
-    in_present_value_discount_rate IN  NUMBER)      -- 4.現在価値割引率
+-- Ver.r MOD Start
+--    in_present_value_discount_rate IN  NUMBER)      -- 4.現在価値割引率
+    in_present_value_discount_rate IN  NUMBER,      -- 4.現在価値割引率
+    iv_lease_class                 IN  VARCHAR2     -- 5.リース種別
+  )
+-- Ver.1.1 MOD End
   RETURN NUMBER                                     -- 現在価値
   IS
     -- ===============================
@@ -579,8 +784,11 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    ln_present_value NUMBER;  -- 現在価値
-    ln_second_value  NUMBER;  -- ２回目以降現在価値
+    ln_present_value   NUMBER;  -- 現在価値
+    ln_second_value    NUMBER;  -- ２回目以降現在価値
+-- Ver.1.1 ADD Start
+    ln_re_lease_value  NUMBER;  -- 再リース分の現在価値
+-- Ver.1.1 ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -589,7 +797,10 @@ AS
   BEGIN
 --
     -- 初回月額リース料を初期設定
-    ln_present_value := in_first_charge;
+    ln_present_value  := in_first_charge;
+-- Ver.1.1 ADD Start
+    ln_re_lease_value := 0 ;
+-- Ver.1.1 ADD End
 --
     -- ２回目以降月額リース料を支払回数分加算
     <<present_value_calc_loop>>
@@ -599,6 +810,21 @@ AS
       -- 上記で換算した値を現在価値に加算
       ln_present_value := ln_present_value + ln_second_value;
     END LOOP present_value_calc_loop;
+-- Ver.1.1 ADD Start
+    -- リース種別が「自動販売機」の場合、再リース分の現在価値を算定
+    IF ( iv_lease_class = cv_lease_class_11 ) THEN
+      --========================================
+      --  再リース現在価値算定処理 (A-9)
+      --========================================
+      ln_re_lease_value  := calc_present_value_re(
+                              in_second_charge,                    -- ２回目以降月額リース料
+                              in_present_value_discount_rate / 12  -- 現在価値割引率
+                            );
+    END IF;
+--
+    -- 再リース分の現在価値を加算
+    ln_present_value := ln_present_value + ln_re_lease_value;
+-- Ver.1.1 ADD End
 --
     RETURN ROUND(ln_present_value, 0);
 --
@@ -724,7 +950,10 @@ AS
     in_first_charge         IN  NUMBER,      -- 2.初回月額リース料
     in_second_charge        IN  NUMBER,      -- 3.２回目以降月額リース料
     in_original_cost        IN  NUMBER,      -- 4.取得価額
-    on_calc_interested_rate OUT NUMBER,      -- 5.計算利子率
+-- Ver.1.1 ADD Start
+    iv_lease_class          IN  VARCHAR2,    -- 5.リース種別
+-- Ver.1.1 ADD End
+    on_calc_interested_rate OUT NUMBER,      -- 6.計算利子率
     ov_errbuf               OUT VARCHAR2,    -- エラー・メッセージ
     ov_retcode              OUT VARCHAR2,    -- リターン・コード
     ov_errmsg               OUT VARCHAR2     -- ユーザー・エラー・メッセージ
@@ -757,6 +986,9 @@ AS
     ln_latest_over_rate     NUMBER;       -- 直近で支払額 > 取得価額となった計算利子率
     ln_r                    NUMBER;       -- 計算式R値(1/(1+計算利子率))
     ln_i                    NUMBER;       -- 支払額
+-- Ver.1.1 ADD Start
+    ln_i_re                 NUMBER;       -- 支払額(再リース分)
+-- Ver.1.1 ADD End
     ln_decrement            NUMBER;       -- 減分値
 --
     -- *** ローカル・カーソル ***
@@ -773,8 +1005,11 @@ AS
 --
     -- ローカル変数初期化
     ln_calc_interested_rate := cn_calc_rate_max;  -- 計算利子率に最大値を設定
-    ln_latest_over_rate := cn_calc_rate_min;      -- 計算利子率が最小値未満の場合、最小値とする
-    ln_decrement := 0.1;                          -- 最初の有効桁は小数点以下第１位
+    ln_latest_over_rate     := cn_calc_rate_min;  -- 計算利子率が最小値未満の場合、最小値とする
+    ln_decrement            := 0.1;               -- 最初の有効桁は小数点以下第１位
+-- Ver.1.1 ADD Start
+    ln_i_re                 := 0;                 -- 支払額(再リース分)
+-- Ver.1.1 ADD End
 --
     --========================================
     -- 計算利子率が最大値の場合の支払額算出
@@ -784,6 +1019,21 @@ AS
 --
     -- 計算式により支払額を算出
     ln_i := cn_a * ln_r + (cn_b * POWER(ln_r, 2) - cn_b * POWER(ln_r, (cn_n + 1) ) ) / (1 - ln_r);
+-- Ver.1.1 ADD Start
+    -- リース種別が「自動販売機」の場合、再リース分の支払額を算定
+    IF ( iv_lease_class = cv_lease_class_11 ) THEN
+      --========================================
+      --  再リース現在価値算定処理 (A-9)
+      --========================================
+      ln_i_re := calc_present_value_re(
+                   in_second_charge,             -- ２回目以降月額リース料
+                   ln_calc_interested_rate       -- 計算利子率
+                 );
+    END IF;
+--
+    -- 再リース分の支払額を加算
+    ln_i := ln_i + ln_i_re;
+-- Ver.1.1 ADD End
 --
     -- 上記支払額が取得価額より大きい場合、エラー
     IF (ln_i > in_original_cost) THEN
@@ -835,6 +1085,21 @@ AS
 --
       -- 計算式により支払額を算出
       ln_i := cn_a * ln_r + (cn_b * POWER(ln_r, 2) - cn_b * POWER(ln_r, (cn_n + 1) ) ) / (1 - ln_r);
+-- Ver.1.1 ADD Start
+      -- リース種別が「自動販売機」の場合、再リース分の支払額を算定
+      IF ( iv_lease_class = cv_lease_class_11 ) THEN
+        --========================================
+        --  再リース現在価値算定処理 (A-9)
+        --========================================
+        ln_i_re := calc_present_value_re(
+                     in_second_charge,             -- ２回目以降月額リース料
+                     ln_calc_interested_rate       -- 計算利子率
+                   );
+      END IF;
+--
+      -- 再リース分の支払額を加算
+      ln_i := ln_i + ln_i_re;
+-- Ver.1.1 ADD End
 --
     END LOOP interested_rate_calc_loop;
 --
@@ -879,11 +1144,18 @@ AS
     in_estimated_cash_price        IN  NUMBER,      -- 5.見積現金購入価額
     in_life_in_months              IN  NUMBER,      -- 6.法定耐用年数
     id_contract_ym                 IN  DATE,        -- 7.契約年月
-    ov_lease_kind                  OUT VARCHAR2,    -- 8.リース種類
-    on_present_value_discount_rate OUT NUMBER,      -- 9.現在価値割引率
-    on_present_value               OUT NUMBER,      -- 10.現在価値
-    on_original_cost               OUT NUMBER,      -- 11.取得価額
-    on_calc_interested_rate        OUT NUMBER,      -- 12.計算利子率
+-- Ver.1.1 ADD Start
+    iv_lease_class                 IN  VARCHAR2,    -- 8.リース種別
+-- Ver.1.1 ADD End
+    ov_lease_kind                  OUT VARCHAR2,    -- 9.リース種類
+    on_present_value_discount_rate OUT NUMBER,      -- 10.現在価値割引率
+    on_present_value               OUT NUMBER,      -- 11.現在価値
+    on_original_cost               OUT NUMBER,      -- 12.取得価額
+    on_calc_interested_rate        OUT NUMBER,      -- 13.計算利子率
+-- Ver.1.1 ADD Start
+    on_original_cost_type1         OUT NUMBER,      -- 14.リース負債額_原契約
+    on_original_cost_type2         OUT NUMBER,      -- 15.リース負債額_再リース
+-- Ver.1.1 ADD End
     ov_errbuf                      OUT VARCHAR2,    -- エラー・メッセージ
     ov_retcode                     OUT VARCHAR2,    -- リターン・コード
     ov_errmsg                      OUT VARCHAR2     -- ユーザー・エラー・メッセージ
@@ -913,6 +1185,10 @@ AS
     ln_present_value               NUMBER;       -- 現在価値
     ln_original_cost               NUMBER;       -- 取得価額
     ln_calc_interested_rate        NUMBER;       -- 計算利子率
+-- Ver.1.1 ADD Start
+    ln_original_cost_type1         NUMBER;       -- リース負債額_原契約
+    ln_original_cost_type2         NUMBER;       -- リース負債額_再リース
+-- Ver.1.1 ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -937,6 +1213,9 @@ AS
       in_estimated_cash_price,  -- 見積現金購入価額
       in_life_in_months,        -- 法定耐用年数
       id_contract_ym,           -- 契約年月
+-- Ver.1.1 ADD Start
+      iv_lease_class,           -- リース種別
+-- Ver.1.1 ADD End
       lv_errbuf,                -- エラー・メッセージ           --# 固定 #
       lv_retcode,               -- リターン・コード             --# 固定 #
       lv_errmsg);               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -956,6 +1235,10 @@ AS
       on_present_value               := 0;
       on_original_cost               := 0;
       on_calc_interested_rate        := 0;
+-- Ver.1.1 ADD Start
+      on_original_cost_type1         := 0;   -- リース負債額_原契約
+      on_original_cost_type2         := 0;   -- リース負債額_再リース
+-- Ver.1.1 ADD End
       RETURN;
     END IF;
 --
@@ -980,7 +1263,12 @@ AS
                           in_payment_frequency,             -- 支払回数
                           in_first_charge,                  -- 初回月額リース料
                           in_second_charge,                 -- ２回目以降月額リース料
-                          ln_present_value_discount_rate);  -- 現在価値割引率
+-- Ver.1.1 MOD Start
+--                          ln_present_value_discount_rate);  -- 現在価値割引率
+                          ln_present_value_discount_rate,   -- 現在価値割引率
+                          iv_lease_class                    -- リース種別
+                        );
+-- Ver.1.1 MOD End
 --
     -- =====================================================
     --  リース種類判定処理 (A-5)
@@ -1006,13 +1294,37 @@ AS
       in_first_charge,          -- 初回月額リース料
       in_second_charge,         -- ２回目以降月額リース料
       ln_original_cost,         -- 取得価額
-      ln_calc_interested_rate,  -- 現在価値割引率
+-- Ver.1.1 ADD Start
+      iv_lease_class,           -- リース種別
+-- Ver.1.1 ADD End
+      ln_calc_interested_rate,  -- 計算利子率
       lv_errbuf,                -- エラー・メッセージ           --# 固定 #
       lv_retcode,               -- リターン・コード             --# 固定 #
       lv_errmsg);               -- ユーザー・エラー・メッセージ --# 固定 #
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+-- Ver.1.1 ADD Start
+    -- =====================================================
+    --  リース負債額算定処理 (A-8)
+    -- =====================================================
+    calc_debt_lease(
+      in_estimated_cash_price,  -- 見積現金購入価額
+      ln_present_value,         -- 現在価値割引額
+      iv_lease_class,           -- リース種別
+      in_second_charge,         -- ２回目以降月額リース料
+      ln_calc_interested_rate,  -- 計算利子率
+      ln_original_cost_type1,   -- リース負債額_原契約
+      ln_original_cost_type2,   -- リース負債額_再リース
+      lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+      lv_retcode,               -- リターン・コード             --# 固定 #
+      lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- Ver.1.1 ADD End
 --
     -- 正常終了時の戻り値設定
     ov_lease_kind                  := lv_lease_kind;
@@ -1020,6 +1332,10 @@ AS
     on_present_value               := ln_present_value;
     on_original_cost               := ln_original_cost;
     on_calc_interested_rate        := ln_calc_interested_rate;
+-- Ver.1.1 ADD Start
+    on_original_cost_type1         := ln_original_cost_type1;          -- リース負債額_原契約
+    on_original_cost_type2         := ln_original_cost_type2;          -- リース負債額_再リース
+-- Ver.1.1 ADD End
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
