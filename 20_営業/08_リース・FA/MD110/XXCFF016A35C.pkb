@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF016A35C(body)
  * Description      : リース契約メンテナンス
  * MD.050           : MD050_CFF_016_A35_リース契約メンテナンス
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2013/03/11    1.3   SCSK中村         「E_本稼動_09967」対応 3回目以降支払日をパラメータより削除（非表示）
  *  2013/07/05    1.4   SCSK中村         「E_本稼動_10871」対応 消費税増税対応
  *  2014/05/19    1.5   SCSK中野         「E_本稼動_11852」対応 控除額更新不具合対応
+ *  2016/08/19    1.6   SCSK郭           「E_本稼動_13658」自販機耐用年数変更対応
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,13 @@ AS
   cv_acct_if_flag_sent            CONSTANT VARCHAR2(100) := '2';                      -- 会計ＩＦフラグ：送信済
   cv_payment_match_flag_matched   CONSTANT VARCHAR2(100) := '1';                      -- 照合済フラグ：照合済
   cv_pay_plan_shori_type_create   CONSTANT VARCHAR2(100) := '1';                      -- 支払計画作成処理区分：登録
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+  cv_lease_class_vd               CONSTANT VARCHAR2(2)   := '11';                     -- 自販機
+  cv_original                     CONSTANT VARCHAR2(1)   := '1';                      -- 原契約
+  cv_re_lease                     CONSTANT VARCHAR2(1)   := '2';                      -- 再リース
+  cn_payment_frequency_60         CONSTANT NUMBER        := 60;                       -- 支払回数（60回）
+  cv_payment_match_flag_9         CONSTANT VARCHAR2(1)   := '9';                      -- 対象外
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
 -- Add 2013/02/27 Ver1.2 Start
   cv_payment_frequency_3          CONSTANT NUMBER := 3;                               -- 支払回数（最終支払日導出用の3回）
 -- Add 2013/02/27 Ver1.2 End
@@ -151,6 +159,10 @@ AS
 -- Add 2013/02/27 Ver1.2 Start
   cv_msg_last_payment_date_err    CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00031';       -- 支払日妥当性エラー（最終支払日）
 -- Add 2013/02/27 Ver1.2 End
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+  cv_msg_payment_freq_err_vd1     CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00242';       -- 支払回数妥当性チェックエラー（自販機・原契約）
+  cv_msg_payment_freq_err_vd2     CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00244';       -- 支払回数妥当性チェックエラー（自販機・再リース契約）
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
   -- トークン
   cv_tkn_param_name               CONSTANT VARCHAR2(100) := 'PARAM_NAME';             -- パラメータ論理名
   cv_tkn_param_val                CONSTANT VARCHAR2(100) := 'PARAM_VAL';              -- パラメータ入力値
@@ -166,6 +178,9 @@ AS
   cv_tkn_syori                    CONSTANT VARCHAR2(100) := 'SYORI';                  -- コンカレント論理名
   cv_tkn_request_id               CONSTANT VARCHAR2(100) := 'REQUEST_ID';             -- 要求ID
   cv_tkn_info                     CONSTANT VARCHAR2(100) := 'INFO';                   -- 情報
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+  cv_tkn_lease_class              CONSTANT VARCHAR2(100) := 'LEASE_CLASS';            -- リース種別
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
   -- トークン値
   cv_val_api_nm_put_log_param     CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50210';       -- コンカレントパラメータ出力処理
   cv_val_api_nm_lease_kind        CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50207';       -- リース種類判定
@@ -259,6 +274,11 @@ AS
            ,xch.lease_end_date        AS  lease_end_date      -- リース終了日
            ,xch.first_payment_date    AS  first_payment_date  -- 初回支払日
            ,xch.second_payment_date   AS  second_payment_date -- 2回目支払日
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+           ,xch.lease_class           AS  lease_class         -- リース種別
+           ,xch.lease_type            AS  lease_type          -- リース区分
+           ,xch.re_lease_times        AS  re_lease_times      -- 再リース回数
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
     FROM    xxcff_contract_headers    xch                     -- リース契約ヘッダ
     WHERE   xch.contract_number     = iv_contract_number      -- 契約番号
     AND     xch.lease_company       = iv_lease_company        -- リース会社
@@ -295,6 +315,9 @@ AS
            ,xoh.object_header_id      AS  object_header_id      -- 物件内部ID
            ,xoh.object_code           AS  object_code           -- 物件コード
            ,xoh.lease_type            AS  lease_type            -- リース区分
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+           ,xch.lease_class           AS  lease_class           -- リース種別
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
     FROM    xxcff_contract_headers    xch                       -- リース契約ヘッダ
            ,xxcff_contract_lines      xcl                       -- リース契約明細
            ,xxcff_object_headers      xoh                       -- リース物件
@@ -960,7 +983,73 @@ AS
       ELSE
         NULL;
       END IF;
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+      IF ( g_cont_hdr_rec.lease_class =  cv_lease_class_vd
+      AND  g_cont_hdr_rec.lease_type  =  cv_original
+      AND  gn_param_payment_frequency != cn_payment_frequency_60 ) THEN
+
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application   => cv_appl_short_name_xxcff                 -- アプリケーション短縮名
+                      ,iv_name          => cv_msg_payment_freq_err_vd1              -- メッセージコード
+                      ,iv_token_name1   => cv_tkn_lease_class                       -- トークンコード1
+                      ,iv_token_value1  => cv_lease_class_vd                        -- トークン値1
+                      ,iv_token_name2   => cv_tkn_frequency                         -- トークンコード1
+                      ,iv_token_value2  => cn_payment_frequency_60                  -- トークン値1
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+
+      ELSIF ( g_cont_hdr_rec.lease_class    = cv_lease_class_vd
+      AND     g_cont_hdr_rec.lease_type     = cv_re_lease
+      AND     g_cont_hdr_rec.re_lease_times BETWEEN 1 AND 3
+      AND     gn_param_payment_frequency    != 1                ) THEN
+
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application   => cv_appl_short_name_xxcff                 -- アプリケーション短縮名
+                      ,iv_name          => cv_msg_payment_freq_err_vd2              -- メッセージコード
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+
+      END IF;
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
     END IF;
+
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+    -- 支払回数に入力なし
+    IF (gn_param_payment_frequency IS NULL) THEN
+
+      IF ( g_cont_hdr_rec.lease_class       =  cv_lease_class_vd
+      AND  g_cont_hdr_rec.lease_type        =  cv_original
+      AND  g_cont_hdr_rec.payment_frequency != cn_payment_frequency_60 ) THEN
+
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application   => cv_appl_short_name_xxcff                 -- アプリケーション短縮名
+                      ,iv_name          => cv_msg_payment_freq_err_vd1              -- メッセージコード
+                      ,iv_token_name1   => cv_tkn_lease_class                       -- トークンコード1
+                      ,iv_token_value1  => cv_lease_class_vd                        -- トークン値1
+                      ,iv_token_name2   => cv_tkn_frequency                         -- トークンコード1
+                      ,iv_token_value2  => cn_payment_frequency_60                  -- トークン値1
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+
+      ELSIF ( g_cont_hdr_rec.lease_class       = cv_lease_class_vd
+      AND     g_cont_hdr_rec.lease_type        = cv_re_lease
+      AND     g_cont_hdr_rec.re_lease_times    BETWEEN 1 AND 3
+      AND     g_cont_hdr_rec.payment_frequency != 1                ) THEN
+
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application   => cv_appl_short_name_xxcff                 -- アプリケーション短縮名
+                      ,iv_name          => cv_msg_payment_freq_err_vd2              -- メッセージコード
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+
+      END IF;
+
+    END IF;
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
 --
 -- Add 2013/02/27 Ver1.2 Start
     -- ============================================
@@ -1843,7 +1932,10 @@ AS
     -- 実行会計期間，契約ごとの「最大実行枝番＋１」を取得
     SELECT  NVL(MAX(xchb.run_line_num), 0) + 1  AS  run_line_num          -- 実行枝番
     INTO    ln_run_line_num                                               -- 最大実行枝番＋１
-    FROM    xxcff_contract_headers_bk   xchb                              -- リース契約ヘッダＢＫ
+-- 2016/08/19 Ver.1.6 Y.Koh MOD Start
+--    FROM    xxcff_contract_headers_bk   xchb                              -- リース契約ヘッダＢＫ
+    FROM    xxcff_contract_lines_bk     xchb                              -- リース契約明細ヘッダＢＫ
+-- 2016/08/19 Ver.1.6 Y.Koh MOD End
     WHERE   xchb.run_period_name      = gv_period_name                    -- 実行会計期間
     AND     xchb.contract_header_id   = g_cont_hdr_rec.contract_header_id -- 契約内部ID
     ;
@@ -1968,6 +2060,10 @@ AS
        ,present_value                 -- 現在価値
        ,life_in_months                -- 法定耐用年数
        ,original_cost                 -- 取得価額
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+       ,original_cost_type1           -- リース負債額_原契約
+       ,original_cost_type2           -- リース負債額_再リース
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
        ,calc_interested_rate          -- 計算利子率
        ,object_header_id              -- 物件内部ID
        ,asset_category                -- 資産種類
@@ -2021,6 +2117,10 @@ AS
          ,xcl.present_value                 -- 現在価値
          ,xcl.life_in_months                -- 法定耐用年数
          ,xcl.original_cost                 -- 取得価額
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+         ,xcl.original_cost_type1           -- リース負債額_原契約
+         ,xcl.original_cost_type2           -- リース負債額_再リース
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
          ,xcl.calc_interested_rate          -- 計算利子率
          ,xcl.object_header_id              -- 物件内部ID
          ,xcl.asset_category                -- 資産種類
@@ -2092,6 +2192,11 @@ AS
        ,payment_match_flag      -- 照合済フラグ
        ,run_period_name         -- 実行会計期間
        ,run_line_num            -- 実行枝番
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+       ,debt_re                 -- リース債務額_再リース
+       ,interest_due_re         -- リース支払利息_再リース
+       ,debt_rem_re             -- リース債務残_再リース
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
        ,created_by              -- 作成者
        ,creation_date           -- 作成日
        ,last_updated_by         -- 最終更新者
@@ -2123,6 +2228,11 @@ AS
          ,xpp.payment_match_flag      -- 照合済フラグ
          ,gv_period_name              -- 実行会計期間
          ,ln_run_line_num             -- 実行枝番
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+         ,xpp.debt_re                     -- リース債務額_再リース
+         ,xpp.interest_due_re             -- リース支払利息_再リース
+         ,xpp.debt_rem_re                 -- リース債務残_再リース
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
          ,xpp.created_by              -- 作成者
          ,xpp.creation_date           -- 作成日
          ,xpp.last_updated_by         -- 最終更新者
@@ -2625,6 +2735,10 @@ AS
     ln_present_value                NUMBER;            -- 10.現在価値
     ln_original_cost                NUMBER;            -- 11.取得価額
     ln_calc_interested_rate         NUMBER;            -- 12.計算利子率
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+    ln_original_cost_type1          xxcff_contract_lines.original_cost_type1%TYPE; -- 14.リース負債額_原契約
+    ln_original_cost_type2          xxcff_contract_lines.original_cost_type2%TYPE; -- 15.リース負債額_再リース
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -2664,12 +2778,19 @@ AS
      ,in_estimated_cash_price        => g_cont_line_tab(gn_rec_no).estimated_cash_price -- 5. 見積現金購入価額
      ,in_life_in_months              => g_cont_line_tab(gn_rec_no).life_in_months       -- 6. 法定耐用年数
      ,id_contract_ym                 => ld_contract_ym                                  -- 7. 契約年月
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+     ,iv_lease_class                 => g_cont_line_tab(gn_rec_no).lease_class          -- 8.リース種別
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
      --
-     ,ov_lease_kind                  => lv_lease_kind                                   -- 8. リース種類（Finリース，Opリース，旧Finリース）
-     ,on_present_value_discount_rate => ln_present_value_discount_rate                  -- 9. 現在価値割引率
-     ,on_present_value               => ln_present_value                                -- 10.現在価値
-     ,on_original_cost               => ln_original_cost                                -- 11.取得価額
-     ,on_calc_interested_rate        => ln_calc_interested_rate                         -- 12.計算利子率
+     ,ov_lease_kind                  => lv_lease_kind                                   -- 9. リース種類（Finリース，Opリース，旧Finリース）
+     ,on_present_value_discount_rate => ln_present_value_discount_rate                  -- 10. 現在価値割引率
+     ,on_present_value               => ln_present_value                                -- 11.現在価値
+     ,on_original_cost               => ln_original_cost                                -- 12.取得価額
+     ,on_calc_interested_rate        => ln_calc_interested_rate                         -- 13.計算利子率
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+     ,on_original_cost_type1         => ln_original_cost_type1                          -- 14.リース負債額_原契約
+     ,on_original_cost_type2         => ln_original_cost_type2                          -- 15.リース負債額_再リース
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
      ,ov_errbuf                      => lv_errbuf                                       -- エラー・メッセージ
      ,ov_retcode                     => lv_retcode                                      -- リターン・コード
      ,ov_errmsg                      => lv_errmsg                                       -- ユーザー・エラー・メッセージ
@@ -2718,6 +2839,10 @@ AS
           --
          ,present_value               = ln_present_value                -- 現在価値
          ,original_cost               = ln_original_cost                -- 取得価額
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+         ,original_cost_type1         = ln_original_cost_type1          -- リース負債額_原契約
+         ,original_cost_type2         = ln_original_cost_type2          -- リース負債額_再リース
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
          ,calc_interested_rate        = ln_calc_interested_rate         -- 計算利子率
          ,present_value_discount_rate = ln_present_value_discount_rate  -- 現在価値割引率
           --
@@ -3100,6 +3225,9 @@ AS
         WHERE
             contract_line_id        = g_cont_line_tab(gn_rec_no).contract_line_id -- 契約明細内部ID
         AND period_name             = gv_period_name                              -- 会計期間（オープン期間）
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+        AND payment_match_flag      != cv_payment_match_flag_9                    -- 照合済フラグ（対象外）
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
         ;
       EXCEPTION
         WHEN OTHERS THEN
@@ -3134,6 +3262,9 @@ AS
       WHERE
           contract_line_id        = g_cont_line_tab(gn_rec_no).contract_line_id -- 契約明細内部ID
       AND period_name             < gv_period_name                              -- 会計期間（オープン期間より前）
+-- 2016/08/19 Ver.1.6 Y.Koh ADD Start
+      AND payment_match_flag      != cv_payment_match_flag_9                    -- 照合済フラグ（対象外）
+-- 2016/08/19 Ver.1.6 Y.Koh ADD End
       ;
     EXCEPTION
       WHEN OTHERS THEN
