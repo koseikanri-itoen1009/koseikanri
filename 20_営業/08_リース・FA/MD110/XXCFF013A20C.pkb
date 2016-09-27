@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2009/08/31    1.7   SCS渡辺学        [統合テスト障害0001058]
  *                                       統合テスト障害0000417の追加修正
  *  2012/01/16    1.8   SCSK白川         [E_本稼動_08123] 解約時のFA連携の条件に解約日を追加
+ *  2016/08/03    1.9   SCSK郭           [E_本稼動_13658]自販機耐用年数変更対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -225,6 +226,10 @@ AS
   cv_ctrt_ctrt           CONSTANT VARCHAR2(3) := '202';
   -- 情報変更
   cv_ctrt_info_change    CONSTANT VARCHAR2(3) := '209';
+-- 2016/08/03 Ver.1.9 Y.Koh ADD Start
+  -- 再リース
+  cv_ctrt_re_lease       CONSTANT VARCHAR2(3) := '203';
+-- 2016/08/03 Ver.1.9 Y.Koh ADD End
   -- 満了
   cv_ctrt_manryo         CONSTANT VARCHAR2(3) := '204';
   -- 中途解約(自己都合)
@@ -258,11 +263,19 @@ AS
 --
   -- ***リース区分
   cv_original  CONSTANT VARCHAR2(1) := '1';  -- 原契約
+-- 2016/08/03 Ver.1.9 Y.Koh ADD Start
+  cv_re_lease  CONSTANT VARCHAR2(1) := '2';  -- 再リース
+-- 2016/08/03 Ver.1.9 Y.Koh ADD End
 --
 -- T1_0759 2009/04/23 ADD START --
   -- ***月数
   cv_months  CONSTANT NUMBER(2) := 12;  
 -- T1_0759 2009/04/23 ADD END   --
+--
+-- 2016/08/03 Ver.1.9 Y.Koh ADD Start
+  -- ***リース種別
+  cv_lease_class_vd  CONSTANT VARCHAR2(2) := '11';  -- 自販機
+-- 2016/08/03 Ver.1.9 Y.Koh ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2457,7 +2470,10 @@ AS
     -- リース取引(振替)カーソル
     CURSOR les_trn_trnsf_cur
     IS
-      SELECT
+-- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+--      SELECT
+      SELECT /*+ INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03) INDEX(faadds XXCFF_FA_ADDITIONS_B_N04) INDEX(fadist_hist FA_DISTRIBUTION_HISTORY_N2) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) INDEX(les_class.FFV FND_FLEX_VALUES_U1) */
+-- 2016/08/03 Ver.1.9 Y.Koh MOD End
              ctrct_line.contract_header_id                      AS contract_header_id -- 契約内部ID
             ,ctrct_line.contract_line_id                        AS contract_line_id   -- 契約明細内部ID
             ,ctrct_line.object_header_id                        AS object_header_id   -- 物件内部ID
@@ -2488,9 +2504,14 @@ AS
            ,xxcff_lease_kind_v        les_kind      -- リース種類ビュー
            ,( 
               SELECT  lse_trnsf_hist_data.object_header_id
-                     ,lse_trnsf_hist_data.contract_line_id
+-- 2016/08/03 Ver.1.9 Y.Koh DEL Start
+--                     ,lse_trnsf_hist_data.contract_line_id
+-- 2016/08/03 Ver.1.9 Y.Koh DEL End
               FROM (
-                     SELECT
+-- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+--                     SELECT
+                     SELECT /*+ INDEX(obj_hist XXCFF_OBJECT_HISTORIES_N02) INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
+-- 2016/08/03 Ver.1.9 Y.Koh MOD End
                              obj_hist.object_header_id   AS object_header_id
                             ,ctrct_line.contract_line_id AS contract_line_id
                      FROM
@@ -2501,6 +2522,9 @@ AS
                            obj_hist.object_header_id   = ctrct_line.object_header_id
                        AND ctrct_line.contract_status  IN ( cv_ctrt_ctrt
                                                            ,cv_ctrt_manryo
+-- 2016/08/03 Ver.1.9 Y.Koh ADD Start
+                                                           ,cv_ctrt_re_lease
+-- 2016/08/03 Ver.1.9 Y.Koh ADD End
                                                            ,cv_ctrt_cancel_jiko
                                                            ,cv_ctrt_cancel_hoken
                                                            ,cv_ctrt_cancel_manryo
@@ -2511,11 +2535,20 @@ AS
                        AND obj_hist.accounting_if_flag   = cv_if_yet    -- 未送信
                        AND obj_hist.accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
                        AND ctrct_head.contract_header_id = ctrct_line.contract_header_id
-                       AND ctrct_head.lease_type         =  cv_original                            -- 原契約
-                       AND ctrct_line.lease_kind         IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
+-- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+--                       AND ctrct_head.lease_type         =  cv_original                            -- 原契約
+--                       AND ctrct_line.lease_kind         IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
+                       AND ( ctrct_head.lease_type         =  cv_original                            -- 原契約
+                       OR    ctrct_head.lease_type         =  cv_re_lease                            -- 再リース
+                       AND   ctrct_head.lease_class        =  cv_lease_class_vd                      -- 自販機
+                       AND   ctrct_head.re_lease_times     <= 3 )                                    -- 再リース回数
+-- 2016/08/03 Ver.1.9 Y.Koh MOD End
                        AND obj_hist.re_lease_times       = ctrct_head.re_lease_times
                      UNION ALL
-                     SELECT
+-- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+--                     SELECT
+                     SELECT /*+ INDEX(ctrct_hist XXCFF_CONTRACT_HISTORIES_N02) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
+-- 2016/08/03 Ver.1.9 Y.Koh MOD End
                              ctrct_hist.object_header_id   AS object_header_id
                             ,ctrct_hist.contract_line_id   AS contract_line_id
                      FROM
@@ -2523,8 +2556,14 @@ AS
                           ,xxcff_contract_histories  ctrct_hist  -- リース契約明細履歴
                      WHERE 
                            ctrct_head.contract_header_id   =  ctrct_hist.contract_header_id
-                       AND ctrct_head.lease_type           =  cv_original                            -- 原契約
-                       AND ctrct_hist.lease_kind           IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
+-- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+--                       AND ctrct_head.lease_type           =  cv_original                            -- 原契約
+--                       AND ctrct_hist.lease_kind           IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
+                       AND ( ctrct_head.lease_type           =  cv_original                            -- 原契約
+                       OR    ctrct_head.lease_type           =  cv_re_lease                            -- 再リース
+                       AND   ctrct_head.lease_class          =  cv_lease_class_vd                      -- 自販機
+                       AND   ctrct_head.re_lease_times       <= 3 )                                    -- 再リース回数
+-- 2016/08/03 Ver.1.9 Y.Koh MOD End
                        AND ctrct_hist.contract_status      =  cv_ctrt_info_change                    -- 情報変更
                        AND ctrct_hist.accounting_if_flag   =  cv_if_yet                              -- 未送信
                        AND ctrct_hist.accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
@@ -2534,15 +2573,21 @@ AS
                 ,lse_trnsf_hist_data.contract_line_id
             ) lse_trnsf_hist
       WHERE
-            ctrct_line.contract_line_id     =  lse_trnsf_hist.contract_line_id
-        AND ctrct_line.object_header_id     =  lse_trnsf_hist.object_header_id
+-- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+--            ctrct_line.contract_line_id     =  lse_trnsf_hist.contract_line_id
+--        AND ctrct_line.object_header_id     =  lse_trnsf_hist.object_header_id
+            ctrct_line.object_header_id     =  lse_trnsf_hist.object_header_id
+-- 2016/08/03 Ver.1.9 Y.Koh MOD End
         AND ctrct_line.object_header_id     =  obj_head.object_header_id
         AND ctrct_line.contract_header_id   =  ctrct_head.contract_header_id
         AND ctrct_line.lease_kind           IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
         AND ctrct_line.lease_kind           =  les_kind.lease_kind_code
         AND ctrct_head.lease_type           =  cv_original                            -- 原契約
         AND ctrct_head.lease_class          =  les_class.lease_class_code
-        AND ctrct_line.contract_line_id     =  faadds.attribute10
+-- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+--        AND ctrct_line.contract_line_id     =  faadds.attribute10
+        AND faadds.attribute10              =  TO_CHAR(ctrct_line.contract_line_id)
+-- 2016/08/03 Ver.1.9 Y.Koh MOD End
         AND faadds.asset_id                 =  fadist_hist.asset_id
         AND fadist_hist.book_type_code      =  les_kind.book_type_code
         AND fadist_hist.date_ineffective    IS NULL
@@ -3114,7 +3159,14 @@ AS
       --==============================================================
 -- T1_0759 2009/04/23 ADD START --
       --リース期間を算出する
-      ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
+-- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+--      ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
+      IF (g_lease_class_tab(ln_loop_cnt) = cv_lease_class_vd) THEN
+        ln_lease_period := 8;
+      ELSE
+        ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
+      END IF;
+-- 2016/08/03 Ver.1.9 Y.Koh MOD End
 -- T1_0759 2009/04/23 ADD END   --
       xxcff_common1_pkg.chk_fa_category(
          iv_segment1      => g_asset_category_tab(ln_loop_cnt) -- 資産種類
