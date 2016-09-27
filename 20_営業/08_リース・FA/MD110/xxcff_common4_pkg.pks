@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcff_common4_pkg(spec)
  * Description      : リース契約関連共通関数
  * MD.050           : なし
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2008-11-19    1.0   SCS礒崎祐次       新規作成
  *  2008-12-22    1.1   SCS礒崎祐次       税金コードを追加
  *  2013-06-25    1.2   SCSK中野徹也      [E_本稼動_10871]消費税増税対応
+ *  2016-08-10    1.3   SCSK仁木重人      [E_本稼動_13658]自販機耐用年数変更対応
  *
  *****************************************************************************************/
 --
@@ -104,6 +105,10 @@ AS
    , info_sys_if_date           xxcff_contract_lines.info_sys_if_date%TYPE             -- リース管理情報連携日
    , first_installation_address xxcff_contract_lines.first_installation_address%TYPE   -- 初回設置場所
    , first_installation_place   xxcff_contract_lines.first_installation_place%TYPE     -- 初回設置先
+-- Ver.1.3 ADD Start
+   , original_cost_type1        xxcff_contract_lines.original_cost_type1%TYPE          -- リース負債額_原契約
+   , original_cost_type2        xxcff_contract_lines.original_cost_type2%TYPE          -- リース負債額_再リース
+-- Ver.1.3 ADD End
    , created_by                 xxcff_contract_lines.created_by%TYPE                   -- 作成者
    , creation_date              xxcff_contract_lines.creation_date%TYPE                -- 作成日
    , last_updated_by            xxcff_contract_lines.last_updated_by%TYPE              -- 最終更新者
