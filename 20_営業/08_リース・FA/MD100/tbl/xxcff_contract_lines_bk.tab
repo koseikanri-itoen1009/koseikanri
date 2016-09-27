@@ -3,7 +3,7 @@
  * Table Name      : xxcff_contract_lines_bk
  * Description     : リース契約明細ＢＫ
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2012/10/05    1.0   SCSK 谷口    初回作成
  *  2013/07/05    1.1   SCSK 中村    E_本稼動_10871 消費税増税対応
+ *  2016/07/29    1.2   SCSK 仁木    E_本稼動_13658 耐用年数変更対応
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_contract_lines_bk (
      contract_line_id               NUMBER        NOT NULL
@@ -41,6 +42,10 @@ CREATE TABLE xxcff.xxcff_contract_lines_bk (
     ,present_value                  NUMBER(13)
     ,life_in_months                 NUMBER(3)
     ,original_cost                  NUMBER(13)
+-- E_本稼動_13658 ADD S.Niki START
+    ,original_cost_type1            NUMBER(13)
+    ,original_cost_type2            NUMBER(13)
+-- E_本稼動_13658 ADD S.Niki END
     ,calc_interested_rate           NUMBER(8,7)
     ,object_header_id               NUMBER        NOT NULL
     ,asset_category                 VARCHAR2(30)  NOT NULL
@@ -98,6 +103,10 @@ COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.present_value_discount_rate     
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.present_value                             IS '現在価値';
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.life_in_months                            IS '法定耐用年数';
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.original_cost                             IS '取得価額';
+-- E_本稼動_13658 ADD S.Niki START
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.original_cost_type1                       IS 'リース負債額_原契約';
+COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.original_cost_type2                       IS 'リース負債額_再リース';
+-- E_本稼動_13658 ADD S.Niki END
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.calc_interested_rate                      IS '計算利子率';
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.object_header_id                          IS '物件内部ID';
 COMMENT ON COLUMN xxcff.xxcff_contract_lines_bk.asset_category                            IS '資産種類';
