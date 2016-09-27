@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF004A30C(body)
  * Description      : リース物件一部修正・移動・解約アップロード
  * MD.050           : MD050_CFF_004_A30_リース物件一部修正・移動・解約アップロード
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/08/03    1.7  SCS 渡辺         [統合テスト障害0000654(追加)]
  *                                        支払照合済チェックの呼出をコメントアウト
  *  2011/12/26    1.8  SCSK白川         [E_本稼動_08123] アップロードシートに解約日を追加
+ *  2016/09/06    1.9  SCSK小路         [E_本稼動_13658] 耐用年数変更対応
  *
  *****************************************************************************************/
 --
@@ -3108,37 +3109,61 @@ AS
     l_ob_rec.installation_place   := g_installation_place_tab(in_loop_cnt_3);   -- 現設置先
     l_ob_rec.chassis_number       := g_chassis_number_tab(in_loop_cnt_3);       -- 車台番号
     l_ob_rec.re_lease_flag        := g_re_lease_flag_tab(in_loop_cnt_3);        -- 再リース要フラグ
-    l_ob_rec.cancellation_type    := CASE iv_proc_flag
-                                       WHEN  cv_proc_flag_csv
-                                         THEN g_cancellation_type_tab(in_loop_cnt_3)
-                                       WHEN  cv_proc_flag_tbl
-                                         THEN
-                                           CASE g_cancellation_class_tab(in_loop_cnt_3)
-                                             WHEN  cv_cancel_class_1 THEN cv_cancel_type_1
-                                             WHEN  cv_cancel_class_2 THEN cv_cancel_type_2
-                                             WHEN  cv_cancel_class_3 THEN g_cancellation_type_tab(in_loop_cnt_3)
-                                             WHEN  cv_cancel_class_4 THEN cv_cancel_type_1
-                                             WHEN  cv_cancel_class_5 THEN cv_cancel_type_2
-                                             WHEN  cv_cancel_class_9 THEN NULL
-                                           END
+-- 2016/09/06 Ver.1.9 Y.Shoji MOD Start
+--    l_ob_rec.cancellation_type    := CASE iv_proc_flag
+--                                       WHEN  cv_proc_flag_csv
+--                                         THEN g_cancellation_type_tab(in_loop_cnt_3)
+--                                       WHEN  cv_proc_flag_tbl
+--                                         THEN
+--                                           CASE g_cancellation_class_tab(in_loop_cnt_3)
+--                                             WHEN  cv_cancel_class_1 THEN cv_cancel_type_1
+--                                             WHEN  cv_cancel_class_2 THEN cv_cancel_type_2
+--                                             WHEN  cv_cancel_class_3 THEN g_cancellation_type_tab(in_loop_cnt_3)
+--                                             WHEN  cv_cancel_class_4 THEN cv_cancel_type_1
+--                                             WHEN  cv_cancel_class_5 THEN cv_cancel_type_2
+--                                             WHEN  cv_cancel_class_9 THEN NULL
+--                                           END
+    l_ob_rec.cancellation_type    := CASE g_cancellation_class_tab(in_loop_cnt_3)
+                                       -- 解約種別ありの場合
+                                       WHEN  cv_cancel_class_1 THEN cv_cancel_type_1
+                                       WHEN  cv_cancel_class_2 THEN cv_cancel_type_2
+                                       WHEN  cv_cancel_class_3 THEN g_cancellation_type_tab(in_loop_cnt_3)
+                                       WHEN  cv_cancel_class_4 THEN cv_cancel_type_1
+                                       WHEN  cv_cancel_class_5 THEN cv_cancel_type_2
+                                       WHEN  cv_cancel_class_9 THEN NULL
+                                       -- 解約種別なし（証書受領のみ）の場合
+                                       ELSE                         g_cancellation_type_tab(in_loop_cnt_3)
+-- 2016/09/06 Ver.1.9 Y.Shoji MOD End
                                      END;                                       -- 解約区分
-    l_ob_rec.cancellation_date    := CASE iv_proc_flag
-                                       WHEN  cv_proc_flag_csv
-                                         THEN g_cancellation_date_tab(in_loop_cnt_3)
-                                       WHEN  cv_proc_flag_tbl
-                                         THEN
-                                           CASE g_cancellation_class_tab(in_loop_cnt_3)
+-- 2016/09/06 Ver.1.9 Y.Shoji MOD Start
+--    l_ob_rec.cancellation_date    := CASE iv_proc_flag
+--                                       WHEN  cv_proc_flag_csv
+--                                         THEN g_cancellation_date_tab(in_loop_cnt_3)
+--                                       WHEN  cv_proc_flag_tbl
+--                                         THEN
+--                                           CASE g_cancellation_class_tab(in_loop_cnt_3)
 -- 2011/12/26 Ver.1.8 A.Shirakawa MOD Start
 --                                             WHEN  cv_cancel_class_1 THEN g_init_rec.process_date
 --                                             WHEN  cv_cancel_class_2 THEN g_init_rec.process_date
-                                             WHEN  cv_cancel_class_1 THEN g_cancellation_date_xmw_tab(in_loop_cnt_3)  --ﾒﾝﾃﾅﾝｽﾃｰﾌﾞﾙより取得
-                                             WHEN  cv_cancel_class_2 THEN g_cancellation_date_xmw_tab(in_loop_cnt_3)  --ﾒﾝﾃﾅﾝｽﾃｰﾌﾞﾙより取得
+--                                             WHEN  cv_cancel_class_1 THEN g_cancellation_date_xmw_tab(in_loop_cnt_3)  --ﾒﾝﾃﾅﾝｽﾃｰﾌﾞﾙより取得
+--                                             WHEN  cv_cancel_class_2 THEN g_cancellation_date_xmw_tab(in_loop_cnt_3)  --ﾒﾝﾃﾅﾝｽﾃｰﾌﾞﾙより取得
 -- 2011/12/26 Ver.1.8 A.Shirakawa MOD End
-                                             WHEN  cv_cancel_class_3 THEN g_cancellation_date_tab(in_loop_cnt_3)
-                                             WHEN  cv_cancel_class_4 THEN g_cancellation_date_tab(in_loop_cnt_3)
-                                             WHEN  cv_cancel_class_5 THEN g_cancellation_date_tab(in_loop_cnt_3)
-                                             WHEN  cv_cancel_class_9 THEN g_cancellation_date_tab(in_loop_cnt_3)
-                                           END
+--                                             WHEN  cv_cancel_class_3 THEN g_cancellation_date_tab(in_loop_cnt_3)
+--                                             WHEN  cv_cancel_class_4 THEN g_cancellation_date_tab(in_loop_cnt_3)
+--                                             WHEN  cv_cancel_class_5 THEN g_cancellation_date_tab(in_loop_cnt_3)
+--                                             WHEN  cv_cancel_class_9 THEN g_cancellation_date_tab(in_loop_cnt_3)
+--                                           END
+    l_ob_rec.cancellation_date    := CASE g_cancellation_class_tab(in_loop_cnt_3)
+                                       -- 解約種別ありの場合
+                                       WHEN  cv_cancel_class_1 THEN g_cancellation_date_xmw_tab(in_loop_cnt_3)  --ﾒﾝﾃﾅﾝｽﾃｰﾌﾞﾙより取得
+                                       WHEN  cv_cancel_class_2 THEN g_cancellation_date_xmw_tab(in_loop_cnt_3)  --ﾒﾝﾃﾅﾝｽﾃｰﾌﾞﾙより取得
+                                       WHEN  cv_cancel_class_3 THEN g_cancellation_date_tab(in_loop_cnt_3)
+                                       WHEN  cv_cancel_class_4 THEN g_cancellation_date_tab(in_loop_cnt_3)
+                                       WHEN  cv_cancel_class_5 THEN g_cancellation_date_tab(in_loop_cnt_3)
+                                       WHEN  cv_cancel_class_9 THEN g_cancellation_date_tab(in_loop_cnt_3)
+                                       -- 解約種別なし（証書受領のみ）の場合
+                                       ELSE                         g_cancellation_date_tab(in_loop_cnt_3)
+-- 2016/09/06 Ver.1.9 Y.Shoji MOD End
                                      END;                                       -- 中途解約日
     l_ob_rec.dissolution_date     :=  CASE iv_proc_flag
                                        WHEN  cv_proc_flag_csv
