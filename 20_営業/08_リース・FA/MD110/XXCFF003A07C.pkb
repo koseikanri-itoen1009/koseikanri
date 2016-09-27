@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A07C(body)
  * Description      : リース契約・物件アップロード
  * MD.050           : MD050_CFF_003_A07_リース契約・物件アップロード.doc
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *                                        「維持管理費用相当額（総額）」から月額金額を換算し（円未満切捨て）、
  *                                        端数差額を初回の月額控除額で調整する。
  *  2013/07/05    1.8   SCSK中野徹也    【E_本稼動_10871】(消費税増税対応)
+ *  2016/08/15    1.9   SCSK仁木 重人   【E_本稼動_13658】自販機耐用年数変更対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -133,8 +134,10 @@ AS
   cv_file_type_log   CONSTANT VARCHAR2(10)  := 'LOG';         --ログ(システム管理者用出力先)
 --
   -- メッセージ番号
-  -- 入力必須エラー
-  cv_msg_cff_00005   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00005';
+-- Ver.1.9 DEL Start
+--  -- 入力必須エラー
+--  cv_msg_cff_00005   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00005';
+-- Ver.1.9 DEL End
   -- 契約番号存在エラー
   cv_msg_cff_00044   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00044';
   -- 契約番号重複エラー
@@ -151,56 +154,70 @@ AS
   cv_msg_cff_00016   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00016';
   -- 支払回数入力値エラー
   cv_msg_cff_00014   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00014';
-  -- 頻度エラー
-  cv_msg_cff_00023   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00023';
+-- Ver.1.9 DEL Start
+--  -- 頻度エラー
+--  cv_msg_cff_00023   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00023';
+-- Ver.1.9 DEL End
   -- 初回支払日妥当性エラー（リース開始日前）
   cv_msg_cff_00022   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00022';
   -- 2回目支払日妥当性エラー（初回支払日前）
   cv_msg_cff_00056   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00056';
   -- 2回目支払日妥当性エラー（初回支払日翌々月以降）
   cv_msg_cff_00055   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00055';
-  -- 支払日妥当性エラー（最終支払日）
-  cv_msg_cff_00031   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00031';
+-- Ver.1.9 DEL Start
+--  -- 支払日妥当性エラー（最終支払日）
+--  cv_msg_cff_00031   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00031';
+-- Ver.1.9 DEL End
   -- 契約枝番重複エラー
   cv_msg_cff_00067   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00067';
   -- 契約枝番不整合エラー
   cv_msg_cff_00068   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00068';
-  -- 物件コード未登録エラー
-  cv_msg_cff_00075   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00075';
+-- Ver.1.9 DEL Start
+--  -- 物件コード未登録エラー
+--  cv_msg_cff_00075   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00075';
+-- Ver.1.9 DEL End
   -- 物件コード存在エラー
   cv_msg_cff_00160   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00160';
   -- ワークテーブル物件コード重複エラー
   cv_msg_cff_00145   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00145';
   -- 資産種類マスタエラー
   cv_msg_cff_00069   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00069';
-  -- ロックエラー
-  cv_msg_cff_00007   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00007';
+-- Ver.1.9 DEL Start
+--  -- ロックエラー
+--  cv_msg_cff_00007   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00007';
+-- Ver.1.9 DEL End
   -- エラー対象
   cv_msg_cff_00009   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00009';
   -- リース契約エラー対象
   cv_msg_cff_00146   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00146';
   -- リース契約明細エラー対象
   cv_msg_cff_00147   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00147';
-  -- 
+  -- リース種別エラー
   cv_msg_cff_00122   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00122';
   -- 耐用年数エラー
   cv_msg_cff_00149   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00149';
   -- 控除額エラー
   cv_msg_cff_00034   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00034';
-  -- 再リース回数不一致エラー
-  cv_msg_cff_00148   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00148';
+-- Ver.1.9 DEL Start
+--  -- 再リース回数不一致エラー
+--  cv_msg_cff_00148   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00148';
+-- Ver.1.9 DEL End
   -- 契約明細件数エラー
   cv_msg_cff_00150   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00150';
   -- 数値論理エラー(0以下)
   cv_msg_cff_00117   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00117';
-  -- 日付論理エラー
-  cv_msg_cff_00118   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00118';
+-- Ver.1.9 DEL Start
+--  -- 日付論理エラー
+--  cv_msg_cff_00118   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00118';
+-- Ver.1.9 DEL End
   -- 禁則文字エラー
   cv_msg_cff_00138   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00138';
   -- データ変換エラー
   cv_msg_cff_00110   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00110';
-  -- 2回目支払日妥当性エラー（初回支払日翌々年以降）
-  cv_msg_cff_00177   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00177';
+-- Ver.1.9 DEL Start
+--  -- 2回目支払日妥当性エラー（初回支払日翌々年以降）
+--  cv_msg_cff_00177   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00177';
+-- Ver.1.9 DEL End
   -- アップロード初期出力メッセージ  
   cv_msg_cff_00167   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00167'; 
   -- 半角英数字エラー
@@ -211,22 +228,26 @@ AS
   cv_msg_cff_00095   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00095';
    -- 項目値妥当性チェックエラー
   cv_msg_cff_00124   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00124';
-  -- 対象件数メッセージ
-  cv_msg_cff_90000   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90000';
-  -- 成功件数メッセージ
-  cv_msg_cff_90001   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90001';
-  -- エラー件数メッセージ
-  cv_msg_cff_90002   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90002';
-  -- 正常終了メッセージ
-  cv_msg_cff_90004   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90004';
-  -- エラー終了全ロールバックメッセージ
-  cv_msg_cff_90006   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90006';
-  -- コンカレント入力パラメータメッセージ
-  cv_msg_cff_90009   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90009';
+-- Ver.1.9 DEL Start
+--  -- 対象件数メッセージ
+--  cv_msg_cff_90000   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90000';
+--  -- 成功件数メッセージ
+--  cv_msg_cff_90001   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90001';
+--  -- エラー件数メッセージ
+--  cv_msg_cff_90002   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90002';
+--  -- 正常終了メッセージ
+--  cv_msg_cff_90004   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90004';
+--  -- エラー終了全ロールバックメッセージ
+--  cv_msg_cff_90006   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90006';
+--  -- コンカレント入力パラメータメッセージ
+--  cv_msg_cff_90009   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90009';
+-- Ver.1.9 DEL End
 --
   -- メッセージトークン
   cv_tk_cff_00005_01 CONSTANT VARCHAR2(15)  := 'INPUT';       -- カラム論理名
-  cv_tk_cff_00007_01 CONSTANT VARCHAR2(15)  := 'TABLE_NAME';  -- テーブル名
+-- Ver.1.9 DEL Start
+--  cv_tk_cff_00007_01 CONSTANT VARCHAR2(15)  := 'TABLE_NAME';  -- テーブル名
+-- Ver.1.9 DEL End
   cv_tk_cff_00009_01 CONSTANT VARCHAR2(15)  := 'CONTRACT_NO'; -- 契約番号
   cv_tk_cff_00009_02 CONSTANT VARCHAR2(15)  := 'L_COMPANY';   -- リース会社
   cv_tk_cff_00009_03 CONSTANT VARCHAR2(15)  := 'SPEC_NO';     -- 契約枝番
@@ -240,33 +261,45 @@ AS
   cv_tk_cff_00101_01 CONSTANT VARCHAR2(15)  := 'APPL_NAME';   -- アプリケーション名
   cv_tk_cff_00101_02 CONSTANT VARCHAR2(15)  := 'INFO';        -- エラーメッセージ
   cv_tk_cff_90000_01 CONSTANT VARCHAR2(15)  := 'COUNT';       -- 処理対象
-  cv_tk_cff_90009_01 CONSTANT VARCHAR2(15)  := 'PARAM_NAME';  -- コンカレント入力パラメータ名
-  cv_tk_cff_90009_02 CONSTANT VARCHAR2(15)  := 'PARAM_VAL';   -- コンカレント入力パラメータ値
+-- Ver.1.9 DEL Start
+--  cv_tk_cff_90009_01 CONSTANT VARCHAR2(15)  := 'PARAM_NAME';  -- コンカレント入力パラメータ名
+--  cv_tk_cff_90009_02 CONSTANT VARCHAR2(15)  := 'PARAM_VAL';   -- コンカレント入力パラメータ値
+-- Ver.1.9 DEL End
   cv_tk_cff_00124_01 CONSTANT VARCHAR2(15)  := 'COLUMN_NAME'; -- カラム論理名
   cv_tk_cff_00124_02 CONSTANT VARCHAR2(15)  := 'COLUMN_INFO'; -- カラム名
   cv_tk_cff_00167_01 CONSTANT VARCHAR2(15)  := 'FILE_NAME';   -- ファイル名トークン
   cv_tk_cff_00167_02 CONSTANT VARCHAR2(15)  := 'CSV_NAME';    -- CSVファイル名トークン
 --
   -- トークン
+-- Ver.1.9 DEL Start
   cv_msg_cff_50014   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50014';  -- リース物件テーブル
+-- Ver.1.9 DEL End
   cv_msg_cff_50040   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50040';  -- 契約番号
-  cv_msg_cff_50134   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50134';  -- リース契約日
+-- Ver.1.9 DEL Start
+--  cv_msg_cff_50134   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50134';  -- リース契約日
+-- Ver.1.9 DEL End
   cv_msg_cff_50041   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50041';  -- リース種別
   cv_msg_cff_50042   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50042';  -- リース区分
   cv_msg_cff_50043   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50043';  -- リース会社
-  cv_msg_cff_50044   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50044';  -- 再リース回数
+-- Ver.1.9 DEL Start
+--  cv_msg_cff_50044   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50044';  -- 再リース回数
+-- Ver.1.9 DEL End
   cv_msg_cff_50045   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50045';  -- 件名
-  cv_msg_cff_50046   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50046';  -- リース開始日
+-- Ver.1.9 DEL Start
+--  cv_msg_cff_50046   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50046';  -- リース開始日
+-- Ver.1.9 DEL End
   cv_msg_cff_50047   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50047';  -- 支払回数
   cv_msg_cff_50048   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50048';  -- 頻度
-  cv_msg_cff_50049   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50049';  -- 年数
-  cv_msg_cff_50051   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50051';  -- リース終了日
-  cv_msg_cff_50052   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50052';  -- 初回支払日
-  cv_msg_cff_50053   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50053';  -- 2回目支払日
-  cv_msg_cff_50054   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50054';  -- 3回目以降支払日
-  cv_msg_cff_50055   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50055';  -- 費用計上開始会計期間
-  cv_msg_cff_50056   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50056';  -- リース契約テーブル
-  cv_msg_cff_50058   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50058';  -- 契約枝番
+-- Ver.1.9 DEL Start
+--  cv_msg_cff_50049   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50049';  -- 年数
+--  cv_msg_cff_50051   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50051';  -- リース終了日
+--  cv_msg_cff_50052   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50052';  -- 初回支払日
+--  cv_msg_cff_50053   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50053';  -- 2回目支払日
+--  cv_msg_cff_50054   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50054';  -- 3回目以降支払日
+--  cv_msg_cff_50055   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50055';  -- 費用計上開始会計期間
+--  cv_msg_cff_50056   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50056';  -- リース契約テーブル
+--  cv_msg_cff_50058   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50058';  -- 契約枝番
+-- Ver.1.9 DEL End
   cv_msg_cff_50148   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50148';  -- 税金コード
   cv_msg_cff_50149   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50149';  -- 初回設置先
   cv_msg_cff_50150   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50150';  -- 初回設置場所
@@ -275,11 +308,15 @@ AS
   cv_msg_cff_50156   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50156';  -- 初回月額消費税額
   cv_msg_cff_50157   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50157';  -- ２回目以降消費税額
   cv_msg_cff_50158   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50158';  -- 月額リース控除額
-  cv_msg_cff_50159   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50159';  -- 月額リース控除消費税額
+-- Ver.1.9 DEL Start
+--  cv_msg_cff_50159   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50159';  -- 月額リース控除消費税額
+-- Ver.1.9 DEL End
   cv_msg_cff_50064   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50064';  -- 見積現金購入購入価額
   cv_msg_cff_50032   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50032';  -- 法定耐用年数
   cv_msg_cff_50010   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50010';  -- 物件コード
-  cv_msg_cff_50072   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50072';  -- 資産種類
+-- Ver.1.9 DEL Start
+--  cv_msg_cff_50072   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50072';  -- 資産種類
+-- Ver.1.9 DEL End
   cv_msg_cff_50011   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50011';  -- 管理部門コード
   cv_msg_cff_50012   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50012';  -- 本社/工場
   cv_msg_cff_50184   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50184';  -- 発注番号
@@ -292,8 +329,10 @@ AS
   cv_msg_cff_50183   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50183';  -- 登録番号
   cv_msg_cff_50187   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50187';  -- リース契約・物件
 --
-  cv_msg_cff_50121   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50121';  -- コンカレント入力パラメータ名
-  cv_msg_cff_50122   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50122';  -- ファイルID
+-- Ver.1.9 DEL Start
+--  cv_msg_cff_50121   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50121';  -- コンカレント入力パラメータ名
+--  cv_msg_cff_50122   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50122';  -- ファイルID
+-- Ver.1.9 DEL End
   cv_msg_cff_50130   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50130';  -- 初期処理
   cv_msg_cff_50131   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50131';  -- BLOBデータ変換用関数
 --
@@ -5410,11 +5449,18 @@ AS
      ,in_estimated_cash_price        => gr_cont_line_rec.estimated_cash_price          -- 5.見積現金購入価額
      ,in_life_in_months              => gr_cont_line_rec.life_in_months                -- 6.法定耐用年数
      ,id_contract_ym                 => lv_contract_ym                                 -- 7.契約年月
-     ,ov_lease_kind                  => gr_cont_line_rec.lease_kind                    -- 8.リース種類
-     ,on_present_value_discount_rate => gr_cont_line_rec.present_value_discount_rate   -- 9.現在価値割引率
-     ,on_present_value               => gr_cont_line_rec.present_value                 -- 10.現在価値
-     ,on_original_cost               => gr_cont_line_rec.original_cost                 -- 11.取得価額
-     ,on_calc_interested_rate        => gr_cont_line_rec.calc_interested_rate          -- 12.計算利子率
+-- Ver.1.9 ADD Start
+     ,iv_lease_class                 => gr_cont_hed_rec.lease_class                    -- 8.リース種別
+-- Ver.1.9 ADD End
+     ,ov_lease_kind                  => gr_cont_line_rec.lease_kind                    -- 9.リース種類
+     ,on_present_value_discount_rate => gr_cont_line_rec.present_value_discount_rate   -- 10.現在価値割引率
+     ,on_present_value               => gr_cont_line_rec.present_value                 -- 11.現在価値
+     ,on_original_cost               => gr_cont_line_rec.original_cost                 -- 12.取得価額
+     ,on_calc_interested_rate        => gr_cont_line_rec.calc_interested_rate          -- 13.計算利子率
+-- Ver.1.9 ADD Start
+     ,on_original_cost_type1         => gr_cont_line_rec.original_cost_type1           -- 14.リース負債額_原契約
+     ,on_original_cost_type2         => gr_cont_line_rec.original_cost_type2           -- 15.リース負債額_再リース
+-- Ver.1.9 ADD End
      ,ov_errbuf                      => lv_errbuf
      ,ov_retcode                     => lv_retcode
      ,ov_errmsg                      => lv_errmsg
@@ -5447,7 +5493,7 @@ AS
 --
  /**********************************************************************************
    * Procedure Name   : ins_object_histories
-   * Description      : リース物件履歴登録        (A-17)
+   * Description      : リース物件履歴登録        (A-18)
    ***********************************************************************************/
   PROCEDURE ins_object_histories(
     in_object_header_id  IN  NUMBER            -- 物件内部ID
@@ -5697,7 +5743,7 @@ AS
   --ADD 2010/01/07 END
 --
   -- ***************************************************
-  -- 1. アップロード項目編集                      (A-12)
+  -- 1. アップロード項目編集                      (A-13)
   -- ***************************************************
       --関数の呼び出し
       set_upload_item(
@@ -5726,7 +5772,7 @@ AS
       END IF;
 --
   -- ***************************************************
-  -- 3. リース物件作成                            (A-15)
+  -- 3. リース物件新規登録                        (A-15)
   -- ***************************************************
       xxcff_common3_pkg.insert_ob_hed(
         io_object_data_rec    => gr_object_data_rec --リース物件
