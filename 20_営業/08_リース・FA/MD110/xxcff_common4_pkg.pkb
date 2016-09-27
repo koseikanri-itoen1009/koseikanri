@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcff_common4_pkg(body)
  * Description      : リース契約関連共通関数
  * MD.050           : なし
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-11-19    1.0   SCS礒崎祐次      新規作成
  *  2013-06-26    1.1   SCSK中野徹也     [E_本稼動_10871]消費税増税対応
+ *  2016-08-10    1.2   SCSK仁木重人     [E_本稼動_13658]自販機耐用年数変更対応
  *
  *****************************************************************************************/
 --
@@ -317,6 +318,10 @@ AS
 -- 2013/06/26 Ver.1.1 T.Nakano ADD Start
      , tax_code                    -- 税金コード
 -- 2013/06/26 Ver.1.1 T.Nakano ADD End
+-- Ver.1.2 ADD Start
+     , original_cost_type1         -- リース負債額_原契約
+     , original_cost_type2         -- リース負債額_再リース
+-- Ver.1.2 ADD End
      , created_by                  -- 作成者
      , creation_date               -- 作成日
      , last_updated_by             -- 最終更新者
@@ -368,6 +373,10 @@ AS
 -- 2013/06/26 Ver.1.1 T.Nakano ADD Start
      , io_contract_data_rec.tax_code                    -- 税金コード
 -- 2013/06/26 Ver.1.1 T.Nakano ADD End
+-- Ver.1.2 ADD Start
+     , io_contract_data_rec.original_cost_type1         -- リース負債額_原契約
+     , io_contract_data_rec.original_cost_type2         -- リース負債額_再リース
+-- Ver.1.2 ADD End
      , io_contract_data_rec.created_by                  -- 作成者
      , io_contract_data_rec.creation_date               -- 作成日
      , io_contract_data_rec.last_updated_by             -- 最終更新者
@@ -757,6 +766,10 @@ AS
 -- 2013/06/26 Ver.1.1 T.Nakano ADD Start
          , xcl.tax_code                    = io_contract_data_rec.tax_code                    -- 税金コード
 -- 2013/06/26 Ver.1.1 T.Nakano ADD End
+-- Ver.1.2 ADD Start
+         , original_cost_type1             = io_contract_data_rec.original_cost_type1         -- リース負債額_原契約
+         , original_cost_type2             = io_contract_data_rec.original_cost_type2         -- リース負債額_再リース
+-- Ver.1.2 ADD End
          , xcl.created_by                  = io_contract_data_rec.created_by                  -- 作成者
          , xcl.creation_date               = io_contract_data_rec.creation_date               -- 作成日
          , xcl.last_updated_by             = io_contract_data_rec.last_updated_by             -- 最終更新者
