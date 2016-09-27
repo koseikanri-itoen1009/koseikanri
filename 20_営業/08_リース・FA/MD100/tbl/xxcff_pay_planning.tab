@@ -3,13 +3,14 @@
  * Table Name      : xxcff_pay_planning
  * Description     : リース支払計画
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/01/23    1.0  SCS 奥河美樹  初回作成
+ *  2016/07/11    1.1  SCSK 小路恭弘 【E_本稼動_13658】(耐用年数変更対応)
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_pay_planning (
      contract_line_id               NUMBER        NOT NULL
@@ -28,6 +29,11 @@ CREATE TABLE xxcff.xxcff_pay_planning (
     ,fin_interest_due               NUMBER(10)
     ,fin_debt_rem                   NUMBER(10)
     ,fin_tax_debt_rem               NUMBER(10)
+--【E_本稼動_13658】ADD START Shoji
+    ,debt_re                        NUMBER(10)
+    ,interest_due_re                NUMBER(10)
+    ,debt_rem_re                    NUMBER(10)
+--【E_本稼動_13658】ADD END Shoji
     ,accounting_if_flag             VARCHAR2(1)   NOT NULL
     ,payment_match_flag             VARCHAR2(1)   NOT NULL
     ,created_by                     NUMBER(15)    NOT NULL
@@ -60,6 +66,11 @@ COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_tax_debt                         
 COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_interest_due                            IS 'ＦＩＮリース支払利息';
 COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_debt_rem                                IS 'ＦＩＮリース債務残';
 COMMENT ON COLUMN xxcff.xxcff_pay_planning.fin_tax_debt_rem                            IS 'ＦＩＮリース債務残_消費税';
+--【E_本稼動_13658】ADD START Shoji
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.debt_re                                     IS 'リース債務額_再リース';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.interest_due_re                             IS 'リース支払利息_再リース';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning.debt_rem_re                                 IS 'リース債務残_再リース';
+--【E_本稼動_13658】ADD END Shoji
 COMMENT ON COLUMN xxcff.xxcff_pay_planning.accounting_if_flag                          IS '会計ＩＦフラグ';
 COMMENT ON COLUMN xxcff.xxcff_pay_planning.payment_match_flag                          IS '照合済フラグ';
 COMMENT ON COLUMN xxcff.xxcff_pay_planning.created_by                                  IS '作成者';
