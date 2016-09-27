@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF010A16C(body)
  * Description      : リース仕訳作成
  * MD.050           : MD050_CFF_010_A16_リース仕訳作成
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,8 @@ AS
  *  set_lease_class_aff          【内部共通処理】リース種別AFF値設定    (A-21)
  *  set_jnl_amount               【内部共通処理】金額設定               (A-22)
  *  ins_xxcff_gl_trn             【内部共通処理】リース仕訳テーブル登録 (A-23)
+ *  get_release_balance_data     仕訳元データ(再リース差額)抽出         (A-25)
+ *  proc_ptn_debt_balance       【仕訳パターン】再リース差額            (A-26)
  *  submain                      メイン処理プロシージャ
  *  main                         コンカレント実行ファイル登録プロシージャ
  * Change Record
@@ -53,6 +55,7 @@ AS
  *  2013/07/22    1.6   SCSK中野徹也     [E_本稼動_10871]消費税増税対応
  *  2014/01/28    1.7   SCSK中野徹也     [E_本稼動_11170]支払利息計上時の不具合対応
  *  2016/09/16    1.8   SCSK小路恭弘     [E_本稼動_13658]障害対応分
+ *  2016/09/23    1.9   SCSK小路恭弘     [E_本稼動_13658]自販機の耐用年数を変更する
  *
  *****************************************************************************************/
 --
@@ -154,6 +157,9 @@ AS
 -- T1_0356 2009/04/17 ADD START --
   cv_msg_013a20_m_021 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00094'; --共通関数エラー
 -- T1_0356 2009/04/17 ADD END   --
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  cv_msg_013a20_m_022 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00245'; -- リース仕訳テーブル作成（仕訳元＝再リース差額）メッセージ
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
   -- ***メッセージ名(トークン)
   cv_msg_013a20_t_010 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50076'; --XXCFF:会社コード_本社
@@ -177,6 +183,9 @@ AS
   cv_msg_013a20_t_027 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50188'; --XXCFF:オンライン終了時間
   cv_msg_013a20_t_028 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50189'; --営業日日付
 -- T1_0356 2009/04/17 ADD END   --
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  cv_msg_013a20_t_029 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50285'; -- リース仕訳(仕訳元=再リース差額)情報
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
   -- ***トークン名
   cv_tkn_prof     CONSTANT VARCHAR2(20) := 'PROF_NAME';
@@ -243,6 +252,9 @@ AS
   cv_if_aft  CONSTANT VARCHAR2(1) := '2';  -- 連携済
   -- ***照合済フラグ
   cv_match   CONSTANT VARCHAR2(1) := '1';  -- 照合済
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  cv_match_9 CONSTANT VARCHAR2(1) := '9';  -- 対象外
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
   -- ***リース区分
   cv_original  CONSTANT VARCHAR2(1) := '1';  -- 原契約
@@ -258,6 +270,40 @@ AS
   cv_online_end_time  CONSTANT VARCHAR2(8) := '24:00:00';  
 -- T1_0356 2009/04/17 ADD END   --
 --
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  -- ***リース種別
+  cv_lease_class_11       CONSTANT VARCHAR2(2) := '11'; -- 11（自販機）
+--
+  -- ***リース区分
+  cv_lease_type_1         CONSTANT VARCHAR2(1) := '1';  -- 1（原契約）
+  cv_lease_type_2         CONSTANT VARCHAR2(1) := '2';  -- 2（再リース）
+--
+  -- ***フラグ判定用
+  cv_flag_y               CONSTANT VARCHAR2(1) := 'Y';
+  cv_flag_n               CONSTANT VARCHAR2(1) := 'N';
+--
+  -- ***金額設定グループ
+  cv_amount_grp_liab_blc_re  CONSTANT VARCHAR2(11) := 'LIAB_BLC_RE';
+  cv_amount_grp_liab_pre_re  CONSTANT VARCHAR2(18) := 'LIAB_PRETAX_BLC_RE';
+  cv_amount_grp_liab_amt_re  CONSTANT VARCHAR2(11) := 'LIAB_AMT_RE';
+  cv_amount_grp_pay_int_re   CONSTANT VARCHAR2(15) := 'PAY_INTEREST_RE';
+  cv_amount_grp_charge_re    CONSTANT VARCHAR2(9)  := 'CHARGE_RE';
+  cv_amount_grp_balance      CONSTANT VARCHAR2(7)  := 'BALANCE';
+--
+  -- ***借方貸方区分
+  cv_crdr_type_dr         CONSTANT VARCHAR2(2) := 'DR';
+--
+  -- ***支払回数
+  cn_payment_frequency_1  CONSTANT NUMBER(1)   := 1;
+  cn_payment_frequency_61 CONSTANT NUMBER(2)   := 61;
+  cn_payment_frequency_73 CONSTANT NUMBER(2)   := 73;
+  cn_payment_frequency_85 CONSTANT NUMBER(2)   := 85;
+  -- ***再リース回数
+  cn_re_lease_times_1     CONSTANT NUMBER(1)   := 1;
+  cn_re_lease_times_2     CONSTANT NUMBER(1)   := 2;
+  cn_re_lease_times_3     CONSTANT NUMBER(1)   := 3;
+--
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -291,6 +337,13 @@ AS
   TYPE g_charge_ttype                IS TABLE OF NUMBER INDEX BY PLS_INTEGER;-- リース料
   TYPE g_charge_tax_ttype            IS TABLE OF NUMBER INDEX BY PLS_INTEGER;-- リース料_消費税
   TYPE g_tax_code_ttype              IS TABLE OF xxcff_contract_headers.tax_code%TYPE INDEX BY PLS_INTEGER;-- 税コード
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  TYPE g_op_charge_ttype             IS TABLE OF xxcff_pay_planning.op_charge%TYPE INDEX BY PLS_INTEGER;       -- ＯＰリース料
+  TYPE g_debt_re_ttype               IS TABLE OF xxcff_pay_planning.debt_re%TYPE INDEX BY PLS_INTEGER;         -- リース債務額_再リース
+  TYPE g_interest_due_re_ttype       IS TABLE OF xxcff_pay_planning.interest_due_re%TYPE INDEX BY PLS_INTEGER; -- リース支払利息_再リース
+  TYPE g_debt_rem_re_ttype           IS TABLE OF xxcff_pay_planning.debt_rem_re%TYPE INDEX BY PLS_INTEGER;     -- リース債務残_再リース
+  TYPE g_release_balance_ttype       IS TABLE OF NUMBER INDEX BY PLS_INTEGER;                                  -- 再リース差額
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -324,6 +377,13 @@ AS
   g_charge_tab                          g_charge_ttype;           -- リース料
   g_charge_tax_tab                      g_charge_tax_ttype;       -- リース料_消費税
   g_tax_code_tab                        g_tax_code_ttype;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  g_op_charge_tab                       g_op_charge_ttype;        -- ＯＰリース料
+  g_debt_re_tab                         g_debt_re_ttype;          -- リース債務額_再リース
+  g_interest_due_re_tab                 g_interest_due_re_ttype;  -- リース支払利息_再リース
+  g_debt_rem_re_tab                     g_debt_rem_re_ttype;      -- リース債務残_再リース
+  g_release_balance_tab                 g_release_balance_ttype;  -- 再リース差額
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
   -- ***処理件数
   -- リース取引からのリース仕訳テーブル登録処理における件数
@@ -339,6 +399,12 @@ AS
   gn_gloif_cr_target_cnt   NUMBER;     -- 対象件数(貸方データ)
   gn_gloif_normal_cnt      NUMBER;     -- 正常件数
   gn_gloif_error_cnt       NUMBER;     -- エラー件数
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  -- 再リース差額のリース仕訳テーブル登録処理における件数
+  gn_balance_target_cnt    NUMBER;     -- 対象件数
+  gn_balance_normal_cnt    NUMBER;     -- 正常件数
+  gn_balance_error_cnt     NUMBER;     -- エラー件数
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
   -- 初期値情報
   g_init_rec xxcff_common1_pkg.init_rtype;
@@ -428,6 +494,9 @@ AS
            ,les_jnl_ptn.business_type       AS business_type   -- 企業
            ,les_jnl_ptn.project             AS project         -- 予備1
            ,les_jnl_ptn.future              AS future          -- 予備2
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+           ,les_jnl_ptn.re_lease_flag       AS re_lease_flag   -- 自販機再リースフラグ
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
            ,NULL                            AS amount_dr       -- 借方金額
            ,NULL                            AS amount_cr       -- 貸方金額
            ,NULL                            AS tax_code        -- 税コード
@@ -466,6 +535,10 @@ AS
 --           ,ctrct_head.tax_code                 AS tax_code           -- 税コード
            ,NVL(ctrct_line.tax_code ,ctrct_head.tax_code)    AS tax_code  -- 税コード
 -- 2013/07/22 Ver.1.6 T.Nakano ADD End
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+           ,NULL                                AS debt_rem_re        -- リース債務残_再リース
+           ,NULL                                AS payment_frequency  -- 支払回数
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -525,6 +598,17 @@ AS
 --       ,ctrct_head.tax_code                 AS tax_code           -- 税コード
            ,NVL(ctrct_line.tax_code ,ctrct_head.tax_code)    AS tax_code  -- 税コード
 -- 2013/07/22 Ver.1.6 T.Nakano ADD End
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+           ,CASE
+              -- 照合済⇒リース債務残_再リース
+              WHEN pay_plan.payment_match_flag IN (cv_match ,cv_match_9) THEN
+                pay_plan.debt_rem_re
+              -- 未照合⇒リース債務残_再リース + リース債務額_再リース (債務取崩が発生しない為)
+              ELSE
+                pay_plan.debt_rem_re + pay_plan.debt_re
+              END                                                       AS debt_rem_re  -- リース債務残_再リース
+           ,pay_plan.payment_frequency          AS payment_frequency  -- 支払回数
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -572,6 +656,11 @@ AS
 --           ,ctrct_head.tax_code                 AS tax_code           -- 税コード
            ,NVL(ctrct_line.tax_code ,ctrct_head.tax_code)                 AS tax_code           -- 税コード
 -- 2013/07/22 Ver.1.6 T.Nakano ADD End
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+           -- リース債務残_再リース + リース債務額_再リース 
+           ,pay_plan.debt_rem_re + pay_plan.debt_re                 AS debt_rem_re   -- リース債務残_再リース
+           ,pay_plan.payment_frequency          AS payment_frequency  -- 支払回数
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -596,6 +685,10 @@ AS
   CURSOR get_pay_plan_data_cur
   IS
     SELECT
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+           /*+ LEADING(PAY_PLAN CTRCT_LINE)
+               USE_NL(PAY_PLAN CTRCT_LINE CTRCT_HEAD OBJ_HEAD LES_CLASS_V.FFVS LES_CLASS_V.FFV LES_CLASS_V.FFVT) */
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
             pay_plan.contract_header_id      AS contract_header_id -- 契約内部ID
            ,pay_plan.contract_line_id        AS contract_line_id   -- 契約明細内部ID
            ,ctrct_line.object_header_id      AS object_header_id   -- 物件内部ID
@@ -631,6 +724,11 @@ AS
 --           ,ctrct_head.tax_code              AS tax_code           -- 税コード
            ,NVL(ctrct_line.tax_code ,ctrct_head.tax_code)    AS tax_code  -- 税コード
 -- 2013/07/22 Ver.1.6 T.Nakano ADD End
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+           ,pay_plan.op_charge               AS op_charge          -- ＯＰリース料
+           ,pay_plan.debt_re                 AS debt_re            -- リース債務額_再リース
+           ,pay_plan.interest_due_re         AS interest_due_re    -- リース支払利息_再リース
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     FROM
            xxcff_pay_planning      pay_plan      -- リース支払計画
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -639,7 +737,10 @@ AS
           ,xxcff_contract_headers  ctrct_head    -- リース契約
     WHERE
           pay_plan.period_name          = gv_period_name
-    AND   pay_plan.payment_match_flag   = cv_match --照合済
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--    AND   pay_plan.payment_match_flag   = cv_match --照合済
+    AND   pay_plan.payment_match_flag   IN (cv_match,cv_match_9) -- 照合済,対象外
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
     AND   pay_plan.accounting_if_flag   = cv_if_yet--未送信
     AND   pay_plan.contract_line_id     = ctrct_line.contract_line_id
     AND   ctrct_line.object_header_id   = obj_head.object_header_id
@@ -648,6 +749,52 @@ AS
     ;
   g_get_pay_plan_data_rec  get_pay_plan_data_cur%ROWTYPE;
 --
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  -- 仕訳元データ(再リース差額)取得カーソル
+  CURSOR get_release_balance_data_cur
+  IS
+    SELECT
+            pay_plan_2.contract_header_id    AS contract_header_id -- 契約内部ID
+           ,pay_plan_2.contract_line_id      AS contract_line_id   -- 契約明細内部ID
+           ,ctrct_line_2.object_header_id    AS object_header_id   -- 物件内部ID
+           ,pay_plan_2.payment_frequency     AS payment_frequency  -- 支払回数
+           ,pay_plan_2.period_name           AS period_name        -- 会計期間
+           ,cv_lease_type_2                  AS lease_type         -- リース区分
+           ,cv_lease_class_11                AS lease_class        -- リース種別
+           ,pay_plan_2.op_charge
+              - pay_plan_1.op_charge         AS release_balance    -- 再リース差額
+           ,NVL(ctrct_line_2.tax_code ,ctrct_head_2.tax_code)
+                                             AS tax_code           -- 税コード
+    FROM
+            xxcff_contract_headers  ctrct_head_1  -- リース契約（原）
+           ,xxcff_contract_lines    ctrct_line_1  -- リース契約明細（原）
+           ,xxcff_pay_planning      pay_plan_1    -- リース支払計画（原）
+           ,xxcff_contract_headers  ctrct_head_2  -- リース契約（再）
+           ,xxcff_contract_lines    ctrct_line_2  -- リース契約明細（再）
+           ,xxcff_pay_planning      pay_plan_2    -- リース支払計画（再）
+    WHERE
+          pay_plan_2.period_name          = gv_period_name
+    AND   pay_plan_2.payment_match_flag   = cv_match                          -- 照合済
+    AND   pay_plan_2.accounting_if_flag   = cv_if_yet                         --未送信
+    AND   pay_plan_2.payment_frequency    = cn_payment_frequency_1
+    AND   pay_plan_2.contract_line_id     = ctrct_line_2.contract_line_id
+    AND   ctrct_line_2.contract_header_id = ctrct_head_2.contract_header_id
+    AND   ctrct_head_2.lease_class        = cv_lease_class_11                 -- 自販機
+    AND   ctrct_head_2.lease_type         = cv_lease_type_2                   -- 再リース
+    AND   ctrct_line_2.object_header_id   = ctrct_line_1.object_header_id
+    AND   ctrct_line_1.contract_header_id = ctrct_head_1.contract_header_id
+    AND   ctrct_head_1.lease_type         = cv_lease_type_1                   -- 原契約
+    AND   ctrct_line_1.contract_line_id   = pay_plan_1.contract_line_id
+    AND   (  (ctrct_head_2.re_lease_times  = cn_re_lease_times_1             -- 再リース回数が1
+        AND   pay_plan_1.payment_frequency = cn_payment_frequency_61)        -- 原契約分の支払回数61回目
+      OR     (ctrct_head_2.re_lease_times  = cn_re_lease_times_2             -- 再リース回数が2
+        AND   pay_plan_1.payment_frequency = cn_payment_frequency_73)        -- 原契約分の支払回数73回目
+      OR     (ctrct_head_2.re_lease_times  = cn_re_lease_times_3             -- 再リース回数が3
+        AND   pay_plan_1.payment_frequency = cn_payment_frequency_85) )      -- 原契約分の支払回数85回目
+    ;
+  get_release_balance_data_rec  get_release_balance_data_cur%ROWTYPE;
+--
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
   -- ***リース種別毎AFF情報用(レコード型)
   TYPE lease_class_aff_rtype    IS RECORD (  les_liab_acct           xxcff_lease_class_v.les_liab_acct%TYPE
                                             ,les_liab_sub_acct_line  xxcff_lease_class_v.les_liab_sub_acct_line%TYPE
@@ -684,6 +831,13 @@ AS
                                         ,deduction       NUMBER -- リース控除額
                                         ,charge          NUMBER -- リース料
                                         ,charge_tax      NUMBER -- リース料_消費税
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+                                        ,op_charge       NUMBER -- OPリース料
+                                        ,debt_re         NUMBER -- リース債務額_再リース
+                                        ,interest_due_re NUMBER -- リース支払利息_再リース
+                                        ,debt_rem_re     NUMBER -- リース債務残_再リース
+                                        ,release_balance NUMBER -- 再リース差額
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
                                        );
 --
   -- ***テーブル型配列
@@ -703,6 +857,10 @@ AS
   g_ptn_dept_dist_itoen_tab             lease_journal_ptn_ttype;
   -- リース仕訳パターン(リース料部門賦課(工場))
   g_ptn_dept_dist_sagara_tab            lease_journal_ptn_ttype;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  -- リース仕訳パターン(再リース差額調整)
+  g_ptn_balance_amount_tab              lease_journal_ptn_ttype;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
   -- 仕訳元データ(リース取引)
   g_les_trn_data_tab                    les_trn_data_ttype;
   -- リース仕訳元キー情報(レコード型)
@@ -1170,6 +1328,112 @@ AS
       END IF;
     END IF;
 --
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+    --==============================================
+    --LIAB_BLC_RE (リース債務残_再リース)
+    --==============================================
+    IF (iot_jnl_aff_rec.amount_grp = cv_amount_grp_liab_blc_re) THEN
+      --DR(借方)
+      IF (iot_jnl_aff_rec.crdr_type = 'DR') THEN
+        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.debt_rem_re;
+        iot_jnl_aff_rec.amount_cr := NULL;
+      --CR(貸方)
+      ELSE
+        iot_jnl_aff_rec.amount_dr := NULL;
+        iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.debt_rem_re;
+      END IF;
+    END IF;
+--
+    --==============================================
+    --LIAB_PRETAX_BLC_RE (リース債務残_再リース)
+    --==============================================
+    IF (iot_jnl_aff_rec.amount_grp = cv_amount_grp_liab_pre_re) THEN
+      --DR(借方)
+      IF (iot_jnl_aff_rec.crdr_type = 'DR') THEN
+        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.debt_rem_re;
+        iot_jnl_aff_rec.amount_cr := NULL;
+      --CR(貸方)
+      ELSE
+        iot_jnl_aff_rec.amount_dr := NULL;
+        iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.debt_rem_re;
+      END IF;
+    END IF;
+--
+    --==============================================
+    --LIAB_AMT_RE (リース債務額_再リース)
+    --==============================================
+    IF (iot_jnl_aff_rec.amount_grp = cv_amount_grp_liab_amt_re) THEN
+      --DR(借方)
+      IF (iot_jnl_aff_rec.crdr_type = 'DR') THEN
+        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.debt_re;
+        iot_jnl_aff_rec.amount_cr := NULL;
+      --CR(貸方)
+      ELSE
+        iot_jnl_aff_rec.amount_dr := NULL;
+        iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.debt_re;
+      END IF;
+    END IF;
+--
+    --==============================================
+    --PAY_INTEREST_RE (支払利息_再リース)
+    --==============================================
+    IF (iot_jnl_aff_rec.amount_grp = cv_amount_grp_pay_int_re) THEN
+      --DR(借方)
+      IF (iot_jnl_aff_rec.crdr_type = 'DR') THEN
+        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.interest_due_re;
+        iot_jnl_aff_rec.amount_cr := NULL;
+      --CR(貸方)
+      ELSE
+        iot_jnl_aff_rec.amount_dr := NULL;
+        iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.interest_due_re;
+      END IF;
+    END IF;
+--
+    --==============================================
+    --CHARGE_RE (OPリース料)
+    --==============================================
+    IF (iot_jnl_aff_rec.amount_grp = cv_amount_grp_charge_re) THEN
+      --DR(借方)
+      IF (iot_jnl_aff_rec.crdr_type = 'DR') THEN
+        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.op_charge;
+        iot_jnl_aff_rec.amount_cr := NULL;
+      --CR(貸方)
+      ELSE
+        iot_jnl_aff_rec.amount_dr := NULL;
+        iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.op_charge;
+      END IF;
+    END IF;
+--
+    --==============================================
+    --BALANCE（再リース差額調整）
+    --==============================================
+    IF (iot_jnl_aff_rec.amount_grp = cv_amount_grp_balance) THEN
+      --DR(借方)
+      IF (iot_jnl_aff_rec.crdr_type = cv_crdr_type_dr) THEN
+        -- 再リース料_差額がプラス
+        IF (it_jnl_amount_rec.release_balance > 0) THEN
+          iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.release_balance;
+          iot_jnl_aff_rec.amount_cr := NULL;
+        -- 再リース料_差額がマイナス
+        ELSE
+          iot_jnl_aff_rec.amount_dr := NULL;
+          iot_jnl_aff_rec.amount_cr :=  ABS(it_jnl_amount_rec.release_balance);
+        END IF;
+      --CR(貸方)
+      ELSE
+        -- 再リース料_差額がプラス
+        IF (it_jnl_amount_rec.release_balance > 0) THEN
+          iot_jnl_aff_rec.amount_dr := NULL;
+          iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.release_balance;
+        -- 再リース料_差額がマイナス
+        ELSE
+          iot_jnl_aff_rec.amount_dr :=  ABS(it_jnl_amount_rec.release_balance);
+          iot_jnl_aff_rec.amount_cr := NULL;
+        END IF;
+      END IF;
+    END IF;
+--
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1659,6 +1923,303 @@ AS
 --
   END ins_gl_oif_dr;
 --
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+  /**********************************************************************************
+   * Procedure Name   : proc_ptn_debt_balance
+   * Description      : 【仕訳パターン】再リース差額(A-26)
+   ***********************************************************************************/
+  PROCEDURE proc_ptn_debt_balance(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_ptn_debt_balance'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_ptn_loop_cnt NUMBER := 0;
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --==============================================================
+    --サブループ処理
+    --==============================================================
+    <<proc_ptn_debt_balance>>
+    FOR ln_ptn_loop_cnt IN g_ptn_balance_amount_tab.FIRST .. g_ptn_balance_amount_tab.LAST LOOP
+--
+      --ループカウンタ設定
+      gn_ptn_loop_cnt := ln_ptn_loop_cnt;
+--
+      --==============================================================
+      --リース仕訳AFF情報へ仕訳パターンのデフォルト値設定
+      --==============================================================
+      g_les_jnl_aff_rec := g_ptn_balance_amount_tab(gn_ptn_loop_cnt);
+--
+      --==============================================================
+      --【内部共通処理】リース種別AFF値設定 (A-21)
+      --==============================================================
+      set_lease_class_aff(
+         it_lease_type   => g_lease_type_tab(gn_balance_target_cnt)  -- リース区分
+        ,it_lease_class  => g_lease_class_tab(gn_balance_target_cnt) -- リース種別
+        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                        -- リース仕訳AFF情報
+        ,ov_errbuf       => lv_errbuf                                -- エラー・メッセージ           --# 固定 # 
+        ,ov_retcode      => lv_retcode                               -- リターン・コード             --# 固定 #
+        ,ov_errmsg       => lv_errmsg                                -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode <> ov_retcode) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      --==============================================================
+      --【内部共通処理】金額設定 (A-22)
+      --==============================================================
+      set_jnl_amount(
+         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode <> ov_retcode) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+      --==============================================================
+      --【内部共通処理】リース仕訳テーブル登録 (A-23)
+      --==============================================================
+      ins_xxcff_gl_trn(
+         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode <> ov_retcode) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+    END LOOP proc_ptn_debt_balance;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END proc_ptn_debt_balance;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_release_balance_data
+   * Description      : 仕訳元データ(再リース差額)抽出 (A-25)
+   ***********************************************************************************/
+  PROCEDURE get_release_balance_data(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_release_balance_data'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    lv_warnmsg VARCHAR2(5000);
+--
+    -- *** ローカル変数 ***
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --==============================================================
+    --コレクション削除
+    --==============================================================
+    delete_collections(
+       lv_errbuf         -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode        -- リターン・コード             --# 固定 #
+      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    --==============================================================
+    --仕訳元データ(再リース差額)抽出
+    --==============================================================
+    OPEN  get_release_balance_data_cur;
+--
+    --対象件数の初期化
+    gn_balance_target_cnt := 0;
+--
+    LOOP
+      FETCH get_release_balance_data_cur INTO get_release_balance_data_rec;
+      EXIT WHEN get_release_balance_data_cur%NOTFOUND;
+      -- 再リース差額の値が0ではない場合
+      IF (get_release_balance_data_rec.release_balance <> 0) THEN
+        --対象件数のカウント
+        gn_balance_target_cnt := gn_balance_target_cnt + 1;
+--
+        g_contract_header_id_tab(gn_balance_target_cnt) := get_release_balance_data_rec.contract_header_id;  -- 契約内部ID
+        g_contract_line_id_tab(gn_balance_target_cnt)   := get_release_balance_data_rec.contract_line_id;    -- 契約明細内部ID
+        g_object_header_id_tab(gn_balance_target_cnt)   := get_release_balance_data_rec.object_header_id;    -- 物件内部ID
+        g_payment_frequency_tab(gn_balance_target_cnt)  := get_release_balance_data_rec.payment_frequency;   -- 支払回数
+        g_period_name_tab(gn_balance_target_cnt)        := get_release_balance_data_rec.period_name;         -- 会計期間名
+        g_lease_type_tab(gn_balance_target_cnt)         := get_release_balance_data_rec.lease_type;          -- リース区分
+        g_lease_class_tab(gn_balance_target_cnt)        := get_release_balance_data_rec.lease_class;         -- リース種別
+        g_release_balance_tab(gn_balance_target_cnt)    := get_release_balance_data_rec.release_balance;     -- 再リース差額
+        g_tax_code_tab(gn_balance_target_cnt)           := get_release_balance_data_rec.tax_code;            -- 税コード
+--
+        --==============================================================
+        --仕訳元キー情報設定
+        --==============================================================
+        g_les_jnl_key_rec.fa_transaction_id  := NULL;                                            -- リース取引内部ID
+        g_les_jnl_key_rec.contract_header_id := g_contract_header_id_tab(gn_balance_target_cnt); -- リース契約内部ID
+        g_les_jnl_key_rec.contract_line_id   := g_contract_line_id_tab(gn_balance_target_cnt);   -- リース契約明細内部ID
+        g_les_jnl_key_rec.object_header_id   := g_object_header_id_tab(gn_balance_target_cnt);   -- リース物件内部ID
+        g_les_jnl_key_rec.payment_frequency  := g_payment_frequency_tab(gn_balance_target_cnt);  -- 支払回数
+--
+        --==============================================================
+        --仕訳金額情報設定
+        --==============================================================
+        g_jnl_amount_rec.temp_pay_tax        := NULL;                                         -- 仮払消費税
+        g_jnl_amount_rec.liab_blc            := NULL;                                         -- リース債務残
+        g_jnl_amount_rec.liab_tax_blc        := NULL;                                         -- リース債務残_消費税
+        g_jnl_amount_rec.liab_pretax_blc     := NULL;                                         -- リース債務残（本体＋税）
+        g_jnl_amount_rec.pay_interest        := NULL;                                         -- 支払利息
+        g_jnl_amount_rec.liab_amt            := NULL;                                         -- リース債務額
+        g_jnl_amount_rec.liab_tax_amt        := NULL;                                         -- リース債務額_消費税
+        g_jnl_amount_rec.deduction           := NULL;                                         -- リース控除額
+        g_jnl_amount_rec.charge              := NULL;                                         -- リース料
+        g_jnl_amount_rec.charge_tax          := NULL;                                         -- リース料_消費税
+        g_jnl_amount_rec.op_charge           := NULL;                                         -- OPリース料
+        g_jnl_amount_rec.debt_re             := NULL;                                         -- リース債務額_再リース
+        g_jnl_amount_rec.interest_due_re     := NULL;                                         -- リース支払利息_再リース
+        g_jnl_amount_rec.debt_rem_re         := NULL;                                         -- リース債務残_再リース
+        g_jnl_amount_rec.release_balance     := g_release_balance_tab(gn_balance_target_cnt); -- 再リース差額
+--
+        --==============================================================
+        --【仕訳パターン】再リース差額(A-26)
+        --==============================================================
+        proc_ptn_debt_balance(
+           ov_errbuf    => lv_errbuf       -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode   => lv_retcode      -- リターン・コード             --# 固定 #
+          ,ov_errmsg    => lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
+      END IF;
+    END LOOP;
+--
+    CLOSE get_release_balance_data_cur;
+--
+    IF ( gn_balance_target_cnt = 0 ) THEN
+      --メッセージの設定
+      lv_warnmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                     ,cv_msg_013a20_m_016  -- 取得対象データ無し
+                                                     ,cv_tkn_get_data      -- トークン'GET_DATA'
+                                                     ,cv_msg_013a20_t_029) -- リース仕訳(仕訳元=再リース差額)情報
+                                                     ,1
+                                                     ,5000);
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG  --ログ(システム管理者用メッセージ)出力
+        ,buff   => lv_warnmsg
+      );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
+        ,buff   => lv_warnmsg
+      );
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF (get_release_balance_data_cur%ISOPEN) THEN
+        CLOSE get_release_balance_data_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_release_balance_data;
+--
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
   /**********************************************************************************
    * Procedure Name   : update_pay_plan_if_flag
    * Description      : リース支払計画 連携フラグ更新 (A-18)
@@ -1805,48 +2366,98 @@ AS
       --==============================================================
       g_les_jnl_aff_rec := g_ptn_dept_dist_sagara_tab(gn_ptn_loop_cnt);
 --
-      --==============================================================
-      --【内部共通処理】リース種別AFF値設定 (A-21)
-      --==============================================================
-      set_lease_class_aff(
-         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
-        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
-        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
-        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
-        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--      --==============================================================
+--      --【内部共通処理】リース種別AFF値設定 (A-21)
+--      --==============================================================
+--      set_lease_class_aff(
+--         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+--        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+--        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+--        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+--        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】金額設定 (A-22)
+--      --==============================================================
+--      set_jnl_amount(
+--         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+--        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】リース仕訳テーブル登録 (A-23)
+--      --==============================================================
+--      ins_xxcff_gl_trn(
+--         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+--        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+      -- リース種別が11（自販機）以外の場合
+      -- リース種別が11（自販機）かつ支払回数が60回以下の場合
+      IF ( g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11
+        OR (  g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
+          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60 ) ) THEN
+        --==============================================================
+        --【内部共通処理】リース種別AFF値設定 (A-21)
+        --==============================================================
+        set_lease_class_aff(
+           it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+          ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+          ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+          ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+          ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】金額設定 (A-22)
-      --==============================================================
-      set_jnl_amount(
-         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
-        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+        --==============================================================
+        --【内部共通処理】金額設定 (A-22)
+        --==============================================================
+        set_jnl_amount(
+           it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+          ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】リース仕訳テーブル登録 (A-23)
-      --==============================================================
-      ins_xxcff_gl_trn(
-         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
-        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
+        --==============================================================
+        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --==============================================================
+        ins_xxcff_gl_trn(
+           it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+          ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
       END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
 --
     END LOOP proc_ptn_dept_dist_sagara;
 --
@@ -1932,60 +2543,122 @@ AS
       --==============================================================
       g_les_jnl_aff_rec := g_ptn_dept_dist_itoen_tab(gn_ptn_loop_cnt);
 --
-      --==============================================================
-      --【内部共通処理】リース種別AFF値設定 (A-21)
-      --==============================================================
-      set_lease_class_aff(
-         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
-        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
-        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
-        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
-        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--      --==============================================================
+--      --【内部共通処理】リース種別AFF値設定 (A-21)
+--      --==============================================================
+--      set_lease_class_aff(
+--         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+--        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+--        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+--        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+--        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】金額設定 (A-22)
+--      --==============================================================
+--      set_jnl_amount(
+--         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+--        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --管理部門,顧客コード設定
+--      --==============================================================
+--      --貸借区分が「DR」(借方)の場合
+--      IF (g_les_jnl_aff_rec.crdr_type = 'DR') THEN
+--        g_les_jnl_aff_rec.department := g_department_code_tab(gn_main_loop_cnt); -- 部門(SEG2)
+--        --リース種別が自販機,SH関連の場合
+--        IF (NVL(g_vdsh_flag_tab(gn_main_loop_cnt),'N') = ('Y')) THEN
+--          g_les_jnl_aff_rec.partner    := g_customer_code_tab(gn_main_loop_cnt); -- 顧客(SEG5)
+--        END IF;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】リース仕訳テーブル登録 (A-23)
+--      --==============================================================
+--      ins_xxcff_gl_trn(
+--         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+--        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+      -- リース種別が11（自販機）以外の場合
+      -- リース種別が11（自販機）かつ支払回数が60回以下の場合
+      IF ( g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11
+        OR (  g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
+          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60 ) ) THEN
+        --==============================================================
+        --【内部共通処理】リース種別AFF値設定 (A-21)
+        --==============================================================
+        set_lease_class_aff(
+           it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+          ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+          ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+          ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+          ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】金額設定 (A-22)
-      --==============================================================
-      set_jnl_amount(
-         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
-        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+        --==============================================================
+        --【内部共通処理】金額設定 (A-22)
+        --==============================================================
+        set_jnl_amount(
+           it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+          ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --管理部門,顧客コード設定
-      --==============================================================
-      --貸借区分が「DR」(借方)の場合
-      IF (g_les_jnl_aff_rec.crdr_type = 'DR') THEN
-        g_les_jnl_aff_rec.department := g_department_code_tab(gn_main_loop_cnt); -- 部門(SEG2)
-        --リース種別が自販機,SH関連の場合
-        IF (NVL(g_vdsh_flag_tab(gn_main_loop_cnt),'N') = ('Y')) THEN
-          g_les_jnl_aff_rec.partner    := g_customer_code_tab(gn_main_loop_cnt); -- 顧客(SEG5)
+        --==============================================================
+        --管理部門,顧客コード設定
+        --==============================================================
+        --貸借区分が「DR」(借方)の場合
+        IF (g_les_jnl_aff_rec.crdr_type = 'DR') THEN
+          g_les_jnl_aff_rec.department := g_department_code_tab(gn_main_loop_cnt); -- 部門(SEG2)
+          --リース種別が自販機,SH関連の場合
+          IF (NVL(g_vdsh_flag_tab(gn_main_loop_cnt),'N') = ('Y')) THEN
+            g_les_jnl_aff_rec.partner    := g_customer_code_tab(gn_main_loop_cnt); -- 顧客(SEG5)
+          END IF;
+        END IF;
+--
+        --==============================================================
+        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --==============================================================
+        ins_xxcff_gl_trn(
+           it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+          ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
         END IF;
       END IF;
---
-      --==============================================================
-      --【内部共通処理】リース仕訳テーブル登録 (A-23)
-      --==============================================================
-      ins_xxcff_gl_trn(
-         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
-        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
 --
     END LOOP proc_ptn_dept_dist_itoen;
 --
@@ -2071,67 +2744,160 @@ AS
       --==============================================================
       g_les_jnl_aff_rec := g_ptn_debt_trsf_tab(gn_ptn_loop_cnt);
 --
-      --==============================================================
-      --【内部共通処理】リース種別AFF値設定 (A-21)
-      --==============================================================
-      set_lease_class_aff(
-         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
-        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
-        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
-        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
-        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--      --==============================================================
+--      --【内部共通処理】リース種別AFF値設定 (A-21)
+--      --==============================================================
+--      set_lease_class_aff(
+--         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+--        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+--        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+--        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+--        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】金額設定 (A-22)
+--      --==============================================================
+--      set_jnl_amount(
+--         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+--        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --会社コード設定
+--      --==============================================================
+--      --本社の場合⇒会社コード「001」設定
+--      IF (g_owner_company_tab(gn_main_loop_cnt) = gv_own_comp_itoen) THEN
+--        g_les_jnl_aff_rec.company := gv_comp_cd_itoen;
+--      --工場の場合⇒会社コード「999」設定
+--      ELSE
+--        g_les_jnl_aff_rec.company := gv_comp_cd_sagara;
+--      END IF;
+----
+--      --==============================================================
+--      --税コード設定
+--      --==============================================================
+--      --貸借区分が「CR」(貸方)の場合⇒税コード設定
+--      IF (g_les_jnl_aff_rec.crdr_type = 'CR') THEN
+--        g_les_jnl_aff_rec.tax_code := g_tax_code_tab(gn_main_loop_cnt);
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】リース仕訳テーブル登録 (A-23)
+--      --==============================================================
+--      ins_xxcff_gl_trn(
+--         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+--        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+      -- 自販機再リースフラグが'N'でリース種別が11（自販機）以外の場合
+      -- 自販機再リースフラグが'N'でリース種別が11（自販機）かつ支払回数が60以下の場合
+      -- または、自販機再リースフラグが'Y'でリース種別が'11'（自販機）かつリース債務額_再リースに値が存在する時、以下の何れか場合
+      --  金額設定グループが'CHARGE'以外
+      --  金額設定グループが'CHARGE'かつ支払回数が61,73,85
+      IF (   (g_les_jnl_aff_rec.re_lease_flag     =  cv_flag_n
+          AND g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11)
+        OR   (g_les_jnl_aff_rec.re_lease_flag     = cv_flag_n
+          AND g_lease_class_tab(gn_main_loop_cnt) = cv_lease_class_11
+          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60)
+        OR (  ( g_les_jnl_aff_rec.re_lease_flag     =  cv_flag_y
+            AND g_lease_class_tab(gn_main_loop_cnt) =  cv_lease_class_11
+            AND g_debt_re_tab(gn_main_loop_cnt)     IS NOT NULL)
+          AND ( g_les_jnl_aff_rec.amount_grp <> cv_amount_grp_charge_re
+            OR  ( g_les_jnl_aff_rec.amount_grp              =  cv_amount_grp_charge_re
+              AND g_payment_frequency_tab(gn_main_loop_cnt) IN (cn_payment_frequency_61 ,cn_payment_frequency_73 ,cn_payment_frequency_85) )
+              )
+           )
+         ) THEN
+        --==============================================================
+        --【内部共通処理】リース種別AFF値設定 (A-21)
+        --==============================================================
+        set_lease_class_aff(
+           it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+          ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+          ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+          ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+          ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】金額設定 (A-22)
-      --==============================================================
-      set_jnl_amount(
-         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
-        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+        --==============================================================
+        --【内部共通処理】金額設定 (A-22)
+        --==============================================================
+        set_jnl_amount(
+           it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+          ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --会社コード設定
-      --==============================================================
-      --本社の場合⇒会社コード「001」設定
-      IF (g_owner_company_tab(gn_main_loop_cnt) = gv_own_comp_itoen) THEN
-        g_les_jnl_aff_rec.company := gv_comp_cd_itoen;
-      --工場の場合⇒会社コード「999」設定
-      ELSE
-        g_les_jnl_aff_rec.company := gv_comp_cd_sagara;
-      END IF;
+        --==============================================================
+        -- 金額設定グループが‘LIAB_AMT_RE’で、借方金額がマイナスの場合
+        --==============================================================
+        IF (  g_les_jnl_aff_rec.amount_grp = cv_amount_grp_liab_amt_re
+          AND g_les_jnl_aff_rec.amount_dr  < 0 ) THEN
+          -- 貸方金額に設定し直す。
+          g_les_jnl_aff_rec.amount_cr := ABS(g_les_jnl_aff_rec.amount_dr);
+          g_les_jnl_aff_rec.amount_dr := '';
+        END IF;
 --
-      --==============================================================
-      --税コード設定
-      --==============================================================
-      --貸借区分が「CR」(貸方)の場合⇒税コード設定
-      IF (g_les_jnl_aff_rec.crdr_type = 'CR') THEN
-        g_les_jnl_aff_rec.tax_code := g_tax_code_tab(gn_main_loop_cnt);
-      END IF;
+        --==============================================================
+        --会社コード設定
+        --==============================================================
+        --本社の場合⇒会社コード「001」設定
+        IF (g_owner_company_tab(gn_main_loop_cnt) = gv_own_comp_itoen) THEN
+          g_les_jnl_aff_rec.company := gv_comp_cd_itoen;
+        --工場の場合⇒会社コード「999」設定
+        ELSE
+          g_les_jnl_aff_rec.company := gv_comp_cd_sagara;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】リース仕訳テーブル登録 (A-23)
-      --==============================================================
-      ins_xxcff_gl_trn(
-         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
-        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
+        --==============================================================
+        --税コード設定
+        --==============================================================
+        --貸借区分が「CR」(貸方)の場合⇒税コード設定
+        IF (g_les_jnl_aff_rec.crdr_type = 'CR') THEN
+          g_les_jnl_aff_rec.tax_code := g_tax_code_tab(gn_main_loop_cnt);
+        END IF;
+--
+        --==============================================================
+        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --==============================================================
+        ins_xxcff_gl_trn(
+           it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+          ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
       END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
 --
     END LOOP proc_ptn_debt_trsf;
 --
@@ -2234,6 +3000,13 @@ AS
       g_jnl_amount_rec.deduction           := g_deduction_tab(gn_main_loop_cnt);       -- リース控除額
       g_jnl_amount_rec.charge              := g_charge_tab(gn_main_loop_cnt);          -- リース料
       g_jnl_amount_rec.charge_tax          := g_charge_tax_tab(gn_main_loop_cnt);      -- リース料_消費税
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+      g_jnl_amount_rec.op_charge           := g_op_charge_tab(gn_main_loop_cnt);       -- OPリース料
+      g_jnl_amount_rec.debt_re             := g_debt_re_tab(gn_main_loop_cnt);         -- リース債務額_再リース
+      g_jnl_amount_rec.interest_due_re     := g_interest_due_re_tab(gn_main_loop_cnt); -- リース支払利息_再リース
+      g_jnl_amount_rec.debt_rem_re         := NULL;                                    -- リース債務残_再リース
+      g_jnl_amount_rec.release_balance     := NULL;                                    -- 再リース差額
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
       --==============================================================
       --リース種類 = 0 (Fin)
@@ -2448,6 +3221,11 @@ AS
       g_charge_tab(gn_pay_plan_target_cnt)             := g_get_pay_plan_data_rec.charge;              -- リース料
       g_charge_tax_tab(gn_pay_plan_target_cnt)         := g_get_pay_plan_data_rec.charge_tax;          -- リース料_消費税
       g_tax_code_tab(gn_pay_plan_target_cnt)           := g_get_pay_plan_data_rec.tax_code;            -- 税コード
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+      g_op_charge_tab(gn_pay_plan_target_cnt)          := g_get_pay_plan_data_rec.op_charge;           -- ＯＰリース料
+      g_debt_re_tab(gn_pay_plan_target_cnt)            := g_get_pay_plan_data_rec.debt_re;             -- リース債務額_再リース
+      g_interest_due_re_tab(gn_pay_plan_target_cnt)    := g_get_pay_plan_data_rec.interest_due_re;     -- リース支払利息_再リース
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
       --リース物件履歴が取得できる場合はリース物件履歴の移動元管理部門、移動元本社／工場を設定する。
       BEGIN
@@ -2700,59 +3478,126 @@ AS
       --==============================================================
       g_les_jnl_aff_rec := g_ptn_retire_tab(gn_ptn_loop_cnt);
 --
-      --==============================================================
-      --【内部共通処理】リース種別AFF値設定 (A-21)
-      --==============================================================
-      set_lease_class_aff(
-         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
-        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
-        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
-        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
-        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--      --==============================================================
+--      --【内部共通処理】リース種別AFF値設定 (A-21)
+--      --==============================================================
+--      set_lease_class_aff(
+--         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+--        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+--        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+--        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+--        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】金額設定 (A-22)
+--      --==============================================================
+--      set_jnl_amount(
+--         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+--        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --会社コード設定
+--      --==============================================================
+--      --本社の場合⇒会社コード「001」設定
+--      IF (g_owner_company_tab(gn_main_loop_cnt) = gv_own_comp_itoen) THEN
+--        g_les_jnl_aff_rec.company := gv_comp_cd_itoen;
+--      --工場の場合⇒会社コード「999」設定
+--      ELSE
+--        g_les_jnl_aff_rec.company := gv_comp_cd_sagara;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】リース仕訳テーブル登録 (A-23)
+--      --==============================================================
+--      ins_xxcff_gl_trn(
+--         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+--        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+      -- 自販機再リースフラグが'N'でリース種別が11（自販機）以外の場合
+      -- 自販機再リースフラグが'N'でリース種別が11（自販機）かつ支払回数が60回以下の場合
+      -- 自販機再リースフラグが'Y'でリース種別が11（自販機）かつリース債務残_再リースに値が存在する場合
+      IF ( (  g_les_jnl_aff_rec.re_lease_flag     =  cv_flag_n
+          AND g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11 )
+        OR (  g_les_jnl_aff_rec.re_lease_flag           =  cv_flag_n
+          AND g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
+          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60)
+        OR (  g_les_jnl_aff_rec.re_lease_flag     = cv_flag_y
+          AND g_lease_class_tab(gn_main_loop_cnt) = cv_lease_class_11
+          AND g_debt_rem_re_tab(gn_main_loop_cnt)     IS NOT NULL ) ) THEN
+        --==============================================================
+        --【内部共通処理】リース種別AFF値設定 (A-21)
+        --==============================================================
+        set_lease_class_aff(
+           it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+          ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+          ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+          ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+          ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】金額設定 (A-22)
-      --==============================================================
-      set_jnl_amount(
-         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
-        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+        --==============================================================
+        --【内部共通処理】金額設定 (A-22)
+        --==============================================================
+        set_jnl_amount(
+           it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+          ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --会社コード設定
-      --==============================================================
-      --本社の場合⇒会社コード「001」設定
-      IF (g_owner_company_tab(gn_main_loop_cnt) = gv_own_comp_itoen) THEN
-        g_les_jnl_aff_rec.company := gv_comp_cd_itoen;
-      --工場の場合⇒会社コード「999」設定
-      ELSE
-        g_les_jnl_aff_rec.company := gv_comp_cd_sagara;
-      END IF;
+        --==============================================================
+        --会社コード設定
+        --==============================================================
+        --本社の場合⇒会社コード「001」設定
+        IF (g_owner_company_tab(gn_main_loop_cnt) = gv_own_comp_itoen) THEN
+          g_les_jnl_aff_rec.company := gv_comp_cd_itoen;
+        --工場の場合⇒会社コード「999」設定
+        ELSE
+          g_les_jnl_aff_rec.company := gv_comp_cd_sagara;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】リース仕訳テーブル登録 (A-23)
-      --==============================================================
-      ins_xxcff_gl_trn(
-         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
-        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
+        --==============================================================
+        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --==============================================================
+        ins_xxcff_gl_trn(
+           it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+          ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
       END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
 --
     END LOOP proc_ptn_retire;
 --
@@ -2838,48 +3683,104 @@ AS
       --==============================================================
       g_les_jnl_aff_rec := g_ptn_move_to_itoen_tab(gn_ptn_loop_cnt);
 --
-      --==============================================================
-      --【内部共通処理】リース種別AFF値設定 (A-21)
-      --==============================================================
-      set_lease_class_aff(
-         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
-        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
-        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
-        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
-        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--      --==============================================================
+--      --【内部共通処理】リース種別AFF値設定 (A-21)
+--      --==============================================================
+--      set_lease_class_aff(
+--         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+--        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+--        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+--        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+--        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】金額設定 (A-22)
+--      --==============================================================
+--      set_jnl_amount(
+--         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+--        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】リース仕訳テーブル登録 (A-23)
+--      --==============================================================
+--      ins_xxcff_gl_trn(
+--         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+--        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+      -- 自販機再リースフラグが'N'でリース種別が11（自販機）以外の場合
+      -- 自販機再リースフラグが'N'でリース種別が11（自販機）かつ支払回数が60回以下の場合
+      -- 自販機再リースフラグが'Y'でリース種別が11（自販機）かつリース債務残_再リースに値が存在する場合
+      IF ( (  g_les_jnl_aff_rec.re_lease_flag     =  cv_flag_n
+          AND g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11 )
+        OR (  g_les_jnl_aff_rec.re_lease_flag           =  cv_flag_n
+          AND g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
+          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60)
+        OR (  g_les_jnl_aff_rec.re_lease_flag     = cv_flag_y
+          AND g_lease_class_tab(gn_main_loop_cnt) = cv_lease_class_11
+          AND g_debt_rem_re_tab(gn_main_loop_cnt)     IS NOT NULL ) ) THEN
+        --==============================================================
+        --【内部共通処理】リース種別AFF値設定 (A-21)
+        --==============================================================
+        set_lease_class_aff(
+           it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+          ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+          ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+          ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+          ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】金額設定 (A-22)
-      --==============================================================
-      set_jnl_amount(
-         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
-        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+        --==============================================================
+        --【内部共通処理】金額設定 (A-22)
+        --==============================================================
+        set_jnl_amount(
+           it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+          ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】リース仕訳テーブル登録 (A-23)
-      --==============================================================
-      ins_xxcff_gl_trn(
-         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
-        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
+        --==============================================================
+        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --==============================================================
+        ins_xxcff_gl_trn(
+           it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+          ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
       END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
 --
     END LOOP proc_ptn_move_to_itoen;
 --
@@ -2965,48 +3866,104 @@ AS
       --==============================================================
       g_les_jnl_aff_rec := g_ptn_move_to_sagara_tab(gn_ptn_loop_cnt);
 --
-      --==============================================================
-      --【内部共通処理】リース種別AFF値設定 (A-21)
-      --==============================================================
-      set_lease_class_aff(
-         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
-        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
-        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
-        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
-        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--      --==============================================================
+--      --【内部共通処理】リース種別AFF値設定 (A-21)
+--      --==============================================================
+--      set_lease_class_aff(
+--         it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+--        ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+--        ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+--        ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+--        ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】金額設定 (A-22)
+--      --==============================================================
+--      set_jnl_amount(
+--         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+--        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --【内部共通処理】リース仕訳テーブル登録 (A-23)
+--      --==============================================================
+--      ins_xxcff_gl_trn(
+--         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+--        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+--        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+      -- 自販機再リースフラグが'N'でリース種別が11（自販機）以外の場合
+      -- 自販機再リースフラグが'N'でリース種別が11（自販機）かつ支払回数が60回以下の場合
+      -- 自販機再リースフラグが'Y'でリース種別が11（自販機）かつリース債務残_再リースに値が存在する場合
+      IF ( (  g_les_jnl_aff_rec.re_lease_flag     =  cv_flag_n
+          AND g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11 )
+        OR (  g_les_jnl_aff_rec.re_lease_flag           =  cv_flag_n
+          AND g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
+          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60)
+        OR (  g_les_jnl_aff_rec.re_lease_flag     = cv_flag_y
+          AND g_lease_class_tab(gn_main_loop_cnt) = cv_lease_class_11
+          AND g_debt_rem_re_tab(gn_main_loop_cnt)     IS NOT NULL ) ) THEN
+        --==============================================================
+        --【内部共通処理】リース種別AFF値設定 (A-21)
+        --==============================================================
+        set_lease_class_aff(
+           it_lease_type   => g_lease_type_tab(gn_main_loop_cnt)  -- リース区分
+          ,it_lease_class  => g_lease_class_tab(gn_main_loop_cnt) -- リース種別
+          ,iot_jnl_aff_rec => g_les_jnl_aff_rec                   -- リース仕訳AFF情報
+          ,ov_errbuf       => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode      => lv_retcode                          -- リターン・コード             --# 固定 #
+          ,ov_errmsg       => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】金額設定 (A-22)
-      --==============================================================
-      set_jnl_amount(
-         it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
-        ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
-      END IF;
+        --==============================================================
+        --【内部共通処理】金額設定 (A-22)
+        --==============================================================
+        set_jnl_amount(
+           it_jnl_amount_rec  => g_jnl_amount_rec   -- リース仕訳金額情報
+          ,iot_jnl_aff_rec    => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      --==============================================================
-      --【内部共通処理】リース仕訳テーブル登録 (A-23)
-      --==============================================================
-      ins_xxcff_gl_trn(
-         it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
-        ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
-        ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
-        ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
+        --==============================================================
+        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --==============================================================
+        ins_xxcff_gl_trn(
+           it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
+          ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
+          ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode         => lv_retcode         -- リターン・コード             --# 固定 #
+          ,ov_errmsg          => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
       END IF;
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
 --
     END LOOP proc_ptn_move_to_sagara;
 --
@@ -3255,6 +4212,13 @@ AS
       g_jnl_amount_rec.deduction           := NULL;                                    -- リース控除額
       g_jnl_amount_rec.charge              := NULL;                                    -- リース料
       g_jnl_amount_rec.charge_tax          := NULL;                                    -- リース料_消費税
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+      g_jnl_amount_rec.op_charge           := NULL;                                    -- OPリース料
+      g_jnl_amount_rec.debt_re             := NULL;                                    -- リース債務額_再リース
+      g_jnl_amount_rec.interest_due_re     := NULL;                                    -- リース支払利息_再リース
+      g_jnl_amount_rec.debt_rem_re         := g_debt_rem_re_tab(gn_main_loop_cnt);     -- リース債務残_再リース
+      g_jnl_amount_rec.release_balance     := NULL;                                    -- 再リース差額
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
       --==============================================================
       --取引タイプ = 1 (追加)
@@ -3430,6 +4394,10 @@ AS
                      ,g_liab_tax_blc_tab       -- リース債務残_消費税
                      ,g_liab_pretax_blc_tab    -- リース債務残_本体＋税
                      ,g_tax_code_tab           -- 税コード
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+                     ,g_debt_rem_re_tab        -- リース債務残_再リース
+                     ,g_payment_frequency_tab  -- 支払回数
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
                      ;
     --対象件数カウント
     gn_les_trn_target_cnt := g_fa_transaction_id_tab.COUNT;
@@ -3572,6 +4540,15 @@ AS
     FETCH lease_journal_ptn_cur BULK COLLECT INTO g_ptn_dept_dist_sagara_tab;
     CLOSE lease_journal_ptn_cur;
 --
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+    --==============================================================
+    --リース仕訳パターン取得 (再リース差額調整:8)
+    --==============================================================
+    OPEN  lease_journal_ptn_cur(8);
+    FETCH lease_journal_ptn_cur BULK COLLECT INTO g_ptn_balance_amount_tab;
+    CLOSE lease_journal_ptn_cur;
+--
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -3750,7 +4727,10 @@ AS
       WHERE
              pay_plan.period_name        =   gv_period_name
          AND pay_plan.accounting_if_flag IN  (cv_if_yet,cv_if_aft) -- 未送信(1),連携済(2)
-         AND pay_plan.payment_match_flag =   cv_match              --照合済(1)
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--         AND pay_plan.payment_match_flag =   cv_match              --照合済(1)
+         AND pay_plan.payment_match_flag IN  (cv_match,cv_match_9)   -- 照合済(1),対象外(9)
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
          FOR UPDATE NOWAIT
          ;
 --
@@ -3846,7 +4826,10 @@ AS
       WHERE
              period_name            =   gv_period_name
       AND    accounting_if_flag     IN  (cv_if_yet,cv_if_aft) -- 未送信(1),連携済(2)
-      AND    payment_match_flag     =   cv_match              -- 照合済(1)
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
+--      AND    payment_match_flag     =   cv_match              -- 照合済(1)
+      AND    payment_match_flag     IN  (cv_match,cv_match_9)   -- 照合済(1),対象外(9)
+-- 2016/09/23 Ver.1.9 Y.Shoji MOD End
       ;
 --
     EXCEPTION
@@ -4713,6 +5696,11 @@ AS
     gn_gloif_cr_target_cnt   := 0;
     gn_gloif_normal_cnt      := 0;
     gn_gloif_error_cnt       := 0;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+    gn_balance_target_cnt    := 0;
+    gn_balance_normal_cnt    := 0;
+    gn_balance_error_cnt     := 0;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -4842,6 +5830,20 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+    -- ====================================
+    -- 仕訳元データ(再リース差額)抽出 (A-25)
+    -- ====================================
+    get_release_balance_data(
+       lv_errbuf         -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode        -- リターン・コード             --# 固定 #
+      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF (lv_retcode <> cv_status_normal) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     -- ====================================
     -- 仕訳元データ(支払計画)抽出 (A-14)
     -- ====================================
@@ -5017,6 +6019,9 @@ AS
       gn_les_trn_normal_cnt    := gn_les_trn_target_cnt;
       gn_pay_plan_normal_cnt   := gn_pay_plan_target_cnt;
       gn_gloif_normal_cnt      := gn_gloif_dr_target_cnt + gn_gloif_cr_target_cnt;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+      gn_balance_normal_cnt    := gn_balance_target_cnt;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     --===============================================================
     --エラー時の出力件数設定
     --===============================================================
@@ -5025,10 +6030,16 @@ AS
       gn_les_trn_normal_cnt    := 0;
       gn_pay_plan_normal_cnt   := 0;
       gn_gloif_normal_cnt      := 0;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+      gn_balance_normal_cnt    := 0;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
       -- エラー件数に対象件数を設定する
       gn_les_trn_error_cnt     := gn_les_trn_target_cnt;
       gn_pay_plan_error_cnt    := gn_pay_plan_target_cnt;
       gn_gloif_error_cnt       := gn_gloif_dr_target_cnt + gn_gloif_cr_target_cnt;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+      gn_balance_error_cnt     := gn_balance_target_cnt;
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     END IF;
 --
     --===============================================================
@@ -5131,6 +6142,60 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
+    --===============================================================
+    --再リース差額のリース仕訳テーブル登録処理における件数出力
+    --===============================================================
+    --空行挿入
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    --リース仕訳テーブル(仕訳元=再リース差額)作成メッセージ出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_cff
+                    ,iv_name         => cv_msg_013a20_m_022
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --対象件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_target_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_balance_target_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    --成功件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_success_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_balance_normal_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+    --エラー件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_error_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_balance_error_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     --===============================================================
     --一般会計OIF登録処理における件数出力
     --===============================================================
