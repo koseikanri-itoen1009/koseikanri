@@ -3,13 +3,14 @@
  * Table Name      : xxcff_pay_planning_bk
  * Description     : リース支払計画ＢＫ
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2012/10/05    1.0   SCSK 谷口    初回作成
+ *  2016/07/29    1.1   SCSK 仁木    E_本稼動_13658 (耐用年数変更対応)
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_pay_planning_bk (
      contract_line_id               NUMBER        NOT NULL
@@ -28,6 +29,11 @@ CREATE TABLE xxcff.xxcff_pay_planning_bk (
     ,fin_interest_due               NUMBER(10)
     ,fin_debt_rem                   NUMBER(10)
     ,fin_tax_debt_rem               NUMBER(10)
+-- E_本稼動_13658 ADD S.Niki START
+    ,debt_re                        NUMBER(10)
+    ,interest_due_re                NUMBER(10)
+    ,debt_rem_re                    NUMBER(10)
+-- E_本稼動_13658 ADD S.Niki END
     ,accounting_if_flag             VARCHAR2(1)   NOT NULL
     ,payment_match_flag             VARCHAR2(1)   NOT NULL
     ,run_period_name                VARCHAR2(7)   NOT NULL
@@ -63,6 +69,11 @@ COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_tax_debt                      
 COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_interest_due                            IS 'ＦＩＮリース支払利息';
 COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_debt_rem                                IS 'ＦＩＮリース債務残';
 COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.fin_tax_debt_rem                            IS 'ＦＩＮリース債務残_消費税';
+-- E_本稼動_13658 ADD S.Niki START
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.debt_re                                     IS 'リース債務額_再リース';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.interest_due_re                             IS 'リース支払利息_再リース';
+COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.debt_rem_re                                 IS 'リース債務残_再リース';
+-- E_本稼動_13658 ADD S.Niki END
 COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.accounting_if_flag                          IS '会計ＩＦフラグ';
 COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.payment_match_flag                          IS '照合済フラグ';
 COMMENT ON COLUMN xxcff.xxcff_pay_planning_bk.run_period_name                             IS '実行会計期間';
