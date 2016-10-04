@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.15
+ * Version          : 1.16
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -45,6 +45,7 @@ AS
  *  2010/03/01    1.13  K.Aatsushiba     [E_本稼動_01399] 上様の売上値引き対応
  *  2012/08/15    1.14  T.Osawa          [E_本稼動_09922] 電子帳簿の対応
  *  2012/11/13    1.15  K.Nakamura       [E_本稼動_02459] パフォーマンス対応
+ *  2016/09/23    1.16  N.Koyama         [E_本稼動_13874] 伝票入力者設定項目変更
  *
  *****************************************************************************************/
 --
@@ -470,7 +471,10 @@ AS
          , xseh.tax_code                     tax_code                 -- 税金コード
          , xseh.tax_rate                     tax_rate                 -- 消費税率
          , xseh.consumption_tax_class        consumption_tax_class    -- 消費区分
-         , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
+---- ***************** 2016/09/23 1.16 N.Koyama Mod Start ***************** --
+--         , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
+         , xseh.dlv_by_code                  results_employee_code    -- 納品者コード
+---- ***************** 2016/09/23 1.16 N.Koyama Mod End ***************** --
          , xseh.sales_base_code              sales_base_code          -- 売上拠点コード
          , NVL( xseh.card_sale_class, cv_cash_class )
                                              card_sale_class          -- カード売り区分
