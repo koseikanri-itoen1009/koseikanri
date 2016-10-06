@@ -6,26 +6,27 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
  *  Name                         Description
  * ---------------------------- ----------------------------------------------------------
- *  set_last_daily_sum           前月サマリ情報出力                   (A-7)
- *  finalize                     終了処理                             (A-9)
+ *  get_dummy_cost_data          ダミー原価取得                       (A-13)
+ *  ins_inv_daily_data           月次在庫受払（日次）確定処理         (A-12)
  *  set_reception_sum            累計受払データ出力                   (A-8)
+ *  set_last_daily_sum           前月サマリ情報出力                   (A-7)
  *  upd_last_transaction_id      最終取引ID更新                       (A-6)
- *  set_last_daily_data          当日未取引データ受払出力             (A-5)
- *                               前日受払データ抽出                   (A-4)
  *  set_mtl_transaction_data     当日データ月次在庫受払（日次）出力   (A-3)
  *                               資材取引データ抽出（日次）           (A-2)
  *  set_mtl_transaction_data2    当日データ月次在庫受払（累計）出力   (A-10)
  *                               資材取引データ抽出（累計）           (A-11)
- *  ins_inv_daily_data           月次在庫受払（日次）確定処理         (A-12)
+ *  set_last_daily_data          当日未取引データ受払出力             (A-5)
+ *                               前日受払データ抽出                   (A-4)
  *  init                         初期処理                             (A-1)
  *  submain                      メイン処理プロシージャ
  *  main                         コンカレント実行ファイル登録プロシージャ
+ *                               終了処理                             (A-9)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -48,6 +49,7 @@ AS
  *  2010/05/02    1.13  H.Sasaki         [E_本稼動_02548]前回コピー時に帳簿0のデータは作成しない（累計作成）
  *  2011/01/17    1.14  H.Sasaki         [E_本稼動_05549]日次在庫一時表の追加（PT対応)
  *  2011/02/03    1.15  H.Sasaki         [E_本稼動_02937]日次受払（累計）の原価設定修正
+ *  2016/09/08    1.16  S.Niki           [E_本稼動_13703]対象の資材取引ID出力、原価取得エラー時に1円で作成
  *
  *****************************************************************************************/
 --
@@ -131,8 +133,13 @@ AS
   cv_msg_xxcoi1_10127   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10127';
   cv_msg_xxcoi1_10128   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10128';
   cv_msg_xxcoi1_10363   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10363';
-  cv_msg_xxcoi1_10285   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10285';
-  cv_msg_xxcoi1_10293   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10293';
+---- == V1.16 Modified START ===============================================================
+--  cv_msg_xxcoi1_10285   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10285';
+--  cv_msg_xxcoi1_10293   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10293';
+  cv_msg_xxcoi1_10721   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10721';         -- 処理対象資材取引IDメッセージ
+  cv_msg_xxcoi1_10722   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10722';         -- 標準原価ダミー金額処理警告メッセージ
+  cv_msg_xxcoi1_10723   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10723';         -- 営業原価ダミー金額処理警告メッセージ
+---- == V1.16 Modified END   ===============================================================
 -- == 2009/04/06 V1.1 Added START ===============================================================
   cv_msg_xxcoi1_10378   CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10378';
 -- == 2009/04/06 V1.1 Added END   ===============================================================
@@ -147,6 +154,12 @@ AS
   cv_token_10365_1      CONSTANT VARCHAR2(30) :=  'EXEC_FLAG';
   cv_token_10401_1      CONSTANT VARCHAR2(30) :=  'DATE';
 -- == 2009/08/26 V1.8 Added END   ===============================================================
+---- == V1.16 Added START ===============================================================
+  cv_token_10721_1      CONSTANT VARCHAR2(30) :=  'MIN_TRX_ID';
+  cv_token_10721_2      CONSTANT VARCHAR2(30) :=  'MAX_TRX_ID';
+  cv_token_10722_1      CONSTANT VARCHAR2(30) :=  'ITEM_CODE';
+  cv_token_10722_2      CONSTANT VARCHAR2(30) :=  'COST';
+---- == V1.16 Added END   ===============================================================
   -- 受払集計キー（取引タイプ）
   cv_trans_type_010     CONSTANT VARCHAR2(3)  :=  '10';        -- 売上出庫
   cv_trans_type_020     CONSTANT VARCHAR2(3)  :=  '20';        -- 売上出庫振戻
@@ -214,11 +227,26 @@ AS
   cv_insert_0           CONSTANT VARCHAR2(1)  :=  '0';
   cv_insert_1           CONSTANT VARCHAR2(1)  :=  '1';
 -- == 2011/01/17 V1.14 Added END   ===============================================================
+---- == V1.16 Added START ===============================================================
+  -- ダミー原価
+  cn_dummy_cost         CONSTANT NUMBER       :=  1;
+---- == V1.16 Added END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
   TYPE quantity_type IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;
   gt_quantity           quantity_type;      -- 取引タイプ別数量
+---- == V1.16 Added START ===============================================================
+  -- 原価取得エラー品目レコード配列
+  TYPE err_log_rtype IS RECORD(
+    item_no             ic_item_mst_b.item_no%TYPE   -- 品目コード
+   ,msg_code            VARCHAR2(30)                 -- メッセージコード
+  );
+  --
+  TYPE err_log_ttype IS TABLE OF err_log_rtype INDEX BY VARCHAR(1000);
+  --
+  gt_err_log_tab        err_log_ttype;
+---- == V1.16 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -241,7 +269,117 @@ AS
   gb_chk_acct_period          BOOLEAN;            --  在庫会計期間チェックフラグ（OPEN:TRUE, CLOSE:FALSE）
   gv_f_this_month             VARCHAR2(6);        --  実行時年月
 -- == 2011/01/17 V1.14 Added END   ===============================================================
+---- == V1.16 Added START ===============================================================
+  gb_get_cost_flag            BOOLEAN;            --  原価取得チェックフラグ（OK:TRUE, NG:FALSE）
+---- == V1.16 Added END   ===============================================================
 --
+---- == V1.16 Added START ===============================================================
+  /***********************************************************************************
+   * Procedure Name   : get_dummy_cost_data
+   * Description      : ダミー原価取得(A-13)
+   ***********************************************************************************/
+  PROCEDURE get_dummy_cost_data(
+    in_item_id        IN  NUMBER     --   1.品目ID
+   ,in_org_id         IN  NUMBER     --   2.組織ID
+   ,iv_msg_code       IN  VARCHAR2   --   3.メッセージコード
+   ,on_dummy_cost     OUT NUMBER     --   4.ダミー原価
+   ,ov_errbuf         OUT VARCHAR2   --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode        OUT VARCHAR2   --   リターン・コード             --# 固定 #
+   ,ov_errmsg         OUT VARCHAR2)  --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_dummy_cost_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_item_no       ic_item_mst_b.item_no%TYPE;  -- 品目コード
+    lv_index_key     VARCHAR2(50);                -- INDEXキー
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    -- 共通関数「品目情報取得2」より品目コード取得
+    lt_item_no := xxcoi_common_pkg.get_item_code(
+                    in_item_id   => in_item_id   -- 品目ID
+                   ,in_org_id    => in_org_id    -- 組織ID
+                  );
+--
+    -- INDEXキー生成
+    lv_index_key := lt_item_no || iv_msg_code;
+--
+    -- エラーメッセージ未出力の場合
+    IF ( gt_err_log_tab.EXISTS(lv_index_key) = FALSE) THEN
+      -- エラーメッセージ生成
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application   =>  cv_short_name
+                      ,iv_name          =>  iv_msg_code
+                      ,iv_token_name1   =>  cv_token_10722_1
+                      ,iv_token_value1  =>  lt_item_no
+                      ,iv_token_name2   =>  cv_token_10722_2
+                      ,iv_token_value2  =>  cn_dummy_cost
+                    );
+      -- エラーメッセージ出力
+      FND_FILE.PUT_LINE(which  => FND_FILE.OUTPUT
+                       ,buff   => gv_out_msg
+      );
+      -- 配列に格納
+      gt_err_log_tab(lv_index_key).item_no  := lt_item_no;
+      gt_err_log_tab(lv_index_key).msg_code := iv_msg_code;
+    END IF;
+--
+    -- チェックフラグ、ダミー原価を返却
+    gb_get_cost_flag := FALSE;
+    on_dummy_cost    := cn_dummy_cost;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   #############################################
+--
+  END get_dummy_cost_data;
+---- == V1.16 Added END   ===============================================================
 -- == 2011/01/17 V1.14 Added START ===============================================================
   /**********************************************************************************
    * Procedure Name   : ins_inv_daily_data
@@ -1092,12 +1230,30 @@ AS
         );
         -- 終了パラメータ判定
         IF (lv_retcode = cv_status_error) THEN
-          lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_short_name
-                          ,iv_name         => cv_msg_xxcoi1_10285
-                         );
-          lv_errbuf   := lv_errmsg;
-          RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--          lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_short_name
+--                          ,iv_name         => cv_msg_xxcoi1_10285
+--                         );
+--          lv_errbuf   := lv_errmsg;
+--          RAISE global_api_expt;
+          -- ===================================
+          --  ダミー原価取得(A-13)
+          -- ===================================
+          get_dummy_cost_data(
+              in_item_id      =>  it_inventory_item_id   -- 1.品目ID
+            , in_org_id       =>  gn_f_organization_id   -- 2.組織ID
+            , iv_msg_code     =>  cv_msg_xxcoi1_10722    -- 3.メッセージコード
+            , on_dummy_cost   =>  lt_standard_cost       -- 4.ダミー原価
+            , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+            , ov_retcode      =>  lv_retcode             -- リターン・コード
+            , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_api_others_expt;
+          END IF;
+---- == V1.16 Modified END   ===============================================================
         END IF;
         --
         -- ===================================
@@ -1113,13 +1269,33 @@ AS
           , ov_errmsg         =>  lv_errmsg                                   -- ユーザー・エラーメッセージ
         );
         -- 終了パラメータ判定
-        IF (lv_retcode = cv_status_error) THEN
-          lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_short_name
-                          ,iv_name         => cv_msg_xxcoi1_10293
-                         );
-          lv_errbuf   := lv_errmsg;
-          RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--        IF (lv_retcode = cv_status_error) THEN
+
+--          lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_short_name
+--                          ,iv_name         => cv_msg_xxcoi1_10293
+--                         );
+--          lv_errbuf   := lv_errmsg;
+--          RAISE global_api_expt;
+        IF (lv_retcode = cv_status_error) OR lt_operation_cost IS NULL THEN
+          -- ===================================
+          --  ダミー原価取得(A-13)
+          -- ===================================
+          get_dummy_cost_data(
+              in_item_id      =>  it_inventory_item_id   -- 1.品目ID
+            , in_org_id       =>  gn_f_organization_id   -- 2.組織ID
+            , iv_msg_code     =>  cv_msg_xxcoi1_10723    -- 3.メッセージコード
+            , on_dummy_cost   =>  lt_operation_cost      -- 4.ダミー原価
+            , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+            , ov_retcode      =>  lv_retcode             -- リターン・コード
+            , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_api_others_expt;
+          END IF;
+---- == V1.16 Modified END   ===============================================================
         END IF;
         --
 -- == 2011/02/03 V1.15 Added END   ===============================================================
@@ -1322,12 +1498,30 @@ AS
           );
           -- 終了パラメータ判定
           IF (lv_retcode = cv_status_error) THEN
-            lv_errmsg   := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_short_name
-                            ,iv_name         => cv_msg_xxcoi1_10285
-                           );
-            lv_errbuf   := lv_errmsg;
-            RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--            lv_errmsg   := xxccp_common_pkg.get_msg(
+--                             iv_application  => cv_short_name
+--                            ,iv_name         => cv_msg_xxcoi1_10285
+--                           );
+--            lv_errbuf   := lv_errmsg;
+--            RAISE global_api_expt;
+            -- ===================================
+            --  ダミー原価取得(A-13)
+            -- ===================================
+            get_dummy_cost_data(
+                in_item_id      =>  it_inventory_item_id   -- 1.品目ID
+              , in_org_id       =>  gn_f_organization_id   -- 2.組織ID
+              , iv_msg_code     =>  cv_msg_xxcoi1_10722    -- 3.メッセージコード
+              , on_dummy_cost   =>  lt_standard_cost       -- 4.ダミー原価
+              , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+              , ov_retcode      =>  lv_retcode             -- リターン・コード
+              , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+            );
+            -- 終了パラメータ判定
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_api_others_expt;
+            END IF;
+---- == V1.16 Modified END   ===============================================================
           END IF;
           --
           -- ===================================
@@ -1343,13 +1537,32 @@ AS
             , ov_errmsg         =>  lv_errmsg                                   -- ユーザー・エラーメッセージ
           );
           -- 終了パラメータ判定
-          IF (lv_retcode = cv_status_error) THEN
-            lv_errmsg   := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_short_name
-                            ,iv_name         => cv_msg_xxcoi1_10293
-                           );
-            lv_errbuf   := lv_errmsg;
-            RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--          IF (lv_retcode = cv_status_error) THEN
+--            lv_errmsg   := xxccp_common_pkg.get_msg(
+--                             iv_application  => cv_short_name
+--                            ,iv_name         => cv_msg_xxcoi1_10293
+--                           );
+--            lv_errbuf   := lv_errmsg;
+--            RAISE global_api_expt;
+          IF (lv_retcode = cv_status_error) OR lt_operation_cost IS NULL THEN
+            -- ===================================
+            --  ダミー原価取得(A-13)
+            -- ===================================
+            get_dummy_cost_data(
+                in_item_id      =>  it_inventory_item_id   -- 1.品目ID
+              , in_org_id       =>  gn_f_organization_id   -- 2.組織ID
+              , iv_msg_code     =>  cv_msg_xxcoi1_10723    -- 3.メッセージコード
+              , on_dummy_cost   =>  lt_operation_cost      -- 4.ダミー原価
+              , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+              , ov_retcode      =>  lv_retcode             -- リターン・コード
+              , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+            );
+            -- 終了パラメータ判定
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_api_others_expt;
+            END IF;
+---- == V1.16 Modified END   ===============================================================
           END IF;
           --
 -- == 2011/02/03 V1.15 Added END   ===============================================================
@@ -1605,12 +1818,30 @@ AS
       );
       -- 終了パラメータ判定
       IF (lv_retcode = cv_status_error) THEN
-        lv_errmsg   := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_short_name
-                        ,iv_name         => cv_msg_xxcoi1_10285
-                       );
-        lv_errbuf   := lv_errmsg;
-        RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--        lv_errmsg   := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_short_name
+--                        ,iv_name         => cv_msg_xxcoi1_10285
+--                       );
+--        lv_errbuf   := lv_errmsg;
+--        RAISE global_api_expt;
+        -- ===================================
+        --  ダミー原価取得(A-13)
+        -- ===================================
+        get_dummy_cost_data(
+            in_item_id      =>  daily_sum_rec.inventory_item_id   -- 1.品目ID
+          , in_org_id       =>  gn_f_organization_id              -- 2.組織ID
+          , iv_msg_code     =>  cv_msg_xxcoi1_10722               -- 3.メッセージコード
+          , on_dummy_cost   =>  lt_standard_cost                  -- 4.ダミー原価
+          , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+          , ov_retcode      =>  lv_retcode             -- リターン・コード
+          , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_api_others_expt;
+        END IF;
+---- == V1.16 Modified END   ===============================================================
       END IF;
       --
       -- ===================================
@@ -1626,13 +1857,32 @@ AS
        ,ov_errmsg         =>  lv_errmsg                                       -- ユーザー・エラーメッセージ
       );
       -- 終了パラメータ判定
-      IF (lv_retcode = cv_status_error) THEN
-        lv_errmsg   := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_short_name
-                        ,iv_name         => cv_msg_xxcoi1_10293
-                       );
-        lv_errbuf   := lv_errmsg;
-        RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--      IF (lv_retcode = cv_status_error) THEN
+--        lv_errmsg   := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_short_name
+--                        ,iv_name         => cv_msg_xxcoi1_10293
+--                       );
+--        lv_errbuf   := lv_errmsg;
+--        RAISE global_api_expt;
+      IF (lv_retcode = cv_status_error) OR lt_operation_cost IS NULL THEN
+        -- ===================================
+        --  ダミー原価取得(A-13)
+        -- ===================================
+        get_dummy_cost_data(
+            in_item_id      =>  daily_sum_rec.inventory_item_id   -- 1.品目ID
+          , in_org_id       =>  gn_f_organization_id              -- 2.組織ID
+          , iv_msg_code     =>  cv_msg_xxcoi1_10723               -- 3.メッセージコード
+          , on_dummy_cost   =>  lt_operation_cost                 -- 4.ダミー原価
+          , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+          , ov_retcode      =>  lv_retcode             -- リターン・コード
+          , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_api_others_expt;
+        END IF;
+---- == V1.16 Modified END   ===============================================================
       END IF;
 -- == 2009/08/31 V1.9 Added END   ===============================================================
 --
@@ -3203,13 +3453,32 @@ AS
                   , ov_errmsg           =>  lv_errmsg                 --  ユーザー・エラーメッセージ
                 );
                 -- 終了パラメータ判定
-                IF (lv_retcode = cv_status_error) THEN
-                  lv_errmsg   := xxccp_common_pkg.get_msg(
-                                    iv_application  =>  cv_short_name
-                                  , iv_name         =>  cv_msg_xxcoi1_10293
-                                 );
-                  lv_errbuf   := lv_errmsg;
-                  RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--                IF (lv_retcode = cv_status_error) THEN
+--                  lv_errmsg   := xxccp_common_pkg.get_msg(
+--                                    iv_application  =>  cv_short_name
+--                                  , iv_name         =>  cv_msg_xxcoi1_10293
+--                                 );
+--                  lv_errbuf   := lv_errmsg;
+--                  RAISE global_api_expt;
+              IF (lv_retcode = cv_status_error) OR lt_operation_cost IS NULL THEN
+                  -- ===================================
+                  --  ダミー原価取得(A-13)
+                  -- ===================================
+                  get_dummy_cost_data(
+                      in_item_id      =>  lt_inventory_item_id   -- 1.品目ID
+                    , in_org_id       =>  gn_f_organization_id   -- 2.組織ID
+                    , iv_msg_code     =>  cv_msg_xxcoi1_10723    -- 3.メッセージコード
+                    , on_dummy_cost   =>  lt_operation_cost      -- 4.ダミー原価
+                    , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+                    , ov_retcode      =>  lv_retcode             -- リターン・コード
+                    , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+                  );
+                  -- 終了パラメータ判定
+                  IF (lv_retcode = cv_status_error) THEN
+                    RAISE global_api_others_expt;
+                  END IF;
+---- == V1.16 Modified END   ===============================================================
                 END IF;
                 --
                 -- ===================================
@@ -3228,12 +3497,30 @@ AS
                 );
                 -- 終了パラメータ判定
                 IF (lv_retcode = cv_status_error) THEN
-                  lv_errmsg   := xxccp_common_pkg.get_msg(
-                                    iv_application  =>  cv_short_name
-                                  , iv_name         =>  cv_msg_xxcoi1_10285
-                                 );
-                  lv_errbuf   := lv_errmsg;
-                  RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--                  lv_errmsg   := xxccp_common_pkg.get_msg(
+--                                    iv_application  =>  cv_short_name
+--                                  , iv_name         =>  cv_msg_xxcoi1_10285
+--                                 );
+--                  lv_errbuf   := lv_errmsg;
+--                  RAISE global_api_expt;
+                  -- ===================================
+                  --  ダミー原価取得(A-13)
+                  -- ===================================
+                  get_dummy_cost_data(
+                      in_item_id      =>  lt_inventory_item_id   -- 1.品目ID
+                    , in_org_id       =>  gn_f_organization_id   -- 2.組織ID
+                    , iv_msg_code     =>  cv_msg_xxcoi1_10722    -- 3.メッセージコード
+                    , on_dummy_cost   =>  lt_standard_cost       -- 4.ダミー原価
+                    , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+                    , ov_retcode      =>  lv_retcode             -- リターン・コード
+                    , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+                  );
+                  -- 終了パラメータ判定
+                  IF (lv_retcode = cv_status_error) THEN
+                    RAISE global_api_others_expt;
+                  END IF;
+---- == V1.16 Modified END   ===============================================================
                 END IF;
                 --
                 --  日次在庫一時表を作成
@@ -3378,13 +3665,32 @@ AS
                   , ov_errmsg           =>  lv_errmsg                 --  ユーザー・エラーメッセージ
                 );
                 -- 終了パラメータ判定
-                IF (lv_retcode = cv_status_error) THEN
-                  lv_errmsg   := xxccp_common_pkg.get_msg(
-                                    iv_application  =>  cv_short_name
-                                  , iv_name         =>  cv_msg_xxcoi1_10293
-                                 );
-                  lv_errbuf   := lv_errmsg;
-                  RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--                IF (lv_retcode = cv_status_error) THEN
+--                  lv_errmsg   := xxccp_common_pkg.get_msg(
+--                                    iv_application  =>  cv_short_name
+--                                  , iv_name         =>  cv_msg_xxcoi1_10293
+--                                 );
+--                  lv_errbuf   := lv_errmsg;
+--                  RAISE global_api_expt;
+                IF (lv_retcode = cv_status_error) OR lt_operation_cost IS NULL THEN
+                  -- ===================================
+                  --  ダミー原価取得(A-13)
+                  -- ===================================
+                  get_dummy_cost_data(
+                      in_item_id      =>  lt_inventory_item_id   -- 1.品目ID
+                    , in_org_id       =>  gn_f_organization_id   -- 2.組織ID
+                    , iv_msg_code     =>  cv_msg_xxcoi1_10723    -- 3.メッセージコード
+                    , on_dummy_cost   =>  lt_operation_cost      -- 4.ダミー原価
+                    , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+                    , ov_retcode      =>  lv_retcode             -- リターン・コード
+                    , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+                  );
+                  -- 終了パラメータ判定
+                  IF (lv_retcode = cv_status_error) THEN
+                    RAISE global_api_others_expt;
+                  END IF;
+---- == V1.16 Modified END   ===============================================================
                 END IF;
                 --
                 -- ===================================
@@ -3401,12 +3707,30 @@ AS
                 );
                 -- 終了パラメータ判定
                 IF (lv_retcode = cv_status_error) THEN
-                  lv_errmsg   := xxccp_common_pkg.get_msg(
-                                    iv_application  =>  cv_short_name
-                                  , iv_name         =>  cv_msg_xxcoi1_10285
-                                 );
-                  lv_errbuf   := lv_errmsg;
-                  RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--                  lv_errmsg   := xxccp_common_pkg.get_msg(
+--                                    iv_application  =>  cv_short_name
+--                                  , iv_name         =>  cv_msg_xxcoi1_10285
+--                                 );
+--                  lv_errbuf   := lv_errmsg;
+--                  RAISE global_api_expt;
+                 -- ===================================
+                 --  ダミー原価取得(A-13)
+                 -- ===================================
+                 get_dummy_cost_data(
+                     in_item_id      =>  lt_inventory_item_id   -- 1.品目ID
+                   , in_org_id       =>  gn_f_organization_id   -- 2.組織ID
+                   , iv_msg_code     =>  cv_msg_xxcoi1_10722    -- 3.メッセージコード
+                   , on_dummy_cost   =>  lt_standard_cost       -- 4.ダミー原価
+                   , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+                   , ov_retcode      =>  lv_retcode             -- リターン・コード
+                   , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+                 );
+                 -- 終了パラメータ判定
+                 IF (lv_retcode = cv_status_error) THEN
+                   RAISE global_api_others_expt;
+                 END IF;
+---- == V1.16 Modified END   ===============================================================
                 END IF;
                 --
                 INSERT  INTO  xxcoi_inv_rcp_daily_tmp(
@@ -5044,12 +5368,30 @@ AS
         );
         -- 終了パラメータ判定
         IF (lv_retcode = cv_status_error) THEN
-          lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_short_name
-                          ,iv_name         => cv_msg_xxcoi1_10285
-                         );
-          lv_errbuf   := lv_errmsg;
-          RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--          lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_short_name
+--                          ,iv_name         => cv_msg_xxcoi1_10285
+--                         );
+--          lv_errbuf   := lv_errmsg;
+--          RAISE global_api_expt;
+          -- ===================================
+          --  ダミー原価取得(A-13)
+          -- ===================================
+          get_dummy_cost_data(
+              in_item_id      =>  daily_data_tab(ln_cnt).inventory_item_id   -- 1.品目ID
+            , in_org_id       =>  gn_f_organization_id                       -- 2.組織ID
+            , iv_msg_code     =>  cv_msg_xxcoi1_10722                        -- 3.メッセージコード
+            , on_dummy_cost   =>  daily_data_tab(ln_cnt).standard_cost       -- 4.ダミー原価
+            , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+            , ov_retcode      =>  lv_retcode             -- リターン・コード
+            , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_api_others_expt;
+          END IF;
+---- == V1.16 Modified END   ===============================================================
         END IF;
         --
         -- ===================================
@@ -5065,13 +5407,32 @@ AS
           , ov_errmsg         =>  lv_errmsg                                       --  ユーザー・エラーメッセージ
         );
         -- 終了パラメータ判定
-        IF (lv_retcode = cv_status_error) THEN
-          lv_errmsg   := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_short_name
-                          ,iv_name         => cv_msg_xxcoi1_10293
-                         );
-          lv_errbuf   := lv_errmsg;
-          RAISE global_api_expt;
+---- == V1.16 Modified START ===============================================================
+--        IF (lv_retcode = cv_status_error) THEN
+--          lv_errmsg   := xxccp_common_pkg.get_msg(
+--                           iv_application  => cv_short_name
+--                          ,iv_name         => cv_msg_xxcoi1_10293
+--                         );
+--          lv_errbuf   := lv_errmsg;
+--          RAISE global_api_expt;
+        IF (lv_retcode = cv_status_error) OR daily_data_tab(ln_cnt).operation_cost IS NULL THEN
+          -- ===================================
+          --  ダミー原価取得(A-13)
+          -- ===================================
+          get_dummy_cost_data(
+              in_item_id      =>  daily_data_tab(ln_cnt).inventory_item_id   -- 1.品目ID
+            , in_org_id       =>  gn_f_organization_id                       -- 2.組織ID
+            , iv_msg_code     =>  cv_msg_xxcoi1_10723                        -- 3.メッセージコード
+            , on_dummy_cost   =>  daily_data_tab(ln_cnt).operation_cost      -- 4.ダミー原価
+            , ov_errbuf       =>  lv_errbuf              -- エラーメッセージ
+            , ov_retcode      =>  lv_retcode             -- リターン・コード
+            , ov_errmsg       =>  lv_errmsg              -- ユーザー・エラーメッセージ
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_api_others_expt;
+          END IF;
+---- == V1.16 Modified END   ===============================================================
         END IF;
       END LOOP  set_cost_loop;
       --
@@ -5397,6 +5758,24 @@ AS
     --  処理年月の設定
     gv_f_this_month   :=    TO_CHAR(gd_f_business_date, cv_month);
 -- == 2011/01/17 V1.14 Added END   ===============================================================
+---- == V1.16 Added START ===============================================================
+    -- 処理対象資材取引IDメッセージ
+    gv_out_msg  :=  xxccp_common_pkg.get_msg(
+                      iv_application  => cv_short_name
+                     ,iv_name         => cv_msg_xxcoi1_10721
+                     ,iv_token_name1  => cv_token_10721_1
+                     ,iv_token_value1 => gn_f_last_transaction_id + 1
+                     ,iv_token_name2  => cv_token_10721_2
+                     ,iv_token_value2 => gn_f_max_transaction_id
+                    );
+    FND_FILE.PUT_LINE(which  =>  FND_FILE.OUTPUT
+                     ,buff   =>  gv_out_msg
+    );
+    -- 空行出力
+    FND_FILE.PUT_LINE(which  =>  FND_FILE.OUTPUT
+                     ,buff   =>  cv_space
+    );
+---- == V1.16 Added END   ===============================================================
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
@@ -5478,6 +5857,9 @@ AS
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
 --
+---- == V1.16 Added START ===============================================================
+    gb_get_cost_flag := TRUE;
+---- == V1.16 Added END   ===============================================================
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -5814,6 +6196,18 @@ AS
 --      END IF;
 -- == 2009/10/15 V1.11 Modified END   ===============================================================
 -- == 2011/01/17 V1.14 Deleted END   ===============================================================
+---- == V1.16 Added START ===============================================================
+    ELSE
+      IF ( gb_get_cost_flag = FALSE ) THEN
+        -- ステータスに警告をセット
+        lv_retcode := cv_status_warn;
+        -- 空行を出力
+        fnd_file.put_line(
+           which  => FND_FILE.OUTPUT
+          ,buff   => cv_space
+        );
+      END IF;
+---- == V1.16 Added END   ===============================================================
     END IF;
     --
     --対象件数出力
