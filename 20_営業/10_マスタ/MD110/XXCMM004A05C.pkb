@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A05C(body)
  * Description      : 品目一括登録ワークテーブルに取込まれた品目一括登録データを品目テーブルに登録します。
  * MD.050           : 品目一括登録 CMM_004_A05
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,6 +15,7 @@ AS
  *  chk_exists_category    カテゴリ存在チェック
  *  chk_exists_lookup      LOOKUP表存在チェック
  *  proc_comp              終了処理 (A-6)
+ *  ins_opmcost            OPM標準原価登録 (A-7)
  *  ins_data               データ登録 (A-5)
  *  validate_item          品目一括登録ワークデータ取得 (A-3)
  *                         品目一括登録ワークデータ妥当性チェック (A-4)
@@ -78,6 +79,8 @@ AS
  *  2010/02/25    1.19  Shigeto.Niki     E_本稼動_01589 品目カテゴリ割当(バラ茶区分)の固定値セットを解除
  *  2010/03/09    1.20  Y.Kuboshima      E_本稼動_01619 項目：適用開始日の追加
  *  2016/06/02    1.21  Shigeto.Niki     E_本稼動_13652 OPM品目マスタの設定値修正
+ *  2016/09/13    1.22  Shigeto.Niki     E_本稼動_13703 適用開始日 < 前年度開始日の場合エラーとする
+ *                                                      適用開始日および業務日付時点の年度の標準原価を作成する
  *
  *****************************************************************************************/
 --
@@ -193,6 +196,10 @@ AS
 -- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
   cv_msg_xxcmm_00494     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00494';                              -- 適用開始日未来日付エラー
 -- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
+-- Ver1.22 Add Start
+  cv_msg_xxcmm_00498     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00498';                              -- 適用開始日過去日付エラー
+  cv_msg_xxcmm_00499     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00499';                              -- 適用開始日年度取得エラー
+-- Ver Add End
   -- トークン
   cv_tkn_value           CONSTANT VARCHAR2(20)  := 'VALUE';                                         --
   cv_tkn_ng_profile      CONSTANT VARCHAR2(20)  := 'NG_PROFILE';                                    --
@@ -330,7 +337,11 @@ AS
   cv_table_gic_apg       CONSTANT VARCHAR2(60)  := 'OPM品目カテゴリ割当(経理部用群コード)';         -- GMI_ITEM_CATEGORIES
 -- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
 --
-  cv_table_ccd           CONSTANT VARCHAR2(30)  := 'OPM標準原価';                                   -- CM_CMPT_DTL
+-- Ver1.22 Mod Start
+--  cv_table_ccd           CONSTANT VARCHAR2(30)  := 'OPM標準原価';                                   -- CM_CMPT_DTL
+  cv_table_ccd_app       CONSTANT VARCHAR2(30)  := 'OPM標準原価(適用開始日)';                       -- CM_CMPT_DTL
+  cv_table_ccd_prc       CONSTANT VARCHAR2(30)  := 'OPM標準原価(業務日付)';                         -- CM_CMPT_DTL
+-- Ver1.22 Mod End
   cv_table_xsib          CONSTANT VARCHAR2(30)  := 'Disc品目アドオン';                              -- XXCMM_SYSTEM_ITEMS_B
   cv_table_xsibh         CONSTANT VARCHAR2(30)  := 'Disc品目変更履歴アドオン';                      -- XXCMM_SYSTEM_ITEMS_B_HST
   cv_table_xwibr         CONSTANT VARCHAR2(30)  := '品目一括登録ワーク';                            -- XXCMM_WK_ITEM_BATCH_REGIST
@@ -367,6 +378,10 @@ AS
   cv_pale_max_cs_qty     CONSTANT VARCHAR2(30)  := '配数';                                          --
   cv_pale_max_step_qty   CONSTANT VARCHAR2(30)  := '段数';                                          --
 -- 2009/10/14 障害0001370 add end by Y.Kuboshima
+-- Ver1.22 Add Start
+  cv_pre_year            CONSTANT VARCHAR2(30)  := '前年度';                                        --
+  cv_now_year            CONSTANT VARCHAR2(30)  := '当年度';                                        --
+-- Ver1.22 Add End
 --
   cv_yes                 CONSTANT VARCHAR2(1)   := 'Y';                                             --
   cv_no                  CONSTANT VARCHAR2(1)   := 'N';                                             --
@@ -467,6 +482,9 @@ AS
   cv_leaf_material       CONSTANT VARCHAR2(1)   := '5';                                             -- 資材品目(リーフ)
   cv_drink_material      CONSTANT VARCHAR2(1)   := '6';                                             -- 資材品目(ドリンク)
 -- 2009/08/07 Ver1.14 障害0000862 add end by Y.Kuboshima
+-- Ver1.22 Add Start
+  cn_month_year          CONSTANT NUMBER        := 12;
+-- Ver1.22 Add End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -622,6 +640,11 @@ AS
 -- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
   gd_apply_date             DATE;                                                                   -- 適用開始日：日付型変換後
 -- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
+-- Ver1.22 Add Start
+  gn_pre_year               NUMBER;                                                                 -- 前年度
+  gn_now_year               NUMBER;                                                                 -- 当年度
+  gn_apply_year             NUMBER;                                                                 -- 適用開始日年度
+-- Ver1.22 Add End
   --
   -- ===============================
   -- ユーザー定義例外
@@ -1148,6 +1171,171 @@ AS
 --
   END proc_comp;
 --
+-- Ver1.22 Add Start
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_opmcost
+   * Description      : OPM標準原価登録 (A-7)
+   ***********************************************************************************/
+  PROCEDURE ins_opmcost(
+    ir_wk_item_rec  IN  xxcmm_wk_item_batch_regist%ROWTYPE      -- 1.品目一括登録ワーク情報
+   ,it_item_id      IN  ic_item_mst_b.item_id%TYPE              -- 2.品目ID
+   ,id_target_date  IN  DATE                                    -- 3.対象日
+   ,ov_errbuf       OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode      OUT VARCHAR2      --   リターン・コード             --# 固定 #
+   ,ov_errmsg       OUT VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+--
+--#####################  固定ローカル定数変数宣言部 START   ####################
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_opmcost'; -- プログラム名
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_step                   VARCHAR2(10);                           -- ステップ
+    lt_cmpnt_cost             cm_cmpt_dtl.cmpnt_cost%TYPE;            -- 原価
+    ln_opm_cost_cnt           NUMBER;                                 -- 行カウンタ(OPM原価明細)
+--
+    -- *** ローカル・カーソル ***
+    -- 標準原価コンポーネント取得カーソル
+    CURSOR opmcost_cmpnt_cur(
+      id_target_date  DATE
+    )
+    IS
+      SELECT  ccd.calendar_code          AS calendar_code          -- カレンダコード
+            , ccd.period_code            AS period_code            -- 期間コード
+            , ccmv.cost_cmpntcls_id      AS cost_cmpntcls_id       -- コンポーネントID
+            , ccmv.cost_cmpntcls_code    AS cost_cmpntcls_code     -- コンポーネントコード
+      FROM    cm_cldr_dtl           ccd      -- OPM原価カレンダ
+            , cm_cmpt_mst_vl        ccmv     -- OPM原価コンポーネント
+            , fnd_lookup_values_vl  flvv     -- LOOKUP表
+      WHERE   flvv.lookup_type           =  cv_lookup_cost_cmpt
+      AND     flvv.enabled_flag          =  cv_yes
+      AND     ccmv.cost_cmpntcls_code    =  flvv.meaning
+      AND     ccd.start_date            <=  id_target_date
+      AND     ccd.end_date              >=  id_target_date
+      ;
+--
+    -- *** ローカル・レコード ***
+    -- OPM標準原価用
+    l_opm_cost_header_rec     xxcmm_004common_pkg.opm_cost_header_rtype;
+    l_opm_cost_dist_tab       xxcmm_004common_pkg.opm_cost_dist_ttype;
+--
+    -- *** ローカルユーザー定義例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 初期化
+    ln_opm_cost_cnt := 0;
+    lt_cmpnt_cost   := NULL;
+    --
+    <<cmpnt_loop>>
+    FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( id_target_date ) LOOP
+      -- 原価の取得
+      CASE opmcost_cmpnt_rec.cost_cmpntcls_code
+        WHEN cv_cost_cmpnt_01gen THEN    -- '01GEN'
+          -- 原料
+          lt_cmpnt_cost := TO_NUMBER( NVL( ir_wk_item_rec.standard_price_1, 0) );
+        WHEN cv_cost_cmpnt_02sai THEN    -- '02SAI'
+          -- 再製費
+          lt_cmpnt_cost := TO_NUMBER( NVL( ir_wk_item_rec.standard_price_2, 0) );
+        WHEN cv_cost_cmpnt_03szi THEN    -- '03SZI'
+          -- 資材費
+          lt_cmpnt_cost := TO_NUMBER( NVL( ir_wk_item_rec.standard_price_3, 0) );
+        WHEN cv_cost_cmpnt_04hou THEN    -- '04HOU'
+          -- 包装費
+          lt_cmpnt_cost := TO_NUMBER( NVL( ir_wk_item_rec.standard_price_4, 0) );
+        WHEN cv_cost_cmpnt_05gai THEN    -- '05GAI'
+          -- 外注管理費
+          lt_cmpnt_cost := TO_NUMBER( NVL( ir_wk_item_rec.standard_price_5, 0) );
+        WHEN cv_cost_cmpnt_06hkn THEN    -- '06HKN'
+          -- 保管費
+          lt_cmpnt_cost := TO_NUMBER( NVL( ir_wk_item_rec.standard_price_6, 0) );
+        WHEN cv_cost_cmpnt_07kei THEN    -- '07KEI'
+          -- その他経費
+          lt_cmpnt_cost := TO_NUMBER( NVL( ir_wk_item_rec.standard_price_7, 0) );
+        ELSE
+          -- 予備1～予備3
+          lt_cmpnt_cost := 0;
+      END CASE;
+      --
+      -- 原価設定判断
+      IF ( lt_cmpnt_cost IS NOT NULL ) THEN
+        -- OPM標準原価ヘッダパラメータ設定
+        IF ( ln_opm_cost_cnt = 0 ) THEN
+          l_opm_cost_header_rec.calendar_code := opmcost_cmpnt_rec.calendar_code;
+          l_opm_cost_header_rec.period_code   := opmcost_cmpnt_rec.period_code;
+          l_opm_cost_header_rec.item_id       := it_item_id;
+        END IF;
+        --
+        ln_opm_cost_cnt := ln_opm_cost_cnt + 1;
+        --
+        l_opm_cost_dist_tab(ln_opm_cost_cnt).cost_cmpntcls_id := opmcost_cmpnt_rec.cost_cmpntcls_id;
+        l_opm_cost_dist_tab(ln_opm_cost_cnt).cmpnt_cost       := lt_cmpnt_cost;
+        --
+      END IF;
+      --
+    END LOOP cmpnt_loop;
+--
+    -- 標準原価登録
+    xxcmm_004common_pkg.proc_opmcost_ref(
+      i_cost_header_rec   => l_opm_cost_header_rec       -- 1.原価ヘッダレコードタイプ
+     ,i_cost_dist_tab     => l_opm_cost_dist_tab         -- 2.原価明細テーブルタイプ
+     ,ov_errbuf           => lv_errbuf                   --   エラー・メッセージ
+     ,ov_retcode          => lv_retcode                  --   リターン・コード
+     ,ov_errmsg           => lv_errmsg                   --   ユーザー・エラー・メッセージ
+    );
+    -- 処理結果チェック
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      ov_retcode := cv_status_error;
+      ov_errbuf  := lv_errmsg;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_opmcost;
+-- Ver1.22 Add End
+--
   /**********************************************************************************
    * Procedure Name   : ins_data
    * Description      : データ登録 (A-5)
@@ -1345,29 +1533,33 @@ AS
       AND     ximb.end_date_active   >= TRUNC(gd_process_date)
       ;
     --
-    -- 標準原価コンポーネント取得カーソル
-    CURSOR opmcost_cmpnt_cur(
-      pd_apply_date  DATE )
-    IS
-      SELECT     cclr.calendar_code                                   -- カレンダコード
-                ,cclr.period_code                                     -- 期間コード
-                ,ccmv.cost_cmpntcls_id                                -- 原価コンポーネントID
-                ,ccmv.cost_cmpntcls_code                              -- 原価コンポーネントコード
-      FROM       cm_cldr_dtl    cclr                                  -- OPM原価カレンダ
-                ,cm_cmpt_mst_vl ccmv                                  -- 原価コンポーネント
-                ,fnd_lookup_values_vl flv                             -- LOOKUP表
-      WHERE      flv.lookup_type          = cv_lookup_cost_cmpt       -- LOOKUPタイプ
-      AND        flv.enabled_flag         = cv_yes                    -- 使用可能
-      AND        ccmv.cost_cmpntcls_code  = flv.meaning               -- 原価コンポーネントコード
-      AND        cclr.start_date         <= pd_apply_date             -- 開始日
-      AND        cclr.end_date           >= pd_apply_date             -- 終了日
-      ;
-    --
+-- Ver1.22 Del Start
+--    -- 標準原価コンポーネント取得カーソル
+--    CURSOR opmcost_cmpnt_cur(
+--      pd_apply_date  DATE )
+--    IS
+--      SELECT     cclr.calendar_code                                   -- カレンダコード
+--                ,cclr.period_code                                     -- 期間コード
+--                ,ccmv.cost_cmpntcls_id                                -- 原価コンポーネントID
+--                ,ccmv.cost_cmpntcls_code                              -- 原価コンポーネントコード
+--      FROM       cm_cldr_dtl    cclr                                  -- OPM原価カレンダ
+--                ,cm_cmpt_mst_vl ccmv                                  -- 原価コンポーネント
+--                ,fnd_lookup_values_vl flv                             -- LOOKUP表
+--      WHERE      flv.lookup_type          = cv_lookup_cost_cmpt       -- LOOKUPタイプ
+--      AND        flv.enabled_flag         = cv_yes                    -- 使用可能
+--      AND        ccmv.cost_cmpntcls_code  = flv.meaning               -- 原価コンポーネントコード
+--      AND        cclr.start_date         <= pd_apply_date             -- 開始日
+--      AND        cclr.end_date           >= pd_apply_date             -- 終了日
+--      ;
+--    --
+-- Ver1.22 Del End
     -- *** ローカル・レコード ***
     l_parent_item_rec         parent_item_cur%ROWTYPE;                -- 親品目値継承レコード
-    -- OPM標準原価用
-    l_opm_cost_header_rec     xxcmm_004common_pkg.opm_cost_header_rtype;
-    l_opm_cost_dist_tab       xxcmm_004common_pkg.opm_cost_dist_ttype;
+-- Ver1.22 Del Start
+--    -- OPM標準原価用
+--    l_opm_cost_header_rec     xxcmm_004common_pkg.opm_cost_header_rtype;
+--    l_opm_cost_dist_tab       xxcmm_004common_pkg.opm_cost_dist_ttype;
+-- Ver1.22 Del End
     --
     -- *** ローカルユーザー定義例外 ***
     ins_err_expt              EXCEPTION;                              -- データ登録エラー
@@ -2197,106 +2389,151 @@ AS
     lv_step := 'A-5.7.1';
     -- 親品目の場合のみ処理します。
     IF ( i_wk_item_rec.item_code = i_wk_item_rec.parent_item_code ) THEN
-      -- 初期化
-      ln_opm_cost_cnt := 0;
-      ln_cmpnt_cost := NULL;
-      --
-      <<cmpnt_loop>>
--- 2010/03/09 Ver1.20 E_本稼動_01619 modify start by Y.Kuboshima
--- 業務日付 -> 適用開始日に変更
---      FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( gd_process_date ) LOOP
-      FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( gd_apply_date ) LOOP
--- 2010/03/09 Ver1.20 E_本稼動_01619 modify end by Y.Kuboshima
-        -- 原価の取得
-        CASE opmcost_cmpnt_rec.cost_cmpntcls_code
---Ver1.12  2009/07/07  Mod  0000364対応
+-- Ver1.22 Mod Start
+--      -- 初期化
+--      ln_opm_cost_cnt := 0;
+--      ln_cmpnt_cost := NULL;
+--      --
+--      <<cmpnt_loop>>
+---- 2010/03/09 Ver1.20 E_本稼動_01619 modify start by Y.Kuboshima
+---- 業務日付 -> 適用開始日に変更
+----      FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( gd_process_date ) LOOP
+--      FOR opmcost_cmpnt_rec IN opmcost_cmpnt_cur( gd_apply_date ) LOOP
+---- 2010/03/09 Ver1.20 E_本稼動_01619 modify end by Y.Kuboshima
+--        -- 原価の取得
+--        CASE opmcost_cmpnt_rec.cost_cmpntcls_code
+----Ver1.12  2009/07/07  Mod  0000364対応
+----          WHEN cv_cost_cmpnt_01gen THEN    -- '01GEN'
+----            -- 原料
+----            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_1);
+----          WHEN cv_cost_cmpnt_02sai THEN    -- '02SAI'
+----            -- 再製費
+----            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_2);
+----          WHEN cv_cost_cmpnt_03szi THEN    -- '03SZI'
+----            -- 資材費
+----            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_3);
+----          WHEN cv_cost_cmpnt_04hou THEN    -- '04HOU'
+----            -- 包装費
+----            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_4);
+----          WHEN cv_cost_cmpnt_05gai THEN    -- '05GAI'
+----            -- 外注管理費
+----            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_5);
+----          WHEN cv_cost_cmpnt_06hkn THEN    -- '06HKN'
+----            -- 保管費
+----            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_6);
+----          WHEN cv_cost_cmpnt_07kei THEN    -- '07KEI'
+----            -- その他経費
+----            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_7);
+--          --
 --          WHEN cv_cost_cmpnt_01gen THEN    -- '01GEN'
 --            -- 原料
---            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_1);
+--            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_1, 0) );
 --          WHEN cv_cost_cmpnt_02sai THEN    -- '02SAI'
 --            -- 再製費
---            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_2);
+--            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_2, 0) );
 --          WHEN cv_cost_cmpnt_03szi THEN    -- '03SZI'
 --            -- 資材費
---            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_3);
+--            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_3, 0) );
 --          WHEN cv_cost_cmpnt_04hou THEN    -- '04HOU'
 --            -- 包装費
---            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_4);
+--            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_4, 0) );
 --          WHEN cv_cost_cmpnt_05gai THEN    -- '05GAI'
 --            -- 外注管理費
---            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_5);
+--            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_5, 0) );
 --          WHEN cv_cost_cmpnt_06hkn THEN    -- '06HKN'
 --            -- 保管費
---            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_6);
+--            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_6, 0) );
 --          WHEN cv_cost_cmpnt_07kei THEN    -- '07KEI'
 --            -- その他経費
---            ln_cmpnt_cost := TO_NUMBER(i_wk_item_rec.standard_price_7);
-          --
-          WHEN cv_cost_cmpnt_01gen THEN    -- '01GEN'
-            -- 原料
-            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_1, 0) );
-          WHEN cv_cost_cmpnt_02sai THEN    -- '02SAI'
-            -- 再製費
-            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_2, 0) );
-          WHEN cv_cost_cmpnt_03szi THEN    -- '03SZI'
-            -- 資材費
-            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_3, 0) );
-          WHEN cv_cost_cmpnt_04hou THEN    -- '04HOU'
-            -- 包装費
-            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_4, 0) );
-          WHEN cv_cost_cmpnt_05gai THEN    -- '05GAI'
-            -- 外注管理費
-            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_5, 0) );
-          WHEN cv_cost_cmpnt_06hkn THEN    -- '06HKN'
-            -- 保管費
-            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_6, 0) );
-          WHEN cv_cost_cmpnt_07kei THEN    -- '07KEI'
-            -- その他経費
-            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_7, 0) );
-          ELSE
-            -- 予備1～予備3
-            ln_cmpnt_cost := 0;
---End1.12
-        END CASE;
-        --
-        -- 原価設定判断
-        IF ( ln_cmpnt_cost IS NOT NULL ) THEN
-          -- OPM標準原価ヘッダパラメータ設定
-          IF ( ln_opm_cost_cnt = 0 ) THEN
-            -- カレンダコード
-            l_opm_cost_header_rec.calendar_code := opmcost_cmpnt_rec.calendar_code;
-            -- 期間コード
-            l_opm_cost_header_rec.period_code   := opmcost_cmpnt_rec.period_code;
-            -- 品目ID
-            l_opm_cost_header_rec.item_id       := ln_item_id;
-          END IF;
-          --
-          -- 原価登録
-          ln_opm_cost_cnt := ln_opm_cost_cnt + 1;
-          -- 原価明細
-          -- 原価コンポーネントID
-          l_opm_cost_dist_tab(ln_opm_cost_cnt).cost_cmpntcls_id := opmcost_cmpnt_rec.cost_cmpntcls_id;
-          -- 原価
-          l_opm_cost_dist_tab(ln_opm_cost_cnt).cmpnt_cost       := ln_cmpnt_cost;
-          --
-        END IF;
-        --
-      END LOOP cmpnt_loop;
+--            ln_cmpnt_cost := TO_NUMBER( NVL( i_wk_item_rec.standard_price_7, 0) );
+--          ELSE
+--            -- 予備1～予備3
+--            ln_cmpnt_cost := 0;
+----End1.12
+--        END CASE;
+--        --
+--        -- 原価設定判断
+--        IF ( ln_cmpnt_cost IS NOT NULL ) THEN
+--          -- OPM標準原価ヘッダパラメータ設定
+--          IF ( ln_opm_cost_cnt = 0 ) THEN
+--            -- カレンダコード
+--            l_opm_cost_header_rec.calendar_code := opmcost_cmpnt_rec.calendar_code;
+--            -- 期間コード
+--            l_opm_cost_header_rec.period_code   := opmcost_cmpnt_rec.period_code;
+--            -- 品目ID
+--            l_opm_cost_header_rec.item_id       := ln_item_id;
+--          END IF;
+--          --
+--          -- 原価登録
+--          ln_opm_cost_cnt := ln_opm_cost_cnt + 1;
+--          -- 原価明細
+--          -- 原価コンポーネントID
+--          l_opm_cost_dist_tab(ln_opm_cost_cnt).cost_cmpntcls_id := opmcost_cmpnt_rec.cost_cmpntcls_id;
+--          -- 原価
+--          l_opm_cost_dist_tab(ln_opm_cost_cnt).cmpnt_cost       := ln_cmpnt_cost;
+--          --
+--        END IF;
+--        --
+--      END LOOP cmpnt_loop;
+--      --
+--      lv_step := 'A-5.7.2';
+--      -- 標準原価登録
+--      xxcmm_004common_pkg.proc_opmcost_ref(
+--        i_cost_header_rec => l_opm_cost_header_rec                    -- 1.原価ヘッダレコードタイプ
+--       ,i_cost_dist_tab   => l_opm_cost_dist_tab                      -- 2.原価明細テーブルタイプ
+--       ,ov_errbuf         => lv_errbuf                                -- エラー・メッセージ
+--       ,ov_retcode        => lv_retcode                               -- リターン・コード
+--       ,ov_errmsg         => lv_errmsg                                -- ユーザー・エラー・メッセージ
+--      );
+--      -- 処理結果チェック
+--      IF ( lv_retcode <> cv_status_normal ) THEN
+--        lv_tkn_table := cv_table_ccd;
+--        RAISE ins_err_expt;   -- データ登録例外
+--      END IF;
+--
+      --==============================================================
+      -- OPM標準原価登録(適用開始日)(A-7)
+      --==============================================================
       --
       lv_step := 'A-5.7.2';
-      -- 標準原価登録
-      xxcmm_004common_pkg.proc_opmcost_ref(
-        i_cost_header_rec => l_opm_cost_header_rec                    -- 1.原価ヘッダレコードタイプ
-       ,i_cost_dist_tab   => l_opm_cost_dist_tab                      -- 2.原価明細テーブルタイプ
-       ,ov_errbuf         => lv_errbuf                                -- エラー・メッセージ
-       ,ov_retcode        => lv_retcode                               -- リターン・コード
-       ,ov_errmsg         => lv_errmsg                                -- ユーザー・エラー・メッセージ
+      --
+      ins_opmcost(
+        ir_wk_item_rec   => i_wk_item_rec       -- 1.品目一括登録ワーク情報
+       ,it_item_id       => ln_item_id          -- 2.品目ID
+       ,id_target_date   => gd_apply_date       -- 3.対象日 => 適用開始日
+       ,ov_errbuf        => lv_errbuf           -- エラー・メッセージ
+       ,ov_retcode       => lv_retcode          -- リターン・コード
+       ,ov_errmsg        => lv_errmsg           -- ユーザー・エラー・メッセージ
       );
       -- 処理結果チェック
       IF ( lv_retcode <> cv_status_normal ) THEN
-        lv_tkn_table := cv_table_ccd;
+        lv_tkn_table := cv_table_ccd_app;
         RAISE ins_err_expt;   -- データ登録例外
       END IF;
+--
+      --==============================================================
+      -- OPM標準原価登録(業務日付)(A-7)
+      --==============================================================
+      -- 適用開始日年度 = 前年度の場合は、業務日付年度の原価も作成する
+      IF (gn_apply_year = gn_pre_year) THEN
+        --
+        lv_step := 'A-5.7.3';
+        --
+        ins_opmcost(
+          ir_wk_item_rec   => i_wk_item_rec       -- 1.品目一括登録ワーク情報
+         ,it_item_id       => ln_item_id          -- 2.品目ID
+         ,id_target_date   => gd_process_date     -- 3.対象日 => 業務日付
+         ,ov_errbuf        => lv_errbuf           -- エラー・メッセージ
+         ,ov_retcode       => lv_retcode          -- リターン・コード
+         ,ov_errmsg        => lv_errmsg           -- ユーザー・エラー・メッセージ
+        );
+        -- 処理結果チェック
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          lv_tkn_table := cv_table_ccd_prc;
+          RAISE ins_err_expt;   -- データ登録例外
+        END IF;
+      END IF;
+-- Ver1.22 Mod End
     END IF;
     --
     --==============================================================
@@ -3506,6 +3743,62 @@ AS
       lv_check_flag := cv_status_error;
     END IF;
 -- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
+-- Ver1.22 Add Start
+    lv_step := 'A-4.10-2';
+    -- 適用開始日年度の取得
+    BEGIN
+      SELECT TO_NUMBER(ccd.calendar_code)  AS apply_year
+      INTO   gn_apply_year
+      FROM   cm_cldr_dtl   ccd   -- OPM原価カレンダ
+      WHERE  ccd.start_date  <=  gd_apply_date
+      AND    ccd.end_date    >=  gd_apply_date
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- 適用開始日年度取得エラー
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+                      ,iv_name         => cv_msg_xxcmm_00499                          -- メッセージコード
+                      ,iv_token_name1  => cv_tkn_input_line_no                        -- トークンコード1
+                      ,iv_token_value1 => i_wk_item_rec.line_no                       -- トークン値1
+                      ,iv_token_name2  => cv_tkn_input_item_code                      -- トークンコード2
+                      ,iv_token_value2 => i_wk_item_rec.item_code                     -- トークン値2
+                      ,iv_token_name3  => cv_tkn_apply_date                           -- トークンコード3
+                      ,iv_token_value3 => i_wk_item_rec.apply_date                    -- トークン値3
+                     );
+        -- メッセージ出力
+        xxcmm_004common_pkg.put_message(
+          iv_message_buff => lv_errmsg
+         ,ov_errbuf       => lv_errbuf
+         ,ov_retcode      => lv_retcode
+         ,ov_errmsg       => lv_errmsg
+        );
+        lv_check_flag := cv_status_error;
+    END;
+--
+    -- 適用開始日年度 < 前年度の場合はエラーとする
+    IF (gn_apply_year < gn_pre_year) THEN
+      -- 適用開始日過去日付エラー
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+                    ,iv_name         => cv_msg_xxcmm_00498                          -- メッセージコード
+                    ,iv_token_name1  => cv_tkn_input_line_no                        -- トークンコード1
+                    ,iv_token_value1 => i_wk_item_rec.line_no                       -- トークン値1
+                    ,iv_token_name2  => cv_tkn_input_item_code                      -- トークンコード2
+                    ,iv_token_value2 => i_wk_item_rec.item_code                     -- トークン値2
+                    ,iv_token_name3  => cv_tkn_apply_date                           -- トークンコード3
+                    ,iv_token_value3 => i_wk_item_rec.apply_date                    -- トークン値3
+                   );
+      -- メッセージ出力
+      xxcmm_004common_pkg.put_message(
+        iv_message_buff => lv_errmsg
+       ,ov_errbuf       => lv_errbuf
+       ,ov_retcode      => lv_retcode
+       ,ov_errmsg       => lv_errmsg
+      );
+      lv_check_flag := cv_status_error;
+    END IF;
+-- Ver1.22 Add End
 --
 -- 2010/01/04 Ver1.18 障害E_本稼動_00614 add start by Shigeto.Niki
       --==============================================================
@@ -5601,9 +5894,9 @@ AS
     gv_format  := iv_format;
     --
     --==============================================================
-    -- A-1.2 業務日付の取得
+    -- A-1.2-1 業務日付の取得
     --==============================================================
-    lv_step := 'A-1.2';
+    lv_step := 'A-1.2-1';
     gd_process_date := xxccp_common_pkg2.get_process_date;
 -- Ver.1.5 20090224 Add START
     -- NULLチェック
@@ -5612,6 +5905,39 @@ AS
       RAISE process_date_expt;
     END IF;
 -- Ver.1.5 20090224 Add END
+-- Ver1.22 Add Start
+    --==============================================================
+    -- A-1.2-2 前年度の取得
+    --==============================================================
+    BEGIN
+      SELECT TO_NUMBER(cclr.calendar_code)     AS pre_year
+      INTO   gn_pre_year
+      FROM   cm_cldr_dtl   cclr   -- OPM原価カレンダ
+      WHERE  cclr.start_date  <=  ADD_MONTHS( gd_process_date , cn_month_year * -1 )
+      AND    cclr.end_date    >=  ADD_MONTHS( gd_process_date , cn_month_year * -1 )
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_tkn_value := cv_pre_year;
+        RAISE process_date_expt;
+    END;
+--
+    --==============================================================
+    -- A-1.2-3 当年度の取得
+    --==============================================================
+    BEGIN
+      SELECT TO_NUMBER(cclr.calendar_code)     AS now_year
+      INTO   gn_now_year
+      FROM   cm_cldr_dtl   cclr   -- OPM原価カレンダ
+      WHERE  cclr.start_date  <=  gd_process_date
+      AND    cclr.end_date    >=  gd_process_date
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_tkn_value := cv_now_year;
+        RAISE process_date_expt;
+    END;
+-- Ver1.22 Add End
     --
     --==============================================================
     -- A-1.3 プロファイル取得
