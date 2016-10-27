@@ -6,7 +6,7 @@ AS
  *
  * Package Name     : XXCCP008A01C(body)
  * Description      : リース契約データCSV出力
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/30    1.0   SCSK 古山        新規作成
  *  2013/07/05    1.1   SCSK 中村        E_本稼動_10871対応 消費税増税対応
+ *  2016/09/14    1.2   SCSK 郭          E_本稼動_13658（自販機耐用年数変更対応）
  *
  *****************************************************************************************/
 --
@@ -209,6 +210,10 @@ AS
         ,xcl.present_value                                  AS  present_value               -- 明細.現在価値
         ,xcl.life_in_months                                 AS  life_in_months              -- 明細.法定耐用年数
         ,xcl.original_cost                                  AS  original_cost               -- 明細.取得価額
+-- 2016/09/14 Ver.1.2 Y.Koh ADD Start
+        ,xcl.original_cost_type1                            AS  original_cost_type1         -- 明細.リース負債額_原契約
+        ,xcl.original_cost_type2                            AS  original_cost_type2         -- 明細.リース負債額_再リース
+-- 2016/09/14 Ver.1.2 Y.Koh ADD End
         ,xcl.calc_interested_rate                           AS  calc_interested_rate        -- 明細.計算利子率
         ,xcl.object_header_id                               AS  object_header_id            -- 明細.物件内部ID
         ,xcl.asset_category                                 AS  asset_category              -- 明細.資産種類
@@ -349,6 +354,10 @@ AS
         ,xcl.present_value                                  AS  present_value               -- 明細.現在価値
         ,xcl.life_in_months                                 AS  life_in_months              -- 明細.法定耐用年数
         ,xcl.original_cost                                  AS  original_cost               -- 明細.取得価額
+-- 2016/09/14 Ver.1.2 Y.Koh ADD Start
+        ,xcl.original_cost_type1                            AS  original_cost_type1         -- 明細.リース負債額_原契約
+        ,xcl.original_cost_type2                            AS  original_cost_type2         -- 明細.リース負債額_再リース
+-- 2016/09/14 Ver.1.2 Y.Koh ADD End
         ,xcl.calc_interested_rate                           AS  calc_interested_rate        -- 明細.計算利子率
         ,xcl.object_header_id                               AS  object_header_id            -- 明細.物件内部ID
         ,xcl.asset_category                                 AS  asset_category              -- 明細.資産種類
@@ -498,6 +507,10 @@ AS
          || cv_delimit || cv_enclosed || '現在価値'                                                 || cv_enclosed
          || cv_delimit || cv_enclosed || '法定耐用年数'                                             || cv_enclosed
          || cv_delimit || cv_enclosed || '取得価額'                                                 || cv_enclosed
+-- 2016/09/14 Ver.1.2 Y.Koh ADD Start
+         || cv_delimit || cv_enclosed || 'リース負債額_原契約'                                      || cv_enclosed
+         || cv_delimit || cv_enclosed || 'リース負債額_再リース'                                    || cv_enclosed
+-- 2016/09/14 Ver.1.2 Y.Koh ADD End
          || cv_delimit || cv_enclosed || '計算利子率'                                               || cv_enclosed
          || cv_delimit || cv_enclosed || '物件内部ID'                                               || cv_enclosed
          || cv_delimit || cv_enclosed || '資産種類'                                                 || cv_enclosed
@@ -578,6 +591,10 @@ AS
              || cv_delimit || cv_enclosed || l_contract_rec_tab( i ).present_value               || cv_enclosed
              || cv_delimit || cv_enclosed || l_contract_rec_tab( i ).life_in_months              || cv_enclosed
              || cv_delimit || cv_enclosed || l_contract_rec_tab( i ).original_cost               || cv_enclosed
+-- 2016/09/14 Ver.1.2 Y.Koh ADD Start
+             || cv_delimit || cv_enclosed || l_contract_rec_tab( i ).original_cost_type1         || cv_enclosed
+             || cv_delimit || cv_enclosed || l_contract_rec_tab( i ).original_cost_type2         || cv_enclosed
+-- 2016/09/14 Ver.1.2 Y.Koh ADD End
              || cv_delimit || cv_enclosed || l_contract_rec_tab( i ).calc_interested_rate        || cv_enclosed
              || cv_delimit || cv_enclosed || l_contract_rec_tab( i ).object_header_id            || cv_enclosed
              || cv_delimit || cv_enclosed || l_contract_rec_tab( i ).asset_category              || cv_enclosed
