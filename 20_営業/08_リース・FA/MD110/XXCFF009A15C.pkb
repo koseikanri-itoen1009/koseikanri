@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF009A15C(body)
  * Description      : リース管理情報連携
  * MD.050           : リース管理情報連携 MD050_CFF_009_A15
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/05/28    1.2   SCS礒崎          [障害T1_1224] 連携機能がエラーの際にCSVファイルが削除される。
  *  2009/07/03    1.3   SCS萱原          [障害00000136]対象件数が0件の場合、CSV取込時にエラーとなる
  *  2009/08/31    1.4   SCS渡辺          [統合テスト障害0001060(PT対応)]
+ *  2016/10/04    1.5   SCSK 郭          E_本稼動_13658（自販機耐用年数変更対応）
  *
  *****************************************************************************************/
 --
@@ -120,6 +121,9 @@ AS
   cv_tkn_table          CONSTANT VARCHAR2(20) := 'TABLE_NAME';
   cv_tkn_prof           CONSTANT VARCHAR2(15) := 'PROF_NAME';                -- プロファイル名
   cv_tkn_file           CONSTANT VARCHAR2(15) := 'FILE_NAME';                -- ファイル名
+-- 2016/10/04 Ver.1.5 Y.Koh ADD Start
+  cv_match_flag_9       CONSTANT VARCHAR2(1)  := '9';                        -- 照合フラグ(対象外)
+-- 2016/10/04 Ver.1.5 Y.Koh ADD END
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -180,8 +184,14 @@ AS
               WHERE xlkv.lease_kind_code = xcl.lease_kind)    AS lease_kind_name
 -- 0001060 2009/08/31 MOD END --
             ,xcl.original_cost                           AS original_cost                     --19.取得価額
-            ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_debt,0)),0)         AS fin_debt          --20.ＦＩＮリース債務額
-            ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_interest_due,0)),0) AS fin_interest_due  --21.ＦＩＮリース支払利息
+-- 2016/10/04 Ver.1.5 Y.Koh MOD Start
+--            ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_debt,0)),0)         AS fin_debt          --20.ＦＩＮリース債務額
+            ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_debt,0) + NVL(xpp.debt_re,0)),0)
+                                                                         AS fin_debt          --20.ＦＩＮリース債務額
+--            ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_interest_due,0)),0) AS fin_interest_due  --21.ＦＩＮリース支払利息
+            ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_interest_due,0) + NVL(xpp.interest_due_re,0)),0)
+                                                                         AS fin_interest_due  --21.ＦＩＮリース支払利息
+-- 2016/10/04 Ver.1.5 Y.Koh MOD End
             ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_tax_debt,0)),0)     AS fin_tax_debt      --21.ＦＩＮリース支払利息
             ,xcl.calc_interested_rate                    AS calc_interested_rate              --23.計算利子率
             ,xoh.object_code                             AS object_code                       --24.物件コード
@@ -268,6 +278,9 @@ AS
             ,NVL(lease_charge,0) + NVL(lease_tax_charge,0) AS lease_charge      --リース料＋リース料_消費税
     FROM     xxcff_pay_planning
     WHERE    contract_line_id  = i_contract_line_id
+-- 2016/10/04 Ver.1.5 Y.Koh ADD Start
+    AND      payment_match_flag != cv_match_flag_9
+-- 2016/10/04 Ver.1.5 Y.Koh ADD END
     ORDER BY payment_frequency
     ;
     TYPE g_payment_ttype IS TABLE OF get_payment_cur%ROWTYPE INDEX BY PLS_INTEGER;
