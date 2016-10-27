@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF011A17C(body)
  * Description      : リース会計基準開示データ出力
  * MD.050           : リース会計基準開示データ出力 MD050_CFF_011_A17
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *                                         ・支払利息相当額、当期支払リース料（控除額）の取得条件修正
  *                                         ・リース契約情報取得カーソルをリース種類で分割
  *  2009/08/28    1.5   SCS 渡辺         [統合テスト障害0001061(PT対応)]
+ *  2016/09/14    1.6   SCSK 郭          E_本稼動_13658（自販機耐用年数変更対応）
  *
  *****************************************************************************************/
 --
@@ -442,22 +443,34 @@ AS
                    xpp.lease_charge
                  ELSE 0 END) AS lease_charge_over_1year   -- 1年越未経過リース料
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
-                   xpp.fin_debt
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                   xpp.fin_debt
+                   xpp.fin_debt + NVL(xpp.debt_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                  ELSE 0 END) AS lease_charge_debt         -- 未経過リース期末残高相当額
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
-                   xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                   xpp.fin_interest_due
+                   xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                  ELSE 0 END) AS interest_future           -- 未経過リース支払利息額
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
                    xpp.fin_tax_debt
                  ELSE 0 END) AS tax_future                -- 未経過リース消費税額
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
-                      xpp.fin_debt
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_debt
+                      xpp.fin_debt + NVL(xpp.debt_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS principal_1year           -- 1年以内元本
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
-                      xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_interest_due
+                      xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS interest_1year            -- 1年以内支払利息
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
@@ -466,22 +479,34 @@ AS
                     ELSE 0 END)
                  ELSE 0 END) AS tax_1year                 -- 1年以内消費税
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
-                   xpp.fin_debt
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                   xpp.fin_debt
+                   xpp.fin_debt + NVL(xpp.debt_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                  ELSE 0 END) AS principal_over_1year      -- 1年越元本
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
-                   xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                   xpp.fin_interest_due
+                   xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                  ELSE 0 END) AS interest_over_1year       -- 1年越支払利息
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
                    xpp.fin_tax_debt
                  ELSE 0 END) AS tax_over_1year            -- 1年越消費税
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,24),'YYYY-MM') THEN
-                      xpp.fin_debt
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_debt
+                      xpp.fin_debt + NVL(xpp.debt_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS principal_1to2year        -- 1年超2年以内元本
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,24),'YYYY-MM') THEN
-                      xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_interest_due
+                      xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS interest_1to2year         -- 1年超2年以内支払利息
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
@@ -491,12 +516,18 @@ AS
                  ELSE 0 END) AS tax_1to2year              -- 1年超2年以内消費税
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,24),'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,36),'YYYY-MM') THEN
-                      xpp.fin_debt
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_debt
+                      xpp.fin_debt + NVL(xpp.debt_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS principal_2to3year        -- 2年超3年以内元本
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,24),'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,36),'YYYY-MM') THEN
-                      xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_interest_due
+                      xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS interest_2to3year         -- 2年超3年以内支払利息
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,24),'YYYY-MM') THEN
@@ -506,12 +537,18 @@ AS
                  ELSE 0 END) AS tax_2to3year              -- 2年超3年以内消費税
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,36),'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,48),'YYYY-MM') THEN
-                      xpp.fin_debt
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_debt
+                      xpp.fin_debt + NVL(xpp.debt_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS principal_3to4year        -- 3年超4年以内元本
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,36),'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,48),'YYYY-MM') THEN
-                      xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_interest_due
+                      xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS interest_3to4year         -- 3年超4年以内支払利息
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,36),'YYYY-MM') THEN
@@ -521,12 +558,18 @@ AS
                  ELSE 0 END) AS tax_3to4year              -- 3年超4年以内消費税
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,48),'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,60),'YYYY-MM') THEN
-                      xpp.fin_debt
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_debt
+                      xpp.fin_debt + NVL(xpp.debt_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS principal_4to5year        -- 4年超5年以内元本
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,48),'YYYY-MM') THEN
                    (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,60),'YYYY-MM') THEN
-                      xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                      xpp.fin_interest_due
+                      xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                     ELSE 0 END)
                  ELSE 0 END) AS interest_4to5year         -- 4年超5年以内支払利息
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,48),'YYYY-MM') THEN
@@ -535,10 +578,16 @@ AS
                     ELSE 0 END)
                  ELSE 0 END) AS tax_4to5year              -- 4年超5年以内消費税
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,60),'YYYY-MM') THEN
-                   xpp.fin_debt
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                   xpp.fin_debt
+                   xpp.fin_debt + NVL(xpp.debt_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                  ELSE 0 END) AS principal_over_5year      -- 5年越元本
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,60),'YYYY-MM') THEN
-                   xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                   xpp.fin_interest_due
+                   xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                  ELSE 0 END) AS interest_over_5year       -- 5年越支払利息
             ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,60),'YYYY-MM') THEN
                    xpp.fin_tax_debt
@@ -551,7 +600,10 @@ AS
                   (CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
 -- 0000417 2009/07/31 MOD END --
                      (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
-                        xpp.fin_interest_due
+-- 2016/09/14 Ver.1.6 Y.Koh MOD Start
+--                        xpp.fin_interest_due
+                        xpp.fin_interest_due + NVL(xpp.interest_due_re,0)
+-- 2016/09/14 Ver.1.6 Y.Koh MOD End
                       ELSE 0 END)
 -- 0000417 2009/07/31 ADD START --
                    ELSE 0 END)
