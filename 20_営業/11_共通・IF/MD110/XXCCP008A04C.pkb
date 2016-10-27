@@ -5,7 +5,7 @@ AS
  *
  * Package Name     : XXCCP008A04C(body)
  * Description      : リース会計基準情報CSV出力
- * Version          : 1.00
+ * Version          : 1.01
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/24    1.00  SCSK 高崎美和    新規作成
+ *  2016/09/14    1.01  SCSK 郭 有司     E_本稼動_13658（自販機耐用年数変更対応）
  *
  *****************************************************************************************/
 --
@@ -271,9 +272,15 @@ AS
                    AND cont_line_a.lease_kind        <> cv_lease_kind_op --opリース以外
              )                                                                           AS original_cost
                 -- 未経過リース期末残高相当額     リース支払計画.FINリース債務残          範囲：基準期間 時点
-           , NVL( pay_plan_bs.fin_debt_rem , 0 )                                         AS fin_debt_rem
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--           , NVL( pay_plan_bs.fin_debt_rem , 0 )                                         AS fin_debt_rem
+           , NVL( pay_plan_bs.fin_debt_rem , 0 ) + NVL( pay_plan_bs.debt_rem_re , 0 )    AS fin_debt_rem
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
            , (  -- 未経過リース支払利息           リース支払計画.FINリース支払利息 を集計 範囲：基準期間 + 1ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  = pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency > pay_plan_bs.payment_frequency
@@ -281,14 +288,20 @@ AS
                 -- 未経過リース消費税額           リース支払計画.FINリース債務残_消費税   範囲：基準期間 時点
            , NVL( pay_plan_bs.fin_tax_debt_rem , 0 )                                     AS fin_tax_debt_rem
            , (  -- 1年以内元本額                  リース支払計画.FINリース債務額を集計         範囲：基準期間 + 1ヶ月 ～ +12ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 12
              )                                                                           AS fin_debt_1year
            , (  -- 1年以内支払利息                リース支払計画.FINリース支払利息 を集計      範囲：基準期間 + 1ヶ月 ～ +12ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency
@@ -302,13 +315,19 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 12
              )                                                                           AS fin_tax_debt_1year
            , (  -- 1年超元本額                    リース支払計画.FINリース債務額を集計         範囲：基準期間 +13ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
              )                                                                           AS fin_debt_ov1year
            , (  -- 1年超支払利息                  リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +13ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
@@ -320,14 +339,20 @@ AS
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
              )                                                                           AS fin_tax_debt_ov1year
            , (  -- 1年超2年以内元本額             リース支払計画.FINリース債務額を集計         範囲：基準期間 +13ヶ月 ～ +24ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 24
              )                                                                           AS fin_debt_1to2year
            , (  -- 1年超2年以内支払利息           リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +13ヶ月 ～ +24ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
@@ -341,14 +366,20 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 24
              )                                                                           AS fin_tax_debt_1to2year
             ,(  -- 2年超3年以内元本額             リース支払計画.FINリース債務額を集計         範囲：基準期間 +25ヶ月 ～ +36ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 24
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 36
              )                                                                           AS fin_debt_2to3year
            , (  -- 2年超3年以内支払利息            リース支払計画.FINリース支払利息 を集計     範囲：基準期間 +25ヶ月 ～ +36ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 24
@@ -362,14 +393,20 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 36
              )                                                                           AS fin_tax_debt_2to3year
            , (  -- 3年超4年以内元本額             リース支払計画.FINリース債務額を集計         範囲：基準期間 +37ヶ月 ～ +48ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 36
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 48
              )                                                                           AS fin_debt_3to4year
            , (  -- 3年超4年以内支払利息           リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +37ヶ月 ～ +48ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 36
@@ -383,14 +420,20 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 48
              )                                                                           AS fin_tax_debt_3to4year
            , (  -- 4年超5年以内元本額             リース支払計画.FINリース債務額を集計         範囲：基準期間 +49ヶ月 ～ +60ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 48
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 60
              )                                                                           AS fin_debt_4to5year
            , (  -- 4年超5年以内支払利息           リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +49ヶ月 ～ +60ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 48
@@ -404,13 +447,19 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 60
              )                                                                           AS fin_tax_debt_4to5year
            , (  -- 5年超元本額                    リース支払計画.FINリース債務額を集計         範囲：基準期間 +61ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 60
              )                                                                           AS fin_debt_ov5year
            , (  -- 5年超支払利息                  リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +61ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 60
@@ -489,7 +538,10 @@ AS
                   )
                 , 0 )                                                                    AS bal_amount
            , (  -- 支払利息相当額                 リース支払計画.FINリース支払利息 を集計      範囲：期首～基準期間
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >= NVL( pay_plan_st.payment_frequency , 1 ) 
@@ -772,9 +824,15 @@ AS
                    AND cont_line_a.lease_kind        <> cv_lease_kind_op --opリース以外
              )                                                                           AS original_cost
                 -- 未経過リース期末残高相当額     リース支払計画.FINリース債務残          範囲：基準期間 時点
-           , NVL( pay_plan_bs.fin_debt_rem , 0 )                                         AS fin_debt_rem
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--           , NVL( pay_plan_bs.fin_debt_rem , 0 )                                         AS fin_debt_rem
+           , NVL( pay_plan_bs.fin_debt_rem , 0 ) + NVL( pay_plan_bs.debt_rem_re , 0 )    AS fin_debt_rem
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
            , (  -- 未経過リース支払利息           リース支払計画.FINリース支払利息 を集計 範囲：基準期間 + 1ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  = pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency > pay_plan_bs.payment_frequency
@@ -782,14 +840,20 @@ AS
                 -- 未経過リース消費税額           リース支払計画.FINリース債務残_消費税   範囲：基準期間 時点
            , NVL( pay_plan_bs.fin_tax_debt_rem , 0 )                                     AS fin_tax_debt_rem
            , (  -- 1年以内元本額                  リース支払計画.FINリース債務額を集計         範囲：基準期間 + 1ヶ月 ～ +12ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 12
              )                                                                           AS fin_debt_1year
            , (  -- 1年以内支払利息                リース支払計画.FINリース支払利息 を集計      範囲：基準期間 + 1ヶ月 ～ +12ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency
@@ -803,13 +867,19 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 12
              )                                                                           AS fin_tax_debt_1year
            , (  -- 1年超元本額                    リース支払計画.FINリース債務額を集計         範囲：基準期間 +13ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
              )                                                                           AS fin_debt_ov1year
            , (  -- 1年超支払利息                  リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +13ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
@@ -821,14 +891,20 @@ AS
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
              )                                                                           AS fin_tax_debt_ov1year
            , (  -- 1年超2年以内元本額             リース支払計画.FINリース債務額を集計         範囲：基準期間 +13ヶ月 ～ +24ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 24
              )                                                                           AS fin_debt_1to2year
            , (  -- 1年超2年以内支払利息           リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +13ヶ月 ～ +24ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 12
@@ -842,14 +918,20 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 24
              )                                                                           AS fin_tax_debt_1to2year
             ,(  -- 2年超3年以内元本額             リース支払計画.FINリース債務額を集計         範囲：基準期間 +25ヶ月 ～ +36ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 24
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 36
              )                                                                           AS fin_debt_2to3year
            , (  -- 2年超3年以内支払利息            リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +25ヶ月 ～ +36ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 24
@@ -863,14 +945,20 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 36
              )                                                                           AS fin_tax_debt_2to3year
            , (  -- 3年超4年以内元本額             リース支払計画.FINリース債務額を集計         範囲：基準期間 +37ヶ月 ～ +48ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 36
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 48
              )                                                                           AS fin_debt_3to4year
            , (  -- 3年超4年以内支払利息           リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +37ヶ月 ～ +48ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 36
@@ -884,14 +972,20 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 48
              )                                                                           AS fin_tax_debt_3to4year
            , (  -- 4年超5年以内元本額             リース支払計画.FINリース債務額を集計         範囲：基準期間 +49ヶ月 ～ +60ヶ月
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 48
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 60
              )                                                                           AS fin_debt_4to5year
            , (  -- 4年超5年以内支払利息           リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +49ヶ月 ～ +60ヶ月
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 48
@@ -905,13 +999,19 @@ AS
                    AND xpp.payment_frequency <= pay_plan_bs.payment_frequency + 60
              )                                                                           AS fin_tax_debt_4to5year
            , (  -- 5年超元本額                    リース支払計画.FINリース債務額を集計         範囲：基準期間 +61ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_debt ) , 0 )
+                SELECT NVL( SUM( xpp.fin_debt ) , 0 ) + NVL( SUM( xpp.debt_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 60
              )                                                                           AS fin_debt_ov5year
            , (  -- 5年超支払利息                  リース支払計画.FINリース支払利息 を集計      範囲：基準期間 +61ヶ月 ～
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >  pay_plan_bs.payment_frequency + 60
@@ -990,7 +1090,10 @@ AS
                   )
                 , 0 )                                                                    AS bal_amount
            , (  -- 支払利息相当額                 リース支払計画.FINリース支払利息 を集計      範囲：期首～基準期間
-                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD Start
+--                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 )
+                SELECT NVL( SUM( xpp.fin_interest_due ) , 0 ) + NVL( SUM( xpp.interest_due_re ) , 0 )
+-- 2016/09/14 Ver.1.01 Y.Koh MOD End
                   FROM xxcff_pay_planning xpp
                  WHERE xpp.contract_line_id  =  pay_plan_bs.contract_line_id
                    AND xpp.payment_frequency >= NVL( pay_plan_st.payment_frequency , 1 ) 
