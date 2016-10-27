@@ -5,7 +5,7 @@ AS
  *
  * Package Name     : XXCCP008A03C(body)
  * Description      : リース支払計画データCSV出力
- * Version          : 1.00
+ * Version          : 1.01
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/05    1.00  SCSK 高崎美和    新規作成
+ *  2016/09/14    1.01  SCSK 郭 有司     E_本稼動_13658（自販機耐用年数変更対応）
  *
  *****************************************************************************************/
 --
@@ -167,6 +168,11 @@ AS
       ,      xppl.fin_interest_due                --  リース支払計画.ＦＩＮリース支払利息
       ,      xppl.fin_debt_rem                    --  リース支払計画.ＦＩＮリース債務残
       ,      xppl.fin_tax_debt_rem                --  リース支払計画.ＦＩＮリース債務残_消費税
+-- 2016/09/14 Ver.1.01 Y.Koh ADD Start
+      ,      xppl.debt_re                         --  リース支払計画.リース債務額_再リース
+      ,      xppl.interest_due_re                 --  リース支払計画.リース支払利息_再リース
+      ,      xppl.debt_rem_re                     --  リース支払計画.リース債務残_再リース
+-- 2016/09/14 Ver.1.01 Y.Koh ADD End
       ,      xppl.accounting_if_flag              --  リース支払計画.会計ＩＦフラグ
       ,      xppl.payment_match_flag              --  リース支払計画.照合済フラグ
       ,      xppl.created_by                      --  リース支払計画.作成者
@@ -259,6 +265,11 @@ AS
       ,      xppl.fin_interest_due                --  リース支払計画.ＦＩＮリース支払利息
       ,      xppl.fin_debt_rem                    --  リース支払計画.ＦＩＮリース債務残
       ,      xppl.fin_tax_debt_rem                --  リース支払計画.ＦＩＮリース債務残_消費税
+-- 2016/09/14 Ver.1.01 Y.Koh ADD Start
+      ,      xppl.debt_re                         --  リース支払計画.リース債務額_再リース
+      ,      xppl.interest_due_re                 --  リース支払計画.リース支払利息_再リース
+      ,      xppl.debt_rem_re                     --  リース支払計画.リース債務残_再リース
+-- 2016/09/14 Ver.1.01 Y.Koh ADD End
       ,      xppl.accounting_if_flag              --  リース支払計画.会計ＩＦフラグ
       ,      xppl.payment_match_flag              --  リース支払計画.照合済フラグ
       ,      xppl.created_by                      --  リース支払計画.作成者
@@ -398,6 +409,11 @@ AS
          || cv_delimit || cv_enclosed || 'ＦＩＮリース支払利息'                     || cv_enclosed
          || cv_delimit || cv_enclosed || 'ＦＩＮリース債務残'                       || cv_enclosed
          || cv_delimit || cv_enclosed || 'ＦＩＮリース債務残_消費税'                || cv_enclosed
+-- 2016/09/14 Ver.1.01 Y.Koh ADD Start
+         || cv_delimit || cv_enclosed || 'リース債務額_再リース'                    || cv_enclosed
+         || cv_delimit || cv_enclosed || 'リース支払利息_再リース'                  || cv_enclosed
+         || cv_delimit || cv_enclosed || 'リース債務残_再リース'                    || cv_enclosed
+-- 2016/09/14 Ver.1.01 Y.Koh ADD End
          || cv_delimit || cv_enclosed || '会計ＩＦフラグ'                           || cv_enclosed
          || cv_delimit || cv_enclosed || '照合済フラグ'                             || cv_enclosed
          || cv_delimit || cv_enclosed || '作成者'                                   || cv_enclosed
@@ -432,6 +448,11 @@ AS
              || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).fin_interest_due       || cv_enclosed
              || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).fin_debt_rem           || cv_enclosed
              || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).fin_tax_debt_rem       || cv_enclosed
+-- 2016/09/14 Ver.1.01 Y.Koh ADD Start
+             || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).debt_re                || cv_enclosed
+             || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).interest_due_re        || cv_enclosed
+             || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).debt_rem_re            || cv_enclosed
+-- 2016/09/14 Ver.1.01 Y.Koh ADD End
              || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).accounting_if_flag     || cv_enclosed
              || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).payment_match_flag     || cv_enclosed
              || cv_delimit || cv_enclosed || l_xpay_plan_rec_tab( i ).created_by             || cv_enclosed
