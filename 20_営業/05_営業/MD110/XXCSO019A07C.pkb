@@ -7,7 +7,7 @@ AS
  * Description      : 指定した営業員の指定した日の１時間ごとの訪問実績(訪問先)を表示します。
  *                    １週間前の訪問実績を同様に表示して比較の対象とします。
  * MD.050           : MD050_CSO_019_A07_営業員別訪問実績表
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009-05-20    1.4   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
  *  2009-06-03    1.5   Kazuo.Satomura   ＳＴ障害対応(T1_0696 SQLERRMを削除)
  *  2009-11-25    1.6   Kazuo.Satomura   E_本稼動_00026対応
+ *  2016-09-26    1.7   Hideki.Sakihama  E_本稼動_13872対応 出力営業員複数対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -74,6 +75,9 @@ AS
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
+  -- 2016-09-26 Ver1.7 Add Start
+  gn_target_all_cnt NUMBER;                   -- 対象従業員総件数
+  -- 2016-09-26 Ver1.7 Add End
 --
 --################################  固定部 END   ##################################
 --
@@ -110,11 +114,17 @@ AS
   cv_tkn_number_07       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00135';  -- 必須項目エラー
   cv_tkn_number_08       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00140';  -- 明細0件メッセージ
   cv_tkn_number_09       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00042';  -- ＤＢ登録・更新エラー
+  -- 2016-09-26 Ver1.7 Add Start
+  cv_tkn_number_10       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00014';  -- プロファイル取得エラー
+  -- 2016-09-26 Ver1.7 Add End
   -- トークンコード
   cv_tkn_entry           CONSTANT VARCHAR2(20) := 'ENTRY';
   cv_tkn_api_nm          CONSTANT VARCHAR2(20) := 'API_NAME';
   cv_tkn_act             CONSTANT VARCHAR2(20) := 'ACTION';
   cv_tkn_errmsg          CONSTANT VARCHAR2(20) := 'ERRMSG';
+  -- 2016-09-26 Ver1.7 Add Start
+  cv_tkn_prof_name       CONSTANT VARCHAR2(20) := 'PROF_NAME';
+  -- 2016-09-26 Ver1.7 Add End
   --
   cv_msg_prnthss_l       CONSTANT VARCHAR2(1)  := '(';
   cv_msg_prnthss_r       CONSTANT VARCHAR2(1)  := ')';
@@ -314,10 +324,72 @@ AS
   );
   -- 営業員別訪問実績表帳票ワークテーブル テーブル型定義
   TYPE g_rep_vst_slsemp_ttype IS TABLE OF g_rep_vst_slsemp_rtype INDEX BY BINARY_INTEGER;
+--
+  -- 2016-09-26 Ver1.7 Add Start
+  TYPE g_rep_emp_rtype IS RECORD(
+     employee_number   xxcso_resources_v2.employee_number%type
+    ,last_name         xxcso_resources_v2.last_name%TYPE
+    ,first_name        xxcso_resources_v2.first_name%TYPE
+    ,work_base_code    xxcso_resources_v2.work_base_code_new%TYPE
+    ,work_base_name    xxcso_resources_v2.work_base_name_new%TYPE
+    ,resource_id       xxcso_resources_v2.resource_id%type
+  );
+  TYPE g_rep_emp_ttype IS TABLE OF g_rep_emp_rtype INDEX BY BINARY_INTEGER;
+  -- ===============================
+  -- ユーザー定義グローバルカーソル
+  -- ===============================
+  CURSOR cur_emp(
+            iv_retcd  VARCHAR2       -- 配下従業員選択可能フラグ
+           ,iv_emp    VARCHAR2       -- 従業員コード
+         )
+  IS
+    SELECT xrv2.employee_number  AS employee_number -- 従業員コード
+          ,xrv2.last_name        AS last_name       -- 漢字姓
+          ,xrv2.first_name       AS first_name      -- 漢字名
+          ,(CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
+                   xrv2.work_base_code_new  -- 勤務地拠点コード（新）
+                 ELSE
+                   xrv2.work_base_code_old  -- 勤務地拠点コード（旧）
+                 END
+            )                    AS work_base_code  -- 勤務地拠点コード
+          ,(CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
+                   xrv2.work_base_name_new  -- 勤務地拠点名（新）
+                 ELSE
+                   xrv2.work_base_name_old  -- 勤務地拠点名（旧）
+                 END
+            )                    AS work_base_name  -- 勤務地拠点名
+          ,xrv2.resource_id      AS resource_id     -- リソースＩＤ
+    FROM   xxcso_resources_v2 xrv2           -- リソースマスタ(最新)VIEW
+    WHERE xrv2.employee_number = NVL(iv_emp, xrv2.employee_number)
+    AND   (CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
+                  xrv2.work_base_code_new  -- 勤務地拠点コード（新）
+                ELSE
+                  xrv2.work_base_code_old  -- 勤務地拠点コード（旧）
+                END
+           ) = ( SELECT (CASE WHEN xrv.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
+                                xrv.work_base_code_new  -- 勤務地拠点コード（新）
+                              ELSE
+                                xrv.work_base_code_old  -- 勤務地拠点コード（旧）
+                              END
+                         ) work_base_code2
+                 FROM    xxcso_resources_v2 xrv
+                 WHERE   xrv.user_id = cn_user_id
+                )
+    AND (
+          ( iv_retcd  =  cv_true AND xrv2.user_id = cn_user_id )
+          OR
+          ( iv_retcd  =  cv_false AND 1 = 1 )
+        )
+  ;
+  -- 2016-09-26 Ver1.7 Add End
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
   g_rep_vst_slsemp_tab      g_rep_vst_slsemp_ttype;
+  -- 2016-09-26 Ver1.7 Add Start
+  g_rep_emp_tab             g_rep_emp_ttype;
+  -- 2016-09-26 Ver1.7 Add End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -418,9 +490,11 @@ AS
      iv_visit_date         IN  VARCHAR2                                  -- 訪問日
     ,iv_employee_number    IN  VARCHAR2                                  -- 従業員コード
     ,od_visit_date         OUT DATE                                      -- 訪問日(DATE型)
-    ,ov_full_name          OUT NOCOPY VARCHAR2                           -- 漢字氏名
-    ,ov_work_base_code     OUT NOCOPY VARCHAR2                           -- 勤務地拠点コード
-    ,ov_hub_name           OUT NOCOPY VARCHAR2                           -- 勤務地拠点名
+    -- 2016-09-26 Ver1.7 Del Start
+--    ,ov_full_name          OUT NOCOPY VARCHAR2                           -- 漢字氏名
+--    ,ov_work_base_code     OUT NOCOPY VARCHAR2                           -- 勤務地拠点コード
+--    ,ov_hub_name           OUT NOCOPY VARCHAR2                           -- 勤務地拠点名
+    -- 2016-09-26 Ver1.7 Del End
     ,ov_errbuf             OUT NOCOPY VARCHAR2                           -- エラー・メッセージ            --# 固定 #
     ,ov_retcode            OUT NOCOPY VARCHAR2                           -- リターン・コード              --# 固定 #
     ,ov_errmsg             OUT NOCOPY VARCHAR2                           -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -444,16 +518,25 @@ AS
     -- *** ローカル定数 ***
     cv_vst_dt          CONSTANT VARCHAR2(20) := '訪問日';
     cv_emp_nm          CONSTANT VARCHAR2(20) := '従業員コード';
+    -- 2016-09-26 Ver1.7 Add Start
+    cv_no              CONSTANT VARCHAR2(1)  := 'N';                          -- 選択可能職責:N
+    cv_emp_sel_flg     CONSTANT VARCHAR2(30) := 'XXCSO1_ALL_EMP_SEL_FLG_07C'; -- XXCSO:配下従業員選択可能フラグ（営業員別訪問実績表）
+    -- 2016-09-26 Ver1.7 Add End
     -- *** ローカル変数 ***
     ld_process_date       DATE;                                     -- 業務処理日付格納用
     ld_sysdate            DATE;                                     -- システム日付
     lv_visit_date         VARCHAR2(8);                              -- 訪問日格納用
-    lt_employee_number    xxcso_resources_v2.employee_number%TYPE;  -- 従業員コード
-    lt_last_name          xxcso_resources_v2.last_name%TYPE;        -- 漢字姓
-    lt_first_name         xxcso_resources_v2.first_name%TYPE;       -- 漢字名
-    lv_work_base_code     VARCHAR2(150);                            -- 勤務地拠点コード
-    lv_work_base_name     VARCHAR2(4000);                           -- 勤務地拠点名
+    -- 2016-09-26 Ver1.7 Del Start
+--    lt_employee_number    xxcso_resources_v2.employee_number%TYPE;  -- 従業員コード
+--    lt_last_name          xxcso_resources_v2.last_name%TYPE;        -- 漢字姓
+--    lt_first_name         xxcso_resources_v2.first_name%TYPE;       -- 漢字名
+--    lv_work_base_code     VARCHAR2(150);                            -- 勤務地拠点コード
+--    lv_work_base_name     VARCHAR2(4000);                           -- 勤務地拠点名
+    -- 2016-09-26 Ver1.7 Del End
     lv_retcd              VARCHAR2(5);                              -- 共通関数戻り値格納
+    -- 2016-09-26 Ver1.7 Add Start
+    lv_emp_sel_flg        VARCHAR2(1);                              -- 配下従業員選択可能フラグ
+    -- 2016-09-26 Ver1.7 Add End
     -- *** ローカル例外 ***
     chk_param_expt     EXCEPTION;  -- 見積ヘッダーＩＤ未入力エラー
 --
@@ -465,6 +548,24 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+    -- 2016-09-26 Ver1.7 Add Start
+    -- ===================================================
+    -- プロファイル取得
+    -- ===================================================
+    -- XXCSO:配下従業員選択可能フラグ（営業員別訪問実績表）
+    lv_emp_sel_flg := fnd_profile.value(cv_emp_sel_flg);
+    -- プロファイル値チェック
+    IF ( lv_emp_sel_flg IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name       -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_10  -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_prof_name  -- トークンコード1
+                     ,iv_token_value1 => cv_emp_sel_flg    -- トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- 2016-09-26 Ver1.7 Add End
     -- ===========================
     -- パラメータ必須チェック
     -- ===========================
@@ -480,8 +581,12 @@ AS
       lv_errbuf := lv_errmsg || SQLERRM;
       RAISE chk_param_expt;
     END IF;
-    -- パラメータ従業員コードが未入力
-    IF (iv_employee_number IS NULL) THEN
+    -- 2016-09-26 Ver1.7 Mod Start
+--    -- パラメータ従業員コードが未入力
+--    IF (iv_employee_number IS NULL) THEN
+    -- 配下従業員選択可能フラグが"N:不可"で従業員が未入力の場合はエラー
+    IF ( ( lv_emp_sel_flg = cv_no) AND (iv_employee_number IS NULL ) ) THEN
+    -- 2016-09-26 Ver1.7 Mod End
       -- エラーメッセージ取得(従業員コード)
       lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name         --アプリケーション短縮名
@@ -543,74 +648,99 @@ AS
                    ,in_resp_id     => cn_resp_id       -- 職位ＩＤ
                    ,iv_report_type => cv_rep_tp        -- 帳票タイプ（1:営業員別、2:営業員グループ別、その他は指定不可）
                   );
-    BEGIN
-      SELECT  xrv2.employee_number  employee_number -- 従業員コード
-             ,xrv2.last_name        last_name       -- 漢字姓
-             ,xrv2.first_name       first_name      -- 漢字名
-             ,(CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
-                      xrv2.work_base_code_new  -- 勤務地拠点コード（新）
-                    ELSE
-                      xrv2.work_base_code_old  -- 勤務地拠点コード（旧）
-                    END
-               ) work_base_code                -- 勤務地拠点コード
-             ,(CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
-                      xrv2.work_base_name_new  -- 勤務地拠点名（新）
-                    ELSE
-                      xrv2.work_base_name_old  -- 勤務地拠点名（旧）
-                    END
-               ) work_base_name                -- 勤務地拠点名
-             /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
-             ,xrv2.resource_id                 -- リソースＩＤ
-             /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
-      INTO    lt_employee_number
-             ,lt_last_name
-             ,lt_first_name
-             ,lv_work_base_code
-             ,lv_work_base_name
-             /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
-             ,gn_resource_id
-             /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
-      FROM   xxcso_resources_v2 xrv2           -- リソースマスタ(最新)VIEW
-      WHERE (CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
-                    xrv2.work_base_code_new  -- 勤務地拠点コード（新）
-                  ELSE
-                    xrv2.work_base_code_old  -- 勤務地拠点コード（旧）
-                  END
-             ) = ( SELECT (CASE WHEN xrv.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
-                                  xrv.work_base_code_new  -- 勤務地拠点コード（新）
-                                ELSE
-                                  xrv.work_base_code_old  -- 勤務地拠点コード（旧）
-                                END
-                           ) work_base_code2
-                   FROM    xxcso_resources_v2 xrv
-                   WHERE   xrv.user_id = cn_user_id
-                  )
-        AND xrv2.employee_number = iv_employee_number
-        AND ((lv_retcd  =  cv_true
-               AND xrv2.user_id = cn_user_id
-              )
-            OR (lv_retcd  =  cv_false
-               AND 1 = 1
-              ));
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        -- エラーメッセージ取得
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name         --アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_06    --メッセージコード
-                       ,iv_token_name1  => cv_tkn_entry        --トークンコード1
-                       ,iv_token_value1 => iv_employee_number  --トークン値1
-                     );
-        lv_errbuf := lv_errmsg || SQLERRM;
-        RAISE chk_param_expt;
-      WHEN OTHERS THEN
-        RAISE;
-    END;
+-- 2016-09-26 Ver1.7 Mod Start
+--    BEGIN
+--      SELECT  xrv2.employee_number  employee_number -- 従業員コード
+--             ,xrv2.last_name        last_name       -- 漢字姓
+--             ,xrv2.first_name       first_name      -- 漢字名
+--             ,(CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
+--                      xrv2.work_base_code_new  -- 勤務地拠点コード（新）
+--                    ELSE
+--                      xrv2.work_base_code_old  -- 勤務地拠点コード（旧）
+--                    END
+--               ) work_base_code                -- 勤務地拠点コード
+--             ,(CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
+--                      xrv2.work_base_name_new  -- 勤務地拠点名（新）
+--                    ELSE
+--                      xrv2.work_base_name_old  -- 勤務地拠点名（旧）
+--                    END
+--               ) work_base_name                -- 勤務地拠点名
+--             /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+--             ,xrv2.resource_id                 -- リソースＩＤ
+--             /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
+--      INTO    lt_employee_number
+--             ,lt_last_name
+--             ,lt_first_name
+--             ,lv_work_base_code
+--             ,lv_work_base_name
+--             /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+--             ,gn_resource_id
+--             /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
+--      FROM   xxcso_resources_v2 xrv2           -- リソースマスタ(最新)VIEW
+--      WHERE (CASE WHEN xrv2.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
+--                    xrv2.work_base_code_new  -- 勤務地拠点コード（新）
+--                  ELSE
+--                    xrv2.work_base_code_old  -- 勤務地拠点コード（旧）
+--                  END
+--             ) = ( SELECT (CASE WHEN xrv.issue_date <= TO_CHAR(cd_work_date, cv_format_date_ymd1) THEN
+--                                  xrv.work_base_code_new  -- 勤務地拠点コード（新）
+--                                ELSE
+--                                  xrv.work_base_code_old  -- 勤務地拠点コード（旧）
+--                                END
+--                           ) work_base_code2
+--                   FROM    xxcso_resources_v2 xrv
+--                   WHERE   xrv.user_id = cn_user_id
+--                  )
+--        AND xrv2.employee_number = iv_employee_number
+--        AND ((lv_retcd  =  cv_true
+--               AND xrv2.user_id = cn_user_id
+--              )
+--            OR (lv_retcd  =  cv_false
+--               AND 1 = 1
+--              ));
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        -- エラーメッセージ取得
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_app_name         --アプリケーション短縮名
+--                       ,iv_name         => cv_tkn_number_06    --メッセージコード
+--                       ,iv_token_name1  => cv_tkn_entry        --トークンコード1
+--                       ,iv_token_value1 => iv_employee_number  --トークン値1
+--                     );
+--        lv_errbuf := lv_errmsg || SQLERRM;
+--        RAISE chk_param_expt;
+--      WHEN OTHERS THEN
+--        RAISE;
+--    END;
+--    -- OUTパラメータの設定
+--    od_visit_date      := TO_DATE(lv_visit_date, cv_format_date_ymd1);    -- 訪問日(DATE型)
+--    ov_full_name       := SUBSTRB(lt_last_name || lt_first_name, 1, 40);  -- 漢字氏名
+--    ov_work_base_code  := lv_work_base_code;   -- 勤務地拠点コード
+--    ov_hub_name        := lv_work_base_name;   -- 勤務地拠点名
+--
+    OPEN cur_emp(
+            lv_retcd                -- 配下従業員選択可能フラグ
+           ,iv_employee_number      -- 従業員コード
+         );
+--
+    FETCH cur_emp BULK COLLECT INTO g_rep_emp_tab;
+--
+    CLOSE cur_emp;
+--
+    IF ( g_rep_emp_tab.COUNT = 0 ) THEN
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name           --アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_06      --メッセージコード
+                     ,iv_token_name1  => cv_tkn_entry          --トークンコード1
+                     ,iv_token_value1 => iv_employee_number    --トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE chk_param_expt;
+    END IF;
     -- OUTパラメータの設定
     od_visit_date      := TO_DATE(lv_visit_date, cv_format_date_ymd1);    -- 訪問日(DATE型)
-    ov_full_name       := SUBSTRB(lt_last_name || lt_first_name, 1, 40);  -- 漢字氏名
-    ov_work_base_code  := lv_work_base_code;   -- 勤務地拠点コード
-    ov_hub_name        := lv_work_base_name;   -- 勤務地拠点名
+-- 2016-09-26 Ver1.7 Mod End
 --
     -- 空行の挿入
     fnd_file.put_line(
@@ -1978,6 +2108,9 @@ AS
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
+    -- 2016-09-26 Ver1.7 Add Start
+    gn_target_all_cnt := 0;
+    -- 2016-09-26 Ver1.7 Add End
     -- ========================================
     -- A-1.初期処理
     -- ========================================
@@ -1999,9 +2132,11 @@ AS
        iv_visit_date       => iv_visit_date          -- 訪問日
       ,iv_employee_number  => iv_employee_number     -- 従業員コード
       ,od_visit_date       => ld_visit_date          -- 訪問日(DATE型)
-      ,ov_full_name        => lv_full_name           -- 漢字氏名
-      ,ov_work_base_code   => lv_work_base_code      -- 勤務地拠点コード
-      ,ov_hub_name         => lv_hub_name            -- 勤務地拠点名
+    -- 2016-09-26 Ver1.7 Del Start
+--      ,ov_full_name        => lv_full_name           -- 漢字氏名
+--      ,ov_work_base_code   => lv_work_base_code      -- 勤務地拠点コード
+--      ,ov_hub_name         => lv_hub_name            -- 勤務地拠点名
+    -- 2016-09-26 Ver1.7 Del End
       ,ov_errbuf           => lv_errbuf              -- エラー・メッセージ            --# 固定 #
       ,ov_retcode          => lv_retcode             -- リターン・コード              --# 固定 #
       ,ov_errmsg           => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -2028,55 +2163,169 @@ AS
     -- A-4.データ取得
     -- ========================================
 --
-    <<get_vst_slsemp_data_loop1>>
-    LOOP
-      -- 3回目にEXIT
-      EXIT WHEN ln_loop_cnt >= 3;
+    -- 2016-09-26 Ver1.7 Add Start
+    << emp_loop0>>
+    FOR i IN 1..g_rep_emp_tab.COUNT LOOP
+      --初期化
+      g_rep_vst_slsemp_tab.DELETE;            -- 営業員別訪問実績表帳票ワークテーブル
+      ln_loop_cnt               := 1;         -- LOOP件数
+      gn_target_cnt             := 0;         -- 対象件数
+      gn_total_count            := 0;         -- 総軒数
+      gn_total_count_1          := 0;         -- 軒数計１
+      gn_total_count_2          := 0;         -- 軒数計２
+      gn_total_count_3          := 0;         -- 軒数計３
+      gn_total_count_4          := 0;         -- 軒数計４
+      gn_total_count_5          := 0;         -- 軒数計５
+      gn_total_count_6          := 0;         -- 軒数計６
+      gn_total_count_7          := 0;         -- 軒数計７
+      gn_total_count_8          := 0;         -- 軒数計８
+      gn_total_count_9          := 0;         -- 軒数計９
+      gn_total_count_10         := 0;         -- 軒数計１０
+      gn_total_count_11         := 0;         -- 軒数計１１
+      gn_total_count_12         := 0;         -- 軒数計１２
+      gn_last_total_count       := 0;         -- 総軒数(前週)
+      gn_last_total_count_1     := 0;         -- 軒数計１(前週)
+      gn_last_total_count_2     := 0;         -- 軒数計２(前週)
+      gn_last_total_count_3     := 0;         -- 軒数計３(前週)
+      gn_last_total_count_4     := 0;         -- 軒数計４(前週)
+      gn_last_total_count_5     := 0;         -- 軒数計５(前週)
+      gn_last_total_count_6     := 0;         -- 軒数計６(前週)
+      gn_last_total_count_7     := 0;         -- 軒数計７(前週)
+      gn_last_total_count_8     := 0;         -- 軒数計８(前週)
+      gn_last_total_count_9     := 0;         -- 軒数計９(前週)
+      gn_last_total_count_10    := 0;         -- 軒数計１０(前週)
+      gn_last_total_count_11    := 0;         -- 軒数計１１(前週)
+      gn_last_total_count_12    := 0;         -- 軒数計１２(前週)
+    -- 2016-09-26 Ver1.7 Add End
 --
-      IF ln_loop_cnt = 1 THEN
-        -- カーソルに渡す処理日に、INパラメータ訪問日を設定
-        ld_vst_dt := ld_visit_date;
-      ELSIF ln_loop_cnt = 2 THEN
-        -- カーソルに渡す処理日に、訪問日前週を設定
-        ld_vst_dt := ld_lst_vst_dt;
-      END IF;
---
-      -- カーソルオープン
-      OPEN  get_vst_rslts_data_cur(
-               id_vst_dt   => ld_vst_dt          -- 処理日
-              /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
-              --,iv_emp_num  => iv_employee_number -- 従業員コード
-              ,in_resource_id => gn_resource_id -- リソースＩＤ
-              /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
-            );
---
-      <<get_vst_slsemp_data_loop2>>
+      <<get_vst_slsemp_data_loop1>>
       LOOP
+        -- 3回目にEXIT
+        EXIT WHEN ln_loop_cnt >= 3;
 --
-        FETCH get_vst_rslts_data_cur INTO l_vst_rslts_dt_cur_rec;
+        IF ln_loop_cnt = 1 THEN
+          -- カーソルに渡す処理日に、INパラメータ訪問日を設定
+          ld_vst_dt := ld_visit_date;
+        ELSIF ln_loop_cnt = 2 THEN
+          -- カーソルに渡す処理日に、訪問日前週を設定
+          ld_vst_dt := ld_lst_vst_dt;
+        END IF;
 --
-        -- 処理対象データが存在しなかった場合EXIT
-        EXIT WHEN get_vst_rslts_data_cur%NOTFOUND
-        OR  get_vst_rslts_data_cur%ROWCOUNT = 0;
+        -- カーソルオープン
+        OPEN  get_vst_rslts_data_cur(
+                 id_vst_dt   => ld_vst_dt          -- 処理日
+-- 2016-09-26 Ver1.7 Mod Start
+--                /* 2009.11.25 K.Satomura E_本稼動_00026対応 START */
+--                --,iv_emp_num  => iv_employee_number -- 従業員コード
+--                ,in_resource_id => gn_resource_id -- リソースＩＤ
+--                /* 2009.11.25 K.Satomura E_本稼動_00026対応 END */
+                ,in_resource_id => g_rep_emp_tab(i).resource_id
+-- 2016-09-26 Ver1.7 Mod End
+              );
 --
-        -- 処理対象件数カウントアップ
-        gn_target_cnt := gn_target_cnt + 1;
+        <<get_vst_slsemp_data_loop2>>
+        LOOP
 --
-        -- レコード変数初期化
-        l_vst_rslts_dt_rec := NULL;
+          FETCH get_vst_rslts_data_cur INTO l_vst_rslts_dt_cur_rec;
 --
-        -- 取得データを格納
-        l_vst_rslts_dt_rec.actual_end_date := l_vst_rslts_dt_cur_rec.actual_end_date;  -- 実績終了日
-        l_vst_rslts_dt_rec.pure_amount_sum := l_vst_rslts_dt_cur_rec.pure_amount_sum;  -- 本体金額合計
-        l_vst_rslts_dt_rec.account_number  := l_vst_rslts_dt_cur_rec.account_number;   -- 顧客コード
-        l_vst_rslts_dt_rec.party_name      := l_vst_rslts_dt_cur_rec.party_name;       -- 顧客名称
+          -- 処理対象データが存在しなかった場合EXIT
+          EXIT WHEN get_vst_rslts_data_cur%NOTFOUND
+          OR  get_vst_rslts_data_cur%ROWCOUNT = 0;
 --
+          -- 処理対象件数カウントアップ
+          gn_target_cnt := gn_target_cnt + 1;
+--
+          -- レコード変数初期化
+          l_vst_rslts_dt_rec := NULL;
+--
+          -- 取得データを格納
+          l_vst_rslts_dt_rec.actual_end_date := l_vst_rslts_dt_cur_rec.actual_end_date;  -- 実績終了日
+          l_vst_rslts_dt_rec.pure_amount_sum := l_vst_rslts_dt_cur_rec.pure_amount_sum;  -- 本体金額合計
+          l_vst_rslts_dt_rec.account_number  := l_vst_rslts_dt_cur_rec.account_number;   -- 顧客コード
+          l_vst_rslts_dt_rec.party_name      := l_vst_rslts_dt_cur_rec.party_name;       -- 顧客名称
+--
+          -- ========================================
+          -- A-5.時間別列処理
+          -- ========================================
+          get_visit_time(
+             i_vst_rslts_dt_rec  => l_vst_rslts_dt_rec     -- 営業員別時間別訪問実績データ
+            ,ov_time_line        => lv_time_line           -- 時間別列
+            ,ov_errbuf           => lv_errbuf              -- エラー・メッセージ            --# 固定 #
+            ,ov_retcode          => lv_retcode             -- リターン・コード              --# 固定 #
+            ,ov_errmsg           => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
+          );
+--
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- ========================================
+          -- A-6.配列の追加、更新
+          -- ========================================
+          ins_upd_lines(
+             id_visit_date       => ld_visit_date          -- 訪問日
+            ,iv_time_line        => lv_time_line           -- 時間別列
+            ,id_vst_dt           => ld_vst_dt              -- メインカーソルの処理日
+            ,i_vst_rslts_dt_rec  => l_vst_rslts_dt_rec     -- 営業員別時間別訪問実績データ
+            ,ov_errbuf           => lv_errbuf              -- エラー・メッセージ            --# 固定 #
+            ,ov_retcode          => lv_retcode             -- リターン・コード              --# 固定 #
+            ,ov_errmsg           => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
+          );
+--
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+        END LOOP get_vst_slsemp_data_loop2;
+        -- カーソルクローズ
+        CLOSE get_vst_rslts_data_cur;
+        -- LOOP件数をカウントアップ
+        ln_loop_cnt := ln_loop_cnt + 1;
+--
+      END LOOP get_vst_slsemp_data_loop1;
+-- 2016-09-26 Ver1.7 Mod Start
+--    -- 処理対象データが0件の場合
+--    IF gn_target_cnt = 0 THEN
+--      -- 0件メッセージ出力
+--      lv_msg := xxccp_common_pkg.get_msg(
+--                   iv_application  => cv_app_name         --アプリケーション短縮名
+--                  ,iv_name         => cv_tkn_number_08    --メッセージコード
+--                );
+--      fnd_file.put_line(
+--         which  => FND_FILE.LOG
+--        ,buff   => lv_msg                                 --ユーザー・エラーメッセージ
+--      );
+--
+--      ov_retcode := cv_status_normal;
+--    ELSE
+--      -- ========================================
+--      -- A-7.ワークテーブルデータ登録
+--      -- ========================================
+--      insert_row(
+--         id_visit_date       => ld_visit_date          -- 訪問年月日
+--        ,iv_employee_number  => iv_employee_number     -- 従業員コード
+--        ,iv_work_base_code   => lv_work_base_code      -- 拠点コード
+--        ,iv_hub_name         => lv_hub_name            -- 拠点名称
+--        ,iv_full_name        => lv_full_name           -- 漢字氏名
+--        ,ov_errbuf           => lv_errbuf              -- エラー・メッセージ            --# 固定 #
+--        ,ov_retcode          => lv_retcode             -- リターン・コード              --# 固定 #
+--        ,ov_errmsg           => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
+--      );
+--
+--      IF (lv_retcode = cv_status_error) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--
+      -- 処理対象データが存在する場合
+      IF gn_target_cnt > 0 THEN
         -- ========================================
-        -- A-5.時間別列処理
+        -- A-7.ワークテーブルデータ登録
         -- ========================================
-        get_visit_time(
-           i_vst_rslts_dt_rec  => l_vst_rslts_dt_rec     -- 営業員別時間別訪問実績データ
-          ,ov_time_line        => lv_time_line           -- 時間別列
+        insert_row(
+           id_visit_date       => ld_visit_date                        -- 訪問年月日
+          ,iv_employee_number  => g_rep_emp_tab(i).employee_number     -- 従業員コード
+          ,iv_work_base_code   => g_rep_emp_tab(i).work_base_code      -- 拠点コード
+          ,iv_hub_name         => g_rep_emp_tab(i).work_base_name      -- 拠点名称
+          ,iv_full_name        => SUBSTRB(g_rep_emp_tab(i).first_name||g_rep_emp_tab(i).last_name,1,40)  -- 漢字氏名
           ,ov_errbuf           => lv_errbuf              -- エラー・メッセージ            --# 固定 #
           ,ov_retcode          => lv_retcode             -- リターン・コード              --# 固定 #
           ,ov_errmsg           => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -2085,33 +2334,15 @@ AS
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_process_expt;
         END IF;
-        -- ========================================
-        -- A-6.配列の追加、更新
-        -- ========================================
-        ins_upd_lines(
-           id_visit_date       => ld_visit_date          -- 訪問日
-          ,iv_time_line        => lv_time_line           -- 時間別列
-          ,id_vst_dt           => ld_vst_dt              -- メインカーソルの処理日
-          ,i_vst_rslts_dt_rec  => l_vst_rslts_dt_rec     -- 営業員別時間別訪問実績データ
-          ,ov_errbuf           => lv_errbuf              -- エラー・メッセージ            --# 固定 #
-          ,ov_retcode          => lv_retcode             -- リターン・コード              --# 固定 #
-          ,ov_errmsg           => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
-        );
 --
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
-        END IF;
+        -- 下記値の集計
+        gn_target_all_cnt := gn_target_all_cnt + gn_target_cnt;                           -- 対象件数
+        gn_normal_cnt     := gn_normal_cnt     + gn_total_count + gn_last_total_count;    -- 成功件数
+      END IF;
+    END LOOP emp_loop0;
 --
-      END LOOP get_vst_slsemp_data_loop2;
-      -- カーソルクローズ
-      CLOSE get_vst_rslts_data_cur;
-      -- LOOP件数をカウントアップ
-      ln_loop_cnt := ln_loop_cnt + 1;
---
-    END LOOP get_vst_slsemp_data_loop1;
---
-    -- 処理対象データが0件の場合
-    IF gn_target_cnt = 0 THEN
+    -- 対象従業員総件数が0件の場合
+    IF gn_target_all_cnt = 0 THEN
       -- 0件メッセージ出力
       lv_msg := xxccp_common_pkg.get_msg(
                    iv_application  => cv_app_name         --アプリケーション短縮名
@@ -2124,23 +2355,7 @@ AS
 --
       ov_retcode := cv_status_normal;
     ELSE
-      -- ========================================
-      -- A-7.ワークテーブルデータ登録
-      -- ========================================
-      insert_row(
-         id_visit_date       => ld_visit_date          -- 訪問年月日
-        ,iv_employee_number  => iv_employee_number     -- 従業員コード
-        ,iv_work_base_code   => lv_work_base_code      -- 拠点コード
-        ,iv_hub_name         => lv_hub_name            -- 拠点名称
-        ,iv_full_name        => lv_full_name           -- 漢字氏名
-        ,ov_errbuf           => lv_errbuf              -- エラー・メッセージ            --# 固定 #
-        ,ov_retcode          => lv_retcode             -- リターン・コード              --# 固定 #
-        ,ov_errmsg           => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
-      );
---
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_process_expt;
-      END IF;
+-- 2016-09-26 Ver1.7 Mod End
 --
       -- ========================================
       -- A-8.SVF起動
@@ -2151,9 +2366,14 @@ AS
         ,ov_errmsg     => lv_errmsg_svf                    -- ユーザー・エラー・メッセージ  --# 固定 #
       );
 --
-      IF (lv_retcode_svf <> cv_status_error) THEN
-        gn_normal_cnt := gn_total_count + gn_last_total_count;
+-- 2016-09-26 Ver1.7 Mod Start
+--      IF (lv_retcode_svf <> cv_status_error) THEN
+--        gn_normal_cnt := gn_total_count + gn_last_total_count;
+--      END IF;
+      IF (lv_retcode_svf = cv_status_error) THEN
+        gn_normal_cnt := 0;
       END IF;
+-- 2016-09-26 Ver1.7 Mod End
 --
       -- ========================================
       -- A-9.ワークテーブルデータ削除
@@ -2352,7 +2572,10 @@ AS
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_target_rec_msg
                     ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+-- 2016-09-26 Ver1.7 Mod Start
+--                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+                    ,iv_token_value1 => TO_CHAR(gn_target_all_cnt)
+-- 2016-09-26 Ver1.7 Mod End
                    );
     fnd_file.put_line(
        which  => FND_FILE.LOG
