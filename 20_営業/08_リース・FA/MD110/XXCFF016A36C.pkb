@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF016A36C(body)
  * Description      : リース契約明細メンテナンス
  * MD.050           : MD050_CFF_016_A36_リース契約明細メンテナンス.
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2014/01/31    1.2   SCSK 中野         E_本稼動_11242 リース契約明細更新の不具合対応
  *  2014/05/19    1.3   SCSK 中野         E_本稼動_11852 控除額更新不具合対応
  *  2016/08/22    1.4   SCSK郭            E_本稼動_13658 自販機耐用年数変更対応
+ *  2016/10/26    1.5   SCSK郭            E_本稼動_13658 自販機耐用年数変更対応・フェーズ3
  *
  *****************************************************************************************/
 --
@@ -499,16 +500,19 @@ AS
       ;
     EXCEPTION
       WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                       ,iv_name         => cv_msg_xxcff00101
-                       ,iv_token_name1  => cv_tkn_table
-                       ,iv_token_value1 => cv_msg_cff_50222
-                       ,iv_token_name2  => cv_tkn_info
-                       ,iv_token_value2 => NULL
-                    );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
+-- 2016/10/26 Ver.1.5 Y.Koh MOD Start
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_app_name
+--                       ,iv_name         => cv_msg_xxcff00101
+--                       ,iv_token_name1  => cv_tkn_table
+--                       ,iv_token_value1 => cv_msg_cff_50222
+--                       ,iv_token_name2  => cv_tkn_info
+--                       ,iv_token_value2 => NULL
+--                    );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+        lt_payment_match_flag := NULL;
+-- 2016/10/26 Ver.1.5 Y.Koh MOD End
     END;
 --
     -- =====================================
@@ -535,34 +539,40 @@ AS
     END IF;
 --
     -- 支払計画フラグ更新(会計期間=オープン期間)
-    BEGIN
-      UPDATE xxcff_pay_planning xpp
-      SET  xpp.accounting_if_flag     = cv_acct_if_flag_unsent          -- 会計IFフラグ('1':未送信)
-          ,xpp.payment_match_flag     = lt_payment_match_flag           -- 照合フラグ
-          ,xpp.last_updated_by        = cn_last_updated_by              -- 最終更新者
-          ,xpp.last_update_date       = cd_last_update_date             -- 最終更新日
-          ,xpp.last_update_login      = cn_last_update_login            -- 最終更新ログイン
-          ,xpp.request_id             = cn_request_id                   -- 要求ID
-          ,xpp.program_application_id = cn_program_application_id       -- コンカレント・プログラム・アプリケーションID
-          ,xpp.program_id             = cn_program_id                   -- コンカレント・プログラムID
-          ,xpp.program_update_date    = cd_program_update_date          -- プログラム更新日
-      WHERE xpp.contract_line_id      = gt_contract_line_id
-      AND   xpp.period_name           = gt_period_name
+-- 2016/10/26 Ver.1.5 Y.Koh ADD Start
+    IF (lt_payment_match_flag IS NOT NULL) THEN
+-- 2016/10/26 Ver.1.5 Y.Koh ADD End
+      BEGIN
+        UPDATE xxcff_pay_planning xpp
+        SET  xpp.accounting_if_flag     = cv_acct_if_flag_unsent          -- 会計IFフラグ('1':未送信)
+            ,xpp.payment_match_flag     = lt_payment_match_flag           -- 照合フラグ
+            ,xpp.last_updated_by        = cn_last_updated_by              -- 最終更新者
+            ,xpp.last_update_date       = cd_last_update_date             -- 最終更新日
+            ,xpp.last_update_login      = cn_last_update_login            -- 最終更新ログイン
+            ,xpp.request_id             = cn_request_id                   -- 要求ID
+            ,xpp.program_application_id = cn_program_application_id       -- コンカレント・プログラム・アプリケーションID
+            ,xpp.program_id             = cn_program_id                   -- コンカレント・プログラムID
+            ,xpp.program_update_date    = cd_program_update_date          -- プログラム更新日
+        WHERE xpp.contract_line_id      = gt_contract_line_id
+        AND   xpp.period_name           = gt_period_name
 -- 2016/08/22 Ver.1.4 Y.Koh ADD Start
-      AND   xpp.payment_match_flag    != cv_payment_match_flag_9        -- 照合済フラグ（対象外）
+        AND   xpp.payment_match_flag    != cv_payment_match_flag_9        -- 照合済フラグ（対象外）
 -- 2016/08/22 Ver.1.4 Y.Koh ADD End
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                       ,iv_name         => cv_msg_xxcff00195
-                       ,iv_token_name1  => cv_tkn_table
-                       ,iv_token_value1 => cv_msg_cff_50088
-                    );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-    END;
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name
+                         ,iv_name         => cv_msg_xxcff00195
+                         ,iv_token_name1  => cv_tkn_table
+                         ,iv_token_value1 => cv_msg_cff_50088
+                      );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+-- 2016/10/26 Ver.1.5 Y.Koh ADD Start
+    END IF;
+-- 2016/10/26 Ver.1.5 Y.Koh ADD End
 --
     -- 支払計画フラグ更新(会計期間<オープン期間)
     BEGIN
