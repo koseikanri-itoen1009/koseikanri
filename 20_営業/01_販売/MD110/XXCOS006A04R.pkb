@@ -51,6 +51,7 @@ AS
  *                                        処理対象受注ソース修正。
  *                                       「摘要」欄に顧客発注番号設定するよう修正。
  *                                        SVF共通関数に渡すVRQファイルの設定値修正。
+ *  2016/10/24    1.10  Y.Koh             E_本稼動_13875 出荷依頼書のPT対応
  *
  *****************************************************************************************/
 --
@@ -675,7 +676,10 @@ AS
     IS
       SELECT
 -- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
-       /*+ OPTIMIZER_FEATURES_ENABLE('10.2.0.3') 
+-- 2016/10/24 Ver.1.10 Y.Koh MOD Start
+--       /*+ OPTIMIZER_FEATURES_ENABLE('10.2.0.3') 
+       /*+ LEADING(ooha)
+-- 2016/10/24 Ver.1.10 Y.Koh MOD End
            INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N10)
 -- 2013/05/16 Ver.1.8 Add T.Ishiwata Start
            NO_INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
