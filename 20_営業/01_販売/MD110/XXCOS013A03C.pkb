@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.16
+ * Version          : 1.17
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -46,6 +46,8 @@ AS
  *  2012/08/15    1.14  T.Osawa          [E_本稼動_09922] 電子帳簿の対応
  *  2012/11/13    1.15  K.Nakamura       [E_本稼動_02459] パフォーマンス対応
  *  2016/09/23    1.16  N.Koyama         [E_本稼動_13874] 伝票入力者設定項目変更
+ *  2016/10/25    1.17  N.Koyama         [E_本稼動_13874] 伝票入力者設定項目変更(再対応)
+ *                                                        Ver.1.6の対応は完全戻しであり、処理部分削除の為、修正履歴なし
  *
  *****************************************************************************************/
 --
@@ -471,10 +473,7 @@ AS
          , xseh.tax_code                     tax_code                 -- 税金コード
          , xseh.tax_rate                     tax_rate                 -- 消費税率
          , xseh.consumption_tax_class        consumption_tax_class    -- 消費区分
----- ***************** 2016/09/23 1.16 N.Koyama Mod Start ***************** --
---         , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
-         , xseh.dlv_by_code                  results_employee_code    -- 納品者コード
----- ***************** 2016/09/23 1.16 N.Koyama Mod End ***************** --
+         , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
          , xseh.sales_base_code              sales_base_code          -- 売上拠点コード
          , NVL( xseh.card_sale_class, cv_cash_class )
                                              card_sale_class          -- カード売り区分
@@ -3593,6 +3592,9 @@ AS
     ln_pre_header_id       xxcos_sales_exp_headers.sales_exp_header_id%TYPE;    -- 販売実績ヘッダID
     ln_lock_header_id      xxcos_sales_exp_headers.sales_exp_header_id%TYPE;    -- 販売実績ヘッダID
     ln_header_id_wk        xxcos_sales_exp_headers.sales_exp_header_id%TYPE;    -- 販売実績ヘッダID
+-- ***************** 2016/10/25 1.17 N.Koyama ADD START ***************** --
+    lt_dlv_by_code         xxcos_sales_exp_headers.dlv_by_code%TYPE;            -- 納品者
+-- ***************** 2016/10/25 1.17 N.Koyama ADD END    ***************** --
     ln_sales_idx           NUMBER DEFAULT 1;
     ln_target_wk_cnt       NUMBER DEFAULT 0;
     ln_fetch_end_flag      NUMBER DEFAULT 0;     -- 0:継続、1:終了
@@ -3676,7 +3678,10 @@ AS
         -- 初期化
         gt_sales_exp_wk_tbl.DELETE;
         ln_pre_header_id := NULL;
-        ln_lock_header_id := NULL;
+-- ***************** 2016/10/25 1.17 N.Koyama ADD START ***************** --
+--        ln_lock_header_id := NULL;
+        ln_lock_header_id := 99999999999999999999;
+-- ***************** 2016/10/25 1.17 N.Koyama ADD END   ***************** --
         --
         -- データ取得
         FETCH sales_data_cur BULK COLLECT INTO gt_sales_exp_wk_tbl LIMIT cn_bulk_collect_count;
@@ -3723,7 +3728,13 @@ AS
               FOR ln_lock_ind IN 1..gt_sales_exp_tbl.COUNT LOOP
                 IF (ln_lock_header_id <> gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id) THEN
                   SELECT  xseh.sales_exp_header_id
+-- ***************** 2016/10/25 1.17 N.Koyama ADD START ***************** --
+                         ,xseh.dlv_by_code dlv_by_code
+-- ***************** 2016/10/25 1.17 N.Koyama ADD END   ***************** --
                   INTO    ln_header_id_wk
+-- ***************** 2016/10/25 1.17 N.Koyama ADD START ***************** --
+                         ,lt_dlv_by_code
+-- ***************** 2016/10/25 1.17 N.Koyama ADD END   ***************** --
                   FROM    xxcos_sales_exp_headers xseh
                   WHERE   xseh.sales_exp_header_id = gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id
                   FOR UPDATE OF  xseh.sales_exp_header_id
@@ -3731,6 +3742,9 @@ AS
                 END IF;
                 --
                 ln_lock_header_id := gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id;
+-- ***************** 2016/10/25 1.17 N.Koyama ADD START ***************** --
+                gt_sales_exp_tbl(ln_lock_ind).results_employee_code := lt_dlv_by_code;
+-- ***************** 2009/10/25 1.17 N.Koyama ADD END   ***************** --
               END LOOP lock_loop;
               --
               -- ===============================
