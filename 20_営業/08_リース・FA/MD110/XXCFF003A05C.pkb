@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A05C(body)
  * Description      : 支払計画作成
  * MD.050           : MD050_CFF_003_A05_支払計画作成.doc
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  * 2011/12/19     1.3   SCSK中村健一    [E_本稼動_08123] 中途解約時の更新条件変更
  * 2012/2/6       1.4   SCSK菅原大輔    [E_本稼動_08356] 支払計画作成時の会計期間比較条件変更 
  * 2016/9/6       1.5   SCSK小路恭弘    [E_本稼動_13658] 耐用年数変更対応
+ * 2016/10/26     1.6   SCSK郭          E_本稼動_13658 自販機耐用年数変更対応・フェーズ3
  *
  *****************************************************************************************/
 --
@@ -151,6 +152,9 @@ AS
   -- 日付フォーマット
   cv_format_yyyymm   CONSTANT VARCHAR2(7) := 'YYYY-MM';  -- YYYY-MMフォーマット
 -- 2016/09/06 Ver.1.5 Y.Shoji ADD End
+-- 2016/10/26 Ver.1.6 Y.Koh ADD Start
+  cd_start_date      CONSTANT DATE := TO_DATE('2016/05/01','YYYY/MM/DD');
+-- 2016/10/26 Ver.1.6 Y.Koh ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -159,6 +163,9 @@ AS
   gn_payment_frequency        xxcff_contract_headers.payment_frequency%TYPE;       -- 支払回数
   gn_lease_class              xxcff_contract_headers.lease_class%TYPE;             -- リース種別
   gn_lease_type               xxcff_contract_headers.lease_type%TYPE;              -- リース区分
+-- 2016/10/26 Ver.1.6 Y.Koh ADD Start
+  gd_contract_date            xxcff_contract_headers.contract_date%TYPE;           -- リース契約日
+-- 2016/10/26 Ver.1.6 Y.Koh ADD End
   gn_first_payment_date       xxcff_contract_headers.first_payment_date%TYPE;      -- 初回支払日
   gn_second_payment_date      xxcff_contract_headers.second_payment_date%TYPE;     -- ２回目支払日
   gn_third_payment_date       xxcff_contract_headers.third_payment_date%TYPE;      -- ３回目以降支払日
@@ -393,6 +400,9 @@ AS
     SELECT  xch.payment_frequency         -- 支払回数
            ,xch.lease_class               -- リース種別
            ,xch.lease_type                -- リース区分
+-- 2016/10/26 Ver.1.6 Y.Koh ADD Start
+           ,xch.contract_date             -- リース契約日
+-- 2016/10/26 Ver.1.6 Y.Koh ADD End
            ,xch.first_payment_date        -- 初回支払日
            ,xch.second_payment_date       -- ２回目支払日
            ,xch.third_payment_date        -- ３回目以降支払日
@@ -422,6 +432,9 @@ AS
     INTO    gn_payment_frequency          -- 支払回数
            ,gn_lease_class                -- リース種別
            ,gn_lease_type                 -- リース区分
+-- 2016/10/26 Ver.1.6 Y.Koh ADD Start
+           ,gd_contract_date              -- リース契約日
+-- 2016/10/26 Ver.1.6 Y.Koh ADD End
            ,gn_first_payment_date         -- 初回支払日
            ,gn_second_payment_date        -- ２回目支払日
            ,gn_third_payment_date         -- ３回目以降支払日
@@ -1920,8 +1933,13 @@ AS
 --        lv_retcode,          -- リターン・コード             --# 固定 #
 --        lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
       -- リース種別:11（自販機）、リース区分：1（原契約）の場合
-      IF (  gn_lease_class = cv_lease_class11
-        AND gn_lease_type  = cv_lease_type1  ) THEN
+-- 2016/10/26 Ver.1.6 Y.Koh MOD Start
+--      IF (  gn_lease_class = cv_lease_class11
+--        AND gn_lease_type  = cv_lease_type1  ) THEN
+      IF (  gn_lease_class   =  cv_lease_class11
+        AND gn_lease_type    =  cv_lease_type1
+        AND gd_contract_date >= cd_start_date  ) THEN
+-- 2016/10/26 Ver.1.6 Y.Koh MOD End
         -- ==============================================
         -- リース支払計画作成処理 （自販機・原契約） (A-10)
         -- ==============================================
