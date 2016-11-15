@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF003A03C(body)
  * Description      : リース種類判定
  * MD.050           : MD050_CFF_003_A03_リース種類判定
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------- ---- ----- --------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-12-04    1.0   SCS 増子 秀幸    新規作成
  *  2016-08-10    1.1   SCSK 仁木 重人   [E_本稼動_13658]自販機耐用年数変更対応
+ *  2016-10-26    1.2   SCSK郭           E_本稼動_13658 自販機耐用年数変更対応・フェーズ3
  *
  *****************************************************************************************/
 --
@@ -134,6 +135,9 @@ AS
   cn_second_freq     CONSTANT NUMBER       := 73;         -- 再リース２回目
   cn_third_freq      CONSTANT NUMBER       := 85;         -- 再リース３回目
 -- Ver.1.1 ADD End
+-- 2016/10/26 Ver.1.2 Y.Koh ADD Start
+  cd_start_date      CONSTANT DATE := TO_DATE('2016/05/01','YYYY/MM/DD');
+-- 2016/10/26 Ver.1.2 Y.Koh ADD End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -655,6 +659,9 @@ AS
   PROCEDURE calc_debt_lease(
     in_estimated_cash_price   IN  NUMBER,      -- 1.見積現金購入価額
     in_present_value          IN  NUMBER,      -- 2.現在価値割引額
+-- 2016/10/26 Ver.1.2 Y.Koh ADD Start
+    id_contract_ym            IN  DATE,        -- 契約年月
+-- 2016/10/26 Ver.1.2 Y.Koh ADD End
     iv_lease_class            IN  VARCHAR2,    -- 3.リース種別
     in_second_charge          IN  NUMBER,      -- 4.２回目以降月額リース料
     in_calc_interested_rate   IN  NUMBER,      -- 5.計算利子率
@@ -702,7 +709,10 @@ AS
     -- ローカル変数初期化
 --
     -- リース種別が「自動販売機」以外の場合は処理スキップ
-    IF ( iv_lease_class <> cv_lease_class_11 ) THEN
+-- 2016/10/26 Ver.1.2 Y.Koh MOD Start
+--    IF ( iv_lease_class <> cv_lease_class_11 ) THEN
+    IF ( iv_lease_class <> cv_lease_class_11 OR id_contract_ym < cd_start_date ) THEN
+-- 2016/10/26 Ver.1.2 Y.Koh MOD End
       -- リース負債額_原契約
       on_original_cost_type1 := 0;
       -- リース負債額_再リース
@@ -765,9 +775,12 @@ AS
     in_payment_frequency           IN  NUMBER,      -- 1.支払回数
     in_first_charge                IN  NUMBER,      -- 2.初回月額リース料
     in_second_charge               IN  NUMBER,      -- 3.２回目以降月額リース料
--- Ver.r MOD Start
+-- Ver.1.1 MOD Start
 --    in_present_value_discount_rate IN  NUMBER)      -- 4.現在価値割引率
     in_present_value_discount_rate IN  NUMBER,      -- 4.現在価値割引率
+-- 2016/10/26 Ver.1.2 Y.Koh ADD Start
+    id_contract_ym                 IN  DATE,        -- 契約年月
+-- 2016/10/26 Ver.1.2 Y.Koh ADD End
     iv_lease_class                 IN  VARCHAR2     -- 5.リース種別
   )
 -- Ver.1.1 MOD End
@@ -812,7 +825,10 @@ AS
     END LOOP present_value_calc_loop;
 -- Ver.1.1 ADD Start
     -- リース種別が「自動販売機」の場合、再リース分の現在価値を算定
-    IF ( iv_lease_class = cv_lease_class_11 ) THEN
+-- 2016/10/26 Ver.1.2 Y.Koh MOD Start
+--    IF ( iv_lease_class = cv_lease_class_11 ) THEN
+    IF ( iv_lease_class = cv_lease_class_11 AND id_contract_ym >= cd_start_date ) THEN
+-- 2016/10/26 Ver.1.2 Y.Koh MOD End
       --========================================
       --  再リース現在価値算定処理 (A-9)
       --========================================
@@ -950,6 +966,9 @@ AS
     in_first_charge         IN  NUMBER,      -- 2.初回月額リース料
     in_second_charge        IN  NUMBER,      -- 3.２回目以降月額リース料
     in_original_cost        IN  NUMBER,      -- 4.取得価額
+-- 2016/10/26 Ver.1.2 Y.Koh ADD Start
+    id_contract_ym          IN  DATE,        -- 契約年月
+-- 2016/10/26 Ver.1.2 Y.Koh ADD End
 -- Ver.1.1 ADD Start
     iv_lease_class          IN  VARCHAR2,    -- 5.リース種別
 -- Ver.1.1 ADD End
@@ -1021,7 +1040,10 @@ AS
     ln_i := cn_a * ln_r + (cn_b * POWER(ln_r, 2) - cn_b * POWER(ln_r, (cn_n + 1) ) ) / (1 - ln_r);
 -- Ver.1.1 ADD Start
     -- リース種別が「自動販売機」の場合、再リース分の支払額を算定
-    IF ( iv_lease_class = cv_lease_class_11 ) THEN
+-- 2016/10/26 Ver.1.2 Y.Koh MOD Start
+--    IF ( iv_lease_class = cv_lease_class_11 ) THEN
+    IF ( iv_lease_class = cv_lease_class_11 AND id_contract_ym >= cd_start_date ) THEN
+-- 2016/10/26 Ver.1.2 Y.Koh MOD End
       --========================================
       --  再リース現在価値算定処理 (A-9)
       --========================================
@@ -1087,7 +1109,10 @@ AS
       ln_i := cn_a * ln_r + (cn_b * POWER(ln_r, 2) - cn_b * POWER(ln_r, (cn_n + 1) ) ) / (1 - ln_r);
 -- Ver.1.1 ADD Start
       -- リース種別が「自動販売機」の場合、再リース分の支払額を算定
-      IF ( iv_lease_class = cv_lease_class_11 ) THEN
+-- 2016/10/26 Ver.1.2 Y.Koh MOD Start
+--      IF ( iv_lease_class = cv_lease_class_11 ) THEN
+      IF ( iv_lease_class = cv_lease_class_11 AND id_contract_ym >= cd_start_date ) THEN
+-- 2016/10/26 Ver.1.2 Y.Koh MOD End
         --========================================
         --  再リース現在価値算定処理 (A-9)
         --========================================
@@ -1266,6 +1291,9 @@ AS
 -- Ver.1.1 MOD Start
 --                          ln_present_value_discount_rate);  -- 現在価値割引率
                           ln_present_value_discount_rate,   -- 現在価値割引率
+-- 2016/10/26 Ver.1.2 Y.Koh ADD Start
+                          id_contract_ym,                   -- 契約年月
+-- 2016/10/26 Ver.1.2 Y.Koh ADD End
                           iv_lease_class                    -- リース種別
                         );
 -- Ver.1.1 MOD End
@@ -1294,6 +1322,9 @@ AS
       in_first_charge,          -- 初回月額リース料
       in_second_charge,         -- ２回目以降月額リース料
       ln_original_cost,         -- 取得価額
+-- 2016/10/26 Ver.1.2 Y.Koh ADD Start
+      id_contract_ym,           -- 契約年月
+-- 2016/10/26 Ver.1.2 Y.Koh ADD End
 -- Ver.1.1 ADD Start
       iv_lease_class,           -- リース種別
 -- Ver.1.1 ADD End
@@ -1311,6 +1342,9 @@ AS
     calc_debt_lease(
       in_estimated_cash_price,  -- 見積現金購入価額
       ln_present_value,         -- 現在価値割引額
+-- 2016/10/26 Ver.1.2 Y.Koh ADD Start
+      id_contract_ym,           -- 契約年月
+-- 2016/10/26 Ver.1.2 Y.Koh ADD End
       iv_lease_class,           -- リース種別
       in_second_charge,         -- ２回目以降月額リース料
       ln_calc_interested_rate,  -- 計算利子率
