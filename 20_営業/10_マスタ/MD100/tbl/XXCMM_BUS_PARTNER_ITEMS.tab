@@ -1,0 +1,48 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2016. All rights reserved.
+ *
+ * Table Name  : XXCMM_BUS_PARTNER_ITEMS
+ * Description : 取引先品目アドオン
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2016/10/17    1.0   S.Niki           新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCMM.XXCMM_BUS_PARTNER_ITEMS
+(
+  BP_COMPANY_CODE                VARCHAR2(9)   NOT NULL  ,                     --  取引先コード
+  BP_ITEM_CODE                   VARCHAR2(15)  NOT NULL  ,                     --  取引先品名コード
+  ITEM_CODE                      VARCHAR2(7)   NOT NULL  ,                     --  伊藤園品名コード
+  ENABLED_FLAG                   VARCHAR2(1)             ,                     --  有効フラグ
+  CREATED_BY                     NUMBER(15)    NOT NULL  ,                     --  作成者
+  CREATION_DATE                  DATE          NOT NULL  ,                     --  作成日
+  LAST_UPDATED_BY                NUMBER(15)    NOT NULL  ,                     --  最終更新者
+  LAST_UPDATE_DATE               DATE          NOT NULL  ,                     --  最終更新日
+  LAST_UPDATE_LOGIN              NUMBER(15)              ,                     --  最終更新ﾛｸﾞｲﾝ
+  REQUEST_ID                     NUMBER(15)              ,                     --  要求ID
+  PROGRAM_APPLICATION_ID         NUMBER(15)              ,                     --  ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+  PROGRAM_ID                     NUMBER(15)              ,                     --  ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+  PROGRAM_UPDATE_DATE            DATE                    ,                     --  ﾌﾟﾛｸﾞﾗﾑ更新日
+  CONSTRAINT XXCMM_BUS_PARTNER_ITEMS_PK PRIMARY KEY ( BP_COMPANY_CODE ,BP_ITEM_CODE  )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.BP_COMPANY_CODE                IS  '取引先コード';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.BP_ITEM_CODE                   IS  '取引先品名コード';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.ITEM_CODE                      IS  '伊藤園品名コード';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.ENABLED_FLAG                   IS  '有効フラグ';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.CREATED_BY                     IS  '作成者';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.CREATION_DATE                  IS  '作成日';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.LAST_UPDATED_BY                IS  '最終更新者';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.LAST_UPDATE_DATE               IS  '最終更新日';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.LAST_UPDATE_LOGIN              IS  '最終更新ﾛｸﾞｲﾝ';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.REQUEST_ID                     IS  '要求ID';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.PROGRAM_APPLICATION_ID         IS  'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.PROGRAM_ID                     IS  'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID';
+COMMENT ON COLUMN XXCMM.XXCMM_BUS_PARTNER_ITEMS.PROGRAM_UPDATE_DATE            IS  'ﾌﾟﾛｸﾞﾗﾑ更新日';
+--
+COMMENT ON TABLE  XXCMM.XXCMM_BUS_PARTNER_ITEMS                                IS  '取引先品目アドオン';
