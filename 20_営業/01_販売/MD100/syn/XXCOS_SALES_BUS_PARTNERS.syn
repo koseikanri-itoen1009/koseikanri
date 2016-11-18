@@ -1,0 +1,15 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2016. All rights reserved.
+ *
+ * Table Name  : XXCOS_SALES_BUS_PARTNERS
+ * Description : 取引先販売実績テーブル（シノニム）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2016/10/14    1.0   S.Niki           新規作成
+ *
+ ****************************************************************************************/
+CREATE OR REPLACE SYNONYM APPS.XXCOS_SALES_BUS_PARTNERS FOR XXCOS.XXCOS_SALES_BUS_PARTNERS;
