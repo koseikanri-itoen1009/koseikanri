@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A03C(body)
  * Description      : 電子帳簿販売実績の情報系システム連携
  * MD.050           : 電子帳簿販売実績の情報系システム連携 <MD050_CFO_019_A03>
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2013/08/06    1.4   S.Niki           E_本稼動_10960対応(消費税増税対応)
  *  2014/01/29    1.5   S.Niki           E_本稼動_11449対応 消費税区分名称の取得条件を納品日⇒オリジナル納品日に変更
  *  2015/08/21    1.6   Y.Shoji          E_本稼動_13255対応(夜間バッチ遅延_電子帳簿販売実績の情報系システム連携)
+ *  2016/10/21    1.7   K.Kiriu          E_本稼動_13879対応(VD業務委託対応)
  *
  *****************************************************************************************/
 --
@@ -255,6 +256,10 @@ AS
   cn_tbl_header_id                      CONSTANT NUMBER        := 1;                      --販売実績ヘッダID
   cn_tbl_line_id                        CONSTANT NUMBER        := 49;                     --販売実績明細ID
   cn_tbl_hht_dlv_date                   CONSTANT NUMBER        := 12;                     --HHT納品入力日時
+-- 2016/10/21 Ver.1.7 Add Start
+  --抽出対象条件
+  cv_create_class                       CONSTANT VARCHAR2(1)   := '0';                    --作成元区分
+-- 2016/10/21 Ver.1.7 Add End
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2337,6 +2342,9 @@ AS
       WHERE     xseh.sales_exp_header_id                =         xsel.sales_exp_header_id
       AND       xseh.sales_exp_header_id                >=        gt_id_from
       AND       xseh.sales_exp_header_id                <=        gt_id_to
+-- 2016/10/21 Ver.1.7 Add Start
+      AND       xseh.create_class                       <>        cv_create_class               --委託販売実績以外
+-- 2016/10/21 Ver.1.7 Add End
       ORDER BY  data_type
               , sales_exp_header_id
     ;
@@ -2598,6 +2606,9 @@ AS
       WHERE     xseh.sales_exp_header_id                =         xsel.sales_exp_header_id
       AND       xseh.sales_exp_header_id                >=        gt_id_from + 1
       AND       xseh.sales_exp_header_id                <=        gt_id_to  
+-- 2016/10/21 Ver.1.7 Add Start
+      AND       xseh.create_class                       <>        cv_create_class               -- 委託販売実績以外
+-- 2016/10/21 Ver.1.7 Add End
       UNION ALL
 -- 2012/12/18 Ver.1.3 Mod Start
 --      SELECT    '2'                                     AS  data_type                           --データタイプ（未連携）
@@ -2856,6 +2867,9 @@ AS
                 FROM      xxcfo_sales_exp_wait_coop     xsewc)    xsew
       WHERE     xseh.sales_exp_header_id                =         xsel.sales_exp_header_id
       AND       xseh.sales_exp_header_id                =         xsew.sales_exp_header_id
+-- 2016/10/21 Ver.1.7 Add Start
+      AND       xseh.create_class                       <>        cv_create_class               -- 委託販売実績以外
+-- 2016/10/21 Ver.1.7 Add End
       ORDER BY  data_type
               , sales_exp_header_id
     ;
