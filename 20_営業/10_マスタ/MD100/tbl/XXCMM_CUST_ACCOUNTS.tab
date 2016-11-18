@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.8
+ * Version         : 1.9
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -21,6 +21,7 @@
  *  2011/09/29    1.7  K.Nakamura    【E_本稼動_08440】稼働日カレンダコードの追加
  *  2014/11/21    1.8  Y.Nagasue     【E_本稼動_12237】倉庫管理システム対応
                                                        顧客別鮮度条件コード追加
+ *  2016/10/26    1.9  S.Niki        【E_本稼動_13879】取引先顧客コード、相殺用顧客コード、相殺用顧客区分追加
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
@@ -122,6 +123,11 @@ CREATE TABLE xxcmm.xxcmm_cust_accounts
 -- 2014/11/21 Ver1.8 add start by Y.Nagasue
     cust_fresh_con_code         VARCHAR2(2),
 -- 2014/11/21 Ver1.8 add end   by Y.Nagasue
+-- Ver1.9 add start
+    bp_customer_code            VARCHAR2(15),
+    offset_cust_code            VARCHAR2(9),
+    offset_cust_div             VARCHAR2(1),
+-- Ver1.9 add end
     created_by                  NUMBER(15,0)    NOT NULL,
     creation_date               DATE            NOT NULL,
     last_updated_by             NUMBER(15,0)    NOT NULL,
@@ -321,6 +327,14 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.store_cust_code             IS '店舗
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.cust_fresh_con_code         IS '顧客別鮮度条件コード'
 /
 -- 2014/11/21 Ver1.8 add end   by Y.Nagasue
+-- Ver1.9 add start
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.bp_customer_code            IS '取引先顧客コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.offset_cust_code            IS '相殺用顧客コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.offset_cust_div             IS '相殺用顧客区分'
+/
+-- Ver1.9 add end
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.created_by                  IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.creation_date               IS '作成日'
