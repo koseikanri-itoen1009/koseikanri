@@ -1,0 +1,84 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2016. All rights reserved.
+ *
+ * Table Name  : XXCOS_SALES_BUS_PARTNERS
+ * Description : 取引先販売実績テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2016/10/14    1.0   S.Niki           新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_SALES_BUS_PARTNERS
+(
+  SALES_BUS_PARTNERS_ID          NUMBER        NOT NULL  ,                     --  取引先販売実績ID
+  BP_COMPANY_CODE                VARCHAR2(9)   NOT NULL  ,                     --  取引先会社コード
+  DLV_INVOICE_NUMBER             VARCHAR2(12)  NOT NULL  ,                     --  納品伝票番号
+  BASE_CODE                      VARCHAR2(4)             ,                     --  拠点コード
+  DELIVERY_DATE                  DATE          NOT NULL  ,                     --  納品日
+  CARD_SALE_CLASS                VARCHAR2(1)             ,                     --  カード売区分
+  CUSTOMER_CODE                  VARCHAR2(9)             ,                     --  伊藤園顧客コード
+  BP_CUSTOMER_CODE               VARCHAR2(15)            ,                     --  取引先顧客コード
+  TAX_CLASS                      VARCHAR2(1)             ,                     --  消費税区分
+  LINE_NUMBER                    NUMBER                  ,                     --  明細番号
+  ITEM_CODE                      VARCHAR2(7)             ,                     --  伊藤園品名コード
+  BP_ITEM_CODE                   VARCHAR2(15)            ,                     --  取引先品名コード
+  DLV_QTY                        NUMBER(5,2)             ,                     --  数量
+  UNIT_PRICE                     NUMBER(7)               ,                     --  売単価
+  CASH_AND_CARD                  NUMBER(11)              ,                     --  現金・カード併用額
+  DATA_CREATED                   DATE          NOT NULL  ,                     --  データ作成日時
+  CONV_CUSTOMER_CODE             VARCHAR2(9)             ,                     --  変換後顧客コード
+  OFFSET_CUST_CODE               VARCHAR2(9)             ,                     --  相殺用顧客コード
+  EMPLOYEE_NUMBER                VARCHAR2(5)             ,                     --  担当営業員
+  CONV_ITEM_CODE                 VARCHAR2(7)             ,                     --  変換後品名コード
+  ITEM_STATUS                    VARCHAR2(2)             ,                     --  品目ステータス
+  CSV_FILE_NAME                  VARCHAR2(256)           ,                     --  CSVファイル名
+  CREATED_BY                     NUMBER(15)    NOT NULL  ,                     --  作成者
+  CREATION_DATE                  DATE          NOT NULL  ,                     --  作成日
+  LAST_UPDATED_BY                NUMBER(15)    NOT NULL  ,                     --  最終更新者
+  LAST_UPDATE_DATE               DATE          NOT NULL  ,                     --  最終更新日
+  LAST_UPDATE_LOGIN              NUMBER(15)              ,                     --  最終更新ﾛｸﾞｲﾝ
+  REQUEST_ID                     NUMBER(15)              ,                     --  要求ID
+  PROGRAM_APPLICATION_ID         NUMBER(15)              ,                     --  ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+  PROGRAM_ID                     NUMBER(15)              ,                     --  ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+  PROGRAM_UPDATE_DATE            DATE                    ,                     --  ﾌﾟﾛｸﾞﾗﾑ更新日
+  CONSTRAINT XXCOS_SALES_BUS_PARTNERS_PK PRIMARY KEY ( SALES_BUS_PARTNERS_ID )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.SALES_BUS_PARTNERS_ID          IS  '取引先販売実績ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.BP_COMPANY_CODE                IS  '取引先会社コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.DLV_INVOICE_NUMBER             IS  '納品伝票番号';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.BASE_CODE                      IS  '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.DELIVERY_DATE                  IS  '納品日';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.CARD_SALE_CLASS                IS  'カード売区分';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.CUSTOMER_CODE                  IS  '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.BP_CUSTOMER_CODE               IS  '取引先顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.TAX_CLASS                      IS  '消費税区分';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.LINE_NUMBER                    IS  '明細番号';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.ITEM_CODE                      IS  '伊藤園品名コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.BP_ITEM_CODE                   IS  '取引先品名コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.DLV_QTY                        IS  '数量';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.UNIT_PRICE                     IS  '売単価';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.CASH_AND_CARD                  IS  '現金・カード併用額';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.DATA_CREATED                   IS  'データ作成日時';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.CONV_CUSTOMER_CODE             IS  '変換後顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.OFFSET_CUST_CODE               IS  '相殺用顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.EMPLOYEE_NUMBER                IS  '担当営業員';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.CONV_ITEM_CODE                 IS  '変換後品名コード';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.ITEM_STATUS                    IS  '品目ステータス';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.CSV_FILE_NAME                  IS  'CSVファイル名';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.CREATED_BY                     IS  '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.CREATION_DATE                  IS  '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.LAST_UPDATED_BY                IS  '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.LAST_UPDATE_DATE               IS  '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.LAST_UPDATE_LOGIN              IS  '最終更新ﾛｸﾞｲﾝ';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.REQUEST_ID                     IS  '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.PROGRAM_APPLICATION_ID         IS  'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.PROGRAM_ID                     IS  'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID';
+COMMENT ON COLUMN XXCOS.XXCOS_SALES_BUS_PARTNERS.PROGRAM_UPDATE_DATE            IS  'ﾌﾟﾛｸﾞﾗﾑ更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_SALES_BUS_PARTNERS                                IS  '取引先販売実績テーブル';
