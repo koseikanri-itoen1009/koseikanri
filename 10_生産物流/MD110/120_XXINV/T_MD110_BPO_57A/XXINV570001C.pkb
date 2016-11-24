@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/02/24    1.21  Akiyoshi Shiina  再対応_本番障害#1179(ロット実績数量0が存在する移動実績情報の処理)
  *  2009/06/09    1.22  Hitomi Itou      本番障害#1526(最新標準データ抽出はMAX(最終更新日)とする)
  *  2010/03/02    1.23  Mariko Miyagawa  E_本稼動_01612(処理対象データの移動ロット詳細フラグをYにする)
+ *  2016/10/28    1.24  Yuji Koh         E_本稼動_13912 在庫照会画面と入出庫照会の入出庫数と在庫数があっていない
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2984,6 +2985,35 @@ AS
                     -- 2008/04/15 modify start
                     -- 何もしない
                     -- NULL;
+-- 2016/10/28 Ver.1.24 Y.Koh ADD Start
+                    IF ( move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity <> 0 ) THEN
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【14c】赤作成 start');
+--
+                      -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
+                      adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                      adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_pnd_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_pnd_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).attribute1     := TO_CHAR(move_target_tbl(gn_rec_idx).mov_line_id);
+--
+                      -- インクリメント
+                      ln_idx_adji := ln_idx_adji + 1;
+--
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【14c】赤作成 end');
+                    END IF;
+-- 2016/10/28 Ver.1.24 Y.Koh ADD End
 --
                     -- ロット詳細の実績数量が0の場合
                     IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN
@@ -4537,6 +4567,35 @@ AS
                   -- 2008/04/15 modify start
                   -- 何もしない
                   --NULL;
+-- 2016/10/28 Ver.1.24 Y.Koh ADD Start
+                    IF ( move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity <> 0 ) THEN
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【18b】赤作成 start');
+--
+                      -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
+                      adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                      adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_cmp_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_cmp_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).attribute1     := TO_CHAR(move_target_tbl(gn_rec_idx).mov_line_id);
+--
+                      -- インクリメント
+                      ln_idx_adji := ln_idx_adji + 1;
+--
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【18b】赤作成 end');
+                    END IF;
+-- 2016/10/28 Ver.1.24 Y.Koh ADD End
                   -- ロット詳細の実績数量が0の場合
                     IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN  -- (I)
                       -- 何もしない
