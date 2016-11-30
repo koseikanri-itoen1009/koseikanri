@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_gl_check_pkg(body)
  * Description            : 部門入力(GL)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(GL)共通関数 OCSJ/BFAFIN/MD070/F601/01
- * Version                : 11.5.10.2.13
+ * Version                : 11.5.10.2.14
  *
  * Program List
  *  -------------------------- ---- ----- ------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2013/09/19   11.5.10.2.12   [E_本稼動_10999]項目整合性チェック追加
  *  2015-03-24   11.5.10.2.13   [E_本稼動_12980]消費税額許容範囲チェック用カーソルの
  *                                              会社コードを固定値：001（本社）に変更
+ *  2016/11/14   11.5.10.2.14   [E_本稼動_13901]稟議決裁番号のチェックを追加
  *
  *****************************************************************************************/
 --
@@ -230,6 +231,9 @@ AS
              xjsjlv.PERIOD_NAME
 -- Ver11.5.10.1.6G Add Start
            , xjsjlv.line_type_lookup_code as line_type_lookup_code
+-- == 2016/11/14 V11.5.10.2.14 Added START ===============================================================
+           , xjsjlv.attribute9 as attribute9
+-- == 2016/11/14 V11.5.10.2.14 Added END =================================================================
 -- Ver11.5.10.1.6G Add End
 -- 2005/1/19 Ver11.5.10.1.6D Add End
         FROM xx03_jn_slip_journal_lines_v xjsjlv
@@ -1275,6 +1279,44 @@ AS
 -- ver 11.5.10.2.9 Add End
 --
         END IF;
+-- == 2016/11/14 V11.5.10.2.14 Added START ===============================================================
+        IF xx03_xjsjlv_rec.attribute9 IS NOT NULL THEN
+          --稟議決裁番号形式チェック
+          DECLARE
+            lv_Request_decision  xx03_journal_slip_lines.attribute9%TYPE;
+            ln_Request_decision  NUMBER;
+          BEGIN
+            --桁数チェック
+            IF LENGTHB(xx03_xjsjlv_rec.attribute9) <> 11 THEN
+              RAISE INVALID_NUMBER;
+            END IF;
+            --固定値チェック
+            IF SUBSTRB(xx03_xjsjlv_rec.attribute9,1,2) <> 'DR' THEN
+              RAISE INVALID_NUMBER;
+            END IF;
+            --年チェック
+            ln_Request_decision := SUBSTRB(xx03_xjsjlv_rec.attribute9,3,4);
+            IF ln_Request_decision < 2000 THEN
+              RAISE INVALID_NUMBER;
+            END IF;
+            --連番チェック
+            lv_Request_decision := SUBSTRB(xx03_xjsjlv_rec.attribute9,7,5);
+            -- 数値型チェック
+            ln_Request_decision := lv_Request_decision;
+            -- 小数チェック
+            IF ( INSTR(lv_Request_decision ,cv_precision_char) <> 0 ) THEN
+              RAISE INVALID_NUMBER;
+            END IF;
+            -- 符号チェック(上1桁が数値かどうかチェック)
+            ln_Request_decision := SUBSTRB(xx03_xjsjlv_rec.attribute9,7,1);
+          EXCEPTION
+            WHEN INVALID_NUMBER OR VALUE_ERROR THEN
+              errflg_tbl(ln_err_cnt) := 'E';
+              errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFO','APP-XXCFO1-00054','TOK_REQUEST_DECISION',xx03_xjsjlv_rec.attribute9);
+              ln_err_cnt := ln_err_cnt + 1;
+          END;
+        END IF;
+-- == 2016/11/14 V11.5.10.2.14 Added END   ===============================================================
 --
 -- ver 11.5.10.2.9 Add Start
         --税金コードマスタチェック
