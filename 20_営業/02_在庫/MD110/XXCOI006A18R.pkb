@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A18R(body)
  * Description      : 払出明細表（拠点別・合計）
  * MD.050           : 払出明細表（拠点別・合計） <MD050_XXCOI_006_A18>
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2010/02/02    1.8   N.Abe            [E_本稼動_01411]商品部のPT対応
  *  2010/05/06    1.9   N.Abe            [E_本稼動_02562]拠点別のPT対応
  *  2015/03/16    1.10  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
+ *  2016/10/05    1.11  Y.Koh            障害対応E_本稼動_13807
  *
  *****************************************************************************************/
 --
@@ -214,116 +215,121 @@ AS
   gt_organization_id        mtl_parameters.organization_id%TYPE                 DEFAULT NULL; -- 在庫組織ID
   gt_inv_cl_char            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 在庫確定印字文字
 -- == 2015/03/16 V1.10 Added END   =================================================================
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+  gn_process_cnt            NUMBER;                             -- 拠点別受払データ出力時の処理連番用
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
 --
   -- ===============================
   -- ユーザー定義カーソル
   -- ===============================
   -- 拠点別、専門店別、百貨店別のいづれか、かつ、拠点が設定されている場合
-  CURSOR  svf_data_cur1
-  IS
--- == 2010/05/06 V1.9 Modified START ===============================================================
---    SELECT  xirm.base_code                      base_code                 -- 拠点コード
-    SELECT  /*+ USE_NL(mic mcb msib iimb xirm xsib) */
-            xirm.base_code                      base_code                 -- 拠点コード
--- == 2010/05/06 V1.9 Modified END   ===============================================================
-           ,SUBSTRB(sca.account_name, 1, 8)     account_name              -- 拠点名称
-           ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
--- == 2009/07/14 V1.4 Modified START ===============================================================
---           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
-           ,SUBSTR(
-              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
-                      THEN iimb.attribute1                                -- 群コード(旧)
-                      ELSE iimb.attribute2                                -- 群コード(新)
-                    END
-              ), 1, 3
-            )                                   policy_group              -- 群コード
--- == 2009/07/14 V1.4 Modified END   ===============================================================
-           ,msib.segment1                       item_code                 -- 品目コード
-           ,xsib.item_short_name                item_short_name           -- 商品名称（略称）
-           ,CASE WHEN gv_param_cost_type = '10' THEN  xirm.operation_cost
-                 ELSE  xirm.standard_cost
-            END                                 cost_amt                  -- 原価
-           ,xirm.sales_shipped                  sales_shipped             -- 売上出庫
-           ,xirm.sales_shipped_b                sales_shipped_b           -- 売上出庫振戻
-           ,xirm.return_goods                   return_goods              -- 返品
-           ,xirm.return_goods_b                 return_goods_b            -- 返品振戻
-           ,xirm.change_ship                    change_ship               -- 倉替出庫
-           ,xirm.goods_transfer_old             goods_transfer_old        -- 商品振替(旧商品)
-           ,xirm.sample_quantity                sample_quantity           -- 見本出庫
-           ,xirm.sample_quantity_b              sample_quantity_b         -- 見本出庫振戻
-           ,xirm.customer_sample_ship           customer_sample_ship      -- 顧客見本出庫
-           ,xirm.customer_sample_ship_b         customer_sample_ship_b    -- 顧客見本出庫振戻
-           ,xirm.customer_support_ss            customer_support_ss       -- 顧客協賛見本出庫
-           ,xirm.customer_support_ss_b          customer_support_ss_b     -- 顧客協賛見本出庫振戻
-           ,xirm.inventory_change_out           inventory_change_out      -- 基準在庫変更出庫
--- == 2009/06/26 V1.2 Added START ===============================================================
-           ,xirm.inventory_change_in            inventory_change_in       -- 基準在庫変更入庫
--- == 2009/06/26 V1.2 Added END   ===============================================================
-           ,xirm.factory_return                 factory_return            -- 工場返品
-           ,xirm.factory_return_b               factory_return_b          -- 工場返品振戻
-           ,xirm.factory_change                 factory_change            -- 工場倉替
-           ,xirm.factory_change_b               factory_change_b          -- 工場倉替振戻
-           ,xirm.removed_goods                  removed_goods             -- 廃却
-           ,xirm.removed_goods_b                removed_goods_b           -- 廃却振戻
-           ,xirm.ccm_sample_ship                ccm_sample_ship           -- 顧客広告宣伝費A自社商品
-           ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
--- == 2009/06/26 V1.2 Deleted START ===============================================================
---           ,xirm.wear_increase                  wear_increase             -- 棚卸減耗減
--- == 2009/06/26 V1.2 Deleted END   ===============================================================
-    FROM    xxcoi_inv_reception_monthly         xirm                      -- 月次在庫受払表（月次）
-           ,mtl_categories_b                    mcb                       -- カテゴリ
-           ,mtl_item_categories                 mic                       -- 品目カテゴリ割当
-           ,ic_item_mst_b                       iimb                      -- OPM品目
-           ,xxcmn_item_mst_b                    xsib                      -- OPM品目アドオン
-           ,mtl_system_items_b                  msib                      -- Disc品目
--- == 2010/05/06 V1.9 Modified START ===============================================================
---           ,(SELECT   CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_number
-           ,(SELECT   /*+ USE_NL(xca hca2) */
-                      CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_number
--- == 2010/05/06 V1.9 Modified END   ===============================================================
-                      ELSE  hca2.account_number
-                      END   base_code
-                     ,CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_name
-                      ELSE  hca2.account_name
-                      END   account_name
-             FROM     hz_cust_accounts      hca1
-                     ,hz_cust_accounts      hca2
-                     ,xxcmm_cust_accounts   xca
-             WHERE    hca1.account_number           =   gv_param_base_code
-             AND      hca1.account_number           =   xca.management_base_code(+)
-             AND      xca.customer_id               =   hca2.cust_account_id(+)
-             AND      hca1.customer_class_code      =   cv_cust_cls_1
-             AND      hca1.status                   =   cv_status_a
-             AND      hca2.customer_class_code(+)   =   cv_cust_cls_1
-             AND      hca2.status(+)                =   cv_status_a
--- == 2009/10/06 V1.7 Added START ===============================================================
-             AND    ((    (gv_param_output_kbn      =   cv_output_kbn_50)
-                      AND (dept_hht_div             =   '1')
-                     )
-                     OR
-                     (gv_param_output_kbn           <>  cv_output_kbn_50)
-                    )
--- == 2009/10/06 V1.7 Added END   ===============================================================
-            )         sca                                                 -- 顧客情報
-    WHERE   xirm.base_code          =   sca.base_code
-    AND     xirm.practice_month     =   gv_param_reception_date           -- パラメータ.受払年月
-    AND     xirm.inventory_item_id  =   msib.inventory_item_id
-    AND     xirm.organization_id    =   msib.organization_id
-    AND     msib.segment1           =   iimb.item_no
-    AND     iimb.item_id            =   xsib.item_id
--- == 2009/09/11 V1.6 Added START ===============================================================
-    AND     TRUNC(gd_target_date) BETWEEN TRUNC(xsib.start_date_active)
-                                  AND     TRUNC(xsib.end_date_active)
--- == 2009/09/11 V1.6 Added END   ===============================================================
-    AND     xirm.inventory_item_id  =   mic.inventory_item_id
-    AND     xirm.organization_id    =   mic.organization_id
-    AND     mic.category_id         =   mcb.category_id
-    AND     mcb.attribute_category  =   gv_item_category
-    AND     xirm.inventory_kbn      =   cv_inv_kbn_2                      -- 棚卸区分='2'（月末）
-    ORDER BY  xirm.base_code
-             ,mcb.segment1
-             ,SUBSTR(iimb.attribute2, 1, 3)
-             ,msib.segment1;
+-- 2016/10/05 Ver.1.11 Y.Koh DEL Start
+--  CURSOR  svf_data_cur1
+--  IS
+---- == 2010/05/06 V1.9 Modified START ===============================================================
+----    SELECT  xirm.base_code                      base_code                 -- 拠点コード
+--    SELECT  /*+ USE_NL(mic mcb msib iimb xirm xsib) */
+--            xirm.base_code                      base_code                 -- 拠点コード
+---- == 2010/05/06 V1.9 Modified END   ===============================================================
+--           ,SUBSTRB(sca.account_name, 1, 8)     account_name              -- 拠点名称
+--           ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
+---- == 2009/07/14 V1.4 Modified START ===============================================================
+----           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+--           ,SUBSTR(
+--              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+--                      THEN iimb.attribute1                                -- 群コード(旧)
+--                      ELSE iimb.attribute2                                -- 群コード(新)
+--                    END
+--              ), 1, 3
+--            )                                   policy_group              -- 群コード
+---- == 2009/07/14 V1.4 Modified END   ===============================================================
+--           ,msib.segment1                       item_code                 -- 品目コード
+--           ,xsib.item_short_name                item_short_name           -- 商品名称（略称）
+--           ,CASE WHEN gv_param_cost_type = '10' THEN  xirm.operation_cost
+--                 ELSE  xirm.standard_cost
+--            END                                 cost_amt                  -- 原価
+--           ,xirm.sales_shipped                  sales_shipped             -- 売上出庫
+--           ,xirm.sales_shipped_b                sales_shipped_b           -- 売上出庫振戻
+--           ,xirm.return_goods                   return_goods              -- 返品
+--           ,xirm.return_goods_b                 return_goods_b            -- 返品振戻
+--           ,xirm.change_ship                    change_ship               -- 倉替出庫
+--           ,xirm.goods_transfer_old             goods_transfer_old        -- 商品振替(旧商品)
+--           ,xirm.sample_quantity                sample_quantity           -- 見本出庫
+--           ,xirm.sample_quantity_b              sample_quantity_b         -- 見本出庫振戻
+--           ,xirm.customer_sample_ship           customer_sample_ship      -- 顧客見本出庫
+--           ,xirm.customer_sample_ship_b         customer_sample_ship_b    -- 顧客見本出庫振戻
+--           ,xirm.customer_support_ss            customer_support_ss       -- 顧客協賛見本出庫
+--           ,xirm.customer_support_ss_b          customer_support_ss_b     -- 顧客協賛見本出庫振戻
+--           ,xirm.inventory_change_out           inventory_change_out      -- 基準在庫変更出庫
+---- == 2009/06/26 V1.2 Added START ===============================================================
+--           ,xirm.inventory_change_in            inventory_change_in       -- 基準在庫変更入庫
+---- == 2009/06/26 V1.2 Added END   ===============================================================
+--           ,xirm.factory_return                 factory_return            -- 工場返品
+--           ,xirm.factory_return_b               factory_return_b          -- 工場返品振戻
+--           ,xirm.factory_change                 factory_change            -- 工場倉替
+--           ,xirm.factory_change_b               factory_change_b          -- 工場倉替振戻
+--           ,xirm.removed_goods                  removed_goods             -- 廃却
+--           ,xirm.removed_goods_b                removed_goods_b           -- 廃却振戻
+--           ,xirm.ccm_sample_ship                ccm_sample_ship           -- 顧客広告宣伝費A自社商品
+--           ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
+---- == 2009/06/26 V1.2 Deleted START ===============================================================
+----           ,xirm.wear_increase                  wear_increase             -- 棚卸減耗減
+---- == 2009/06/26 V1.2 Deleted END   ===============================================================
+--    FROM    xxcoi_inv_reception_monthly         xirm                      -- 月次在庫受払表（月次）
+--           ,mtl_categories_b                    mcb                       -- カテゴリ
+--           ,mtl_item_categories                 mic                       -- 品目カテゴリ割当
+--           ,ic_item_mst_b                       iimb                      -- OPM品目
+--           ,xxcmn_item_mst_b                    xsib                      -- OPM品目アドオン
+--           ,mtl_system_items_b                  msib                      -- Disc品目
+---- == 2010/05/06 V1.9 Modified START ===============================================================
+----           ,(SELECT   CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_number
+--           ,(SELECT   /*+ USE_NL(xca hca2) */
+--                      CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_number
+---- == 2010/05/06 V1.9 Modified END   ===============================================================
+--                      ELSE  hca2.account_number
+--                      END   base_code
+--                     ,CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_name
+--                      ELSE  hca2.account_name
+--                      END   account_name
+--             FROM     hz_cust_accounts      hca1
+--                     ,hz_cust_accounts      hca2
+--                     ,xxcmm_cust_accounts   xca
+--             WHERE    hca1.account_number           =   gv_param_base_code
+--             AND      hca1.account_number           =   xca.management_base_code(+)
+--             AND      xca.customer_id               =   hca2.cust_account_id(+)
+--             AND      hca1.customer_class_code      =   cv_cust_cls_1
+--             AND      hca1.status                   =   cv_status_a
+--             AND      hca2.customer_class_code(+)   =   cv_cust_cls_1
+--             AND      hca2.status(+)                =   cv_status_a
+---- == 2009/10/06 V1.7 Added START ===============================================================
+--             AND    ((    (gv_param_output_kbn      =   cv_output_kbn_50)
+--                      AND (dept_hht_div             =   '1')
+--                     )
+--                     OR
+--                     (gv_param_output_kbn           <>  cv_output_kbn_50)
+--                    )
+---- == 2009/10/06 V1.7 Added END   ===============================================================
+--            )         sca                                                 -- 顧客情報
+--    WHERE   xirm.base_code          =   sca.base_code
+--    AND     xirm.practice_month     =   gv_param_reception_date           -- パラメータ.受払年月
+--    AND     xirm.inventory_item_id  =   msib.inventory_item_id
+--    AND     xirm.organization_id    =   msib.organization_id
+--    AND     msib.segment1           =   iimb.item_no
+--    AND     iimb.item_id            =   xsib.item_id
+---- == 2009/09/11 V1.6 Added START ===============================================================
+--    AND     TRUNC(gd_target_date) BETWEEN TRUNC(xsib.start_date_active)
+--                                  AND     TRUNC(xsib.end_date_active)
+---- == 2009/09/11 V1.6 Added END   ===============================================================
+--    AND     xirm.inventory_item_id  =   mic.inventory_item_id
+--    AND     xirm.organization_id    =   mic.organization_id
+--    AND     mic.category_id         =   mcb.category_id
+--    AND     mcb.attribute_category  =   gv_item_category
+--    AND     xirm.inventory_kbn      =   cv_inv_kbn_2                      -- 棚卸区分='2'（月末）
+--    ORDER BY  xirm.base_code
+--             ,mcb.segment1
+--             ,SUBSTR(iimb.attribute2, 1, 3)
+--             ,msib.segment1;
+-- 2016/10/05 Ver.1.11 Y.Koh DEL End
   --
   -- 直営店計の場合
   CURSOR  svf_data_cur2
@@ -584,6 +590,142 @@ AS
              ,SUBSTR(iimb.attribute2, 1, 3)
              ,msib.segment1;
   --
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+  -- 拠点取得用　拠点別、専門店別、百貨店別のいづれか、かつ、拠点が設定されている場合
+  CURSOR  svf_base_cur1
+  IS
+    SELECT  sca.base_code                       base_code                 -- 拠点コード
+           ,SUBSTRB(sca.account_name, 1, 8)     account_name              -- 拠点名称
+    FROM    (SELECT   /*+ USE_NL(xca hca2) */
+                      CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_number
+                      ELSE  hca2.account_number
+                      END   base_code
+                     ,CASE  WHEN  xca.customer_id IS NULL THEN  hca1.account_name
+                      ELSE  hca2.account_name
+                      END   account_name
+             FROM     hz_cust_accounts      hca1
+                     ,hz_cust_accounts      hca2
+                     ,xxcmm_cust_accounts   xca
+             WHERE    hca1.account_number           =   gv_param_base_code
+             AND      hca1.account_number           =   xca.management_base_code(+)
+             AND      xca.customer_id               =   hca2.cust_account_id(+)
+             AND      hca1.customer_class_code      =   cv_cust_cls_1
+             AND      hca1.status                   =   cv_status_a
+             AND      hca2.customer_class_code(+)   =   cv_cust_cls_1
+             AND      hca2.status(+)                =   cv_status_a
+             AND    ((    (gv_param_output_kbn      =   cv_output_kbn_50)
+                      AND (dept_hht_div             =   '1')
+                     )
+                     OR
+                     (gv_param_output_kbn           <>  cv_output_kbn_50)
+                    )
+            )         sca                                                 -- 顧客情報
+    ORDER BY  sca.base_code;
+    --
+  -- 拠点取得用　拠点別（商品部以外）、専門店別、百貨店別のいづれか、かつ、拠点が設定されていない場合
+  CURSOR  svf_base_cur2
+  IS
+    SELECT   hca2.account_number              base_code          -- 拠点コード
+            ,SUBSTRB(hca2.account_name, 1, 8) account_name       -- 拠点名称
+    FROM     hz_cust_accounts      hca1
+            ,hz_cust_accounts      hca2
+            ,xxcmm_cust_accounts   xca
+    WHERE    hca1.account_number       =   gv_user_basecode
+    AND      hca1.account_number       =   xca.management_base_code
+    AND      xca.customer_id           =   hca2.cust_account_id
+    AND      hca1.customer_class_code  =   cv_cust_cls_1
+    AND      hca1.status               =   cv_status_a
+    AND      hca2.customer_class_code  =   cv_cust_cls_1
+    AND      hca2.status               =   cv_status_a
+    AND    ((    (gv_param_output_kbn  = cv_output_kbn_50)
+             AND (dept_hht_div             =   '1')
+            )
+            OR
+            (gv_param_output_kbn       <> cv_output_kbn_50)
+           )
+    ORDER BY  hca2.account_number;
+    --
+  -- 拠点取得用　拠点別（商品部）、かつ、拠点が設定されていない場合
+  CURSOR  svf_base_cur3
+  IS
+    SELECT  hca.account_number                  base_code                 -- 拠点コード
+           ,SUBSTRB(hca.account_name, 1, 8)     account_name              -- 拠点名称
+    FROM    hz_cust_accounts                    hca                       -- 顧客マスタ
+    WHERE   hca.customer_class_code =   cv_cust_cls_1                     -- 顧客区分='1'（拠点）
+    AND     hca.status              =   cv_status_a                       -- ステータス='A'
+    AND     hca.account_number NOT LIKE '2%'
+    ORDER BY  hca.account_number;
+    --
+  -- 拠点別受払残高取得用
+  CURSOR  svf_data_cur5(iv_base_code VARCHAR2)
+  IS
+    SELECT  /*+ use_nl(xirm mcb mic iimb xsib msib) 
+                index(xirm xxcoi_inv_reception_month_n02) */
+            xirm.base_code                      base_code                 -- 拠点コード
+           ,SUBSTRB(hca.account_name, 1, 8)     account_name              -- 拠点名称
+           ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
+           ,SUBSTR(
+              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                      THEN iimb.attribute1                                -- 群コード(旧)
+                      ELSE iimb.attribute2                                -- 群コード(新)
+                    END
+              ), 1, 3
+            )                                   policy_group              -- 群コード
+           ,msib.segment1                       item_code                 -- 品目コード
+           ,xsib.item_short_name                item_short_name           -- 商品名称（略称）
+           ,CASE WHEN gv_param_cost_type = '10' THEN  xirm.operation_cost
+                 ELSE  xirm.standard_cost
+            END                                 cost_amt                  -- 原価
+           ,xirm.sales_shipped                  sales_shipped             -- 売上出庫
+           ,xirm.sales_shipped_b                sales_shipped_b           -- 売上出庫振戻
+           ,xirm.return_goods                   return_goods              -- 返品
+           ,xirm.return_goods_b                 return_goods_b            -- 返品振戻
+           ,xirm.change_ship                    change_ship               -- 倉替出庫
+           ,xirm.goods_transfer_old             goods_transfer_old        -- 商品振替(旧商品)
+           ,xirm.sample_quantity                sample_quantity           -- 見本出庫
+           ,xirm.sample_quantity_b              sample_quantity_b         -- 見本出庫振戻
+           ,xirm.customer_sample_ship           customer_sample_ship      -- 顧客見本出庫
+           ,xirm.customer_sample_ship_b         customer_sample_ship_b    -- 顧客見本出庫振戻
+           ,xirm.customer_support_ss            customer_support_ss       -- 顧客協賛見本出庫
+           ,xirm.customer_support_ss_b          customer_support_ss_b     -- 顧客協賛見本出庫振戻
+           ,xirm.inventory_change_out           inventory_change_out      -- 基準在庫変更出庫
+           ,xirm.inventory_change_in            inventory_change_in       -- 基準在庫変更入庫
+           ,xirm.factory_return                 factory_return            -- 工場返品
+           ,xirm.factory_return_b               factory_return_b          -- 工場返品振戻
+           ,xirm.factory_change                 factory_change            -- 工場倉替
+           ,xirm.factory_change_b               factory_change_b          -- 工場倉替振戻
+           ,xirm.removed_goods                  removed_goods             -- 廃却
+           ,xirm.removed_goods_b                removed_goods_b           -- 廃却振戻
+           ,xirm.ccm_sample_ship                ccm_sample_ship           -- 顧客広告宣伝費A自社商品
+           ,xirm.ccm_sample_ship_b              ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
+    FROM    xxcoi_inv_reception_monthly         xirm                      -- 月次在庫受払表（月次）
+           ,hz_cust_accounts                    hca                       -- 顧客マスタ
+           ,mtl_categories_b                    mcb                       -- カテゴリ
+           ,mtl_item_categories                 mic                       -- 品目カテゴリ割当
+           ,ic_item_mst_b                       iimb                      -- OPM品目
+           ,xxcmn_item_mst_b                    xsib                      -- OPM品目アドオン
+           ,mtl_system_items_b                  msib                      -- Disc品目
+    WHERE   xirm.practice_month     =   gv_param_reception_date           -- パラメータ.受払年月
+    AND     xirm.inventory_item_id  =   msib.inventory_item_id
+    AND     xirm.organization_id    =   msib.organization_id
+    AND     msib.segment1           =   iimb.item_no
+    AND     iimb.item_id            =   xsib.item_id
+    AND     TRUNC(gd_target_date) BETWEEN TRUNC(xsib.start_date_active)
+                                  AND     TRUNC(xsib.end_date_active)
+    AND     xirm.inventory_item_id  =   mic.inventory_item_id
+    AND     xirm.organization_id    =   mic.organization_id
+    AND     mic.category_id         =   mcb.category_id
+    AND     mcb.attribute_category  =   gv_item_category
+    AND     xirm.inventory_kbn      =   cv_inv_kbn_2                      -- 棚卸区分='2'（月末）
+    AND     xirm.base_code          =   hca.account_number
+    AND     hca.account_number      =   iv_base_code
+    AND     hca.customer_class_code =   cv_cust_cls_1                     -- 顧客区分='1'（拠点）
+    AND     hca.status              =   cv_status_a                       -- ステータス='A'
+    ORDER BY  xirm.base_code
+             ,mcb.segment1
+             ,SUBSTR(iimb.attribute2, 1, 3)
+             ,msib.segment1;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
 --
   /**********************************************************************************
    * Procedure Name   : del_svf_data
@@ -783,7 +925,10 @@ AS
    * Description      : ワークテーブルデータ登録(A-4)
    ***********************************************************************************/
   PROCEDURE ins_svf_data(
-    ir_svf_data   IN  svf_data_cur1%ROWTYPE,   -- 1.CSV出力対象データ
+-- 2016/10/05 Ver.1.11 Y.Koh MOD Start
+--    ir_svf_data   IN  svf_data_cur1%ROWTYPE,   -- 1.CSV出力対象データ
+    ir_svf_data   IN  svf_data_cur2%ROWTYPE,   -- 1.CSV出力対象データ
+-- 2016/10/05 Ver.1.11 Y.Koh MOD End
     in_slit_id    IN  NUMBER,                 -- 2.処理連番
     iv_message    IN  VARCHAR2,               -- 3.０件メッセージ
     ov_errbuf     OUT VARCHAR2,               -- エラー・メッセージ                  --# 固定 #
@@ -1640,6 +1785,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_zero_message     VARCHAR2(5000);
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+    lv_zero_message_base VARCHAR2(5000);
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
     -- カーソル判定区分用
     lv_cur_kbn          VARCHAR2(1);
 --
@@ -1648,7 +1796,11 @@ AS
     -- ===============================
     -- <カーソル名>
     -- <カーソル名>レコード型
-    svf_data_rec    svf_data_cur1%ROWTYPE;
+-- 2016/10/05 Ver.1.11 Y.Koh MOD Start
+--    svf_data_rec    svf_data_cur1%ROWTYPE;
+    svf_data_rec    svf_data_cur2%ROWTYPE;
+    svf_base_rec    svf_base_cur1%ROWTYPE;
+-- 2016/10/05 Ver.1.11 Y.Koh MOD End
 --
   BEGIN
 --
@@ -1664,6 +1816,9 @@ AS
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+    gn_process_cnt := 0;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -1712,151 +1867,280 @@ AS
     -- ===============================
     --  A-3.データ取得（カーソル）
     -- ===============================
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+    IF (gv_param_output_kbn  IN (cv_output_kbn_60, cv_output_kbn_70, cv_output_kbn_80, cv_output_kbn_90)) THEN
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
     -- カーソル判定
-    IF (    (gv_param_output_kbn IN(cv_output_kbn_30, cv_output_kbn_40, cv_output_kbn_50))
-        AND (gv_param_base_code  IS NOT NULL)
-       )
-    THEN
-      -- 拠点別、専門店別、百貨店別のいづれか、かつ、拠点が設定されている場合
-      lv_cur_kbn  :=  cv_cur_kbn_1;
-      --
-    ELSIF (gv_param_output_kbn  = cv_output_kbn_80) THEN
-      -- 直営店計の場合
-      lv_cur_kbn  :=  cv_cur_kbn_2;
-      --
-    ELSIF (   (gv_param_output_kbn  IN(cv_output_kbn_60, cv_output_kbn_70))
-           OR (    (   (gv_param_output_kbn IN(cv_output_kbn_40, cv_output_kbn_50))
-                    OR (     gv_param_output_kbn = cv_output_kbn_30
-                        AND  gv_user_basecode <> gv_item_dept_base_code
-                       )
-                   )
-               AND (gv_param_base_code  IS NULL)
-              )
-          )
-    THEN
-      -- 専門店計、百貨店計、又は、
-      -- 拠点別（商品部以外）、専門店別、百貨店別のいづれか、かつ、拠点が設定されていない場合
-      lv_cur_kbn  :=  cv_cur_kbn_3;
-      --
-    ELSIF (   (gv_param_output_kbn  = cv_output_kbn_90)
-           OR (     gv_param_output_kbn = cv_output_kbn_30
-               AND  gv_user_basecode = gv_item_dept_base_code
-               AND  gv_param_base_code IS NULL
-              )
-          )
-    THEN
-      -- 全社計、又は
-      -- 拠点別（商品部）、かつ、拠点が設定されていない場合
-      lv_cur_kbn  :=  cv_cur_kbn_4;
-      --
-    END IF;
-    --
-    IF (lv_cur_kbn  = cv_cur_kbn_1) THEN      -- データ取得パターン１
-      OPEN  svf_data_cur1;
-      FETCH svf_data_cur1  INTO  svf_data_rec;
-      -- 出力対象データ０件
-      IF (svf_data_cur1%NOTFOUND) THEN
-        lv_zero_message := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_short_name_xxcoi
-                            ,iv_name         => cv_msg_xxcoi1_00008
-                           );
-      END IF;
-      --
-    ELSIF (lv_cur_kbn  = cv_cur_kbn_2) THEN      -- データ取得パターン２
-      OPEN  svf_data_cur2;
-      FETCH svf_data_cur2  INTO  svf_data_rec;
-      -- 出力対象データ０件
-      IF (svf_data_cur2%NOTFOUND) THEN
-        lv_zero_message := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_short_name_xxcoi
-                            ,iv_name         => cv_msg_xxcoi1_00008
-                           );
-      END IF;
-      --
-    ELSIF (lv_cur_kbn  = cv_cur_kbn_3) THEN      -- データ取得パターン３
-      OPEN  svf_data_cur3;
-      FETCH svf_data_cur3  INTO  svf_data_rec;
-      -- 出力対象データ０件
-      IF (svf_data_cur3%NOTFOUND) THEN
-        lv_zero_message := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_short_name_xxcoi
-                            ,iv_name         => cv_msg_xxcoi1_00008
-                           );
-      END IF;
-      --
-    ELSIF (lv_cur_kbn  = cv_cur_kbn_4) THEN      -- データ取得パターン４
-      OPEN  svf_data_cur4;
-      FETCH svf_data_cur4  INTO  svf_data_rec;
-      -- 出力対象データ０件
-      IF (svf_data_cur4%NOTFOUND) THEN
-        lv_zero_message := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_short_name_xxcoi
-                            ,iv_name         => cv_msg_xxcoi1_00008
-                           );
-      END IF;
-      --
-    END IF;
-    --
-    <<work_ins_loop>>
-    LOOP
-      -- 対象件数カウント
-      gn_target_cnt :=  gn_target_cnt + 1;
-      --
-      -- ===============================
-      --  A-4.ワークテーブルデータ登録
-      -- ===============================
-      ins_svf_data(
-         ir_svf_data  =>  svf_data_rec    -- CSV出力用データ
-        ,in_slit_id   =>  gn_target_cnt   -- 処理連番
-        ,iv_message   =>  lv_zero_message -- ０件メッセージ
-        ,ov_errbuf    =>  lv_errbuf       -- エラー・メッセージ           --# 固定 #
-        ,ov_retcode   =>  lv_retcode      -- リターン・コード             --# 固定 #
-        ,ov_errmsg    =>  lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      -- 終了パラメータ判定
-      IF (lv_retcode = cv_status_error) THEN
-        -- エラー処理
-        RAISE global_process_expt;
-      END IF;
-      --
-      -- 対象データ０件の場合、ワークテーブル作成処理終了
-      EXIT  work_ins_loop WHEN  lv_zero_message IS NOT NULL;
-      --
-      -- 対象データ取得
-      IF (lv_cur_kbn  =  cv_cur_kbn_1)  THEN
-        FETCH svf_data_cur1  INTO  svf_data_rec;
-        EXIT  work_ins_loop  WHEN  svf_data_cur1%NOTFOUND;
+-- 2016/10/05 Ver.1.11 Y.Koh DEL Start
+--      IF (    (gv_param_output_kbn IN(cv_output_kbn_30, cv_output_kbn_40, cv_output_kbn_50))
+--          AND (gv_param_base_code  IS NOT NULL)
+--         )
+--      THEN
+--        -- 拠点別、専門店別、百貨店別のいづれか、かつ、拠点が設定されている場合
+--        lv_cur_kbn  :=  cv_cur_kbn_1;
+--        --
+-- 2016/10/05 Ver.1.11 Y.Koh DEL End
+      IF (gv_param_output_kbn  = cv_output_kbn_80) THEN
+        -- 直営店計の場合
+        lv_cur_kbn  :=  cv_cur_kbn_2;
         --
-      ELSIF (lv_cur_kbn  =  cv_cur_kbn_2)  THEN
+      ELSIF (gv_param_output_kbn  IN(cv_output_kbn_60, cv_output_kbn_70))
+-- 2016/10/05 Ver.1.11 Y.Koh DEL Start
+--             OR (    (   (gv_param_output_kbn IN(cv_output_kbn_40, cv_output_kbn_50))
+--                      OR (     gv_param_output_kbn = cv_output_kbn_30
+--                          AND  gv_user_basecode <> gv_item_dept_base_code
+--                         )
+--                     )
+--                 AND (gv_param_base_code  IS NULL)
+--                )
+--            )
+-- 2016/10/05 Ver.1.11 Y.Koh DEL End
+      THEN
+        -- 専門店計、百貨店計、又は、
+        -- 拠点別（商品部以外）、専門店別、百貨店別のいづれか、かつ、拠点が設定されていない場合
+        lv_cur_kbn  :=  cv_cur_kbn_3;
+        --
+      ELSIF (gv_param_output_kbn  = cv_output_kbn_90)
+-- 2016/10/05 Ver.1.11 Y.Koh DEL Start
+--             OR (     gv_param_output_kbn = cv_output_kbn_30
+--                 AND  gv_user_basecode = gv_item_dept_base_code
+--                 AND  gv_param_base_code IS NULL
+--                )
+--            )
+-- 2016/10/05 Ver.1.11 Y.Koh DEL End
+      THEN
+        -- 全社計、又は
+        -- 拠点別（商品部）、かつ、拠点が設定されていない場合
+        lv_cur_kbn  :=  cv_cur_kbn_4;
+        --
+      END IF;
+      --
+-- 2016/10/05 Ver.1.11 Y.Koh DEL Start
+--      IF (lv_cur_kbn  = cv_cur_kbn_1) THEN      -- データ取得パターン１
+--        OPEN  svf_data_cur1;
+--        FETCH svf_data_cur1  INTO  svf_data_rec;
+--        -- 出力対象データ０件
+--        IF (svf_data_cur1%NOTFOUND) THEN
+--          lv_zero_message := xxccp_common_pkg.get_msg(
+--                               iv_application  => cv_short_name_xxcoi
+--                              ,iv_name         => cv_msg_xxcoi1_00008
+--                             );
+--        END IF;
+--        --
+-- 2016/10/05 Ver.1.11 Y.Koh DEL End
+      IF (lv_cur_kbn  = cv_cur_kbn_2) THEN      -- データ取得パターン２
+        OPEN  svf_data_cur2;
         FETCH svf_data_cur2  INTO  svf_data_rec;
-        EXIT  work_ins_loop  WHEN  svf_data_cur2%NOTFOUND;
+        -- 出力対象データ０件
+        IF (svf_data_cur2%NOTFOUND) THEN
+          lv_zero_message := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_short_name_xxcoi
+                              ,iv_name         => cv_msg_xxcoi1_00008
+                             );
+        END IF;
+        --
+      ELSIF (lv_cur_kbn  = cv_cur_kbn_3) THEN      -- データ取得パターン３
+        OPEN  svf_data_cur3;
+        FETCH svf_data_cur3  INTO  svf_data_rec;
+        -- 出力対象データ０件
+        IF (svf_data_cur3%NOTFOUND) THEN
+          lv_zero_message := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_short_name_xxcoi
+                              ,iv_name         => cv_msg_xxcoi1_00008
+                             );
+        END IF;
+        --
+      ELSIF (lv_cur_kbn  = cv_cur_kbn_4) THEN      -- データ取得パターン４
+        OPEN  svf_data_cur4;
+        FETCH svf_data_cur4  INTO  svf_data_rec;
+        -- 出力対象データ０件
+        IF (svf_data_cur4%NOTFOUND) THEN
+          lv_zero_message := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_short_name_xxcoi
+                              ,iv_name         => cv_msg_xxcoi1_00008
+                             );
+        END IF;
+        --
+      END IF;
+      --
+      <<work_ins_loop>>
+      LOOP
+        -- 対象件数カウント
+        gn_target_cnt :=  gn_target_cnt + 1;
+        --
+        -- ===============================
+        --  A-4.ワークテーブルデータ登録
+        -- ===============================
+        ins_svf_data(
+           ir_svf_data  =>  svf_data_rec    -- CSV出力用データ
+          ,in_slit_id   =>  gn_target_cnt   -- 処理連番
+          ,iv_message   =>  lv_zero_message -- ０件メッセージ
+          ,ov_errbuf    =>  lv_errbuf       -- エラー・メッセージ           --# 固定 #
+          ,ov_retcode   =>  lv_retcode      -- リターン・コード             --# 固定 #
+          ,ov_errmsg    =>  lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          -- エラー処理
+          RAISE global_process_expt;
+        END IF;
+        --
+        -- 対象データ０件の場合、ワークテーブル作成処理終了
+        EXIT  work_ins_loop WHEN  lv_zero_message IS NOT NULL;
+        --
+        -- 対象データ取得
+-- 2016/10/05 Ver.1.11 Y.Koh DEL Start
+--        IF (lv_cur_kbn  =  cv_cur_kbn_1)  THEN
+--          FETCH svf_data_cur1  INTO  svf_data_rec;
+--          EXIT  work_ins_loop  WHEN  svf_data_cur1%NOTFOUND;
+--          --
+-- 2016/10/05 Ver.1.11 Y.Koh DEL End
+        IF (lv_cur_kbn  =  cv_cur_kbn_2)  THEN
+          FETCH svf_data_cur2  INTO  svf_data_rec;
+          EXIT  work_ins_loop  WHEN  svf_data_cur2%NOTFOUND;
+          --
+        ELSIF (lv_cur_kbn  =  cv_cur_kbn_3)  THEN
+          FETCH svf_data_cur3  INTO  svf_data_rec;
+          EXIT  work_ins_loop  WHEN  svf_data_cur3%NOTFOUND;
+          --
+        ELSIF (lv_cur_kbn  =  cv_cur_kbn_4)  THEN
+          FETCH svf_data_cur4  INTO  svf_data_rec;
+          EXIT  work_ins_loop  WHEN  svf_data_cur4%NOTFOUND;
+          --
+        END IF;
+        --
+      END LOOP work_ins_loop;
+      --
+      -- カーソルクローズ
+-- 2016/10/05 Ver.1.11 Y.Koh DEL Start
+--      IF (lv_cur_kbn  =  cv_cur_kbn_1)  THEN
+--        CLOSE svf_data_cur1;
+--        --
+-- 2016/10/05 Ver.1.11 Y.Koh DEL End
+      IF (lv_cur_kbn  =  cv_cur_kbn_2)  THEN
+        CLOSE svf_data_cur2;
         --
       ELSIF (lv_cur_kbn  =  cv_cur_kbn_3)  THEN
-        FETCH svf_data_cur3  INTO  svf_data_rec;
-        EXIT  work_ins_loop  WHEN  svf_data_cur3%NOTFOUND;
+        CLOSE svf_data_cur3;
         --
       ELSIF (lv_cur_kbn  =  cv_cur_kbn_4)  THEN
-        FETCH svf_data_cur4  INTO  svf_data_rec;
-        EXIT  work_ins_loop  WHEN  svf_data_cur4%NOTFOUND;
+        CLOSE svf_data_cur4;
+        --
+      END IF;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+    -- 出力区分が30:拠点別、40:専門店別、50:百貨店別の場合
+    ELSIF (gv_param_output_kbn IN (cv_output_kbn_30, cv_output_kbn_40, cv_output_kbn_50)) THEN
+      --
+      IF (gv_param_base_code  IS NOT NULL)
+      THEN
+        -- 拠点別、専門店別、百貨店別のいづれか、かつ、拠点が設定されている場合
+        lv_cur_kbn := cv_cur_kbn_1;
+        --
+      ELSIF ((gv_param_output_kbn IN(cv_output_kbn_40, cv_output_kbn_50))
+          OR (gv_param_output_kbn = cv_output_kbn_30 AND  gv_user_basecode <> gv_item_dept_base_code)
+          AND (gv_param_base_code  IS NULL))
+      THEN
+        -- 拠点別（商品部以外）、専門店別、百貨店別のいづれか、かつ、拠点が設定されていない場合
+        lv_cur_kbn  :=  cv_cur_kbn_2;
+        --
+      ELSIF (gv_param_output_kbn = cv_output_kbn_30
+          AND  gv_user_basecode = gv_item_dept_base_code
+          AND  gv_param_base_code IS NULL
+            )
+      THEN
+        -- 拠点別（商品部）、かつ、拠点が設定されていない場合
+        lv_cur_kbn  :=  cv_cur_kbn_3;
         --
       END IF;
       --
-    END LOOP work_ins_loop;
-    --
-    -- カーソルクローズ
-    IF (lv_cur_kbn  =  cv_cur_kbn_1)  THEN
-      CLOSE svf_data_cur1;
+      IF (lv_cur_kbn  = cv_cur_kbn_1) THEN      -- 拠点取得パターン１
+        OPEN  svf_base_cur1;
+        FETCH svf_base_cur1  INTO  svf_base_rec;
       --
-    ELSIF (lv_cur_kbn  =  cv_cur_kbn_2)  THEN
-      CLOSE svf_data_cur2;
+      ELSIF (lv_cur_kbn  = cv_cur_kbn_2) THEN   -- 拠点取得パターン２
+        OPEN  svf_base_cur2;
+        FETCH svf_base_cur2  INTO  svf_base_rec;
       --
-    ELSIF (lv_cur_kbn  =  cv_cur_kbn_3)  THEN
-      CLOSE svf_data_cur3;
+      ELSIF (lv_cur_kbn  = cv_cur_kbn_3) THEN   -- 拠点取得パターン３
+        OPEN  svf_base_cur3;
+        FETCH svf_base_cur3  INTO  svf_base_rec;
+      END IF;
+      <<work_ins_base_loop>>
+      LOOP
+        --対象データ無しメッセージを初期化
+        lv_zero_message_base := NULL;
+        --拠点別受払残高取得用カーソルオープン
+        OPEN svf_data_cur5(svf_base_rec.base_code);
+        FETCH svf_data_cur5  INTO  svf_data_rec;
+        --受払残高データが存在しなかった場合は対象データ無しメッセージを設定
+        IF (svf_data_cur5%NOTFOUND) THEN
+          lv_zero_message_base := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_short_name_xxcoi
+                              ,iv_name         => cv_msg_xxcoi1_00008
+                             );
+          --対象データ無しの拠点コードおよび拠点名を設定
+          svf_data_rec.base_code    := svf_base_rec.base_code;
+          svf_data_rec.account_name := svf_base_rec.account_name;
+        END IF;
+        --
+        <<work_ins_loop>>
+        LOOP
+          gn_process_cnt := gn_process_cnt + 1;
+          --受払残高データが存在する場合
+          IF lv_zero_message_base IS NULL THEN
+            -- 対象件数カウント
+            gn_target_cnt :=  gn_target_cnt + 1;
+          END IF;
+          -- ===============================
+          --  A-4.ワークテーブルデータ登録
+          -- ===============================
+          ins_svf_data(
+             ir_svf_data  =>  svf_data_rec    -- CSV出力用データ
+            ,in_slit_id   =>  gn_process_cnt  -- 処理連番
+            ,iv_message   =>  lv_zero_message_base -- ０件メッセージ
+            ,ov_errbuf    =>  lv_errbuf       -- エラー・メッセージ           --# 固定 #
+            ,ov_retcode   =>  lv_retcode      -- リターン・コード             --# 固定 #
+            ,ov_errmsg    =>  lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          -- 終了パラメータ判定
+          IF (lv_retcode = cv_status_error) THEN
+            -- エラー処理
+            RAISE global_process_expt;
+          END IF;
+          --
+          -- 対象データ０件の場合、ワークテーブル作成処理終了
+          FETCH svf_data_cur5  INTO  svf_data_rec;
+          EXIT  work_ins_loop WHEN  svf_data_cur5%NOTFOUND;
+        --
+        END LOOP work_ins_loop;
+        --
+        CLOSE svf_data_cur5;
+        --
+        IF (lv_cur_kbn  =  cv_cur_kbn_1)  THEN
+          FETCH svf_base_cur1  INTO  svf_base_rec;
+          EXIT  work_ins_base_loop  WHEN  svf_base_cur1%NOTFOUND;
+        --
+        ELSIF (lv_cur_kbn  =  cv_cur_kbn_2)  THEN
+          FETCH svf_base_cur2  INTO  svf_base_rec;
+          EXIT  work_ins_base_loop  WHEN  svf_base_cur2%NOTFOUND;
+          --
+        ELSIF (lv_cur_kbn  =  cv_cur_kbn_3)  THEN
+          FETCH svf_base_cur3  INTO  svf_base_rec;
+          EXIT  work_ins_base_loop  WHEN  svf_base_cur3%NOTFOUND;
+          --
+        END IF;
+      END LOOP work_ins_base_loop;
       --
-    ELSIF (lv_cur_kbn  =  cv_cur_kbn_4)  THEN
-      CLOSE svf_data_cur4;
+      IF (lv_cur_kbn  =  cv_cur_kbn_1)  THEN
+        CLOSE svf_base_cur1;
+      ELSIF (lv_cur_kbn  =  cv_cur_kbn_2)  THEN
+        CLOSE svf_base_cur2;
+      ELSIF (lv_cur_kbn  =  cv_cur_kbn_3)  THEN
+        CLOSE svf_base_cur3;
+      END IF;
       --
     END IF;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
     --
     -- コミット処理
     COMMIT;
@@ -1904,8 +2188,12 @@ AS
     WHEN global_process_expt THEN
       -- 処理件数
       gn_error_cnt  :=  gn_error_cnt + 1;
-      IF (svf_data_cur1%ISOPEN) THEN
-         CLOSE svf_data_cur1;
+-- 2016/10/05 Ver.1.11 Y.Koh MOD Start
+--      IF (svf_data_cur1%ISOPEN) THEN
+--         CLOSE svf_data_cur1;
+      IF (svf_data_cur5%ISOPEN) THEN
+         CLOSE svf_data_cur5;
+-- 2016/10/05 Ver.1.11 Y.Koh MOD End
       ELSIF (svf_data_cur2%ISOPEN) THEN
          CLOSE svf_data_cur2;
       ELSIF (svf_data_cur3%ISOPEN) THEN
@@ -1913,6 +2201,15 @@ AS
       ELSIF (svf_data_cur4%ISOPEN) THEN
          CLOSE svf_data_cur4;
       END IF;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+      IF (svf_base_cur1%ISOPEN) THEN
+         CLOSE svf_base_cur1;
+      ELSIF (svf_base_cur2%ISOPEN) THEN
+         CLOSE svf_base_cur2;
+      ELSIF (svf_base_cur3%ISOPEN) THEN
+         CLOSE svf_base_cur3;
+      END IF;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
       --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -1921,8 +2218,12 @@ AS
     WHEN global_api_others_expt THEN
       -- 処理件数
       gn_error_cnt  :=  gn_error_cnt + 1;
-      IF (svf_data_cur1%ISOPEN) THEN
-         CLOSE svf_data_cur1;
+-- 2016/10/05 Ver.1.11 Y.Koh MOD Start
+--      IF (svf_data_cur1%ISOPEN) THEN
+--         CLOSE svf_data_cur1;
+      IF (svf_data_cur5%ISOPEN) THEN
+         CLOSE svf_data_cur5;
+-- 2016/10/05 Ver.1.11 Y.Koh MOD End
       ELSIF (svf_data_cur2%ISOPEN) THEN
          CLOSE svf_data_cur2;
       ELSIF (svf_data_cur3%ISOPEN) THEN
@@ -1930,6 +2231,15 @@ AS
       ELSIF (svf_data_cur4%ISOPEN) THEN
          CLOSE svf_data_cur4;
       END IF;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+      IF (svf_base_cur1%ISOPEN) THEN
+         CLOSE svf_base_cur1;
+      ELSIF (svf_base_cur2%ISOPEN) THEN
+         CLOSE svf_base_cur2;
+      ELSIF (svf_base_cur3%ISOPEN) THEN
+         CLOSE svf_base_cur3;
+      END IF;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
@@ -1937,8 +2247,12 @@ AS
     WHEN OTHERS THEN
       -- 処理件数
       gn_error_cnt  :=  gn_error_cnt + 1;
-      IF (svf_data_cur1%ISOPEN) THEN
-         CLOSE svf_data_cur1;
+-- 2016/10/05 Ver.1.11 Y.Koh MOD Start
+--      IF (svf_data_cur1%ISOPEN) THEN
+--         CLOSE svf_data_cur1;
+      IF (svf_data_cur5%ISOPEN) THEN
+         CLOSE svf_data_cur5;
+-- 2016/10/05 Ver.1.11 Y.Koh MOD End
       ELSIF (svf_data_cur2%ISOPEN) THEN
          CLOSE svf_data_cur2;
       ELSIF (svf_data_cur3%ISOPEN) THEN
@@ -1946,6 +2260,15 @@ AS
       ELSIF (svf_data_cur4%ISOPEN) THEN
          CLOSE svf_data_cur4;
       END IF;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD Start
+      IF (svf_base_cur1%ISOPEN) THEN
+         CLOSE svf_base_cur1;
+      ELSIF (svf_base_cur2%ISOPEN) THEN
+         CLOSE svf_base_cur2;
+      ELSIF (svf_base_cur3%ISOPEN) THEN
+         CLOSE svf_base_cur3;
+      END IF;
+-- 2016/10/05 Ver.1.11 Y.Koh ADD End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
