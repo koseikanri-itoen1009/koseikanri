@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2010/10/27    1.12  H.Sasaki         [E_本稼動_05114]PT対応
  *  2014/03/27    1.13  K.Nakamura       [E_本稼動_11556]資材取引の抽出条件修正、不要な定数・変数削除
  *  2015/03/16    1.14  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
+ *  2016/10/14    1.15  Y.Koh            障害対応E_本稼動_13807
  *
  *****************************************************************************************/
 --
@@ -113,6 +114,9 @@ AS
   cv_1                 CONSTANT VARCHAR2(1)   := '1';              -- 定数
   cv_2                 CONSTANT VARCHAR2(1)   := '2';              -- 定数
   cv_3                 CONSTANT VARCHAR2(1)   := '3';              -- 定数
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+  cv_status_a          CONSTANT VARCHAR2(1)   := 'A';              -- 定数
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
 -- == 2014/03/27 V1.13 Deleted START ===============================================================
 --  cv_31                CONSTANT VARCHAR2(2)   := '31';             -- 定数
 -- == 2014/03/27 V1.13 Deleted END   ===============================================================
@@ -200,11 +204,34 @@ AS
   TYPE gr_base_num_rec IS RECORD
     (
       hca_cust_num                   hz_cust_accounts.account_number%TYPE    -- 拠点コード
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+     ,hca_cust_name                  hz_cust_accounts.account_name%TYPE      -- 拠点名称
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
     );
 --
   --  拠点情報格納用テーブル
   TYPE gt_base_num_ttype IS TABLE OF gr_base_num_rec INDEX BY BINARY_INTEGER;
 --
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+  -- 取引タイプ情報格納用レコード変数
+  TYPE gr_tran_type_rec IS RECORD
+    (
+      transaction_type_id            mtl_transaction_types.transaction_type_id%TYPE    -- 取引タイプID
+     ,transaction_type_name          mtl_transaction_types.transaction_type_name%TYPE  -- 取引タイプ名
+    );
+--
+  -- 取引タイプ情報格納用テーブル
+  TYPE gr_tran_type_ttype IS TABLE OF gr_tran_type_rec INDEX BY BINARY_INTEGER;
+--
+  -- 処理済取引タイプ情報格納用レコード変数
+  TYPE gr_checked_tran_type_rec IS RECORD
+    (
+      transaction_type_id            mtl_transaction_types.transaction_type_id%TYPE    -- 取引タイプID
+    );
+--
+  --  取引タイプ情報格納用テーブル
+  TYPE gr_checked_tran_type_ttype IS TABLE OF gr_checked_tran_type_rec INDEX BY VARCHAR2(5000);
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -234,6 +261,10 @@ AS
 -- == 2015/03/16 V1.14 Added START ==============================================================
   gt_inv_cl_char            fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- 在庫確定印字文字
 -- == 2015/03/16 V1.14 Added END   ==============================================================
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+  gt_tran_type_tab           gr_tran_type_ttype;
+  gt_checked_tran_type_tab   gr_checked_tran_type_ttype;
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
 --
   /**********************************************************************************
    * Procedure Name   : del_work
@@ -1114,6 +1145,9 @@ AS
     ln_dlv_cost_budget_amt         NUMBER;                                             -- 運送費
     lv_discrete_cost               xxcmm_system_items_b_hst.discrete_cost%TYPE;        -- 営業原価
     ln_discrete_cost               NUMBER;                                             -- 営業原価(型変換) 
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+    lv_nodata_msg                  VARCHAR2(50);
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
 -- == 2014/03/27 V1.13 Deleted START ===============================================================
 --    ln_cnt                         NUMBER       DEFAULT  0;          -- ループカウンタ
 --    lv_zero_message                VARCHAR2(30) DEFAULT  NULL;       -- ゼロ件メッセージ
@@ -1615,6 +1649,7 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+
 --
     -- ***************************************
     -- ***        ループ処理の記述         ***
@@ -1820,11 +1855,64 @@ AS
       IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt ;
       END IF;
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+      -- 処理した取引タイプを格納
+      IF ( NOT ( gt_checked_tran_type_tab.EXISTS(lr_info_kuragae_rec.transaction_type_id) ) ) THEN
+        gt_checked_tran_type_tab(lr_info_kuragae_rec.transaction_type_id).transaction_type_id := lr_info_kuragae_rec.transaction_type_id;
+      END IF;
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
 --
     END LOOP;
 --    
     -- カーソルクローズ
     CLOSE info_kuragae_cur;
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+    -- ==============================================
+    --  ワークテーブルデータ登録(A-13)
+    -- ==============================================
+    -- 0件メッセージの取得
+    lv_nodata_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_app_name
+                        ,iv_name         => cv_msg_xxcoi00008
+                       );
+--
+    -- 取引タイプループ
+    <<tran_type_loop>>
+    FOR ln_loop_cnt IN 1 .. gt_tran_type_tab.COUNT LOOP
+      -- 処理済でない場合
+      IF ( NOT ( gt_checked_tran_type_tab.EXISTS(gt_tran_type_tab(ln_loop_cnt).transaction_type_id) ) ) THEN
+        --  ワークテーブルデータ登録
+        ins_work(
+          gt_base_num_tab(gn_base_loop_cnt).hca_cust_num        -- 出庫拠点
+         ,gt_base_num_tab(gn_base_loop_cnt).hca_cust_name       -- 出庫拠点名
+         ,gt_tran_type_tab(ln_loop_cnt).transaction_type_id     -- 取引タイプID
+         ,gt_tran_type_tab(ln_loop_cnt).transaction_type_name   -- 取引タイプ名
+         ,NULL                                                  -- 取引タイプサブID
+         ,NULL                                                  -- 入庫拠点
+         ,NULL                                                  -- 入庫拠点名
+         ,NULL                                                  -- 取引日
+         ,NULL                                                  -- 商品
+         ,NULL                                                  -- 商品名
+         ,NULL                                                  -- 伝票No
+         ,NULL                                                  -- 取引数量
+         ,NULL                                                  -- 営業原価額
+         ,NULL                                                  -- 振替運送費
+         ,lv_nodata_msg                                         -- 0件メッセージ
+         ,lv_errbuf                                             -- エラー・メッセージ           --# 固定 #
+         ,lv_retcode                                            -- リターン・コード             --# 固定 #
+         ,lv_errmsg                                             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+--
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt ;
+        END IF;
+      END IF;
+--
+    END LOOP tran_type_loop;
+--
+    -- テーブル初期化
+    gt_checked_tran_type_tab.DELETE;
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
 --
     -- コミット処理
     COMMIT;
@@ -1909,10 +1997,17 @@ AS
     CURSOR info_base1_cur
     IS
       SELECT hca.account_number account_num                         -- 顧客コード
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+            ,SUBSTRB(hca.account_name,1,8) account_name             -- 出庫拠点名
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
       FROM   hz_cust_accounts hca                                   -- 顧客マスタ
             ,xxcmm_cust_accounts xca                                -- 顧客追加情報アドオンマスタ
       WHERE  hca.cust_account_id = xca.customer_id
         AND  hca.customer_class_code = cv_1
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+        AND  hca.status = cv_status_a
+        AND  hca.account_number NOT LIKE '2%'
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
         AND  hca.account_number = NVL( gr_param.out_kyoten,hca.account_number )
         AND  xca.management_base_code = gv_base_code
       ORDER BY hca.account_number
@@ -1922,8 +2017,15 @@ AS
     CURSOR info_base2_cur
     IS
       SELECT  hca.account_number account_num                         -- 顧客コード
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+             ,SUBSTRB(hca.account_name,1,8) account_name             -- 出庫拠点名
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
         FROM  hz_cust_accounts hca                                   -- 顧客マスタ
        WHERE  hca.customer_class_code = cv_1
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+         AND  hca.status = cv_status_a
+         AND  hca.account_number NOT LIKE '2%'
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
          AND  hca.account_number = NVL( gr_param.out_kyoten,hca.account_number )
        ORDER BY hca.account_number
     ;
@@ -2440,6 +2542,15 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+    -- 参照タイプ
+    cv_tran_type                   CONSTANT VARCHAR2(30)  := 'XXCOI1_TRANSACTION_TYPE_NAME';		-- ユーザー定義取引タイプ名称
+    -- 参照コード
+    cv_tran_type_kuragae           CONSTANT VARCHAR2(2)   := '20';   -- 取引タイプコード 倉替
+    cv_tran_type_kojo_henpin       CONSTANT VARCHAR2(2)   := '90';   -- 取引タイプコード 工場返品
+    cv_tran_type_kojo_kuragae      CONSTANT VARCHAR2(3)   := '110';  -- 取引タイプコード 工場倉替
+    cv_tran_type_haikyaku          CONSTANT VARCHAR2(3)   := '130';  -- 取引タイプコード 廃却
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
 --
     -- *** ローカル変数 ***
     lv_nodata_msg VARCHAR2(50);
@@ -2508,6 +2619,23 @@ AS
     -- 拠点情報が１件以上取得出来た場合
     IF ( gn_base_cnt > 0 ) THEN
 --
+-- 2016/10/14 Ver.1.15 Y.Koh ADD Start
+      -- =====================================================
+      -- 取引タイプ情報取得(A-12)
+      -- =====================================================
+      SELECT mtt.transaction_type_id   AS transaction_type_id
+            ,mtt.transaction_type_name AS transaction_type_name
+      BULK COLLECT INTO gt_tran_type_tab
+      FROM  mtl_transaction_types mtt
+           ,fnd_lookup_values_vl  flv
+      WHERE  flv.lookup_type = cv_tran_type
+      AND    flv.lookup_code IN (cv_tran_type_kuragae,cv_tran_type_kojo_henpin,cv_tran_type_kojo_kuragae,cv_tran_type_haikyaku)
+      AND    flv.enabled_flag = 'Y'
+      AND    SYSDATE BETWEEN NVL(flv.start_date_active,SYSDATE) AND NVL(flv.end_date_active,SYSDATE)
+      AND    mtt.transaction_type_name = flv.meaning
+      AND    mtt.transaction_type_id = NVL(gr_param.transaction_type,mtt.transaction_type_id);
+-- 2016/10/14 Ver.1.15 Y.Koh ADD End
+--
       -- 拠点単位ループ開始
       <<gt_param_tab_loop>>
        FOR gn_base_loop_cnt IN 1 .. gn_base_cnt LOOP
@@ -2527,10 +2655,13 @@ AS
          END IF;
 --
        END LOOP gt_param_tab_loop;
-    END IF;
---
-    -- 出力対象件数が0件の場合、ワークテーブルにパラメータ情報のみを登録
-    IF (gn_target_cnt = 0) THEN
+-- 2016/10/14 Ver.1.15 Y.Koh MOD Start
+--    END IF;
+----
+--    -- 出力対象件数が0件の場合、ワークテーブルにパラメータ情報のみを登録
+--    IF (gn_target_cnt = 0) THEN
+    ELSE
+-- 2016/10/14 Ver.1.15 Y.Koh MOD End
 --
       -- 0件メッセージの取得
       lv_nodata_msg := xxccp_common_pkg.get_msg(
