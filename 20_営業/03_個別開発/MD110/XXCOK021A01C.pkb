@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *                                       [E_本稼動_08316] 請求および支払金額の妥当性チェック追加
  *  2012/11/22    1.12  M.Nagai          [E_本稼動_09766] チェック追加：勘定科目転記可否、AP会計期間内、顧客マスタ関連
  *  2013/04/03    1.13  S.Niki           [E_本稼動_10393] 支払予定日チェック変更
+ *  2016/12/06    1.14  S.Niki           [E_本稼動_13321] 重複データ登録防止
  *
  *****************************************************************************************/
 --
@@ -134,6 +135,9 @@ AS
   cv_message_10385           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10385';   --支払数量・支払単価・支払金額チェック
   cv_message_10388           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10388';   --拠点コードステータスエラー
   cv_message_10389           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10389';   --顧客コードステータスエラー
+-- Ver.1.14 ADD START
+  cv_message_10543           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10543';   --同一内容アップロードエラーメッセージ
+-- Ver.1.14 ADD END
   cv_message_90000           CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90000';   --対象件数メッセージ
   cv_message_90001           CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90001';   --成功件数メッセージ
   cv_message_90002           CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90002';   --エラー件数メッセージ
@@ -186,6 +190,9 @@ AS
 -- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
   cv_date_format3            CONSTANT VARCHAR2(8)   := 'FXDD';         --月末日のフォーマット(DD)
 -- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
+-- Ver.1.14 ADD START
+  cv_date_format4            CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';   --年月日のフォーマット(YYYY/MM/DD)
+-- Ver.1.14 ADD END
 -- 2009/12/25 Ver.1.8 [E_本稼動_00608] SCS K.Nakamura ADD START
   cv_number_format1          CONSTANT VARCHAR2(7)   := '9999999';      --勘定科目支払時の単価フォーマット
   cv_number_format2          CONSTANT VARCHAR2(10)  := '9999999.99';   --勘定科目支払時以外の単価フォーマット
@@ -274,6 +281,12 @@ AS
   -- =============================================================================
   -- *** ロックエラーハンドラ ***
   global_lock_fail          EXCEPTION;
+-- Ver.1.14 ADD START
+  -- *** 一意制約違反エラーハンドラ ***
+  global_unique_fail        EXCEPTION;
+  -- *** レコード登録エラーハンドラ ***
+  global_ins_data_expt      EXCEPTION;
+-- Ver.1.14 ADD END
   -- *** 処理部共通例外 ***
   global_process_expt       EXCEPTION;
   -- *** 共通関数例外 ***
@@ -282,6 +295,9 @@ AS
   global_api_others_expt    EXCEPTION;
 --
   PRAGMA EXCEPTION_INIT(global_lock_fail, -54);
+-- Ver.1.14 ADD START
+  PRAGMA EXCEPTION_INIT(global_unique_fail, -1);
+-- Ver.1.14 ADD END
   PRAGMA EXCEPTION_INIT(global_api_others_expt, -20000);
 --
   /**********************************************************************************
@@ -499,40 +515,62 @@ AS
       SELECT xxcok_wholesale_bill_head_s01.NEXTVAL AS xxcok_wholesale_bill_head_s01
       INTO   ln_wholesale_bill_header_id
       FROM   DUAL;
-      -- =============================================================================
-      -- 2.問屋請求書ヘッダーテーブルへレコードの追加
-      -- =============================================================================
-      INSERT INTO xxcok_wholesale_bill_head(
-        wholesale_bill_header_id                             --問屋請求書ヘッダーID
-      , base_code                                            --拠点コード
-      , cust_code                                            --顧客コード
-      , supplier_code                                        --仕入先コード
-      , expect_payment_date                                  --支払予定日
-      , created_by                                           --作成者
-      , creation_date                                        --作成日
-      , last_updated_by                                      --最終更新者
-      , last_update_date                                     --最終更新日
-      , last_update_login                                    --最終更新ログイン
-      , request_id                                           --要求ID
-      , program_application_id                               --コンカレント・プログラム・アプリケーションID
-      , program_id                                           --コンカレント・プログラムID
-      , program_update_date                                  --プログラム更新日
-      ) VALUES (
-        ln_wholesale_bill_header_id                          --wholesale_bill_header_id
-      , iv_base_code                                         --base_code
-      , iv_cust_code                                         --cust_code
-      , iv_supplier_code                                     --supplier_code
-      , TO_DATE( iv_expect_payment_date, cv_date_format1 )   --expect_payment_date
-      , cn_created_by                                        --created_by
-      , SYSDATE                                              --creation_date
-      , cn_last_updated_by                                   --last_updated_by
-      , SYSDATE                                              --last_update_date
-      , cn_last_update_login                                 --last_update_login
-      , cn_request_id                                        --request_id
-      , cn_program_application_id                            --program_application_id
-      , cn_program_id                                        --program_id
-      , SYSDATE                                              --program_update_date
-      );
+-- Ver.1.14 ADD START
+      BEGIN
+-- Ver.1.14 ADD END
+        -- =============================================================================
+        -- 2.問屋請求書ヘッダーテーブルへレコードの追加
+        -- =============================================================================
+        INSERT INTO xxcok_wholesale_bill_head(
+          wholesale_bill_header_id                             --問屋請求書ヘッダーID
+        , base_code                                            --拠点コード
+        , cust_code                                            --顧客コード
+        , supplier_code                                        --仕入先コード
+        , expect_payment_date                                  --支払予定日
+        , created_by                                           --作成者
+        , creation_date                                        --作成日
+        , last_updated_by                                      --最終更新者
+        , last_update_date                                     --最終更新日
+        , last_update_login                                    --最終更新ログイン
+        , request_id                                           --要求ID
+        , program_application_id                               --コンカレント・プログラム・アプリケーションID
+        , program_id                                           --コンカレント・プログラムID
+        , program_update_date                                  --プログラム更新日
+        ) VALUES (
+          ln_wholesale_bill_header_id                          --wholesale_bill_header_id
+        , iv_base_code                                         --base_code
+        , iv_cust_code                                         --cust_code
+        , iv_supplier_code                                     --supplier_code
+        , TO_DATE( iv_expect_payment_date, cv_date_format1 )   --expect_payment_date
+        , cn_created_by                                        --created_by
+        , SYSDATE                                              --creation_date
+        , cn_last_updated_by                                   --last_updated_by
+        , SYSDATE                                              --last_update_date
+        , cn_last_update_login                                 --last_update_login
+        , cn_request_id                                        --request_id
+        , cn_program_application_id                            --program_application_id
+        , cn_program_id                                        --program_id
+        , SYSDATE                                              --program_update_date
+        );
+-- Ver.1.14 ADD START
+      EXCEPTION
+        -- *** 一意制約違反エラー例外ハンドラ ***
+        WHEN global_unique_fail THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcok_appl_name
+                       , iv_name         => cv_message_10543
+                       , iv_token_name1  => cv_token_kyoten_code
+                       , iv_token_value1 => iv_base_code
+                       , iv_token_name2  => cv_token_customer_code
+                       , iv_token_value2 => iv_cust_code
+                       , iv_token_name3  => cv_token_vendor_code
+                       , iv_token_value3 => iv_supplier_code
+                       , iv_token_name4  => cv_token_payment_date
+                       , iv_token_value4 => TO_CHAR( TO_DATE( iv_expect_payment_date, cv_date_format4 ) , cv_date_format4 )
+                       );
+          RAISE global_ins_data_expt;
+      END;
+-- Ver.1.14 ADD END
     END;
     -- =============================================================================
     -- 支払数量、支払単価、支払金額がすべて'NULL'の場合、A-3で取得した
@@ -621,6 +659,13 @@ AS
     -- *** 成功件数カウント ***
     gn_normal_cnt := gn_normal_cnt + 1;
   EXCEPTION
+-- Ver.1.14 ADD START
+    -- *** レコード登録エラーハンドラ ***
+    WHEN global_ins_data_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1 , 5000 );
+      ov_retcode := cv_status_error;
+-- Ver.1.14 ADD END
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
@@ -682,7 +727,10 @@ AS
        WHERE xwbl.status IS NULL
 -- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura MOD START
 --         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n01) */
-         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n02) */
+-- Ver.1.14 MOD START
+--         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n02) */
+         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_u01) */
+-- Ver.1.14 MOD END
 -- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura MOD END
                              'X'
                         FROM xxcok_wholesale_bill_head     xwbh
@@ -731,7 +779,10 @@ AS
        WHERE xwbl.status IS NULL
 -- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD START
 --         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n01) */
-         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n02) */
+-- Ver.1.14 MOD START
+--         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_n02) */
+         AND EXISTS ( SELECT /*+ LEADING(xtwb) INDEX(xwbh, xxcok_wholesale_bill_head_u01) */
+-- Ver.1.14 MOD END
 -- 2009/12/24 Ver.1.7 [E_本稼動_00554] SCS K.Nakamura ADD END
                              'X'
                         FROM xxcok_wholesale_bill_head     xwbh
