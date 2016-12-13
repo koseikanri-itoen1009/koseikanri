@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.69
+ * Version          : 1.70
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -169,6 +169,7 @@ AS
  *  2011/07/04    1.67 SCS    仁木重人   E_本稼動_06868    顧客発注番号の半角文字チェックを追加
  *  2014/12/25    1.68 SCSK   山下翔太   E_本稼動_12237    倉庫管理システム対応（ロット情報保持マスタ反映処理を追加）
  *  2015/03/27    1.69 SCSK   山下翔太   E_本稼動_12237    倉庫管理システム対応（不具合対応）
+ *  2016/10/12    1.70 SCSK   桐生和幸   E_本稼動_13899    配送No重複対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -365,6 +366,11 @@ AS
   -- ロット情報保持マスタ反映エラー
   gv_msg_93a_189                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13189';
 -- 2014/12/25 E_本稼動_12237 V1.68 Add END
+-- 2016/10/12 Ver.1.70 Add Start
+  -- 配送計画チェックエラー
+  gv_msg_93a_751                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13751';
+  gv_msg_93a_752                CONSTANT VARCHAR2(15) := 'APP-XXWSH-13752';
+-- 2016/10/12 Ver.1.70 Add End
 --
   -- トークン
   gv_tkn_cnt                     CONSTANT VARCHAR2(3)  := 'CNT';         -- カウントトークン
@@ -384,6 +390,12 @@ AS
   gv_param9_token                CONSTANT VARCHAR2(6)  := 'PARAM9';      -- 参照値トークン
   gv_param10_token               CONSTANT VARCHAR2(7)  := 'PARAM10';     -- 参照値トークン
   gv_param11_token               CONSTANT VARCHAR2(7)  := 'PARAM11';     -- 参照値トークン
+-- 2016/10/12 Ver.1.70 Add Start
+  gv_shipped_date_token          CONSTANT VARCHAR2(12) := 'SHIPPED_DATE'; -- 出荷日トークン
+  gv_arrival_date_token          CONSTANT VARCHAR2(12) := 'ARRIVAL_DATE'; -- 着荷日トークン
+  gv_carrier_code_token          CONSTANT VARCHAR2(12) := 'CARRIER_CODE'; -- 運送業者トークン
+  gv_delivery_type_token         CONSTANT VARCHAR2(13) := 'DELIVERY_TYPE'; -- 配送区分トークン
+-- 2016/10/12 Ver.1.70 Add End
   gv_param1_token01_nm           CONSTANT VARCHAR2(30) := 'パレット回収枚数';
   gv_param1_token02_nm           CONSTANT VARCHAR2(30) := 'パレット使用枚数';
   gv_param1_token03_nm           CONSTANT VARCHAR2(30) := '出荷実績数量';
@@ -703,6 +715,10 @@ AS
 -- 2014/12/25 E_本稼動_12237 V1.68 Add START
   gv_cust_class_10               CONSTANT VARCHAR2(2) := '10';    -- 顧客区分(10)
 -- 2014/12/25 E_本稼動_12237 V1.68 Add END
+-- 2016/10/12 Ver.1.70 Add Start
+  gv_yes                         CONSTANT VARCHAR2(1) := 'Y';     -- 汎用Y
+  gv_no                          CONSTANT VARCHAR2(1) := 'N';     -- 汎用N
+-- 2016/10/12 Ver.1.70 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -7229,6 +7245,13 @@ AS
     lv_error_flg              VARCHAR2(1);                                     --エラーflag
     ln_err_flg                NUMBER := 0;
     lv_msg_buff               VARCHAR2(5000);
+-- 2016/10/12 Ver.1.70 Add Start
+    lt_shipped_date           xxwsh_carriers_schedule.shipped_date%TYPE;       --配車配送計画.出荷日
+    lt_arrival_date           xxwsh_carriers_schedule.arrival_date%TYPE;       --配車配送計画.着荷日
+    lt_carrier_code           xxwsh_carriers_schedule.carrier_code%TYPE;       --配車配送計画.運送業者
+    lt_delivery_type          xxwsh_carriers_schedule.delivery_type%TYPE;      --配車配送計画.配送区分
+    lv_req_exists_flag        VARCHAR2(1);                                     --別依頼存在flag
+-- 2016/10/12 Ver.1.70 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -7265,7 +7288,13 @@ AS
       lt_eos_data_type         := gr_interface_info_rec(i).eos_data_type;         -- IF_H.EOSデータ種別
       lt_weight_capacity_class := gr_interface_info_rec(i).weight_capacity_class; -- 重量容積区分
       lv_error_flg             := gr_interface_info_rec(i).err_flg;               -- エラーフラグ
-
+-- 2016/10/12 Ver.1.70 Add Start
+      lt_shipped_date          := NULL;
+      lt_arrival_date          := NULL;
+      lt_carrier_code          := NULL;
+      lt_delivery_type         := NULL;
+      lv_req_exists_flag       := gv_no;
+-- 2016/10/12 Ver.1.70 Add End
 -- 2009/02/20 本番障害#1199 ADD START 配送No/移動No-EOSデータ種別単位のエラーは基本的に明細単位（一部ヘッダー単位）で出力する。
       --********** debug_log ********** START ***
       debug_log(FND_FILE.LOG,'-----------------------------------------------------------');
@@ -7668,6 +7697,154 @@ AS
         END IF;
 --
       END IF;
+-- 2016/10/12 Ver.1.70 Add Start
+      -- エラーが無い場合
+      IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
+--
+        -- 配車配送計画アドオン作成対象の場合
+        IF ( gr_interface_info_rec(i).freight_charge_class = gv_include_exclude_1 ) THEN
+--
+          -- 配車配送計画の取得
+          BEGIN
+--
+            SELECT xcs.shipped_date  shipped_date     --出荷日
+                  ,xcs.arrival_date  arrival_date     --着荷日
+                  ,xcs.carrier_code  carrier_code     --運送業者
+                  ,xcs.delivery_type delivery_type    --配送区分
+                  ,CASE
+                     WHEN ( gr_interface_info_rec(i).eos_data_type IN ( gv_eos_data_cd_200  --200 有償出荷報告
+                                                                       ,gv_eos_data_cd_210  --210 拠点出荷確定報告
+                                                                       ,gv_eos_data_cd_215  --215 庭先出荷確定報告
+                                                                      ) ) THEN
+                       ( SELECT  gv_yes
+                         FROM    xxwsh_order_headers_all xoha
+                         WHERE   xoha.delivery_no  = xcs.delivery_no
+                         AND     xoha.request_no  <> gr_interface_info_rec(i).order_source_ref
+                         AND     ROWNUM            = 1
+                       )  --別の依頼Noの存在(受注ヘッダアドオンより)
+                     WHEN ( gr_interface_info_rec(i).eos_data_type IN ( gv_eos_data_cd_220  -- 220 移動出庫確定報告
+                                                                       ,gv_eos_data_cd_230  -- 230 移動入庫確定報告
+                                                                      ) ) THEN
+                       ( SELECT  gv_yes
+                         FROM    xxinv_mov_req_instr_headers xmrih
+                         WHERE   xmrih.delivery_no  = xcs.delivery_no
+                         AND     xmrih.mov_num     <> gr_interface_info_rec(i).order_source_ref
+                         AND     ROWNUM             = 1
+                       )  --別の依頼Noの存在(移動依頼/指示ヘッダ(アドオン)より)
+                   END               req_exists_flag  --別依頼存在flag
+            INTO   lt_shipped_date
+                  ,lt_arrival_date
+                  ,lt_carrier_code
+                  ,lt_delivery_type
+                  ,lv_req_exists_flag
+            FROM   xxwsh_carriers_schedule xcs  -- 配車配送計画（アドオン）
+            WHERE  xcs.delivery_no  = gr_interface_info_rec(i).delivery_no
+            AND    ROWNUM           = 1
+            ;
+--
+            -- 配車配送計画がある場合、出荷日・着荷日が既にクローズしている期間の場合エラーとする。
+            IF (
+                 ( gd_close_last_day >= LAST_DAY(lt_shipped_date) )  --出荷日
+                 OR
+                 ( gd_close_last_day >= LAST_DAY(lt_arrival_date) )  --着荷日
+               )
+            THEN
+--
+              lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                             gv_msg_kbn                                     -- 'XXWSH'
+                            ,gv_msg_93a_751          -- 配送計画エラーメッセージ（クローズ期間）
+                            ,gv_param1_token
+                            ,gr_interface_info_rec(i).delivery_no           -- IF_H.配送No
+                            ,gv_param2_token
+                            ,gr_interface_info_rec(i).order_source_ref      -- IF_H.受注ソース参照
+                            ,gv_shipped_date_token
+                            ,TO_CHAR(lt_shipped_date,'YYYY/MM/DD')          -- 配車配送計画.出荷日
+                            ,gv_arrival_date_token
+                            ,TO_CHAR(lt_arrival_date,'YYYY/MM/DD')          -- 配車配送計画.着荷日
+                            )
+                            ,1
+                            ,5000);
+              -- エラーフラグ
+              ln_err_flg := 1;
+              -- 処理ステータス：警告
+              ov_retcode := gv_status_warn;
+              -- 配送NO-EOSデータ種別単位にエラーflagセット
+              set_deliveryno_unit_errflg(
+                lt_delivery_no,         -- 配送No
+                lt_eos_data_type,       -- EOSデータ種別
+                gv_err_class,           -- エラー種別：エラー
+                lv_msg_buff,            -- エラー・メッセージ(出力用)
+                lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+                lv_retcode,             -- リターン・コード             --# 固定 #
+                lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+              );
+--
+            -- 出荷日・着荷日がクローズ期間で無い場合
+            ELSE
+--
+              -- 配車配送計画に別の依頼が紐づいている場合は、出荷日・着荷日・運送業者・配送区分が異なる場合エラーとする
+              IF ( lv_req_exists_flag = gv_yes ) THEN
+--
+                IF (
+                     ( lt_shipped_date  <> gr_interface_info_rec(i).shipped_date )          --出庫日
+                     OR
+                     ( lt_arrival_date  <> gr_interface_info_rec(i).arrival_date )          --着荷日
+                     OR
+                     ( lt_carrier_code  <> gr_interface_info_rec(i).freight_carrier_code )  --運送業者
+                     OR
+                     ( lt_delivery_type <> gr_interface_info_rec(i).shipping_method_code )  --配送区分
+                   )
+                THEN
+--
+                  lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                 gv_msg_kbn                                     -- 'XXWSH'
+                                ,gv_msg_93a_752          -- 配送計画エラーメッセージ（出庫日・着荷日・運送業者・配送区分）
+                                ,gv_param1_token
+                                ,gr_interface_info_rec(i).delivery_no           -- IF_H.配送No
+                                ,gv_param2_token
+                                ,gr_interface_info_rec(i).order_source_ref      -- IF_H.受注ソース参照
+                                ,gv_shipped_date_token
+                                ,TO_CHAR(lt_shipped_date,'YYYY/MM/DD')          -- 配車配送計画.出荷日
+                                ,gv_arrival_date_token
+                                ,TO_CHAR(lt_arrival_date,'YYYY/MM/DD')          -- 配車配送計画.着荷日
+                                ,gv_carrier_code_token
+                                ,lt_carrier_code                                -- 配車配送計画.運送業者
+                                ,gv_delivery_type_token
+                                ,lt_delivery_type                               -- 配車配送計画.配送区分
+                                )
+                                ,1
+                                ,5000);
+                  -- エラーフラグ
+                  ln_err_flg := 1;
+                  -- 処理ステータス：警告
+                  ov_retcode := gv_status_warn;
+                  -- 配送NO-EOSデータ種別単位にエラーflagセット
+                  set_deliveryno_unit_errflg(
+                    lt_delivery_no,         -- 配送No
+                    lt_eos_data_type,       -- EOSデータ種別
+                    gv_err_class,           -- エラー種別：エラー
+                    lv_msg_buff,            -- エラー・メッセージ(出力用)
+                    lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,             -- リターン・コード             --# 固定 #
+                    lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
+--
+                END IF;
+--
+              END IF;
+--
+            END IF;
+--
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+             -- 新規の配送Noの場合は何もしない
+             NULL;
+          END;
+--
+        END IF;
+--
+      END IF;
+-- 2016/10/12 Ver.1.70 Add End
 --
     END LOOP deliveryno_src_manyitem;
 --
