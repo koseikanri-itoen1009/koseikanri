@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS018A01C(body)
  * Description      : CSVデータアップロード（販売実績）
  * MD.050           : MD050_COS_018_A01_CSVデータアップロード（販売実績）
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/11/01    1.0   S.Niki           新規作成
+ *  2016/12/19    1.1   S.Niki           E_本稼動_13879追加対応
  *
  *****************************************************************************************/
 --
@@ -146,6 +147,9 @@ AS
   cv_get_bks_id                     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00060';    --GL会計帳簿ID
   cv_msg_max_date                   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00056';    --XXCOS:MAX日付
   cv_msg_org_code                   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00048';    --XXCOI:在庫組織コード
+-- Ver.1.1 ADD START
+  cv_msg_bp_sales_dlv_ptn_cls       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15122';    --XXCOS:取引先販売実績データ作成用納品形態区分
+-- Ver.1.1 ADD END
   cv_msg_cust_mst                   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00049';    --顧客マスタ
   cv_msg_lkp_code                   CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00046';    --クイックコード
   cv_msg_base_code                  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00055';    --拠点コード
@@ -186,6 +190,9 @@ AS
   cv_prf_bks_id                     CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';            --GL会計帳簿ID
   cv_prf_max_date                   CONSTANT VARCHAR2(50)  := 'XXCOS1_MAX_DATE';             --XXCOS:MAX日付
   cv_prf_org_code                   CONSTANT VARCHAR2(50)  := 'XXCOI1_ORGANIZATION_CODE';    --XXCOI:在庫組織コード
+-- Ver.1.1 ADD START
+  cv_prf_bp_sales_dlv_ptn_cls       CONSTANT VARCHAR2(50)  := 'XXCOS1_BP_SALES_DLV_PTN_CLS'; --XXCOS:取引先販売実績データ作成用納品形態区分
+-- Ver.1.1 ADD END
 --
   --クイックコード
   cv_look_file_upload_obj           CONSTANT VARCHAR2(50)  := 'XXCCP1_FILE_UPLOAD_OBJ';           --ファイルアップロードオブジェクト
@@ -349,6 +356,9 @@ AS
   gd_max_date                       DATE;                        --MAX日付
   gv_org_code                       VARCHAR2(50);                --在庫組織コード
   gn_org_id                         NUMBER;                      --在庫組織ID
+-- Ver.1.1 ADD START
+  gv_prf_bp_sales_dlv_ptn_cls       VARCHAR2(50);                --取引先販売実績データ作成用納品形態区分
+-- Ver.1.1 ADD END
 --
   --カウンタ他制御用
   gn_get_counter_data               NUMBER;                                             --データ数
@@ -578,6 +588,22 @@ AS
                      );
       RAISE global_get_profile_expt;
     END IF;
+-- Ver.1.1 ADD START
+--
+    ------------------------------------
+    -- XXCOS:取引先販売実績データ作成用納品形態区分
+    ------------------------------------
+    gv_prf_bp_sales_dlv_ptn_cls := FND_PROFILE.VALUE( cv_prf_bp_sales_dlv_ptn_cls );
+    -- プロファイル値が取得できない場合
+    IF ( gv_prf_bp_sales_dlv_ptn_cls IS NULL ) THEN
+      --キー情報の編集処理
+      lv_key_info := xxccp_common_pkg.get_msg(
+                       iv_application => cv_xxcos_appl_short_name
+                      ,iv_name        => cv_msg_bp_sales_dlv_ptn_cls
+                     );
+      RAISE global_get_profile_expt;
+    END IF;
+-- Ver.1.1 ADD END
 --
     -- ************************
     -- ***  在庫組織ID取得  ***
@@ -3304,7 +3330,10 @@ AS
     gr_sales_line_data1(gn_line_cnt1).dlv_invoice_line_number        := in_line_number;              --納品明細番号
     gr_sales_line_data1(gn_line_cnt1).order_invoice_line_number      := NULL;                        --注文明細番号
     gr_sales_line_data1(gn_line_cnt1).sales_class                    := cv_sales_class_vd;           --売上区分：VD売上
-    gr_sales_line_data1(gn_line_cnt1).delivery_pattern_class         := NULL;                        --納品形態区分
+-- Ver.1.1 MOD START
+--    gr_sales_line_data1(gn_line_cnt1).delivery_pattern_class         := NULL;                        --納品形態区分
+    gr_sales_line_data1(gn_line_cnt1).delivery_pattern_class         := gv_prf_bp_sales_dlv_ptn_cls; --納品形態区分
+-- Ver.1.1 MOD END
     gr_sales_line_data1(gn_line_cnt1).red_black_flag                 := lt_red_black_flag1;          --赤黒フラグ
     gr_sales_line_data1(gn_line_cnt1).item_code                      := iv_item_code;                --品目コード
     gr_sales_line_data1(gn_line_cnt1).dlv_qty                        := in_dlv_qty;                  --納品数量
@@ -3349,7 +3378,10 @@ AS
     gr_sales_line_data2(gn_line_cnt2).dlv_invoice_line_number        := in_line_number;              --納品明細番号
     gr_sales_line_data2(gn_line_cnt2).order_invoice_line_number      := NULL;                        --注文明細番号
     gr_sales_line_data2(gn_line_cnt2).sales_class                    := cv_sales_class_vd;           --売上区分：VD売上
-    gr_sales_line_data2(gn_line_cnt2).delivery_pattern_class         := NULL;                        --納品形態区分
+-- Ver.1.1 MOD START
+--    gr_sales_line_data2(gn_line_cnt2).delivery_pattern_class         := NULL;                        --納品形態区分
+    gr_sales_line_data2(gn_line_cnt2).delivery_pattern_class         := gv_prf_bp_sales_dlv_ptn_cls; --納品形態区分
+-- Ver.1.1 MOD END
     gr_sales_line_data2(gn_line_cnt2).red_black_flag                 := lt_red_black_flag2;          --赤黒フラグ
     gr_sales_line_data2(gn_line_cnt2).item_code                      := iv_item_code;                --品目コード
     gr_sales_line_data2(gn_line_cnt2).dlv_qty                        := in_dlv_qty * -1;             --納品数量
