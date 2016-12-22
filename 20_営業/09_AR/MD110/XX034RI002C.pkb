@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの請求依頼データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（AR）       OCSJ/BFAFIN/MD050/F702
  * MD.070(CMD.050)  : 部門入力（AR）データインポート OCSJ/BFAFIN/MD070/F702
- * Version          : 11.5.10.2.11
+ * Version          : 11.5.10.2.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *                              とするため対象項目のByte数チェック処理を追加
  *  2012/10/24   11.5.10.2.11   [E_本稼動_09965]パフォーマンス対応のため、
  *                              XX03_COMMITMENT_NUMBER_LOV_Vをコメントアウトするように修正
+ *  2016/12/06   11.5.10.2.12   障害対応E_本稼動_13901
  *****************************************************************************************/
 --
 --#####################  固定共通例外宣言部 START   ####################
@@ -508,6 +509,9 @@ AS
      , LINE.RECON_REFERENCE        as LINE_RECON_REFERENCE               -- 消込参照
      , LINE.JOURNAL_DESCRIPTION    as LINE_JOURNAL_DESCRIPTION           -- 備考（明細）
      , LINE.ORG_ID                 as LINE_ORG_ID                        -- オルグID
+-- ==  11.5.10.2.12 Added START ===============================================================
+     , LINE.ATTRIBUTE7             as LINE_ATTRIBUTE7                    -- 稟議決裁番号
+-- == 2016/12/06 11.5.10.2.12 Added END =================================================================
      , LINE.CREATED_BY             as LINE_CREATED_BY                    -- 
      , LINE.CREATION_DATE          as LINE_CREATION_DATE                 -- 
      , LINE.LAST_UPDATED_BY        as LINE_LAST_UPDATED_BY               -- 
@@ -888,6 +892,9 @@ AS
          , xrsli.RECON_REFERENCE       as RECON_REFERENCE                    -- 消込参照
          , xrsli.JOURNAL_DESCRIPTION   as JOURNAL_DESCRIPTION                -- 備考（明細）
          , xrsli.ORG_ID                as ORG_ID                             -- オルグID
+-- == 2016/12/06 11.5.10.2.12 Added START ===============================================================
+         , xrsli.ATTRIBUTE7            as ATTRIBUTE7                         -- 稟議決裁番号
+-- == 2016/12/06 11.5.10.2.12 Added END   ===============================================================
          , xrsli.CREATED_BY            as CREATED_BY
          , xrsli.CREATION_DATE         as CREATION_DATE
          , xrsli.LAST_UPDATED_BY       as LAST_UPDATED_BY
@@ -3531,14 +3538,20 @@ AS
       , xx03_if_head_line_rec.LINE_RECON_REFERENCE        -- 消込参照
       , xx03_if_head_line_rec.LINE_JOURNAL_DESCRIPTION    -- 備考（仕訳）
       , xx03_if_head_line_rec.LINE_ORG_ID                 -- オルグID
-      , NULL                                              -- ATTRIBUTE_CATEGORY
+-- == 2016/12/06 11.5.10.2.12 Modified START ===============================================================
+--      , NULL                                              -- ATTRIBUTE_CATEGORY
+      , xx03_if_head_line_rec.LINE_ORG_ID                 -- ATTRIBUTE_CATEGORY
+-- == 2016/12/06 11.5.10.2.12 Modified START ===============================================================
       , NULL                                              -- ATTRIBUTE1
       , NULL                                              -- ATTRIBUTE2
       , NULL                                              -- ATTRIBUTE3
       , NULL                                              -- ATTRIBUTE4
       , NULL                                              -- ATTRIBUTE5
       , NULL                                              -- ATTRIBUTE6
-      , NULL                                              -- ATTRIBUTE7
+-- == 2016/12/06 11.5.10.2.12 Modified START ===============================================================
+--      , NULL                                              -- ATTRIBUTE7
+      , xx03_if_head_line_rec.LINE_ATTRIBUTE7             -- ATTRIBUTE7
+-- == 2016/12/06 11.5.10.2.12 Modified START ===============================================================
       , NULL                                              -- ATTRIBUTE8
       , NULL                                              -- ATTRIBUTE9
       , NULL                                              -- ATTRIBUTE10
@@ -5562,4 +5575,3 @@ AS
 --
 END XX034RI002C;
 /
-
