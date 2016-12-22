@@ -1,0 +1,90 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2016. All rights reserved.
+ *
+ * Table Name  : XXCFO_RFD_WF_COOP_DATA
+ * Description : 稟議WF連携データテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2016-11-30    1.0   Y.Shoji          新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE xxcfo.xxcfo_rfd_wf_coop_data (
+     je_header_id                   NUMBER(15)    NOT NULL
+    ,je_line_num                    NUMBER(15)    NOT NULL
+    ,period_year                    VARCHAR2(4)   NOT NULL
+    ,segment2                       VARCHAR2(4)   NOT NULL
+    ,segment2_name                  VARCHAR2(240) NOT NULL
+    ,segment6                       VARCHAR2(6)   NOT NULL
+    ,segment6_name                  VARCHAR2(240) NOT NULL
+    ,segment3                       VARCHAR2(5)   NOT NULL
+    ,segment3_name                  VARCHAR2(240) NOT NULL
+    ,segment4                       VARCHAR2(5)   NOT NULL
+    ,segment4_name                  VARCHAR2(240) NOT NULL
+    ,decision_num                   VARCHAR2(11)
+    ,amount                         NUMBER(15)    NOT NULL
+    ,gl_date                        DATE          NOT NULL
+    ,coop_date                      DATE          NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcfo.xxcfo_rfd_wf_coop_data IS '稟議WF連携データテーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.je_header_id                               IS '仕訳ヘッダID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.je_line_num                                IS '仕訳明細番号'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.period_year                                IS '年度'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.segment2                                   IS '部門・拠点コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.segment2_name                              IS '部門・拠点名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.segment6                                   IS '企業コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.segment6_name                              IS '企業名'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.segment3                                   IS '勘定科目コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.segment3_name                              IS '勘定科目'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.segment4                                   IS '補助科目コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.segment4_name                              IS '補助科目'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.decision_num                               IS '稟議決裁番号'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.amount                                     IS '支払金額'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.gl_date                                    IS '計上年月日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.coop_date                                  IS '連携日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.created_by                                 IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.creation_date                              IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.last_updated_by                            IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.last_update_date                           IS '最終更新日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.last_update_login                          IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.request_id                                 IS '要求ID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.program_application_id                     IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.program_id                                 IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_data.program_update_date                        IS 'プログラム更新日'
+/

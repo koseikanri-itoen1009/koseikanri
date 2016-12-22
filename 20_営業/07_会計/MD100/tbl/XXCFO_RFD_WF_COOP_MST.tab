@@ -1,0 +1,45 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2016. All rights reserved.
+ *
+ * Table Name  : XXCFO_RFD_WF_COOP_MST
+ * Description : 稟議WF連携組合せマスタテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2016-11-30    1.0   Y.Shoji          新規作成
+ *
+ **************************************************************************************/
+CREATE TABLE xxcfo.xxcfo_rfd_wf_coop_mst (
+     segment3                       VARCHAR2(25)  NOT NULL
+    ,segment4                       VARCHAR2(25)  NOT NULL
+    ,segment6                       VARCHAR2(25)
+    ,start_date_active              DATE
+    ,end_date_active                DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL)
+/
+COMMENT ON TABLE xxcfo.xxcfo_rfd_wf_coop_mst IS '稟議WF連携組合せマスタテーブル'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.segment3                                   IS '勘定科目コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.segment4                                   IS '補助科目コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.segment6                                   IS '企業コード'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.start_date_active                          IS '有効日自'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.end_date_active                            IS '有効日至'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.created_by                                 IS '作成者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.creation_date                              IS '作成日'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.last_updated_by                            IS '最終更新者'
+/
+COMMENT ON COLUMN xxcfo.xxcfo_rfd_wf_coop_mst.last_update_date                           IS '最終更新日'
+/
