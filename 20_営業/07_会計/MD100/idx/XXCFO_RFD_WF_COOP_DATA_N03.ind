@@ -1,0 +1,4 @@
+CREATE INDEX xxcfo.xxcfo_rfd_wf_coop_data_n03 ON xxcfo.xxcfo_rfd_wf_coop_data(
+  je_header_id
+ ,je_line_num
+) TABLESPACE xxidx2;

@@ -1,0 +1,4 @@
+CREATE INDEX xxcfo.xxcfo_rfd_wf_coop_mst_n1 ON xxcfo.xxcfo_rfd_wf_coop_mst(
+  segment3
+ ,segment4
+) TABLESPACE xxidx2;

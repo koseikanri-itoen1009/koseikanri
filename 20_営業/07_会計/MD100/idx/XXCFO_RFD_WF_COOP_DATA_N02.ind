@@ -1,0 +1,3 @@
+CREATE INDEX xxcfo.xxcfo_rfd_wf_coop_data_n02 ON xxcfo.xxcfo_rfd_wf_coop_data(
+  coop_date
+) TABLESPACE xxidx2;
