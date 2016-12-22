@@ -1,0 +1,2 @@
+CREATE OR REPLACE DIRECTORY XXCFO1_RFD_PAY_DATA_FILEPATH
+  AS '/var/T4/ebsif/outbound/cc_iffile/mc';
