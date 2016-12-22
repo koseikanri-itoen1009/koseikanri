@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfo_rfd_wf_coop_data FOR xxcfo.xxcfo_rfd_wf_coop_data;
