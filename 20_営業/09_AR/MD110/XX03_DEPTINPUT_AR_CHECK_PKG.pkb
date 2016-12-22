@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.19
+ * Version                : 11.5.10.2.20
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2012/03/27   11.5.10.2.17   障害「E_本稼動_09336」対応
  *  2013/09/19   11.5.10.2.18   障害「E_本稼動_10999」対応
  *  2014/03/06   11.5.10.2.19   障害「E_本稼動_11634」対応
+ *  2016/12/01   11.5.10.2.20   障害「E_本稼動_13901」対応
  *
  *****************************************************************************************/
 --
@@ -235,6 +236,9 @@ AS
       --2006/02/16 Ver11.5.10.1.6E add START
            , xrsjlv.line_type_lookup_code as line_type_lookup_code      -- ルックアップコード
       --2006/02/16 Ver11.5.10.1.6E add END
+--2016/12/01 Ver11.5.10.2.20 ADD START
+           , xrsjlv.attribute7            as attribute7                 -- attribute7(稟議決裁番号)
+--2016/12/01 Ver11.5.10.2.20 ADD END
         FROM XX03_REC_SLIP_JOURNAL_LINES_V   xrsjlv
        WHERE xrsjlv.RECEIVABLE_ID = in_receivable_id                    -- 伝票ID
        ORDER BY xrsjlv.line_number;
@@ -2050,6 +2054,44 @@ AS
         END IF;
         -- ver 11.5.10.2.10D Add End
 --
+--2016/12/01 Ver11.5.10.2.20 ADD START
+        IF ( xx03_xrsjlv_rec.attribute7 IS NOT NULL ) THEN
+          --稟議決裁番号形式チェック
+          DECLARE
+            lv_request_decision  xx03_receivable_slips.attribute7%TYPE;
+            ln_request_decision  NUMBER;
+          BEGIN
+            --桁数チェック
+            IF ( LENGTHB(xx03_xrsjlv_rec.attribute7) <> 11 ) THEN
+              RAISE INVALID_NUMBER;
+            END IF;
+            --固定値チェック
+            IF ( SUBSTRB(xx03_xrsjlv_rec.attribute7,1,2) <> 'DR' ) THEN
+              RAISE INVALID_NUMBER;
+            END IF;
+            --年チェック
+            ln_request_decision := SUBSTRB(xx03_xrsjlv_rec.attribute7,3,4);
+            IF ( ln_request_decision < 2000 ) THEN
+              RAISE INVALID_NUMBER;
+            END IF;
+            -- 連番チェック
+            lv_request_decision := SUBSTRB(xx03_xrsjlv_rec.attribute7,7,5);
+            -- 数値型チェック
+            ln_request_decision := lv_request_decision;
+            -- 小数チェック
+            IF ( INSTR(lv_request_decision, cv_precision_char) <> 0 ) THEN
+              RAISE INVALID_NUMBER;
+            END IF;
+            -- 符号チェック(上1桁が数値かどうかチェック)
+            ln_request_decision := SUBSTRB(xx03_xrsjlv_rec.attribute7,7,1);
+          EXCEPTION
+            WHEN INVALID_NUMBER OR VALUE_ERROR THEN
+              errflg_tbl(ln_err_cnt) := 'E';
+              errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFO','APP-XXCFO1-00054','TOK_REQUEST_DECISION',xx03_xrsjlv_rec.attribute7);
+              ln_err_cnt := ln_err_cnt + 1;
+          END;
+        END IF;
+--2016/12/01 Ver11.5.10.2.20 ADD END
       END IF;
 --
 -- 2006/02/18 Ver11.5.10.1.6E add END
@@ -3242,3 +3284,4 @@ AS
 -- ver11.5.10.1.6D Add End
 --
 END xx03_deptinput_ar_check_pkg;
+/
