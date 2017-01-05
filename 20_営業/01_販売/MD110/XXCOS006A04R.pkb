@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (body)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.9
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *                                       「摘要」欄に顧客発注番号設定するよう修正。
  *                                        SVF共通関数に渡すVRQファイルの設定値修正。
  *  2016/10/24    1.10  Y.Koh             E_本稼動_13875 出荷依頼書のPT対応
+ *  2016/12/07    1.11  N.Koyama          E_本稼動_13875 出荷依頼書のPT再対応
  *
  *****************************************************************************************/
 --
@@ -837,7 +838,10 @@ AS
 --      AND TRUNC( ooha.ordered_date )        >= gd_ordered_date_from
       AND ooha.ordered_date         >= gd_ordered_date_from
 -- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
-      AND TRUNC( ooha.ordered_date )        <= NVL( gd_ordered_date_to, gd_max_date )
+-- 2016/12/07 Ver.1.11 N.Koyama MOD Start
+--      AND TRUNC( ooha.ordered_date )        <= NVL( gd_ordered_date_to, gd_max_date )
+      AND ooha.ordered_date         < gd_ordered_date_to
+-- 2016/12/07 Ver.1.11 N.Koyama MOD End
       AND oola.subinventory                 = msi.secondary_inventory_name
       AND oola.ship_from_org_id             = msi.organization_id
       AND oola.subinventory                 = NVL( gt_ship_from_subinv_code, oola.subinventory )
@@ -995,6 +999,13 @@ AS
     --==================================
     -- 1.データ取得
     --==================================
+-- 2016/12/07 Ver.1.11 N.Koyama ADD Start
+    IF ( gd_ordered_date_to IS NULL ) THEN
+      gd_ordered_date_to := gd_max_date;
+    ELSE
+      gd_ordered_date_to := gd_ordered_date_to + 1;
+    END IF;
+-- 2016/12/07 Ver.1.11 N.Koyama ADD End
     <<loop_get_data>>
     FOR l_data_rec IN data_cur
     LOOP
