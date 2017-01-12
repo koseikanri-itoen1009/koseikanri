@@ -7,8 +7,7 @@ AS
  * Description      : SQL*Loaderによって物件データワークテーブル（アドオン）に取り込まれた
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
- *                    2009/01/13 16:30
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -80,6 +79,7 @@ AS
  *  2015-07-29    1.32  K.Kiriu          E_本稼動_13237対応 自販機の付帯機器管理に関する改修追加対応
  *  2015-09-04    1.33  S.Yamashita      E_本稼動_13070対応
  *  2016-02-05    1.34  S.Niki           E_本稼動_13456対応
+ *  2016-12-15    1.35  S.Niki           E_本稼動_13903対応 新自販機管理システムからの物件データ連携対応（Q2198,2239）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -399,7 +399,7 @@ AS
     /* 2014-05-19 Y.Shoji E_本稼動_11853⑧対応 ADD ENDT */
 /* Ver.1.34 ADD START */
     ,fa_move_date          NUMBER               -- 固定資産移動日
-    ,last_act_date_time    NUMBER               -- 最終実作業日時
+    ,last_act_date_time    NUMBER               -- 最終有効実作業日時
 /* Ver.1.34 ADD END */
   );
   -- 追加属性ID格納用レコード変数
@@ -718,8 +718,11 @@ AS
 /* Ver.1.34 ADD START */
     -- 固定資産移動日
     cv_i_ext_fa_move_date     CONSTANT VARCHAR2(100) := '固定資産移動日';
-    -- 最終実作業日時
-    cv_i_ext_last_act_dt      CONSTANT VARCHAR2(100) := '最終実作業日時';
+/* Ver.1.35 Q2239 MOD START */
+    -- 最終有効実作業日時
+--    cv_i_ext_last_act_dt      CONSTANT VARCHAR2(100) := '最終実作業日時';
+    cv_i_ext_last_act_dt      CONSTANT VARCHAR2(100) := '最終有効実作業日時';
+/* Ver.1.35 Q2239 MOD END */
 /* Ver.1.34 ADD END */
     -- カウンターNo.
     cv_count_no               CONSTANT VARCHAR2(100) := 'COUNT_NO';
@@ -830,7 +833,7 @@ AS
 /* Ver.1.34 ADD START */
     -- 固定資産移動日
     cv_fa_move_date           CONSTANT VARCHAR2(100) := 'FA_MOVE_DATE';
-    -- 最終実作業日時
+    -- 最終有効実作業日時
     cv_last_act_dt            CONSTANT VARCHAR2(100) := 'LAST_ACT_DATE_TIME';
 /* Ver.1.34 ADD END */
 --
@@ -2476,7 +2479,7 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
-    -- 追加属性ID(最終実作業日時)
+    -- 追加属性ID(最終有効実作業日時)
     gr_ext_attribs_id_rec.last_act_date_time := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
                                                    cv_last_act_dt
                                                   ,ld_process_date
@@ -2725,6 +2728,9 @@ AS
     ln_rock_slip_num           NUMBER;                  -- ロック用伝票No.
     ln_rock_slip_branch_num    NUMBER;                  -- ロック用伝票枝番
     ln_rock_line_number        NUMBER;                  -- ロック用行番
+/* Ver.1.35 Q2198 ADD START */
+    ln_last_job_slip_no        NUMBER;                  -- 最終作業伝票No.
+/* Ver.1.35 Q2198 ADD END */
     lv_install_code            VARCHAR2(10);            -- 物件コード
     lv_install_code1           VARCHAR2(10);            -- 物件コード１
     lv_install_code2           VARCHAR2(10);            -- 物件コード２
@@ -2748,6 +2754,9 @@ AS
     ln_slip_branch_num    := io_inst_base_data_rec.slip_branch_no;
     ln_line_number        := io_inst_base_data_rec.line_number;
     ln_job_kbn            := io_inst_base_data_rec.job_kbn;
+/* Ver.1.35 Q2198 ADD START */
+    ln_last_job_slip_no   := io_inst_base_data_rec.last_job_slip_no;  -- 最終作業伝票No.
+/* Ver.1.35 Q2198 ADD END */
     lv_install_code       := io_inst_base_data_rec.install_code;
     lv_install_code1      := io_inst_base_data_rec.install_code1;
     lv_install_code2      := io_inst_base_data_rec.install_code2;
@@ -2856,8 +2865,15 @@ AS
         --
       ELSE
       /* 2009.06.01 K.Satomura T1_1107対応 END */
-        -- 物件データの物件コードが作業データの物件コード１と同一の場合は
-        IF (lv_install_code = NVL(lv_install_code1, ' ')) THEN 
+/* Ver.1.35 Q2198 MOD START */
+--        -- 物件データの物件コードが作業データの物件コード１と同一の場合は
+--        IF (lv_install_code = NVL(lv_install_code1, ' ')) THEN 
+        -- 物件データ.物件コード = 作業データの物件コード１
+        -- かつ、物件データ.最終作業伝票No = 作業データ.伝票番号の場合
+        IF ( lv_install_code = NVL( lv_install_code1 ,' ' ) ) AND
+           ( ln_last_job_slip_no = ln_slip_num )
+        THEN
+/* Ver.1.35 Q2198 MOD END */
 --
           -- ==========================================
           -- 物件１処理済フラグを「Y．連携済」に更新 
@@ -2880,8 +2896,15 @@ AS
             AND  line_number    = ln_line_number
           ;
 --
+/* Ver.1.35 Q2198 MOD START */
         -- 物件データの物件コードが作業データの物件コード２と同一の場合は
-        ELSE
+--        ELSE
+        -- 物件データ.物件コード = 作業データの物件コード２
+        -- かつ、物件データ.最終作業伝票No = 作業データ.伝票番号の場合
+        ELSIF ( lv_install_code = NVL( lv_install_code2 ,' ' ) ) AND
+           ( ln_last_job_slip_no = ln_slip_num )
+        THEN
+/* Ver.1.35 Q2198 MOD END */
 --
           -- ==========================================
           -- 物件２処理済フラグを「Y．連携済」に更新 
@@ -3045,7 +3068,7 @@ AS
     lb_chk_flg               BOOLEAN DEFAULT FALSE;
     /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
 /* Ver.1.34 ADD START */
-    ld_last_act_date         DATE;                      -- 最終実作業日時
+    ld_last_act_date         DATE;                      -- 最終有効実作業日時
 /* Ver.1.34 ADD END */
 --
     -- *** ローカル例外 ***
@@ -3100,7 +3123,7 @@ AS
                          ciins.instance_id
                        , cv_last_act_dt
                       )
-                       , 'yyyy/mm/dd hh24:mi:ss' )  last_act_date     -- 最終実作業日時
+                       , 'yyyy/mm/dd hh24:mi:ss' )  last_act_date     -- 最終有効実作業日時
 /* Ver.1.34 ADD END */
       INTO   lv_external_reference
             ,io_inst_base_data_rec.instance_id
@@ -3114,7 +3137,7 @@ AS
             ,io_inst_base_data_rec.ib_un_number                       -- IB機種CD
             /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
 /* Ver.1.34 ADD START */
-            ,ld_last_act_date                                         -- 最終実作業日時
+            ,ld_last_act_date                                         -- 最終有効実作業日時
 /* Ver.1.34 ADD END */
       FROM   csi_item_instances ciins                                 -- 物件マスタ
       WHERE  ciins.external_reference = lv_install_code
@@ -3179,8 +3202,12 @@ AS
 --        IF (( TO_CHAR(io_inst_base_data_rec.actual_work_date) || io_inst_base_data_rec.actual_work_time1 )
 --               < ( TO_CHAR(lt_actual_work_date) || lt_actual_work_time1 )) THEN
 --      /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
-      --物件に保持している最終実作業日時 > 作業ワークの実作業日+実作業時間の場合（作業が逆転している場合）
+      --物件に保持している最終有効実作業日時 > 作業ワークの実作業日+実作業時間の場合（作業が逆転している場合）
       IF ( ld_last_act_date IS NOT NULL)
+/* Ver.1.35 Q2239 ADD START */
+        -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
+        AND ( ln_job_kbn IN ( cn_jon_kbn_1 ,cn_jon_kbn_2 ,cn_jon_kbn_3 ,cn_jon_kbn_4 ,cn_jon_kbn_5 ,cn_jon_kbn_6 ) )
+/* Ver.1.35 Q2239 ADD END */
         AND ( ld_last_act_date >
               TO_DATE( TO_CHAR(io_inst_base_data_rec.actual_work_date) || io_inst_base_data_rec.actual_work_time1, 'yyyy/mm/dd hh24:mi:ss')
       ) THEN
@@ -3490,6 +3517,9 @@ AS
     cn_jon_kbn_3             CONSTANT NUMBER        := 3;                   -- 新台代替
     cn_jon_kbn_4             CONSTANT NUMBER        := 4;                   -- 旧台代替
     cn_jon_kbn_5             CONSTANT NUMBER        := 5;                   -- 引揚
+/* Ver.1.35 Q2239 ADD START */
+    cn_job_kbn_6             CONSTANT NUMBER        := 6;                   -- 店内移動
+/* Ver.1.35 Q2239 ADD END */
     cn_api_version           CONSTANT NUMBER        := 1.0;
     cv_kbn0                  CONSTANT NUMBER        := '0';
     cv_kbn1                  CONSTANT VARCHAR2(1)   := '1'; 
@@ -4464,11 +4494,18 @@ AS
     l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.fa_move_date;
     l_ext_attrib_values_tab(ln_cnt).attribute_value := TO_CHAR(io_inst_base_data_rec.actual_work_date);
 --
-    -- 最終実作業日時
-    ln_cnt := ln_cnt + 1;
-    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_act_date_time;
-    l_ext_attrib_values_tab(ln_cnt).attribute_value := TO_CHAR(io_inst_base_data_rec.actual_work_date) ||
-                                                       io_inst_base_data_rec.actual_work_time1;
+/* Ver.1.35 Q2239 ADD START */
+    -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
+    IF ( ln_job_kbn IN ( cn_jon_kbn_1 ,cn_jon_kbn_2 ,cn_jon_kbn_3 ,cn_jon_kbn_4 ,cn_jon_kbn_5 ,cn_job_kbn_6 ) ) THEN
+/* Ver.1.35 Q2239 ADD END */
+      -- 最終有効実作業日時
+      ln_cnt := ln_cnt + 1;
+      l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.last_act_date_time;
+      l_ext_attrib_values_tab(ln_cnt).attribute_value := TO_CHAR(io_inst_base_data_rec.actual_work_date) ||
+                                                         io_inst_base_data_rec.actual_work_time1;
+/* Ver.1.35 Q2239 ADD START */
+    END IF;
+/* Ver.1.35 Q2239 ADD END */
 --
 /* Ver.1.34 ADD END */
 --
@@ -5268,57 +5305,67 @@ AS
     -- 1.機器状態整合性チェック
     -- ========================
 -- 
-    -- 削除フラグが「９：論理削除」の場合
-    IF (ln_delete_flag = cn_num9) THEN
-      ln_instance_status_id := gt_instance_status_id_6;
-    -- 機器状態１が「１：稼動中」の場合
-    ELSIF (ln_machinery_status1 = cn_num1) THEN
-      ln_instance_status_id := gt_instance_status_id_1;
-    -- 機器状態１が「２：滞留」
-    -- 機器状態２が「０：情報無」または「１：整備済」
-    -- 機器状態３が「０：予定無し」の場合
-    ELSIF (ln_machinery_status1 = cn_num2
-             AND (ln_machinery_status2 = cn_num0 OR ln_machinery_status2 = cn_num1)
-             AND ln_machinery_status3  = cn_num0) THEN
-      ln_instance_status_id := gt_instance_status_id_2;
-    -- 機器状態１が「２：滞留」
-    -- 機器状態２が「２：整備予定」または「３：保管」または「９：故障中」
-    ELSIF (ln_machinery_status1 = cn_num2
-             AND (ln_machinery_status2 = cn_num2 OR
-                    /* 2009.07.10 K.Satomura 統合テスト障害対応(0000476) START */
-                    --ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)
-                    ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num9)
-                    /* 2009.07.10 K.Satomura 統合テスト障害対応(0000476) END */
-             AND ln_machinery_status3  = cn_num0) THEN
-      ln_instance_status_id := gt_instance_status_id_3;
-    -- 機器状態１が「２：滞留」
-    -- 機器状態３が「１：廃棄予定」または「２．廃棄申請中」または「３：廃棄決裁済」の場合
-    ELSIF (ln_machinery_status1 = cn_num2
-             AND (ln_machinery_status3 = cn_num1 OR 
-                    ln_machinery_status3 = cn_num2 OR ln_machinery_status3 = cn_num3)) THEN
-      ln_instance_status_id := gt_instance_status_id_4;
-    -- 機器状態１が「１：廃棄済」の場合
-    ELSIF (ln_machinery_status1 = cn_num3) THEN
-      ln_instance_status_id := gt_instance_status_id_5;
-    -- 機器状態不正
+/* Ver.1.35 Q2239 ADD START */
+    -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
+    IF ( ln_job_kbn IN ( cn_jon_kbn_1 ,cn_jon_kbn_2 ,cn_jon_kbn_3 ,cn_jon_kbn_4 ,cn_jon_kbn_5 ,cn_job_kbn_6 ) ) THEN
+/* Ver.1.35 Q2239 ADD END */
+      -- 削除フラグが「９：論理削除」の場合
+      IF (ln_delete_flag = cn_num9) THEN
+        ln_instance_status_id := gt_instance_status_id_6;
+      -- 機器状態１が「１：稼動中」の場合
+      ELSIF (ln_machinery_status1 = cn_num1) THEN
+        ln_instance_status_id := gt_instance_status_id_1;
+      -- 機器状態１が「２：滞留」
+      -- 機器状態２が「０：情報無」または「１：整備済」
+      -- 機器状態３が「０：予定無し」の場合
+      ELSIF (ln_machinery_status1 = cn_num2
+               AND (ln_machinery_status2 = cn_num0 OR ln_machinery_status2 = cn_num1)
+               AND ln_machinery_status3  = cn_num0) THEN
+        ln_instance_status_id := gt_instance_status_id_2;
+      -- 機器状態１が「２：滞留」
+      -- 機器状態２が「２：整備予定」または「３：保管」または「９：故障中」
+      ELSIF (ln_machinery_status1 = cn_num2
+               AND (ln_machinery_status2 = cn_num2 OR
+                      /* 2009.07.10 K.Satomura 統合テスト障害対応(0000476) START */
+                      --ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num4)
+                      ln_machinery_status2 = cn_num3 OR ln_machinery_status2 = cn_num9)
+                      /* 2009.07.10 K.Satomura 統合テスト障害対応(0000476) END */
+               AND ln_machinery_status3  = cn_num0) THEN
+        ln_instance_status_id := gt_instance_status_id_3;
+      -- 機器状態１が「２：滞留」
+      -- 機器状態３が「１：廃棄予定」または「２．廃棄申請中」または「３：廃棄決裁済」の場合
+      ELSIF (ln_machinery_status1 = cn_num2
+               AND (ln_machinery_status3 = cn_num1 OR 
+                      ln_machinery_status3 = cn_num2 OR ln_machinery_status3 = cn_num3)) THEN
+        ln_instance_status_id := gt_instance_status_id_4;
+      -- 機器状態１が「１：廃棄済」の場合
+      ELSIF (ln_machinery_status1 = cn_num3) THEN
+        ln_instance_status_id := gt_instance_status_id_5;
+      -- 機器状態不正
+      ELSE
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_22              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                       ,iv_token_value1 => cv_machinery_status           -- トークン値1
+                       ,iv_token_name2  => cv_tkn_bukken                 -- トークンコード2
+                       ,iv_token_value2 => lv_install_code               -- トークン値2
+                       ,iv_token_name3  => cv_tkn_hazard_state1          -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_machinery_status1) -- トークン値3
+                       ,iv_token_name4  => cv_tkn_hazard_state2          -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_machinery_status2) -- トークン値4
+                       ,iv_token_name5  => cv_tkn_hazard_state3          -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_machinery_status3) -- トークン値5
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+      END IF; 
+/* Ver.1.35 Q2239 ADD START */
+    -- 作業区分が上記の場合
     ELSE
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name                   -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_22              -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
-                     ,iv_token_value1 => cv_machinery_status           -- トークン値1
-                     ,iv_token_name2  => cv_tkn_bukken                 -- トークンコード2
-                     ,iv_token_value2 => lv_install_code               -- トークン値2
-                     ,iv_token_name3  => cv_tkn_hazard_state1          -- トークンコード3
-                     ,iv_token_value3 => TO_CHAR(ln_machinery_status1) -- トークン値3
-                     ,iv_token_name4  => cv_tkn_hazard_state2          -- トークンコード4
-                     ,iv_token_value4 => TO_CHAR(ln_machinery_status2) -- トークン値4
-                     ,iv_token_name5  => cv_tkn_hazard_state3          -- トークンコード5
-                     ,iv_token_value5 => TO_CHAR(ln_machinery_status3) -- トークン値5
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE skip_process_expt;
-    END IF; 
+      ln_instance_status_id := io_inst_base_data_rec.instance_status_id;
+    END IF;
+/* Ver.1.35 Q2239 ADD END */
 --
     -- ===============
     -- 2.変数の初期化
@@ -5589,24 +5636,31 @@ AS
       l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
     END IF;
 /* Ver.1.34 ADD START */
-    -- 最終実作業日時
-    l_ext_attrib_rec := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(ln_instance_id, cv_last_act_dt);
-    IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
-      ln_cnt := ln_cnt + 1;
-      l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
-      l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(io_inst_base_data_rec.actual_work_date) ||
-                                                               io_inst_base_data_rec.actual_work_time1;
-      l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
-      l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
-    ELSE
-      ln_cnt2 := ln_cnt2 + 1;
-      l_cre_ext_attr_values_tab(ln_cnt2).instance_id        := ln_instance_id;
-      l_cre_ext_attr_values_tab(ln_cnt2).attribute_id       := gr_ext_attribs_id_rec.last_act_date_time;
-      l_cre_ext_attr_values_tab(ln_cnt2).attribute_value    := TO_CHAR(io_inst_base_data_rec.actual_work_date) ||
-                                                               io_inst_base_data_rec.actual_work_time1;
-      -- 設置機器拡張属性値登録フラグ「Y」
-      lv_ib_ext_attr_flg := cv_flg_yes;
+/* Ver.1.35 Q2239 ADD START */
+    -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
+    IF ( ln_job_kbn IN ( cn_jon_kbn_1 ,cn_jon_kbn_2 ,cn_jon_kbn_3 ,cn_jon_kbn_4 ,cn_jon_kbn_5 ,cn_job_kbn_6 ) ) THEN
+/* Ver.1.35 Q2239 ADD END */
+      -- 最終有効実作業日時
+      l_ext_attrib_rec := xxcso_ib_common_pkg.get_ib_ext_attrib_info2(ln_instance_id, cv_last_act_dt);
+      IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
+        ln_cnt := ln_cnt + 1;
+        l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
+        l_ext_attrib_values_tab(ln_cnt).attribute_value       := TO_CHAR(io_inst_base_data_rec.actual_work_date) ||
+                                                                 io_inst_base_data_rec.actual_work_time1;
+        l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
+        l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
+      ELSE
+        ln_cnt2 := ln_cnt2 + 1;
+        l_cre_ext_attr_values_tab(ln_cnt2).instance_id        := ln_instance_id;
+        l_cre_ext_attr_values_tab(ln_cnt2).attribute_id       := gr_ext_attribs_id_rec.last_act_date_time;
+        l_cre_ext_attr_values_tab(ln_cnt2).attribute_value    := TO_CHAR(io_inst_base_data_rec.actual_work_date) ||
+                                                                 io_inst_base_data_rec.actual_work_time1;
+        -- 設置機器拡張属性値登録フラグ「Y」
+        lv_ib_ext_attr_flg := cv_flg_yes;
+      END IF;
+/* Ver.1.35 Q2239 ADD START */
     END IF;
+/* Ver.1.35 Q2239 ADD END */
 --
 /* Ver.1.34 ADD END */
 --
@@ -8648,6 +8702,9 @@ AS
                         (
                         /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
                               xiwd2.install_code1           = xiid.install_code
+/* Ver.1.35 Q2198 ADD START */
+                          AND xiwd2.slip_no                 = xiid.last_job_slip_no
+/* Ver.1.35 Q2198 ADD END */
                           AND xiwd2.install1_processed_flag = cv_no
                           /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
                           AND xiwd2.install1_process_no_target_flg = cv_no
@@ -8659,6 +8716,9 @@ AS
                         (
                         /* 2009.06.04 K.Satomura T1_1107再修正対応 END */
                               xiwd2.install_code2           = xiid.install_code
+/* Ver.1.35 Q2198 ADD START */
+                          AND xiwd2.slip_no                 = xiid.last_job_slip_no
+/* Ver.1.35 Q2198 ADD END */
                           AND xiwd2.install2_processed_flag = cv_no
                           /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
                           AND xiwd2.install2_process_no_target_flg = cv_no
@@ -9319,6 +9379,9 @@ AS
       /* 2009.06.15 K.Satomura T1_1239対応 END */
                  (
                        xciid.install_code                   = NVL(xciwd.install_code1, ' ')
+/* Ver.1.35 Q2198 ADD START */
+                   AND xciwd.slip_no                        = xciid.last_job_slip_no
+/* Ver.1.35 Q2198 ADD END */
                    AND xciwd.install1_processed_flag        = cv_no
                    /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
                    AND xciwd.install1_process_no_target_flg = cv_no
@@ -9327,6 +9390,9 @@ AS
                OR
                  (
                        xciid.install_code                   = NVL(xciwd.install_code2, ' ') 
+/* Ver.1.35 Q2198 ADD START */
+                   AND xciwd.slip_no                        = xciid.last_job_slip_no
+/* Ver.1.35 Q2198 ADD END */
                    AND xciwd.install2_processed_flag        = cv_no
                    /* 2009.06.04 K.Satomura T1_1107再修正対応 START */
                    AND xciwd.install2_process_no_target_flg = cv_no
