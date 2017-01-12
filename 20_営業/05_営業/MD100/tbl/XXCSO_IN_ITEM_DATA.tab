@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_in_item_data
  * Description     : 物件データワークテーブル
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,8 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
  *  2016/02/05    1.2  S.Niki        [E_本稼動_13456]自販機管理システム代替対応
+ *  2016/12/15    1.3  S.Niki        [E_本稼動_13903]新自販機管理システムからの物件データ連携対応
+ *                                                   Ver.1.2の誤り修正（lease_type後ろのカンマが不足）
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_in_item_data
 (
@@ -81,7 +83,10 @@ CREATE TABLE xxcso.xxcso_in_item_data
   creation_date_time              DATE,
   update_date_time                DATE,
 -- Ver1.2 Add Start
-  lease_type                      VARCHAR2(1)
+-- Ver1.3 Mod Start
+--  lease_type                      VARCHAR2(1)
+  lease_type                      VARCHAR2(1),
+-- Ver1.3 Mod End
   declaration_place               VARCHAR2(5),
   get_price                       NUMBER(10),
 -- Ver1.2 Add End
@@ -93,9 +98,12 @@ CREATE TABLE xxcso.xxcso_in_item_data
   request_id                      NUMBER(15),
   program_application_id          NUMBER(15),
   program_id                      NUMBER(15),
-  program_update_date             DATE,
-  CONSTRAINT xxcso_in_item_data_pk PRIMARY KEY ( install_code )
-  USING INDEX TABLESPACE xxidx2
+-- Ver1.3 Mod Start
+--  program_update_date             DATE,
+--  CONSTRAINT xxcso_in_item_data_pk PRIMARY KEY ( install_code )
+--  USING INDEX TABLESPACE xxidx2
+  program_update_date             DATE
+-- Ver1.3 Mod End
 )
 PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
 ;
