@@ -4,14 +4,15 @@ AS
  *
  * Package Name     : XXCCP120A01C(spec)
  * Description      : 受入取引OIF自動リカバリ
- * Version          : 1.00
+ * Version          : 1.01
  *
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2012/07/31    1.00  SCSK 小野塚香織 新規作成
+ *  2012/07/31    1.00  SCSK 小野塚香織  新規作成
+ *  2016/09/12    1.01  SCSK S.Yamashita E_本稼動_13803対応
  *
  *****************************************************************************************/
 --
@@ -129,8 +130,14 @@ AS
     SELECT  rti.interface_transaction_id
            ,rti.group_id
            ,rti.header_interface_id
+-- Ver1.01 S.Yamashita ADD start
+           ,rti.transaction_type AS transaction_type
+-- Ver1.01 S.Yamashita ADD end
     FROM   rcv_transactions_interface rti
     WHERE  rti.transaction_status_code = cv_error
+-- Ver1.01 S.Yamashita ADD start
+    OR     rti.processing_status_code = cv_error
+-- Ver1.01 S.Yamashita ADD end
     ORDER BY rti.group_id
   ;
   --
@@ -178,6 +185,9 @@ AS
     cv_con_status_normal     CONSTANT VARCHAR2(10)  := 'NORMAL';        -- ステータス（正常）
     cv_con_status_error      CONSTANT VARCHAR2(10)  := 'ERROR';         -- ステータス（異常）
     cv_con_status_warning    CONSTANT VARCHAR2(10)  := 'WARNING';       -- ステータス（警告）
+-- Ver1.01 S.Yamashita ADD start
+    cv_date_format           CONSTANT VARCHAR2(30)  := 'YYYY/MM/DD HH24:MI:SS'; -- 日付フォーマット
+-- Ver1.01 S.Yamashita ADD end
 --                                                                      
     -- *** ローカル変数 ***
     lv_outmsg                VARCHAR2(5000) DEFAULT NULL;               -- 出力用メッセージ
@@ -192,6 +202,10 @@ AS
     ln_request_id            NUMBER;
     ln_head_upd_cnt          NUMBER         DEFAULT 0;
     ln_trn_upd_cnt           NUMBER         DEFAULT 0;
+-- Ver1.01 S.Yamashita ADD start
+    ln_shipment_header_id    NUMBER         DEFAULT 0;
+-- Ver1.01 S.Yamashita ADD end
+
 --
     -- ===============================================
     -- ローカル例外処理
@@ -474,7 +488,10 @@ AS
         AND     EXISTS(SELECT 'X'
                        FROM   fnd_lookup_values_vl flvv
                        WHERE  flvv.lookup_type  = cv_lookup_type_01
-                       AND    flvv.description  = pie.error_message 
+-- Ver1.01 S.Yamashita MOD start
+--                       AND    flvv.description  = pie.error_message 
+                       AND    pie.error_message LIKE flvv.description
+-- Ver1.01 S.Yamashita MOD end
                        AND    flvv.enabled_flag = cv_flg_y
                        AND    gd_process_date BETWEEN NVL( flvv.start_date_active, gd_process_date )
                                                   AND NVL( flvv.end_date_active  , gd_process_date )
@@ -550,10 +567,16 @@ AS
                              l_head_upd_tab(1).transaction_type           || '","' ||
                              l_head_upd_tab(1).auto_transact_code         || '","' ||
                              l_head_upd_tab(1).test_flag                  || '","' ||
-                             l_head_upd_tab(1).last_update_date           || '","' ||
+-- Ver1.01 S.Yamashita MOD start
+--                             l_head_upd_tab(1).last_update_date           || '","' ||
+                             TO_CHAR(l_head_upd_tab(1).last_update_date,cv_date_format)           || '","' ||
+-- Ver1.01 S.Yamashita MOD end
                              l_head_upd_tab(1).last_updated_by            || '","' ||
                              l_head_upd_tab(1).last_update_login          || '","' ||
-                             l_head_upd_tab(1).creation_date              || '","' ||
+-- Ver1.01 S.Yamashita MOD start
+--                             l_head_upd_tab(1).creation_date              || '","' ||
+                             TO_CHAR(l_head_upd_tab(1).creation_date,cv_date_format)              || '","' ||
+-- Ver1.01 S.Yamashita MOD end
                              l_head_upd_tab(1).created_by                 || '","' ||
                              l_head_upd_tab(1).notice_creation_date       || '","' ||
                              l_head_upd_tab(1).shipment_num               || '","' ||
@@ -682,10 +705,16 @@ AS
                              l_head_upd_tab(1).transaction_type           || '","' ||
                              l_head_upd_tab(1).auto_transact_code         || '","' ||
                              l_head_upd_tab(1).test_flag                  || '","' ||
-                             l_head_upd_tab(1).last_update_date           || '","' ||
-                             l_head_upd_tab(1).last_updated_by            || '","' ||
-                             l_head_upd_tab(1).last_update_login          || '","' ||
-                             l_head_upd_tab(1).creation_date              || '","' ||
+-- Ver1.01 S.Yamashita MOD start
+--                             l_head_upd_tab(1).last_update_date           || '","' ||
+--                             l_head_upd_tab(1).last_updated_by            || '","' ||
+--                             l_head_upd_tab(1).last_update_login          || '","' ||
+--                             l_head_upd_tab(1).creation_date              || '","' ||
+                             TO_CHAR(cd_last_update_date,cv_date_format)  || '","' ||
+                             cn_last_updated_by            || '","' ||
+                             cn_last_update_login          || '","' ||
+                             TO_CHAR(l_trn_upd_tab(1).creation_date,cv_date_format)       || '","' ||
+-- Ver1.01 S.Yamashita MOD end
                              l_head_upd_tab(1).created_by                 || '","' ||
                              l_head_upd_tab(1).notice_creation_date       || '","' ||
                              l_head_upd_tab(1).shipment_num               || '","' ||
@@ -794,15 +823,24 @@ AS
              which  => FND_FILE.OUTPUT
             ,buff   => '"'|| l_trn_upd_tab(1).interface_transaction_id   || '","' ||
                              l_trn_upd_tab(1).group_id                   || '","' ||
-                             l_trn_upd_tab(1).last_update_date           || '","' ||
+-- Ver1.01 S.Yamashita MOD start
+--                             l_trn_upd_tab(1).last_update_date           || '","' ||
+                             TO_CHAR(l_trn_upd_tab(1).last_update_date,cv_date_format)    || '","' ||
+-- Ver1.01 S.Yamashita MOD end
                              l_trn_upd_tab(1).last_updated_by            || '","' ||
-                             l_trn_upd_tab(1).creation_date              || '","' ||
+-- Ver1.01 S.Yamashita MOD start
+--                             l_trn_upd_tab(1).creation_date              || '","' ||
+                             TO_CHAR(l_trn_upd_tab(1).creation_date,cv_date_format)       || '","' ||
+-- Ver1.01 S.Yamashita MOD end
                              l_trn_upd_tab(1).created_by                 || '","' ||
                              l_trn_upd_tab(1).last_update_login          || '","' ||
                              l_trn_upd_tab(1).request_id                 || '","' ||
                              l_trn_upd_tab(1).program_application_id     || '","' ||
                              l_trn_upd_tab(1).program_id                 || '","' ||
-                             l_trn_upd_tab(1).program_update_date        || '","' ||
+-- Ver1.01 S.Yamashita MOD start
+--                             l_trn_upd_tab(1).program_update_date        || '","' ||
+                             TO_CHAR(l_trn_upd_tab(1).program_update_date,cv_date_format) || '","' ||
+-- Ver1.01 S.Yamashita MOD end
                              l_trn_upd_tab(1).transaction_type           || '","' ||
                              l_trn_upd_tab(1).transaction_date           || '","' ||
                              l_trn_upd_tab(1).processing_status_code     || '","' ||
@@ -894,20 +932,48 @@ AS
           );
 --
           BEGIN
-            UPDATE rcv_transactions_interface rti
-            SET    rti.processing_status_code   = cv_status_code
-                 , rti.transaction_status_code  = cv_status_code
-                 , rti.shipment_header_id       = NULL
-                 , rti.last_updated_by          = cn_last_updated_by            -- ログインユーザーID
-                 , rti.last_update_date         = cd_last_update_date           -- システム日付
-                 , rti.last_update_login        = cn_last_update_login          -- ログインID
-                 , rti.request_id               = cn_request_id                 -- コンカレント要求ID
-                 , rti.program_application_id   = cn_program_application_id     -- プログラム・アプリケーションID
-                 , rti.program_id               = cn_program_id                 -- コンカレント・プログラムID
-                 , rti.program_update_date      = cd_program_update_date        -- システム日付
-            WHERE  rti.interface_transaction_id = g_rcv_trn_if_tab( i ).interface_transaction_id
-            AND    rti.group_id                 = g_rcv_trn_if_tab( i ).group_id
-            ;
+-- Ver1.01 S.Yamashita ADD start
+            -- 受入訂正の場合
+            IF ( g_rcv_trn_if_tab( i ).transaction_type = 'CORRECT' ) THEN
+              UPDATE rcv_transactions_interface rti
+              SET    rti.processing_status_code   = cv_status_code                -- 処理ステータス
+                   , rti.transaction_status_code  = cv_status_code                -- 取引ステータス
+                   , rti.last_updated_by          = cn_last_updated_by            -- ログインユーザーID
+                   , rti.last_update_date         = cd_last_update_date           -- システム日付
+                   , rti.last_update_login        = cn_last_update_login          -- ログインID
+                   , rti.request_id               = cn_request_id                 -- コンカレント要求ID
+                   , rti.program_application_id   = cn_program_application_id     -- プログラム・アプリケーションID
+                   , rti.program_id               = cn_program_id                 -- コンカレント・プログラムID
+                   , rti.program_update_date      = cd_program_update_date        -- システム日付
+              WHERE  rti.interface_transaction_id = g_rcv_trn_if_tab( i ).interface_transaction_id
+              AND    rti.group_id                 = g_rcv_trn_if_tab( i ).group_id
+              ;
+--
+              -- ログ出力用
+              ln_shipment_header_id := l_trn_upd_tab(1).shipment_header_id;
+--
+            -- 訂正以外の場合
+            ELSE
+-- Ver1.01 S.Yamashita ADD end
+              UPDATE rcv_transactions_interface rti
+              SET    rti.processing_status_code   = cv_status_code
+                   , rti.transaction_status_code  = cv_status_code
+                   , rti.shipment_header_id       = NULL
+                   , rti.last_updated_by          = cn_last_updated_by            -- ログインユーザーID
+                   , rti.last_update_date         = cd_last_update_date           -- システム日付
+                   , rti.last_update_login        = cn_last_update_login          -- ログインID
+                   , rti.request_id               = cn_request_id                 -- コンカレント要求ID
+                   , rti.program_application_id   = cn_program_application_id     -- プログラム・アプリケーションID
+                   , rti.program_id               = cn_program_id                 -- コンカレント・プログラムID
+                   , rti.program_update_date      = cd_program_update_date        -- システム日付
+              WHERE  rti.interface_transaction_id = g_rcv_trn_if_tab( i ).interface_transaction_id
+              AND    rti.group_id                 = g_rcv_trn_if_tab( i ).group_id
+              ;
+-- Ver1.01 S.Yamashita ADD start
+              -- ログ出力用
+              ln_shipment_header_id := NULL;
+            END IF;
+-- Ver1.01 S.Yamashita ADD end
             -- 更新件数カウント(退避用変数)
             ln_trn_upd_cnt := ln_trn_upd_cnt + 1;
 --
@@ -952,15 +1018,26 @@ AS
              which  => FND_FILE.OUTPUT
             ,buff   => '"'|| l_trn_upd_tab(1).interface_transaction_id   || '","' ||
                              l_trn_upd_tab(1).group_id                   || '","' ||
-                             l_trn_upd_tab(1).last_update_date           || '","' ||
-                             l_trn_upd_tab(1).last_updated_by            || '","' ||
-                             l_trn_upd_tab(1).creation_date              || '","' ||
-                             l_trn_upd_tab(1).created_by                 || '","' ||
-                             l_trn_upd_tab(1).last_update_login          || '","' ||
-                             l_trn_upd_tab(1).request_id                 || '","' ||
-                             l_trn_upd_tab(1).program_application_id     || '","' ||
-                             l_trn_upd_tab(1).program_id                 || '","' ||
-                             l_trn_upd_tab(1).program_update_date        || '","' ||
+-- Ver1.01 S.Yamashita MOD start
+--                             l_trn_upd_tab(1).last_update_date           || '","' ||
+--                             l_trn_upd_tab(1).last_updated_by            || '","' ||
+--                             l_trn_upd_tab(1).creation_date              || '","' ||
+--                             l_trn_upd_tab(1).created_by                 || '","' ||
+--                             l_trn_upd_tab(1).last_update_login          || '","' ||
+--                             l_trn_upd_tab(1).request_id                 || '","' ||
+--                             l_trn_upd_tab(1).program_application_id     || '","' ||
+--                             l_trn_upd_tab(1).program_id                 || '","' ||
+--                             l_trn_upd_tab(1).program_update_date        || '","' ||
+                             TO_CHAR(cd_last_update_date,cv_date_format)     || '","' ||
+                             cn_last_updated_by                              || '","' ||
+                             TO_CHAR(l_trn_upd_tab(1).creation_date,cv_date_format) || '","' ||
+                             l_trn_upd_tab(1).created_by                     || '","' ||
+                             cn_last_update_login                            || '","' ||
+                             cn_request_id                                   || '","' ||
+                             cn_program_application_id                       || '","' ||
+                             cn_program_id                                   || '","' ||
+                             TO_CHAR(cd_program_update_date,cv_date_format)  || '","' ||
+-- Ver1.01 S.Yamashita MOD end
                              l_trn_upd_tab(1).transaction_type           || '","' ||
                              l_trn_upd_tab(1).transaction_date           || '","' ||
                              cv_status_code                              || '","' || -- 処理ステータス
@@ -979,7 +1056,10 @@ AS
                              l_trn_upd_tab(1).uom_code                   || '","' ||
                              l_trn_upd_tab(1).employee_id                || '","' ||
                              l_trn_upd_tab(1).auto_transact_code         || '","' ||
-                             NULL                                        || '","' || -- 出荷ヘッダID
+-- Ver1.01 S.Yamashita MOD start
+--                             NULL                                        || '","' || -- 出荷ヘッダID
+                             ln_shipment_header_id                       || '","' || -- 出荷ヘッダID
+-- Ver1.01 S.Yamashita MOD end
                              l_trn_upd_tab(1).shipment_line_id           || '","' ||
                              l_trn_upd_tab(1).ship_to_location_id        || '","' ||
                              l_trn_upd_tab(1).primary_quantity           || '","' ||
