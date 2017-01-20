@@ -7,7 +7,7 @@ AS
  * Description      : 指定した営業員の指定した日の１時間ごとの訪問実績(訪問先)を表示します。
  *                    １週間前の訪問実績を同様に表示して比較の対象とします。
  * MD.050           : MD050_CSO_019_A07_営業員別訪問実績表
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-06-03    1.5   Kazuo.Satomura   ＳＴ障害対応(T1_0696 SQLERRMを削除)
  *  2009-11-25    1.6   Kazuo.Satomura   E_本稼動_00026対応
  *  2016-09-26    1.7   Hideki.Sakihama  E_本稼動_13872対応 出力営業員複数対応
+ *  2017/01/18    1.8   K.Kiriu          E_本稼動_13872対応 T4障害対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2325,7 +2326,10 @@ AS
           ,iv_employee_number  => g_rep_emp_tab(i).employee_number     -- 従業員コード
           ,iv_work_base_code   => g_rep_emp_tab(i).work_base_code      -- 拠点コード
           ,iv_hub_name         => g_rep_emp_tab(i).work_base_name      -- 拠点名称
-          ,iv_full_name        => SUBSTRB(g_rep_emp_tab(i).first_name||g_rep_emp_tab(i).last_name,1,40)  -- 漢字氏名
+-- 2017-01-18 Ver1.8 Mod Start
+--          ,iv_full_name        => SUBSTRB(g_rep_emp_tab(i).first_name||g_rep_emp_tab(i).last_name,1,40)  -- 漢字氏名
+          ,iv_full_name        => SUBSTRB(g_rep_emp_tab(i).last_name || g_rep_emp_tab(i).first_name,1,40)  -- 漢字氏名
+-- 2017-01-18 Ver1.8 Mod End
           ,ov_errbuf           => lv_errbuf              -- エラー・メッセージ            --# 固定 #
           ,ov_retcode          => lv_retcode             -- リターン・コード              --# 固定 #
           ,ov_errmsg           => lv_errmsg              -- ユーザー・エラー・メッセージ  --# 固定 #
