@@ -7,7 +7,7 @@ AS
  * Description     : 未取引客チェックリスト
  * MD.050          : MD050_CMM_003_A10_未取引客チェックリスト
  * MD.070          : MD050_CMM_003_A10_未取引客チェックリスト
- * Version         : 1.4
+ * Version         : 1.5
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -16,9 +16,9 @@ AS
  * init              P         初期情報抽出処理         (A-1)
  * chk_blance_amount P         売掛残高チェック         (A-3)
  * get_inventory     P         基準在庫数取得           (A-4)
- * make_worktable    P         ワークテーブルデータ登録 (A-6)
- * run_svf_api       P         SVF起動処理              (A-7)
- * termination       P         終了処理                 (A-8)
+ * make_worktable    P         ワークテーブルデータ登録 (A-7)
+ * run_svf_api       P         SVF起動処理              (A-8)
+ * termination       P         終了処理                 (A-9)
  * submain           P         メイン処理プロシージャ
  * main              P         コンカレント実行ファイル登録プロシージャ
  * 
@@ -38,6 +38,8 @@ AS
  *                                      ・顧客に紐付く物件コードの表示方法を修正
  *  2011/05/09    1.4  S.Niki           障害E_本稼動_01956追加対応
  *                                      ・担当営業員の適用終了日について日付書式を修正
+ *  2017/01/17    1.5  S.Niki           障害E_本稼動_13983対応
+ *                                      ・パラメータ出力区分追加
  *
  ************************************************************************/
 --
@@ -110,6 +112,13 @@ AS
   cv_lookup_gyotai_sho      CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_GYOTAI_SHO';     -- 参照表：業態(小分類)
   cv_lookup_gyotai_chu      CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_GYOTAI_CHU';     -- 参照表：業態(中分類)
   cv_lookup_gyotai_dai      CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_GYOTAI_DAI';     -- 参照表：業態(大分類)
+-- Ver1.5 add start
+  cv_lookup_vd_output_div   CONSTANT VARCHAR2(30)  := 'XXCMM_VD_OUTPUT_DIV';       -- 参照表：VD出力区分
+  cv_vd_output_div_all      CONSTANT VARCHAR2(1)   := '0';                         -- VD出力区分：全て
+  cv_vd_output_div_vd       CONSTANT VARCHAR2(1)   := '1';                         -- VD出力区分：ベンダー
+  cv_vd_output_div_not_vd   CONSTANT VARCHAR2(1)   := '2';                         -- VD出力区分：ベンダー以外
+  cv_dummy                  CONSTANT VARCHAR2(1)   := 'X';                         -- ダミー値
+-- Ver1.5 add end
   cv_flex_department        CONSTANT VARCHAR2(30)  := 'XX03_DEPARTMENT';           -- 値セット名：部門
 -- 2009/03/09 modify start
 --  cn_instance_stat_deleted  CONSTANT NUMBER        := 6;                           -- インスタンスステータスID：物理削除済
@@ -199,6 +208,9 @@ AS
   gt_employee_name             xxcmm_rep_undeal_list.employee_name%TYPE;            -- 担当営業員名称
   gt_employee_number           xxcmm_rep_undeal_list.employee_number%TYPE;          -- 担当営業員コード
 -- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End   by Naoki.Horigome
+-- Ver1.5 add start
+  gv_rep_title                 VARCHAR2(50);                                        -- 帳票タイトル
+-- Ver1.5 add end
 --
   --===============================================================
   -- グローバルテーブルタイプ
@@ -215,7 +227,12 @@ AS
   -- 未取引客情報抽出カーソル
   CURSOR undeal_cust_cur(
     iv_customer_status IN VARCHAR2  -- 顧客ステータス
-   ,iv_sale_base_code  IN VARCHAR2) -- 拠点コード
+-- Ver1.5 modify start
+--   ,iv_sale_base_code  IN VARCHAR2) -- 拠点コード
+   ,iv_sale_base_code  IN VARCHAR2  -- 拠点コード
+   ,iv_vd_output_div   IN VARCHAR2  -- 出力区分
+  )
+-- Ver1.5 modify end
   IS
     SELECT
            hca.cust_account_id                              cust_account_id         -- 顧客ID
@@ -266,6 +283,9 @@ AS
           ,(SELECT
                    flv.lookup_code lookup_code              -- 参照コード
                   ,flv.meaning     meaning                  -- 内容
+-- Ver1.5 add start
+                  ,flv.attribute1  attribute1               -- VD業態フラグ
+-- Ver1.5 add end
             FROM
                    fnd_lookup_values flv
             WHERE
@@ -293,6 +313,13 @@ AS
     AND   xcgc.attribute1         = xcgd.lookup_code
     AND   xcgs.lookup_code        = xca.business_low_type
     AND   xdnm.sale_base_code     = xca.sale_base_code
+-- Ver1.5 add start
+    AND   ((iv_vd_output_div = cv_vd_output_div_all)
+       OR  (iv_vd_output_div = cv_vd_output_div_vd
+            AND xcgd.attribute1 = cv_flag_y)
+       OR  (iv_vd_output_div = cv_vd_output_div_not_vd
+            AND xcgd.attribute1 = cv_flag_n))
+-- Ver1.5 add end
     AND   ((iv_customer_status IS NOT NULL
             AND hp.duns_number_c = iv_customer_status)
        OR  (iv_customer_status IS NULL
@@ -387,6 +414,9 @@ AS
   PROCEDURE init(
     iv_cust_status             IN         VARCHAR2,     --   顧客ステータス
     iv_sale_base_code          IN         VARCHAR2,     --   拠点コード
+-- Ver1.5 add start
+    iv_vd_output_div           IN         VARCHAR2,     --   出力区分
+-- Ver1.5 add end
     ov_errbuf                  OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode                 OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg                  OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -428,6 +458,9 @@ AS
        iv_which        => cv_file_type_log             -- ログ出力
       ,iv_conc_param1  => iv_cust_status               -- 顧客ステータス
       ,iv_conc_param2  => iv_sale_base_code            -- 拠点コード
+-- Ver1.5 add start
+      ,iv_conc_param3  => iv_vd_output_div             -- 出力区分
+-- Ver1.5 add end
       ,ov_errbuf       => lv_errbuf                    -- エラー・メッセージ           --# 固定 #
       ,ov_retcode      => lv_retcode                   -- リターン・コード             --# 固定 #
       ,ov_errmsg       => lv_errmsg);                  -- ユーザー・エラー・メッセージ --# 固定 #
@@ -600,6 +633,27 @@ AS
       AND    ffvs.flex_value_set_name = cv_flex_department
       AND    ffv.flex_value           = iv_sale_base_code;
     END IF;
+-- Ver1.5 add start
+    -- 帳票タイトル取得
+    SELECT
+           flv.description  rep_title            -- 帳票タイトル
+    INTO
+           gv_rep_title
+    FROM
+           fnd_lookup_values flv
+    WHERE
+           flv.language     = 'JA'
+    AND    flv.lookup_type  = cv_lookup_vd_output_div
+    AND    flv.enabled_flag = cv_flag_y
+    AND    flv.lookup_code  = iv_vd_output_div
+    ;
+--
+    -- 帳票0件メッセージ取得
+    gt_no_data_msg := xxccp_common_pkg.get_msg(
+                        cv_appl_short_name -- アプリケーション短縮名
+                       ,cv_msg_cmm_00334   -- 明細0件用メッセージ
+                      );
+-- Ver1.5 add end
 --
   EXCEPTION
 --
@@ -936,7 +990,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : make_worktable
-   * Description      : ワークテーブルデータ登録(A-6)
+   * Description      : ワークテーブルデータ登録(A-7)
    ***********************************************************************************/
   PROCEDURE make_worktable(
     iv_sale_base_code          IN         VARCHAR2,     --   拠点コード
@@ -956,6 +1010,9 @@ AS
     iv_instance_number         IN         VARCHAR2,     --   物件コード
     in_inventory_quantity_sum  IN         NUMBER,       --   基準在庫数
     in_change_amount           IN         NUMBER,       --   釣銭基準額
+-- Ver1.5 add start
+    iv_nodata_msg              IN         VARCHAR2,     --   データなしメッセージ
+-- Ver1.5 add end
     ov_errbuf                  OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode                 OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg                  OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1018,6 +1075,10 @@ AS
        ,balance_month           -- 売掛残高月度
        ,undeal_reason           -- 未取引理由
        ,stop_approval_reason    -- 中止事由
+-- Ver1.5 add start
+       ,rep_title               -- 帳票タイトル
+       ,nodata_msg              -- データなしメッセージ
+-- Ver1.5 add end
        ,created_by              -- 作成者
        ,creation_date           -- 作成日
        ,last_updated_by         -- 最終更新者
@@ -1051,6 +1112,10 @@ AS
        ,gt_balance_month                          -- 売掛残高月度
        ,NULL                                      -- 未取引理由
        ,NULL                                      -- 中止事由
+-- Ver1.5 add start
+       ,gv_rep_title                              -- 帳票タイトル
+       ,iv_nodata_msg                             -- データなしメッセージ
+-- Ver1.5 add end
        ,cn_created_by                             -- 作成者
        ,cd_creation_date                          -- 作成日
        ,cn_last_updated_by                        -- 最終更新者
@@ -1075,8 +1140,15 @@ AS
         RAISE global_process_expt;
     END;
 --
-    -- 処理対象件数加算
-    gn_target_cnt := gn_target_cnt + 1;
+-- Ver1.5 add start
+    -- データなしメッセージがNULLの場合
+    IF (iv_nodata_msg IS NULL) THEN
+-- Ver1.5 add end
+      -- 処理対象件数加算
+      gn_target_cnt := gn_target_cnt + 1;
+-- Ver1.5 add start
+    END IF;
+-- Ver1.5 add end
 --
   EXCEPTION
 --
@@ -1103,7 +1175,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : run_svf_api
-   * Description      : SVF起動処理 (A-7)
+   * Description      : SVF起動処理 (A-8)
    ***********************************************************************************/
   PROCEDURE run_svf_api(
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -1184,11 +1256,13 @@ AS
       gv_svf_form_name := cv_svf_form_name;
     END IF;
 --
-    -- 帳票0件メッセージ取得
-    gt_no_data_msg := xxccp_common_pkg.get_msg(
-                        cv_appl_short_name -- アプリケーション短縮名
-                       ,cv_msg_cmm_00334   -- 明細0件用メッセージ
-                      );
+-- Ver1.5 delete start
+--    -- 帳票0件メッセージ取得
+--    gt_no_data_msg := xxccp_common_pkg.get_msg(
+--                        cv_appl_short_name -- アプリケーション短縮名
+--                       ,cv_msg_cmm_00334   -- 明細0件用メッセージ
+--                      );
+-- Ver1.5 delete end
 --
     xxccp_svfcommon_pkg.submit_svf_request(
       ov_errbuf       => lv_errbuf              -- エラー・メッセージ           --# 固定 #
@@ -1206,7 +1280,10 @@ AS
      ,iv_doc_name     => NULL                   -- 文書名
      ,iv_printer_name => NULL                   -- プリンタ名
      ,iv_request_id   => cn_request_id          -- 要求ID
-     ,iv_nodata_msg   => gt_no_data_msg         -- データなしメッセージ
+-- Ver1.5 modify start
+--     ,iv_nodata_msg   => gt_no_data_msg         -- データなしメッセージ
+     ,iv_nodata_msg   => NULL                   -- データなしメッセージ
+-- Ver1.5 modify end
      ,iv_svf_param1   => lv_svf_param1          -- svf可変パラメータ1：要求ID
     );
 --
@@ -1252,7 +1329,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : termination
-   * Description      : 終了処理(A-8)
+   * Description      : 終了処理(A-9)
    ***********************************************************************************/
   PROCEDURE termination(
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -1337,6 +1414,9 @@ AS
   PROCEDURE submain(
     iv_cust_status             IN         VARCHAR2,     --   顧客ステータス
     iv_sale_base_code          IN         VARCHAR2,     --   拠点コード
+-- Ver1.5 add start
+    iv_vd_output_div           IN         VARCHAR2,     --   出力区分
+-- Ver1.5 add end
     ov_errbuf                  OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode                 OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg                  OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1398,6 +1478,9 @@ AS
     init(
        iv_cust_status                     -- 顧客ステータス
       ,iv_sale_base_code                  -- 拠点コード
+-- Ver1.5 add start
+      ,iv_vd_output_div                   -- 出力区分
+-- Ver1.5 add end
       ,lv_errbuf                          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode                         -- リターン・コード             --# 固定 #
       ,lv_errmsg);                        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1413,7 +1496,11 @@ AS
     <<undeal_cust_loop>>
     FOR l_undeal_cust_rec IN undeal_cust_cur(
       iv_cust_status     -- 顧客ステータス
-     ,iv_sale_base_code) -- 拠点コード
+-- Ver1.5 modify start
+--     ,iv_sale_base_code) -- 拠点コード
+     ,iv_sale_base_code  -- 拠点コード
+     ,iv_vd_output_div)  -- 出力区分
+-- Ver1.5 modify end
     LOOP
 --
       -- =====================================================
@@ -1473,7 +1560,7 @@ AS
 -- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add End   by Naoki.Horigome
 --
         -- =====================================================
-        -- 物件コード取得(A-5)
+        -- 物件コード取得(A-6)
         -- =====================================================
         -- 物件コードカーソル件数初期化
         ln_get_instance_cur_cnt := 0;
@@ -1585,7 +1672,7 @@ AS
 -- 2011/04/13 Ver1.3 E_本稼動_01956,01961,05192 Add Start by Naoki.Horigome
 --
           -- =====================================================
-          -- ワークテーブルデータ登録(A-6)
+          -- ワークテーブルデータ登録(A-7)
           -- =====================================================
           make_worktable(
             l_undeal_cust_rec.sale_base_code          -- 拠点コード
@@ -1603,6 +1690,9 @@ AS
            ,lv_external_reference                     -- 物件コード
            ,NVL(gn_inventory_quantity_sum, 0)         -- 在庫
            ,l_undeal_cust_rec.change_amount           -- 釣銭基準額
+-- Ver1.5 add start
+           ,NULL                                      -- データなしメッセージ
+-- Ver1.5 add end
            ,lv_errbuf                                 -- エラー・メッセージ           --# 固定 #
            ,lv_retcode                                -- リターン・コード             --# 固定 #
            ,lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1663,8 +1753,42 @@ AS
 -- 2011/04/13 Ver1.3 E_本稼動_01956,01961 Delete End   by Naoki.Horigome
     END LOOP undeal_cust_loop;
 --
+-- Ver1.5 add start
+    -- 対象データ0件の場合
+    IF (gn_target_cnt = 0) THEN
+      -- =====================================================
+      -- ワークテーブルデータ登録(A-7)
+      -- =====================================================
+      make_worktable(
+        cv_dummy             -- 拠点コード
+       ,NULL                 -- 拠点名
+       ,NULL                 -- 担当営業員コード
+       ,NULL                 -- 担当営業員名
+       ,cv_dummy             -- 顧客コード
+       ,NULL                 -- 顧客名
+       ,NULL                 -- 顧客ステータス
+       ,NULL                 -- 顧客ステータス名
+       ,NULL                 -- 業態分類（大分類）
+       ,NULL                 -- 業態分類（大分類）名
+       ,NULL                 -- 最終訪問日
+       ,NULL                 -- 最終取引日
+       ,NULL                 -- 物件コード
+       ,NULL                 -- 在庫
+       ,NULL                 -- 釣銭基準額
+       ,gt_no_data_msg       -- データなしメッセージ
+       ,lv_errbuf            -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode           -- リターン・コード             --# 固定 #
+       ,lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+--
+      IF (lv_retcode = cv_status_error) THEN
+        --(エラー処理)
+        RAISE global_process_expt;
+      END IF;
+   END IF;
+-- Ver1.5 add end
     -- =====================================================
-    --  SVFコンカレント起動(A-7)
+    --  SVFコンカレント起動(A-8)
     -- =====================================================
     run_svf_api(
        lv_errbuf             -- エラー・メッセージ           --# 固定 #
@@ -1677,7 +1801,7 @@ AS
     END IF;
 --
     -- =====================================================
-    --  終了処理(A-8)
+    --  終了処理(A-9)
     -- =====================================================
     termination(
        lv_errbuf             -- エラー・メッセージ           --# 固定 #
@@ -1728,7 +1852,11 @@ AS
     errbuf                     OUT NOCOPY VARCHAR2,         --    エラー・メッセージ  --# 固定 #
     retcode                    OUT NOCOPY VARCHAR2,         --    エラーコード        --# 固定 #
     iv_cust_status             IN         VARCHAR2,         --    顧客ステータス
-    iv_sale_base_code          IN         VARCHAR2          --    拠点コード
+-- Ver1.5 modify start
+--    iv_sale_base_code          IN         VARCHAR2          --    拠点コード
+    iv_sale_base_code          IN         VARCHAR2,         --    拠点コード
+    iv_vd_output_div           IN         VARCHAR2          --    出力区分
+-- Ver1.5 modify end
   )
 --
   IS
@@ -1781,13 +1909,16 @@ AS
     submain(
        iv_cust_status                     -- 顧客ステータス
       ,iv_sale_base_code                  -- 拠点コード
+-- Ver1.5 add start
+      ,iv_vd_output_div                   -- 出力区分
+-- Ver1.5 add end
       ,lv_errbuf                          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode                         -- リターン・コード             --# 固定 #
       ,lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
     -- =====================================================
-    --  終了処理(A-8)
+    --  終了処理(A-9)
     -- =====================================================
     -- エラーの場合、エラー発生時処理件数を設定する
     IF (lv_retcode = cv_status_error) THEN
