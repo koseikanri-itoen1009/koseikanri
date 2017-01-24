@@ -35,6 +35,10 @@ CREATE TABLE xxcmm.xxcmm_rep_undeal_list (
   balance_month           VARCHAR2(7),
   undeal_reason           VARCHAR2(30),
   stop_approval_reason    VARCHAR2(30),
+-- 2017/01/17 E_本稼動_13983 Add start
+  rep_title               VARCHAR2(50),
+  nodata_msg              VARCHAR2(50),
+-- 2017/01/17 E_本稼動_13983 Add end
   created_by              NUMBER(15,0) NOT NULL,
   creation_date           DATE         NOT NULL,
   last_updated_by         NUMBER(15,0) NOT NULL,
@@ -91,6 +95,12 @@ COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.undeal_reason           IS '未取引
 /
 COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.stop_approval_reason    IS '中止事由'
 /
+-- 2017/01/17 E_本稼動_13983 Add start
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.rep_title               IS '帳票タイトル'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.nodata_msg              IS 'データなしメッセージ'
+/
+-- 2017/01/17 E_本稼動_13983 Add end
 COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.created_by              IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.creation_date           IS '作成日'
