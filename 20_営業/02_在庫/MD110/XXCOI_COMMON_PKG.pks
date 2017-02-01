@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  GET_FRESH_CONDITION_DATE   鮮度条件基準日算出
  *  GET_RESERVED_QUANTITY      引当可能数算出
  *  GET_FRESH_CONDITION_DATE_F 鮮度条件基準日算出(ファンクション型)
+ *  GET_RESERVED_QUANTITY_F    引当可能数(総数)算出(ファンクション型)
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -67,6 +68,7 @@ AS
  *                                        ロット情報保持マスタ反映、ロット別手持数量反映、
  *                                        鮮度条件基準日算出、引当可能数算出、鮮度条件基準日算出(ファンクション型)
  *  2015/03/05    1.6   Y.Nagasue        [E_本稼動_12237]倉庫管理システム追加対応(仕様部修正なし)
+ *  2017/01/23    1.7   S.Yamashita      [E_本稼動_13965]倉替入力の簡素化対応(引当可能数(総数)算出(ファンクション型)を追加)
  *
  *****************************************************************************************/
 --
@@ -694,5 +696,23 @@ AS
   ;
 --
 -- == 2014/10/28 Ver1.5 Y.Nagasue ADD END ======================================================
+-- == Ver1.7 S.Yamashita ADD START ======================================================
+/************************************************************************
+ * Function Name   : GET_RESERVED_QUANTITY_F
+ * Description     : 引当可能数(総数)算出(ファンクション型)
+ ************************************************************************/
+--
+  FUNCTION get_reserved_quantity_f(
+    in_inv_org_id       IN  NUMBER           -- 在庫組織ID
+   ,iv_base_code        IN  VARCHAR2         -- 拠点コード
+   ,iv_subinv_code      IN  VARCHAR2         -- 保管場所コード
+   ,iv_loc_code         IN  VARCHAR2         -- ロケーションコード
+   ,in_child_item_id    IN  NUMBER           -- 子品目ID
+   ,iv_lot              IN  VARCHAR2         -- ロット(賞味期限)
+   ,iv_diff_sum_code    IN  VARCHAR2         -- 固有記号
+  ) RETURN NUMBER
+  ;
+--
+-- == Ver1.7 S.Yamashita ADD END ======================================================
 END XXCOI_COMMON_PKG;
 /
