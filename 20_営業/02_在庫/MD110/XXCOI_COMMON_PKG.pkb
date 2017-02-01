@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  GET_FRESH_CONDITION_DATE   鮮度条件基準日算出
  *  GET_RESERVED_QUANTITY      引当可能数算出
  *  GET_FRESH_CONDITION_DATE_F 鮮度条件基準日算出(ファンクション型)
+ *  GET_RESERVED_QUANTITY_F    引当可能数(総数)算出(ファンクション型)
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -78,6 +79,7 @@ AS
  *  2015/03/30    1.14  K.Nakamura       [E_本稼動_12237]倉庫管理システム対応（不具合対応）
  *  2015/11/11    1.15  S.Yamashita      [E_本稼動_13356]パフォーマンス改善対応
  *  2016/04/15    1.16  S.Niki           [E_本稼動_13552]パフォーマンス改善対応（ロット別手持数量反映）
+ *  2017/01/23    1.17  S.Yamashita      [E_本稼動_13965]倉替入力の簡素化対応(引当可能数(総数)算出(ファンクション型)を追加)
  *
  *****************************************************************************************/
 --
@@ -7443,5 +7445,81 @@ AS
   END get_fresh_condition_date_f;
 --
 -- == 2014/11/07 Ver1.12 Y.Nagasue ADD END ======================================================
+-- == Ver1.17 S.Yamashita ADD START ======================================================
+/************************************************************************
+ * Function Name   : GET_RESERVED_QUANTITY_F
+ * Description     : 引当可能数(総数)算出(ファンクション型)
+ ************************************************************************/
+--
+  FUNCTION get_reserved_quantity_f(
+    in_inv_org_id       IN  NUMBER           -- 在庫組織ID
+   ,iv_base_code        IN  VARCHAR2         -- 拠点コード
+   ,iv_subinv_code      IN  VARCHAR2         -- 保管場所コード
+   ,iv_loc_code         IN  VARCHAR2         -- ロケーションコード
+   ,in_child_item_id    IN  NUMBER           -- 子品目ID
+   ,iv_lot              IN  VARCHAR2         -- ロット(賞味期限)
+   ,iv_diff_sum_code    IN  VARCHAR2         -- 固有記号
+  ) RETURN NUMBER
+  IS
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- *** ローカル例外 ***
+    global_process_expt EXCEPTION; -- 処理部共通例外
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    ln_case_in_qty  NUMBER; -- 戻り値(入数)
+    ln_case_qty     NUMBER; -- 戻り値(ケース数)
+    ln_singly_qty   NUMBER; -- 戻り値(バラ数)
+    ln_summary_qty  NUMBER; -- 戻り値(取引数量)
+--
+  BEGIN
+    -- 変数初期化
+    ln_case_in_qty := 0;
+    ln_case_qty    := 0;
+    ln_singly_qty  := 0;
+    ln_summary_qty := 0;
+--
+    -- 共通関数：「引当可能数算出」を使用し引当可能数を導出
+    xxcoi_common_pkg.get_reserved_quantity(
+      in_inv_org_id    =>  in_inv_org_id    -- 在庫組織ID
+     ,iv_base_code     =>  iv_base_code     -- 拠点コード
+     ,iv_subinv_code   =>  iv_subinv_code   -- 保管場所コード
+     ,iv_loc_code      =>  iv_loc_code      -- ロケーションコード
+     ,in_child_item_id =>  in_child_item_id -- 子品目ID
+     ,iv_lot           =>  iv_lot           -- ロット(賞味期限)
+     ,iv_diff_sum_code =>  iv_diff_sum_code -- 固有記号
+     ,on_case_in_qty   =>  ln_case_in_qty   -- 入数
+     ,on_case_qty      =>  ln_case_qty      -- ケース数
+     ,on_singly_qty    =>  ln_singly_qty    -- バラ数
+     ,on_summary_qty   =>  ln_summary_qty   -- 取引数量
+     ,ov_errbuf        =>  lv_errbuf        -- エラーメッセージ
+     ,ov_retcode       =>  lv_retcode       -- リターン・コード(0:正常、2:エラー)
+     ,ov_errmsg        =>  lv_errmsg        -- ユーザー・エラーメッセージ
+    );
+--
+    -- 戻り値セット
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      RETURN 0;
+    ELSE
+      RETURN ln_summary_qty;
+    END IF;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN 0;
+--
+  END get_reserved_quantity_f;
+--
+-- == Ver1.17 S.Yamashita ADD END ======================================================
 END XXCOI_COMMON_PKG;
 /
