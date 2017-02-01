@@ -3,13 +3,14 @@
  *
  * View Name       : XXCOI_SUBINVENTORY_INFO_V
  * Description     : •ÛŠÇêŠî•ñƒrƒ…[
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/17    1.0   SCS S.Moriyama   V‹Kì¬
+ *  2017/01/23    1.1   SCSK S.Yamashita E_–{‰Ò“®_13965‘Î‰
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOI_SUBINVENTORY_INFO_V
@@ -34,6 +35,9 @@ CREATE OR REPLACE VIEW XXCOI_SUBINVENTORY_INFO_V
   ,subinventory_type                                                  -- •ÛŠÇêŠ•ª—Ş
   ,disable_date                                                       -- –³Œø“ú
   ,material_account                                                   -- ’¼ÚŞ—¿”ïCCID 
+-- Ver.1.1 S.Yamashita ADD Start
+  ,warehouse_flag                                                     -- ‘qŒÉŠÇ—‘ÎÛ‹æ•ª
+-- Ver.1.1 S.Yamashita ADD End
   )
 AS
 SELECT msi.organization_id                                            -- İŒÉ‘gDID
@@ -60,6 +64,9 @@ SELECT msi.organization_id                                            -- İŒÉ‘g
       ,msi.attribute13                                                -- •ÛŠÇêŠ•ª—Ş
       ,msi.disable_date                                               -- –³Œø“ú
       ,msi.material_account                                           -- ’¼ÚŞ—¿”ïCCID 
+-- Ver.1.1 S.Yamashita ADD Start
+      ,msi.attribute14                                                -- ‘qŒÉŠÇ—‘ÎÛ‹æ•ª
+-- Ver.1.1 S.Yamashita ADD End
 FROM   mtl_secondary_inventories msi                                  -- •ÛŠÇêŠƒ}ƒXƒ^
 /
 COMMENT ON TABLE xxcoi_subinventory_info_v IS '•ÛŠÇêŠî•ñƒrƒ…[';
@@ -106,3 +113,7 @@ COMMENT ON COLUMN xxcoi_subinventory_info_v.disable_date IS '–³Œø“ú';
 /
 COMMENT ON COLUMN xxcoi_subinventory_info_v.material_account IS '’¼ÚŞ—¿”ïCCID';
 /
+-- Ver.1.1 S.Yamashita ADD Start
+COMMENT ON COLUMN xxcoi_subinventory_info_v.warehouse_flag IS '‘qŒÉŠÇ—‘ÎÛ‹æ•ª';
+/
+-- Ver.1.1 S.Yamashita ADD End
