@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、営業員ごとに指定日を含む月の1日～指定日まで
  *                    訪問実績の無い顧客を表示します。
  * MD.050           : MD050_CSO_019_A08_未訪問顧客一覧表
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009-06-04    1.7   Kazuo.Satomura   ＳＴ障害対応(T1_1329)
  *  2010-05-25    1.8   T.Maruyama       E_本稼動_02809 訪問回数取得できない場合ゼロとする
  *  2011-07-14    1.9   K.Kiriu          E_本稼動_07825 PT対応
+ *  2017-01-18    1.10  Y.Shoji          E_本稼動_13985 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -114,6 +115,9 @@ AS
       /* 20090514_Ohtsuki_T1_0790 START*/
   cv_tkn_number_10       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00014';  -- プロファイル取得エラーメッセージ
       /* 20090514_Ohtsuki_T1_0790 END  */
+-- Ver1.10 add start
+  cv_tkn_number_11       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00803';  -- パラメータ出力（出力区分）
+-- Ver1.10 add end
   -- トークンコード
   cv_tkn_param_nm        CONSTANT VARCHAR2(20) := 'PARAM_NAME';
   cv_tkn_val             CONSTANT VARCHAR2(20) := 'VALUE';
@@ -139,6 +143,15 @@ AS
   cv_rep_tp              CONSTANT VARCHAR2(1)  := '1';                          -- 帳票タイプ
   cv_true                CONSTANT VARCHAR2(4)  := 'TRUE';                       -- 戻り値判断用
   cv_false               CONSTANT VARCHAR2(5)  := 'FALSE';                      -- 戻り値判断用
+-- Ver1.10 add start
+  cv_yes                 CONSTANT VARCHAR2(1)   := 'Y';                                  -- 有効フラグ：Y
+  cv_user_lang           CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );  -- 'JA'
+--
+  --===============================================================
+  -- グローバル変数
+  --===============================================================
+  gt_rep_title                    fnd_lookup_values.description%TYPE;                    -- 帳票タイトル
+-- Ver1.10 add end
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -163,6 +176,10 @@ AS
     ,final_call_date               xxcso_rep_novisit.final_call_date%TYPE              -- 最終訪問日
     ,final_tran_date               xxcso_rep_novisit.final_tran_date%TYPE              -- 最終取引日
     ,business_low_type             xxcso_rep_novisit.business_low_type%TYPE            -- 業態（小分類）
+-- Ver1.10 add start
+    ,business_low_type_name        xxcso_rep_novisit.business_low_type_name%TYPE       -- 業態小分類名称
+    ,gyotai_sort                   xxcso_rep_novisit.gyotai_sort%TYPE                  -- 業態ソート用
+-- Ver1.10 add end
     ,mc_flag                       xxcso_rep_novisit.mc_flag%TYPE                      -- ＭＣフラグ
     ,created_by                    xxcso_rep_novisit.created_by%TYPE                   -- 作成者
     ,creation_date                 xxcso_rep_novisit.creation_date%TYPE                -- 作成日
@@ -181,6 +198,9 @@ AS
    ***********************************************************************************/
   PROCEDURE init(
      iv_current_date     IN  VARCHAR2         -- 基準日
+-- Ver1.10 add start
+    ,iv_vd_output_div    IN  VARCHAR2         -- 出力区分
+-- Ver1.10 add end
     ,ov_employee_number  OUT NOCOPY VARCHAR2  -- 従業員コード
     ,ov_employee_name    OUT NOCOPY VARCHAR2  -- 漢字氏名
     ,ov_work_base_code   OUT NOCOPY VARCHAR2  -- 勤務地拠点コード
@@ -202,6 +222,10 @@ AS
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
 --###########################  固定部 END   ####################################
+-- Ver1.10 add start
+    -- *** ローカル定数 ***
+    cv_xxcmm_vd_output_div   CONSTANT VARCHAR2(30)  := 'XXCMM_VD_OUTPUT_DIV';   -- VD出力区分
+-- Ver1.10 add end
     -- *** ローカル変数 ***
     lt_employee_number    xxcso_employees_v2.employee_number%TYPE;  -- 従業員コード
     lt_last_name          xxcso_employees_v2.last_name%TYPE;        -- 漢字姓
@@ -239,6 +263,20 @@ AS
        which  => FND_FILE.LOG
       ,buff   => lv_msg_crnt_dt
     );
+-- Ver1.10 add start
+    -- メッセージ取得(出力区分)
+    lv_msg_crnt_dt := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name           --アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_11      --メッセージコード
+                       ,iv_token_name1  => cv_tkn_entry          --トークンコード1
+                       ,iv_token_value1 => iv_vd_output_div      --トークン値1
+                     );
+--
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => lv_msg_crnt_dt
+    );
+-- Ver1.10 add end
     -- ===========================
     -- ログインユーザー情報取得
     -- ===========================
@@ -283,6 +321,18 @@ AS
       ,buff   => ''
     );
 --
+-- Ver1.10 add start
+    -- 帳票タイトル取得
+    SELECT flv.description  rep_title            -- 帳票タイトル
+    INTO   gt_rep_title
+    FROM   fnd_lookup_values flv
+    WHERE  flv.language     = cv_user_lang
+    AND    flv.lookup_type  = cv_xxcmm_vd_output_div
+    AND    flv.enabled_flag = cv_yes
+    AND    flv.lookup_code  = iv_vd_output_div
+    ;
+--
+-- Ver1.10 add end
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
 --
@@ -651,6 +701,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_report_name        CONSTANT VARCHAR2(40)  := '≪未訪問顧客一覧表≫'; -- 帳票タイトル
+-- Ver1.10 add start
+    cv_half_space         CONSTANT VARCHAR2(1)   := ' ';                    -- 半角スペース
+-- Ver1.10 add end
     cv_tkn_tbl_nm         CONSTANT VARCHAR2(100) := '未訪問顧客一覧表帳票ワークテーブルの登録';
     -- *** ローカル例外 ***
     insert_row_expt     EXCEPTION;          -- ワークテーブル出力処理例外
@@ -688,6 +741,10 @@ AS
          ,final_call_date              -- 最終訪問日
          ,final_tran_date              -- 最終取引日
          ,business_low_type            -- 業態（小分類）
+-- Ver1.10 add start
+         ,business_low_type_name       -- 業態小分類名称
+         ,gyotai_sort                  -- 業態ソート用
+-- Ver1.10 add end
          ,mc_flag                      -- ＭＣフラグ
          ,created_by                   -- 作成者
          ,creation_date                -- 作成日
@@ -702,7 +759,11 @@ AS
       VALUES
         ( i_rp_nov_dt_rec.line_num                     -- 行番号
          ,cv_report_id                                 -- 帳票ＩＤ
-         ,cv_report_name                               -- 帳票タイトル
+-- Ver1.10 mod start
+--         ,cv_report_name                               -- 帳票タイトル
+         ,cv_report_name || cv_half_space || gt_rep_title
+                                                       -- 帳票タイトル
+-- Ver1.10 mod end
          ,cd_sysdate                                   -- 出力日時
          ,i_rp_nov_dt_rec.base_date                    -- 基準年月日
          ,i_rp_nov_dt_rec.base_date_start              -- 基準日START
@@ -719,6 +780,10 @@ AS
          ,i_rp_nov_dt_rec.final_call_date              -- 最終訪問日
          ,i_rp_nov_dt_rec.final_tran_date              -- 最終取引日
          ,i_rp_nov_dt_rec.business_low_type            -- 業態（小分類）
+-- Ver1.10 add start
+         ,i_rp_nov_dt_rec.business_low_type_name       -- 業態小分類名称
+         ,i_rp_nov_dt_rec.gyotai_sort                  -- 業態ソート用
+-- Ver1.10 add end
          ,i_rp_nov_dt_rec.mc_flag                      -- ＭＣフラグ
          ,i_rp_nov_dt_rec.created_by                   -- 作成者
          ,i_rp_nov_dt_rec.creation_date                -- 作成日
@@ -1071,6 +1136,9 @@ AS
    ***********************************************************************************/
   PROCEDURE submain(
      iv_current_date     IN  VARCHAR2          --   基準日
+-- Ver1.10 add start
+    ,iv_vd_output_div    IN  VARCHAR2          --   出力区分
+-- Ver1.10 add end
     ,ov_errbuf           OUT NOCOPY VARCHAR2   -- エラー・メッセージ            --# 固定 #
     ,ov_retcode          OUT NOCOPY VARCHAR2   -- リターン・コード              --# 固定 #
     ,ov_errmsg           OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -1107,6 +1175,15 @@ AS
     /* 2011-07-14 E_本稼動_07825 ADD START */
     cd_sysdate             CONSTANT DATE          := TRUNC(xxcso_util_common_pkg.get_online_sysdate); -- システム日付
     /* 2011-07-14 E_本稼動_07825 ADD END */
+-- Ver1.10 add start
+    cv_xxcmm_cust_gyotai_sho CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_GYOTAI_SHO'; -- 業態(小分類)
+    cv_xxcmm_cust_gyotai_chu CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_GYOTAI_CHU'; -- 業態(中分類)
+    cv_xxcmm_cust_gyotai_dai CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_GYOTAI_DAI'; -- 業態(大分類)
+    cv_no                    CONSTANT VARCHAR2(1)   := 'N';                     -- 有効フラグ：N
+    cv_vd_output_div_0       CONSTANT VARCHAR2(1)   := '0';                     -- 全て
+    cv_vd_output_div_1       CONSTANT VARCHAR2(1)   := '1';                     -- ＶＤ
+    cv_vd_output_div_2       CONSTANT VARCHAR2(1)   := '2';                     -- ＶＤ以外
+-- Ver1.10 add end
     -- OUTパラメータ格納用
     ld_current_date        DATE;                     -- 基準日
     ld_first_date          DATE;                     -- 基準日の月初
@@ -1133,9 +1210,19 @@ AS
               ,id_frt_dt     IN DATE      -- 基準日の月初
               ,id_crnt_dt    IN DATE      -- 基準日
               ,iv_emp_chk_cd IN VARCHAR2  -- 営業員チェック値
+-- Ver1.10 add start
+              ,iv_vd_output_div IN VARCHAR2 -- 出力区分
+-- Ver1.10 add end
             )
     IS
-      SELECT  xrv.employee_number         employee_number       -- 従業員番号
+-- Ver1.10 mod start
+--      SELECT  xrv.employee_number         employee_number       -- 従業員番号
+      SELECT
+              /*+
+                  INDEX(xrv.paf PER_ASSIGNMENTS_F_N12)
+              */
+              xrv.employee_number         employee_number       -- 従業員番号
+-- Ver1.10 mod end
              ,SUBSTRB(xrv.last_name || xrv.first_name, 1, 40)   employee_name         -- 漢字氏名
              /* 2011-07-14 E_本稼動_07825 MOD START */
              --,CASE
@@ -1151,12 +1238,18 @@ AS
              ,xcav.final_tran_date        final_tran_date      -- 最終取引日
              ,xcav.final_call_date        final_call_date      -- 最終訪問日
              ,xcav.business_low_type      business_low_type    -- 業態（小分類）
+-- Ver1.10 add start
+             ,xcgs.meaning                business_low_type_name -- 業態（小分類）名称
+-- Ver1.10 add end
              ,CASE
                 WHEN  xcav.customer_status <= cv_accnt_sts2 THEN
                   2
                 ELSE
                   1
               END                         status_sort          -- 顧客ステータス（ソート用）
+-- Ver1.10 add start
+             ,DECODE(xcgd.attribute1,cv_no,1,2) gyotai_sort    -- 業態大分類（ソート用）
+-- Ver1.10 add end
       FROM    xxcso_resources_v2      xrv                      -- リソースマスタ(最新)VIEW
              ,xxcso_cust_accounts_v   xcav                     -- 顧客マスタVIEW
              /* 2011-07-14 E_本稼動_07825 DEL START */
@@ -1176,6 +1269,36 @@ AS
              /* 2011-07-14 E_本稼動_07825 DEL END */
       /* 2011-07-14 E_本稼動_07825 MOD START */
       --WHERE   xrv3.work_base_code   = iv_wb_cd
+-- Ver1.10 add start
+           ,(SELECT
+                    flv.lookup_code lookup_code        -- 参照コード
+                   ,flv.meaning     meaning            -- 内容
+                   ,flv.attribute1  attribute1         -- DFF1
+             FROM
+                    fnd_lookup_values flv
+             WHERE
+                    flv.language     = cv_user_lang
+             AND    flv.lookup_type  = cv_xxcmm_cust_gyotai_sho
+             AND    flv.enabled_flag = cv_yes) xcgs    -- 参照表：業態(小分類)
+           ,(SELECT
+                    flv.lookup_code lookup_code        -- 参照コード
+                   ,flv.attribute1  attribute1         -- DFF1
+             FROM
+                    fnd_lookup_values flv
+             WHERE
+                    flv.language     = cv_user_lang
+             AND    flv.lookup_type  = cv_xxcmm_cust_gyotai_chu
+             AND    flv.enabled_flag = cv_yes) xcgc    -- 参照表：業態(中分類)
+           ,(SELECT
+                    flv.lookup_code lookup_code        -- 参照コード
+                   ,flv.attribute1  attribute1
+             FROM
+                    fnd_lookup_values flv
+             WHERE
+                    flv.language     = cv_user_lang
+             AND    flv.lookup_type  = cv_xxcmm_cust_gyotai_dai
+             AND    flv.enabled_flag = cv_yes) xcgd    -- 参照表：業態(大分類)
+-- Ver1.10 add end
       WHERE   xxcso_util_common_pkg.get_emp_parameter(
                          xrv.work_base_code_new
                         ,xrv.work_base_code_old
@@ -1211,6 +1334,18 @@ AS
         /* 2011-07-14 E_本稼動_07825 DEL START */
         --AND   xcav.account_number   = xcrv.account_number(+)
         /* 2011-07-14 E_本稼動_07825 DEL END */
+-- Ver1.10 add start
+        AND   xcgs.lookup_code        = xcav.business_low_type
+        AND   xcgs.attribute1         = xcgc.lookup_code
+        AND   xcgc.attribute1         = xcgd.lookup_code
+        AND (
+              ( iv_vd_output_div = cv_vd_output_div_0 )  --全て
+              OR
+              ( iv_vd_output_div = cv_vd_output_div_1 AND xcgd.attribute1 = cv_yes ) --ＶＤ
+              OR
+              ( iv_vd_output_div = cv_vd_output_div_2 AND xcgd.attribute1 = cv_no )  --ＶＤ以外
+            )
+-- Ver1.10 add end
       ;
 --
     -- *** ローカル・カーソル ***
@@ -1256,6 +1391,9 @@ AS
     -- ========================================
     init(
       iv_current_date    => iv_current_date     -- 基準日
+-- Ver1.10 add start
+     ,iv_vd_output_div   => iv_vd_output_div    -- 出力区分
+-- Ver1.10 add end
      ,ov_employee_number => lv_employee_number  -- 従業員コード
      ,ov_employee_name   => lv_employee_name    -- 漢字氏名
      ,ov_work_base_code  => lv_work_base_code   -- 勤務地拠点コード
@@ -1294,6 +1432,9 @@ AS
               ,id_frt_dt     => ld_first_date      -- 基準日の月初
               ,id_crnt_dt    => ld_current_date    -- 基準日
               ,iv_emp_chk_cd => lv_emp_chk_cd      -- 営業員チェック値
+-- Ver1.10 add start
+              ,iv_vd_output_div => iv_vd_output_div -- 出力区分
+-- Ver1.10 add end
             );
 --
     <<get_novisit_data_loop>>
@@ -1345,6 +1486,10 @@ AS
       l_rp_nov_dt_rec.final_tran_date            := l_get_novisit_dt_rec.final_tran_date;    -- 最終取引日
       l_rp_nov_dt_rec.final_call_date            := l_get_novisit_dt_rec.final_call_date;    -- 最終訪問日
       l_rp_nov_dt_rec.business_low_type          := l_get_novisit_dt_rec.business_low_type;  -- 業態（小分類）
+-- Ver1.10 add start
+      l_rp_nov_dt_rec.business_low_type_name     := l_get_novisit_dt_rec.business_low_type_name; -- 業態小分類名称
+      l_rp_nov_dt_rec.gyotai_sort                := l_get_novisit_dt_rec.gyotai_sort;            -- 業態ソート用
+-- Ver1.10 add end
       l_rp_nov_dt_rec.created_by                 := cn_created_by;                           -- 作成者
       l_rp_nov_dt_rec.creation_date              := cd_creation_date;                        -- 作成日
       l_rp_nov_dt_rec.last_updated_by            := cn_last_updated_by;                      -- 最終更新者
@@ -1547,6 +1692,9 @@ AS
      errbuf             OUT NOCOPY VARCHAR2    --   エラー・メッセージ  --# 固定 #
     ,retcode            OUT NOCOPY VARCHAR2    --   リターン・コード    --# 固定 #
     ,iv_current_date    IN  VARCHAR2           --   基準日
+-- Ver1.10 add start
+    ,iv_vd_output_div   IN  VARCHAR2           --   出力区分
+-- Ver1.10 add end
   )
 --
 --###########################  固定部 START   ###########################
@@ -1612,6 +1760,9 @@ AS
     -- ===============================================
     submain(
        iv_current_date => iv_current_date    -- 基準日
+-- Ver1.10 add start
+      ,iv_vd_output_div => iv_vd_output_div   --   出力区分
+-- Ver1.10 add end
       ,ov_errbuf       => lv_errbuf          -- エラー・メッセージ            --# 固定 #
       ,ov_retcode      => lv_retcode         -- リターン・コード              --# 固定 #
       ,ov_errmsg       => lv_errmsg          -- ユーザー・エラー・メッセージ  --# 固定 #
