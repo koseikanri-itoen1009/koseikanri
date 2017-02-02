@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_rep_novisit
  * Description     : 未訪問顧客一覧表帳票ワークテーブル
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/12    1.0  T.Maruyama    初回作成
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
+ *  2017/01/17    1.2  Y.Shoji       列を追加（business_low_type_name ,gyotai_sort）
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_rep_novisit
 (
@@ -33,6 +34,10 @@ CREATE TABLE xxcso.xxcso_rep_novisit
   final_call_date                 DATE,
   final_tran_date                 DATE,
   business_low_type               VARCHAR2(2),
+-- Ver1.2 add start
+  business_low_type_name          VARCHAR2(80),
+  gyotai_sort                     NUMBER(1),
+-- Ver1.2 add end
   mc_flag                         NUMBER(1),
   created_by                      NUMBER(15)        NOT NULL,
   creation_date                   DATE              NOT NULL,
@@ -68,6 +73,10 @@ COMMENT ON COLUMN xxcso.xxcso_rep_novisit.account_name                          
 COMMENT ON COLUMN xxcso.xxcso_rep_novisit.final_call_date                        IS '最終訪問日';
 COMMENT ON COLUMN xxcso.xxcso_rep_novisit.final_tran_date                        IS '最終取引日';
 COMMENT ON COLUMN xxcso.xxcso_rep_novisit.business_low_type                      IS '業態（小分類）';
+-- Ver1.2 add start
+COMMENT ON COLUMN xxcso.xxcso_rep_novisit.business_low_type_name                 IS '業態（小分類）名称';
+COMMENT ON COLUMN xxcso.xxcso_rep_novisit.gyotai_sort                            IS '業態ソート用';
+-- Ver1.2 add end
 COMMENT ON COLUMN xxcso.xxcso_rep_novisit.mc_flag                                IS 'ＭＣフラグ';
 COMMENT ON COLUMN xxcso.xxcso_rep_novisit.created_by                             IS '作成者';
 COMMENT ON COLUMN xxcso.xxcso_rep_novisit.creation_date                          IS '作成日';
