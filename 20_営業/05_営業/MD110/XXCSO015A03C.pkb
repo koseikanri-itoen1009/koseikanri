@@ -7,7 +7,7 @@ AS
  * Description      : SQL*Loaderによって物件データワークテーブル（アドオン）に取り込まれた
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
- * Version          : 1.35
+ * Version          : 1.36
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -80,6 +80,7 @@ AS
  *  2015-09-04    1.33  S.Yamashita      E_本稼動_13070対応
  *  2016-02-05    1.34  S.Niki           E_本稼動_13456対応
  *  2016-12-15    1.35  S.Niki           E_本稼動_13903対応 新自販機管理システムからの物件データ連携対応（Q2198,2239）
+ *  2017-01-27    1.36  S.Niki           E_本稼動_13903追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5509,7 +5510,16 @@ AS
     IF (l_ext_attrib_rec.attribute_value_id IS NOT NULL)  THEN 
       ln_cnt := ln_cnt + 1;
       l_ext_attrib_values_tab(ln_cnt).attribute_value_id    := l_ext_attrib_rec.attribute_value_id;
-      l_ext_attrib_values_tab(ln_cnt).attribute_value       := io_inst_base_data_rec.machinery_status1;
+/* Ver.1.36 ADD START */
+      -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
+      IF ( ln_job_kbn IN ( cn_jon_kbn_1 ,cn_jon_kbn_2 ,cn_jon_kbn_3 ,cn_jon_kbn_4 ,cn_jon_kbn_5 ,cn_job_kbn_6 ) ) THEN
+/* Ver.1.36 ADD END   */
+        l_ext_attrib_values_tab(ln_cnt).attribute_value     := io_inst_base_data_rec.machinery_status1;
+/* Ver.1.36 ADD START */
+      ELSE
+        l_ext_attrib_values_tab(ln_cnt).attribute_value     := l_ext_attrib_rec.attribute_value;
+      END IF;
+/* Ver.1.36 ADD END   */
       l_ext_attrib_values_tab(ln_cnt).attribute_id          := l_ext_attrib_rec.attribute_id;
       l_ext_attrib_values_tab(ln_cnt).object_version_number := l_ext_attrib_rec.object_version_number;
       ln_machinery_status1_wk := l_ext_attrib_rec.attribute_value;
