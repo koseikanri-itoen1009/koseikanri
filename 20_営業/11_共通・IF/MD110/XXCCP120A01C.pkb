@@ -4,7 +4,7 @@ AS
  *
  * Package Name     : XXCCP120A01C(spec)
  * Description      : 受入取引OIF自動リカバリ
- * Version          : 1.01
+ * Version          : 1.02
  *
  *
  * Change Record
@@ -13,6 +13,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/07/31    1.00  SCSK 小野塚香織  新規作成
  *  2016/09/12    1.01  SCSK S.Yamashita E_本稼動_13803対応
+ *  2016/10/26    1.02  SCSK S.Yamashita E_本稼動_13920対応
  *
  *****************************************************************************************/
 --
@@ -205,7 +206,17 @@ AS
 -- Ver1.01 S.Yamashita ADD start
     ln_shipment_header_id    NUMBER         DEFAULT 0;
 -- Ver1.01 S.Yamashita ADD end
-
+-- Ver1.02 S.Yamashita ADD start
+  TYPE lr_error_massage_rec IS RECORD
+    (
+      po_number              po_headers_all.segment1%TYPE    -- 発注No
+     ,po_line_number         po_lines_all.line_num%TYPE      -- 発注明細No
+     ,group_id               rcv_transactions_interface.group_id%TYPE    -- グループID
+     ,error_message          po_interface_errors.error_message%TYPE      -- エラーメッセージ
+    );
+  TYPE lt_error_massage_ttype IS TABLE OF lr_error_massage_rec INDEX BY BINARY_INTEGER;
+  lt_error_massage_tab        lt_error_massage_ttype;
+-- Ver1.02 S.Yamashita ADD end
 --
     -- ===============================================
     -- ローカル例外処理
@@ -1272,6 +1283,78 @@ AS
       END IF;
     END LOOP main_loop;
 --
+-- Ver1.02 S.Yamashita ADD start
+    -- 受入取引OIF残レコードチェック
+    SELECT v.segment1         AS po_number       -- 発注No
+          ,v.line_num         AS po_line_number  -- 発注明細No
+          ,v.group_id         AS group_id        -- グループID
+          ,v.error_message    AS error_message   -- IFエラー内容
+    BULK COLLECT INTO  lt_error_massage_tab
+    FROM (SELECT pha.segment1                AS segment1
+                ,pla.line_num                AS line_num
+                ,CASE 
+                  WHEN (cicv.item_class_code = '5' AND cicv.prod_class_code = '2' AND cimv.conv_unit = 'CS' ) THEN TO_NUMBER(pla.attribute11) * TO_NUMBER(pla.attribute4)
+                  ELSE TO_NUMBER(pla.attribute11)
+                 END                         AS attribute11_conv
+                ,pla.quantity                AS quantity
+                ,CASE
+                  WHEN (cicv.item_class_code = '5' AND cicv.prod_class_code = '2' AND cimv.conv_unit = 'CS' ) THEN TO_NUMBER(pla.attribute7) * TO_NUMBER(pla.attribute4)
+                  ELSE TO_NUMBER(pla.attribute7)
+                 END                         AS attribute7_conv
+                ,plla.quantity_received      AS sum_rt_qty
+                ,rti.group_id                AS group_id
+                ,pie.error_message           AS error_message
+          FROM   po_headers_all           pha
+                ,po_lines_all             pla
+                ,po_line_locations_all    plla
+                ,xxcmn_item_mst_v         cimv
+                ,xxcmn_item_categories3_v cicv
+                ,xxcmn_item_locations_v   cilv
+                ,rcv_transactions_interface rti
+                ,po_interface_errors pie
+          WHERE pha.po_header_id         = pla.po_header_id
+          AND   pha.po_header_id         = plla.po_header_id
+          AND   pla.po_line_id           = plla.po_line_id
+          AND   pla.cancel_flag          = 'N'
+          AND   cimv.inventory_item_id   = pla.item_id
+          AND   cimv.item_id             = cicv.item_id
+          AND   pha.attribute5           = cilv.segment1
+          AND   pha.attribute1          IN ('25','30','35')
+          AND   TO_DATE(pha.attribute4,'YYYY/MM/DD') >= ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'),1) -- 対象年月(最新クローズ月の翌月1日)
+          AND   pha.po_header_id         = rti.po_header_id
+          AND   rti.group_id             = pie.batch_id
+          AND   rti.creation_date        < cd_creation_date  -- 作成日
+          ) v
+    WHERE ((NVL(v.attribute7_conv,0) <> v.sum_rt_qty)
+       OR (v.attribute11_conv <> v.quantity)
+       OR (v.attribute7_conv > 0
+        AND v.sum_rt_qty    = 0)
+       )
+    ORDER BY v.segment1
+            ,v.line_num
+    ;
+--
+    -- 残レコードが存在する場合はループ
+    IF ( lt_error_massage_tab.COUNT > 0 ) THEN
+      << check_loop >>
+      FOR i IN 1 .. lt_error_massage_tab.COUNT LOOP
+        -- エラー内容出力
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+         ,buff   => '自動リカバリ対象外のエラーが発生しています。発注No:' || lt_error_massage_tab(i).po_number
+                                                                          || ' 発注明細No：' || lt_error_massage_tab(i).po_line_number
+                                                                          || ' グループID：' || lt_error_massage_tab(i).group_id
+                                                                          || ' エラーメッセージ：' || lt_error_massage_tab(i).error_message
+        );
+        -- ステータスをエラーに設定
+        ov_retcode := cv_status_error;
+      END LOOP check_loop;
+--
+      -- エラー件数設定
+      gn_error_cnt := lt_error_massage_tab.COUNT;
+--
+    END IF;
+-- Ver1.02 S.Yamashita ADD end
 --
   EXCEPTION
     -- *** 更新処理例外ハンドラ ***
