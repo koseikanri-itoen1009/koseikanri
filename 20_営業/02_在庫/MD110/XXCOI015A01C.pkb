@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI015A01C(body)
  * Description      : 取引インタフェースの処理
  * MD.050           : MD050_COI_015_A01_資材取引OIFワーカー起動
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/07/07    1.0   H.Sasaki         新規作成
  *  2009/10/09    1.1   H.Sasaki         [E_最終移行リハ_00458]FETCH方法の変更
  *  2015/04/14    1.2   S.Niki           [E_本稼動_12742]引数2(TABLE)の設定値変更
+ *  2017/01/24    1.3   N.Watanabe       [E_本稼動_13980]INV夜間クローズ対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -74,6 +75,17 @@ AS
   cv_msg_xxcoi_10394          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10394';  -- 取引ワーカーエラー件数
   cv_msg_xxcoi_10395          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10395';  -- 取引OIF対象件数
   cv_msg_xxcoi_10396          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10396';  -- 取引OIFスキップ件数
+-- == 2017/01/24 V1.3 Add START =============================================================
+  cv_msg_xxcoi_10726          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10726';  -- 取引日繰越メッセージ（資材取引OIF）
+  cv_msg_xxcoi_10727          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10727';  -- 資材取引OIFワーカー起動入力パラメータ出力メッセージ
+  cv_msg_xxcoi_10728          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10728';  -- 月次締め取引日繰越件数メッセージ（資材取引OIF）
+  cv_msg_xxcoi_10729          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10729';  -- 月次締め取引日繰越失敗件数メッセージ（資材取引OIF）
+  cv_msg_xxcoi_10730          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10730';  -- 取引日繰越エラーメッセージ（資材取引OIF）
+  cv_msg_xxcoi_10731          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10731';  -- 取引日繰越メッセージ（資材取引TEMP）
+  cv_msg_xxcoi_10732          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10732';  -- 月次締め取引日繰越件数メッセージ（資材取引TEMP）
+  cv_msg_xxcoi_10733          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10733';  -- 月次締め取引日繰越失敗件数メッセージ（資材取引TEMP）
+  cv_msg_xxcoi_10734          CONSTANT VARCHAR2(30)   :=  'APP-XXCOI1-10734';  -- 取引日繰越エラーメッセージ（資材取引TEMP）
+-- == 2017/01/24 V1.3 Add END   =============================================================
 --
   -- トークン
   cv_token_count              CONSTANT VARCHAR2(20)   :=  'COUNT';
@@ -81,6 +93,16 @@ AS
   cv_token_request_id         CONSTANT VARCHAR2(20)   :=  'REQUEST_ID';
   cv_token_base_code          CONSTANT VARCHAR2(20)   :=  'BASE_CODE';
   cv_token_header_id          CONSTANT VARCHAR2(20)   :=  'HEADER_ID';
+-- == 2017/01/24 V1.3 Add START =============================================================
+  cv_trx_date_after           CONSTANT VARCHAR2(20)   :=  'TRX_DATE_AFTER';
+  cv_trx_oif_id               CONSTANT VARCHAR2(20)   :=  'TRX_OIF_ID';
+  cv_sub_inventory_code       CONSTANT VARCHAR2(20)   :=  'SUB_INVENTORY_CODE';
+  cv_item_code                CONSTANT VARCHAR2(20)   :=  'ITEM_CODE';
+  cv_trx_date_before          CONSTANT VARCHAR2(20)   :=  'TRX_DATE_BEFORE';
+  cv_token_monthly_flg        CONSTANT VARCHAR2(20)   :=  'MONTHLY_FLG';
+  cv_err                      CONSTANT VARCHAR2(20)   :=  'ERROR';
+  cv_trx_temp_id              CONSTANT VARCHAR2(20)   :=  'TRX_TEMP_ID';
+-- == 2017/01/24 V1.3 Add END   =============================================================
 --
   -- セパレータ
   cv_msg_part                 CONSTANT VARCHAR2(3)    := ' : ';
@@ -92,6 +114,10 @@ AS
   cn_target_1                 CONSTANT VARCHAR2(1)    :=  1;                            -- 取引モード１：処理対象
   cn_lock_flag_1              CONSTANT VARCHAR2(1)    :=  1;                            -- ロックフラグ１
   cv_prf_check_wait_second    CONSTANT VARCHAR2(30)   :=  'XXCOI1_CHECK_WAIT_SECOND';   -- プロファイル（完了チェック待機時間（秒））
+-- == 2017/01/24 V1.3 Add START =============================================================
+  cv_monthly_flg_1             CONSTANT VARCHAR2(1)    :=  '1';                         --月次締めチェック実行要否フラグ：1
+  cv_monthly_flg_0             CONSTANT VARCHAR2(1)    :=  '0';                         --月次締めチェック実行要否フラグ：0
+-- == 2017/01/24 V1.3 Add END   =============================================================
   --
   -- ===============================================
   -- グローバル変数
@@ -104,6 +130,14 @@ AS
   gn_sub_conc_err_cnt         NUMBER  DEFAULT 0;     -- 取引ワーカーエラー件数
   gd_start_date               DATE    DEFAULT NULL;  -- 起動日時
   gn_check_wait_second        NUMBER  DEFAULT NULL;  -- 完了チェック待機時間（秒）
+-- == 2017/01/24 V1.3 Add START =============================================================
+  gv_monthly_flg              VARCHAR2(1) DEFAULT NULL; -- 月次締めチェック実行要否フラグ
+  gd_month_first_day          DATE    DEFAULT NULL;     -- 当月1日
+  gn_trx_oif_date_update_cnt  NUMBER  DEFAULT 0;        -- 月次締め取引日繰越件数（資材取引OIF）
+  gn_trx_oif_date_error_cnt   NUMBER  DEFAULT 0;        -- 月次締め取引日繰越失敗件数（資材取引OIF）
+  gn_trx_temp_date_update_cnt NUMBER  DEFAULT 0;        -- 月次締め取引日繰越件数（資材取引TEMP）
+  gn_trx_temp_date_error_cnt  NUMBER  DEFAULT 0;        -- 月次締め取引日繰越失敗件数（資材取引TEMP）
+-- == 2017/01/24 V1.3 Add END   =============================================================
 --
   -- 資材取引OIFテーブル情報取得データ格納用レコード変数
   TYPE rec_mtl_trans_oif IS RECORD
@@ -177,6 +211,45 @@ AS
     ln_comp_cnt           NUMBER;                                                   -- 要求完了件数
     lt_phase_code         fnd_concurrent_requests.phase_code%TYPE;                  -- フェーズ
     lt_status_code        fnd_concurrent_requests.status_code%TYPE;                 -- ステータス
+-- == 2017/01/24 V1.3 Add START =============================================================
+    ln_transaction_interface_id NUMBER;                                             -- 資材取引OIFロック取得用資材取引OIFID
+    ln_transaction_temp_id      NUMBER;                                             -- 資材取引TEMPロック取得用資材取引TEMPID
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    -- 在庫取引ワーカーエラーデータ取得（資材取引OIF）
+    CURSOR  cur_trans_oif_error_data(in_request_id NUMBER)
+    IS
+      SELECT    mti.transaction_interface_id  transaction_interface_id -- 資材取引OIFID
+               ,mti.subinventory_code         subinventory_code        -- 保管場所コード
+               ,msib.segment1                 segment1                 -- 品目コード
+               ,mti.transaction_date          transaction_date         -- 取引日
+               ,mti.request_id                request_id               -- 要求ID
+      FROM      mtl_transactions_interface    mti       -- 取引OIF
+               ,mtl_system_items_b            msib      -- Disc品目
+      WHERE     mti.request_id          =   in_request_id
+      AND       mti.transaction_date    <   gd_month_first_day
+      AND       mti.organization_id     =   msib.organization_id
+      AND       mti.inventory_item_id   =   msib.inventory_item_id;
+    trans_oif_error_data_rec    cur_trans_oif_error_data%ROWTYPE;
+--
+    -- 在庫取引ワーカーエラーデータ取得（資材取引TEMP）
+    CURSOR  cur_trans_temp_error_data(in_request_id NUMBER)
+    IS
+      SELECT    mmt.transaction_temp_id     transaction_temp_id -- 資材取引TEMPID
+               ,mmt.subinventory_code       subinventory_code   -- 保管場所コード
+               ,msib.segment1               segment1            -- 品目コード
+               ,mmt.transaction_date        transaction_date    -- 取引日
+               ,mmt.request_id              request_id          -- 要求ID
+      FROM      mtl_material_transactions_temp mmt      -- 資材取引TEMP
+               ,mtl_system_items_b             msib     -- Disc品目
+      WHERE     mmt.request_id          =   in_request_id
+      AND       mmt.transaction_date    <   gd_month_first_day
+      AND       mmt.organization_id     =   msib.organization_id
+      AND       mmt.inventory_item_id   =   msib.inventory_item_id;
+    trans_temp_error_data_rec    cur_trans_temp_error_data%ROWTYPE;
+-- == 2017/01/24 V1.3 Add END ===============================================================
 --
   BEGIN
 --##################  固定ステータス初期化部 START   ###################
@@ -192,6 +265,13 @@ AS
     ln_cnt          :=  0;                          -- ループカウンタ
     ln_request_cnt  :=  gt_request_id_tbl.COUNT;    -- 要求発行件数
     ln_comp_cnt     :=  0;                          -- 要求完了件数
+-- == 2017/01/24 V1.3 Add START =============================================================
+    --取引日更新/失敗件数初期化
+    gn_trx_oif_date_update_cnt  := 0;
+    gn_trx_oif_date_error_cnt   := 0;
+    gn_trx_temp_date_update_cnt := 0;
+    gn_trx_temp_date_error_cnt  := 0;
+-- == 2017/01/24 V1.3 Add END   =============================================================
     --
     <<wait_loop>>
     LOOP
@@ -235,6 +315,178 @@ AS
                 ,buff   => lv_outmsg
               );
               --
+-- == 2017/01/24 V1.3 Add START =============================================================
+              --月次締めチェック
+              IF (gv_monthly_flg = cv_monthly_flg_1) THEN
+                -- ===============================================
+                -- ７）取引日繰越し処理
+                -- ===============================================
+                --当月1日の取得
+                gd_month_first_day     := TRUNC(SYSDATE,'MM');
+--
+                --エラーデータ取得カーソルオープン（資材取引OIF）
+                OPEN cur_trans_oif_error_data(gt_request_id_tbl(ln_cnt));
+                --資材取引OIF更新
+                LOOP
+                  FETCH cur_trans_oif_error_data  INTO  trans_oif_error_data_rec;
+                  EXIT WHEN cur_trans_oif_error_data%NOTFOUND;
+                  BEGIN
+                    --資材取引OIFのロックを取得
+                    SELECT mti.transaction_interface_id transaction_interface_id
+                    INTO   ln_transaction_interface_id
+                    FROM   mtl_transactions_interface mti
+                    WHERE  mti.transaction_interface_id = trans_oif_error_data_rec.transaction_interface_id
+                    FOR UPDATE NOWAIT;
+                    --
+                    UPDATE  mtl_transactions_interface
+                    SET     transaction_date = gd_month_first_day
+                           ,last_update_date          =   SYSDATE
+                           ,last_updated_by           =   cn_last_updated_by
+                           ,last_update_login         =   cn_last_update_login
+                           ,request_id                =   cn_request_id
+                           ,program_id                =   cn_program_id
+                           ,program_application_id    =   cn_program_application_id
+                           ,program_update_date       =   SYSDATE
+                    WHERE   transaction_interface_id  =   trans_oif_error_data_rec.transaction_interface_id;
+                    --取引日更新件数（資材取引OIF）カウント
+                    gn_trx_oif_date_update_cnt := gn_trx_oif_date_update_cnt +1;
+                    --取引日繰越メッセージ取得
+                    lv_outmsg    := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appli_short_name_xxcoi
+                      , iv_name         => cv_msg_xxcoi_10726
+                      , iv_token_name1  => cv_token_request_id
+                      , iv_token_value1 => TO_CHAR(trans_oif_error_data_rec.request_id)
+                      , iv_token_name2  => cv_trx_oif_id
+                      , iv_token_value2 => TO_CHAR(trans_oif_error_data_rec.transaction_interface_id)
+                      , iv_token_name3  => cv_sub_inventory_code
+                      , iv_token_value3 => trans_oif_error_data_rec.subinventory_code
+                      , iv_token_name4  => cv_item_code
+                      , iv_token_value4 => trans_oif_error_data_rec.segment1
+                      , iv_token_name5  => cv_trx_date_before
+                      , iv_token_value5 => TO_CHAR(trans_oif_error_data_rec.transaction_date,'YYYY/MM/DD')
+                      , iv_token_name6  => cv_trx_date_after
+                      , iv_token_value6 => TO_CHAR(gd_month_first_day,'YYYY/MM/DD')
+                    );
+                    --メッセージ出力
+                    FND_FILE.PUT_LINE(
+                      which  => FND_FILE.OUTPUT
+                    , buff   => lv_outmsg
+                    );
+                  EXCEPTION
+                    WHEN OTHERS THEN
+                      ov_retcode := cv_status_warn;
+                      --取引日更新失敗件数カウント
+                      gn_trx_oif_date_error_cnt := gn_trx_oif_date_error_cnt + 1;
+                      --取引日繰越エラーメッセージ（資材取引OIF）
+                      lv_outmsg    := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appli_short_name_xxcoi
+                      , iv_name         => cv_msg_xxcoi_10730
+                      , iv_token_name1  => cv_token_request_id
+                      , iv_token_value1 => TO_CHAR(trans_oif_error_data_rec.request_id)
+                      , iv_token_name2  => cv_trx_oif_id
+                      , iv_token_value2 => TO_CHAR(trans_oif_error_data_rec.transaction_interface_id)
+                      , iv_token_name3  => cv_sub_inventory_code
+                      , iv_token_value3 => trans_oif_error_data_rec.subinventory_code
+                      , iv_token_name4  => cv_item_code
+                      , iv_token_value4 => trans_oif_error_data_rec.segment1
+                      , iv_token_name5  => cv_trx_date_before
+                      , iv_token_value5 => TO_CHAR(trans_oif_error_data_rec.transaction_date,'YYYY/MM/DD')
+                      , iv_token_name6  => cv_err
+                      , iv_token_value6 => SQLERRM
+                    );
+                      --メッセージ出力
+                      FND_FILE.PUT_LINE(
+                        which  => FND_FILE.OUTPUT
+                      , buff   => lv_outmsg
+                      );
+                  END;
+                END LOOP;
+                --カーソルクローズ
+                CLOSE cur_trans_oif_error_data;
+                --
+                --エラーデータ取得カーソルオープン（資材取引TEMP）
+                OPEN cur_trans_temp_error_data(gt_request_id_tbl(ln_cnt));
+                --資材取引TEMP更新
+                LOOP
+                  FETCH cur_trans_temp_error_data  INTO  trans_temp_error_data_rec;
+                  EXIT WHEN cur_trans_temp_error_data%NOTFOUND;
+                  --資材取引TEMP更新
+                  BEGIN
+                    --資材取引TEMPのロックを取得
+                    SELECT mmt.transaction_temp_id transaction_temp_id
+                    INTO   ln_transaction_temp_id
+                    FROM   mtl_material_transactions_temp mmt
+                    WHERE  mmt.transaction_temp_id = trans_temp_error_data_rec.transaction_temp_id
+                    FOR UPDATE NOWAIT;
+                    --
+                    UPDATE  mtl_material_transactions_temp
+                    SET     transaction_date = gd_month_first_day
+                           ,last_update_date          =   SYSDATE
+                           ,last_updated_by           =   cn_last_updated_by
+                           ,last_update_login         =   cn_last_update_login
+                           ,request_id                =   cn_request_id
+                           ,program_id                =   cn_program_id
+                           ,program_application_id    =   cn_program_application_id
+                           ,program_update_date       =   SYSDATE
+                    WHERE   transaction_temp_id  =   trans_temp_error_data_rec.transaction_temp_id;
+                    --取引日更新件数（資材取引TEMP）カウント
+                    gn_trx_temp_date_update_cnt := gn_trx_temp_date_update_cnt +1;
+                    --取引日繰越メッセージ（資材取引TEMP）
+                    lv_outmsg    := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appli_short_name_xxcoi
+                      , iv_name         => cv_msg_xxcoi_10731
+                      , iv_token_name1  => cv_token_request_id
+                      , iv_token_value1 => TO_CHAR(trans_temp_error_data_rec.request_id)
+                      , iv_token_name2  => cv_trx_temp_id
+                      , iv_token_value2 => TO_CHAR(trans_temp_error_data_rec.transaction_temp_id)
+                      , iv_token_name3  => cv_sub_inventory_code
+                      , iv_token_value3 => trans_temp_error_data_rec.subinventory_code
+                      , iv_token_name4  => cv_item_code
+                      , iv_token_value4 => trans_temp_error_data_rec.segment1
+                      , iv_token_name5  => cv_trx_date_before
+                      , iv_token_value5 => TO_CHAR(trans_temp_error_data_rec.transaction_date,'YYYY/MM/DD')
+                      , iv_token_name6  => cv_trx_date_after
+                      , iv_token_value6 => TO_CHAR(gd_month_first_day,'YYYY/MM/DD')
+                    );
+                    --メッセージ出力
+                    FND_FILE.PUT_LINE(
+                      which  => FND_FILE.OUTPUT
+                    , buff   => lv_outmsg
+                    );
+                  EXCEPTION
+                    WHEN OTHERS THEN
+                      ov_retcode := cv_status_warn;
+                      --取引日更新失敗件数カウント（資材取引TEMP）
+                      gn_trx_temp_date_error_cnt := gn_trx_temp_date_error_cnt + 1;
+                      --取引日繰越エラーメッセージ（資材取引TEMP）
+                      lv_outmsg    := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appli_short_name_xxcoi
+                      , iv_name         => cv_msg_xxcoi_10734
+                      , iv_token_name1  => cv_token_request_id
+                      , iv_token_value1 => TO_CHAR(trans_temp_error_data_rec.request_id)
+                      , iv_token_name2  => cv_trx_temp_id
+                      , iv_token_value2 => TO_CHAR(trans_temp_error_data_rec.transaction_temp_id)
+                      , iv_token_name3  => cv_sub_inventory_code
+                      , iv_token_value3 => trans_temp_error_data_rec.subinventory_code
+                      , iv_token_name4  => cv_item_code
+                      , iv_token_value4 => trans_temp_error_data_rec.segment1
+                      , iv_token_name5  => cv_trx_date_before
+                      , iv_token_value5 => TO_CHAR(trans_temp_error_data_rec.transaction_date,'YYYY/MM/DD')
+                      , iv_token_name6  => cv_err
+                      , iv_token_value6 => SQLERRM
+                    );
+                    --メッセージ出力
+                    FND_FILE.PUT_LINE(
+                      which  => FND_FILE.OUTPUT
+                    , buff   => lv_outmsg
+                    );
+                  END;
+                END LOOP;
+                --カーソルクローズ
+                CLOSE cur_trans_temp_error_data;
+                --
+              END IF;
+-- == 2017/01/24 V1.3 Add END ===============================================================
               -- 終了ステータス警告
               ov_retcode  :=  cv_status_warn;
               -- 完了件数をカウントアップ
@@ -777,7 +1029,12 @@ AS
     -- ===============================================
     lv_outmsg    := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appli_short_name_xxcoi
-                    ,iv_name         => cv_msg_xxcoi_10387
+-- == 2017/01/24 V1.3 Mod START =============================================================
+--                    ,iv_name         => cv_msg_xxcoi_10387
+                    ,iv_name         => cv_msg_xxcoi_10727
+                    ,iv_token_name1  => cv_token_monthly_flg
+                    ,iv_token_value1 => gv_monthly_flg
+-- == 2017/01/24 V1.3 Mod END   =============================================================
                    );
     --
     fnd_file.put_line(
@@ -834,7 +1091,10 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    ov_errbuf       OUT VARCHAR2
+-- == 2017/01/24 V1.3 Add START =============================================================
+    iv_monthly_flg  IN  VARCHAR2 --月次締めチェック実行要否フラグ
+-- == 2017/01/24 V1.3 Add END   =============================================================
+  , ov_errbuf       OUT VARCHAR2
   , ov_retcode      OUT VARCHAR2
   , ov_errmsg       OUT VARCHAR2
   )
@@ -869,6 +1129,9 @@ AS
     -- ===============================================
     -- １）初期処理
     -- ===============================================
+-- == 2017/01/24 V1.3 Add START =============================================================
+    gv_monthly_flg := NVL(iv_monthly_flg, cv_monthly_flg_0); --月次締めチェック実行要否フラグ
+-- == 2017/01/24 V1.3 Add END   =============================================================
     init(
       ov_errbuf   => lv_errbuf
     , ov_retcode  => lv_retcode
@@ -971,6 +1234,9 @@ AS
   PROCEDURE main(
     errbuf          OUT VARCHAR2
   , retcode         OUT VARCHAR2
+-- == 2017/01/24 V1.3 Add START =============================================================
+  , iv_monthly_flg  IN  VARCHAR2 --月次締めチェック実行要否フラグ
+-- == 2017/01/24 V1.3 Add END   =============================================================
   )
   IS
 --
@@ -1006,13 +1272,16 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-      ov_errbuf       => lv_errbuf
+-- == 2017/01/24 V1.3 Add START =============================================================
+      iv_monthly_flg  => iv_monthly_flg --月次締めチェック実行要否フラグ
+-- == 2017/01/24 V1.3 Add END   =============================================================
+    , ov_errbuf       => lv_errbuf
     , ov_retcode      => lv_retcode
     , ov_errmsg       => lv_errmsg
     );
 --
     -- ===============================================
-    -- ７）終了処理
+    -- ８）終了処理
     -- ===============================================
     -- ============================
     --  エラー出力
@@ -1119,6 +1388,63 @@ AS
       which  => FND_FILE.OUTPUT
     , buff   => lv_outmsg
     );
+--
+-- == 2017/01/24 V1.3 Add START =============================================================
+    -- ============================
+    --  月次締め取引日繰越件数（資材取引OIF）
+    -- ============================
+    lv_outmsg    := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcoi
+                    , iv_name         => cv_msg_xxcoi_10728
+                    , iv_token_name1  => cv_token_count
+                    , iv_token_value1 => TO_CHAR( gn_trx_oif_date_update_cnt )
+                    );
+    FND_FILE.PUT_LINE(
+      which  => FND_FILE.OUTPUT
+    , buff   => lv_outmsg
+    );
+--
+    -- ============================
+    --  月次締め取引日繰越失敗件数（資材取引OIF）
+    -- ============================
+    lv_outmsg    := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcoi
+                    , iv_name         => cv_msg_xxcoi_10729
+                    , iv_token_name1  => cv_token_count
+                    , iv_token_value1 => TO_CHAR( gn_trx_oif_date_error_cnt )
+                    );
+    FND_FILE.PUT_LINE(
+      which  => FND_FILE.OUTPUT
+    , buff   => lv_outmsg
+    );
+    -- ============================
+    --  月次締め取引日繰越件数（資材取引TEMP）
+    -- ============================
+    lv_outmsg    := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcoi
+                    , iv_name         => cv_msg_xxcoi_10732
+                    , iv_token_name1  => cv_token_count
+                    , iv_token_value1 => TO_CHAR( gn_trx_temp_date_update_cnt )
+                    );
+    FND_FILE.PUT_LINE(
+      which  => FND_FILE.OUTPUT
+    , buff   => lv_outmsg
+    );
+--
+    -- ============================
+    --  月次締め取引日繰越失敗件数（資材取引TEMP）
+    -- ============================
+    lv_outmsg    := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_short_name_xxcoi
+                    , iv_name         => cv_msg_xxcoi_10733
+                    , iv_token_name1  => cv_token_count
+                    , iv_token_value1 => TO_CHAR( gn_trx_temp_date_error_cnt )
+                    );
+    FND_FILE.PUT_LINE(
+      which  => FND_FILE.OUTPUT
+    , buff   => lv_outmsg
+    );
+-- == 2017/01/24 V1.3 Add END   =============================================================
 --
     -- ============================
     --  空行出力
