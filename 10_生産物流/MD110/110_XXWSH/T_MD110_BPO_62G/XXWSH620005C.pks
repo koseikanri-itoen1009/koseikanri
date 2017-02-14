@@ -5,9 +5,9 @@ AS
  *
  * Package Name     : xxwsh620005c(spec)
  * Description      : 生産物流（出荷）
- * MD.050/070       : 生産物流（出荷）Issue1.0  (T_MD050_BPO_401)
+ * MD.050/070       : 生産物流（出荷）          (T_MD050_BPO_401)
  *                    出庫指示確認表            (T_MD070_BPO_40I)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/11/14    1.9   Naoki Fukuda          課題#62(内部変更#168)対応(指示無し実績を除外する)
  *  2009/05/28    1.10  Hitomi Itou           本番障害#1398
  *  2009/09/14    1.11  Hitomi Itou           本番障害#1632
+ *  2017/01/27    1.12  Shigeto Niki          E_本稼動_14014
  *****************************************************************************************/
 --
 --#######################  固定グローバル変数宣言部 START   #######################
@@ -57,6 +58,9 @@ AS
      ,iv_input_date         IN     VARCHAR2         -- 07:入力日付
      ,iv_input_time_from    IN     VARCHAR2         -- 08:入力時間FROM
      ,iv_input_time_to      IN     VARCHAR2         -- 09:入力時間TO
+-- v1.12 ADD Start
+     ,iv_reserve_class      IN     VARCHAR2         -- 10:手動のみ
+-- v1.12 ADD End
   );
 END xxwsh620005c;
 /
