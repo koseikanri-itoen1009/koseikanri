@@ -7,7 +7,7 @@ AS
  * Package Name     : xx03_je_error_check_pkg(body)
  * Description      : 仕訳エラーチェック共通関数
  * MD.070           : 仕訳エラーチェック共通関数 OCSJ/BFAFIN/MD070/F313
- * Version          : 11.5.10.2.8
+ * Version          : 11.5.10.2.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -100,6 +100,8 @@ AS
  *  2015/03/24   11.5.10.2.7    Y.Shoji      消費税額許容範囲チェックカーソルの会社コードを
  *                                           固定値：001（本社）に変更する。
  *  2015/12/17   11.5.10.2.8    S.Niki       [E_本稼動_13421]aff_dff_checkに中止顧客チェック追加
+ *  2017/01/31   11.5.10.2.9    Y.Shoji      [E_本稼動_13997]aff_dff_checkの中止顧客チェックを
+ *                                           釣銭対象顧客チェックに変更。
  *
  *****************************************************************************************/
 --
@@ -1120,8 +1122,17 @@ AS
     cv_prof_aff3_change             CONSTANT VARCHAR2(30) := 'XXCOK1_AFF3_CHANGE';  --XXCOK:勘定科目_仮払金（釣銭）
     --トークン
     cv_tkn_cust_num                 CONSTANT VARCHAR2(30) := 'TOK_XX03_CUST_NUM';   --顧客コード
-    --固定値
-    cv_cust_status_stop             CONSTANT VARCHAR2(2)  := '90';              --顧客ステータス：90(中止決裁済)
+-- Ver11.5.10.2.9 Add Start
+    cv_tkn_cust_sts                 CONSTANT VARCHAR2(30) := 'TOK_XX03_CUST_STS';   --顧客ステータス
+    --参照タイプコード
+    cv_lkp_chg_ng_cust_sts          CONSTANT VARCHAR2(30) := 'XX03_CHG_NG_CUST_STS';  --釣銭対象外顧客ステータス
+    --チェック用
+    cv_flag_n                       CONSTANT VARCHAR2(1)  := 'N';                   --フラグ：N
+-- Ver11.5.10.2.9 Add End
+-- Ver11.5.10.2.9 Del Start
+--    --固定値
+--    cv_cust_status_stop             CONSTANT VARCHAR2(2)  := '90';              --顧客ステータス：90(中止決裁済)
+-- Ver11.5.10.2.9 Del End
     --変数
     lt_account_change               xx03_companies_v.flex_value%TYPE;           --勘定科目_仮払金（釣銭）
 -- Ver11.5.10.2.8 Add End
@@ -1485,9 +1496,20 @@ AS
         it_segment5  IN  xx03_error_checks.segment5%TYPE   -- 1.segment5
     ) IS
       SELECT hp.duns_number_c       AS cust_status
+-- Ver11.5.10.2.9 Add Start
+            ,DECODE(xlxv.lookup_code ,NULL ,'' ,cv_flag_n)
+                                    AS chk_cust_flag
+-- Ver11.5.10.2.9 Add End
       FROM   hz_cust_accounts hca
             ,hz_parties       hp
+-- Ver11.5.10.2.9 Add Start
+            ,xx03_lookups_xx03_v xlxv
+-- Ver11.5.10.2.9 Add End
       WHERE  hca.party_id       = hp.party_id
+-- Ver11.5.10.2.9 Add Start
+      AND    xlxv.lookup_type(+) = cv_lkp_chg_ng_cust_sts
+      AND    xlxv.lookup_code(+) = hp.duns_number_c
+-- Ver11.5.10.2.9 Add End
       AND    hca.account_number = it_segment5
       ;
     --
@@ -2017,11 +2039,18 @@ AS
                   --顧客ステータス＝'90'(中止決裁済)の場合、中止顧客として
                   --エラー情報テーブル出力サブ関数(ins_error_tbl)を呼び出し、
                   --エラー情報テーブルを出力します。
-                  IF cust_check_rec.cust_status = cv_cust_status_stop THEN
+-- Ver11.5.10.2.9 Mod Start
+--                  IF cust_check_rec.cust_status = cv_cust_status_stop THEN
+                  IF cust_check_rec.chk_cust_flag = cv_flag_n THEN
+-- Ver11.5.10.2.9 Mod End
                     lv_error_code := cv_msg_cust_stop_err;
                     lt_tokeninfo.DELETE;
                     lt_tokeninfo(0).token_name  := cv_tkn_cust_num;                --TOK_XX03_CUST_NUM
                     lt_tokeninfo(0).token_value := xx03_error_checks_rec.segment5; --顧客コード
+-- Ver11.5.10.2.9 Add Start
+                    lt_tokeninfo(1).token_name  := cv_tkn_cust_sts;                --TOK_XX03_CUST_STS
+                    lt_tokeninfo(1).token_value := cust_check_rec.cust_status;     --顧客ステータス
+-- Ver11.5.10.2.9 Add End
                     lv_ret := xx03_je_error_check_pkg.ins_error_tbl(
                        xx03_error_checks_rec.check_id    , --1.チェックID
                        xx03_error_checks_rec.journal_id  , --2.仕訳キー
