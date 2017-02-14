@@ -7,7 +7,7 @@ AS
  * Description      : 出庫指示確認表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫指示確認表 T_MD070_BPO_62G
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/11/14    1.9   Naoki Fukuda          課題#62(内部変更#168)対応(指示無し実績を除外する)
  *  2009/05/28    1.10  Hitomi Itou           本番障害#1398
  *  2009/09/14    1.11  Hitomi Itou           本番障害#1632
+ *  2017/01/27    1.12  Shigeto Niki          E_本稼動_14014
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -118,12 +119,19 @@ AS
 -- 2008/09/29 Y.Yamamoto v1.8 ADD End
   -- 自動手動引当区分
   gv_auto_manual_kbn_a       CONSTANT  VARCHAR2(10) := '10' ;       -- 自動
+-- v1.12 ADD Start
+  gv_auto_manual_kbn_m       CONSTANT  VARCHAR2(10) := '20' ;       -- 手動
+-- v1.12 ADD End
   -- 小口区分
   gv_small_kbn_obj           CONSTANT  VARCHAR2(1)  := '1' ;        -- 対象
   gv_small_kbn_not_obj       CONSTANT  VARCHAR2(1)  := '0' ;        -- 対象外
   -- 重量容積区分
   gv_wei_cap_kbn_w           CONSTANT  VARCHAR2(1)  := '1' ;        -- 重量
   gv_wei_cap_kbn_c           CONSTANT  VARCHAR2(1)  := '2' ;        -- 容積
+-- v1.12 ADD Start
+  -- 手動のみ
+  gv_reserve_class_y         CONSTANT  VARCHAR2(1)  := 'Y' ;        -- 手動
+-- v1.12 ADD End
   ------------------------------
   -- 出荷関連
   ------------------------------
@@ -177,6 +185,9 @@ AS
     ,tanto_code            VARCHAR2(50)    -- 06:担当者コード
     ,input_date_time_from  VARCHAR2(30)    -- 07:入力日時FROM
     ,input_date_time_to    VARCHAR2(30)    -- 08:入力日時TO
+-- v1.12 ADD Start
+    ,reserve_class         VARCHAR2(1)     -- 09:手動のみ
+-- v1.12 ADD End
   );
 --
   -- 帳票出力データ格納用レコード変数
@@ -1666,6 +1677,14 @@ AS
         || ' AND papf.employee_number         = ''' || gr_param.tanto_code || ''''
         ;
       END IF;
+-- v1.12 ADD Start
+      -- パラメータ「手動のみ」が'Y'の場合、自動手動引当区分が「手動」のみ
+      IF ( gr_param.reserve_class = gv_reserve_class_y ) THEN
+        lv_ship_where := lv_ship_where
+        || ' AND xmld.automanual_reserve_class = ''' || gv_auto_manual_kbn_m || ''''
+        ;
+      END IF;
+-- v1.12 ADD End
 --
     END IF;
 --
@@ -2053,6 +2072,14 @@ AS
         || ' AND papf.employee_number      = ''' || gr_param.tanto_code || ''''
         ;
       END IF;
+-- v1.12 ADD Start
+      -- パラメータ「手動のみ」が'Y'の場合、自動手動引当区分が「手動」のみ
+      IF ( gr_param.reserve_class = gv_reserve_class_y ) THEN
+        lv_move_where := lv_move_where
+        || ' AND xmld.automanual_reserve_class = ''' || gv_auto_manual_kbn_m || ''''
+        ;
+      END IF;
+-- v1.12 ADD End
 --
     END IF;
 --
@@ -2245,6 +2272,9 @@ AS
      ,iv_input_date         IN         VARCHAR2       -- 07:入力日付
      ,iv_input_time_from    IN         VARCHAR2       -- 08:入力時間FROM
      ,iv_input_time_to      IN         VARCHAR2       -- 09:入力時間TO
+-- v1.12 ADD Start
+     ,iv_reserve_class      IN         VARCHAR2       -- 10:手動のみ
+-- v1.12 ADD End
      ,ov_errbuf             OUT NOCOPY VARCHAR2       -- エラー・メッセージ           --# 固定 #
      ,ov_retcode            OUT NOCOPY VARCHAR2       -- リターン・コード             --# 固定 #
      ,ov_errmsg             OUT NOCOPY VARCHAR2       -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2306,6 +2336,9 @@ AS
       gr_param.block3                := iv_block3;                     -- 04:ブロック3
       gr_param.deliver_from_code     := iv_deliver_from_code;          -- 05:出庫元
       gr_param.tanto_code            := iv_tanto_code;                 -- 06:担当者コード
+-- v1.12 ADD Start
+      gr_param.reserve_class         := iv_reserve_class;              -- 09:手動のみ
+-- v1.12 ADD End
 --
       IF (iv_input_date IS NOT NULL) THEN
 --
@@ -2375,6 +2408,9 @@ AS
      ,iv_input_date        IN      VARCHAR2         -- 07:入力日付
      ,iv_input_time_from   IN      VARCHAR2         -- 08:入力時間FROM
      ,iv_input_time_to     IN      VARCHAR2         -- 09:入力時間TO
+-- v1.12 ADD Start
+     ,iv_reserve_class     IN      VARCHAR2         -- 10:手動のみ
+-- v1.12 ADD End
      ,ov_errbuf            OUT     VARCHAR2         -- エラー・メッセージ           --# 固定 #
      ,ov_retcode           OUT     VARCHAR2         -- リターン・コード            --# 固定 #
      ,ov_errmsg            OUT     VARCHAR2         -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -2423,6 +2459,9 @@ AS
        ,iv_input_date           => iv_input_date          -- 07:入力日付
        ,iv_input_time_from      => iv_input_time_from     -- 08:入力時間FROM
        ,iv_input_time_to        => iv_input_time_to       -- 09:入力時間TO
+-- v1.12 ADD Start
+       ,iv_reserve_class        => iv_reserve_class       -- 10:手動のみ
+-- v1.12 ADD End
        ,ov_errbuf               => lv_errbuf              -- エラー・メッセージ
        ,ov_retcode              => lv_retcode             -- リターン・コード
        ,ov_errmsg               => lv_errmsg              -- ユーザー・エラー・メッセージ
@@ -2551,6 +2590,9 @@ AS
      ,iv_input_date         IN     VARCHAR2         -- 07:入力日付
      ,iv_input_time_from    IN     VARCHAR2         -- 08:入力時間FROM
      ,iv_input_time_to      IN     VARCHAR2         -- 09:入力時間TO
+-- v1.12 ADD Start
+     ,iv_reserve_class      IN     VARCHAR2         -- 10:手動のみ
+-- v1.12 ADD End
   )
 --
 --###########################  固定部 START   ###########################
@@ -2585,6 +2627,9 @@ AS
        ,iv_input_date          => iv_input_date         -- 07:入力日付
        ,iv_input_time_from     => iv_input_time_from    -- 08:入力時間FROM
        ,iv_input_time_to       => iv_input_time_to      -- 09:入力時間TO
+-- v1.12 ADD Start
+       ,iv_reserve_class       => iv_reserve_class      -- 10:手動のみ
+-- v1.12 ADD End
        ,ov_errbuf              => lv_errbuf             -- エラー・メッセージ           --# 固定 #
        ,ov_retcode             => lv_retcode            -- リターン・コード             --# 固定 #
        ,ov_errmsg              => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
