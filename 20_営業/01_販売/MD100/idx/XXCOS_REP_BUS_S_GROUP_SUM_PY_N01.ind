@@ -1,0 +1,7 @@
+CREATE INDEX xxcos.xxcos_rep_bus_s_sum_py_n01 ON xxcos.xxcos_rep_bus_s_group_sum_py(
+  dlv_month                    -- 納品月
+ ,work_days                    -- 稼動日数
+ ,customer_code                -- 顧客コード
+)
+TABLESPACE xxidx2
+;
