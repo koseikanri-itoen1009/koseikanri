@@ -8,7 +8,7 @@ AS
  *                    対象予算年度の商品計画データを抽出し、情報系システムに
  *                    連携するためのI/Fファイルを作成します。
  * MD.050           : MD050_CSM_002_A14_年間商品計画情報系システムIF
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009-01-21    1.0   T.Shimoji       新規作成
  *  2009-07-27    1.1   K.Kubo          ［SCS障害管理番号0000784］対象0件時のハンドリング変更
  *  2011-12-20    1.2   Y.Horikawa       [E_本稼動_08372] 対応 売上値引、入金値引のデータを連携対象に追加
+ *  2017-02-21    1.3   S.Niki           [E_本稼動_13209] 対応 不正レコードのスキップ処理を追加
  *
  *****************************************************************************************/
 --
@@ -100,6 +101,10 @@ AS
   cv_xxcsm_msg_021        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00021';                             -- 年度取得エラーメッセージ
   cv_xxcsm_msg_031        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00031';                             -- 定期実行用プロファイル取得エラーメッセージ
   cv_xxcsm_msg_084        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00084';                             -- インターフェースファイル名
+-- Add Start Ver.1.3
+  cv_xxcsm_msg_169        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10169';                             -- 不正レコードエラーメッセージ
+  cv_xxcsm_msg_170        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10170';                             -- エラー文字列(商品コード)
+-- Add End Ver.1.3
   --プロファイル名
   cv_file_dir             CONSTANT VARCHAR2(100) := 'XXCSM1_INFOSYS_FILE_DIR';                      -- 情報系データファイル作成ディレクトリ
   cv_file_name            CONSTANT VARCHAR2(100) := 'XXCSM1_ITEM_PLAN_FILE_NAME';                   -- 年間商品計画データファイル名
@@ -110,6 +115,12 @@ AS
   cv_tkn_sql_code         CONSTANT VARCHAR2(20) := 'SQL_CODE';
   cv_tkn_count            CONSTANT VARCHAR2(20) := 'COUNT';
   cv_tkn_yyyymm           CONSTANT VARCHAR2(20) := 'YYYYMM';
+-- Add Start Ver.1.3
+  cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM';                                          -- 項目名
+  cv_tkn_kyoten_cd        CONSTANT VARCHAR2(20) := 'KYOTEN_CD';                                     -- 拠点コード
+  cv_tkn_deal_cd          CONSTANT VARCHAR2(20) := 'DEAL_CD';                                       -- 商品群コード
+  cv_tkn_item_cd          CONSTANT VARCHAR2(20) := 'ITEM_CD';                                       -- 商品コード
+-- Add End Ver.1.3
   -- 商品計画明細データ取得条件値
   cv_bdgt_kbn_m           CONSTANT VARCHAR2(1)  := '0';                                             -- 年間群予算区分(0:各月単位)
   cv_item_kbn_g           CONSTANT VARCHAR2(1)  := '0';                                             -- 商品区分(0:商品群)
@@ -141,6 +152,9 @@ AS
      plan_year            xxcsm_item_plan_headers.plan_year%TYPE                                    -- 予算年度
     ,year_month           xxcsm_item_plan_lines.year_month%TYPE                                     -- 年月
     ,location_cd          xxcsm_item_plan_headers.location_cd%TYPE                                  -- 拠点コード
+-- Add Start Ver.1.3
+    ,item_group_no        xxcsm_item_plan_lines.item_group_no%TYPE                                  -- 商品群コード
+-- Add End Ver.1.3
     ,item_no              xxcsm_item_plan_lines.item_no%TYPE                                        -- 商品コード
     ,amount               xxcsm_item_plan_lines.amount%TYPE                                         -- 数量
     ,sales_budget         xxcsm_item_plan_lines.sales_budget%TYPE                                   -- 売上金額
@@ -538,6 +552,10 @@ AS
     cv_company_cd        CONSTANT VARCHAR2(3)  := '001';                                            -- 会社コード
     -- *** ローカル変数 ***
     lv_data              VARCHAR2(4000);                                                            -- 編集データ格納
+-- Add Start Ver.1.3
+    -- *** ローカル例外 ***
+    record_err_expt      EXCEPTION;                                                                 -- 不正レコード例外
+-- Add End Ver.1.3
 --
   BEGIN
 --
@@ -547,6 +565,31 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- Add Start Ver.1.3
+    -- ======================
+    -- 不正レコードチェック
+    -- ======================
+    -- 商品コードがNULLの場合
+    IF ( ir_plan_item.item_no IS NULL ) THEN
+      -- エラーメッセージ取得
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name                          --アプリケーション短縮名
+                    ,iv_name         => cv_xxcsm_msg_169                     --メッセージコード
+                    ,iv_token_name1  => cv_tkn_item                          --トークンコード1
+                    ,iv_token_value1 => cv_xxcsm_msg_170                     --トークン値1
+                    ,iv_token_name2  => cv_tkn_yyyymm                        --トークンコード2
+                    ,iv_token_value2 => TO_CHAR(ir_plan_item.year_month)     --トークン値2
+                    ,iv_token_name3  => cv_tkn_kyoten_cd                     --トークンコード3
+                    ,iv_token_value3 => ir_plan_item.location_cd             --トークン値3
+                    ,iv_token_name4  => cv_tkn_deal_cd                       --トークンコード4
+                    ,iv_token_value4 => ir_plan_item.item_group_no           --トークン値4
+                    ,iv_token_name5  => cv_tkn_item_cd                       --トークンコード5
+                    ,iv_token_value5 => ir_plan_item.item_no                 --トークン値5
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE record_err_expt;
+    END IF;
+-- Add End Ver.1.3
     -- ======================
     -- CSV出力処理
     -- ======================
@@ -569,6 +612,13 @@ AS
     );
 --
   EXCEPTION
+-- Add Start Ver.1.3
+    -- *** 不正レコード例外 ***
+    WHEN record_err_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := lv_errbuf;
+      ov_retcode := cv_status_warn;
+-- Add End Ver.1.3
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -645,9 +695,15 @@ AS
         lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_app_name                                               -- アプリケーション短縮名
                       ,iv_name         => cv_xxcsm_msg_003                                          -- メッセージコード
-                      ,iv_token_name1  => cv_file_dir                                               -- トークンコード1
+-- Mod Start Ver.1.3
+--                      ,iv_token_name1  => cv_file_dir                                               -- トークンコード1
+                      ,iv_token_name1  => cv_tkn_directory                                          -- トークンコード1
+-- Mod End Ver.1.3
                       ,iv_token_value1 => gv_file_dir                                               -- トークン値1
-                      ,iv_token_name2  => cv_file_name                                              -- トークンコード1
+-- Mod Start Ver.1.3
+--                      ,iv_token_name2  => cv_file_name                                              -- トークンコード1
+                      ,iv_token_name2  => cv_tkn_file_name                                          -- トークンコード1
+-- Mod End Ver.1.3
                       ,iv_token_value2 => gv_file_name                                              -- トークン値1
                      );
         lv_errbuf := lv_errmsg || SQLERRM;
@@ -766,6 +822,9 @@ AS
       SELECT    xiph.plan_year             AS  plan_year                                  -- 予算年度
                ,xipl.year_month            AS  year_month                                 -- 年月
                ,xiph.location_cd           AS  location_cd                                -- 拠点コード
+-- Add Start Ver.1.3
+               ,xipl.item_group_no         AS  item_group_no                              -- 商品群コード
+-- Add End Ver.1.3
                ,xipl.item_no               AS  item_no                                    -- 商品コード
                ,xipl.amount                AS  amount                                     -- 数量
                ,xipl.sales_budget          AS  sales_budget                               -- 売上金額
@@ -780,6 +839,9 @@ AS
       SELECT    xiph.plan_year                AS plan_year                                -- 予算年度
                ,xiplb.year_month              AS year_month                               -- 年月
                ,xiph.location_cd              AS location_cd                              -- 拠点コード
+-- Add Start Ver.1.3
+               ,NULL                          AS item_group_no                            -- 商品群コード
+-- Add End Ver.1.3
                ,gv_prf_sales_discnt_item_cd   AS item_no                                  -- 商品コード
                ,cn_qty_of_discount_item       AS amount                                   -- 数量
                ,xiplb.sales_discount          AS sales_budget                             -- 売上金額（売上値引額）
@@ -792,6 +854,9 @@ AS
       SELECT    xiph.plan_year                AS plan_year                                -- 予算年度
                ,xiplb.year_month              AS year_month                               -- 年月
                ,xiph.location_cd              AS location_cd                              -- 拠点コード
+-- Add Start Ver.1.3
+               ,NULL                          AS item_group_no                            -- 商品群コード
+-- Add End Ver.1.3
                ,gv_prf_receipt_discnt_item_cd AS item_no                                  -- 商品コード
                ,cn_qty_of_discount_item       AS amount                                   -- 数量
                ,xiplb.receipt_discount        AS sales_budget                             -- 売上金額（入金値引額）
@@ -826,6 +891,9 @@ AS
     -- グローバル変数の初期化
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
+-- Add Start Ver.1.3
+    gn_warn_cnt   := 0;
+-- Add End Ver.1.3
     gn_error_cnt  := 0;
     -- ========================================
     -- A-1.初期処理
@@ -876,9 +944,23 @@ AS
       --
       IF (lv_retcode = cv_status_error) THEN
         RAISE global_process_expt;
+-- Mod Start Ver.1.3
+--      END IF;
+      ELSIF (lv_retcode = cv_status_warn) THEN
+        -- メッセージ出力
+        fnd_file.put_line(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+        -- スキップ件数カウントアップ
+        gn_warn_cnt := gn_warn_cnt + 1;
+      ELSE
+-- Mod End Ver.1.3
+        -- 正常件数カウントアップ
+        gn_normal_cnt := gn_normal_cnt + 1;
+-- Add Start Ver.1.3
       END IF;
-      -- 正常件数カウントアップ
-      gn_normal_cnt := gn_normal_cnt + 1;
+-- Add End Ver.1.3
     END LOOP get_data_loop;
     -- カーソルクローズ
     CLOSE get_item_plan_cur;
@@ -1109,7 +1191,17 @@ AS
       --件数の振替(エラーの場合、エラー件数を1件のみ表示させる。）
       gn_target_cnt := 0;
       gn_normal_cnt := 0;
+-- Add Start Ver.1.3
+      gn_warn_cnt   := 0;
+-- Add End Ver.1.3
       gn_error_cnt := 1;
+-- Add Start Ver.1.3
+    ELSE
+      -- スキップ件数が1件以上の場合
+      IF (gn_warn_cnt > 0) THEN
+        lv_retcode := cv_status_warn;
+      END IF;
+-- Add End Ver.1.3
     END IF;
 --
     -- =======================
@@ -1144,6 +1236,19 @@ AS
       ,buff   => gv_out_msg
     );
     --
+-- Add Start Ver.1.3
+    --スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    fnd_file.put_line(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- Add End Ver.1.3
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -1164,6 +1269,10 @@ AS
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
       lv_message_code := cv_normal_msg;
+-- Add Start Ver.1.3
+    ELSIF(lv_retcode = cv_status_warn) THEN
+      lv_message_code := cv_warn_msg;
+-- Add End Ver.1.3
     ELSIF(lv_retcode = cv_status_error) THEN
       lv_message_code := cv_error_msg;
     END IF;
