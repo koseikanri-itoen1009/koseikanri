@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_021A02_LINES_V
  * Description : 問屋請求見積書突き合わせ画面（明細）ビュー
- * Version     : 1.5
+ * Version     : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -16,6 +16,7 @@
  *  2009/09/01    1.3   S.Moriyama       [障害0001230]OPM品目マスタ取得条件追加
  *  2009/09/11    1.4   K.Yamaguchi      [障害0001353]障害0001230からの障害対応
  *  2012/07/05    1.5   T.Osawa          [E_本稼動_08317] 問屋請求書明細テーブルに抽出条件を追加
+ *  2017/03/02    1.6   S.Niki           [E_本稼動_14059] 業態中分類の結合条件を修正
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_021a02_lines_v(
@@ -172,7 +173,10 @@ WHERE xwbl.wholesale_bill_header_id     = xwbh.wholesale_bill_header_id
    OR xwbl.status                       <> 'D')
 -- 2012/07/05 Ver.1.5 [障害E_本稼動_08317] SCSK T.Osawa ADD END
   AND flv.lookup_type                   = 'XXCMM_CUST_GYOTAI_SHO'
-  AND flv.lookup_code                   = hca.customer_class_code
+-- Ver.1.6 MOD START
+--  AND flv.lookup_code                   = hca.customer_class_code
+  AND flv.lookup_code                   = xca.business_low_type
+-- Ver.1.6 MOD END
   AND flv.language                      = USERENV( 'LANG' )
 -- 2009/09/11 Ver.1.4 [障害0001353] SCS K.Yamaguchi REPAIR START
 ---- 2009/09/01 Ver.1.3 [障害0001230] SCS S.Moriyama ADD START
