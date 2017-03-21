@@ -1,0 +1,142 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ * 
+ * TABLE Name      : xxcso_in_visit_data
+ * Description     : 訪問実績データワークテーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/03/15    1.0   K.Kiriu      初回作成
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_in_visit_data
+(
+   seq_no                         NUMBER           NOT NULL
+  ,base_name                      VARCHAR2(360)
+  ,employee_number                VARCHAR2(30)     NOT NULL
+  ,account_number                 VARCHAR2(30)     NOT NULL
+  ,business_type                  VARCHAR2(100)
+  ,visit_date                     DATE             NOT NULL
+  ,visit_time                     VARCHAR2(5)      NOT NULL
+  ,visit_time_end                 VARCHAR2(5)      NOT NULL
+  ,detail                         VARCHAR2(4000)
+  ,activity_content1              VARCHAR2(1)      NOT NULL
+  ,activity_content2              VARCHAR2(1)      NOT NULL
+  ,activity_content3              VARCHAR2(1)      NOT NULL
+  ,activity_content4              VARCHAR2(1)      NOT NULL
+  ,activity_content5              VARCHAR2(1)      NOT NULL
+  ,activity_content6              VARCHAR2(1)      NOT NULL
+  ,activity_content7              VARCHAR2(1)      NOT NULL
+  ,activity_content8              VARCHAR2(1)      NOT NULL
+  ,activity_content9              VARCHAR2(1)      NOT NULL
+  ,activity_content10             VARCHAR2(1)      NOT NULL
+  ,activity_content11             VARCHAR2(1)      NOT NULL
+  ,activity_content12             VARCHAR2(1)      NOT NULL
+  ,activity_content13             VARCHAR2(1)      NOT NULL
+  ,activity_content14             VARCHAR2(1)      NOT NULL
+  ,activity_content15             VARCHAR2(1)      NOT NULL
+  ,activity_content16             VARCHAR2(1)      NOT NULL
+  ,activity_content17             VARCHAR2(1)      NOT NULL
+  ,activity_content18             VARCHAR2(1)      NOT NULL
+  ,activity_content19             VARCHAR2(1)      NOT NULL
+  ,activity_content20             VARCHAR2(1)      NOT NULL
+  ,activity_time1                 NUMBER(4)        NOT NULL
+  ,activity_time2                 NUMBER(4)        NOT NULL
+  ,activity_time3                 NUMBER(4)        NOT NULL
+  ,activity_time4                 NUMBER(4)        NOT NULL
+  ,activity_time5                 NUMBER(4)        NOT NULL
+  ,activity_time6                 NUMBER(4)        NOT NULL
+  ,activity_time7                 NUMBER(4)        NOT NULL
+  ,activity_time8                 NUMBER(4)        NOT NULL
+  ,activity_time9                 NUMBER(4)        NOT NULL
+  ,activity_time10                NUMBER(4)        NOT NULL
+  ,activity_time11                NUMBER(4)        NOT NULL
+  ,activity_time12                NUMBER(4)        NOT NULL
+  ,activity_time13                NUMBER(4)        NOT NULL
+  ,activity_time14                NUMBER(4)        NOT NULL
+  ,activity_time15                NUMBER(4)        NOT NULL
+  ,activity_time16                NUMBER(4)        NOT NULL
+  ,activity_time17                NUMBER(4)        NOT NULL
+  ,activity_time18                NUMBER(4)        NOT NULL
+  ,activity_time19                NUMBER(4)        NOT NULL
+  ,activity_time20                NUMBER(4)        NOT NULL
+  ,esm_input_date                 DATE             NOT NULL
+  ,created_by                     NUMBER(15)       NOT NULL
+  ,creation_date                  DATE             NOT NULL
+  ,last_updated_by                NUMBER(15)       NOT NULL
+  ,last_update_date               DATE             NOT NULL
+  ,last_update_login              NUMBER(15)
+  ,request_id                     NUMBER(15)
+  ,program_application_id         NUMBER(15)
+  ,program_id                     NUMBER(15)
+  ,program_update_date            DATE
+  ,CONSTRAINT xxcso_in_visit_data_pk PRIMARY KEY ( seq_no )
+   USING INDEX TABLESPACE xxidx2
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_in_visit_data IS '訪問実績データワークテーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.seq_no                              IS 'シーケンス番号';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.base_name                           IS '部署名';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.employee_number                     IS '社員コード';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.account_number                      IS '顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.business_type                       IS '業務タイプ';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.visit_date                          IS '訪問日';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.visit_time                          IS '訪問開始時刻';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.visit_time_end                      IS '訪問終了時刻';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.detail                              IS '詳細内容';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content1                   IS '活動内容１';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content2                   IS '活動内容２';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content3                   IS '活動内容３';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content4                   IS '活動内容４';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content5                   IS '活動内容５';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content6                   IS '活動内容６';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content7                   IS '活動内容７';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content8                   IS '活動内容８';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content9                   IS '活動内容９';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content10                  IS '活動内容１０';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content11                  IS '活動内容１１';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content12                  IS '活動内容１２';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content13                  IS '活動内容１３';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content14                  IS '活動内容１４';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content15                  IS '活動内容１５';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content16                  IS '活動内容１６';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content17                  IS '活動内容１７';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content18                  IS '活動内容１８';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content19                  IS '活動内容１９';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_content20                  IS '活動内容２０';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time1                      IS '活動時間１（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time2                      IS '活動時間２（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time3                      IS '活動時間３（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time4                      IS '活動時間４（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time5                      IS '活動時間５（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time6                      IS '活動時間６（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time7                      IS '活動時間７（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time8                      IS '活動時間８（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time9                      IS '活動時間９（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time10                     IS '活動時間１０（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time11                     IS '活動時間１１（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time12                     IS '活動時間１２（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time13                     IS '活動時間１３（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time14                     IS '活動時間１４（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time15                     IS '活動時間１５（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time16                     IS '活動時間１６（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time17                     IS '活動時間１７（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time18                     IS '活動時間１８（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time19                     IS '活動時間１９（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.activity_time20                     IS '活動時間２０（分）';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.esm_input_date                      IS 'eSM入力日時';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.created_by                          IS '作成者';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.creation_date                       IS '作成日';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.last_updated_by                     IS '最終更新者';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.last_update_date                    IS '最終更新日';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.last_update_login                   IS '最終更新ログイン';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.request_id                          IS '要求ID';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.program_application_id              IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.program_id                          IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcso.xxcso_in_visit_data.program_update_date                 IS 'プログラム更新日';

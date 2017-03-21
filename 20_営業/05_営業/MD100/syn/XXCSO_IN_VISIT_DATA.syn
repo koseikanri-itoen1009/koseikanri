@@ -1,0 +1,15 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ * 
+ * SYNONYM Name    : xxcso_in_visit_data
+ * Description     : 訪問実績データワークテーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/02/10    1.0   K.Kiriu      初回作成
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM apps.xxcso_in_visit_data FOR xxcso.xxcso_in_visit_data;
