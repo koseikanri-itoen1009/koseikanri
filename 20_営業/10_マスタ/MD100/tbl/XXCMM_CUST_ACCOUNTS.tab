@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.9
+ * Version         : 1.10
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -22,6 +22,7 @@
  *  2014/11/21    1.8  Y.Nagasue     【E_本稼動_12237】倉庫管理システム対応
                                                        顧客別鮮度条件コード追加
  *  2016/10/26    1.9  S.Niki        【E_本稼動_13879】取引先顧客コード、相殺用顧客コード、相殺用顧客区分追加
+ *  2017/03/07    1.10 S.Yamashita   【E_本稼動_13976】ストレポ＆商談くん連携対象フラグ追加
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
@@ -128,6 +129,9 @@ CREATE TABLE xxcmm.xxcmm_cust_accounts
     offset_cust_code            VARCHAR2(9),
     offset_cust_div             VARCHAR2(1),
 -- Ver1.9 add end
+-- Ver1.10 add start
+    esm_target_div              VARCHAR2(1),
+-- Ver1.10 add end
     created_by                  NUMBER(15,0)    NOT NULL,
     creation_date               DATE            NOT NULL,
     last_updated_by             NUMBER(15,0)    NOT NULL,
@@ -335,6 +339,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.offset_cust_code            IS '相殺
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.offset_cust_div             IS '相殺用顧客区分'
 /
 -- Ver1.9 add end
+-- Ver1.10 add start
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.esm_target_div              IS 'ストレポ＆商談くん連携対象フラグ'
+/
+-- Ver1.10 add end
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.created_by                  IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.creation_date               IS '作成日'
