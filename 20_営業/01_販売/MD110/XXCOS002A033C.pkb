@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A033C (body)
  * Description      : 営業成績表集計(前年)
  * MD.050           : 営業成績表集計(前年) MD050_COS_002_A03
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/05/10    1.0   S.Niki           main新規作成
+ *  2017/03/13    1.1   N.Koyama         E_本稼動_14037対応(営業成績表の前年売上実績データ不備)
  *
  *****************************************************************************************/
 --
@@ -1205,7 +1206,10 @@ AS
     ) IS
        SELECT
            /*+ USE_NL(xsti iimb) */
-           TO_CHAR(xsti.registration_date ,cv_fmt_years)  AS dlv_month             -- 納品月
+---- ***************** 2017/03/13 1.1 N.Koyama Mod Start ***************** --
+--           TO_CHAR(xsti.registration_date ,cv_fmt_years)  AS dlv_month             -- 納品月
+           TO_CHAR(xsti.selling_date ,cv_fmt_years)  AS dlv_month             -- 納品月
+---- ***************** 2017/03/13 1.1 N.Koyama Mod End   ***************** --
           ,xsti.cust_code                                 AS customer_code         -- 顧客コード
           ,iimb.attribute2                                AS policy_group_code     -- 政策群コード
           ,SUM(xsti.selling_amt_no_tax)                   AS sale_amount           -- 本体金額
@@ -1220,7 +1224,10 @@ AS
        FROM    xxcok_selling_trns_info   xsti
               ,xxcos_lookup_values_v     xlvs
               ,ic_item_mst_b             iimb
-       WHERE   xsti.registration_date       =       id_delivery_date
+---- ***************** 2017/03/13 1.1 N.Koyama Mod Start ***************** --
+--       WHERE   xsti.registration_date       =       id_delivery_date
+       WHERE   xsti.selling_date       =       id_delivery_date
+---- ***************** 2017/03/13 1.1 N.Koyama Mod End   ***************** --
        AND     xsti.item_code               <>      gt_prof_electric_fee_item_cd   -- 変動電気代は除く
        AND     xlvs.lookup_type             =       ct_qct_sale_type               -- 売上区分
        AND     xlvs.lookup_code             =       xsti.selling_type
@@ -1228,7 +1235,10 @@ AS
                                             AND     NVL(xlvs.end_date_active,   gd_process_date)
        AND     iimb.item_no                 =       xsti.item_code
        GROUP BY
-               TO_CHAR(xsti.registration_date ,cv_fmt_years) -- 納品月
+---- ***************** 2017/03/13 1.1 N.Koyama Mod Start ***************** --
+--               TO_CHAR(xsti.registration_date ,cv_fmt_years) -- 納品月
+               TO_CHAR(xsti.selling_date ,cv_fmt_years) -- 納品月
+---- ***************** 2017/03/13 1.1 N.Koyama Mod End   ***************** --
               ,xsti.cust_code                                -- 顧客コード
               ,iimb.attribute2                               -- 政策群コード
        ;
