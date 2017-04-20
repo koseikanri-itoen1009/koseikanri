@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_TASK_COMMON_PKG(SPEC)
  * Description      : 共通関数(XXCSOタスク）
  * MD.050/070       :
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009-07-16    1.2   Kazuo.Satomura   0000070対応
  *  2009-10-23    1.3   Daisuke.Abe      障害対応(E_T4_00056)
+ *  2017/04/12    1.4   Y.Shoji          E_本稼動_14025対応
  *****************************************************************************************/
 --
   -- 訪問タスク登録関数
@@ -33,6 +34,9 @@ AS
     in_resource_id           IN  NUMBER,                 -- 営業員コードのリソースID
     in_party_id              IN  NUMBER,                 -- 顧客のパーティID
     iv_party_name            IN  VARCHAR2,               -- 顧客のパーティ名称
+-- 2017/04/12 Ver.1.4 Y.Shoji ADD Start
+    id_input_date            IN  DATE     DEFAULT NULL,  -- データ入力日時
+-- 2017/04/12 Ver.1.4 Y.Shoji ADD End
     id_visit_date            IN  DATE,                   -- 実績終了日（訪問日時）
     iv_description           IN  VARCHAR2 DEFAULT NULL,  -- 詳細内容
     /* 2009.07.16 K.Satomura 0000070対応 START */
