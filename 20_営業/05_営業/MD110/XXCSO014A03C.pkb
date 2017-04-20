@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_014_A03_訪問のみ
  *                    
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009-1-8     1.0   Kenji.Sai        新規作成
  *  2009-05-01   1.1   Tomoko.Mori      T1_0897対応
  *  2009-05-07   1.2   Tomoko.Mori      T1_0912対応
+ *  2017-04-18   1.3   Naoki.Watanabe   [E_本稼動_14025] HHTからのシステム日付連携追加
  *
  *****************************************************************************************/
 -- 
@@ -158,7 +159,11 @@ AS
     party_name           hz_parties.party_name%TYPE,               -- パーティ名称
     account_name         hz_cust_accounts.account_name%TYPE,       -- 顧客名称
     employee_name        xxcso_resources_v.full_name%TYPE,         -- 営業員名称
-    customer_status      hz_parties.duns_number_c%TYPE             -- 顧客ステータス
+    customer_status      hz_parties.duns_number_c%TYPE,            -- 顧客ステータス
+-- Ver1.3 ADD Start
+    input_date           VARCHAR2(8),                              -- システム日付  YYYYMMDD
+    input_datetime       DATE                                      -- システム日時（HHT入力日時）
+-- Ver1.3 ADD End
   );
   -- *** ユーザー定義グローバル例外 ***
   global_skip_error_expt EXCEPTION;
@@ -593,7 +598,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_format_col_cnt       CONSTANT NUMBER        := 9;                    -- 項目数
+-- Ver1.3 MOD Start
+--    cv_format_col_cnt       CONSTANT NUMBER        := 9;                    -- 項目数
+    cv_format_col_cnt       CONSTANT NUMBER        := 10;                    -- 項目数
+-- Ver1.3 MOD End
     cv_account_number_len   CONSTANT NUMBER        := 9;                    -- 顧客コードバイト数
     cv_employee_number_len  CONSTANT NUMBER        := 5;                    -- 営業員コードバイト数
     cv_houmon_kubun_len     CONSTANT NUMBER        := 2;                    -- 訪問区分バイト数
@@ -604,12 +612,18 @@ AS
     /*20090507_mori_T1_0912 START*/
     cv_blank                CONSTANT VARCHAR2(1)   := ' ';                  -- 空白
     /*20090507_mori_T1_0912 END*/
+--Ver1.3 ADD Start
+    cv_input_date_fmt       CONSTANT VARCHAR2(100) := 'YYYYMMDDHH24MI';     -- DATE型
+--Ver1.3 ADD End
 --
     -- *** ローカル変数 ***
     l_col_data_tab          g_col_data_ttype;       -- 分割後項目データを格納する配列
     lv_item_nm              VARCHAR2(100);         -- 該当項目名
     lv_visit_date           VARCHAR2(100);         -- 訪問日時
     lb_return               BOOLEAN;               -- リターンステータス
+-- Ver1.3 ADD Start
+    lv_input_date           VARCHAR2(100);         -- システム日時（HHT入力日時）
+-- Ver1.3 ADD End
 --
     loop_cnt                NUMBER;
     lv_tmp                  VARCHAR2(2000);
@@ -662,7 +676,10 @@ AS
 --
       -- 共通関数によって分割した項目データ取得
       <<delim_partition_loop>>
-      FOR loop_cnt IN 1..9 LOOP
+-- Ver1.3 MOD Start
+--      FOR loop_cnt IN 1..9 LOOP
+      FOR loop_cnt IN 1..10 LOOP
+-- Ver1.3 MOD End
         l_col_data_tab(loop_cnt) := TRIM(
                                       REPLACE(xxccp_common_pkg.char_delim_partition(iv_base_value, cv_comma, loop_cnt)
                                                 , '"', '')
@@ -685,6 +702,11 @@ AS
       ELSIF l_col_data_tab(9) IS NULL THEN
         lb_return  := FALSE;
         lv_item_nm := '訪問時刻';
+-- Ver1.3 ADD Start
+      ELSIF l_col_data_tab(10) IS NULL THEN
+        lb_return  := FALSE;
+        lv_item_nm := 'システム日付(HHT入力日)';
+-- Ver1.3 ADD End
       END IF;
 --
       IF (lb_return = FALSE) THEN
@@ -718,6 +740,25 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_skip_error_expt;
       END IF;
+-- Ver1.3 ADD Start
+      -- システム日時（HHT入力日時）
+      lv_input_date := TO_CHAR(l_col_data_tab(10)) || l_col_data_tab(9);
+--
+      lb_return := xxcso_util_common_pkg.check_date(lv_input_date, cv_input_date_fmt);
+      IF (lb_return = FALSE) THEN
+        lv_item_nm := 'システム日時（HHT入力日時）';
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_13             -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                       ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                       ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                       ,iv_token_value2 => iv_base_value                -- トークン値2
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_skip_error_expt;
+      END IF;
+-- Ver1.3 ADD End
 --
       -- 3). サイズチェック
       /*20090507_mori_T1_0912 START*/
@@ -784,6 +825,11 @@ AS
     g_visit_data_rec.visit_time      := l_col_data_tab(9);             -- 訪問時刻
     g_visit_data_rec.visit_datetime  := TO_DATE(g_visit_data_rec.visit_date||g_visit_data_rec.visit_time
                                                 , cv_visit_date_fmt);
+-- Ver1.3 ADD Start
+    g_visit_data_rec.input_date      := TO_CHAR(l_col_data_tab(10));   -- システム日付(HHT入力日)
+    g_visit_data_rec.input_datetime  := TO_DATE(g_visit_data_rec.input_date||g_visit_data_rec.visit_time
+                                                , cv_input_date_fmt);  -- システム日時(HHT入力日時)
+-- Ver1.3 ADD End
 --
   EXCEPTION
     -- *** スキップ例外ハンドラ ***
@@ -1150,6 +1196,9 @@ AS
         in_resource_id            => g_visit_data_rec.resource_id         -- 営業員コードのリソースID
        ,in_party_id               => g_visit_data_rec.party_id            -- 顧客のパーティID
        ,iv_party_name             => g_visit_data_rec.party_name          -- 顧客のパーティ名称
+-- Ver1.3 ADD Start
+       ,id_input_date             => g_visit_data_rec.input_datetime      -- データ入力日時
+-- Ver1.3 ADD End
        ,id_visit_date             => g_visit_data_rec.visit_datetime      -- 実績終了日（訪問日時）
        ,iv_description            => g_visit_data_rec.description         -- 詳細内容
        ,iv_attribute1             => g_visit_data_rec.dff1_cd             -- DFF1 訪問区分１
