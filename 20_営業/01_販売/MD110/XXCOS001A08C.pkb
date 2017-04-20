@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2013/10/24    1.27  K.Nakamura       [E_本稼動_10904] 消費税増税対応
  *  2013/12/16    1.28  K.Nakamura       [E_本稼動_11236] 明細消費税額（内税伝票課税かつHHTからのデータ）の端数処理の修正
  *  2014/01/27    1.29  K.Nakamura       [E_本稼動_11449] 消費税率取得基準日を納品日・検収日⇒オリジナル納品日・オリジナル検収日に変更
+ *  2017/04/19    1.30  N.Watanabe       [E_本稼動_14025] HHTからのシステム日付連携追加
  *
  *****************************************************************************************/
 --
@@ -1625,6 +1626,9 @@ AS
 -- 2011/03/24 Ver.1.25 Y.Nishino Add Start --
     lt_order_number              xxcos_dlv_headers.order_number%TYPE;        -- オーダーNo
 -- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
+-- Ver1.30 ADD Start
+    lt_creation_date             xxcos_dlv_headers.creation_date%TYPE;       -- 作成日
+-- Ver1.30 ADD End
      --
     lt_state_order_no_hht              xxcos_dlv_lines.order_no_hht%TYPE;    -- 受注No.（HHT）
     lt_state_line_no_hht               xxcos_dlv_lines.line_no_hht%TYPE;     -- 行No.（HHT）
@@ -1765,6 +1769,9 @@ AS
 -- 2011/03/24 Ver.1.25 Y.Nishino Add Start -- 
               ,dhs.order_number               -- オーダーNo
 -- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
+-- Ver1.30 ADD Start
+              ,dhs.creation_date              -- 作成日
+-- Ver1.30 ADD End
           FROM xxcos_dlv_headers dhs          -- 納品ヘッダ
          WHERE dhs.order_no_hht        = lt_order_no_hht
            AND dhs.digestion_ln_number = lt_digestion_ln_number
@@ -1888,8 +1895,11 @@ AS
         lt_cancel_correct_class     := l_get_headers_cur.cancel_correct_class;      -- 取消・訂正区分
         lt_red_black_flag           := l_get_headers_cur.red_black_flag;            -- 赤黒フラグ
 -- 2011/03/24 Ver.1.25 Y.Nishino Add Start --
-        lt_order_number             := l_get_headers_cur.order_number;                         -- オーダーNo
+        lt_order_number             := l_get_headers_cur.order_number;              -- オーダーNo
 -- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
+-- Ver1.30 ADD Start
+        lt_creation_date            := l_get_headers_cur.creation_date;             -- 作成日
+-- Ver1.30 ADD End
         -- 
 -- ******************* 2009/09/03 1.19 N.Maeda ADD START ***************** --
       --==================================
@@ -2251,8 +2261,11 @@ AS
         -- =========================
         -- HHT納品入力日時の成型処理
         -- =========================
-        ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
-                                SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
+--Ver1.30 MOD Start
+--        ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+--                                SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
+        ld_input_date := lt_creation_date;
+--Ver1.30 MOD End
 --
         -- ==================================
         -- 出荷元保管場所の導出
@@ -5804,6 +5817,9 @@ AS
 -- 2011/03/24 Ver.1.25 Y.Nishino Add Start --
     lt_order_number              xxcos_dlv_headers.order_number%TYPE;        -- オーダーNo
 -- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
+-- Ver1.30 ADD Start
+    lt_hht_input_date            xxcos_dlv_headers.hht_input_date%TYPE;      -- HHT入力日
+-- Ver1.30 ADD End
     --
     lt_state_order_no_hht              xxcos_dlv_lines.order_no_hht%TYPE;    -- 受注No.（HHT）
     lt_state_line_no_hht               xxcos_dlv_lines.line_no_hht%TYPE;     -- 行No.（HHT）
@@ -5944,6 +5960,9 @@ AS
 -- 2011/03/24 Ver.1.25 Y.Nishino Add Start -- 
               ,dhs.order_number               -- オーダーNo
 -- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
+-- Ver1.30 ADD Start
+              ,dhs.hht_input_date             -- HHT入力日
+-- Ver1.30 ADD End
           FROM xxcos_dlv_headers dhs          -- 納品ヘッダ
          WHERE dhs.order_no_hht        = lt_order_no_hht
            AND dhs.digestion_ln_number = lt_digestion_ln_number
@@ -6078,6 +6097,9 @@ AS
 -- 2011/03/24 Ver.1.25 Y.Nishino Add Start --
         lt_order_number             := l_get_headers_cur.order_number;                         -- オーダーNo
 -- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
+-- Ver1.30 ADD Start
+        lt_hht_input_date           := l_get_headers_cur.hht_input_date;                       -- HHT入力日
+-- Ver1.30 ADD End
 --
 --******************************* 2010/03/01 1.23 N.Maeda ADD START ***************************************
       --==================================
@@ -6433,7 +6455,10 @@ AS
         -- =========================
         -- HHT納品入力日時の成型処理
         -- =========================
-        ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+-- Ver1.30 MOD Start
+--        ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+        ld_input_date :=TO_DATE(TO_CHAR( lt_hht_input_date, cv_short_day )||cv_space_char||
+-- Ver1.30 MOD End
                                 SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
 --
         -- ==================================
