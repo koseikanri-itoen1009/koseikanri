@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2014/01/29    1.27    K.Nakamura       [E_本稼動_11449] 消費税率取得基準日を検収日⇒オリジナル検収日に変更
  *  2016/02/26    1.28    S.Niki           [E_本稼動_13480] 納品書チェックリスト対応
  *  2016/06/14    1.29    N.Koyama         [E_本稼働_13661]取消訂正区分最新値取得時の変数初期化漏れ対応
+ *  2017/04/19    1.30    N.Watanabe       [E_本稼動_14025] HHTからのシステム日付連携追加
  *
  *****************************************************************************************/
 --
@@ -393,8 +394,11 @@ AS
       cs_ttl_sales_amt             xxcos_vd_column_headers.cash_total_sales_amt%TYPE,     -- 現金売りトータル販売金額
       pp_ttl_sales_amt             xxcos_vd_column_headers.ppcard_total_sales_amt%TYPE,   -- PPカードトータル販売金額
       id_ttl_sales_amt             xxcos_vd_column_headers.idcard_total_sales_amt%TYPE,   -- IDカードトータル販売金額
-      hht_received_flag            xxcos_vd_column_headers.hht_received_flag%TYPE         -- HHT受信フラグ
+      hht_received_flag            xxcos_vd_column_headers.hht_received_flag%TYPE,        -- HHT受信フラグ
 -- ************* Ver.1.28 MOD END   *************--
+-- ************* Ver.1.30 ADD START *************--
+      hht_input_date               xxcos_vd_column_headers.hht_input_date%TYPE            -- HHT入力日
+-- ************* Ver.1.30 ADD END   *************--
     );
   TYPE g_tab_vd_c_head_data IS TABLE OF g_rec_vd_c_head_data INDEX BY PLS_INTEGER;
 --
@@ -1541,6 +1545,9 @@ AS
   lt_id_ttl_sales_amt             xxcos_vd_column_headers.idcard_total_sales_amt%TYPE; -- IDカードトータル販売金額
   lt_hht_received_flag            xxcos_vd_column_headers.hht_received_flag%TYPE;      -- HHT受信フラグ
 -- ************* Ver.1.28 ADD END   *************--
+-- ************* Ver.1.30 ADD START *************--
+  lt_hht_input_date               xxcos_vd_column_headers.hht_input_date%TYPE;         -- HHT入力日
+-- ************* Ver.1.30 ADD END   *************--
 --
   --明細情報格納変数
   lt_lin_order_no_hht             xxcos_vd_column_lines.order_no_hht%TYPE;             --受注No.(HHT)
@@ -1727,6 +1734,9 @@ AS
       lt_id_ttl_sales_amt             := gt_vd_c_headers_data(ck_no).id_ttl_sales_amt;       --IDカードトータル販売金額
       lt_hht_received_flag            := gt_vd_c_headers_data(ck_no).hht_received_flag;      --HHT受信フラグ
 -- ************* Ver.1.28 ADD END   *************--
+-- ************* Ver.1.30 ADD START *************--
+      lt_hht_input_date               := gt_vd_c_headers_data(ck_no).hht_input_date;         --HHT入力日
+-- ************* Ver.1.30 ADD END   *************--
 --
 -- ****************** 2009/09/03 1.18 N.Maeda ADD START ************** --
       --==================================
@@ -2132,8 +2142,16 @@ AS
 --******************************* 2009/04/16 N.Maeda Var1.10 MOD END *****************************************
       END;
       --HHT納品入力日時形成
-      gd_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
-                              SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
+-- ************* Ver.1.30 MOD START *************--
+--      gd_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+--                              SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
+      IF ( lt_hht_received_flag IS NULL ) THEN        --HHT取引入力画面から入力されたデータの場合
+        gd_input_date := lt_hht_input_date;
+      ELSIF ( lt_hht_received_flag IS NOT NULL ) THEN --HHTから連携されたデータの場合
+        gd_input_date :=TO_DATE(TO_CHAR( lt_hht_input_date, cv_short_day )||cv_space_char||
+                                SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
+      END IF;
+-- ************* Ver.1.30 MOD END   *************--
       -- 消費税率算出
       ln_tax_data := ( (100 + lt_tax_consum) / 100 );
 --
@@ -3780,8 +3798,11 @@ AS
            vch.cash_total_sales_amt    AS cs_ttl_sales_amt,   -- 現金売りトータル販売金額
            vch.ppcard_total_sales_amt  AS pp_ttl_sales_amt,   -- PPカードトータル販売金額
            vch.idcard_total_sales_amt  AS id_ttl_sales_amt,   -- IDカードトータル販売金額
-           vch.hht_received_flag       AS hht_received_flag   -- HHT受信フラグ
+           vch.hht_received_flag       AS hht_received_flag,  -- HHT受信フラグ
 -- Ver.1.28 MOD End
+-- Ver.1.30 ADD Start
+           vch.hht_input_date          AS hht_input_date      -- HHT入力日
+-- Ver.1.30 ADD End
 ---- ****************************** 2009/07/29 N.Maeda Var1.15 MOD START ***************************************
     FROM   xxcos_vd_column_headers vch        -- VDコラム別取引情報ヘッダ情報
     WHERE  vch.system_class  IN ( cv_system_class_fs_vd, cv_system_class_fs_vd_s )
