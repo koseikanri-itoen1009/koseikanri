@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2015/01/29    1.20  H.Wajima         [E_本稼働_12599]HWリプレースによるパフォーマンス対応反映
  *  2016/03/01    1.21  S.Niki           [E_本稼働_13480]納品書チェックリスト対応
  *  2016/06/14    1.22  N.Koyama         [E_本稼働_13661]取消訂正区分最新値取得時の変数初期化漏れ対応
+ *  2017/04/19    1.23  N.Watanabe       [E_本稼動_14025]HHTからのシステム日付連携追加
  *
  *****************************************************************************************/
 --
@@ -433,6 +434,12 @@ AS
   TYPE g_tab_hht_received_flag     IS TABLE OF xxcos_vd_column_headers.hht_received_flag%TYPE
     INDEX BY PLS_INTEGER;   -- HHT受信フラグ
 --****************************** Ver.1.21 ADD END ******************************--
+--****************************** Ver.1.23 ADD START ****************************--
+  TYPE g_tab_hht_input_date        IS TABLE OF xxcos_vd_column_headers.hht_input_date%TYPE
+    INDEX BY PLS_INTEGER;   -- HHT入力日
+  TYPE g_tab_creation_date_head    IS TABLE OF xxcos_vd_column_headers.creation_date%TYPE
+    INDEX BY PLS_INTEGER;   -- HHT入力日
+--****************************** Ver.1.23 ADD END ******************************--
 --
   -- VDコラム別取引明細テーブル登録用変数
   TYPE g_tab_order_nol_hht         IS TABLE OF xxcos_vd_column_lines.order_no_hht%TYPE
@@ -556,6 +563,10 @@ AS
   gt_id_ttl_sales_amt   g_tab_id_ttl_sales_amt;         -- IDカードトータル販売金額
   gt_hht_received_flag  g_tab_hht_received_flag;        -- HHT受信フラグ
 --****************************** Ver.1.21 ADD END   ******************************--
+--****************************** Ver.1.23 ADD START ******************************--
+  gt_hht_input_date     g_tab_hht_input_date;           -- HHT入力日
+  gt_creation_date_head g_tab_creation_date_head;       -- 納品ヘッダ.作成日
+--****************************** Ver.1.23 ADD END   ******************************--
 --
   -- VDコラム別取引明細テーブル登録データ
   gt_order_nol_hht      g_tab_order_nol_hht;            -- 受注No.(HHT)
@@ -618,6 +629,10 @@ AS
   gt_dev_set_id_ttl_sales_amt       g_tab_id_ttl_sales_amt;         -- IDカードトータル販売金額
   gt_dev_set_hht_received_flag      g_tab_hht_received_flag;        -- HHT受信フラグ
 --****************************** Ver.1.21 ADD END   ******************************--
+--****************************** Ver.1.23 ADD START ******************************--
+  gt_dev_set_hht_input_date         g_tab_hht_input_date;           -- HHT入力日
+  gt_dev_set_creation_date_head     g_tab_creation_date_head;       -- 納品ヘッダ.作成日
+--****************************** Ver.1.23 ADD END   ******************************--
   gt_dev_set_created_by             g_tab_created_by;               -- 作成者
   gt_dev_set_creation_date          g_tab_creation_date;            -- 作成日
   gt_dev_set_last_updated_by        g_tab_last_updated_by;          -- 最終更新者
@@ -2135,6 +2150,9 @@ AS
             idcard_total_sales_amt,         -- IDカードトータル販売金額
             hht_received_flag,              -- HHT受信フラグ
 --****************************** Ver.1.21 ADD END   ******************************--
+--****************************** Ver.1.23 ADD START ******************************--
+            hht_input_date,                 -- HHT入力日
+--****************************** Ver.1.23 ADD END   ******************************--
             created_by,                     -- 作成者
             creation_date,                  -- 作成日
             last_updated_by,                -- 最終更新者
@@ -2190,6 +2208,9 @@ AS
             NULL,                           -- IDカードトータル販売金額
             NULL,                           -- HHT受信フラグ
 --****************************** Ver.1.21 ADD END   ******************************--
+--****************************** Ver.1.23 ADD START ******************************--
+            NULL,                           -- HHT入力日
+--****************************** Ver.1.23 ADD END   ******************************--
             cn_created_by,                  -- 作成者
             cd_creation_date,               -- 作成日
             cn_last_updated_by,             -- 最終更新者
@@ -2691,16 +2712,20 @@ AS
                  head.idcard_total_sales_amt     idcard_total_sales_amt,    -- 37.IDカードトータル販売金額
                  head.hht_received_flag          hht_received_flag,         -- 38.HHT受信フラグ
 --****************************** Ver.1.21 ADD END   ******************************--
-                 cn_created_by                   created_by,                -- 39.作成者
-                 cd_creation_date                creation_date,             -- 40.作成日
-                 cn_last_updated_by              last_updated_by,           -- 41.最終更新者
-                 cd_last_update_date             last_update_date,          -- 42.最終更新日
-                 cn_last_update_login            last_update_login,         -- 43.最終更新ログイン
-                 cn_request_id                   request_id,                -- 44.要求ID
-                 cn_program_application_id       program_application_id,    -- 45.コンカレント・プログラム・アプリケーションID
-                 cn_program_id                   program_id,                -- 46.コンカレント・プログラムID
-                 cd_program_update_date          program_update_date,       -- 47.プログラム更新日
-                 lt_inv_row_id                   row_id                     -- 48.行ID
+--****************************** Ver.1.23 ADD START ******************************--
+                 head.hht_input_date             hht_input_date,            -- 39.HHT入力日
+                 head.creation_date              creation_date_head,        -- 40.納品ヘッダ作成日
+--****************************** Ver.1.23 ADD END   ******************************--
+                 cn_created_by                   created_by,                -- 41.作成者
+                 cd_creation_date                creation_date,             -- 42.作成日
+                 cn_last_updated_by              last_updated_by,           -- 43.最終更新者
+                 cd_last_update_date             last_update_date,          -- 44.最終更新日
+                 cn_last_update_login            last_update_login,         -- 45.最終更新ログイン
+                 cn_request_id                   request_id,                -- 46.要求ID
+                 cn_program_application_id       program_application_id,    -- 47.コンカレント・プログラム・アプリケーションID
+                 cn_program_id                   program_id,                -- 48.コンカレント・プログラムID
+                 cd_program_update_date          program_update_date,       -- 49.プログラム更新日
+                 lt_inv_row_id                   row_id                     -- 50.行ID
           INTO   gt_dev_set_order_noh_hht(lt_data_count)
                  ,gt_dev_set_digestion_ln(lt_data_count)
                  ,gt_dev_set_order_no_ebs(lt_data_count)
@@ -2741,6 +2766,10 @@ AS
                  ,gt_dev_set_id_ttl_sales_amt(lt_data_count)
                  ,gt_dev_set_hht_received_flag(lt_data_count)
 --****************************** Ver.1.21 ADD END   ******************************--
+--****************************** Ver.1.23 ADD START ******************************--
+                 ,gt_dev_set_hht_input_date(lt_data_count)
+                 ,gt_dev_set_creation_date_head(lt_data_count)
+--****************************** Ver.1.23 ADD END   ******************************--
                  ,gt_dev_set_created_by(lt_data_count)
                  ,gt_dev_set_creation_date(lt_data_count)
                  ,gt_dev_set_last_updated_by(lt_data_count)
@@ -2817,6 +2846,14 @@ AS
 --
           END LOOP get_line_loop;
 --
+--****************************** Ver.1.23 ADD START ****************************--
+          -- ===============================================================
+          -- HHT取引入力画面から登録された納品データに対するHHT入力日の設定
+          -- ===============================================================
+          IF ( gt_dev_set_hht_received_flag(lt_data_count) IS NULL ) THEN --HHT受信フラグがNULLの場合
+            gt_dev_set_hht_input_date(lt_data_count) := gt_dev_set_creation_date_head(lt_data_count);
+          END IF;
+--****************************** Ver.1.23 ADD END   ****************************--
         ELSE
 --
           -- スキップ件数カウントアップ
@@ -2941,6 +2978,9 @@ AS
                  idcard_total_sales_amt,         -- IDカードトータル販売金額
                  hht_received_flag,              -- HHT受信フラグ
 --****************************** Ver.1.21 ADD END   ******************************--
+--****************************** Ver.1.23 ADD START ******************************--
+                 hht_input_date,                 -- HHT入力日
+--****************************** Ver.1.23 ADD END   ******************************--
                  created_by,                     -- 作成者
                  creation_date,                  -- 作成日
                  last_updated_by,                -- 最終更新者
@@ -2997,6 +3037,9 @@ AS
                  gt_dev_set_id_ttl_sales_amt(i),
                  gt_dev_set_hht_received_flag(i),
 --****************************** Ver.1.21 ADD END   ******************************--
+--****************************** Ver.1.23 ADD START ******************************--
+                 gt_dev_set_hht_input_date(i),
+--****************************** Ver.1.23 ADD END   ******************************--
                  gt_dev_set_created_by(i),
                  gt_dev_set_creation_date(i),
                  gt_dev_set_last_updated_by(i),
