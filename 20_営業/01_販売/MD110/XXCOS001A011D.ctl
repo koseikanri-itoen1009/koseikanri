@@ -5,7 +5,7 @@
 -- Description   : HHT納品データ取込（ヘッダ） SQL*Loader処理
 -- MD.050        : 
 -- MD.070        : なし
--- Version       : 1.2
+-- Version       : 1.3
 --
 -- Target Table  : XXCOS_DLV_HEADERS_WORK
 --
@@ -16,6 +16,7 @@
 --  2008/10/29    1.0     宮越 翔平        新規作成
 --  2011/03/16    1.1     落合 峻平        [E_本稼動_06590] オーダーNo追加
 --  2016/02/15    1.2     仁木 重人        [E_本稼動_13480] 納品書チェックリスト対応
+--  2017/04/19    1.3     渡邊 直樹        [E_本稼動_14025] HHTからのシステム日付連携追加
 --
 -- ************************************************************************************************
 LOAD DATA
@@ -59,6 +60,9 @@ TRAILING NULLCOLS
     PPCARD_TOTAL_SALES_AMT       INTEGER EXTERNAL,                  -- PPカードトータル販売金額
     IDCARD_TOTAL_SALES_AMT       INTEGER EXTERNAL,                  -- IDカードトータル販売金額
 -- Ver.1.2 ADD End
+-- Ver.1.3 ADD Start
+    HHT_INPUT_DATE               DATE(8) "yyyymmdd",                -- HHT入力日
+-- Ver.1.3 ADD End
     RECEIVE_DATE                 DATE(19) "yyyy/mm/dd hh24:mi:ss",  -- 受信日時
     CREATED_BY                   CONSTANT "-1",                     -- 作成者
     CREATION_DATE                SYSDATE,                           -- 作成日
