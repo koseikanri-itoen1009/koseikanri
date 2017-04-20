@@ -1,0 +1,5 @@
+ALTER TABLE XXCOS.XXCOS_DLV_HEADERS_WORK ADD(
+  HHT_INPUT_DATE               DATE                       -- HHT“ü—Í“ú
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_DLV_HEADERS_WORK.HHT_INPUT_DATE            IS 'HHT“ü—Í“ú';

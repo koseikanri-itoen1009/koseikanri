@@ -1,0 +1,5 @@
+ALTER TABLE XXCOS.XXCOS_VD_COLUMN_HEADERS ADD(
+  HHT_INPUT_DATE              DATE                      -- HHT“ü—Í“ú
+);
+--
+COMMENT ON COLUMN XXCOS.XXCOS_VD_COLUMN_HEADERS.HHT_INPUT_DATE               IS 'HHT“ü—Í“ú';
