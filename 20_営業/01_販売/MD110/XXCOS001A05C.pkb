@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -97,6 +97,7 @@ AS
  *  2011/10/14    1.32  K.Kiriu          [E_本稼動_07906] 流通ＢＭＳ対応
  *  2013/10/17    1.33  K.Kiriu          [E_本稼動_10904] 消費税対応
  *  2014/01/29    1.34  K.Nakamura       [E_本稼動_11449] 消費税率取得基準日を納品日・検収日⇒オリジナル納品日・オリジナル検収日に変更
+ *  2017/04/19    1.35  N.Watanabe       [E_本稼動_14025] HHTからのシステム日付連携追加
  *
  *****************************************************************************************/
 --
@@ -3240,6 +3241,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
     lt_order_number              xxcos_dlv_headers.order_number%TYPE;             -- オーダーNo
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 ADD Start
+    lt_hht_input_date            xxcos_dlv_headers.hht_input_date%TYPE;           -- HHT入力日
+-- Ver1.35 ADD End
     --納品明細格納用変数
     lt_lin_order_no_hht          xxcos_dlv_lines.order_no_hht%TYPE;               -- 受注No.（HHT）
     lt_lin_line_no_hht           xxcos_dlv_lines.line_no_hht%TYPE;                -- 行No.（HHT）
@@ -3604,6 +3608,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
                ,dhs.order_number             -- オーダーNo
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 ADD Start
+               ,dhs.hht_input_date           -- HHT入力日
+-- Ver1.35 ADD End      
          INTO   lt_row_id
                ,lt_order_no_ebs
                ,lt_base_code
@@ -3636,6 +3643,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
                ,lt_order_number
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 ADD Start
+               ,lt_hht_input_date
+-- Ver1.35 ADD End               
          FROM   xxcos_dlv_headers dhs            -- 納品ヘッダ
          WHERE  dhs.order_no_hht        = lt_order_no_hht
          AND    dhs.digestion_ln_number = lt_digestion_ln_number
@@ -4051,7 +4061,10 @@ AS
           -- =========================
           -- HHT納品入力日時の成型処理
           -- =========================
-          ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+-- Ver1.35 MOD Start
+--          ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+          ld_input_date :=TO_DATE(TO_CHAR( lt_hht_input_date, cv_short_day )||cv_space_char||
+-- Ver1.35 MOD End
                                   SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
     --
           -- ==================================
@@ -6509,6 +6522,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
     lt_order_number              xxcos_dlv_headers.order_number%TYPE;             -- オーダーNo
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 ADD Start
+    lt_creation_date             xxcos_dlv_headers.creation_date%TYPE;            -- 作成日
+-- Ver1.35 ADD End
     --納品明細(HHT)格納用変数
     lt_lin_order_no_hht          xxcos_dlv_lines.order_no_hht%TYPE;               -- 受注No.（HHT）
     lt_lin_line_no_hht           xxcos_dlv_lines.line_no_hht%TYPE;                -- 行No.（HHT）
@@ -6874,6 +6890,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
                ,dhs.order_number             -- オーダーNo
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 Add Start
+               ,dhs.creation_date            -- 作成日
+-- Ver1.35 Add End
          INTO   lt_row_id
                ,lt_order_no_ebs
                ,lt_base_code
@@ -6906,6 +6925,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
                ,lt_order_number
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 Add Start
+               ,lt_creation_date
+-- Ver1.35 Add End
          FROM   xxcos_dlv_headers dhs            -- 納品ヘッダ
          WHERE  dhs.order_no_hht        = lt_order_no_hht
          AND    dhs.digestion_ln_number = lt_digestion_ln_number
@@ -7326,8 +7348,11 @@ AS
           -- =========================
           -- HHT納品入力日時の成型処理
           -- =========================
-          ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
-                                  SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
+-- Ver1.35 MOD Start
+          ld_input_date := lt_creation_date;
+--          ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+--                                  SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
+-- Ver1.35 MOD End
     --
           -- ==================================
           -- 出荷元保管場所の導出
@@ -9783,6 +9808,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
     lt_order_number              xxcos_dlv_headers.order_number%TYPE;             -- オーダーNo
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 ADD Start
+    lt_hht_input_date            xxcos_dlv_headers.hht_input_date%TYPE;           -- HHT入力日
+-- Ver1.35 ADD End
     --納品明細(HHT)格納用変数
     lt_lin_order_no_hht          xxcos_dlv_lines.order_no_hht%TYPE;               -- 受注No.（HHT）
     lt_lin_line_no_hht           xxcos_dlv_lines.line_no_hht%TYPE;                -- 行No.（HHT）
@@ -10075,6 +10103,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
                  ,dhs.order_number             -- オーダーNo
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 ADD Start
+                 ,dhs.hht_input_date           -- HHT入力日
+-- Ver1.35 ADD End
            INTO   lt_row_id
                  ,lt_order_no_ebs
                  ,lt_base_code
@@ -10107,6 +10138,9 @@ AS
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD Start
                  ,lt_order_number
 -- 2011/03/22 Ver.1.28 S.Ochiai ADD End
+-- Ver1.35 ADD Start
+                 ,lt_hht_input_date
+-- Ver1.35 ADD End
            FROM   xxcos_dlv_headers dhs            -- 納品ヘッダ
            WHERE  dhs.order_no_hht        = lt_order_no_hht
            AND    dhs.digestion_ln_number = lt_digestion_ln_number
@@ -10527,7 +10561,10 @@ AS
           -- =========================
           -- HHT納品入力日時の成型処理
           -- =========================
-          ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+-- Ver1.35 MOD Start
+--          ld_input_date :=TO_DATE(TO_CHAR( lt_dlv_date, cv_short_day )||cv_space_char||
+          ld_input_date :=TO_DATE(TO_CHAR( lt_hht_input_date, cv_short_day )||cv_space_char||
+-- Ver1.35 MOD End
                                   SUBSTR(lt_dlv_time,1,2)||cv_tkn_ti||SUBSTR(lt_dlv_time,3,2), cv_stand_date );
     --
           -- ==================================
