@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_TASK_PKG(spec)
  * Description      : 共通関数パッケージ(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -24,7 +24,7 @@ AS
  *  2009/11/24    1.3   S.Miyakoshi      TASKデータ取得時の日付の条件変更
  *  2010/11/15    1.4   K.Kiriu          [E_本稼動_05129]タスク作成PT対応
  *  2011/03/28    1.5   Oukou            [E_本稼動_00153]HHT入金データ取込異常終了対応
- *
+ *  2017/04/12    1.6   Y.Shoji          [E_本稼動_14025]HHTからのシステム日付連携追加対応
  ****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -567,6 +567,9 @@ AS
              in_resource_id => in_resource_id           --リソースID
             ,in_party_id    => in_party_id              --顧客パーティID
             ,iv_party_name  => iv_party_name            --顧客パーティ名称
+-- 2017/04/12 Ver.1.6 Y.Shoji ADD Start
+            ,id_input_date  => NULL                     --データ入力日時
+-- 2017/04/12 Ver.1.6 Y.Shoji ADD End
             ,id_visit_date  => id_visit_date            --訪問日時
             ,iv_description => lv_description           --詳細内容
             ,iv_attribute1  => NULL
@@ -598,6 +601,9 @@ AS
              in_resource_id => in_resource_id           --リソースID
             ,in_party_id    => in_party_id              --顧客パーティID
             ,iv_party_name  => iv_party_name            --顧客パーティ名称
+-- 2017-04-12 Ver.1.6 Y.Shoji ADD Start
+            ,id_input_date  => NULL                     --データ入力日時
+-- 2017-04-12 Ver.1.6 Y.Shoji ADD End
             ,id_visit_date  => id_visit_date            --訪問日時
             ,iv_description => lv_description           --詳細内容
             ,iv_attribute1  => NULL
@@ -640,6 +646,9 @@ AS
              in_resource_id => in_resource_id           --リソースID
             ,in_party_id    => in_party_id              --顧客パーティID
             ,iv_party_name  => iv_party_name            --顧客パーティ名称
+-- 2017-04-12 Ver.1.6 Y.Shoji ADD Start
+            ,id_input_date  => NULL                     --データ入力日時
+-- 2017-04-12 Ver.1.6 Y.Shoji ADD End
             ,id_visit_date  => id_visit_date            --訪問日時
             ,iv_description => lv_description           --詳細内容
             ,iv_attribute1  => NULL
