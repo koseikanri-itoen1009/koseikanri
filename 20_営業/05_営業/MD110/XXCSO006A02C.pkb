@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_006_A02_訪問実績データ格納
  *                    
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009-07-16    1.6   Kazuo.Satomura   0000070対応
  *  2009-09-08    1.7   Daisuke.Abe      0001312対応
  *  2010-02-15    1.8   T.Maruyama       E_本稼動_01130対応
+ *  2017-04-13    1.9   K.Kiriu          E_本稼動_14025対応
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -89,6 +90,9 @@ AS
   cv_comma               CONSTANT VARCHAR2(1)   := ',';
   cv_active_status       CONSTANT VARCHAR2(1)   := 'A';                 -- アクティブ
   cv_enabled_flag        CONSTANT VARCHAR2(1)   := 'Y';                 -- 有効
+  /* 2017.04.13 K.Kiriu E_本稼動_14025対応 START */
+  cd_sysdate             CONSTANT DATE          := SYSDATE;             -- システム日付
+  /* 2017.04.13 K.Kiriu E_本稼動_14025対応 END   */
 --
   -- CSVファイルの項目順番
   cn_employee_number     CONSTANT NUMBER        := 2;                   -- 社員コード
@@ -1775,6 +1779,9 @@ AS
        g_visit_data_rec.resource_id        -- リソースID
       ,g_visit_data_rec.party_id           -- パーティID
       ,g_visit_data_rec.party_name         -- パーティ名称
+      /* 2017.04.13 K.Kiriu E_本稼動_14025対応 START */
+      ,cd_sysdate                          -- データ入力日時
+      /* 2017.04.13 K.Kiriu E_本稼動_14025対応 END   */
       ,g_visit_data_rec.visit_date         -- 訪問日時
       ,g_visit_data_rec.description        -- 詳細内容
       /* 2009.07.16 K.Satomura 0000070対応 START */
