@@ -4,7 +4,7 @@
  * TABLE Name      : xxcmm_wk_cust_batch_regist
  * Description     : ŒÚ‹qˆêŠ‡XV—pƒ[ƒN
  * MD.070          : 
- * Version         : 1.6
+ * Version         : 1.7
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -17,6 +17,7 @@
  *  2012/03/13    1.4  S.Niki        áŠQE_–{‰Ò“®_09272
  *  2013/03/29    1.5  T.Nakano      áŠQE_–{‰Ò“®_09963’Ç‰Á‘Î‰
  *  2014/03/18    1.6  S.Niki        áŠQE_–{‰Ò“®_11616
+ *  2017/04/05    1.7  S.Niki        áŠQE_–{‰Ò“®_13976
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
@@ -116,6 +117,9 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
   CONCLUSION_DAY3         VARCHAR2(2),
   STORE_CUST_CODE         VARCHAR2(9),
 -- Ver1.6 add end
+-- Ver1.7 add start
+  ESM_TARGET_DIV          VARCHAR2(1),
+-- Ver1.7 add end
   CREATED_BY              NUMBER(15,0) NOT NULL,
   CREATION_DATE           DATE NOT NULL,
   LAST_UPDATED_BY         NUMBER(15,0) NOT NULL,
@@ -303,6 +307,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.conclusion_day3 IS 'Á‰»ŒvZ’
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.store_cust_code IS '“X•Ü‰c‹Æ—pŒÚ‹qƒR[ƒh'
 /
 -- Ver1.6 add end
+-- Ver1.7 add start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.esm_target_div IS 'ƒXƒgƒŒƒ|•¤’k‚­‚ñ˜AŒg‘ÎÛƒtƒ‰ƒO'
+/
+-- Ver1.7 add end
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.created_by IS 'ì¬Ò'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.creation_date IS 'ì¬“ú'
