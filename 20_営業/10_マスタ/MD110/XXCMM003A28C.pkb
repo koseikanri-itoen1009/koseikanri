@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *                                                              情報欄を最終項目に修正
  *  2013/03/29    1.7   仁木 重人        障害E_本稼動_09963追加対応 顧客追加情報、法人情報の項目追加
  *  2014/03/11    1.8   仁木 重人        障害E_本稼動_11616対応
+ *  2017/04/05    1.9   仁木 重人        障害E_本稼動_13976対応
  *
  *****************************************************************************************/
 --
@@ -545,6 +546,9 @@ AS
               ,xca.conclusion_day3                    conclusion_day3       --消化計算締日3
               ,xca.store_cust_code                    store_cust_code       --店舗営業用顧客コード
 -- Ver1.8 add end
+-- Ver1.9 add start
+              ,xca.esm_target_div                     esm_target_div        --ストレポ＆商談くん連携対象フラグ
+-- Ver1.9 add end
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -1052,6 +1056,9 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.conclusion_day2)     ,1 ,2  );  --消化計算締日2
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.conclusion_day3)     ,1 ,2  );  --消化計算締日3
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.store_cust_code              ,1 ,9  );  --店舗営業用顧客コード
+-- Ver1.9 add start
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.esm_target_div               ,1 ,1  );  --ストレポ＆商談くん連携対象フラグ
+-- Ver1.9 add end
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_tdb_code                                ,1 ,12 );  --TDBコード
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_base_code                               ,1 ,4  );  --本部担当拠点
         lv_output_str := lv_output_str || cv_comma || TO_CHAR(ln_credit_limit);                                     --与信限度額
