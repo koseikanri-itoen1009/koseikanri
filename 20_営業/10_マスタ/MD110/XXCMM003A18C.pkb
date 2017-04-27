@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2011/02/21    1.17  Shigeto.Niki     障害E_本稼動_06495の対応
  *  2011/11/09    1.18  Shigeto.Niki     障害E_本稼動_08648の対応
  *  2012/01/11    1.19  Shigeto.Niki     障害E_本稼動_08830の対応
+ *  2017/04/05    1.20  Shigeto.Niki     障害E_本稼動_13976の対応
  *
  *****************************************************************************************/
 --
@@ -433,6 +434,9 @@ AS
 -- 2010/02/25 Ver1.13 E_本稼動_01660 add start by Yutaka.Kuboshima
     cv_uesama_kbn         CONSTANT VARCHAR2(2)     := '12';                     --顧客区分・上様顧客
 -- 2010/02/25 Ver1.13 E_本稼動_01660 add end by Yutaka.Kuboshima
+-- Ver1.20 add start
+    cv_esm_target_div_off CONSTANT VARCHAR2(1)     := '0';                      --ストレポ＆商談くん連携対象フラグ・連携対象外
+-- Ver1.20 add end
     -- *** ローカル変数 ***
     lv_header_str                  VARCHAR2(2000)  := NULL;                     --ヘッダメッセージ格納用変数
     lv_output_str                  VARCHAR2(4095)  := NULL;                     --出力文字列格納用変数
@@ -621,6 +625,9 @@ AS
 -- 2010/09/22 Ver1.15 障害E_本稼動_02021 add start by Shigeto.Niki
              ,xca.store_cust_code                            store_cust_code              --店舗営業用顧客コード
 -- 2010/09/22 Ver1.15 障害E_本稼動_02021 add end by Shigeto.Niki
+-- Ver1.20 add start
+             ,xca.esm_target_div                             esm_target_div               --ストレポ＆商談くん連携対象フラグ
+-- Ver1.20 add end
 --
 -- 2009/12/02 Ver1.10 障害E_本稼動_00262 add start by Yutaka.Kuboshima
              ,hcas.cust_acct_site_id                         cust_acct_site_id            --顧客所在地ID
@@ -1298,6 +1305,13 @@ AS
 -- 2010/01/08 Ver1.12 E_本稼動_00934 add end by  Yutaka.Kuboshima
       END IF;
 -- 2009/12/25 Ver1.11 E_本稼動_00778 add end by Yutaka.Kuboshima
+-- Ver1.20 add start
+      -- ストレポ＆商談くん連携対象フラグがNULLの場合
+      IF (cust_data_rec.esm_target_div IS NULL) THEN
+        -- ストレポ＆商談くん連携対象フラグに'0'(連携対象外)をセット
+        cust_data_rec.esm_target_div := cv_esm_target_div_off;
+      END IF;
+-- Ver1.20 add end
       --出力文字列作成
       lv_output_str := cv_dqu        || cv_comp_code || cv_dqu;                                                                    --会社コード
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.account_number, 1, 9);                                   --顧客コード
@@ -1489,6 +1503,9 @@ AS
 -- 2010/09/22 Ver1.15 障害E_本稼動_02021 add start by Shigeto.Niki
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.store_cust_code, 1, 9);                                  --店舗営業用顧客コード
 -- 2010/09/22 Ver1.15 障害E_本稼動_02021 add end by Shigeto.Niki
+-- Ver1.20 add start
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.esm_target_div, 1, 1);                                   --ストレポ＆商談くん連携対象フラグ
+-- Ver1.20 add end
       lv_output_str := lv_output_str || cv_comma || lv_coordinated_date;                                                           --連携日時
 --
       --文字列出力
