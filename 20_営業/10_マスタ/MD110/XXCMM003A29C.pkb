@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                                              業態小分類チェック修正
  *  2015/03/18    1.12  仁木 重人        障害E_本稼動_12955対応 請求書発行サイクルのチェック追加
  *  2015/04/20    1.13  小路 恭弘        障害E_本稼動_12955対応 業態小分類チェック不具合修正
+ *  2017/04/05    1.14  仁木 重人        障害E_本稼動_13976対応 顧客追加情報のeSM関連項目追加
  *
  *****************************************************************************************/
 --
@@ -422,6 +423,13 @@ AS
   cn_conclusion_interval      CONSTANT NUMBER        := 5;                                 --消化計算日付間隔
   cn_dummy_0                  CONSTANT NUMBER        := 0;                                 --NULLダミー値(数値)
 -- Ver1.10 add end
+-- Ver1.14 add start
+  --参照タイプ
+  cv_lkp_esm_target_div       CONSTANT VARCHAR2(30)  := 'XXCMM_ESM_TARGET_DIV';             --参照タイプ・ストレポ＆商談くん連携対象フラグ
+  cv_lkp_esm_cust_class       CONSTANT VARCHAR2(30)  := 'XXCMM_ESM_CUSTOMER_CLASS';         --参照タイプ・eSM対象顧客区分
+  --項目名
+  cv_esm_target_div           CONSTANT VARCHAR2(36)  := 'ストレポ＆商談くん連携対象フラグ'; --ストレポ＆商談くん連携対象フラグ
+-- Ver1.14 add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -699,6 +707,10 @@ AS
     lt_invoice_cycle_aft        hz_cust_site_uses.attribute8%TYPE;              --更新値・請求書発行サイクル
     lb_invoice_chk_flg          BOOLEAN         DEFAULT TRUE;                   --請求書関連チェックフラグ
 -- Ver1.12 add end
+-- Ver1.14 add start
+    lv_esm_target_div           VARCHAR2(1)     := NULL;                        --ローカル変数・ストレポ＆商談くん連携対象フラグ
+    lt_esm_target_div_mst       xxcmm_cust_accounts.esm_target_div%TYPE;        --ストレポ＆商談くん連携対象フラグ確認用変数
+-- Ver1.14 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -4198,7 +4210,10 @@ AS
                                                                     ,cv_comma
 -- Ver1.10 mod start
 --                                                                    ,12);
-                                                                    ,78);
+-- Ver1.14 mod start
+--                                                                    ,78);
+                                                                    ,79);
+-- Ver1.14 mod end
 -- Ver1.10 mod end
           --与信限度額の必須チェック
           IF (lv_credit_limit = cv_null_bar) THEN
@@ -4278,7 +4293,10 @@ AS
                                                                   ,cv_comma
 -- Ver1.10 mod start
 --                                                                  ,13);
-                                                                  ,79);
+-- Ver1.14 mod start
+--                                                                  ,79);
+                                                                  ,80);
+-- Ver1.14 mod end
 -- Ver1.10 mod end
           --判定区分の必須チェック
           IF (lv_decide_div = cv_null_bar) THEN
@@ -5829,7 +5847,10 @@ AS
                                                                 ,cv_comma
 -- Ver1.10 mod start
 --                                                                ,51);
-                                                                ,76);
+-- Ver1.14 mod start
+--                                                                ,76);
+                                                                ,77);
+-- Ver1.14 mod end
 -- Ver1.10 mod end
           --CSVに設定されたTDBコードが任意の値の場合
           IF ( lv_tdb_code <> cv_null_bar ) THEN
@@ -5878,7 +5899,10 @@ AS
                                                                      ,cv_comma
 -- Ver1.10 mod start
 --                                                                     ,52);
-                                                                     ,80);
+-- Ver1.14 mod start
+--                                                                     ,80);
+                                                                     ,81);
+-- Ver1.14 mod end
 -- Ver1.10 mod end
 --
           --CSVに設定された決裁日付取得が任意の値の場合
@@ -5928,7 +5952,10 @@ AS
                                                                  ,cv_comma
 -- Ver1.10 mod start
 --                                                                 ,53);
-                                                                 ,77);
+-- Ver1.14 mod start
+--                                                                 ,77);
+                                                                 ,78);
+-- Ver1.14 mod end
 -- Ver1.10 mod end
           --CSVに設定された本部担当拠点が任意の値の場合
           IF (lv_base_code <> cv_null_bar) THEN
@@ -8462,6 +8489,45 @@ AS
           END IF;
         END IF;
 -- Ver1.10 add end
+-- Ver1.14 add start
+        --ストレポ＆商談くん連携対象フラグ取得
+        lv_esm_target_div := xxccp_common_pkg.char_delim_partition( lv_temp
+                                                                  , cv_comma
+                                                                  , 76
+                                                                  );
+--
+        --CSV値が任意の値の場合
+        IF ( NVL( lv_esm_target_div ,cv_null_bar ) <> cv_null_bar ) THEN
+          --参照表存在チェック(使用可能='Y')
+          << check_esm_target_div_loop >>
+          FOR check_lookup_type_rec2 IN check_lookup_type_cur2( lv_esm_target_div
+                                                              , cv_lkp_esm_target_div )
+          LOOP
+            lt_esm_target_div_mst := check_lookup_type_rec2.lookup_code;
+          END LOOP check_esm_target_div_loop;
+          --
+          IF ( lt_esm_target_div_mst IS NULL )
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --参照表存在チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_lookup_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_esm_target_div
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_esm_target_div
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+          END IF;
+        END IF;
+-- Ver1.14 add end
         --
         IF (lv_check_status = cv_status_normal) THEN
           BEGIN
@@ -8557,6 +8623,9 @@ AS
               ,conclusion_day3           --消化計算締め日3
               ,store_cust_code           --店舗営業用顧客コード
 -- Ver1.10 add end
+-- Ver1.14 add start
+              ,esm_target_div            --ストレポ＆商談くん連携対象フラグ
+-- Ver1.14 add end
               ,created_by
               ,creation_date
               ,last_updated_by
@@ -8658,6 +8727,9 @@ AS
               ,lv_conclusion_day3             --消化計算締め日3
               ,lv_store_cust_code             --店舗営業用顧客コード
 -- Ver1.10 add end
+-- Ver1.14 add start
+              ,lv_esm_target_div              --ストレポ＆商談くん連携対象フラグ
+-- Ver1.14 add end
               ,fnd_global.user_id
               ,sysdate
               ,fnd_global.user_id
@@ -8846,6 +8918,10 @@ AS
       lt_invoice_cycle_bef        := NULL;  --現在値・請求書発行サイクル
       lt_invoice_cycle_aft        := NULL;  --更新値・請求書発行サイクル
 -- Ver1.12 add end
+-- Ver1.14 add start
+      lv_esm_target_div           := NULL;  --ローカル変数・ストレポ＆商談くん連携対象フラグ
+      lt_esm_target_div_mst       := NULL;  --ストレポ＆商談くん連携対象フラグ確認用変数
+-- Ver1.14 add end
       --妥当性チェックフラグ
       lb_bz_low_type_chk_flg      := TRUE;  --業態(小分類)チェックフラグ
       lb_sell_trans_chk_flg       := TRUE;  --売上実績振替チェックフラグ
@@ -8978,6 +9054,9 @@ AS
     lv_decide_div                     xxcmm_mst_corporate.decide_div%TYPE;        --顧客法人情報.判定区分
     lv_information                    VARCHAR2(100)   := NULL;
     lv_sales_base_name                VARCHAR2(50)    := NULL;
+-- Ver1.14 add start
+    lv_esm_cust_class                 VARCHAR2(2)     := NULL;                    --eSM対象顧客区分確認用変数
+-- Ver1.14 add end
 --
     --顧客更新ＡＰＩ用変数
     p_cust_account_rec                HZ_CUST_ACCOUNT_V2PUB.CUST_ACCOUNT_REC_TYPE;
@@ -9190,6 +9269,10 @@ AS
              ,xwcbr.store_cust_code        store_cust_code           --店舗営業用顧客コード
              ,xca.store_cust_code          addon_store_cust_code     --顧客追加情報.店舗営業用顧客コード
 -- Ver1.10 add end
+-- Ver1.14 add start
+             ,xwcbr.esm_target_div         esm_target_div            --ストレポ＆商談くん連携対象フラグ
+             ,xca.esm_target_div           addon_esm_target_div      --顧客追加情報.ストレポ＆商談くん連携対象フラグ
+-- Ver1.14 add end
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -9275,6 +9358,21 @@ AS
     -- 価格表チェックレコード型
     get_price_list_rec  get_price_list_cur%ROWTYPE;
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+-- Ver1.14 add start
+    -- eSM対象顧客区分チェックカーソル
+    CURSOR check_esm_cust_class_cur(
+      iv_cust_class IN VARCHAR2
+    )
+    IS
+      SELECT flvv.lookup_code  AS esm_cust_class
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type  = cv_lkp_esm_cust_class
+      AND    flvv.lookup_code  = iv_cust_class
+      AND    flvv.enabled_flag = cv_yes
+      ;
+    -- eSM対象顧客区分チェックカーソルレコード型
+    check_esm_cust_class_rec  check_esm_cust_class_cur%ROWTYPE;
+-- Ver1.14 add end
 --
   BEGIN
 --
@@ -9289,6 +9387,12 @@ AS
     << cust_data_loop >>
     FOR cust_data_rec IN cust_data_cur( in_file_id )
     LOOP
+-- Ver1.14 add start
+      -- ===============================
+      -- ローカル変数の初期化
+      -- ===============================
+      lv_esm_cust_class   := NULL;         --eSM対象顧客区分確認用変数
+-- Ver1.14 add end
       -- ===============================
       -- 顧客マスタ更新
       -- ===============================
@@ -10759,6 +10863,41 @@ AS
     --
     END IF;
 -- Ver1.10 add end
+-- Ver1.14 add start
+    -- ===============================
+    -- ストレポ＆商談くん連携対象フラグ
+    -- ===============================
+    --eSM対象顧客区分の判定
+    << check_esm_cust_class_loop >>
+    FOR check_esm_cust_class_rec IN check_esm_cust_class_cur( cust_data_rec.customer_class_code )
+    LOOP
+      lv_esm_cust_class := check_esm_cust_class_rec.esm_cust_class;
+    END LOOP check_esm_cust_class_loop;
+--
+    --eSM対象顧客区分の場合
+    IF ( lv_esm_cust_class IS NOT NULL )
+    THEN
+      --設定値が'-'の場合
+      IF ( cust_data_rec.esm_target_div = cv_null_bar )
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.esm_target_div := NULL;
+      --設定値がNULLの場合
+      ELSIF ( cust_data_rec.esm_target_div IS NULL )
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.esm_target_div := cust_data_rec.addon_esm_target_div;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.esm_target_div := cust_data_rec.esm_target_div;
+      END IF;
+    --eSM対象顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.esm_target_div := cust_data_rec.addon_esm_target_div;
+    --
+    END IF;
+-- Ver1.14 add end
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -10825,6 +10964,9 @@ AS
           ,xca.conclusion_day3        = l_xxcmm_cust_accounts.conclusion_day3            --消化計算締め日3
           ,xca.store_cust_code        = l_xxcmm_cust_accounts.store_cust_code            --店舗営業用顧客コード
 -- Ver1.10 add end
+-- Ver1.14 add start
+          ,xca.esm_target_div         = l_xxcmm_cust_accounts.esm_target_div             --ストレポ＆商談くん連携対象フラグ
+-- Ver1.14 add end
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID
