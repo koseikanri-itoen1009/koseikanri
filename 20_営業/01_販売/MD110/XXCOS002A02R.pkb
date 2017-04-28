@@ -851,8 +851,10 @@ AS
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
     lt_party_num                          xxcos_rep_bus_report.party_num%TYPE;
 --****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+-- 2017/04/28 Ver1.15 Del Start
 --****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
-    lt_visit_time                         xxcos_sales_exp_headers.hht_dlv_input_date%TYPE;
+--    lt_visit_time                         xxcos_sales_exp_headers.hht_dlv_input_date%TYPE;
+-- 2017/04/28 Ver1.15 Del End
     ln_pretax_payment                     xxcos_payment.payment_amount%TYPE;
 --****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
 --****************************** 2009/12/17 1.10 S.Miyakoshi ADD  START  **************************--
@@ -963,8 +965,10 @@ AS
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
     lt_party_num              :=  NULL;
 --****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+-- 2017/04/28 Ver1.15 Del Start
 --****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
-    lt_visit_time             :=  NULL;
+--    lt_visit_time             :=  NULL;
+-- 2017/04/28 Ver1.15 Del End
     ln_pretax_payment         :=  NULL;
 --****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
 --****************************** 2009/12/17 1.10 S.Miyakoshi ADD  START  **************************--
@@ -987,9 +991,11 @@ AS
 --****************************** 2009/12/17 1.10 S.Miyakoshi ADD  END  ****************************--
         OR  (lt_party_num      <>  l_delivery_data_tab(lp_idx).party_num       )
 --****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
---****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
-        OR  (lt_visit_time     <>  l_delivery_data_tab(lp_idx).visit_time      )
---****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
+-- 2017/04/28 Ver1.15 Del Start
+----****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+--        OR  (lt_visit_time     <>  l_delivery_data_tab(lp_idx).visit_time      )
+----****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
+-- 2017/04/28 Ver1.15 Del End
         OR  ( lp_item_count     =   cn_limit_item_max )
         THEN
           lp_idx_rep          :=  lp_idx_rep + 1;
@@ -999,9 +1005,11 @@ AS
 --          IF  ( lt_hht_invoice_no = l_delivery_data_tab(lp_idx).hht_invoice_no  ) THEN
           IF  ( lt_hht_invoice_no = l_delivery_data_tab(lp_idx).hht_invoice_no  )
           AND (lt_party_num       =  l_delivery_data_tab(lp_idx).party_num      )
---****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
-          AND (lt_visit_time      =  l_delivery_data_tab(lp_idx).visit_time     )
---****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
+-- 2017/04/28 Ver1.15 Del Start
+----****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+--          AND (lt_visit_time      =  l_delivery_data_tab(lp_idx).visit_time     )
+----****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
+-- 2017/04/28 Ver1.15 Del End
           THEN
 --****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
             --  明細カウントアップ
@@ -1017,9 +1025,11 @@ AS
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
             lt_party_num      :=  l_delivery_data_tab(lp_idx).party_num;
 --****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
---****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
-            lt_visit_time     :=  l_delivery_data_tab(lp_idx).visit_time;
---****************************** 2009/07/22 1.7 T.Tominaga MOD START ******************************--
+-- 2017/04/28 Ver1.15 Del Start
+----****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+--            lt_visit_time     :=  l_delivery_data_tab(lp_idx).visit_time;
+----****************************** 2009/07/22 1.7 T.Tominaga MOD START ******************************--
+-- 2017/04/28 Ver1.15 Del End
 --            ln_pretax_payment :=  l_delivery_data_tab(lp_idx).pretax_payment;
 --****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
 -- 2009/12/24 Ver1.11 Del Start
