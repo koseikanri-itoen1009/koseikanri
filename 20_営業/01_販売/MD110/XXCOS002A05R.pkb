@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : ”[•i‘ƒ`ƒFƒbƒNƒŠƒXƒg
  * MD.050           : ”[•i‘ƒ`ƒFƒbƒNƒŠƒXƒg MD050_COS_002_A05
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2013/07/03    1.25  T.Shimoji        [E_–{‰Ò“®_10904]Á”ïÅ‘Å‘Î‰ž
  *  2016/03/08    1.26  S.Niki           [E_–{‰Ò“®_13480]”„ã‹àŠz·ˆÙƒŠƒXƒg’Ç‰Á
  *  2016/06/17    1.27  S.Niki           [E_–{‰Ò“®_13674]0ŒƒƒbƒZ[ƒWŽž‚Ìo—Í€–Ú’Ç‰Á
+ *  2017/04/28    1.28  N.Watanabe       [E_–{‰Ò“®_14220]HHT‚©‚ç‚ÌƒVƒXƒeƒ€Žžî•ñ‚ÌŽæ‚èž‚ÝáŠQ‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -1153,7 +1154,10 @@ AS
              ,seh.invoice_class               AS invoice_class                -- “`•[‹æ•ª
              ,seh.create_class                AS create_class                 -- ì¬Œ³‹æ•ª
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
-             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 MOD Start
+--             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+             ,MIN(seh.hht_dlv_input_date)     AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 MOD End
 -- 2009/12/17 Ver.1.19 Del Start
 --             ,sel.dlv_invoice_line_number     AS dlv_invoice_line_number      -- ”[•i–¾×”Ô†
 -- 2009/12/17 Ver.1.19 Del End
@@ -1212,7 +1216,9 @@ AS
              ,seh.invoice_class                      -- “`•[‹æ•ª
              ,seh.create_class                       -- ì¬Œ³‹æ•ª
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
-             ,seh.hht_dlv_input_date                 -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 DEL Start
+--             ,seh.hht_dlv_input_date                 -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 DEL End
 -- 2009/12/17 Ver.1.19 Del Start
 --             ,sel.dlv_invoice_line_number            -- ”[•i–¾×”Ô†
 -- 2009/12/17 Ver.1.19 Del End
@@ -1245,7 +1251,10 @@ AS
              ,SUM( seh.sale_amount_sum )      AS sale_amount_sum              -- ”„ãŠz
              ,SUM( seh.tax_amount_sum  )      AS tax_amount_sum               -- Á”ïÅ‹àŠz‡Œv
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
-             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 MOD Start
+--             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+             ,MIN(seh.hht_dlv_input_date)     AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 MOD End
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
 -- ************* Ver.1.26 ADD START *************--
              ,MAX( NVL( seh.total_sales_amt,0 ) )
@@ -1294,7 +1303,9 @@ AS
              ,seh.invoice_class                      -- “`•[‹æ•ª
              ,seh.create_class                       -- ì¬Œ³‹æ•ª
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
-             ,seh.hht_dlv_input_date                 -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 DEL Start
+--             ,seh.hht_dlv_input_date                 -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 DEL End
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
          ) infh         -- ƒwƒbƒ_î•ñ
         ,(
@@ -1352,7 +1363,10 @@ AS
 -- ******************** 2009/06/10 Var.1.10 T.Tominaga MOD END    *****************************************
              ,MAX( seh.tax_rate )                    AS tax_rate                        -- Á”ïÅÅ—¦
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
-             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 MOD Start
+--             ,seh.hht_dlv_input_date          AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+             ,MIN(seh.hht_dlv_input_date)     AS hht_dlv_input_date           -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 MOD End
              ,sel.dlv_invoice_line_number     AS dlv_invoice_line_number      -- ”[•i–¾×”Ô†
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
 -- **************** 2010/01/07 1.20 N.Maeda MOL START **************** --
@@ -1427,7 +1441,9 @@ AS
              ,sel.column_no                          -- ƒRƒ‰ƒ€
              ,sel.hot_cold_class                     -- H/C‹æ•ª
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
-             ,seh.hht_dlv_input_date                 -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 DEL Start
+--             ,seh.hht_dlv_input_date                 -- HHT”[•i“ü—Í“úŽž
+-- Ver1.28 DEL End
              ,sel.dlv_invoice_line_number            -- ”[•i–¾×”Ô†
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
 -- 2009/12/17 Ver.1.19 Add Start
@@ -1600,9 +1616,11 @@ AS
       AND cust.party_id              = parc.party_id                                                     -- ŒÚ‹qƒ}ƒXƒ^_ŒÚ‹qƒp[ƒeƒB_ŒÚ‹q
       AND infh.create_class IN ( orct.meaning )                                                          -- ì¬Œ³‹æ•ªƒNƒCƒbƒNƒR[ƒh
       AND infh.results_employee_code = ppf.employee_number(+)
--- 2009/12/17 Ver.1.19 Add Start
-      AND infh.hht_dlv_input_date    = disc.hht_dlv_input_date                                           -- ƒwƒbƒ_.HHT”[•i“ü—Í“úŽž = ’lˆø.HHT”[•i“ü—Í“úŽž
-      AND infh.hht_dlv_input_date    = infd.hht_dlv_input_date                                           -- ƒwƒbƒ_.HHT”[•i“ü—Í“úŽž = –¾×.HHT”[•i“ü—Í“úŽž
+-- 2009/12/17 Ver.1.19 Add Start]
+-- Ver1.28 DEL Start
+--      AND infh.hht_dlv_input_date    = disc.hht_dlv_input_date                                           -- ƒwƒbƒ_.HHT”[•i“ü—Í“úŽž = ’lˆø.HHT”[•i“ü—Í“úŽž
+--      AND infh.hht_dlv_input_date    = infd.hht_dlv_input_date                                           -- ƒwƒbƒ_.HHT”[•i“ü—Í“úŽž = –¾×.HHT”[•i“ü—Í“úŽž
+-- Ver1.28 DEL End
 -- 2009/12/17 Ver.1.19 Add End
 -- 2009/08/24 Ver.1.14 M.Sano Mod Start
       AND infh.delivery_date        >= ppf.effective_start_date(+)
