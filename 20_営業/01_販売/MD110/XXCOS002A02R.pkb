@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : 営業報告日報
  * MD.050           : 営業報告日報 MD050_COS_002_A02
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2010/01/06    1.12  K.Atsushiba      [E_本稼動_00827]帳票が出力されない対応
  *  2010/02/04    1.13  N.Maeda          [E_本稼動_01472] 入金額差額出力判定修正
  *  2010/09/14    1.14  K.Kiriu          [E_本稼動_04849] PT対応
+ *  2017/04/28    1.15  K.Kiriu          [E_本稼動_14220] HHT納品入力日時を集約条件から削除、最小値を取得するように変更
  *
  *****************************************************************************************/
 --
@@ -359,7 +360,10 @@ AS
 ----****************************** 2009/07/08 1.7 T.Tominaga MOD END   ******************************--
 --****************************** 2009/07/22 1.7 T.Tominaga DEL END   ******************************--
             SUM(sael.standard_qty)        AS  standard_qty,
-            saeh.hht_dlv_input_date       AS  visit_time,
+-- 2017/04/28 Ver1.15 Mod Start
+--            saeh.hht_dlv_input_date       AS  visit_time,
+            MIN(saeh.hht_dlv_input_date)  AS  visit_time,
+-- 2017/04/28 Ver1.15 Mod End
             sael.item_code                AS  item_code,
 --****************************** 2009/07/15 1.7 T.Tominaga MOD START ******************************--
 --            iimb.item_desc1               AS  item_name
@@ -463,7 +467,9 @@ AS
             hzpc.party_name,
             saeh.results_employee_code,
             rsir.employee_name,
-            saeh.hht_dlv_input_date,
+-- 2017/04/28 Ver1.15 Del Start
+--            saeh.hht_dlv_input_date,
+-- 2017/04/28 Ver1.15 Del End
             sael.item_code,
 --****************************** 2009/07/15 1.7 T.Tominaga MOD START ******************************--
 --            iimb.item_desc1
@@ -484,8 +490,10 @@ AS
             saeh.ship_to_customer_code,
 --****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
 --****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
-            saeh.hht_dlv_input_date,
---****************************** 2009/07/08 1.7 T.Tominaga ADD  END  ******************************--
+-- 2017/04/28 Ver1.15 Mod Start
+--            saeh.hht_dlv_input_date,
+            MIN(saeh.hht_dlv_input_date),
+-- 2017/04/28 Ver1.15 Mod End
             sael.dlv_invoice_line_number
     ;
 --
