@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A03C(body)
  * Description      : 自販機情報FA連携処理リース(FA)
  * MD.050           : MD050_CFF_017_A03_自販機情報FA連携処理
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ----------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/06/06    1.0   SCSK小路         新規作成
  *  2014/08/06    1.1   SCSK小路         E_本稼働_12263対応
+ *  2017/04/19    1.2   SCSK小路         E_本稼働_14030対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -124,6 +125,9 @@ AS
   cv_msg_017a03_m_022 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00229'; -- 自販機物件FA連携項目日付チェックエラー
   cv_msg_017a03_m_023 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00235'; -- 自販機物件（移動）変更項目なし警告
   cv_msg_017a03_m_024 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00236'; -- 最新会計期間名取得警告
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  cv_msg_017a03_m_025 CONSTANT VARCHAR2(20) := 'APP-XXCCP1-00001'; -- 警告件数メッセージ
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
   -- ***メッセージ名(トークン)
   cv_msg_017a03_t_010 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50076'; -- XXCFF:会社コード_本社
@@ -154,6 +158,10 @@ AS
   cv_msg_017a03_t_035 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50267'; -- 本社/工場区分
   cv_msg_017a03_t_036 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50272'; -- 除・売却日
   cv_msg_017a03_t_037 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50093'; -- XXCFF: 按分方法_月末
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  cv_msg_017a03_t_038 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50293'; -- XXCFF:部門コード_減価償却
+  cv_msg_017a03_t_039 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50294'; -- XXCFF:ショーケース_FA連携金額
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
   -- ***トークン名
   cv_tkn_prof        CONSTANT VARCHAR2(20) := 'PROF_NAME';
@@ -172,6 +180,10 @@ AS
   cv_dep_cd_chosei        CONSTANT VARCHAR2(30) := 'XXCFF1_DEP_CD_CHOSEI';        -- 部門コード_調整部門
   cv_fixed_asset_register CONSTANT VARCHAR2(30) := 'XXCFF1_FIXED_ASSET_REGISTER'; -- 台帳種類_固定資産台帳
   cv_prt_conv_cd_ed       CONSTANT VARCHAR2(30) := 'XXCFF1_PRT_CONV_CD_ED';       -- 按分方法_月末
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  cv_dep_cd_depreciation  CONSTANT VARCHAR2(30) := 'XXCFF1_DEP_CD_DEPRECIATION';  -- 部門コード_減価償却
+  cv_fa_coop_amount_sh    CONSTANT VARCHAR2(30) := 'XXCFF1_FA_COOP_AMOUNT_SH';    -- ショーケース_FA連携金額
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
   -- ***ファイル出力
   cv_file_type_out   CONSTANT VARCHAR2(10) := 'OUTPUT'; -- メッセージ出力
@@ -192,6 +204,11 @@ AS
   cv_project_dummy  CONSTANT VARCHAR2(30) := '0';         -- 予備1
   cv_future_dummy   CONSTANT VARCHAR2(30) := '0';         -- 予備2
 --
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  cv_segment9_1     CONSTANT VARCHAR2(1)  := '1';         -- 仕訳区分：1
+  cv_segment9_3     CONSTANT VARCHAR2(1)  := '3';         -- 仕訳区分：3
+  cv_segment12_1    CONSTANT VARCHAR2(1)  := '1';         -- FA連携チェック対象区分：1
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -232,6 +249,10 @@ AS
   TYPE g_category_ccid_ttype           IS TABLE OF fa_categories.category_id%TYPE INDEX BY PLS_INTEGER;
   TYPE g_deprn_ccid_ttype              IS TABLE OF gl_code_combinations.code_combination_id%TYPE INDEX BY PLS_INTEGER;
   TYPE g_location_ccid_ttype           IS TABLE OF fa_locations.location_id%TYPE INDEX BY PLS_INTEGER;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  TYPE g_customer_code_ttype           IS TABLE OF xxcff_vd_object_headers.customer_code%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_g_vd_cust_flag_ttype          IS TABLE OF xxcff_lease_class_v.vd_cust_flag%TYPE INDEX BY PLS_INTEGER;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -268,27 +289,43 @@ AS
   g_category_ccid_tab            g_category_ccid_ttype;          -- 資産カテゴリCCID
   g_deprn_ccid_tab               g_deprn_ccid_ttype;             -- 減価償却費勘定CCID
   g_location_ccid_tab            g_location_ccid_ttype;          -- 事業所フレックスフィールドCCID
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  g_customer_code_tab            g_customer_code_ttype;          -- 顧客コード
+  g_vd_cust_flag_tab             g_g_vd_cust_flag_ttype;         -- VD顧客フラグ
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
   -- ***処理件数
   gn_vd_target_cnt         NUMBER;     -- 処理中のレコード
   -- 自販機物件(未確定)登録処理における件数
   gn_vd_add_target_cnt     NUMBER;     -- 対象件数
   gn_vd_add_normal_cnt     NUMBER;     -- 正常件数
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  gn_vd_add_skip_cnt       NUMBER;     -- スキップ件数
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
   gn_vd_add_warn_cnt       NUMBER;     -- 警告件数
   gn_vd_add_error_cnt      NUMBER;     -- エラー件数
   -- 自販機物件(移動)登録処理における件数
   gn_vd_trnsf_target_cnt   NUMBER;     -- 対象件数
   gn_vd_trnsf_normal_cnt   NUMBER;     -- 正常件数
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  gn_vd_trnsf_skip_cnt     NUMBER;     -- スキップ件数
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
   gn_vd_trnsf_warn_cnt     NUMBER;     -- 警告件数
   gn_vd_trnsf_error_cnt    NUMBER;     -- エラー件数
   -- 自販機物件(修正)登録処理における件数
   gn_vd_modify_target_cnt  NUMBER;     -- 対象件数
   gn_vd_modify_normal_cnt  NUMBER;     -- 正常件数
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  gn_vd_modify_skip_cnt    NUMBER;     -- スキップ件数
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
   gn_vd_modify_warn_cnt    NUMBER;     -- 警告件数
   gn_vd_modify_error_cnt   NUMBER;     -- エラー件数
   -- 自販機物件(除売却未確定)登録処理における件数
   gn_vd_retire_target_cnt  NUMBER;     -- 対象件数
   gn_vd_retire_normal_cnt  NUMBER;     -- 正常件数
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  gn_vd_retire_skip_cnt    NUMBER;     -- スキップ件数
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
   gn_vd_retire_warn_cnt    NUMBER;     -- 警告件数
   gn_vd_retire_error_cnt   NUMBER;     -- エラー件数
 --
@@ -303,6 +340,10 @@ AS
   gv_dep_cd_chosei         VARCHAR2(100); -- 部門コード_調整部門
   gv_fixed_asset_register  VARCHAR2(100); -- 台帳種類_固定資産台帳
   gv_prt_conv_cd_ed        VARCHAR2(100); -- 按分方法_月末
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+  gv_dep_cd_depreciation   VARCHAR2(100); -- 部門コード_減価償却
+  gn_fa_coop_amount_sh     NUMBER;        -- ショーケース_FA連携金額
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
   -- セグメント値配列(EBS標準関数fnd_flex_ext用)
   g_segments_tab  fnd_flex_ext.segmentarray;
@@ -390,6 +431,10 @@ AS
     g_category_ccid_tab.DELETE;
     g_deprn_ccid_tab.DELETE;
     g_location_ccid_tab.DELETE;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    g_customer_code_tab.DELETE;
+    g_vd_cust_flag_tab.DELETE;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
   EXCEPTION
 --
@@ -654,7 +699,14 @@ AS
           ,program_update_date    = cd_program_update_date     -- プログラム更新日
     WHERE
            object_header_id = iv_object_header_id
-    AND    process_type     = iv_object_status
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--    AND    process_type     = iv_object_status
+    AND     ( ( iv_object_status       =  cv_status_103
+        AND    process_type            =  iv_object_status
+        AND    moved_date              <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) )
+      OR      ( iv_object_status       <> cv_status_103
+        AND    process_type            =  iv_object_status ) )
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
     AND    fa_if_flag       = cv_no
     ;
 --
@@ -818,12 +870,14 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- 部門コード設定
-    iot_segments(2) := gv_dep_cd_chosei;
-    -- 補助科目設定
-    iot_segments(4) := cv_sub_acct_dummy;
-    -- 顧客コード設定
-    iot_segments(5) := cv_ptnr_cd_dummy;
+-- 2017/04/19 Ver.1.2 Y.Shoji DEL Start
+--    -- 部門コード設定
+--    iot_segments(2) := gv_dep_cd_chosei;
+--    -- 補助科目設定
+--    iot_segments(4) := cv_sub_acct_dummy;
+--    -- 顧客コード設定
+--    iot_segments(5) := cv_ptnr_cd_dummy;
+-- 2017/04/19 Ver.1.2 Y.Shoji DEL End
     -- 企業コード設定
     iot_segments(6) := cv_busi_cd_dummy;
     -- 予備1設定
@@ -1059,6 +1113,9 @@ AS
     ln_cost_retired           NUMBER;          -- 除･売却取得価格
     ln_proceeds_of_sale       NUMBER;          -- 売却価額
     ln_cost_of_removal        NUMBER;          -- 撤去費用
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    lv_asset_flg              VARCHAR2(1);     -- 資産フラグ
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1067,6 +1124,12 @@ AS
     CURSOR vd_object_ritire_cur
     IS
       SELECT
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+             /*+ LEADING(VOH@a)
+                 USE_NL(VOH@a VOHE)
+                 INDEX(VOH@a XXCFF_VD_OBJECT_HISTORIES_N02)
+                 INDEX(VOHE XXCFF_VD_OBJECT_HEADERS_PK) */
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
              vohe.object_header_id        AS object_header_id        -- 物件ID
             ,vohe.object_code             AS object_code             -- 物件コード
             ,vohe.date_retired            AS date_retired            -- 除・売却日
@@ -1077,6 +1140,9 @@ AS
       WHERE
             vohe.object_header_id in (
                                       SELECT
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+                                             /*+ QB_NAME(a) */
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
                                              voh.object_header_id             -- 物件ID
                                       FROM
                                              xxcff_vd_object_histories  voh   -- 自販機物件履歴
@@ -1159,6 +1225,10 @@ AS
 --
       -- 警告フラグを初期化する
       lv_warn_flg := cv_no;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+      -- 資産フラグを初期化する
+      lv_asset_flg := cv_no;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
       -- 処理中の件数取得
       gn_vd_target_cnt := ln_loop_cnt;
 --
@@ -1169,7 +1239,7 @@ AS
       IF ( g_date_retired_tab(ln_loop_cnt) IS NULL ) THEN
         -- 警告フラグに'Y'をセット
         lv_warn_flg := cv_yes;
-        -- 除売却未確定スキップ件数カウント
+        -- 除売却未確定警告件数カウント
         gn_vd_retire_warn_cnt := gn_vd_retire_warn_cnt + 1;
         -- 警告メッセージをセット
         gv_out_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                           -- XXCFF
@@ -1225,7 +1295,7 @@ AS
           IF ( lv_warn_flg = cv_no ) THEN
             -- 警告フラグに'Y'をセット
             lv_warn_flg := cv_yes;
-            -- 除売却未確定スキップ件数カウント
+            -- 除売却未確定警告件数カウント
             gn_vd_retire_warn_cnt := gn_vd_retire_warn_cnt + 1;
           END IF;
           -- 警告メッセージをセット
@@ -1271,91 +1341,178 @@ AS
         EXCEPTION
           -- 固定資産情報が取得できない場合
           WHEN NO_DATA_FOUND THEN
-            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
-                                                          ,cv_msg_017a03_m_013     -- 取得エラー
-                                                          ,cv_tkn_table            -- トークン'TABLE_NAME'
-                                                          ,cv_msg_017a03_t_023     -- 資産詳細情報
-                                                          ,cv_tkn_info             -- トークン'INFO'
-                                                          ,cv_msg_017a03_t_022)    -- 固定資産（除売却）情報
-                                                          ,1
-                                                          ,5000);
-            RAISE chk_no_data_found_expt;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+--                                                          ,cv_msg_017a03_m_013     -- 取得エラー
+--                                                          ,cv_tkn_table            -- トークン'TABLE_NAME'
+--                                                          ,cv_msg_017a03_t_023     -- 資産詳細情報
+--                                                          ,cv_tkn_info             -- トークン'INFO'
+--                                                          ,cv_msg_017a03_t_022)    -- 固定資産（除売却）情報
+--                                                          ,1
+--                                                          ,5000);
+--            RAISE chk_no_data_found_expt;
+            lv_asset_flg := cv_yes;
+            -- 除売却未確定スキップ件数カウント
+            gn_vd_retire_skip_cnt := gn_vd_retire_skip_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
         END;
 --
-        -- 除売却タイプの取得
-        IF ( (g_proceeds_of_sale_tab(ln_loop_cnt) = cn_cost_0)
-          OR (g_proceeds_of_sale_tab(ln_loop_cnt) IS NULL)) THEN
-          -- 売却価額が0、またはNULLの場合、除却：NULL
-          lv_ret_type_code := NULL;
-        ELSE
-          -- 上記以外の場合、売却：'SALE'
-          lv_ret_type_code := cv_type_code_sale;
-        END IF;
-        -- 売却価額の取得
-        IF (g_proceeds_of_sale_tab(ln_loop_cnt) IS NULL) THEN
-          -- 売却価額がNULLの場合、0
-          ln_proceeds_of_sale := cn_cost_0;
-        ELSE
-          -- 上記以外の場合、A-7カーソル取得値
-          ln_proceeds_of_sale := g_proceeds_of_sale_tab(ln_loop_cnt);
-        END IF;
-        -- 撤去費用の取得
-        IF (g_cost_of_removal_tab(ln_loop_cnt) IS NULL) THEN
-          -- 撤去費用がNULLの場合、0
-          ln_cost_of_removal := cn_cost_0;
-        ELSE
-          -- 上記以外の場合、A-7カーソル取得値
-          ln_cost_of_removal := g_cost_of_removal_tab(ln_loop_cnt);
-        END IF;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--        -- 除売却タイプの取得
+--        IF ( (g_proceeds_of_sale_tab(ln_loop_cnt) = cn_cost_0)
+--          OR (g_proceeds_of_sale_tab(ln_loop_cnt) IS NULL)) THEN
+--          -- 売却価額が0、またはNULLの場合、除却：NULL
+--          lv_ret_type_code := NULL;
+--        ELSE
+--          -- 上記以外の場合、売却：'SALE'
+--          lv_ret_type_code := cv_type_code_sale;
+--        END IF;
+--        -- 売却価額の取得
+--        IF (g_proceeds_of_sale_tab(ln_loop_cnt) IS NULL) THEN
+--          -- 売却価額がNULLの場合、0
+--          ln_proceeds_of_sale := cn_cost_0;
+--        ELSE
+--          -- 上記以外の場合、A-7カーソル取得値
+--          ln_proceeds_of_sale := g_proceeds_of_sale_tab(ln_loop_cnt);
+--        END IF;
+--        -- 撤去費用の取得
+--        IF (g_cost_of_removal_tab(ln_loop_cnt) IS NULL) THEN
+--          -- 撤去費用がNULLの場合、0
+--          ln_cost_of_removal := cn_cost_0;
+--        ELSE
+--          -- 上記以外の場合、A-7カーソル取得値
+--          ln_cost_of_removal := g_cost_of_removal_tab(ln_loop_cnt);
+--        END IF;
+----
+--        --==============================================================
+--        -- 除売却OIF登録 (A-7-3)
+--        --==============================================================
+--        -- 除売却OIF登録
+--        INSERT INTO xx01_retire_oif(
+--           retire_oif_id                  -- ID
+--          ,book_type_code                 -- 台帳名
+--          ,asset_number                   -- 資産番号
+--          ,date_retired                   -- 除･売却日
+--          ,posting_flag                   -- 転記ﾁｪｯｸﾌﾗｸﾞ
+--          ,status                         -- ｽﾃｰﾀｽ
+--          ,cost_retired                   -- 除･売却取得価格
+--          ,retirement_type_code           -- 除売却タイプ
+--          ,proceeds_of_sale               -- 売却価額
+--          ,cost_of_removal                -- 撤去費用
+--          ,retirement_prorate_convention  -- 除･売却年度償却
+--          ,created_by                     -- 作成者
+--          ,creation_date                  -- 作成日
+--          ,last_updated_by                -- 最終更新者
+--          ,last_update_date               -- 最終更新日
+--          ,last_update_login              -- 最終更新ﾛｸﾞｲﾝ
+--          ,request_id                     -- ﾘｸｴｽﾄID
+--          ,program_application_id         -- ｱﾌﾟﾘｹｰｼｮﾝID
+--          ,program_id                     -- ﾌﾟﾛｸﾞﾗﾑID
+--          ,program_update_date            -- ﾌﾟﾛｸﾞﾗﾑ最終更新
+--        ) VALUES (
+--           xx01_retire_oif_s.NEXTVAL      -- ID
+--          ,gv_fixed_asset_register        -- 台帳名
+--          ,lv_asset_number                -- 資産番号
+--          ,g_date_retired_tab(ln_loop_cnt)  -- 除･売却日
+--          ,cv_yes                         -- 転記ﾁｪｯｸﾌﾗｸﾞ
+--          ,cv_status                      -- ｽﾃｰﾀｽ
+--          ,ln_cost_retired                -- 除･売却取得価格
+--          ,lv_ret_type_code               -- 除売却タイプ
+--          ,ln_proceeds_of_sale            -- 売却価額
+--          ,ln_cost_of_removal             -- 撤去費用
+--          ,gv_prt_conv_cd_ed              -- 除･売却年度償却
+--          ,cn_created_by                  -- 作成者
+--          ,cd_creation_date               -- 作成日
+--          ,cn_last_updated_by             -- 最終更新者
+--          ,cd_last_update_date            -- 最終更新日
+--          ,cn_last_update_login           -- 最終更新ログインID
+--          ,cn_request_id                  -- リクエストID
+--          ,cn_program_application_id      -- アプリケーションID
+--          ,cn_program_id                  -- プログラムID
+--          ,cd_program_update_date         -- プログラム最終更新日
+--        )
+--        ;
+        -- 資産が取得できた場合
+        IF ( lv_asset_flg = cv_no ) THEN
+          -- 除売却タイプの取得
+          IF ( (g_proceeds_of_sale_tab(ln_loop_cnt) = cn_cost_0)
+            OR (g_proceeds_of_sale_tab(ln_loop_cnt) IS NULL)) THEN
+            -- 売却価額が0、またはNULLの場合、除却：NULL
+            lv_ret_type_code := NULL;
+          ELSE
+            -- 上記以外の場合、売却：'SALE'
+            lv_ret_type_code := cv_type_code_sale;
+          END IF;
+          -- 売却価額の取得
+          IF (g_proceeds_of_sale_tab(ln_loop_cnt) IS NULL) THEN
+            -- 売却価額がNULLの場合、0
+            ln_proceeds_of_sale := cn_cost_0;
+          ELSE
+            -- 上記以外の場合、A-7カーソル取得値
+            ln_proceeds_of_sale := g_proceeds_of_sale_tab(ln_loop_cnt);
+          END IF;
+          -- 撤去費用の取得
+          IF (g_cost_of_removal_tab(ln_loop_cnt) IS NULL) THEN
+            -- 撤去費用がNULLの場合、0
+            ln_cost_of_removal := cn_cost_0;
+          ELSE
+            -- 上記以外の場合、A-7カーソル取得値
+            ln_cost_of_removal := g_cost_of_removal_tab(ln_loop_cnt);
+          END IF;
 --
-        --==============================================================
-        -- 除売却OIF登録 (A-7-3)
-        --==============================================================
-        -- 除売却OIF登録
-        INSERT INTO xx01_retire_oif(
-           retire_oif_id                  -- ID
-          ,book_type_code                 -- 台帳名
-          ,asset_number                   -- 資産番号
-          ,date_retired                   -- 除･売却日
-          ,posting_flag                   -- 転記ﾁｪｯｸﾌﾗｸﾞ
-          ,status                         -- ｽﾃｰﾀｽ
-          ,cost_retired                   -- 除･売却取得価格
-          ,retirement_type_code           -- 除売却タイプ
-          ,proceeds_of_sale               -- 売却価額
-          ,cost_of_removal                -- 撤去費用
-          ,retirement_prorate_convention  -- 除･売却年度償却
-          ,created_by                     -- 作成者
-          ,creation_date                  -- 作成日
-          ,last_updated_by                -- 最終更新者
-          ,last_update_date               -- 最終更新日
-          ,last_update_login              -- 最終更新ﾛｸﾞｲﾝ
-          ,request_id                     -- ﾘｸｴｽﾄID
-          ,program_application_id         -- ｱﾌﾟﾘｹｰｼｮﾝID
-          ,program_id                     -- ﾌﾟﾛｸﾞﾗﾑID
-          ,program_update_date            -- ﾌﾟﾛｸﾞﾗﾑ最終更新
-        ) VALUES (
-           xx01_retire_oif_s.NEXTVAL      -- ID
-          ,gv_fixed_asset_register        -- 台帳名
-          ,lv_asset_number                -- 資産番号
-          ,g_date_retired_tab(ln_loop_cnt)  -- 除･売却日
-          ,cv_yes                         -- 転記ﾁｪｯｸﾌﾗｸﾞ
-          ,cv_status                      -- ｽﾃｰﾀｽ
-          ,ln_cost_retired                -- 除･売却取得価格
-          ,lv_ret_type_code               -- 除売却タイプ
-          ,ln_proceeds_of_sale            -- 売却価額
-          ,ln_cost_of_removal             -- 撤去費用
-          ,gv_prt_conv_cd_ed              -- 除･売却年度償却
-          ,cn_created_by                  -- 作成者
-          ,cd_creation_date               -- 作成日
-          ,cn_last_updated_by             -- 最終更新者
-          ,cd_last_update_date            -- 最終更新日
-          ,cn_last_update_login           -- 最終更新ログインID
-          ,cn_request_id                  -- リクエストID
-          ,cn_program_application_id      -- アプリケーションID
-          ,cn_program_id                  -- プログラムID
-          ,cd_program_update_date         -- プログラム最終更新日
-        )
-        ;
+          --==============================================================
+          -- 除売却OIF登録 (A-7-3)
+          --==============================================================
+          -- 除売却OIF登録
+          INSERT INTO xx01_retire_oif(
+             retire_oif_id                  -- ID
+            ,book_type_code                 -- 台帳名
+            ,asset_number                   -- 資産番号
+            ,date_retired                   -- 除･売却日
+            ,posting_flag                   -- 転記ﾁｪｯｸﾌﾗｸﾞ
+            ,status                         -- ｽﾃｰﾀｽ
+            ,cost_retired                   -- 除･売却取得価格
+            ,retirement_type_code           -- 除売却タイプ
+            ,proceeds_of_sale               -- 売却価額
+            ,cost_of_removal                -- 撤去費用
+            ,retirement_prorate_convention  -- 除･売却年度償却
+            ,created_by                     -- 作成者
+            ,creation_date                  -- 作成日
+            ,last_updated_by                -- 最終更新者
+            ,last_update_date               -- 最終更新日
+            ,last_update_login              -- 最終更新ﾛｸﾞｲﾝ
+            ,request_id                     -- ﾘｸｴｽﾄID
+            ,program_application_id         -- ｱﾌﾟﾘｹｰｼｮﾝID
+            ,program_id                     -- ﾌﾟﾛｸﾞﾗﾑID
+            ,program_update_date            -- ﾌﾟﾛｸﾞﾗﾑ最終更新
+          ) VALUES (
+             xx01_retire_oif_s.NEXTVAL      -- ID
+            ,gv_fixed_asset_register        -- 台帳名
+            ,lv_asset_number                -- 資産番号
+            ,g_date_retired_tab(ln_loop_cnt)  -- 除･売却日
+            ,cv_yes                         -- 転記ﾁｪｯｸﾌﾗｸﾞ
+            ,cv_status                      -- ｽﾃｰﾀｽ
+            ,ln_cost_retired                -- 除･売却取得価格
+            ,lv_ret_type_code               -- 除売却タイプ
+            ,ln_proceeds_of_sale            -- 売却価額
+            ,ln_cost_of_removal             -- 撤去費用
+            ,gv_prt_conv_cd_ed              -- 除･売却年度償却
+            ,cn_created_by                  -- 作成者
+            ,cd_creation_date               -- 作成日
+            ,cn_last_updated_by             -- 最終更新者
+            ,cd_last_update_date            -- 最終更新日
+            ,cn_last_update_login           -- 最終更新ログインID
+            ,cn_request_id                  -- リクエストID
+            ,cn_program_application_id      -- アプリケーションID
+            ,cn_program_id                  -- プログラムID
+            ,cd_program_update_date         -- プログラム最終更新日
+          )
+          ;
+--
+          -- 自販機物件(除売却未確定)登録件数カウント
+          gn_vd_retire_normal_cnt := gn_vd_retire_normal_cnt + 1;
+        END IF;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
 --
         --==============================================================
         -- 自販機物件管理の更新（除売却未確定） (A-7-4)
@@ -1402,8 +1559,10 @@ AS
           RAISE global_api_expt;
         END IF;
 --
-        -- 自販機物件(除売却未確定)登録件数カウント
-        gn_vd_retire_normal_cnt := gn_vd_retire_normal_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji DEL Start
+--        -- 自販機物件(除売却未確定)登録件数カウント
+--        gn_vd_retire_normal_cnt := gn_vd_retire_normal_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji DEL Start
 --
       END IF;
 --
@@ -1508,6 +1667,9 @@ AS
     ln_reval_rsv                   NUMBER;          -- 再評価積立金
     ln_deprn_exp                   NUMBER;          -- 減価償却費
     lv_attribute2                  VARCHAR2(10);    -- カテゴリDFF02
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    lv_asset_flg                   VARCHAR2(1);     -- 資産フラグ
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
     -- OIF登録用変数
     ln_asset_id                    NUMBER;          -- 資産ID
@@ -1584,6 +1746,12 @@ AS
     CURSOR vd_object_modify_cur
     IS
       SELECT
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+             /*+ LEADING(VOH@a)
+                 USE_NL(VOH@a VOHE)
+                 INDEX(VOH@a XXCFF_VD_OBJECT_HISTORIES_N02)
+                 INDEX(VOHE XXCFF_VD_OBJECT_HEADERS_PK) */
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
              vohe.object_header_id        AS object_header_id        -- 物件ID
             ,vohe.object_code             AS object_code             -- 物件コード
             ,vohe.date_placed_in_service  AS date_placed_in_service  -- 事業共用日
@@ -1603,6 +1771,9 @@ AS
       WHERE
             vohe.object_header_id in (
                                       SELECT
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+                                             /*+ QB_NAME(a) */
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
                                              voh.object_header_id             -- 物件ID
                                       FROM
                                              xxcff_vd_object_histories  voh   -- 自販機物件履歴
@@ -1693,6 +1864,10 @@ AS
 --
       -- 警告フラグを初期化する
       lv_warn_flg := cv_no;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+      -- 資産フラグを初期化する
+      lv_asset_flg := cv_no;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
       -- 処理中の件数取得
       gn_vd_target_cnt := ln_loop_cnt;
 --
@@ -1703,7 +1878,7 @@ AS
       IF ( g_date_placed_in_service_tab(ln_loop_cnt) IS NULL ) THEN
         -- 警告フラグに'Y'をセット
         lv_warn_flg := cv_yes;
-        -- 修正スキップ件数カウント
+        -- 修正警告件数カウント
         gn_vd_modify_warn_cnt := gn_vd_modify_warn_cnt + 1;
         -- 警告メッセージをセット
         gv_out_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                           -- XXCFF
@@ -1729,7 +1904,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 修正スキップ件数カウント
+          -- 修正警告件数カウント
           gn_vd_modify_warn_cnt := gn_vd_modify_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -1756,7 +1931,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 修正スキップ件数カウント
+          -- 修正警告件数カウント
           gn_vd_modify_warn_cnt := gn_vd_modify_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -1783,7 +1958,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 修正スキップ件数カウント
+          -- 修正警告件数カウント
           gn_vd_modify_warn_cnt := gn_vd_modify_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -1952,229 +2127,454 @@ AS
         EXCEPTION
           -- 固定資産情報が取得できない場合
           WHEN NO_DATA_FOUND THEN
-            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
-                                                          ,cv_msg_017a03_m_013     -- 取得エラー
-                                                          ,cv_tkn_table            -- トークン'TABLE_NAME'
-                                                          ,cv_msg_017a03_t_023     -- 資産詳細情報
-                                                          ,cv_tkn_info             -- トークン'INFO'
-                                                          ,cv_msg_017a03_t_020)    -- 固定資産（修正）情報
-                                                          ,1
-                                                          ,5000);
-            RAISE chk_no_data_found_expt;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+--                                                          ,cv_msg_017a03_m_013     -- 取得エラー
+--                                                          ,cv_tkn_table            -- トークン'TABLE_NAME'
+--                                                          ,cv_msg_017a03_t_023     -- 資産詳細情報
+--                                                          ,cv_tkn_info             -- トークン'INFO'
+--                                                          ,cv_msg_017a03_t_020)    -- 固定資産（修正）情報
+--                                                          ,1
+--                                                          ,5000);
+--            RAISE chk_no_data_found_expt;
+            lv_asset_flg := cv_yes;
+            -- 修正スキップ件数カウント
+            gn_vd_modify_skip_cnt := gn_vd_modify_skip_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
         END;
 --
-        -- 償却累計額・年償却累計額・ボーナス償却累計額・ボーナス年償却累計額の取得
-        xx01_conc_util_pkg.query_balances_bonus(
-           in_asset_id         => ln_asset_id             -- 資産ID
-          ,iv_book_type_code   => gv_fixed_asset_register -- XXCFF:台帳種類_固定資産台帳（プロファイル値）
-          ,on_deprn_rsv        => ln_deprn_reserve        -- 償却累計額
-          ,on_reval_rsv        => ln_reval_rsv            -- 再評価積立金
-          ,on_ytd_deprn        => ln_ytd_deprn            -- 年償却累計額
-          ,on_deprn_exp        => ln_deprn_exp            -- 減価償却費
-          ,on_bonus_deprn_rsv  => ln_bonus_deprn_reserve  -- ボーナス償却累計額
-          ,on_bonus_ytd_deprn  => ln_bonus_ytd_deprn      -- ボーナス年償却累計額
-          ,in_period_ctr       => cn_period_ctr_0         -- 固定値：0
-        );
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--        -- 償却累計額・年償却累計額・ボーナス償却累計額・ボーナス年償却累計額の取得
+--        xx01_conc_util_pkg.query_balances_bonus(
+--           in_asset_id         => ln_asset_id             -- 資産ID
+--          ,iv_book_type_code   => gv_fixed_asset_register -- XXCFF:台帳種類_固定資産台帳（プロファイル値）
+--          ,on_deprn_rsv        => ln_deprn_reserve        -- 償却累計額
+--          ,on_reval_rsv        => ln_reval_rsv            -- 再評価積立金
+--          ,on_ytd_deprn        => ln_ytd_deprn            -- 年償却累計額
+--          ,on_deprn_exp        => ln_deprn_exp            -- 減価償却費
+--          ,on_bonus_deprn_rsv  => ln_bonus_deprn_reserve  -- ボーナス償却累計額
+--          ,on_bonus_ytd_deprn  => ln_bonus_ytd_deprn      -- ボーナス年償却累計額
+--          ,in_period_ctr       => cn_period_ctr_0         -- 固定値：0
+--        );
+----
+--        -- 耐用年数+月数がNULLではない場合
+--        IF ( ln_life_in_monsths IS NOT NULL ) THEN
+--          -- 耐用年数の取得
+--          ln_life_years  := trunc(ln_life_in_monsths / 12);
+--          -- 耐用月数の取得
+--          ln_life_months := mod(ln_life_in_monsths, 12);
+--        END IF;
+----
+--        -- 摘要を取得する
+--        lv_description := SUBSTRB(g_manufacturer_name_tab(ln_loop_cnt) || ' ' ||
+--                                  g_model_tab(ln_loop_cnt) || ' ' ||
+--                                  g_age_type_tab(ln_loop_cnt)
+--                                  , 1, 80);
+----
+--        --==============================================================
+--        -- 修正OIF登録 (A-6-3)
+--        --==============================================================
+--        -- カテゴリDFF02の取得
+--        IF (g_cat_attribute2_tab(ln_loop_cnt) IS NULL) THEN
+--          -- カテゴリDFF02(取得日)がNULLの時、事業供用日をYYYY/MM/DD型でセットする
+--          lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+--        ELSE
+--          -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
+--          lv_attribute2 := to_char(g_cat_attribute2_tab(ln_loop_cnt), cv_date_type);
+--        END IF;
+----
+--        -- 修正OIF登録
+--        INSERT INTO xx01_adjustment_oif(
+--           adjustment_oif_id               -- ID
+--          ,book_type_code                  -- 台帳名
+--          ,asset_number_old                -- 資産番号
+--          ,dpis_old                        -- 事業供用日（修正前）
+--          ,category_id_old                 -- 資産カテゴリID（修正前）
+--          ,cat_attribute_category_old      -- 資産カテゴリコード（修正前）
+--          ,dpis_new                        -- 事業供用日（修正後）
+--          ,description                     -- 摘要（修正後）
+--          ,transaction_units               -- 単位
+--          ,cat_attribute2                  -- カテゴリDFF2
+--          ,cost                            -- 取得価額
+--          ,original_cost                   -- 当初取得価額
+--          ,posting_flag                    -- 転記チェックフラグ
+--          ,status                          -- ステータス
+--          ,amortized_flag                  -- 修正額償却フラグ
+--          ,amortization_start_date         -- 償却開始日
+--          ,asset_number_new                -- 資産番号（修正後）
+--          ,tag_number                      -- 現品票番号
+--          ,category_id_new                 -- 資産カテゴリID（修正後）
+--          ,serial_number                   -- シリアル番号
+--          ,asset_key_ccid                  -- 資産キーCCID
+--          ,key_segment1                    -- 資産キーセグメント1
+--          ,key_segment2                    -- 資産キーセグメント2
+--          ,parent_asset_id                 -- 親資産ID
+--          ,lease_id                        -- リースID
+--          ,model_number                    -- モデル
+--          ,in_use_flag                     -- 使用状況
+--          ,inventorial                     -- 実地棚卸フラグ
+--          ,owned_leased                    -- 所有権
+--          ,new_used                        -- 新品/中古
+--          ,cat_attribute1                  -- カテゴリDFF1
+--          ,cat_attribute3                  -- カテゴリDFF3
+--          ,cat_attribute4                  -- カテゴリDFF4
+--          ,cat_attribute5                  -- カテゴリDFF5
+--          ,cat_attribute6                  -- カテゴリDFF6
+--          ,cat_attribute7                  -- カテゴリDFF7
+--          ,cat_attribute8                  -- カテゴリDFF8
+--          ,cat_attribute9                  -- カテゴリDFF9
+--          ,cat_attribute10                 -- カテゴリDFF10
+--          ,cat_attribute11                 -- カテゴリDFF11
+--          ,cat_attribute12                 -- カテゴリDFF12
+--          ,cat_attribute13                 -- カテゴリDFF13
+--          ,cat_attribute14                 -- カテゴリDFF14
+--          ,cat_attribute15                 -- カテゴリDFF15
+--          ,cat_attribute16                 -- カテゴリDFF16
+--          ,cat_attribute17                 -- カテゴリDFF17
+--          ,cat_attribute18                 -- カテゴリDFF18
+--          ,cat_attribute19                 -- カテゴリDFF19
+--          ,cat_attribute20                 -- カテゴリDFF20
+--          ,cat_attribute21                 -- カテゴリDFF21
+--          ,cat_attribute22                 -- カテゴリDFF22
+--          ,cat_attribute23                 -- カテゴリDFF23
+--          ,cat_attribute24                 -- カテゴリDFF24
+--          ,cat_attribute25                 -- カテゴリDFF27
+--          ,cat_attribute26                 -- カテゴリDFF25
+--          ,cat_attribute27                 -- カテゴリDFF26
+--          ,cat_attribute28                 -- カテゴリDFF28
+--          ,cat_attribute29                 -- カテゴリDFF29
+--          ,cat_attribute30                 -- カテゴリDFF30
+--          ,cat_attribute_category_new      -- 資産カテゴリコード（修正後）
+--          ,salvage_value                   -- 残存価額
+--          ,percent_salvage_value           -- 残存価額%
+--          ,allowed_deprn_limit_amount      -- 償却限度額
+--          ,allowed_deprn_limit             -- 償却限度率
+--          ,ytd_deprn                       -- 年償却累計額
+--          ,deprn_reserve                   -- 償却累計額
+--          ,depreciate_flag                 -- 償却費計上フラグ
+--          ,deprn_method_code               -- 償却方法
+--          ,basic_rate                      -- 普通償却率
+--          ,adjusted_rate                   -- 割増後償却率
+--          ,life_years                      -- 耐用年数
+--          ,life_months                     -- 月数
+--          ,bonus_rule                      -- ボーナスルール
+--          ,bonus_ytd_deprn                 -- ボーナス年償却累計額
+--          ,bonus_deprn_reserve             -- ボーナス償却累計額
+--          ,created_by                      -- 作成者
+--          ,creation_date                   -- 作成日
+--          ,last_updated_by                 -- 最終更新者
+--          ,last_update_date                -- 最終更新日
+--          ,last_update_login               -- 最終更新ログインID
+--          ,request_id                      -- リクエストID
+--          ,program_application_id          -- アプリケーションID
+--          ,program_id                      -- プログラムID
+--          ,program_update_date             -- プログラム最終更新日
+--        ) VALUES (
+--           xx01_adjustment_oif_s.NEXTVAL                           -- ID
+--          ,gv_fixed_asset_register                                 -- 台帳名
+--          ,lv_asset_number_old                                     -- 資産番号
+--          ,ld_dpis_old                                             -- 事業供用日（修正前）
+--          ,ln_category_id_old                                      -- 資産カテゴリID（修正前）
+--          ,lv_cat_attribute_category_old                           -- 資産カテゴリコード（修正前）
+--          ,g_date_placed_in_service_tab(ln_loop_cnt)               -- 事業供用日（修正後）
+--          ,lv_description                                          -- 摘要（修正後）
+--          ,g_transaction_units_tab(ln_loop_cnt)                    -- 単位
+--          ,lv_attribute2                                           -- カテゴリDFF2
+--          ,g_cost_tab(ln_loop_cnt)                                 -- 取得価額
+--          ,g_original_cost_tab(ln_loop_cnt)                        -- 当初取得価額
+--          ,cv_yes                                                  -- 転記チェックフラグ
+--          ,cv_status                                               -- ステータス
+--          ,lv_amortized_flag                                       -- 修正額償却フラグ
+--          ,ld_amortization_start_date                              -- 償却開始日
+--          ,lv_asset_number_new                                     -- 資産番号（修正後）
+--          ,lv_tag_number                                           -- 現品票番号
+--          ,ln_category_id_new                                      -- 資産カテゴリID（修正後）
+--          ,lv_serial_number                                        -- シリアル番号
+--          ,ln_asset_key_ccid                                       -- 資産キーCCID
+--          ,lv_key_segment1                                         -- 資産キーセグメント1
+--          ,lv_key_segment2                                         -- 資産キーセグメント2
+--          ,ln_parent_asset_id                                      -- 親資産ID
+--          ,ln_lease_id                                             -- リースID
+--          ,lv_model_number                                         -- モデル
+--          ,lv_in_use_flag                                          -- 使用状況
+--          ,lv_inventorial                                          -- 実地棚卸フラグ
+--          ,lv_owned_leased                                         -- 所有権
+--          ,lv_new_used                                             -- 新品/中古
+--          ,lv_cat_attribute1                                       -- カテゴリDFF1
+--          ,lv_cat_attribute3                                       -- カテゴリDFF3
+--          ,lv_cat_attribute4                                       -- カテゴリDFF4
+--          ,lv_cat_attribute5                                       -- カテゴリDFF5
+--          ,lv_cat_attribute6                                       -- カテゴリDFF6
+--          ,lv_cat_attribute7                                       -- カテゴリDFF7
+--          ,lv_cat_attribute8                                       -- カテゴリDFF8
+--          ,lv_cat_attribute9                                       -- カテゴリDFF9
+--          ,lv_cat_attribute10                                      -- カテゴリDFF10
+--          ,lv_cat_attribute11                                      -- カテゴリDFF11
+--          ,lv_cat_attribute12                                      -- カテゴリDFF12
+--          ,lv_cat_attribute13                                      -- カテゴリDFF13
+--          ,lv_cat_attribute14                                      -- カテゴリDFF14
+--          ,lv_cat_attribute15                                      -- カテゴリDFF15
+--          ,lv_cat_attribute16                                      -- カテゴリDFF16
+--          ,lv_cat_attribute17                                      -- カテゴリDFF17
+--          ,lv_cat_attribute18                                      -- カテゴリDFF18
+--          ,lv_cat_attribute19                                      -- カテゴリDFF19
+--          ,lv_cat_attribute20                                      -- カテゴリDFF20
+--          ,lv_cat_attribute21                                      -- カテゴリDFF21
+--          ,lv_cat_attribute22                                      -- カテゴリDFF22
+--          ,lv_cat_attribute23                                      -- カテゴリDFF23
+--          ,lv_cat_attribute24                                      -- カテゴリDFF24
+--          ,lv_cat_attribute25                                      -- カテゴリDFF27
+--          ,lv_cat_attribute26                                      -- カテゴリDFF25
+--          ,lv_cat_attribute27                                      -- カテゴリDFF26
+--          ,lv_cat_attribute28                                      -- カテゴリDFF28
+--          ,lv_cat_attribute29                                      -- カテゴリDFF29
+--          ,lv_cat_attribute30                                      -- カテゴリDFF30
+--          ,lv_cat_attribute_category_new                           -- 資産カテゴリコード（修正後）
+--          ,ln_salvage_value                                        -- 残存価額
+--          ,ln_percent_salvage_value                                -- 残存価額%
+--          ,ln_allowed_deprn_limit_amount                           -- 償却限度額
+--          ,ln_allowed_deprn_limit                                  -- 償却限度率
+--          ,ln_ytd_deprn                                            -- 年償却累計額
+--          ,ln_deprn_reserve                                        -- 償却累計額
+--          ,lv_depreciate_flag                                      -- 償却費計上フラグ
+--          ,lv_deprn_method_code                                    -- 償却方法
+--          ,ln_basic_rate                                           -- 普通償却率
+--          ,ln_adjusted_rate                                        -- 割増後償却率
+--          ,ln_life_years                                           -- 耐用年数+月数
+--          ,ln_life_months                                          -- 月数
+--          ,lv_bonus_rule                                           -- ボーナスルール
+--          ,ln_bonus_ytd_deprn                                      -- ボーナス年償却累計額
+--          ,ln_bonus_deprn_reserve                                  -- ボーナス償却累計額
+--          ,cn_created_by                                           -- 作成者
+--          ,cd_creation_date                                        -- 作成日
+--          ,cn_last_updated_by                                      -- 最終更新者
+--          ,cd_last_update_date                                     -- 最終更新日
+--          ,cn_last_update_login                                    -- 最終更新ログインID
+--          ,cn_request_id                                           -- リクエストID
+--          ,cn_program_application_id                               -- アプリケーションID
+--          ,cn_program_id                                           -- プログラムID
+--          ,cd_program_update_date                                  -- プログラム最終更新日
+--        )
+--        ;
+        -- 資産が取得できた場合
+        IF ( lv_asset_flg = cv_no ) THEN
+          -- 償却累計額・年償却累計額・ボーナス償却累計額・ボーナス年償却累計額の取得
+          xx01_conc_util_pkg.query_balances_bonus(
+             in_asset_id         => ln_asset_id             -- 資産ID
+            ,iv_book_type_code   => gv_fixed_asset_register -- XXCFF:台帳種類_固定資産台帳（プロファイル値）
+            ,on_deprn_rsv        => ln_deprn_reserve        -- 償却累計額
+            ,on_reval_rsv        => ln_reval_rsv            -- 再評価積立金
+            ,on_ytd_deprn        => ln_ytd_deprn            -- 年償却累計額
+            ,on_deprn_exp        => ln_deprn_exp            -- 減価償却費
+            ,on_bonus_deprn_rsv  => ln_bonus_deprn_reserve  -- ボーナス償却累計額
+            ,on_bonus_ytd_deprn  => ln_bonus_ytd_deprn      -- ボーナス年償却累計額
+            ,in_period_ctr       => cn_period_ctr_0         -- 固定値：0
+          );
 --
-        -- 耐用年数+月数がNULLではない場合
-        IF ( ln_life_in_monsths IS NOT NULL ) THEN
-          -- 耐用年数の取得
-          ln_life_years  := trunc(ln_life_in_monsths / 12);
-          -- 耐用月数の取得
-          ln_life_months := mod(ln_life_in_monsths, 12);
+          -- 耐用年数+月数がNULLではない場合
+          IF ( ln_life_in_monsths IS NOT NULL ) THEN
+            -- 耐用年数の取得
+            ln_life_years  := trunc(ln_life_in_monsths / 12);
+            -- 耐用月数の取得
+            ln_life_months := mod(ln_life_in_monsths, 12);
+          END IF;
+--
+          -- 摘要を取得する
+          lv_description := SUBSTRB(g_manufacturer_name_tab(ln_loop_cnt) || ' ' ||
+                                    g_model_tab(ln_loop_cnt) || ' ' ||
+                                    g_age_type_tab(ln_loop_cnt)
+                                    , 1, 80);
+--
+          --==============================================================
+          -- 修正OIF登録 (A-6-3)
+          --==============================================================
+          -- カテゴリDFF02の取得
+          IF (g_cat_attribute2_tab(ln_loop_cnt) IS NULL) THEN
+            -- カテゴリDFF02(取得日)がNULLの時、事業供用日をYYYY/MM/DD型でセットする
+            lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+          ELSE
+            -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
+            lv_attribute2 := to_char(g_cat_attribute2_tab(ln_loop_cnt), cv_date_type);
+          END IF;
+--
+          -- 修正OIF登録
+          INSERT INTO xx01_adjustment_oif(
+             adjustment_oif_id               -- ID
+            ,book_type_code                  -- 台帳名
+            ,asset_number_old                -- 資産番号
+            ,dpis_old                        -- 事業供用日（修正前）
+            ,category_id_old                 -- 資産カテゴリID（修正前）
+            ,cat_attribute_category_old      -- 資産カテゴリコード（修正前）
+            ,dpis_new                        -- 事業供用日（修正後）
+            ,description                     -- 摘要（修正後）
+            ,transaction_units               -- 単位
+            ,cat_attribute2                  -- カテゴリDFF2
+            ,cost                            -- 取得価額
+            ,original_cost                   -- 当初取得価額
+            ,posting_flag                    -- 転記チェックフラグ
+            ,status                          -- ステータス
+            ,amortized_flag                  -- 修正額償却フラグ
+            ,amortization_start_date         -- 償却開始日
+            ,asset_number_new                -- 資産番号（修正後）
+            ,tag_number                      -- 現品票番号
+            ,category_id_new                 -- 資産カテゴリID（修正後）
+            ,serial_number                   -- シリアル番号
+            ,asset_key_ccid                  -- 資産キーCCID
+            ,key_segment1                    -- 資産キーセグメント1
+            ,key_segment2                    -- 資産キーセグメント2
+            ,parent_asset_id                 -- 親資産ID
+            ,lease_id                        -- リースID
+            ,model_number                    -- モデル
+            ,in_use_flag                     -- 使用状況
+            ,inventorial                     -- 実地棚卸フラグ
+            ,owned_leased                    -- 所有権
+            ,new_used                        -- 新品/中古
+            ,cat_attribute1                  -- カテゴリDFF1
+            ,cat_attribute3                  -- カテゴリDFF3
+            ,cat_attribute4                  -- カテゴリDFF4
+            ,cat_attribute5                  -- カテゴリDFF5
+            ,cat_attribute6                  -- カテゴリDFF6
+            ,cat_attribute7                  -- カテゴリDFF7
+            ,cat_attribute8                  -- カテゴリDFF8
+            ,cat_attribute9                  -- カテゴリDFF9
+            ,cat_attribute10                 -- カテゴリDFF10
+            ,cat_attribute11                 -- カテゴリDFF11
+            ,cat_attribute12                 -- カテゴリDFF12
+            ,cat_attribute13                 -- カテゴリDFF13
+            ,cat_attribute14                 -- カテゴリDFF14
+            ,cat_attribute15                 -- カテゴリDFF15
+            ,cat_attribute16                 -- カテゴリDFF16
+            ,cat_attribute17                 -- カテゴリDFF17
+            ,cat_attribute18                 -- カテゴリDFF18
+            ,cat_attribute19                 -- カテゴリDFF19
+            ,cat_attribute20                 -- カテゴリDFF20
+            ,cat_attribute21                 -- カテゴリDFF21
+            ,cat_attribute22                 -- カテゴリDFF22
+            ,cat_attribute23                 -- カテゴリDFF23
+            ,cat_attribute24                 -- カテゴリDFF24
+            ,cat_attribute25                 -- カテゴリDFF27
+            ,cat_attribute26                 -- カテゴリDFF25
+            ,cat_attribute27                 -- カテゴリDFF26
+            ,cat_attribute28                 -- カテゴリDFF28
+            ,cat_attribute29                 -- カテゴリDFF29
+            ,cat_attribute30                 -- カテゴリDFF30
+            ,cat_attribute_category_new      -- 資産カテゴリコード（修正後）
+            ,salvage_value                   -- 残存価額
+            ,percent_salvage_value           -- 残存価額%
+            ,allowed_deprn_limit_amount      -- 償却限度額
+            ,allowed_deprn_limit             -- 償却限度率
+            ,ytd_deprn                       -- 年償却累計額
+            ,deprn_reserve                   -- 償却累計額
+            ,depreciate_flag                 -- 償却費計上フラグ
+            ,deprn_method_code               -- 償却方法
+            ,basic_rate                      -- 普通償却率
+            ,adjusted_rate                   -- 割増後償却率
+            ,life_years                      -- 耐用年数
+            ,life_months                     -- 月数
+            ,bonus_rule                      -- ボーナスルール
+            ,bonus_ytd_deprn                 -- ボーナス年償却累計額
+            ,bonus_deprn_reserve             -- ボーナス償却累計額
+            ,created_by                      -- 作成者
+            ,creation_date                   -- 作成日
+            ,last_updated_by                 -- 最終更新者
+            ,last_update_date                -- 最終更新日
+            ,last_update_login               -- 最終更新ログインID
+            ,request_id                      -- リクエストID
+            ,program_application_id          -- アプリケーションID
+            ,program_id                      -- プログラムID
+            ,program_update_date             -- プログラム最終更新日
+          ) VALUES (
+             xx01_adjustment_oif_s.NEXTVAL                           -- ID
+            ,gv_fixed_asset_register                                 -- 台帳名
+            ,lv_asset_number_old                                     -- 資産番号
+            ,ld_dpis_old                                             -- 事業供用日（修正前）
+            ,ln_category_id_old                                      -- 資産カテゴリID（修正前）
+            ,lv_cat_attribute_category_old                           -- 資産カテゴリコード（修正前）
+            ,g_date_placed_in_service_tab(ln_loop_cnt)               -- 事業供用日（修正後）
+            ,lv_description                                          -- 摘要（修正後）
+            ,g_transaction_units_tab(ln_loop_cnt)                    -- 単位
+            ,lv_attribute2                                           -- カテゴリDFF2
+            ,g_cost_tab(ln_loop_cnt)                                 -- 取得価額
+            ,g_original_cost_tab(ln_loop_cnt)                        -- 当初取得価額
+            ,cv_yes                                                  -- 転記チェックフラグ
+            ,cv_status                                               -- ステータス
+            ,lv_amortized_flag                                       -- 修正額償却フラグ
+            ,ld_amortization_start_date                              -- 償却開始日
+            ,lv_asset_number_new                                     -- 資産番号（修正後）
+            ,lv_tag_number                                           -- 現品票番号
+            ,ln_category_id_new                                      -- 資産カテゴリID（修正後）
+            ,lv_serial_number                                        -- シリアル番号
+            ,ln_asset_key_ccid                                       -- 資産キーCCID
+            ,lv_key_segment1                                         -- 資産キーセグメント1
+            ,lv_key_segment2                                         -- 資産キーセグメント2
+            ,ln_parent_asset_id                                      -- 親資産ID
+            ,ln_lease_id                                             -- リースID
+            ,lv_model_number                                         -- モデル
+            ,lv_in_use_flag                                          -- 使用状況
+            ,lv_inventorial                                          -- 実地棚卸フラグ
+            ,lv_owned_leased                                         -- 所有権
+            ,lv_new_used                                             -- 新品/中古
+            ,lv_cat_attribute1                                       -- カテゴリDFF1
+            ,lv_cat_attribute3                                       -- カテゴリDFF3
+            ,lv_cat_attribute4                                       -- カテゴリDFF4
+            ,lv_cat_attribute5                                       -- カテゴリDFF5
+            ,lv_cat_attribute6                                       -- カテゴリDFF6
+            ,lv_cat_attribute7                                       -- カテゴリDFF7
+            ,lv_cat_attribute8                                       -- カテゴリDFF8
+            ,lv_cat_attribute9                                       -- カテゴリDFF9
+            ,lv_cat_attribute10                                      -- カテゴリDFF10
+            ,lv_cat_attribute11                                      -- カテゴリDFF11
+            ,lv_cat_attribute12                                      -- カテゴリDFF12
+            ,lv_cat_attribute13                                      -- カテゴリDFF13
+            ,lv_cat_attribute14                                      -- カテゴリDFF14
+            ,lv_cat_attribute15                                      -- カテゴリDFF15
+            ,lv_cat_attribute16                                      -- カテゴリDFF16
+            ,lv_cat_attribute17                                      -- カテゴリDFF17
+            ,lv_cat_attribute18                                      -- カテゴリDFF18
+            ,lv_cat_attribute19                                      -- カテゴリDFF19
+            ,lv_cat_attribute20                                      -- カテゴリDFF20
+            ,lv_cat_attribute21                                      -- カテゴリDFF21
+            ,lv_cat_attribute22                                      -- カテゴリDFF22
+            ,lv_cat_attribute23                                      -- カテゴリDFF23
+            ,lv_cat_attribute24                                      -- カテゴリDFF24
+            ,lv_cat_attribute25                                      -- カテゴリDFF27
+            ,lv_cat_attribute26                                      -- カテゴリDFF25
+            ,lv_cat_attribute27                                      -- カテゴリDFF26
+            ,lv_cat_attribute28                                      -- カテゴリDFF28
+            ,lv_cat_attribute29                                      -- カテゴリDFF29
+            ,lv_cat_attribute30                                      -- カテゴリDFF30
+            ,lv_cat_attribute_category_new                           -- 資産カテゴリコード（修正後）
+            ,ln_salvage_value                                        -- 残存価額
+            ,ln_percent_salvage_value                                -- 残存価額%
+            ,ln_allowed_deprn_limit_amount                           -- 償却限度額
+            ,ln_allowed_deprn_limit                                  -- 償却限度率
+            ,ln_ytd_deprn                                            -- 年償却累計額
+            ,ln_deprn_reserve                                        -- 償却累計額
+            ,lv_depreciate_flag                                      -- 償却費計上フラグ
+            ,lv_deprn_method_code                                    -- 償却方法
+            ,ln_basic_rate                                           -- 普通償却率
+            ,ln_adjusted_rate                                        -- 割増後償却率
+            ,ln_life_years                                           -- 耐用年数+月数
+            ,ln_life_months                                          -- 月数
+            ,lv_bonus_rule                                           -- ボーナスルール
+            ,ln_bonus_ytd_deprn                                      -- ボーナス年償却累計額
+            ,ln_bonus_deprn_reserve                                  -- ボーナス償却累計額
+            ,cn_created_by                                           -- 作成者
+            ,cd_creation_date                                        -- 作成日
+            ,cn_last_updated_by                                      -- 最終更新者
+            ,cd_last_update_date                                     -- 最終更新日
+            ,cn_last_update_login                                    -- 最終更新ログインID
+            ,cn_request_id                                           -- リクエストID
+            ,cn_program_application_id                               -- アプリケーションID
+            ,cn_program_id                                           -- プログラムID
+            ,cd_program_update_date                                  -- プログラム最終更新日
+          )
+          ;
+--
+          -- 自販機物件(修正)登録件数カウント
+          gn_vd_modify_normal_cnt := gn_vd_modify_normal_cnt + 1;
         END IF;
---
-        -- 摘要を取得する
-        lv_description := SUBSTRB(g_manufacturer_name_tab(ln_loop_cnt) || ' ' ||
-                                  g_model_tab(ln_loop_cnt) || ' ' ||
-                                  g_age_type_tab(ln_loop_cnt)
-                                  , 1, 80);
---
-        --==============================================================
-        -- 修正OIF登録 (A-6-3)
-        --==============================================================
-        -- カテゴリDFF02の取得
-        IF (g_cat_attribute2_tab(ln_loop_cnt) IS NULL) THEN
-          -- カテゴリDFF02(取得日)がNULLの時、事業供用日をYYYY/MM/DD型でセットする
-          lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
-        ELSE
-          -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
-          lv_attribute2 := to_char(g_cat_attribute2_tab(ln_loop_cnt), cv_date_type);
-        END IF;
---
-        -- 修正OIF登録
-        INSERT INTO xx01_adjustment_oif(
-           adjustment_oif_id               -- ID
-          ,book_type_code                  -- 台帳名
-          ,asset_number_old                -- 資産番号
-          ,dpis_old                        -- 事業供用日（修正前）
-          ,category_id_old                 -- 資産カテゴリID（修正前）
-          ,cat_attribute_category_old      -- 資産カテゴリコード（修正前）
-          ,dpis_new                        -- 事業供用日（修正後）
-          ,description                     -- 摘要（修正後）
-          ,transaction_units               -- 単位
-          ,cat_attribute2                  -- カテゴリDFF2
-          ,cost                            -- 取得価額
-          ,original_cost                   -- 当初取得価額
-          ,posting_flag                    -- 転記チェックフラグ
-          ,status                          -- ステータス
-          ,amortized_flag                  -- 修正額償却フラグ
-          ,amortization_start_date         -- 償却開始日
-          ,asset_number_new                -- 資産番号（修正後）
-          ,tag_number                      -- 現品票番号
-          ,category_id_new                 -- 資産カテゴリID（修正後）
-          ,serial_number                   -- シリアル番号
-          ,asset_key_ccid                  -- 資産キーCCID
-          ,key_segment1                    -- 資産キーセグメント1
-          ,key_segment2                    -- 資産キーセグメント2
-          ,parent_asset_id                 -- 親資産ID
-          ,lease_id                        -- リースID
-          ,model_number                    -- モデル
-          ,in_use_flag                     -- 使用状況
-          ,inventorial                     -- 実地棚卸フラグ
-          ,owned_leased                    -- 所有権
-          ,new_used                        -- 新品/中古
-          ,cat_attribute1                  -- カテゴリDFF1
-          ,cat_attribute3                  -- カテゴリDFF3
-          ,cat_attribute4                  -- カテゴリDFF4
-          ,cat_attribute5                  -- カテゴリDFF5
-          ,cat_attribute6                  -- カテゴリDFF6
-          ,cat_attribute7                  -- カテゴリDFF7
-          ,cat_attribute8                  -- カテゴリDFF8
-          ,cat_attribute9                  -- カテゴリDFF9
-          ,cat_attribute10                 -- カテゴリDFF10
-          ,cat_attribute11                 -- カテゴリDFF11
-          ,cat_attribute12                 -- カテゴリDFF12
-          ,cat_attribute13                 -- カテゴリDFF13
-          ,cat_attribute14                 -- カテゴリDFF14
-          ,cat_attribute15                 -- カテゴリDFF15
-          ,cat_attribute16                 -- カテゴリDFF16
-          ,cat_attribute17                 -- カテゴリDFF17
-          ,cat_attribute18                 -- カテゴリDFF18
-          ,cat_attribute19                 -- カテゴリDFF19
-          ,cat_attribute20                 -- カテゴリDFF20
-          ,cat_attribute21                 -- カテゴリDFF21
-          ,cat_attribute22                 -- カテゴリDFF22
-          ,cat_attribute23                 -- カテゴリDFF23
-          ,cat_attribute24                 -- カテゴリDFF24
-          ,cat_attribute25                 -- カテゴリDFF27
-          ,cat_attribute26                 -- カテゴリDFF25
-          ,cat_attribute27                 -- カテゴリDFF26
-          ,cat_attribute28                 -- カテゴリDFF28
-          ,cat_attribute29                 -- カテゴリDFF29
-          ,cat_attribute30                 -- カテゴリDFF30
-          ,cat_attribute_category_new      -- 資産カテゴリコード（修正後）
-          ,salvage_value                   -- 残存価額
-          ,percent_salvage_value           -- 残存価額%
-          ,allowed_deprn_limit_amount      -- 償却限度額
-          ,allowed_deprn_limit             -- 償却限度率
-          ,ytd_deprn                       -- 年償却累計額
-          ,deprn_reserve                   -- 償却累計額
-          ,depreciate_flag                 -- 償却費計上フラグ
-          ,deprn_method_code               -- 償却方法
-          ,basic_rate                      -- 普通償却率
-          ,adjusted_rate                   -- 割増後償却率
-          ,life_years                      -- 耐用年数
-          ,life_months                     -- 月数
-          ,bonus_rule                      -- ボーナスルール
-          ,bonus_ytd_deprn                 -- ボーナス年償却累計額
-          ,bonus_deprn_reserve             -- ボーナス償却累計額
-          ,created_by                      -- 作成者
-          ,creation_date                   -- 作成日
-          ,last_updated_by                 -- 最終更新者
-          ,last_update_date                -- 最終更新日
-          ,last_update_login               -- 最終更新ログインID
-          ,request_id                      -- リクエストID
-          ,program_application_id          -- アプリケーションID
-          ,program_id                      -- プログラムID
-          ,program_update_date             -- プログラム最終更新日
-        ) VALUES (
-           xx01_adjustment_oif_s.NEXTVAL                           -- ID
-          ,gv_fixed_asset_register                                 -- 台帳名
-          ,lv_asset_number_old                                     -- 資産番号
-          ,ld_dpis_old                                             -- 事業供用日（修正前）
-          ,ln_category_id_old                                      -- 資産カテゴリID（修正前）
-          ,lv_cat_attribute_category_old                           -- 資産カテゴリコード（修正前）
-          ,g_date_placed_in_service_tab(ln_loop_cnt)               -- 事業供用日（修正後）
-          ,lv_description                                          -- 摘要（修正後）
-          ,g_transaction_units_tab(ln_loop_cnt)                    -- 単位
-          ,lv_attribute2                                           -- カテゴリDFF2
-          ,g_cost_tab(ln_loop_cnt)                                 -- 取得価額
-          ,g_original_cost_tab(ln_loop_cnt)                        -- 当初取得価額
-          ,cv_yes                                                  -- 転記チェックフラグ
-          ,cv_status                                               -- ステータス
-          ,lv_amortized_flag                                       -- 修正額償却フラグ
-          ,ld_amortization_start_date                              -- 償却開始日
-          ,lv_asset_number_new                                     -- 資産番号（修正後）
-          ,lv_tag_number                                           -- 現品票番号
-          ,ln_category_id_new                                      -- 資産カテゴリID（修正後）
-          ,lv_serial_number                                        -- シリアル番号
-          ,ln_asset_key_ccid                                       -- 資産キーCCID
-          ,lv_key_segment1                                         -- 資産キーセグメント1
-          ,lv_key_segment2                                         -- 資産キーセグメント2
-          ,ln_parent_asset_id                                      -- 親資産ID
-          ,ln_lease_id                                             -- リースID
-          ,lv_model_number                                         -- モデル
-          ,lv_in_use_flag                                          -- 使用状況
-          ,lv_inventorial                                          -- 実地棚卸フラグ
-          ,lv_owned_leased                                         -- 所有権
-          ,lv_new_used                                             -- 新品/中古
-          ,lv_cat_attribute1                                       -- カテゴリDFF1
-          ,lv_cat_attribute3                                       -- カテゴリDFF3
-          ,lv_cat_attribute4                                       -- カテゴリDFF4
-          ,lv_cat_attribute5                                       -- カテゴリDFF5
-          ,lv_cat_attribute6                                       -- カテゴリDFF6
-          ,lv_cat_attribute7                                       -- カテゴリDFF7
-          ,lv_cat_attribute8                                       -- カテゴリDFF8
-          ,lv_cat_attribute9                                       -- カテゴリDFF9
-          ,lv_cat_attribute10                                      -- カテゴリDFF10
-          ,lv_cat_attribute11                                      -- カテゴリDFF11
-          ,lv_cat_attribute12                                      -- カテゴリDFF12
-          ,lv_cat_attribute13                                      -- カテゴリDFF13
-          ,lv_cat_attribute14                                      -- カテゴリDFF14
-          ,lv_cat_attribute15                                      -- カテゴリDFF15
-          ,lv_cat_attribute16                                      -- カテゴリDFF16
-          ,lv_cat_attribute17                                      -- カテゴリDFF17
-          ,lv_cat_attribute18                                      -- カテゴリDFF18
-          ,lv_cat_attribute19                                      -- カテゴリDFF19
-          ,lv_cat_attribute20                                      -- カテゴリDFF20
-          ,lv_cat_attribute21                                      -- カテゴリDFF21
-          ,lv_cat_attribute22                                      -- カテゴリDFF22
-          ,lv_cat_attribute23                                      -- カテゴリDFF23
-          ,lv_cat_attribute24                                      -- カテゴリDFF24
-          ,lv_cat_attribute25                                      -- カテゴリDFF27
-          ,lv_cat_attribute26                                      -- カテゴリDFF25
-          ,lv_cat_attribute27                                      -- カテゴリDFF26
-          ,lv_cat_attribute28                                      -- カテゴリDFF28
-          ,lv_cat_attribute29                                      -- カテゴリDFF29
-          ,lv_cat_attribute30                                      -- カテゴリDFF30
-          ,lv_cat_attribute_category_new                           -- 資産カテゴリコード（修正後）
-          ,ln_salvage_value                                        -- 残存価額
-          ,ln_percent_salvage_value                                -- 残存価額%
-          ,ln_allowed_deprn_limit_amount                           -- 償却限度額
-          ,ln_allowed_deprn_limit                                  -- 償却限度率
-          ,ln_ytd_deprn                                            -- 年償却累計額
-          ,ln_deprn_reserve                                        -- 償却累計額
-          ,lv_depreciate_flag                                      -- 償却費計上フラグ
-          ,lv_deprn_method_code                                    -- 償却方法
-          ,ln_basic_rate                                           -- 普通償却率
-          ,ln_adjusted_rate                                        -- 割増後償却率
-          ,ln_life_years                                           -- 耐用年数+月数
-          ,ln_life_months                                          -- 月数
-          ,lv_bonus_rule                                           -- ボーナスルール
-          ,ln_bonus_ytd_deprn                                      -- ボーナス年償却累計額
-          ,ln_bonus_deprn_reserve                                  -- ボーナス償却累計額
-          ,cn_created_by                                           -- 作成者
-          ,cd_creation_date                                        -- 作成日
-          ,cn_last_updated_by                                      -- 最終更新者
-          ,cd_last_update_date                                     -- 最終更新日
-          ,cn_last_update_login                                    -- 最終更新ログインID
-          ,cn_request_id                                           -- リクエストID
-          ,cn_program_application_id                               -- アプリケーションID
-          ,cn_program_id                                           -- プログラムID
-          ,cd_program_update_date                                  -- プログラム最終更新日
-        )
-        ;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
 --
         --==============================================================
         -- 自販機物件履歴の更新（修正） (A-6-4)
@@ -2191,8 +2591,10 @@ AS
           RAISE global_api_expt;
         END IF;
 --
-        -- 自販機物件(修正)登録件数カウント
-        gn_vd_modify_normal_cnt := gn_vd_modify_normal_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji DEL Start
+--        -- 自販機物件(修正)登録件数カウント
+--        gn_vd_modify_normal_cnt := gn_vd_modify_normal_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji DEL End
 --
       END IF;
 --
@@ -2296,6 +2698,10 @@ AS
     lv_segment4               VARCHAR2(25);    -- 減価償却費勘定セグメント-勘定科目
     lv_modify_flg             VARCHAR2(1);     -- 変更フラグ
     ln_current_units          NUMBER;          -- 単位数量
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    lv_segment8               VARCHAR2(25);    -- 減価償却費勘定セグメント-補助科目
+    lv_segment9               VARCHAR2(1);     -- 仕訳区分
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2303,32 +2709,74 @@ AS
     -- 自販機物件（移動）カーソル
     CURSOR vd_object_trnsf_cur
     IS
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--      SELECT
+--             vohe.object_header_id                   AS object_header_id        -- 物件ID
+--            ,vohe.object_code                        AS object_code             -- 物件コード
+--            ,vohe.moved_date                         AS moved_date              -- 移動日
+--            ,vohe.machine_type                       AS machine_type            -- 機器区分
+--            ,vohe.dclr_place                         AS dclr_place              -- 申告地
+--            ,vohe.department_code                    AS department_code         -- 管理部門
+--            ,vohe.location                           AS location                -- 事業所
+--            ,substrb(vohe.installation_address,1,30) AS installation_address    -- 設置場所
+--            ,vohe.owner_company_type                 AS owner_company_type      -- 本社工場区分
+--      FROM
+--            xxcff_vd_object_headers  vohe
+--      WHERE
+--            vohe.object_header_id in (
+--                                      SELECT
+--                                             voh.object_header_id             -- 物件ID
+--                                      FROM
+--                                             xxcff_vd_object_histories  voh   -- 自販機物件履歴
+--                                      WHERE
+--                                            voh.fa_if_flag   = cv_no         -- FA未連携
+--                                        AND voh.process_type = cv_status_103 -- 移動
+--                                      )
+--      ORDER BY
+--            vohe.object_code
+--        FOR UPDATE NOWAIT
+--      ;
       SELECT
-             vohe.object_header_id                   AS object_header_id        -- 物件ID
-            ,vohe.object_code                        AS object_code             -- 物件コード
-            ,vohe.moved_date                         AS moved_date              -- 移動日
-            ,vohe.machine_type                       AS machine_type            -- 機器区分
-            ,vohe.dclr_place                         AS dclr_place              -- 申告地
-            ,vohe.department_code                    AS department_code         -- 管理部門
-            ,vohe.location                           AS location                -- 事業所
-            ,substrb(vohe.installation_address,1,30) AS installation_address    -- 設置場所
-            ,vohe.owner_company_type                 AS owner_company_type      -- 本社工場区分
+             /*+ USE_NL(VOHI VOHE)
+                 INDEX(VOHI XXCFF_VD_OBJECT_HISTORIES_PK)
+                 INDEX(VOHE XXCFF_VD_OBJECT_HEADERS_PK) */
+             vohi.object_header_id                   AS object_header_id        -- 物件ID
+            ,vohi.object_code                        AS object_code             -- 物件コード
+            ,vohi.moved_date                         AS moved_date              -- 移動日
+            ,vohi.machine_type                       AS machine_type            -- 機器区分
+            ,vohi.dclr_place                         AS dclr_place              -- 申告地
+            ,vohi.department_code                    AS department_code         -- 管理部門
+            ,vohi.location                           AS location                -- 事業所
+            ,substrb(vohi.installation_address,1,30) AS installation_address    -- 設置場所
+            ,vohi.owner_company_type                 AS owner_company_type      -- 本社工場区分
+            ,vohi.customer_code                      AS customer_code           -- 顧客コード
+            ,xlcv.vd_cust_flag                       AS vd_cust_flag            -- VD顧客フラグ
       FROM
-            xxcff_vd_object_headers  vohe
+            xxcff_vd_object_histories  vohi   -- 自販機物件履歴
+           ,xxcff_vd_object_headers    vohe   -- 自販機物件
+           ,xxcff_lease_class_v        xlcv   -- リース種別ビュー
       WHERE
-            vohe.object_header_id in (
-                                      SELECT
-                                             voh.object_header_id             -- 物件ID
-                                      FROM
-                                             xxcff_vd_object_histories  voh   -- 自販機物件履歴
-                                      WHERE
-                                            voh.fa_if_flag   = cv_no         -- FA未連携
-                                        AND voh.process_type = cv_status_103 -- 移動
-                                      )
+            (vohi.object_header_id ,vohi.history_num) IN (
+                                                          SELECT
+                                                                 /*+ INDEX(VOH XXCFF_VD_OBJECT_HISTORIES_N02) */
+                                                                 voh.object_header_id             -- 物件ID
+                                                                ,MAX(voh.history_num)             -- 履歴番号
+                                                          FROM
+                                                                 xxcff_vd_object_histories  voh   -- 自販機物件履歴
+                                                          WHERE
+                                                                voh.fa_if_flag   =  cv_no                                       -- FA未連携
+                                                            AND voh.process_type =  cv_status_103                               -- 移動
+                                                            AND voh.moved_date   <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) -- 会計期間
+                                                          GROUP BY 
+                                                                voh.object_header_id
+                                                         )
+      AND   vohi.object_header_id                     = vohe.object_header_id
+      AND   vohe.lease_class                          = xlcv.lease_class_code
       ORDER BY
-            vohe.object_code
+            vohi.object_code
         FOR UPDATE NOWAIT
       ;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -2366,6 +2814,10 @@ AS
                       ,g_location_tab                -- 事業所
                       ,g_installation_address_tab    -- 設置場所
                       ,g_owner_company_type_tab      -- 本社工場区分
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+                      ,g_customer_code_tab           -- 顧客コード
+                      ,g_vd_cust_flag_tab            -- VD顧客フラグ
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
     ;
     -- 移動対象件数カウント
     gn_vd_trnsf_target_cnt := g_object_header_id_tab.COUNT;
@@ -2413,7 +2865,7 @@ AS
       IF ( g_moved_date_tab(ln_loop_cnt) IS NULL ) THEN
         -- 警告フラグに'Y'をセット
         lv_warn_flg := cv_yes;
-        -- 移動スキップ件数カウント
+        -- 移動警告件数カウント
         gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
         -- 警告メッセージをセット
         gv_out_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                           -- XXCFF
@@ -2439,7 +2891,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 移動スキップ件数カウント
+          -- 移動警告件数カウント
           gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -2466,7 +2918,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 移動スキップ件数カウント
+          -- 移動警告件数カウント
           gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -2493,7 +2945,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 移動スキップ件数カウント
+          -- 移動警告件数カウント
           gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -2520,7 +2972,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 移動スキップ件数カウント
+          -- 移動警告件数カウント
           gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -2547,7 +2999,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 移動スキップ件数カウント
+          -- 移動警告件数カウント
           gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -2574,7 +3026,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 移動スキップ件数カウント
+          -- 移動警告件数カウント
           gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -2631,7 +3083,7 @@ AS
           IF ( lv_warn_flg = cv_no ) THEN
             -- 警告フラグに'Y'をセット
             lv_warn_flg := cv_yes;
-            -- 移動スキップ件数カウント
+            -- 移動警告件数カウント
             gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
           END IF;
           -- 警告メッセージをセット
@@ -2677,162 +3129,344 @@ AS
         EXCEPTION
           -- 固定資産情報が取得できない場合
           WHEN NO_DATA_FOUND THEN
-            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
-                                                          ,cv_msg_017a03_m_013     -- 取得エラー
-                                                          ,cv_tkn_table            -- トークン'TABLE_NAME'
-                                                          ,cv_msg_017a03_t_023     -- 資産詳細情報
-                                                          ,cv_tkn_info             -- トークン'INFO'
-                                                          ,cv_msg_017a03_t_017)    -- 固定資産（移動）情報
-                                                          ,1
-                                                          ,5000);
-            RAISE chk_no_data_found_expt;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+--                                                          ,cv_msg_017a03_m_013     -- 取得エラー
+--                                                          ,cv_tkn_table            -- トークン'TABLE_NAME'
+--                                                          ,cv_msg_017a03_t_023     -- 資産詳細情報
+--                                                          ,cv_tkn_info             -- トークン'INFO'
+--                                                          ,cv_msg_017a03_t_017)    -- 固定資産（移動）情報
+--                                                          ,1
+--                                                          ,5000);
+--            RAISE chk_no_data_found_expt;
+            lv_warn_flg := cv_yes;
+            -- 移動スキップ件数カウント
+            gn_vd_trnsf_skip_cnt := gn_vd_trnsf_skip_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
         END;
 --
-        --==============================================================
-        -- 減価償却費勘定セグメント値取得 (A-5-3)
-        --==============================================================
-        -- 会社コードに本社コードを設定
-        lv_comp_cd := gv_comp_cd_itoen;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--        --==============================================================
+--        -- 減価償却費勘定セグメント値取得 (A-5-3)
+--        --==============================================================
+--        -- 会社コードに本社コードを設定
+--        lv_comp_cd := gv_comp_cd_itoen;
+----
+--        -- 減価償却勘定の償却科目を取得
+--        BEGIN
+--          SELECT 
+--                 flv.attribute4   -- 償却科目
+--          INTO
+--                 lv_segment4      -- 勘定科目
+--          FROM
+--                fnd_lookup_values  flv
+--          WHERE
+--                flv.lookup_type  = cv_asset_category_id
+--          AND   flv.lookup_code  = g_machine_type_tab(ln_loop_cnt)
+--          AND   flv.language     = cv_lang_ja
+--          AND   flv.enabled_flag = cv_yes
+--          AND   TRUNC(cd_od_sysdate) BETWEEN TRUNC(NVL(flv.start_date_active, cd_od_sysdate)) 
+--                                         AND TRUNC(NVL(flv.end_date_active, cd_od_sysdate))
+--          ;
+--        EXCEPTION
+--          -- 減価償却勘定の償却科目が取得できない場合
+--          WHEN NO_DATA_FOUND THEN
+--            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+--                                                          ,cv_msg_017a03_m_019     -- 参照タイプ取得エラー
+--                                                          ,cv_tkn_lookup_type      -- トークン'LOOKUP_TYPE'
+--                                                          ,cv_msg_017a03_t_024)    -- 自販機資産カテゴリ固定値
+--                                                          ,1
+--                                                          ,5000);
+--            RAISE chk_no_data_found_expt;
+--        END;
+----
+--        --==============================================================
+--        -- 移動OIF登録 (A-5-4)
+--        --==============================================================
+----
+--        -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
+--        g_segments_tab(1) := gv_comp_cd_itoen;
+--        -- セグメント値配列設定(SEG3:勘定科目) : 取得した償却科目を設定
+--        g_segments_tab(3) := lv_segment4;
+----
+--        -- 移動詳細情報変更チェックを呼出、情報の変更有無をチェックする
+--        chk_object_trnsf_data(
+--           iv_object_code          => g_object_code_tab(ln_loop_cnt)          -- 物件コード
+--          ,iv_dclr_place           => g_dclr_place_tab(ln_loop_cnt)           -- 申告地
+--          ,iv_department_code      => g_department_code_tab(ln_loop_cnt)      -- 管理部門
+--          ,iv_location             => g_location_tab(ln_loop_cnt)             -- 事業所
+--          ,iv_installation_address => g_installation_address_tab(ln_loop_cnt) -- 場所
+--          ,iv_owner_company_type   => g_owner_company_type_tab(ln_loop_cnt)   -- 本社工場区分
+--          ,iv_modify_flg           => lv_modify_flg                           -- 変更フラグ
+--          ,ov_errbuf               => lv_errbuf                               -- エラー・メッセージ           --# 固定 # 
+--          ,ov_retcode              => lv_retcode                              -- リターン・コード             --# 固定 #
+--          ,ov_errmsg               => lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        IF (lv_retcode <> ov_retcode) THEN
+--          RAISE global_api_expt;
+--        END IF;
+----
+--        -- 変更がある場合
+--        IF ( lv_modify_flg = cv_yes ) THEN
+--          -- 移動OIF登録
+--          INSERT INTO xx01_transfer_oif(
+--             transfer_oif_id           -- ID
+--            ,book_type_code            -- 台帳名
+--            ,asset_number              -- 資産番号
+--            ,transaction_date_entered  -- 振替日
+--            ,transaction_units         -- 単位変更
+--            ,posting_flag              -- 転記チェックフラグ
+--            ,status                    -- ステータス
+--            ,segment1                  -- 減価償却費勘定セグメント-会社
+--            ,segment2                  -- 減価償却費勘定セグメント-部門
+--            ,segment3                  -- 減価償却費勘定セグメント-勘定科目
+--            ,segment4                  -- 減価償却費勘定セグメント-補助科目
+--            ,segment5                  -- 減価償却費勘定セグメント-顧客
+--            ,segment6                  -- 減価償却費勘定セグメント-企業
+--            ,segment7                  -- 減価償却費勘定セグメント-予備1
+--            ,segment8                  -- 減価償却費勘定セグメント-予備2
+--            ,loc_segment1              -- 申告地
+--            ,loc_segment2              -- 管理部門
+--            ,loc_segment3              -- 事業所
+--            ,loc_segment4              -- 場所
+--            ,loc_segment5              -- 本社工場区分
+--            ,created_by                -- 作成者
+--            ,creation_date             -- 作成日
+--            ,last_updated_by           -- 最終更新者
+--            ,last_update_date          -- 最終更新日
+--            ,last_update_login         -- 最終更新ログインID
+--            ,request_id                -- リクエストID
+--            ,program_application_id    -- アプリケーションID
+--            ,program_id                -- プログラムID
+--            ,program_update_date       -- プログラム最終更新日
+--          ) VALUES (
+--             xx01_transfer_oif_s.NEXTVAL              -- ID
+--            ,gv_fixed_asset_register                  -- 台帳名
+--            ,lv_asset_number                          -- 資産番号
+--            ,g_moved_date_tab(ln_loop_cnt)            -- 振替日
+--            ,ln_current_units                         -- 単位変更
+--            ,cv_yes                                   -- 転記チェックフラグ
+--            ,cv_status                                -- ステータス
+--            ,lv_comp_cd                               -- 減価償却費勘定セグメント-会社
+--            ,gv_dep_cd_chosei                         -- 減価償却費勘定セグメント-部門
+--            ,lv_segment4                              -- 減価償却費勘定セグメント-勘定科目
+--            ,cv_sub_acct_dummy                        -- 減価償却費勘定セグメント-補助科目
+--            ,cv_ptnr_cd_dummy                         -- 減価償却費勘定セグメント-顧客
+--            ,cv_busi_cd_dummy                         -- 減価償却費勘定セグメント-企業
+--            ,cv_project_dummy                         -- 減価償却費勘定セグメント-予備1
+--            ,cv_future_dummy                          -- 減価償却費勘定セグメント-予備2
+--            ,g_dclr_place_tab(ln_loop_cnt)            -- 申告地
+--            ,g_department_code_tab(ln_loop_cnt)       -- 管理部門
+--            ,g_location_tab(ln_loop_cnt)              -- 事業所
+--            ,g_installation_address_tab(ln_loop_cnt)  -- 場所
+--            ,g_owner_company_type_tab(ln_loop_cnt)    -- 本社工場区分
+--            ,cn_created_by                            -- 作成者
+--            ,cd_creation_date                         -- 作成日
+--            ,cn_last_updated_by                       -- 最終更新者
+--            ,cd_last_update_date                      -- 最終更新日
+--            ,cn_last_update_login                     -- 最終更新ログインID
+--            ,cn_request_id                            -- リクエストID
+--            ,cn_program_application_id                -- アプリケーションID
+--            ,cn_program_id                            -- プログラムID
+--            ,cd_program_update_date                   -- プログラム最終更新日
+--          )
+--          ;
+--        ELSE
+--          -- 警告フラグに'Y'をセット
+--          lv_warn_flg := cv_yes;
+--          -- 移動スキップ件数カウント
+--          gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
+--          -- 警告メッセージをセット
+--          gv_out_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                           -- XXCFF
+--                                                         ,cv_msg_017a03_m_023                      -- 自販機物件FA連携項目存在チェックエラー
+--                                                         ,cv_tkn_param_val1                        -- トークン'PARAM_VAL1'
+--                                                         ,g_object_header_id_tab(ln_loop_cnt)      -- 物件ID
+--                                                         ,cv_tkn_param_val2                        -- トークン'PARAM_VAL2'
+--                                                         ,g_object_code_tab(ln_loop_cnt))                     -- 除・売却日
+--                                                         ,1
+--                                                         ,2000);
+--          -- 警告メッセージ出力
+--          FND_FILE.PUT_LINE(
+--             which  => FND_FILE.OUTPUT
+--            ,buff   => gv_out_msg
+--          );
+--        END IF;
+        -- 資産が取得できた場合
+        IF ( lv_warn_flg = cv_no ) THEN
+          --==============================================================
+          -- 減価償却費勘定セグメント値取得 (A-5-3)
+          --==============================================================
+          -- 会社コードに本社コードを設定
+          lv_comp_cd := gv_comp_cd_itoen;
 --
-        -- 減価償却勘定の償却科目を取得
-        BEGIN
-          SELECT 
-                 flv.attribute4   -- 償却科目
-          INTO
-                 lv_segment4      -- 勘定科目
-          FROM
-                fnd_lookup_values  flv
-          WHERE
-                flv.lookup_type  = cv_asset_category_id
-          AND   flv.lookup_code  = g_machine_type_tab(ln_loop_cnt)
-          AND   flv.language     = cv_lang_ja
-          AND   flv.enabled_flag = cv_yes
-          AND   TRUNC(cd_od_sysdate) BETWEEN TRUNC(NVL(flv.start_date_active, cd_od_sysdate)) 
-                                         AND TRUNC(NVL(flv.end_date_active, cd_od_sysdate))
-          ;
-        EXCEPTION
-          -- 減価償却勘定の償却科目が取得できない場合
-          WHEN NO_DATA_FOUND THEN
-            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
-                                                          ,cv_msg_017a03_m_019     -- 参照タイプ取得エラー
-                                                          ,cv_tkn_lookup_type      -- トークン'LOOKUP_TYPE'
-                                                          ,cv_msg_017a03_t_024)    -- 自販機資産カテゴリ固定値
-                                                          ,1
-                                                          ,5000);
-            RAISE chk_no_data_found_expt;
-        END;
+          -- 減価償却勘定の償却科目を取得
+          BEGIN
+            SELECT 
+                   flv.attribute4  attribute4 -- 償却科目
+                  ,flv.attribute8  attribute8 -- 補助科目
+                  ,flv.attribute9  attribute9 -- 仕訳区分
+            INTO
+                   lv_segment4      -- 勘定科目
+                  ,lv_segment8      -- 補助科目
+                  ,lv_segment9      -- 仕訳区分
+            FROM
+                  fnd_lookup_values  flv
+            WHERE
+                  flv.lookup_type  = cv_asset_category_id
+            AND   flv.lookup_code  = g_machine_type_tab(ln_loop_cnt)
+            AND   flv.language     = cv_lang_ja
+            AND   flv.enabled_flag = cv_yes
+            AND   TRUNC(cd_od_sysdate) BETWEEN TRUNC(NVL(flv.start_date_active, cd_od_sysdate)) 
+                                           AND TRUNC(NVL(flv.end_date_active, cd_od_sysdate))
+            ;
+          EXCEPTION
+            -- 減価償却勘定の償却科目が取得できない場合
+            WHEN NO_DATA_FOUND THEN
+              lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff          -- XXCFF
+                                                            ,cv_msg_017a03_m_019     -- 参照タイプ取得エラー
+                                                            ,cv_tkn_lookup_type      -- トークン'LOOKUP_TYPE'
+                                                            ,cv_msg_017a03_t_024)    -- 自販機資産カテゴリ固定値
+                                                            ,1
+                                                            ,5000);
+              RAISE chk_no_data_found_expt;
+          END;
 --
-        --==============================================================
-        -- 移動OIF登録 (A-5-4)
-        --==============================================================
+          --==============================================================
+          -- 移動OIF登録 (A-5-4)
+          --==============================================================
 --
-        -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
-        g_segments_tab(1) := gv_comp_cd_itoen;
-        -- セグメント値配列設定(SEG3:勘定科目) : A-5-3で取得した償却科目を設定
-        g_segments_tab(3) := lv_segment4;
+          -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
+          g_segments_tab(1) := gv_comp_cd_itoen;
+          -- 仕訳区分が1の時
+          IF ( lv_segment9 = cv_segment9_1 ) THEN
+            -- セグメント値配列設定(SEG2:部門) : 取得した管理部門
+            g_segments_tab(2) := g_department_code_tab(ln_loop_cnt);
+          -- 仕訳区分が3の時
+          ELSIF ( lv_segment9 = cv_segment9_3 ) THEN
+            -- セグメント値配列設定(SEG2:部門) : XXCFF:部門コード_減価償却
+            g_segments_tab(2) := gv_dep_cd_depreciation;
+          ELSE
+            -- セグメント値配列設定(SEG2:部門) : XXCFF: 部門コード_調整部門
+            g_segments_tab(2) := gv_dep_cd_chosei;
+          END IF;
+          -- セグメント値配列設定(SEG3:勘定科目) : 取得した償却科目を設定
+          g_segments_tab(3) := lv_segment4;
+          -- セグメント値配列設定(SEG4:補助科目) : 取得した補助科目を設定
+          g_segments_tab(4) := lv_segment8;
 --
-        -- 移動詳細情報変更チェックを呼出、情報の変更有無をチェックする
-        chk_object_trnsf_data(
-           iv_object_code          => g_object_code_tab(ln_loop_cnt)          -- 物件コード
-          ,iv_dclr_place           => g_dclr_place_tab(ln_loop_cnt)           -- 申告地
-          ,iv_department_code      => g_department_code_tab(ln_loop_cnt)      -- 管理部門
-          ,iv_location             => g_location_tab(ln_loop_cnt)             -- 事業所
-          ,iv_installation_address => g_installation_address_tab(ln_loop_cnt) -- 場所
-          ,iv_owner_company_type   => g_owner_company_type_tab(ln_loop_cnt)   -- 本社工場区分
-          ,iv_modify_flg           => lv_modify_flg                           -- 変更フラグ
-          ,ov_errbuf               => lv_errbuf                               -- エラー・メッセージ           --# 固定 # 
-          ,ov_retcode              => lv_retcode                              -- リターン・コード             --# 固定 #
-          ,ov_errmsg               => lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF (lv_retcode <> ov_retcode) THEN
-          RAISE global_api_expt;
-        END IF;
+          -- VD顧客フラグが'Y'の時
+          IF ( g_vd_cust_flag_tab(ln_loop_cnt) = cv_yes ) THEN
+            -- セグメント値配列設定(SEG5:顧客) : 取得した顧客コード
+            g_segments_tab(5) := g_customer_code_tab(ln_loop_cnt);
+          ELSE
+            -- セグメント値配列設定(SEG5:顧客) : ‘000000000’ (固定値）
+            g_segments_tab(5) := cv_ptnr_cd_dummy;
+          END IF;
 --
-        -- 変更がある場合
-        IF ( lv_modify_flg = cv_yes ) THEN
-          -- 移動OIF登録
-          INSERT INTO xx01_transfer_oif(
-             transfer_oif_id           -- ID
-            ,book_type_code            -- 台帳名
-            ,asset_number              -- 資産番号
-            ,transaction_date_entered  -- 振替日
-            ,transaction_units         -- 単位変更
-            ,posting_flag              -- 転記チェックフラグ
-            ,status                    -- ステータス
-            ,segment1                  -- 減価償却費勘定セグメント-会社
-            ,segment2                  -- 減価償却費勘定セグメント-部門
-            ,segment3                  -- 減価償却費勘定セグメント-勘定科目
-            ,segment4                  -- 減価償却費勘定セグメント-補助科目
-            ,segment5                  -- 減価償却費勘定セグメント-顧客
-            ,segment6                  -- 減価償却費勘定セグメント-企業
-            ,segment7                  -- 減価償却費勘定セグメント-予備1
-            ,segment8                  -- 減価償却費勘定セグメント-予備2
-            ,loc_segment1              -- 申告地
-            ,loc_segment2              -- 管理部門
-            ,loc_segment3              -- 事業所
-            ,loc_segment4              -- 場所
-            ,loc_segment5              -- 本社工場区分
-            ,created_by                -- 作成者
-            ,creation_date             -- 作成日
-            ,last_updated_by           -- 最終更新者
-            ,last_update_date          -- 最終更新日
-            ,last_update_login         -- 最終更新ログインID
-            ,request_id                -- リクエストID
-            ,program_application_id    -- アプリケーションID
-            ,program_id                -- プログラムID
-            ,program_update_date       -- プログラム最終更新日
-          ) VALUES (
-             xx01_transfer_oif_s.NEXTVAL              -- ID
-            ,gv_fixed_asset_register                  -- 台帳名
-            ,lv_asset_number                          -- 資産番号
-            ,g_moved_date_tab(ln_loop_cnt)            -- 振替日
-            ,ln_current_units                         -- 単位変更
-            ,cv_yes                                   -- 転記チェックフラグ
-            ,cv_status                                -- ステータス
-            ,lv_comp_cd                               -- 減価償却費勘定セグメント-会社
-            ,gv_dep_cd_chosei                         -- 減価償却費勘定セグメント-部門
-            ,lv_segment4                              -- 減価償却費勘定セグメント-勘定科目
-            ,cv_sub_acct_dummy                        -- 減価償却費勘定セグメント-補助科目
-            ,cv_ptnr_cd_dummy                         -- 減価償却費勘定セグメント-顧客
-            ,cv_busi_cd_dummy                         -- 減価償却費勘定セグメント-企業
-            ,cv_project_dummy                         -- 減価償却費勘定セグメント-予備1
-            ,cv_future_dummy                          -- 減価償却費勘定セグメント-予備2
-            ,g_dclr_place_tab(ln_loop_cnt)            -- 申告地
-            ,g_department_code_tab(ln_loop_cnt)       -- 管理部門
-            ,g_location_tab(ln_loop_cnt)              -- 事業所
-            ,g_installation_address_tab(ln_loop_cnt)  -- 場所
-            ,g_owner_company_type_tab(ln_loop_cnt)    -- 本社工場区分
-            ,cn_created_by                            -- 作成者
-            ,cd_creation_date                         -- 作成日
-            ,cn_last_updated_by                       -- 最終更新者
-            ,cd_last_update_date                      -- 最終更新日
-            ,cn_last_update_login                     -- 最終更新ログインID
-            ,cn_request_id                            -- リクエストID
-            ,cn_program_application_id                -- アプリケーションID
-            ,cn_program_id                            -- プログラムID
-            ,cd_program_update_date                   -- プログラム最終更新日
-          )
-          ;
-        ELSE
-          -- 警告フラグに'Y'をセット
-          lv_warn_flg := cv_yes;
-          -- 移動スキップ件数カウント
-          gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
-          -- 警告メッセージをセット
-          gv_out_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                           -- XXCFF
-                                                         ,cv_msg_017a03_m_023                      -- 自販機物件FA連携項目存在チェックエラー
-                                                         ,cv_tkn_param_val1                        -- トークン'PARAM_VAL1'
-                                                         ,g_object_header_id_tab(ln_loop_cnt)      -- 物件ID
-                                                         ,cv_tkn_param_val2                        -- トークン'PARAM_VAL2'
-                                                         ,g_object_code_tab(ln_loop_cnt))                     -- 除・売却日
-                                                         ,1
-                                                         ,2000);
-          -- 警告メッセージ出力
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
-            ,buff   => gv_out_msg
+          -- 移動詳細情報変更チェックを呼出、情報の変更有無をチェックする
+          chk_object_trnsf_data(
+             iv_object_code          => g_object_code_tab(ln_loop_cnt)          -- 物件コード
+            ,iv_dclr_place           => g_dclr_place_tab(ln_loop_cnt)           -- 申告地
+            ,iv_department_code      => g_department_code_tab(ln_loop_cnt)      -- 管理部門
+            ,iv_location             => g_location_tab(ln_loop_cnt)             -- 事業所
+            ,iv_installation_address => g_installation_address_tab(ln_loop_cnt) -- 場所
+            ,iv_owner_company_type   => g_owner_company_type_tab(ln_loop_cnt)   -- 本社工場区分
+            ,iv_modify_flg           => lv_modify_flg                           -- 変更フラグ
+            ,ov_errbuf               => lv_errbuf                               -- エラー・メッセージ           --# 固定 # 
+            ,ov_retcode              => lv_retcode                              -- リターン・コード             --# 固定 #
+            ,ov_errmsg               => lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
           );
+          IF (lv_retcode <> ov_retcode) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          -- 変更がある場合
+          IF ( lv_modify_flg = cv_yes ) THEN
+            -- 移動OIF登録
+            INSERT INTO xx01_transfer_oif(
+               transfer_oif_id           -- ID
+              ,book_type_code            -- 台帳名
+              ,asset_number              -- 資産番号
+              ,transaction_date_entered  -- 振替日
+              ,transaction_units         -- 単位変更
+              ,posting_flag              -- 転記チェックフラグ
+              ,status                    -- ステータス
+              ,segment1                  -- 減価償却費勘定セグメント-会社
+              ,segment2                  -- 減価償却費勘定セグメント-部門
+              ,segment3                  -- 減価償却費勘定セグメント-勘定科目
+              ,segment4                  -- 減価償却費勘定セグメント-補助科目
+              ,segment5                  -- 減価償却費勘定セグメント-顧客
+              ,segment6                  -- 減価償却費勘定セグメント-企業
+              ,segment7                  -- 減価償却費勘定セグメント-予備1
+              ,segment8                  -- 減価償却費勘定セグメント-予備2
+              ,loc_segment1              -- 申告地
+              ,loc_segment2              -- 管理部門
+              ,loc_segment3              -- 事業所
+              ,loc_segment4              -- 場所
+              ,loc_segment5              -- 本社工場区分
+              ,created_by                -- 作成者
+              ,creation_date             -- 作成日
+              ,last_updated_by           -- 最終更新者
+              ,last_update_date          -- 最終更新日
+              ,last_update_login         -- 最終更新ログインID
+              ,request_id                -- リクエストID
+              ,program_application_id    -- アプリケーションID
+              ,program_id                -- プログラムID
+              ,program_update_date       -- プログラム最終更新日
+            ) VALUES (
+               xx01_transfer_oif_s.NEXTVAL              -- ID
+              ,gv_fixed_asset_register                  -- 台帳名
+              ,lv_asset_number                          -- 資産番号
+              ,g_moved_date_tab(ln_loop_cnt)            -- 振替日
+              ,ln_current_units                         -- 単位変更
+              ,cv_yes                                   -- 転記チェックフラグ
+              ,cv_status                                -- ステータス
+              ,lv_comp_cd                               -- 減価償却費勘定セグメント-会社
+              ,g_segments_tab(2)                        -- 減価償却費勘定セグメント-部門
+              ,lv_segment4                              -- 減価償却費勘定セグメント-勘定科目
+              ,lv_segment8                              -- 減価償却費勘定セグメント-補助科目
+              ,g_segments_tab(5)                        -- 減価償却費勘定セグメント-顧客
+              ,cv_busi_cd_dummy                         -- 減価償却費勘定セグメント-企業
+              ,cv_project_dummy                         -- 減価償却費勘定セグメント-予備1
+              ,cv_future_dummy                          -- 減価償却費勘定セグメント-予備2
+              ,g_dclr_place_tab(ln_loop_cnt)            -- 申告地
+              ,g_department_code_tab(ln_loop_cnt)       -- 管理部門
+              ,g_location_tab(ln_loop_cnt)              -- 事業所
+              ,g_installation_address_tab(ln_loop_cnt)  -- 場所
+              ,g_owner_company_type_tab(ln_loop_cnt)    -- 本社工場区分
+              ,cn_created_by                            -- 作成者
+              ,cd_creation_date                         -- 作成日
+              ,cn_last_updated_by                       -- 最終更新者
+              ,cd_last_update_date                      -- 最終更新日
+              ,cn_last_update_login                     -- 最終更新ログインID
+              ,cn_request_id                            -- リクエストID
+              ,cn_program_application_id                -- アプリケーションID
+              ,cn_program_id                            -- プログラムID
+              ,cd_program_update_date                   -- プログラム最終更新日
+            )
+            ;
+          ELSE
+            -- 警告フラグに'Y'をセット
+            lv_warn_flg := cv_yes;
+            -- 移動警告件数カウント
+            gn_vd_trnsf_warn_cnt := gn_vd_trnsf_warn_cnt + 1;
+            -- 警告メッセージをセット
+            gv_out_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                           -- XXCFF
+                                                           ,cv_msg_017a03_m_023                      -- 自販機物件FA連携項目存在チェックエラー
+                                                           ,cv_tkn_param_val1                        -- トークン'PARAM_VAL1'
+                                                           ,g_object_header_id_tab(ln_loop_cnt)      -- 物件ID
+                                                           ,cv_tkn_param_val2                        -- トークン'PARAM_VAL2'
+                                                           ,g_object_code_tab(ln_loop_cnt))                     -- 除・売却日
+                                                           ,1
+                                                           ,2000);
+            -- 警告メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => gv_out_msg
+            );
+          END IF;
         END IF;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
 --
         --==============================================================
         -- 自販機物件履歴の更新（移動） (A-5-5)
@@ -2963,6 +3597,11 @@ AS
     lv_segment5               VARCHAR2(150);   -- 耐用年数
     lv_segment6               VARCHAR2(150);   -- 償却方法
     lv_segment7               VARCHAR2(150);   -- リース種別
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    lv_segment8               VARCHAR2(150);   -- 補助科目
+    lv_segment9               VARCHAR2(150);   -- 仕訳区分
+    lv_segment12              VARCHAR2(150);   -- FA連携チェック対象区分
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
     lv_description            VARCHAR2(80);    -- 摘要
     lv_attribute2             VARCHAR2(150);   -- DFF02（取得日）
 --
@@ -2973,6 +3612,12 @@ AS
     CURSOR vd_object_add_cur
     IS
       SELECT
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+             /*+ LEADING(VOH@a)
+                 USE_NL(VOH@a VOHE XLCV.FFVS XLCV.FFV XLCV.FFVT)
+                 INDEX(VOH@a XXCFF_VD_OBJECT_HISTORIES_N02)
+                 INDEX(VOHE XXCFF_VD_OBJECT_HEADERS_PK) */
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
              vohe.object_header_id                    AS object_header_id        -- 物件ID
             ,vohe.object_code                         AS object_code             -- 物件コード
             ,vohe.manufacturer_name                   AS manufacturer_name       -- メーカー名
@@ -2997,11 +3642,21 @@ AS
 -- 2014/08/06 Ver.1.1 Y.Shouji MOD END
             ,vohe.assets_date                         AS attribute2              -- DFF02（取得日）
             ,vohe.object_header_id                    AS attribute14             -- DFF14（自販機物件内部ID）
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+            ,vohe.customer_code                       AS customer_code           -- 顧客コード
+            ,xlcv.vd_cust_flag                        AS vd_cust_flag            -- VD顧客フラグ
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
       FROM
             xxcff_vd_object_headers  vohe                            -- 自販機物件管理
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+           ,xxcff_lease_class_v      xlcv                            -- リース種別ビュー
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
       WHERE
             vohe.object_header_id in (
                                       SELECT
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+                                             /*+ QB_NAME(a) */
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
                                              voh.object_header_id             -- 物件ID
                                       FROM
                                              xxcff_vd_object_histories  voh   -- 自販機物件履歴
@@ -3010,6 +3665,9 @@ AS
                                       AND    voh.process_type           =  cv_status_101                               -- 未確定
                                       AND    voh.date_placed_in_service <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) -- 会計期間
                                       )
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+      AND   vohe.lease_class      = xlcv.lease_class_code
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
       ORDER BY
             vohe.object_code                                         -- 物件コード昇順
         FOR UPDATE NOWAIT
@@ -3063,6 +3721,10 @@ AS
                       ,g_payables_cost_tab           -- 資産当初取得価額
                       ,g_assets_date_tab             -- DFF02（取得日）
                       ,g_object_internal_id_tab      -- DFF14（自販機物件内部ID）
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+                      ,g_customer_code_tab           -- 顧客コード
+                      ,g_vd_cust_flag_tab            -- VD顧客フラグ
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
     ;
     -- 未確定対象件数カウント
     gn_vd_add_target_cnt := g_object_header_id_tab.COUNT;
@@ -3110,7 +3772,7 @@ AS
       IF ( g_manufacturer_name_tab(ln_loop_cnt)||g_model_tab(ln_loop_cnt)||g_age_type_tab(ln_loop_cnt) IS NULL ) THEN
         -- 警告フラグに'Y'をセット
         lv_warn_flg := cv_yes;
-        -- 未確定スキップ件数カウント
+        -- 未確定警告件数カウント
         gn_vd_add_warn_cnt := gn_vd_add_warn_cnt + 1;
         -- 警告メッセージをセット
         gv_out_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                           -- XXCFF
@@ -3136,7 +3798,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 未確定スキップ件数カウント
+          -- 未確定警告件数カウント
           gn_vd_add_warn_cnt := gn_vd_add_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -3163,7 +3825,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 未確定スキップ件数カウント
+          -- 未確定警告件数カウント
           gn_vd_add_warn_cnt := gn_vd_add_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -3193,7 +3855,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 未確定スキップ件数カウント
+          -- 未確定警告件数カウント
           gn_vd_add_warn_cnt := gn_vd_add_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -3220,7 +3882,7 @@ AS
         IF ( lv_warn_flg = cv_no ) THEN
           -- 警告フラグに'Y'をセット
           lv_warn_flg := cv_yes;
-          -- 未確定スキップ件数カウント
+          -- 未確定警告件数カウント
           gn_vd_add_warn_cnt := gn_vd_add_warn_cnt + 1;
         END IF;
         -- 警告メッセージをセット
@@ -3249,13 +3911,25 @@ AS
         -- 資産カテゴリのセグメント値を取得する
         BEGIN
           SELECT 
-                 attribute1  -- 種類
-                ,attribute2  -- 償却申告
-                ,attribute3  -- 資産勘定
-                ,attribute4  -- 償却科目
-                ,attribute5  -- 耐用年数
-                ,attribute6  -- 償却方法
-                ,attribute7  -- リース種別
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--                 attribute1  -- 種類
+--                ,attribute2  -- 償却申告
+--                ,attribute3  -- 資産勘定
+--                ,attribute4  -- 償却科目
+--                ,attribute5  -- 耐用年数
+--                ,attribute6  -- 償却方法
+--                ,attribute7  -- リース種別
+                 flv.attribute1   attribute1  -- 種類
+                ,flv.attribute2   attribute2  -- 償却申告
+                ,flv.attribute3   attribute3  -- 資産勘定
+                ,flv.attribute4   attribute4  -- 償却科目
+                ,flv.attribute5   attribute5  -- 耐用年数
+                ,flv.attribute6   attribute6  -- 償却方法
+                ,flv.attribute7   attribute7  -- リース種別
+                ,flv.attribute8   attribute8  -- 補助科目
+                ,flv.attribute9   attribute9  -- 仕訳区分
+                ,flv.attribute12  attribute12 -- FA連携チェック対象区分
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
           INTO
                  lv_segment1  -- 種類
                 ,lv_segment2  -- 償却申告
@@ -3264,6 +3938,11 @@ AS
                 ,lv_segment5  -- 耐用年数
                 ,lv_segment6  -- 償却方法
                 ,lv_segment7  -- リース種別
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+                ,lv_segment8  -- 補助科目
+                ,lv_segment9  -- 仕訳区分
+                ,lv_segment12 -- FA連携チェック対象区分
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
           FROM
                 fnd_lookup_values  flv
           WHERE
@@ -3285,139 +3964,302 @@ AS
                                                           ,5000);
             RAISE chk_no_data_found_expt;
         END;
-        -- 資産カテゴリの組合せチェックおよび、資産カテゴリCCIDを取得
-        xxcff_common1_pkg.chk_fa_category(
-           iv_segment1      => lv_segment1 -- 種類
-          ,iv_segment2      => lv_segment2 -- 償却申告
-          ,iv_segment3      => lv_segment3 -- 資産勘定
-          ,iv_segment4      => lv_segment4 -- 償却科目
-          ,iv_segment5      => lv_segment5 -- 耐用年数
-          ,iv_segment6      => lv_segment6 -- 償却方法
-          ,iv_segment7      => lv_segment7 -- リース種別
-          ,on_category_id   => g_category_ccid_tab(ln_loop_cnt)  -- 資産カテゴリCCID
-          ,ov_errbuf        => lv_errbuf                         -- エラー・メッセージ           --# 固定 # 
-          ,ov_retcode       => lv_retcode                        -- リターン・コード             --# 固定 #
-          ,ov_errmsg        => lv_errmsg                         -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF (lv_retcode <> ov_retcode) THEN
-          RAISE global_api_expt;
-        END IF;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--        -- 資産カテゴリの組合せチェックおよび、資産カテゴリCCIDを取得
+--        xxcff_common1_pkg.chk_fa_category(
+--           iv_segment1      => lv_segment1 -- 種類
+--          ,iv_segment2      => lv_segment2 -- 償却申告
+--          ,iv_segment3      => lv_segment3 -- 資産勘定
+--          ,iv_segment4      => lv_segment4 -- 償却科目
+--          ,iv_segment5      => lv_segment5 -- 耐用年数
+--          ,iv_segment6      => lv_segment6 -- 償却方法
+--          ,iv_segment7      => lv_segment7 -- リース種別
+--          ,on_category_id   => g_category_ccid_tab(ln_loop_cnt)  -- 資産カテゴリCCID
+--          ,ov_errbuf        => lv_errbuf                         -- エラー・メッセージ           --# 固定 # 
+--          ,ov_retcode       => lv_retcode                        -- リターン・コード             --# 固定 #
+--          ,ov_errmsg        => lv_errmsg                         -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        IF (lv_retcode <> ov_retcode) THEN
+--          RAISE global_api_expt;
+--        END IF;
+----
+--        --==============================================================
+--        -- 減価償却費勘定CCID取得 (A-4-3)
+--        --==============================================================
+----
+--        -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
+--        g_segments_tab(1) := gv_comp_cd_itoen;
+--        -- セグメント値配列設定(SEG3:勘定科目) : A-4-2で取得した償却科目を設定
+--        g_segments_tab(3) := lv_segment4;
+----
+--        -- 減価償却費勘定CCID取得
+--        get_deprn_ccid(
+--           iot_segments     => g_segments_tab                  -- セグメント値配列
+--          ,ot_deprn_ccid    => g_deprn_ccid_tab(ln_loop_cnt)   -- 減価償却費勘定CCID
+--          ,ov_errbuf        => lv_errbuf                       -- エラー・メッセージ           --# 固定 # 
+--          ,ov_retcode       => lv_retcode                      -- リターン・コード             --# 固定 #
+--          ,ov_errmsg        => lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        IF (lv_retcode <> ov_retcode) THEN
+--          RAISE global_api_expt;
+--        END IF;
+----
+--        --==============================================================
+--        -- 事業所CCID取得 (A-4-4)
+--        --==============================================================
+--        xxcff_common1_pkg.chk_fa_location(
+--           iv_segment1      => g_dclr_place_tab(ln_loop_cnt)           -- 申告地
+--          ,iv_segment2      => g_department_code_tab(ln_loop_cnt)      -- 管理部門
+--          ,iv_segment3      => g_location_tab(ln_loop_cnt)             -- 事業所
+--          ,iv_segment4      => g_installation_address_tab(ln_loop_cnt) -- 場所
+--          ,iv_segment5      => g_owner_company_type_tab(ln_loop_cnt)   -- 本社工場区分
+--          ,on_location_id   => g_location_ccid_tab(ln_loop_cnt)        -- 事業所CCID
+--          ,ov_errbuf        => lv_errbuf                               -- エラー・メッセージ           --# 固定 # 
+--          ,ov_retcode       => lv_retcode                              -- リターン・コード             --# 固定 #
+--          ,ov_errmsg        => lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        IF (lv_retcode <> ov_retcode) THEN
+--          RAISE global_api_expt;
+--        END IF;
+----
+--        --==============================================================
+--        -- 追加OIF登録 (A-4-5)
+--        --==============================================================
+--        -- 摘要を取得する
+--        lv_description := SUBSTRB(g_manufacturer_name_tab(ln_loop_cnt) || ' ' ||
+--                                  g_model_tab(ln_loop_cnt) || ' ' ||
+--                                  g_age_type_tab(ln_loop_cnt)
+--                                  , 1, 80);
+--        -- DFF02(取得日)の取得
+--        IF (g_assets_date_tab(ln_loop_cnt) IS NULL) THEN
+--          -- DFF02(取得日)がNULLの時、事業供用日をYYYY/MM/DD型でセットする
+--          lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+--        ELSE
+--          -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
+--          lv_attribute2 := to_char(g_assets_date_tab(ln_loop_cnt), cv_date_type);
+--        END IF;
+----
+--        -- 追加OIF登録
+--        INSERT INTO fa_mass_additions(
+--           mass_addition_id              -- 追加OIF内部ID
+--          ,asset_number                  -- 資産番号
+--          ,tag_number                    -- 現伝票番号
+--          ,description                   -- 摘要
+--          ,asset_category_id             -- 資産カテゴリCCID
+--          ,book_type_code                -- 台帳
+--          ,date_placed_in_service        -- 事業供用日
+--          ,fixed_assets_cost             -- 取得価額
+--          ,payables_units                -- AP数量
+--          ,fixed_assets_units            -- 単位数量
+--          ,expense_code_combination_id   -- 減価償却費勘定CCID
+--          ,location_id                   -- 事業所フレックスフィールドCCID
+--          ,posting_status                -- 転記ステータス
+--          ,queue_name                    -- キュー名
+--          ,payables_cost                 -- 資産当初取得価額
+--          ,depreciate_flag               -- 償却費計上フラグ
+--          ,asset_type                    -- 資産タイプ
+--          ,attribute2                    -- DFF02（取得日）
+--          ,attribute14                   -- DFF14（自販機物件内部ID）
+--          ,last_update_date              -- 最終更新日
+--          ,last_updated_by               -- 最終更新者
+--          ,created_by                    -- 作成者ID
+--          ,creation_date                 -- 作成日
+--          ,last_update_login             -- 最終更新ログインID
+--        ) VALUES (
+--           fa_mass_additions_s.NEXTVAL               -- 追加OIF内部ID
+--          ,NULL                                      -- 資産番号
+--          ,g_object_code_tab(ln_loop_cnt)            -- 現伝票番号
+--          ,lv_description                            -- 摘要
+--          ,g_category_ccid_tab(ln_loop_cnt)          -- 資産カテゴリCCID
+--          ,gv_fixed_asset_register                   -- 台帳
+--          ,g_date_placed_in_service_tab(ln_loop_cnt) -- 事業供用日
+---- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+----          ,g_assets_cost_tab(ln_loop_cnt)            -- 取得価額
+--          ,g_cost_tab(ln_loop_cnt)                   -- 取得価額
+---- 2014/08/06 Ver.1.1 Y.Shouji MOD END
+--          ,g_payables_units_tab(ln_loop_cnt)         -- AP数量
+--          ,g_fixed_assets_units_tab(ln_loop_cnt)     -- 単位数量
+--          ,g_deprn_ccid_tab(ln_loop_cnt)             -- 減価償却費勘定CCID
+--          ,g_location_ccid_tab(ln_loop_cnt)          -- 事業所フレックスフィールドCCID
+--          ,cv_posting_status                         -- 転記ステータス
+--          ,cv_queue_name                             -- キュー名
+---- 2014/08/06 Ver.1.1 Y.Shouji MOD START
+----          ,g_assets_cost_tab(ln_loop_cnt)            -- 資産当初取得価額
+--          ,g_payables_cost_tab(ln_loop_cnt)          -- 資産当初取得価額
+---- 2014/08/06 Ver.1.1 Y.Shouji MOD END
+--          ,cv_depreciate_flag                        -- 償却費計上フラグ
+--          ,cv_asset_type                             -- 資産タイプ
+--          ,lv_attribute2                             -- DFF02（取得日）
+--          ,g_object_internal_id_tab(ln_loop_cnt)     -- DFF14（自販機物件内部ID）
+--          ,cd_last_update_date                       -- 最終更新日
+--          ,cn_last_updated_by                        -- 最終更新者
+--          ,cn_created_by                             -- 作成者ID
+--          ,cd_creation_date                          -- 作成日
+--          ,cn_last_update_login                      -- 最終更新ログインID
+--        )
+--        ;
 --
-        --==============================================================
-        -- 減価償却費勘定CCID取得 (A-4-3)
-        --==============================================================
---
-        -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
-        g_segments_tab(1) := gv_comp_cd_itoen;
-        -- セグメント値配列設定(SEG3:勘定科目) : A-4-2で取得した償却科目を設定
-        g_segments_tab(3) := lv_segment4;
---
-        -- 減価償却費勘定CCID取得
-        get_deprn_ccid(
-           iot_segments     => g_segments_tab                  -- セグメント値配列
-          ,ot_deprn_ccid    => g_deprn_ccid_tab(ln_loop_cnt)   -- 減価償却費勘定CCID
-          ,ov_errbuf        => lv_errbuf                       -- エラー・メッセージ           --# 固定 # 
-          ,ov_retcode       => lv_retcode                      -- リターン・コード             --# 固定 #
-          ,ov_errmsg        => lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF (lv_retcode <> ov_retcode) THEN
-          RAISE global_api_expt;
-        END IF;
---
-        --==============================================================
-        -- 事業所CCID取得 (A-4-4)
-        --==============================================================
-        xxcff_common1_pkg.chk_fa_location(
-           iv_segment1      => g_dclr_place_tab(ln_loop_cnt)           -- 申告地
-          ,iv_segment2      => g_department_code_tab(ln_loop_cnt)      -- 管理部門
-          ,iv_segment3      => g_location_tab(ln_loop_cnt)             -- 事業所
-          ,iv_segment4      => g_installation_address_tab(ln_loop_cnt) -- 場所
-          ,iv_segment5      => g_owner_company_type_tab(ln_loop_cnt)   -- 本社工場区分
-          ,on_location_id   => g_location_ccid_tab(ln_loop_cnt)        -- 事業所CCID
-          ,ov_errbuf        => lv_errbuf                               -- エラー・メッセージ           --# 固定 # 
-          ,ov_retcode       => lv_retcode                              -- リターン・コード             --# 固定 #
-          ,ov_errmsg        => lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF (lv_retcode <> ov_retcode) THEN
-          RAISE global_api_expt;
-        END IF;
---
-        --==============================================================
-        -- 追加OIF登録 (A-4-5)
-        --==============================================================
-        -- 摘要を取得する
-        lv_description := SUBSTRB(g_manufacturer_name_tab(ln_loop_cnt) || ' ' ||
-                                  g_model_tab(ln_loop_cnt) || ' ' ||
-                                  g_age_type_tab(ln_loop_cnt)
-                                  , 1, 80);
-        -- DFF02(取得日)の取得
-        IF (g_assets_date_tab(ln_loop_cnt) IS NULL) THEN
-          -- DFF02(取得日)がNULLの時、事業供用日をYYYY/MM/DD型でセットする
-          lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+        -- FA連携チェック対象区分が'1'かつ、取得価額がショーケース_FA連携金額未満の場合
+        -- A-4-2～A-4-5をスキップする
+        IF (  lv_segment12 = cv_segment12_1
+          AND g_cost_tab(ln_loop_cnt) < gn_fa_coop_amount_sh ) THEN
+          gn_vd_add_skip_cnt := gn_vd_add_skip_cnt + 1;
         ELSE
-          -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
-          lv_attribute2 := to_char(g_assets_date_tab(ln_loop_cnt), cv_date_type);
-        END IF;
+          -- 資産カテゴリの組合せチェックおよび、資産カテゴリCCIDを取得
+          xxcff_common1_pkg.chk_fa_category(
+             iv_segment1      => lv_segment1 -- 種類
+            ,iv_segment2      => lv_segment2 -- 償却申告
+            ,iv_segment3      => lv_segment3 -- 資産勘定
+            ,iv_segment4      => lv_segment4 -- 償却科目
+            ,iv_segment5      => lv_segment5 -- 耐用年数
+            ,iv_segment6      => lv_segment6 -- 償却方法
+            ,iv_segment7      => lv_segment7 -- リース種別
+            ,on_category_id   => g_category_ccid_tab(ln_loop_cnt)  -- 資産カテゴリCCID
+            ,ov_errbuf        => lv_errbuf                         -- エラー・メッセージ           --# 固定 # 
+            ,ov_retcode       => lv_retcode                        -- リターン・コード             --# 固定 #
+            ,ov_errmsg        => lv_errmsg                         -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode <> ov_retcode) THEN
+            RAISE global_api_expt;
+          END IF;
 --
-        -- 追加OIF登録
-        INSERT INTO fa_mass_additions(
-           mass_addition_id              -- 追加OIF内部ID
-          ,asset_number                  -- 資産番号
-          ,tag_number                    -- 現伝票番号
-          ,description                   -- 摘要
-          ,asset_category_id             -- 資産カテゴリCCID
-          ,book_type_code                -- 台帳
-          ,date_placed_in_service        -- 事業供用日
-          ,fixed_assets_cost             -- 取得価額
-          ,payables_units                -- AP数量
-          ,fixed_assets_units            -- 単位数量
-          ,expense_code_combination_id   -- 減価償却費勘定CCID
-          ,location_id                   -- 事業所フレックスフィールドCCID
-          ,posting_status                -- 転記ステータス
-          ,queue_name                    -- キュー名
-          ,payables_cost                 -- 資産当初取得価額
-          ,depreciate_flag               -- 償却費計上フラグ
-          ,asset_type                    -- 資産タイプ
-          ,attribute2                    -- DFF02（取得日）
-          ,attribute14                   -- DFF14（自販機物件内部ID）
-          ,last_update_date              -- 最終更新日
-          ,last_updated_by               -- 最終更新者
-          ,created_by                    -- 作成者ID
-          ,creation_date                 -- 作成日
-          ,last_update_login             -- 最終更新ログインID
-        ) VALUES (
-           fa_mass_additions_s.NEXTVAL               -- 追加OIF内部ID
-          ,NULL                                      -- 資産番号
-          ,g_object_code_tab(ln_loop_cnt)            -- 現伝票番号
-          ,lv_description                            -- 摘要
-          ,g_category_ccid_tab(ln_loop_cnt)          -- 資産カテゴリCCID
-          ,gv_fixed_asset_register                   -- 台帳
-          ,g_date_placed_in_service_tab(ln_loop_cnt) -- 事業供用日
--- 2014/08/06 Ver.1.1 Y.Shouji MOD START
---          ,g_assets_cost_tab(ln_loop_cnt)            -- 取得価額
-          ,g_cost_tab(ln_loop_cnt)                   -- 取得価額
--- 2014/08/06 Ver.1.1 Y.Shouji MOD END
-          ,g_payables_units_tab(ln_loop_cnt)         -- AP数量
-          ,g_fixed_assets_units_tab(ln_loop_cnt)     -- 単位数量
-          ,g_deprn_ccid_tab(ln_loop_cnt)             -- 減価償却費勘定CCID
-          ,g_location_ccid_tab(ln_loop_cnt)          -- 事業所フレックスフィールドCCID
-          ,cv_posting_status                         -- 転記ステータス
-          ,cv_queue_name                             -- キュー名
--- 2014/08/06 Ver.1.1 Y.Shouji MOD START
---          ,g_assets_cost_tab(ln_loop_cnt)            -- 資産当初取得価額
-          ,g_payables_cost_tab(ln_loop_cnt)          -- 資産当初取得価額
--- 2014/08/06 Ver.1.1 Y.Shouji MOD END
-          ,cv_depreciate_flag                        -- 償却費計上フラグ
-          ,cv_asset_type                             -- 資産タイプ
-          ,lv_attribute2                             -- DFF02（取得日）
-          ,g_object_internal_id_tab(ln_loop_cnt)     -- DFF14（自販機物件内部ID）
-          ,cd_last_update_date                       -- 最終更新日
-          ,cn_last_updated_by                        -- 最終更新者
-          ,cn_created_by                             -- 作成者ID
-          ,cd_creation_date                          -- 作成日
-          ,cn_last_update_login                      -- 最終更新ログインID
-        )
-        ;
+          --==============================================================
+          -- 減価償却費勘定CCID取得 (A-4-3)
+          --==============================================================
+--
+          -- セグメント値配列設定(SEG1:会社) : 本社コードを設定
+          g_segments_tab(1) := gv_comp_cd_itoen;
+          -- 仕訳区分が1の時
+          IF ( lv_segment9 = cv_segment9_1 ) THEN
+            -- セグメント値配列設定(SEG2:部門) : 取得した管理部門
+            g_segments_tab(2) := g_department_code_tab(ln_loop_cnt);
+          -- 仕訳区分が3の時
+          ELSIF ( lv_segment9 = cv_segment9_3 ) THEN
+            -- セグメント値配列設定(SEG2:部門) : XXCFF:部門コード_減価償却
+            g_segments_tab(2) := gv_dep_cd_depreciation;
+          ELSE
+            -- セグメント値配列設定(SEG2:部門) : XXCFF: 部門コード_調整部門
+            g_segments_tab(2) := gv_dep_cd_chosei;
+          END IF;
+          -- セグメント値配列設定(SEG3:勘定科目) : A-4-2で取得した償却科目を設定
+          g_segments_tab(3) := lv_segment4;
+          -- セグメント値配列設定(SEG4:補助科目) : A-4-2で取得した補助科目を設定
+          g_segments_tab(4) := lv_segment8;
+--
+          -- VD顧客フラグが'Y'の時
+          IF ( g_vd_cust_flag_tab(ln_loop_cnt) = cv_yes ) THEN
+            -- セグメント値配列設定(SEG5:顧客) : 取得した顧客コード
+            g_segments_tab(5) := g_customer_code_tab(ln_loop_cnt);
+          ELSE
+            -- セグメント値配列設定(SEG5:顧客) : ‘000000000’ (固定値）
+            g_segments_tab(5) := cv_ptnr_cd_dummy;
+          END IF;
+--
+          -- 減価償却費勘定CCID取得
+          get_deprn_ccid(
+             iot_segments     => g_segments_tab                  -- セグメント値配列
+            ,ot_deprn_ccid    => g_deprn_ccid_tab(ln_loop_cnt)   -- 減価償却費勘定CCID
+            ,ov_errbuf        => lv_errbuf                       -- エラー・メッセージ           --# 固定 # 
+            ,ov_retcode       => lv_retcode                      -- リターン・コード             --# 固定 #
+            ,ov_errmsg        => lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode <> ov_retcode) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          --==============================================================
+          -- 事業所CCID取得 (A-4-4)
+          --==============================================================
+          xxcff_common1_pkg.chk_fa_location(
+             iv_segment1      => g_dclr_place_tab(ln_loop_cnt)           -- 申告地
+            ,iv_segment2      => g_department_code_tab(ln_loop_cnt)      -- 管理部門
+            ,iv_segment3      => g_location_tab(ln_loop_cnt)             -- 事業所
+            ,iv_segment4      => g_installation_address_tab(ln_loop_cnt) -- 場所
+            ,iv_segment5      => g_owner_company_type_tab(ln_loop_cnt)   -- 本社工場区分
+            ,on_location_id   => g_location_ccid_tab(ln_loop_cnt)        -- 事業所CCID
+            ,ov_errbuf        => lv_errbuf                               -- エラー・メッセージ           --# 固定 # 
+            ,ov_retcode       => lv_retcode                              -- リターン・コード             --# 固定 #
+            ,ov_errmsg        => lv_errmsg                               -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode <> ov_retcode) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          --==============================================================
+          -- 追加OIF登録 (A-4-5)
+          --==============================================================
+          -- 摘要を取得する
+          lv_description := SUBSTRB(g_manufacturer_name_tab(ln_loop_cnt) || ' ' ||
+                                    g_model_tab(ln_loop_cnt) || ' ' ||
+                                    g_age_type_tab(ln_loop_cnt)
+                                    , 1, 80);
+          -- DFF02(取得日)の取得
+          IF (g_assets_date_tab(ln_loop_cnt) IS NULL) THEN
+            -- DFF02(取得日)がNULLの時、事業供用日をYYYY/MM/DD型でセットする
+            lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+          ELSE
+            -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
+            lv_attribute2 := to_char(g_assets_date_tab(ln_loop_cnt), cv_date_type);
+          END IF;
+--
+          -- 追加OIF登録
+          INSERT INTO fa_mass_additions(
+             mass_addition_id              -- 追加OIF内部ID
+            ,asset_number                  -- 資産番号
+            ,tag_number                    -- 現伝票番号
+            ,description                   -- 摘要
+            ,asset_category_id             -- 資産カテゴリCCID
+            ,book_type_code                -- 台帳
+            ,date_placed_in_service        -- 事業供用日
+            ,fixed_assets_cost             -- 取得価額
+            ,payables_units                -- AP数量
+            ,fixed_assets_units            -- 単位数量
+            ,expense_code_combination_id   -- 減価償却費勘定CCID
+            ,location_id                   -- 事業所フレックスフィールドCCID
+            ,posting_status                -- 転記ステータス
+            ,queue_name                    -- キュー名
+            ,payables_cost                 -- 資産当初取得価額
+            ,depreciate_flag               -- 償却費計上フラグ
+            ,asset_type                    -- 資産タイプ
+            ,attribute2                    -- DFF02（取得日）
+            ,attribute14                   -- DFF14（自販機物件内部ID）
+            ,last_update_date              -- 最終更新日
+            ,last_updated_by               -- 最終更新者
+            ,created_by                    -- 作成者ID
+            ,creation_date                 -- 作成日
+            ,last_update_login             -- 最終更新ログインID
+          ) VALUES (
+             fa_mass_additions_s.NEXTVAL               -- 追加OIF内部ID
+            ,NULL                                      -- 資産番号
+            ,g_object_code_tab(ln_loop_cnt)            -- 現伝票番号
+            ,lv_description                            -- 摘要
+            ,g_category_ccid_tab(ln_loop_cnt)          -- 資産カテゴリCCID
+            ,gv_fixed_asset_register                   -- 台帳
+            ,g_date_placed_in_service_tab(ln_loop_cnt) -- 事業供用日
+            ,g_cost_tab(ln_loop_cnt)                   -- 取得価額
+            ,g_payables_units_tab(ln_loop_cnt)         -- AP数量
+            ,g_fixed_assets_units_tab(ln_loop_cnt)     -- 単位数量
+            ,g_deprn_ccid_tab(ln_loop_cnt)             -- 減価償却費勘定CCID
+            ,g_location_ccid_tab(ln_loop_cnt)          -- 事業所フレックスフィールドCCID
+            ,cv_posting_status                         -- 転記ステータス
+            ,cv_queue_name                             -- キュー名
+            ,g_payables_cost_tab(ln_loop_cnt)          -- 資産当初取得価額
+            ,cv_depreciate_flag                        -- 償却費計上フラグ
+            ,cv_asset_type                             -- 資産タイプ
+            ,lv_attribute2                             -- DFF02（取得日）
+            ,g_object_internal_id_tab(ln_loop_cnt)     -- DFF14（自販機物件内部ID）
+            ,cd_last_update_date                       -- 最終更新日
+            ,cn_last_updated_by                        -- 最終更新者
+            ,cn_created_by                             -- 作成者ID
+            ,cd_creation_date                          -- 作成日
+            ,cn_last_update_login                      -- 最終更新ログインID
+          )
+          ;
+--
+          -- 自販機物件(未確定)登録件数カウント
+          gn_vd_add_normal_cnt := gn_vd_add_normal_cnt + 1;
+        END IF;
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
 --
         --==============================================================
         -- 自販機物件管理の更新（未確定） (A-4-6)
@@ -3464,8 +4306,10 @@ AS
           RAISE global_api_expt;
         END IF;
 --
-        -- 自販機物件(未確定)登録件数カウント
-        gn_vd_add_normal_cnt := gn_vd_add_normal_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji DEL Start
+--        -- 自販機物件(未確定)登録件数カウント
+--        gn_vd_add_normal_cnt := gn_vd_add_normal_cnt + 1;
+-- 2017/04/19 Ver.1.2 Y.Shoji DEL End
 --
       END IF;
 --
@@ -3773,6 +4617,35 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+--
+    -- XXCFF:部門コード_減価償却
+    gv_dep_cd_depreciation := FND_PROFILE.VALUE(cv_dep_cd_depreciation);
+    IF (gv_dep_cd_depreciation IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_017a03_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_017a03_t_038) -- XXCFF:部門コード_減価償却
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- XXCFF:ショーケース_FA連携金額
+    gn_fa_coop_amount_sh := TO_NUMBER(FND_PROFILE.VALUE(cv_fa_coop_amount_sh));
+    IF (gn_fa_coop_amount_sh IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_017a03_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_017a03_t_039) -- XXCFF:ショーケース_FA連携金額
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -3953,18 +4826,30 @@ AS
     gn_vd_target_cnt         := 0;
     gn_vd_add_target_cnt     := 0;
     gn_vd_add_normal_cnt     := 0;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    gn_vd_add_skip_cnt       := 0;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
     gn_vd_add_warn_cnt       := 0;
     gn_vd_add_error_cnt      := 0;
     gn_vd_trnsf_target_cnt   := 0;
     gn_vd_trnsf_normal_cnt   := 0;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    gn_vd_trnsf_skip_cnt     := 0;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
     gn_vd_trnsf_warn_cnt     := 0;
     gn_vd_trnsf_error_cnt    := 0;
     gn_vd_modify_target_cnt  := 0;
     gn_vd_modify_normal_cnt  := 0;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    gn_vd_modify_skip_cnt    := 0;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
     gn_vd_modify_warn_cnt    := 0;
     gn_vd_modify_error_cnt   := 0;
     gn_vd_retire_target_cnt  := 0;
     gn_vd_retire_normal_cnt  := 0;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
+    gn_vd_retire_skip_cnt    := 0;
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD End
     gn_vd_retire_warn_cnt    := 0;
     gn_vd_retire_error_cnt   := 0;
 --
@@ -4250,9 +5135,25 @@ AS
       ,buff   => gv_out_msg
     );
     --スキップ件数出力
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_vd_add_skip_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --警告件数出力
+-- 2017/04/19 Ver.1.2 Y.Shoji ADDD End
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_name         => cv_msg_017a03_m_025
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_vd_add_warn_cnt)
                    );
@@ -4312,9 +5213,25 @@ AS
       ,buff   => gv_out_msg
     );
     --スキップ件数出力
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_vd_trnsf_skip_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --警告件数出力
+-- 2017/04/19 Ver.1.2 Y.Shoji ADDD End
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_name         => cv_msg_017a03_m_025
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_vd_trnsf_warn_cnt)
                    );
@@ -4373,9 +5290,25 @@ AS
       ,buff   => gv_out_msg
     );
     --スキップ件数出力
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_vd_modify_skip_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --警告件数出力
+-- 2017/04/19 Ver.1.2 Y.Shoji ADDD End
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_name         => cv_msg_017a03_m_025
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_vd_modify_warn_cnt)
                    );
@@ -4434,9 +5367,25 @@ AS
       ,buff   => gv_out_msg
     );
     --スキップ件数出力
+-- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_vd_retire_skip_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --警告件数出力
+-- 2017/04/19 Ver.1.2 Y.Shoji ADDD End
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD Start
+--                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_name         => cv_msg_017a03_m_025
+-- 2017/04/19 Ver.1.2 Y.Shoji MOD End
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_vd_retire_warn_cnt)
                    );
