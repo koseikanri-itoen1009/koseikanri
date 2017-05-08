@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF010A16C(body)
  * Description      : リース仕訳作成
  * MD.050           : MD050_CFF_010_A16_リース仕訳作成
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,7 +15,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                         初期処理                               (A-1)
  *  get_profile_values           プロファイル値取得                     (A-2)
- *  get_period                   会計期間チェック                       (A-3)
+ *  chk_period                   会計期間チェック                       (A-3)
  *  chk_je_lease_data_exist      前回作成済みリース仕訳存在チェック     (A-4)
  *  upd_target_data              未処理データ更新                       (A-5)
  *  get_lease_class_aff_info     リース種別毎のAFF情報取得              (A-6)
@@ -56,6 +56,7 @@ AS
  *  2014/01/28    1.7   SCSK中野徹也     [E_本稼動_11170]支払利息計上時の不具合対応
  *  2016/09/16    1.8   SCSK小路恭弘     [E_本稼動_13658]障害対応分
  *  2016/09/23    1.9   SCSK小路恭弘     [E_本稼動_13658]自販機の耐用年数を変更する
+ *  2017/03/27    1.10  SCSK小路恭弘     [E_本稼動_14030]減価償却費を拠点へ振替える
  *
  *****************************************************************************************/
 --
@@ -186,6 +187,10 @@ AS
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
   cv_msg_013a20_t_029 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50285'; -- リース仕訳(仕訳元=再リース差額)情報
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+  cv_msg_013a20_t_030 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50286'; -- XXCFF:部門コード_自販機部
+  cv_msg_013a20_t_031 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50078'; -- XXCFF:部門コード_調整部門
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
   -- ***トークン名
   cv_tkn_prof     CONSTANT VARCHAR2(20) := 'PROF_NAME';
@@ -217,6 +222,15 @@ AS
   -- オンライン終了時間
   cv_prof_online_end_time CONSTANT VARCHAR2(30) := 'XXCFF1_ONLINE_END_TIME';
 -- T1_0356 2009/04/17 ADD END   --
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+  -- XXCFF:部門コード_自販機部
+  cv_dep_cd_vending       CONSTANT VARCHAR2(30) := 'XXCFF1_DEP_CD_VENDING';
+  -- XXCFF:部門コード_調整部門
+  cv_dep_cd_chosei        CONSTANT VARCHAR2(30) := 'XXCFF1_DEP_CD_CHOSEI';
+--
+  -- ***参照タイプ
+  cv_xxcff1_lease_class_check CONSTANT VARCHAR2(30) := 'XXCFF1_LEASE_CLASS_CHECK';
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
   -- ***ファイル出力
 --
@@ -344,6 +358,9 @@ AS
   TYPE g_debt_rem_re_ttype           IS TABLE OF xxcff_pay_planning.debt_rem_re%TYPE INDEX BY PLS_INTEGER;     -- リース債務残_再リース
   TYPE g_release_balance_ttype       IS TABLE OF NUMBER INDEX BY PLS_INTEGER;                                  -- 再リース差額
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+  TYPE g_dept_tran_flg_ttype         IS TABLE OF fnd_lookup_values.attribute1%TYPE INDEX BY PLS_INTEGER;       -- 部門振替フラグ
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -384,6 +401,9 @@ AS
   g_debt_rem_re_tab                     g_debt_rem_re_ttype;      -- リース債務残_再リース
   g_release_balance_tab                 g_release_balance_ttype;  -- 再リース差額
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+  g_dept_tran_flg_tab                   g_dept_tran_flg_ttype;    -- 部門振替フラグ
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
   -- ***処理件数
   -- リース取引からのリース仕訳テーブル登録処理における件数
@@ -452,6 +472,12 @@ AS
   -- オンライン終了時間
   gv_online_end_time       VARCHAR2(100);
 -- T1_0356 2009/04/17 ADD END   --
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+  -- 部門コード_自販機部
+  gv_dep_cd_vending        VARCHAR2(100);
+  -- 部門コード_調整部門
+  gv_dep_cd_chosei         VARCHAR2(100);
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
   -- ***カーソル定義
   -- リース種別毎AFF情報取得カーソル
   CURSOR lease_class_cur
@@ -686,8 +712,12 @@ AS
   IS
     SELECT
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
-           /*+ LEADING(PAY_PLAN CTRCT_LINE)
-               USE_NL(PAY_PLAN CTRCT_LINE CTRCT_HEAD OBJ_HEAD LES_CLASS_V.FFVS LES_CLASS_V.FFV LES_CLASS_V.FFVT) */
+-- 2017/03/27 Ver.1.10 Y.Shoji MOD Start
+--           /*+ LEADING(PAY_PLAN CTRCT_LINE)
+--               USE_NL(PAY_PLAN CTRCT_LINE CTRCT_HEAD OBJ_HEAD LES_CLASS_V.FFVS LES_CLASS_V.FFV LES_CLASS_V.FFVT) */
+           /*+ LEADING(PAY_PLAN CTRCT_LINE OBJ_HEAD)
+               USE_NL(PAY_PLAN CTRCT_LINE OBJ_HEAD CTRCT_HEAD FLV LES_CLASS_V.FFVS LES_CLASS_V.FFV LES_CLASS_V.FFVT) */
+-- 2017/03/27 Ver.1.10 Y.Shoji MOD End
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
             pay_plan.contract_header_id      AS contract_header_id -- 契約内部ID
            ,pay_plan.contract_line_id        AS contract_line_id   -- 契約明細内部ID
@@ -729,12 +759,18 @@ AS
            ,pay_plan.debt_re                 AS debt_re            -- リース債務額_再リース
            ,pay_plan.interest_due_re         AS interest_due_re    -- リース支払利息_再リース
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+           ,flv.attribute1                   AS dept_tran_flg      -- 部門振替フラグ
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
     FROM
            xxcff_pay_planning      pay_plan      -- リース支払計画
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
           ,xxcff_object_headers    obj_head      -- リース物件
           ,xxcff_lease_class_v     les_class_v   -- リース種別ビュー
           ,xxcff_contract_headers  ctrct_head    -- リース契約
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+          ,fnd_lookup_values       flv           -- 参照表
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
     WHERE
           pay_plan.period_name          = gv_period_name
 -- 2016/09/23 Ver.1.9 Y.Shoji MOD Start
@@ -746,6 +782,14 @@ AS
     AND   ctrct_line.object_header_id   = obj_head.object_header_id
     AND   ctrct_line.contract_header_id = ctrct_head.contract_header_id
     AND   obj_head.lease_class          = les_class_v.lease_class_code
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+    AND   obj_head.lease_class          = flv.lookup_code
+    AND   flv.lookup_type               = cv_xxcff1_lease_class_check
+    AND   flv.language                  = USERENV('LANG')
+    AND   flv.enabled_flag              = cv_flag_y
+    AND   gd_base_date                  BETWEEN NVL(flv.start_date_active, gd_base_date)
+                                        AND     NVL(flv.end_date_active  , gd_base_date)
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
     ;
   g_get_pay_plan_data_rec  get_pay_plan_data_cur%ROWTYPE;
 --
@@ -943,6 +987,14 @@ AS
     g_deduction_tab.DELETE;
     g_charge_tab.DELETE;
     g_charge_tax_tab.DELETE;
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+    g_op_charge_tab.DELETE;
+    g_debt_re_tab.DELETE;
+    g_interest_due_re_tab.DELETE;
+    g_debt_rem_re_tab.DELETE;
+    g_release_balance_tab.DELETE;
+    g_dept_tran_flg_tab.DELETE;
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
   EXCEPTION
 --
@@ -1485,6 +1537,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+    cv_charge           CONSTANT VARCHAR2(6) := 'CHARGE'; -- リース料振替
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
     -- *** ローカル変数 ***
 --
@@ -1518,6 +1573,22 @@ AS
       iot_jnl_aff_rec.department := g_lease_class_aff_tab(it_lease_class).les_chrg_dep;
     END IF;
 --
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+    --==============================================
+    --CHARGE (リース料振替のリース料計上部門)
+    -- ⇒ 自販機リース料_計上部門
+    --==============================================
+    IF (iot_jnl_aff_rec.department = cv_charge) THEN
+      -- 部門振替フラグ：'Y'の場合、XXCFF:部門コード_自販機部
+      IF (g_dept_tran_flg_tab(gn_main_loop_cnt) = cv_flag_y) THEN
+        iot_jnl_aff_rec.department := gv_dep_cd_vending;
+      -- 部門振替フラグ：'Y'以外の場合、XXCFF:部門コード_調整部門
+      ELSE
+        iot_jnl_aff_rec.department := gv_dep_cd_chosei;
+      END IF;
+    END IF;
+--
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
     --================
     --■勘定科目導出
     --================
@@ -2409,11 +2480,15 @@ AS
 --      IF (lv_retcode <> ov_retcode) THEN
 --        RAISE global_api_expt;
 --      END IF;
-      -- リース種別が11（自販機）以外の場合
-      -- リース種別が11（自販機）かつ支払回数が60回以下の場合
-      IF ( g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11
-        OR (  g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
-          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60 ) ) THEN
+-- 2017/03/27 Ver.1.10 Y.Shoji MOD Start
+--      -- リース種別が11（自販機）以外の場合
+--      -- リース種別が11（自販機）かつ支払回数が60回以下の場合
+--      IF ( g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11
+--        OR (  g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
+--          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60 ) ) THEN
+      -- 部門振替フラグ：'N'の場合
+      IF ( g_dept_tran_flg_tab(gn_main_loop_cnt) = cv_flag_n ) THEN
+-- 2017/03/27 Ver.1.10 Y.Shoji MOD End
         --==============================================================
         --【内部共通処理】リース種別AFF値設定 (A-21)
         --==============================================================
@@ -2598,11 +2673,15 @@ AS
 --      IF (lv_retcode <> ov_retcode) THEN
 --        RAISE global_api_expt;
 --      END IF;
-      -- リース種別が11（自販機）以外の場合
-      -- リース種別が11（自販機）かつ支払回数が60回以下の場合
-      IF ( g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11
-        OR (  g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
-          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60 ) ) THEN
+-- 2017/03/27 Ver.1.10 Y.Shoji MOD Start
+--      -- リース種別が11（自販機）以外の場合
+--      -- リース種別が11（自販機）かつ支払回数が60回以下の場合
+--      IF ( g_lease_class_tab(gn_main_loop_cnt) <> cv_lease_class_11
+--        OR (  g_lease_class_tab(gn_main_loop_cnt)       =  cv_lease_class_11
+--          AND g_payment_frequency_tab(gn_main_loop_cnt) <= 60 ) ) THEN
+      -- 部門振替フラグ：'N'の場合
+      IF ( g_dept_tran_flg_tab(gn_main_loop_cnt) = cv_flag_n ) THEN
+-- 2017/03/27 Ver.1.10 Y.Shoji MOD End
         --==============================================================
         --【内部共通処理】リース種別AFF値設定 (A-21)
         --==============================================================
@@ -3226,6 +3305,9 @@ AS
       g_debt_re_tab(gn_pay_plan_target_cnt)            := g_get_pay_plan_data_rec.debt_re;             -- リース債務額_再リース
       g_interest_due_re_tab(gn_pay_plan_target_cnt)    := g_get_pay_plan_data_rec.interest_due_re;     -- リース支払利息_再リース
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+      g_dept_tran_flg_tab(gn_pay_plan_target_cnt)      := g_get_pay_plan_data_rec.dept_tran_flg;       -- 部門振替フラグ
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
       --リース物件履歴が取得できる場合はリース物件履歴の移動元管理部門、移動元本社／工場を設定する。
       BEGIN
@@ -5398,6 +5480,33 @@ AS
     END IF;
 --
 -- T1_0356 2009/04/17 ADD END   --
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
+    -- XXCFF:部門コード_自販機部
+    gv_dep_cd_vending := FND_PROFILE.VALUE(cv_dep_cd_vending);
+    IF (gv_dep_cd_vending IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_013a20_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_013a20_t_030) -- XXCFF:部門コード_自販機部
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- XXCFF:部門コード_調整部門
+    gv_dep_cd_chosei := FND_PROFILE.VALUE(cv_dep_cd_chosei);
+    IF (gv_dep_cd_chosei IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_013a20_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_013a20_t_031) -- XXCFF:部門コード_調整部門
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
   EXCEPTION
 --
