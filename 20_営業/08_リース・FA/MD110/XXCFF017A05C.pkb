@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF017A05C(body)
  * Description      : 自販機減価償却振替
  * MD.050           : MD050_CFF_017_A05_自販機減価償却振替
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -15,7 +15,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                       初期処理                                  (A-1)
  *  get_profile_values         プロファイル値取得                        (A-2)
- *  get_period                 会計期間チェック                          (A-3)
+ *  chk_period                 会計期間チェック                          (A-3)
  *  chk_je_vending_data_exist  前回作成済み自販機物件仕訳存在チェック    (A-4)
  *  ins_gl_oif_dr              GLOIF登録処理(借方データ)                 (A-5)
  *  ins_gl_oif_cr              GLOIF登録処理(貸方データ)                 (A-6)
@@ -28,6 +28,7 @@ AS
  *  2014/08/01    1.0   SCSK川元善博     新規作成
  *  2014/11/07    1.1   SCSK小路恭弘     E_本稼動_12563
  *  2016/06/23    1.2   SCSK小路恭弘     E_本稼動_13662
+ *  2017/03/28    1.3   SCSK小路恭弘     E_本稼動_14030
  *
  *****************************************************************************************/
 --
@@ -149,6 +150,14 @@ AS
   -- ***税コード
   cv_tax_code            CONSTANT VARCHAR2(4)  := '0000';
 --
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+  cv_asset_category_id   CONSTANT VARCHAR2(24) := 'XXCFF1_ASSET_CATEGORY_ID';
+  cv_lang_ja             CONSTANT VARCHAR2(2)  := 'JA';
+  cv_yes                 CONSTANT VARCHAR2(1)  := 'Y';
+  cv_attribute9_2        CONSTANT VARCHAR2(1)  := '2';
+  cv_format_yyyymm       CONSTANT VARCHAR2(7)  := 'YYYY-MM';
+--
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -288,8 +297,12 @@ AS
       ,gv_je_src_vending                           AS user_je_source_name   -- 仕訳ソース名
       ,summary.segment1                            AS segment1              -- 会社コード
       ,gv_dep_cd_chosei                            AS segment2              -- 部門コード
-      ,gv_account_vending                          AS segment3              -- 科目コード
-      ,gv_sub_account_vending                      AS segment4              -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD START
+--      ,gv_account_vending                          AS segment3              -- 科目コード
+--      ,gv_sub_account_vending                      AS segment4              -- 補助科目コード
+      ,summary.segment3                            AS segment3              -- 科目コード
+      ,summary.segment4                            AS segment4              -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD END
       ,cv_ptnr_cd_dammy                            AS segment5              -- 顧客コード
       ,cv_busi_cd_dammy                            AS segment6              -- 企業コード
       ,cv_project_dammy                            AS segment7              -- 予備1
@@ -306,8 +319,41 @@ AS
     FROM
       (
        SELECT
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+       /*+ INDEX(XVOH XXCFF_VD_OBJECT_HEADERS_U01) */
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
           gcc.segment1                                  AS segment1         -- 会社コード
-         ,TRUNC(xvoh.assets_cost * gn_lease_rate / 100) AS entered_cr       -- 取得価格
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD START
+--         ,TRUNC(xvoh.assets_cost * gn_lease_rate / 100) AS entered_cr       -- 取得価格
+         ,CASE
+            WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(xvoh.date_placed_in_service, 'MMDD') THEN
+              TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY'))
+            ELSE
+              TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY')) - 1
+            END <= 5 THEN
+              TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 12)
+            WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(xvoh.date_placed_in_service, 'MMDD') THEN
+              TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY'))
+            ELSE
+              TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY')) - 1
+            END = 6 THEN
+              TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 14)
+            WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(xvoh.date_placed_in_service, 'MMDD') THEN
+              TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY'))
+            ELSE
+              TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY')) - 1
+            END = 7 THEN
+              TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 18)
+            WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(xvoh.date_placed_in_service, 'MMDD') THEN
+              TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY'))
+            ELSE
+              TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY')) - 1
+            END >= 8 THEN
+              TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 24)
+          END                                           AS entered_cr       -- 取得価格
+         ,flv.attribute4                                AS segment3         -- 科目コード
+         ,flv.attribute8                                AS segment4         -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD END
        FROM
           fa_additions_b          fab
          ,fa_deprn_detail         fdd
@@ -315,6 +361,9 @@ AS
          ,fa_distribution_history fdh
          ,gl_code_combinations    gcc
          ,xxcff_vd_object_headers xvoh
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+         ,fnd_lookup_values       flv
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
        WHERE
            fdd.asset_id            = fab.asset_id
        AND fdd.book_type_code      = gv_fixed_assets_books
@@ -325,10 +374,30 @@ AS
        AND fdd.distribution_id     = fdh.distribution_id
        AND gcc.code_combination_id = fdh.code_combination_id
        AND fdd.deprn_source_code   = 'D'
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+       AND fdd.deprn_amount        > 0
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
        AND fdp.period_name         = gv_period_name
        AND fab.tag_number          = xvoh.object_code
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+       AND ( ADD_MONTHS(TRUNC(xvoh.date_placed_in_service) ,72) > TO_DATE(gv_period_name,'YYYY-MM')
+         OR  ( ADD_MONTHS(TRUNC(xvoh.date_placed_in_service) ,72) <= TO_DATE(gv_period_name,'YYYY-MM')
+           AND TO_CHAR(xvoh.date_placed_in_service, 'MM')         =  SUBSTRB(gv_period_name, 6, 2) ) )
+       AND xvoh.machine_type       = flv.lookup_code
+       AND flv.lookup_type         = cv_asset_category_id
+       AND flv.language            = cv_lang_ja
+       AND flv.enabled_flag        = cv_yes
+       AND flv.attribute9          = cv_attribute9_2
+       AND LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)) BETWEEN NVL(flv.start_date_active,LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)))
+                                                              AND     NVL(flv.end_date_active,LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)))
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
        UNION ALL
        SELECT
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+       /*+ LEADING(FLV XVOH)
+           USE_NL(LES_CLASS_V.FFVS LES_CLASS_V.FFV LES_CLASS_V.FFVT)
+           INDEX(XVOH XXCFF_VD_OBJECT_HEADERS_N01) */
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
           gcc.segment1                             AS segment1              -- 会社コード
          ,CASE
             WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(fb.date_placed_in_service, 'MMDD') THEN
@@ -356,12 +425,19 @@ AS
             END >= 8 THEN
               TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 24)
           END                                      AS entered_cr            -- 取得価格
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+         ,flv.attribute4                                AS segment3         -- 科目コード
+         ,flv.attribute8                                AS segment4         -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
        FROM
           fa_additions_b          fab
          ,fa_books                fb
          ,fa_distribution_history fdh
          ,gl_code_combinations    gcc
          ,xxcff_vd_object_headers xvoh
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+         ,fnd_lookup_values       flv
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
        WHERE
            fab.asset_id            = fb.asset_id
        AND fb.book_type_code       = gv_fixed_assets_books
@@ -383,11 +459,27 @@ AS
               AND fds.period_counter = fdp.period_counter
               AND fds.book_type_code = fdp.book_type_code
               AND fds.book_type_code = gv_fixed_assets_books
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+              AND fds.deprn_amount   <> 0
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
               AND fdp.period_name    = gv_period_name)
        AND fab.tag_number          = xvoh.object_code
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+       AND xvoh.machine_type       = flv.lookup_code
+       AND flv.lookup_type         = cv_asset_category_id
+       AND flv.language            = cv_lang_ja
+       AND flv.enabled_flag        = cv_yes
+       AND flv.attribute9          = cv_attribute9_2
+       AND LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)) BETWEEN NVL(flv.start_date_active,LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)))
+                                                              AND     NVL(flv.end_date_active,LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)))
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
       ) summary
     GROUP BY
        summary.segment1        -- 会社コード
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+      ,summary.segment3        -- 科目コード
+      ,summary.segment4        -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
     ;
 --
     -- 件数設定
@@ -497,6 +589,9 @@ AS
       ,context               -- コンテキスト
     )
     SELECT
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+       /*+ INDEX(XVOH XXCFF_VD_OBJECT_HEADERS_U01) */
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
        'NEW'                                         AS status                -- ステータス
       ,g_init_rec.set_of_books_id                    AS set_of_books_id       -- 会計帳簿ID
       ,LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))   AS accounting_date       -- 仕訳有効日付
@@ -511,8 +606,12 @@ AS
 --      ,xvoh.department_code                          AS segment2              -- 部門コード
       ,xvohi1.department_code                        AS segment2              -- 部門コード
 -- 2016/06/23 Ver.1.2 Y.Shouji MOD END
-      ,gv_account_vending                            AS segment3              -- 科目コード
-      ,gv_sub_account_vending                        AS segment4              -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD START
+--      ,gv_account_vending                            AS segment3              -- 科目コード
+--      ,gv_sub_account_vending                        AS segment4              -- 補助科目コード
+      ,flv.attribute4                                AS segment3              -- 科目コード
+      ,flv.attribute8                                AS segment4              -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD END
 -- 2014/11/07 Ver.1.1 Y.Shouji MOD START
 --      ,xvoh.customer_code                            AS segment5              -- 顧客コード
       ,(CASE WHEN les_class_v.vd_cust_flag = cv_flag_on THEN
@@ -525,7 +624,35 @@ AS
       ,cv_busi_cd_dammy                              AS segment6              -- 企業コード
       ,cv_project_dammy                              AS segment7              -- 予備1
       ,cv_future_dammy                               AS segment8              -- 予備2
-      ,TRUNC(xvoh.assets_cost * gn_lease_rate / 100) AS entered_dr            -- 取得価格
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD START
+--      ,TRUNC(xvoh.assets_cost * gn_lease_rate / 100) AS entered_dr            -- 取得価格
+      ,CASE
+         WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(xvoh.date_placed_in_service, 'MMDD') THEN
+           TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY'))
+         ELSE
+           TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY')) - 1
+         END <= 5 THEN
+           TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 12)
+         WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(xvoh.date_placed_in_service, 'MMDD') THEN
+           TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY'))
+         ELSE
+           TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY')) - 1
+         END = 6 THEN
+           TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 14)
+         WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(xvoh.date_placed_in_service, 'MMDD') THEN
+           TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY'))
+         ELSE
+           TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY')) - 1
+         END = 7 THEN
+           TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 18)
+         WHEN CASE WHEN TO_CHAR(LAST_DAY(TO_DATE(gv_period_name, 'YYYY-MM')), 'MMDD') >= TO_CHAR(xvoh.date_placed_in_service, 'MMDD') THEN
+           TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY'))
+         ELSE
+           TO_NUMBER(SUBSTRB(gv_period_name, 1, 4)) - TO_NUMBER(TO_CHAR(xvoh.date_placed_in_service, 'YYYY')) - 1
+         END >= 8 THEN
+           TRUNC(xvoh.assets_cost * gn_lease_rate / 100 * 12 / 24)
+       END                                         AS entered_dr            -- 取得価格
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD END
       ,0                                             AS entered_cr            -- 貸方金額
       ,fab.tag_number                                AS reference10           -- 仕訳明細摘要
       ,gv_period_name                                AS period_name           -- 会計期間名
@@ -547,6 +674,9 @@ AS
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
       ,xxcff_lease_class_v     les_class_v   -- リース種別ビュー
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD END
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+      ,fnd_lookup_values       flv
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
     WHERE
         fdd.asset_id            = fab.asset_id
     AND fdd.book_type_code      = gv_fixed_assets_books
@@ -557,6 +687,9 @@ AS
     AND fdd.distribution_id     = fdh.distribution_id
     AND gcc.code_combination_id = fdh.code_combination_id
     AND fdd.deprn_source_code   = 'D'
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+    AND fdd.deprn_amount        > 0
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
     AND fdp.period_name         = gv_period_name
     AND fab.tag_number          = xvoh.object_code
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
@@ -571,8 +704,25 @@ AS
                                      OR     ( xvohi2.process_type      =  cv_process_type_103                             -- 処理区分：移動
                                        AND    TRUNC(xvohi2.moved_date) <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))))  -- 移動日
 -- 2016/06/23 Ver.1.2 Y.Shouji ADD END
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+    AND ( ADD_MONTHS(TRUNC(xvoh.date_placed_in_service) ,72) > TO_DATE(gv_period_name,'YYYY-MM')
+      OR  ( ADD_MONTHS(TRUNC(xvoh.date_placed_in_service) ,72) <= TO_DATE(gv_period_name,'YYYY-MM')
+        AND TO_CHAR(xvoh.date_placed_in_service, 'MM')         =  SUBSTRB(gv_period_name, 6, 2) ) )
+    AND xvoh.machine_type       = flv.lookup_code
+    AND flv.lookup_type         = cv_asset_category_id
+    AND flv.language            = cv_lang_ja
+    AND flv.enabled_flag        = cv_yes
+    AND flv.attribute9          = cv_attribute9_2
+    AND LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)) BETWEEN NVL(flv.start_date_active,LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)))
+                                                           AND     NVL(flv.end_date_active,LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)))
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
     UNION ALL
     SELECT
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+       /*+ LEADING(FLV XVOH)
+           USE_NL(LES_CLASS_V.FFVS LES_CLASS_V.FFV LES_CLASS_V.FFVT)
+           INDEX(XVOH XXCFF_VD_OBJECT_HEADERS_N01) */
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
        'NEW'                                       AS status                -- ステータス
       ,g_init_rec.set_of_books_id                  AS set_of_books_id       -- 会計帳簿ID
       ,LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) AS accounting_date       -- 仕訳有効日付
@@ -587,8 +737,12 @@ AS
 --      ,xvoh.department_code                          AS segment2              -- 部門コード
       ,xvohi1.department_code                      AS segment2              -- 部門コード
 -- 2016/06/23 Ver.1.2 Y.Shouji MOD END
-      ,gv_account_vending                          AS segment3              -- 科目コード
-      ,gv_sub_account_vending                      AS segment4              -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD START
+--      ,gv_account_vending                          AS segment3              -- 科目コード
+--      ,gv_sub_account_vending                      AS segment4              -- 補助科目コード
+      ,flv.attribute4                              AS segment3              -- 科目コード
+      ,flv.attribute8                              AS segment4              -- 補助科目コード
+-- 2017/03/28 Ver.1.3 Y.Shouji MOD END
 -- 2014/11/07 Ver.1.1 Y.Shouji MOD START
 --      ,xvoh.customer_code                          AS segment5              -- 顧客コード
       ,(CASE WHEN les_class_v.vd_cust_flag = cv_flag_on THEN
@@ -647,6 +801,9 @@ AS
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
       ,xxcff_lease_class_v     les_class_v   -- リース種別ビュー
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD END
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+      ,fnd_lookup_values       flv
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
     WHERE
         fab.asset_id            = fb.asset_id
     AND fb.book_type_code       = gv_fixed_assets_books
@@ -669,6 +826,9 @@ AS
            AND fds.period_counter = fdp.period_counter
            AND fds.book_type_code = fdp.book_type_code
            AND fds.book_type_code = gv_fixed_assets_books
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+           AND fds.deprn_amount   <> 0
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
            AND fdp.period_name    = gv_period_name)
     AND fab.tag_number          = xvoh.object_code
 -- 2014/11/07 Ver.1.1 Y.Shouji ADD START
@@ -683,6 +843,15 @@ AS
                                      OR     ( xvohi2.process_type      =  cv_process_type_103                             -- 処理区分：移動
                                        AND    TRUNC(xvohi2.moved_date) <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))))  -- 移動日
 -- 2016/06/23 Ver.1.2 Y.Shouji ADD END
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD START
+    AND   xvoh.machine_type     = flv.lookup_code
+    AND   flv.lookup_type       = cv_asset_category_id
+    AND   flv.language          = cv_lang_ja
+    AND   flv.enabled_flag      = cv_yes
+    AND   flv.attribute9        = cv_attribute9_2
+    AND   LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)) BETWEEN NVL(flv.start_date_active,LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)))
+                                                             AND     NVL(flv.end_date_active,LAST_DAY(TO_DATE(gv_period_name,cv_format_yyyymm)))
+-- 2017/03/28 Ver.1.3 Y.Shouji ADD END
     ;
 --
     -- 件数設定
