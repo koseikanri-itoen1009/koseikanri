@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,7 +25,7 @@ AS
  *  lock_trnsf_data              リース取引(振替)データロック処理     (A-12)
  *  insert_les_trn_trnsf_data    リース取引(振替)登録                 (A-15)
  *  update_trnsf_data_acct_flag  リース契約明細履歴 会計IFフラグ更新  (A-16)
- *  get_deprn_ccid               減価償却費勘定CCID取得               (A-7,A-14)
+ *  get_deprn_ccid               減価償却費勘定CCID取得               (A-25)
  *  get_les_trn_retire_data      リース取引(解約)登録データ抽出       (A-17)
  *  insert_les_trn_ritire_data   リース取引(解約)登録                 (A-18)
  *  update_ritire_data_acct_flag リース契約明細履歴 会計IFフラグ更新  (A-19)
@@ -35,6 +35,7 @@ AS
  *  insert_retire_oif            除・売却OIF登録                      (A-23)
  *  update_les_trns_fa_if_flag   リース取引 FA連携フラグ更新          (A-24)
  *  update_lease_close_period    リース月次締め期間更新               (A-27)
+ *  get_obj_hist_data            物件履歴取得                         (A-28)
  *  submain                      メイン処理プロシージャ
  *  main                         コンカレント実行ファイル登録プロシージャ
  * Change Record
@@ -62,6 +63,7 @@ AS
  *                                       統合テスト障害0000417の追加修正
  *  2012/01/16    1.8   SCSK白川         [E_本稼動_08123] 解約時のFA連携の条件に解約日を追加
  *  2016/08/03    1.9   SCSK郭           [E_本稼動_13658]自販機耐用年数変更対応
+ *  2017/03/29    1.10  SCSK小路         [E_本稼動_14030]減価償却費を拠点へ振替える
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -242,6 +244,10 @@ AS
   -- ***物件ステータス
   -- 移動
   cv_obj_move        CONSTANT VARCHAR2(3) := '105';
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+  -- 物件情報変更
+  cv_obj_modify      CONSTANT VARCHAR2(3) := '106';
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 -- 0000417 2009/07/10 ADD START --
   -- 満了
   cv_obj_manryo         CONSTANT VARCHAR2(3) := '107';
@@ -276,6 +282,19 @@ AS
   -- ***リース種別
   cv_lease_class_vd  CONSTANT VARCHAR2(2) := '11';  -- 自販機
 -- 2016/08/03 Ver.1.9 Y.Koh ADD End
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+--
+  -- ***取引タイプ
+  cv_transaction_type_2  CONSTANT VARCHAR2(1) := '2';  -- 振替
+  cv_transaction_type_4  CONSTANT VARCHAR2(1) := '4';  -- 部門振替
+--
+  -- ***参照タイプ
+  cv_xxcff1_lease_class_check CONSTANT VARCHAR2(30) := 'XXCFF1_LEASE_CLASS_CHECK';
+--
+  -- ***フラグ判定用
+  cv_flg_y               CONSTANT VARCHAR2(1) := 'Y';
+  cv_flg_n               CONSTANT VARCHAR2(1) := 'N';
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -310,6 +329,14 @@ AS
   TYPE g_fa_transaction_id_ttype     IS TABLE OF xxcff_fa_transactions.fa_transaction_id%TYPE INDEX BY PLS_INTEGER;
   TYPE g_payment_frequency_ttype     IS TABLE OF xxcff_contract_headers.payment_frequency%TYPE INDEX BY PLS_INTEGER;
   TYPE g_life_in_months_ttype        IS TABLE OF xxcff_contract_histories.life_in_months%TYPE INDEX BY PLS_INTEGER;
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+  TYPE g_segment2_ttype              IS TABLE OF gl_code_combinations.segment2%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_transaction_type_ttype      IS TABLE OF xxcff_fa_transactions.transaction_type%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_customer_code_ttype         IS TABLE OF xxcff_object_headers.customer_code%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_vd_cust_flag_ttype          IS TABLE OF xxcff_lease_class_v.vd_cust_flag%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_dept_tran_flg_ttype         IS TABLE OF fnd_lookup_values.attribute1%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_segment5_ttype              IS TABLE OF gl_code_combinations.segment5%TYPE INDEX BY PLS_INTEGER;
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -345,6 +372,14 @@ AS
   g_fa_transaction_id_tab               g_fa_transaction_id_ttype;
   g_payment_frequency_tab               g_payment_frequency_ttype;
   g_life_in_months_tab                  g_life_in_months_ttype;
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+  g_trnsf_from_dep_cd_tab               g_segment2_ttype;
+  g_transaction_type_tab                g_transaction_type_ttype;
+  g_customer_code_tab                   g_customer_code_ttype;
+  g_vd_cust_flag_tab                    g_vd_cust_flag_ttype;
+  g_dept_tran_flg_tab                   g_dept_tran_flg_ttype;
+  g_trnsf_from_cust_cd_tab              g_segment5_ttype;
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 --
   -- ***処理件数
   -- リース取引(追加)登録処理における件数
@@ -492,6 +527,12 @@ AS
     g_fa_transaction_id_tab.DELETE;
     g_payment_frequency_tab.DELETE;
     g_life_in_months_tab.DELETE;
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+    g_trnsf_from_dep_cd_tab.DELETE;
+    g_transaction_type_tab.DELETE;
+    g_customer_code_tab.DELETE;
+    g_trnsf_from_cust_cd_tab.DELETE;
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 --
   EXCEPTION
 --
@@ -515,6 +556,120 @@ AS
 --
   END delete_collections;
 --
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+  /**********************************************************************************
+   * Procedure Name   : get_obj_hist_data
+   * Description      : 物件履歴取得 (A-28)
+   ***********************************************************************************/
+  PROCEDURE get_obj_hist_data(
+     it_object_header_id  IN  xxcff_object_headers.object_header_id%TYPE    -- 1.物件ID
+    ,ot_m_owner_company   OUT xxcff_object_histories.m_owner_company%TYPE   -- 2.移動元本社/工場
+    ,ot_m_department_code OUT xxcff_object_histories.m_department_code%TYPE -- 3.移動元管理部門
+    ,ot_customer_code     OUT xxcff_object_histories.customer_code%TYPE     -- 4.修正前元顧客コード
+    ,ov_errbuf            OUT VARCHAR2                                      --   エラー・メッセージ           --# 固定 #
+    ,ov_retcode           OUT VARCHAR2                                      --   リターン・コード             --# 固定 #
+    ,ov_errmsg            OUT VARCHAR2)                                     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_obj_hist_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+      --リース物件履歴が取得できる場合はリース物件履歴の移動元管理部門、移動元本社／工場を設定する。
+      BEGIN
+        SELECT   xoh1.m_department_code  m_department_code  -- 移動元管理部門
+                ,xoh1.m_owner_company    m_owner_company    -- 移動元本社／工場
+        INTO     ot_m_department_code
+                ,ot_m_owner_company
+        FROM     (SELECT xoh.m_department_code  m_department_code
+                        ,xoh.m_owner_company    m_owner_company
+                  FROM   xxcff_object_histories xoh
+                  WHERE  xoh.object_header_id =  it_object_header_id
+                  AND    xoh.accounting_date  >  LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+                  AND    xoh.object_status    =  cv_obj_move
+                  ORDER BY xoh.creation_date ASC
+                 ) xoh1
+        WHERE    rownum = 1;
+      --該当データが存在しない場合はNULLを設定する。
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ot_m_department_code := NULL;
+          ot_m_owner_company   := NULL;
+      END;
+--
+      --リース物件履歴が取得できる場合はリース物件履歴の顧客コードを設定する。
+      BEGIN
+        SELECT   xoh1.customer_code  customer_code  -- 顧客コード
+        INTO     ot_customer_code
+        FROM     (SELECT xoh.customer_code  customer_code
+                  FROM   xxcff_object_histories xoh
+                  WHERE  xoh.object_header_id =  it_object_header_id
+                  AND    xoh.accounting_date  <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+                  AND    xoh.object_status    =  cv_obj_modify
+                  ORDER BY xoh.creation_date DESC
+                 ) xoh1
+        WHERE    rownum = 1;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ot_customer_code := NULL;
+      END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_obj_hist_data;
+--
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 -- 2012/01/16 Ver.1.8 A.Shirakawa ADD Start
   /**********************************************************************************
    * Procedure Name   : update_lease_close_period
@@ -984,7 +1139,10 @@ AS
     WHERE
           xxcff_fa_trn.period_name      = gv_period_name
       AND xxcff_fa_trn.fa_if_flag       = cv_if_yet
-      AND xxcff_fa_trn.transaction_type = 2              -- 振替
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--      AND xxcff_fa_trn.transaction_type = 2              -- 振替
+      AND xxcff_fa_trn.transaction_type IN (cv_transaction_type_2 ,cv_transaction_type_4)              -- 振替、修正
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD End
     ;
 --
     -- 振替OIF登録件数カウント
@@ -1726,7 +1884,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_deprn_ccid
-   * Description      : 減価償却費勘定CCID取得 (A-7,A-14)
+   * Description      : 減価償却費勘定CCID取得 (A-25)
    ***********************************************************************************/
   PROCEDURE get_deprn_ccid(
      iot_segments  IN OUT fnd_flex_ext.segmentarray                     -- 1.セグメント値配列
@@ -1775,10 +1933,12 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- 部門コード設定
-    iot_segments(2) := gv_dep_cd_chosei;
-    -- 顧客コード設定
-    iot_segments(5) := gv_ptnr_cd_dammy;
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL Start
+--    -- 部門コード設定
+--    iot_segments(2) := gv_dep_cd_chosei;
+--    -- 顧客コード設定
+--    iot_segments(5) := gv_ptnr_cd_dammy;
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL End
     -- 企業コード設定
     iot_segments(6) := gv_busi_cd_dammy;
     -- 予備1設定
@@ -1829,6 +1989,9 @@ AS
    * Description      : リース契約明細履歴 会計IFフラグ更新 (A-16)
    ***********************************************************************************/
   PROCEDURE update_trnsf_data_acct_flag(
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+    in_loop_cnt   IN  NUMBER,       --   ループカウント
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1874,46 +2037,84 @@ AS
     --==============================================================
     --リース物件履歴更新
     --==============================================================
-    <<update_loop>>
-    FORALL ln_loop_cnt IN 1 .. g_object_header_id_tab.COUNT
-      UPDATE xxcff_object_histories
-      SET
-             accounting_if_flag     = cv_if_aft                 -- 会計ifフラグ 2(連携済)
-            ,last_updated_by        = cn_last_updated_by        -- 最終更新者
-            ,last_update_date       = cd_last_update_date       -- 最終更新日
-            ,last_update_login      = cn_last_update_login      -- 最終更新ログイン
-            ,request_id             = cn_request_id             -- 要求ID
-            ,program_application_id = cn_program_application_id -- コンカレントプログラムアプリケーション
-            ,program_id             = cn_program_id             -- コンカレントプログラムID
-            ,program_update_date    = cd_program_update_date    -- プログラム更新日
-      WHERE
-            object_header_id     = g_object_header_id_tab(ln_loop_cnt)
-        AND object_status        =  cv_obj_move    -- 移動
-        AND accounting_if_flag   =  cv_if_yet      -- 未送信
-        AND accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
-      ;
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--    <<update_loop>>
+--    FORALL ln_loop_cnt IN 1 .. g_object_header_id_tab.COUNT
+--      UPDATE xxcff_object_histories
+--      SET
+--             accounting_if_flag     = cv_if_aft                 -- 会計ifフラグ 2(連携済)
+--            ,last_updated_by        = cn_last_updated_by        -- 最終更新者
+--            ,last_update_date       = cd_last_update_date       -- 最終更新日
+--            ,last_update_login      = cn_last_update_login      -- 最終更新ログイン
+--            ,request_id             = cn_request_id             -- 要求ID
+--            ,program_application_id = cn_program_application_id -- コンカレントプログラムアプリケーション
+--            ,program_id             = cn_program_id             -- コンカレントプログラムID
+--            ,program_update_date    = cd_program_update_date    -- プログラム更新日
+--      WHERE
+--            object_header_id     = g_object_header_id_tab(ln_loop_cnt)
+--        AND object_status        =  cv_obj_move    -- 移動
+--        AND accounting_if_flag   =  cv_if_yet      -- 未送信
+--        AND accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+--      ;
+    UPDATE xxcff_object_histories
+    SET
+           accounting_if_flag     = cv_if_aft                 -- 会計ifフラグ 2(連携済)
+          ,last_updated_by        = cn_last_updated_by        -- 最終更新者
+          ,last_update_date       = cd_last_update_date       -- 最終更新日
+          ,last_update_login      = cn_last_update_login      -- 最終更新ログイン
+          ,request_id             = cn_request_id             -- 要求ID
+          ,program_application_id = cn_program_application_id -- コンカレントプログラムアプリケーション
+          ,program_id             = cn_program_id             -- コンカレントプログラムID
+          ,program_update_date    = cd_program_update_date    -- プログラム更新日
+    WHERE
+          object_header_id     = g_object_header_id_tab(in_loop_cnt)
+      AND object_status        IN (cv_obj_move ,cv_obj_modify)    -- 移動,物件情報変更
+      AND accounting_if_flag   =  cv_if_yet      -- 未送信
+      AND accounting_date      >= TO_DATE(gv_period_name,'YYYY-MM')
+      AND accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+    ;
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD End
 --
     --==============================================================
     --リース契約明細履歴更新
     --==============================================================
-    <<update_loop>>
-    FORALL ln_loop_cnt IN 1 .. g_contract_line_id_tab.COUNT
-      UPDATE xxcff_contract_histories
-      SET
-             accounting_if_flag     = cv_if_aft                 -- 会計ifフラグ 2(連携済)
-            ,last_updated_by        = cn_last_updated_by        -- 最終更新者
-            ,last_update_date       = cd_last_update_date       -- 最終更新日
-            ,last_update_login      = cn_last_update_login      -- 最終更新ログイン
-            ,request_id             = cn_request_id             -- 要求ID
-            ,program_application_id = cn_program_application_id -- コンカレントプログラムアプリケーション
-            ,program_id             = cn_program_id             -- コンカレントプログラムID
-            ,program_update_date    = cd_program_update_date    -- プログラム更新日
-      WHERE
-             contract_line_id   = g_contract_line_id_tab(ln_loop_cnt)
-         AND contract_status    =  cv_ctrt_info_change  -- 情報変更
-         AND accounting_if_flag =  cv_if_yet            -- 未送信
-         AND accounting_date    <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
-      ;
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--    <<update_loop>>
+--    FORALL ln_loop_cnt IN 1 .. g_contract_line_id_tab.COUNT
+--      UPDATE xxcff_contract_histories
+--      SET
+--             accounting_if_flag     = cv_if_aft                 -- 会計ifフラグ 2(連携済)
+--            ,last_updated_by        = cn_last_updated_by        -- 最終更新者
+--            ,last_update_date       = cd_last_update_date       -- 最終更新日
+--            ,last_update_login      = cn_last_update_login      -- 最終更新ログイン
+--            ,request_id             = cn_request_id             -- 要求ID
+--            ,program_application_id = cn_program_application_id -- コンカレントプログラムアプリケーション
+--            ,program_id             = cn_program_id             -- コンカレントプログラムID
+--            ,program_update_date    = cd_program_update_date    -- プログラム更新日
+--      WHERE
+--             contract_line_id   = g_contract_line_id_tab(ln_loop_cnt)
+--         AND contract_status    =  cv_ctrt_info_change  -- 情報変更
+--         AND accounting_if_flag =  cv_if_yet            -- 未送信
+--         AND accounting_date    <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+--      ;
+    UPDATE xxcff_contract_histories
+    SET
+           accounting_if_flag     = cv_if_aft                 -- 会計ifフラグ 2(連携済)
+          ,last_updated_by        = cn_last_updated_by        -- 最終更新者
+          ,last_update_date       = cd_last_update_date       -- 最終更新日
+          ,last_update_login      = cn_last_update_login      -- 最終更新ログイン
+          ,request_id             = cn_request_id             -- 要求ID
+          ,program_application_id = cn_program_application_id -- コンカレントプログラムアプリケーション
+          ,program_id             = cn_program_id             -- コンカレントプログラムID
+          ,program_update_date    = cd_program_update_date    -- プログラム更新日
+    WHERE
+           contract_line_id   = g_contract_line_id_tab(in_loop_cnt)
+       AND contract_status    =  cv_ctrt_info_change  -- 情報変更
+       AND accounting_if_flag =  cv_if_yet            -- 未送信
+       AND accounting_date    >= TO_DATE(gv_period_name,'YYYY-MM')
+       AND accounting_date    <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+    ;
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD End
 --
   EXCEPTION
 --
@@ -1942,6 +2143,9 @@ AS
    * Description      : リース取引(振替)登録 (A-15)
    ***********************************************************************************/
   PROCEDURE insert_les_trn_trnsf_data(
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+    in_loop_cnt   IN  NUMBER,       --   ループカウント
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1986,89 +2190,178 @@ AS
 --
     IF (gn_les_trnsf_target_cnt > 0) THEN
 --
-      <<inert_loop>>
-      FORALL ln_loop_cnt IN 1 .. g_contract_line_id_tab.COUNT
-        INSERT INTO xxcff_fa_transactions (
-           fa_transaction_id                 -- リース取引内部ID
-          ,contract_header_id                -- 契約内部ID
-          ,contract_line_id                  -- 契約明細内部ID
-          ,object_header_id                  -- 物件内部ID
-          ,period_name                       -- 会計期間
-          ,transaction_type                  -- 取引タイプ
-          ,movement_type                     -- 移動タイプ
-          ,book_type_code                    -- 資産台帳名
-          ,asset_number                      -- 資産番号
-          ,lease_class                       -- リース種別
-          ,quantity                          -- 数量
-          ,dprn_company_code                 -- 会F_会社コード
-          ,dprn_department_code              -- 会F_部門コード
-          ,dprn_account_code                 -- 会F_勘定科目コード
-          ,dprn_sub_account_code             -- 会F_補助科目コード
-          ,dprn_customer_code                -- 会F_顧客コード
-          ,dprn_enterprise_code              -- 会F_企業コード
-          ,dprn_reserve_1                    -- 会F_予備1
-          ,dprn_reserve_2                    -- 会F_予備2
-          ,dclr_place                        -- 申告地
-          ,department_code                   -- 管理部門コード
-          ,location_name                     -- 事業所
-          ,location_place                    -- 場所
-          ,owner_company                     -- 本社／工場
-          ,transfer_date                     -- 振替日
-          ,fa_if_flag                        -- FA連携フラグ
-          ,gl_if_flag                        -- GL連携フラグ
-          ,created_by                        -- 作成者
-          ,creation_date                     -- 作成日
-          ,last_updated_by                   -- 最終更新者
-          ,last_update_date                  -- 最終更新日
-          ,last_update_login                 -- 最終更新ﾛｸﾞｲﾝ
-          ,request_id                        -- 要求ID
-          ,program_application_id            -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-          ,program_id                        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-          ,program_update_date               -- ﾌﾟﾛｸﾞﾗﾑ更新日
-        )
-        VALUES (
-           xxcff_fa_transactions_s1.NEXTVAL            -- リース取引内部ID
-          ,g_contract_header_id_tab(ln_loop_cnt)       -- 契約内部ID
-          ,g_contract_line_id_tab(ln_loop_cnt)         -- 契約明細内部ID
-          ,g_object_header_id_tab(ln_loop_cnt)         -- 物件内部ID
-          ,gv_period_name                              -- 会計期間
-          ,2                                           -- 取引タイプ
-          ,DECODE(g_trnsf_to_comp_cd_tab(ln_loop_cnt)
-                    ,gv_comp_cd_sagara , 1
-                    ,gv_comp_cd_itoen  , 2)            -- 移動タイプ
-          ,g_book_type_code_tab(ln_loop_cnt)           -- 資産台帳名
-          ,g_asset_number_tab(ln_loop_cnt)             -- 資産番号
-          ,g_lease_class_tab(ln_loop_cnt)              -- リース種別
-          ,g_quantity_tab(ln_loop_cnt)                 -- 数量
-          ,g_trnsf_to_comp_cd_tab(ln_loop_cnt)         -- 会F_会社コード
-          ,gv_dep_cd_chosei                            -- 会F_部門コード
-          ,g_deprn_acct_tab(ln_loop_cnt)               -- 会F_勘定科目コード
-          ,g_deprn_sub_acct_tab(ln_loop_cnt)           -- 会F_補助科目コード
-          ,gv_ptnr_cd_dammy                            -- 会F_顧客コード
-          ,gv_busi_cd_dammy                            -- 会F_企業コード
-          ,gv_project_dammy                            -- 会F_予備1
-          ,gv_future_dammy                             -- 会F_予備2
-          ,gv_dclr_place_no_report                     -- 申告地
-          ,g_department_code_tab(ln_loop_cnt)          -- 管理部門コード
-          ,gv_mng_place_dammy                          -- 事業所
-          ,gv_place_dammy                              -- 場所
-          ,g_owner_company_tab(ln_loop_cnt)            -- 本社／工場
-          ,LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) -- 振替日
-          ,cv_if_yet                                   -- FA連携フラグ
-          ,cv_if_yet                                   -- GL連携フラグ
-          ,cn_created_by                               -- 作成者
-          ,cd_creation_date                            -- 作成日
-          ,cn_last_updated_by                          -- 最終更新者
-          ,cd_last_update_date                         -- 最終更新日
-          ,cn_last_update_login                        -- 最終更新ﾛｸﾞｲﾝ
-          ,cn_request_id                               -- 要求ID
-          ,cn_program_application_id                   -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-          ,cn_program_id                               -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-          ,cd_program_update_date                      -- ﾌﾟﾛｸﾞﾗﾑ更新日
-        );
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--      <<inert_loop>>
+--      FORALL ln_loop_cnt IN 1 .. g_contract_line_id_tab.COUNT
+--        INSERT INTO xxcff_fa_transactions (
+--           fa_transaction_id                 -- リース取引内部ID
+--          ,contract_header_id                -- 契約内部ID
+--          ,contract_line_id                  -- 契約明細内部ID
+--          ,object_header_id                  -- 物件内部ID
+--          ,period_name                       -- 会計期間
+--          ,transaction_type                  -- 取引タイプ
+--          ,movement_type                     -- 移動タイプ
+--          ,book_type_code                    -- 資産台帳名
+--          ,asset_number                      -- 資産番号
+--          ,lease_class                       -- リース種別
+--          ,quantity                          -- 数量
+--          ,dprn_company_code                 -- 会F_会社コード
+--          ,dprn_department_code              -- 会F_部門コード
+--          ,dprn_account_code                 -- 会F_勘定科目コード
+--          ,dprn_sub_account_code             -- 会F_補助科目コード
+--          ,dprn_customer_code                -- 会F_顧客コード
+--          ,dprn_enterprise_code              -- 会F_企業コード
+--          ,dprn_reserve_1                    -- 会F_予備1
+--          ,dprn_reserve_2                    -- 会F_予備2
+--          ,dclr_place                        -- 申告地
+--          ,department_code                   -- 管理部門コード
+--          ,location_name                     -- 事業所
+--          ,location_place                    -- 場所
+--          ,owner_company                     -- 本社／工場
+--          ,transfer_date                     -- 振替日
+--          ,fa_if_flag                        -- FA連携フラグ
+--          ,gl_if_flag                        -- GL連携フラグ
+--          ,created_by                        -- 作成者
+--          ,creation_date                     -- 作成日
+--          ,last_updated_by                   -- 最終更新者
+--          ,last_update_date                  -- 最終更新日
+--          ,last_update_login                 -- 最終更新ﾛｸﾞｲﾝ
+--          ,request_id                        -- 要求ID
+--          ,program_application_id            -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--          ,program_id                        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--          ,program_update_date               -- ﾌﾟﾛｸﾞﾗﾑ更新日
+--        )
+--        VALUES (
+--           xxcff_fa_transactions_s1.NEXTVAL            -- リース取引内部ID
+--          ,g_contract_header_id_tab(ln_loop_cnt)       -- 契約内部ID
+--          ,g_contract_line_id_tab(ln_loop_cnt)         -- 契約明細内部ID
+--          ,g_object_header_id_tab(ln_loop_cnt)         -- 物件内部ID
+--          ,gv_period_name                              -- 会計期間
+--          ,2                                           -- 取引タイプ
+--          ,DECODE(g_trnsf_to_comp_cd_tab(ln_loop_cnt)
+--                    ,gv_comp_cd_sagara , 1
+--                    ,gv_comp_cd_itoen  , 2)            -- 移動タイプ
+--          ,g_book_type_code_tab(ln_loop_cnt)           -- 資産台帳名
+--          ,g_asset_number_tab(ln_loop_cnt)             -- 資産番号
+--          ,g_lease_class_tab(ln_loop_cnt)              -- リース種別
+--          ,g_quantity_tab(ln_loop_cnt)                 -- 数量
+--          ,g_trnsf_to_comp_cd_tab(ln_loop_cnt)         -- 会F_会社コード
+--          ,gv_dep_cd_chosei                            -- 会F_部門コード
+--          ,g_deprn_acct_tab(ln_loop_cnt)               -- 会F_勘定科目コード
+--          ,g_deprn_sub_acct_tab(ln_loop_cnt)           -- 会F_補助科目コード
+--          ,gv_ptnr_cd_dammy                            -- 会F_顧客コード
+--          ,gv_busi_cd_dammy                            -- 会F_企業コード
+--          ,gv_project_dammy                            -- 会F_予備1
+--          ,gv_future_dammy                             -- 会F_予備2
+--          ,gv_dclr_place_no_report                     -- 申告地
+--          ,g_department_code_tab(ln_loop_cnt)          -- 管理部門コード
+--          ,gv_mng_place_dammy                          -- 事業所
+--          ,gv_place_dammy                              -- 場所
+--          ,g_owner_company_tab(ln_loop_cnt)            -- 本社／工場
+--          ,LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) -- 振替日
+--          ,cv_if_yet                                   -- FA連携フラグ
+--          ,cv_if_yet                                   -- GL連携フラグ
+--          ,cn_created_by                               -- 作成者
+--          ,cd_creation_date                            -- 作成日
+--          ,cn_last_updated_by                          -- 最終更新者
+--          ,cd_last_update_date                         -- 最終更新日
+--          ,cn_last_update_login                        -- 最終更新ﾛｸﾞｲﾝ
+--          ,cn_request_id                               -- 要求ID
+--          ,cn_program_application_id                   -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--          ,cn_program_id                               -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--          ,cd_program_update_date                      -- ﾌﾟﾛｸﾞﾗﾑ更新日
+--        );
+--
+--      --成功件数カウント
+--      gn_les_trnsf_normal_cnt := SQL%ROWCOUNT;
+      INSERT INTO xxcff_fa_transactions (
+         fa_transaction_id                 -- リース取引内部ID
+        ,contract_header_id                -- 契約内部ID
+        ,contract_line_id                  -- 契約明細内部ID
+        ,object_header_id                  -- 物件内部ID
+        ,period_name                       -- 会計期間
+        ,transaction_type                  -- 取引タイプ
+        ,movement_type                     -- 移動タイプ
+        ,book_type_code                    -- 資産台帳名
+        ,asset_number                      -- 資産番号
+        ,lease_class                       -- リース種別
+        ,quantity                          -- 数量
+        ,dprn_company_code                 -- 会F_会社コード
+        ,dprn_department_code              -- 会F_部門コード
+        ,dprn_account_code                 -- 会F_勘定科目コード
+        ,dprn_sub_account_code             -- 会F_補助科目コード
+        ,dprn_customer_code                -- 会F_顧客コード
+        ,dprn_enterprise_code              -- 会F_企業コード
+        ,dprn_reserve_1                    -- 会F_予備1
+        ,dprn_reserve_2                    -- 会F_予備2
+        ,dclr_place                        -- 申告地
+        ,department_code                   -- 管理部門コード
+        ,location_name                     -- 事業所
+        ,location_place                    -- 場所
+        ,owner_company                     -- 本社／工場
+        ,transfer_date                     -- 振替日
+        ,fa_if_flag                        -- FA連携フラグ
+        ,gl_if_flag                        -- GL連携フラグ
+        ,created_by                        -- 作成者
+        ,creation_date                     -- 作成日
+        ,last_updated_by                   -- 最終更新者
+        ,last_update_date                  -- 最終更新日
+        ,last_update_login                 -- 最終更新ﾛｸﾞｲﾝ
+        ,request_id                        -- 要求ID
+        ,program_application_id            -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        ,program_id                        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        ,program_update_date               -- ﾌﾟﾛｸﾞﾗﾑ更新日
+      )
+      VALUES (
+         xxcff_fa_transactions_s1.NEXTVAL            -- リース取引内部ID
+        ,g_contract_header_id_tab(in_loop_cnt)       -- 契約内部ID
+        ,g_contract_line_id_tab(in_loop_cnt)         -- 契約明細内部ID
+        ,g_object_header_id_tab(in_loop_cnt)         -- 物件内部ID
+        ,gv_period_name                              -- 会計期間
+        ,g_transaction_type_tab(in_loop_cnt)         -- 取引タイプ
+        ,DECODE(g_trnsf_to_comp_cd_tab(in_loop_cnt)
+                  ,gv_comp_cd_sagara , 1
+                  ,gv_comp_cd_itoen  , 2)            -- 移動タイプ
+        ,g_book_type_code_tab(in_loop_cnt)           -- 資産台帳名
+        ,g_asset_number_tab(in_loop_cnt)             -- 資産番号
+        ,g_lease_class_tab(in_loop_cnt)              -- リース種別
+        ,g_quantity_tab(in_loop_cnt)                 -- 数量
+        ,g_trnsf_to_comp_cd_tab(in_loop_cnt)         -- 会F_会社コード
+        ,DECODE(g_dept_tran_flg_tab(in_loop_cnt)
+                  ,cv_flg_y , g_department_code_tab(in_loop_cnt)
+                            , gv_dep_cd_chosei)
+                                                     -- 会F_部門コード
+        ,g_deprn_acct_tab(in_loop_cnt)               -- 会F_勘定科目コード
+        ,g_deprn_sub_acct_tab(in_loop_cnt)           -- 会F_補助科目コード
+        ,DECODE(g_vd_cust_flag_tab(in_loop_cnt)
+                  ,cv_flg_y , g_customer_code_tab(in_loop_cnt)
+                            , gv_ptnr_cd_dammy)
+                                                     -- 会F_顧客コード
+        ,gv_busi_cd_dammy                            -- 会F_企業コード
+        ,gv_project_dammy                            -- 会F_予備1
+        ,gv_future_dammy                             -- 会F_予備2
+        ,gv_dclr_place_no_report                     -- 申告地
+        ,g_department_code_tab(in_loop_cnt)          -- 管理部門コード
+        ,gv_mng_place_dammy                          -- 事業所
+        ,gv_place_dammy                              -- 場所
+        ,g_owner_company_tab(in_loop_cnt)            -- 本社／工場
+        ,LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) -- 振替日
+        ,cv_if_yet                                   -- FA連携フラグ
+        ,cv_if_yet                                   -- GL連携フラグ
+        ,cn_created_by                               -- 作成者
+        ,cd_creation_date                            -- 作成日
+        ,cn_last_updated_by                          -- 最終更新者
+        ,cd_last_update_date                         -- 最終更新日
+        ,cn_last_update_login                        -- 最終更新ﾛｸﾞｲﾝ
+        ,cn_request_id                               -- 要求ID
+        ,cn_program_application_id                   -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        ,cn_program_id                               -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        ,cd_program_update_date                      -- ﾌﾟﾛｸﾞﾗﾑ更新日
+      );
 --
       --成功件数カウント
-      gn_les_trnsf_normal_cnt := SQL%ROWCOUNT;
+      gn_les_trnsf_normal_cnt := gn_les_trnsf_normal_cnt + 1;
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD End
 --
     END IF;
 --
@@ -2138,8 +2431,14 @@ AS
             xxcff_object_histories    obj_hist      -- リース物件履歴
       WHERE
              obj_hist.object_header_id     =  in_object_header_id
-         AND obj_hist.object_status        =  cv_obj_move    -- 移動
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--         AND obj_hist.object_status        =  cv_obj_move    -- 移動
+         AND obj_hist.object_status        IN (cv_obj_move ,cv_obj_modify)  -- 移動,物件情報変更
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD End
          AND obj_hist.accounting_if_flag   =  cv_if_yet      -- 未送信
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+         AND obj_hist.accounting_date      >= TO_DATE(gv_period_name,'YYYY-MM')
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
          AND obj_hist.accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
          FOR UPDATE NOWAIT
          ;
@@ -2155,6 +2454,9 @@ AS
              ctrct_hist.contract_line_id   =  in_contract_line_id
          AND ctrct_hist.contract_status    =  cv_ctrt_info_change  -- 情報変更
          AND ctrct_hist.accounting_if_flag =  cv_if_yet            -- 未送信
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+         AND ctrct_hist.accounting_date    >= TO_DATE(gv_period_name,'YYYY-MM')
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
          AND ctrct_hist.accounting_date    <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
          FOR UPDATE NOWAIT
          ;
@@ -2305,6 +2607,13 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+    lt_m_owner_company    xxcff_object_histories.m_owner_company%TYPE;   -- 移動元本社/工場
+    lt_m_department_code  xxcff_object_histories.m_department_code%TYPE; -- 移動元管理部門
+    lt_customer_code      xxcff_object_histories.customer_code%TYPE;     -- 修正前顧客コード
+    lv_trnsf_flg          VARCHAR2(1);                                   -- 振替対象フラグ
+    lv_warnmsg            VARCHAR2(5000);                                -- 警告メッセージ
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2328,84 +2637,264 @@ AS
     <<proc_les_trn_trnsf_data>>
     FOR ln_loop_cnt IN 1 .. g_contract_header_id_tab.COUNT LOOP
 --
-      --==============================================================
-      --抽出対象データロック (A-12)
-      --==============================================================
-      lock_trnsf_data(
-         it_object_header_id    => g_object_header_id_tab(ln_loop_cnt) -- 物件内部ID
-        ,it_contract_line_id    => g_contract_line_id_tab(ln_loop_cnt) -- 契約明細内部ID
-        ,ov_errbuf              => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode             => lv_retcode                          -- リターン・コード             --# 固定 #
-        ,ov_errmsg              => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--      --==============================================================
+--      --抽出対象データロック (A-12)
+--      --==============================================================
+--      lock_trnsf_data(
+--         it_object_header_id    => g_object_header_id_tab(ln_loop_cnt) -- 物件内部ID
+--        ,it_contract_line_id    => g_contract_line_id_tab(ln_loop_cnt) -- 契約明細内部ID
+--        ,ov_errbuf              => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode             => lv_retcode                          -- リターン・コード             --# 固定 #
+--        ,ov_errmsg              => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --事業所CCID取得 (A-13)
+--      --==============================================================
+--      xxcff_common1_pkg.chk_fa_location(
+--         iv_segment2      => g_department_code_tab(ln_loop_cnt) -- 管理部門
+--        ,iv_segment5      => g_owner_company_tab(ln_loop_cnt)   -- 本社工場区分
+--        ,on_location_id   => g_location_ccid_tab(ln_loop_cnt)   -- 事業所CCID
+--        ,ov_errbuf        => lv_errbuf                          -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode       => lv_retcode                         -- リターン・コード             --# 固定 #
+--        ,ov_errmsg        => lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      --==============================================================
+--      --減価償却費勘定CCID取得 (A-14)
+--      --==============================================================
+----
+--      -- セグメント値配列設定(SEG1:会社)
+--      g_segments_tab(1) :=  g_trnsf_to_comp_cd_tab(ln_loop_cnt);
+----
+--      -- セグメント値配列設定(SEG3:勘定科目)
+--      g_segments_tab(3) := g_deprn_acct_tab(ln_loop_cnt);
+--      -- セグメント値配列設定(SEG4:補助科目)
+--      g_segments_tab(4) := g_deprn_sub_acct_tab(ln_loop_cnt);
+----
+--      -- 減価償却費勘定CCID取得
+--      get_deprn_ccid(
+--         iot_segments     => g_segments_tab                  -- セグメント値配列
+--        ,ot_deprn_ccid    => g_deprn_ccid_tab(ln_loop_cnt)   -- 減価償却費勘定CCID
+--        ,ov_errbuf        => lv_errbuf                       -- エラー・メッセージ           --# 固定 # 
+--        ,ov_retcode       => lv_retcode                      -- リターン・コード             --# 固定 #
+--        ,ov_errmsg        => lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
+--      );
+--      IF (lv_retcode <> ov_retcode) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--    END LOOP proc_les_trn_trnsf_data;
+----
+--    -- =========================================
+--    -- リース取引(振替)登録 (A-15)
+--    -- =========================================
+--    insert_les_trn_trnsf_data(
+--       lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--      ,lv_retcode        -- リターン・コード             --# 固定 #
+--      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+--    IF (lv_retcode <> cv_status_normal) THEN
+--      RAISE global_process_expt;
+--    END IF;
+----
+--    -- ==============================================
+--    -- 抽出対象データ 会計IFフラグ更新 (A-16)
+--    -- ==============================================
+--    update_trnsf_data_acct_flag(
+--       lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--      ,lv_retcode        -- リターン・コード             --# 固定 #
+--      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+--    IF (lv_retcode <> cv_status_normal) THEN
+--      RAISE global_process_expt;
+--    END IF;
+      -- 物件履歴取得
+      get_obj_hist_data(
+         it_object_header_id   => g_object_header_id_tab(ln_loop_cnt) -- 1.物件ID
+        ,ot_m_owner_company    => lt_m_owner_company                  -- 2.移動元本社/工場
+        ,ot_m_department_code  => lt_m_department_code                -- 3.移動元管理部門
+        ,ot_customer_code      => lt_customer_code                    -- 4.顧客コード
+        ,ov_errbuf             => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+        ,ov_retcode            => lv_retcode                          -- リターン・コード             --# 固定 #
+        ,ov_errmsg             => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
       );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
+--
+      -- 該当の履歴が存在する場合
+      g_department_code_tab(ln_loop_cnt) := NVL(lt_m_department_code ,g_department_code_tab(ln_loop_cnt));
+      g_owner_company_tab(ln_loop_cnt)   := NVL(lt_m_owner_company   ,g_owner_company_tab(ln_loop_cnt));
+      g_customer_code_tab(ln_loop_cnt)   := NVL(lt_customer_code     ,g_customer_code_tab(ln_loop_cnt));
+--
+      -- 該当の移動履歴が存在する場合
+      IF ( lt_m_owner_company IS NOT NULL ) THEN
+        -- 本社工場区分が本社の場合
+        IF g_owner_company_tab(ln_loop_cnt) = gv_own_comp_itoen THEN
+          -- 振替先会社コードに本社コード設定
+          g_trnsf_to_comp_cd_tab(ln_loop_cnt) := gv_comp_cd_itoen;
+        -- 本社工場区分が工場の場合
+        ELSE
+          -- 振替先会社コードに工場コード設定
+          g_trnsf_to_comp_cd_tab(ln_loop_cnt) := gv_comp_cd_sagara;
+        END IF;
       END IF;
 --
-      --==============================================================
-      --事業所CCID取得 (A-13)
-      --==============================================================
-      xxcff_common1_pkg.chk_fa_location(
-         iv_segment2      => g_department_code_tab(ln_loop_cnt) -- 管理部門
-        ,iv_segment5      => g_owner_company_tab(ln_loop_cnt)   -- 本社工場区分
-        ,on_location_id   => g_location_ccid_tab(ln_loop_cnt)   -- 事業所CCID
-        ,ov_errbuf        => lv_errbuf                          -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode       => lv_retcode                         -- リターン・コード             --# 固定 #
-        ,ov_errmsg        => lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
+      -- 振替先会社コードと振替元会社コードが違う場合
+      IF ( g_trnsf_to_comp_cd_tab(ln_loop_cnt) <> g_trnsf_from_comp_cd_tab(ln_loop_cnt) ) THEN
+        -- 取引タイプに振替を設定
+        g_transaction_type_tab(ln_loop_cnt) := cv_transaction_type_2;
+        lv_trnsf_flg                        := cv_flg_y;
+      -- 部門振替フラグが'Y'の時
+      -- 管理部門と振替元管理部門が違う、または、VD顧客フラグが'Y'で顧客コードと振替元顧客コードが違う場合
+      ELSIF ( g_dept_tran_flg_tab(ln_loop_cnt)     =  cv_flg_y
+          AND ( g_department_code_tab(ln_loop_cnt) <> g_trnsf_from_dep_cd_tab(ln_loop_cnt)
+            OR  ( g_vd_cust_flag_tab(ln_loop_cnt)   =  cv_flg_y
+              AND g_customer_code_tab(ln_loop_cnt)  <> g_trnsf_from_cust_cd_tab(ln_loop_cnt) ) ) ) THEN
+        -- 取引タイプに部門振替を設定
+        g_transaction_type_tab(ln_loop_cnt) := cv_transaction_type_4;
+        lv_trnsf_flg                        := cv_flg_y;
+      -- 上記以外の場合
+      ELSE
+        lv_trnsf_flg                        := cv_flg_n;
       END IF;
 --
-      --==============================================================
-      --減価償却費勘定CCID取得 (A-15)
-      --==============================================================
+      -- 対象の場合
+      IF ( lv_trnsf_flg = cv_flg_y ) THEN
 --
-      -- セグメント値配列設定(SEG1:会社)
-      g_segments_tab(1) :=  g_trnsf_to_comp_cd_tab(ln_loop_cnt);
+        -- 対象件数カウント
+        gn_les_trnsf_target_cnt := gn_les_trnsf_target_cnt + 1;
 --
-      -- セグメント値配列設定(SEG3:勘定科目)
-      g_segments_tab(3) := g_deprn_acct_tab(ln_loop_cnt);
-      -- セグメント値配列設定(SEG4:補助科目)
-      g_segments_tab(4) := g_deprn_sub_acct_tab(ln_loop_cnt);
+        --==============================================================
+        --抽出対象データロック (A-12)
+        --==============================================================
+        lock_trnsf_data(
+           it_object_header_id    => g_object_header_id_tab(ln_loop_cnt) -- 物件内部ID
+          ,it_contract_line_id    => g_contract_line_id_tab(ln_loop_cnt) -- 契約明細内部ID
+          ,ov_errbuf              => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode             => lv_retcode                          -- リターン・コード             --# 固定 #
+          ,ov_errmsg              => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
 --
-      -- 減価償却費勘定CCID取得
-      get_deprn_ccid(
-         iot_segments     => g_segments_tab                  -- セグメント値配列
-        ,ot_deprn_ccid    => g_deprn_ccid_tab(ln_loop_cnt)   -- 減価償却費勘定CCID
-        ,ov_errbuf        => lv_errbuf                       -- エラー・メッセージ           --# 固定 # 
-        ,ov_retcode       => lv_retcode                      -- リターン・コード             --# 固定 #
-        ,ov_errmsg        => lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      IF (lv_retcode <> ov_retcode) THEN
-        RAISE global_api_expt;
+        --==============================================================
+        --事業所CCID取得 (A-13)
+        --==============================================================
+        xxcff_common1_pkg.chk_fa_location(
+           iv_segment2      => g_department_code_tab(ln_loop_cnt) -- 管理部門
+          ,iv_segment5      => g_owner_company_tab(ln_loop_cnt)   -- 本社工場区分
+          ,on_location_id   => g_location_ccid_tab(ln_loop_cnt)   -- 事業所CCID
+          ,ov_errbuf        => lv_errbuf                          -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode       => lv_retcode                         -- リターン・コード             --# 固定 #
+          ,ov_errmsg        => lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+        --==============================================================
+        --減価償却費勘定CCID取得 (A-14)
+        --==============================================================
+--
+        -- セグメント値配列設定(SEG1:会社)
+        g_segments_tab(1) :=  g_trnsf_to_comp_cd_tab(ln_loop_cnt);
+--
+        -- セグメント値配列設定(SEG2:部門コード)
+        -- 部門振替フラグが'Y'の時
+        IF ( g_dept_tran_flg_tab(ln_loop_cnt) = cv_flg_y ) THEN
+          -- 管理部門
+          g_segments_tab(2) := g_department_code_tab(ln_loop_cnt);
+        -- 部門振替フラグが'Y'以外の時
+        ELSE
+          -- XXCFF: 部門コード_調整部門
+          g_segments_tab(2) := gv_dep_cd_chosei;
+        END IF;
+--
+        -- セグメント値配列設定(SEG3:勘定科目)
+        g_segments_tab(3) := g_deprn_acct_tab(ln_loop_cnt);
+        -- セグメント値配列設定(SEG4:補助科目)
+        g_segments_tab(4) := g_deprn_sub_acct_tab(ln_loop_cnt);
+--
+        -- セグメント値配列設定(SEG5:顧客コード)
+        -- VD顧客フラグが'Y'の時
+        IF ( g_vd_cust_flag_tab(ln_loop_cnt) = cv_flg_y ) THEN
+          -- 顧客コード
+          g_segments_tab(5) := g_customer_code_tab(ln_loop_cnt);
+        -- VD顧客フラグが'Y'以外の時
+        ELSE
+          -- XXCFF: 顧客コード_定義なし
+          g_segments_tab(5) := gv_ptnr_cd_dammy;
+        END IF;
+--
+        -- 減価償却費勘定CCID取得
+        get_deprn_ccid(
+           iot_segments     => g_segments_tab                  -- セグメント値配列
+          ,ot_deprn_ccid    => g_deprn_ccid_tab(ln_loop_cnt)   -- 減価償却費勘定CCID
+          ,ov_errbuf        => lv_errbuf                       -- エラー・メッセージ           --# 固定 # 
+          ,ov_retcode       => lv_retcode                      -- リターン・コード             --# 固定 #
+          ,ov_errmsg        => lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> ov_retcode) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+        -- =========================================
+        -- リース取引(振替)登録 (A-15)
+        -- =========================================
+        insert_les_trn_trnsf_data(
+           ln_loop_cnt       -- ループカウント
+          ,lv_errbuf         -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode        -- リターン・コード             --# 固定 #
+          ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ==============================================
+        -- 抽出対象データ 会計IFフラグ更新 (A-16)
+        -- ==============================================
+        update_trnsf_data_acct_flag(
+           ln_loop_cnt       -- ループカウント
+          ,lv_errbuf         -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode        -- リターン・コード             --# 固定 #
+          ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
       END IF;
 --
     END LOOP proc_les_trn_trnsf_data;
 --
-    -- =========================================
-    -- リース取引(振替)登録 (A-15)
-    -- =========================================
-    insert_les_trn_trnsf_data(
-       lv_errbuf         -- エラー・メッセージ           --# 固定 #
-      ,lv_retcode        -- リターン・コード             --# 固定 #
-      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
-    );
-    IF (lv_retcode <> cv_status_normal) THEN
-      RAISE global_process_expt;
+    -- 抽出件数が1件以上で、処理対象件数が0件の場合
+    IF (  g_contract_header_id_tab.COUNT > 0 
+      AND gn_les_trnsf_target_cnt        = 0 ) THEN
+      --メッセージの設定
+      lv_warnmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                     ,cv_msg_013a20_m_018  -- 取得対象データ無し
+                                                     ,cv_tkn_get_data      -- トークン'GET_DATA'
+                                                     ,cv_msg_013a20_t_032) -- リース取引（振替）情報
+                                                     ,1
+                                                     ,5000);
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG  --ログ(システム管理者用メッセージ)出力
+        ,buff   => lv_warnmsg
+      );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
+        ,buff   => lv_warnmsg
+      );
     END IF;
---
-    -- ==============================================
-    -- 抽出対象データ 会計IFフラグ更新 (A-16)
-    -- ==============================================
-    update_trnsf_data_acct_flag(
-       lv_errbuf         -- エラー・メッセージ           --# 固定 #
-      ,lv_retcode        -- リターン・コード             --# 固定 #
-      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
-    );
-    IF (lv_retcode <> cv_status_normal) THEN
-      RAISE global_process_expt;
-    END IF;
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD End
 --
   EXCEPTION
 --
@@ -2472,7 +2961,15 @@ AS
     IS
 -- 2016/08/03 Ver.1.9 Y.Koh MOD Start
 --      SELECT
-      SELECT /*+ INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03) INDEX(faadds XXCFF_FA_ADDITIONS_B_N04) INDEX(fadist_hist FA_DISTRIBUTION_HISTORY_N2) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) INDEX(les_class.FFV FND_FLEX_VALUES_U1) */
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+--      SELECT /*+ INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03) INDEX(faadds XXCFF_FA_ADDITIONS_B_N04) INDEX(fadist_hist FA_DISTRIBUTION_HISTORY_N2) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) INDEX(les_class.FFV FND_FLEX_VALUES_U1) */
+      SELECT
+       /*+ USE_NL(les_class.ffvs les_class.ffv les_class.ffvt)
+           INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03)
+           INDEX(faadds XXCFF_FA_ADDITIONS_B_N04)
+           INDEX(fadist_hist FA_DISTRIBUTION_HISTORY_N2) 
+           INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 -- 2016/08/03 Ver.1.9 Y.Koh MOD End
              ctrct_line.contract_header_id                      AS contract_header_id -- 契約内部ID
             ,ctrct_line.contract_line_id                        AS contract_line_id   -- 契約明細内部ID
@@ -2490,7 +2987,13 @@ AS
             ,DECODE(obj_head.owner_company
                       ,gv_own_comp_itoen  , gv_comp_cd_itoen
                       ,gv_own_comp_sagara , gv_comp_cd_sagara)  AS trnsf_to_comp_cd   -- 振替先会社コード
-
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+            ,gcc.segment2                                       AS trnsf_from_dep_cd  -- 振替元管理部門
+            ,gcc.segment5                                       AS trnsf_from_cust_cd -- 振替元顧客コード
+            ,obj_head.customer_code                             AS customer_code      -- 振替先顧客コード
+            ,les_class.vd_cust_flag                             AS vd_cust_flag       -- VD顧客フラグ
+            ,flv.attribute1                                     AS dept_tran_flg      -- 部門振替フラグ
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
             ,NULL                                               AS location_ccid      -- 事業所CCID
             ,NULL                                               AS deprn_ccid         -- 減価償却費勘定CCID
       FROM
@@ -2502,6 +3005,9 @@ AS
            ,gl_code_combinations      gcc           -- GL組合せ
            ,xxcff_lease_class_v       les_class     -- リース種別ビュー
            ,xxcff_lease_kind_v        les_kind      -- リース種類ビュー
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+           ,fnd_lookup_values         flv           -- 参照表
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
            ,( 
               SELECT  lse_trnsf_hist_data.object_header_id
 -- 2016/08/03 Ver.1.9 Y.Koh DEL Start
@@ -2510,10 +3016,19 @@ AS
               FROM (
 -- 2016/08/03 Ver.1.9 Y.Koh MOD Start
 --                     SELECT
-                     SELECT /*+ INDEX(obj_hist XXCFF_OBJECT_HISTORIES_N02) INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+--                     SELECT /*+ INDEX(obj_hist XXCFF_OBJECT_HISTORIES_N02) INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
+                     SELECT
+                            /*+ USE_NL(obj_hist ctrct_line ctrct_head)
+                                INDEX(obj_hist XXCFF_OBJECT_HISTORIES_N02)
+                                INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03)
+                                INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */ 
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 -- 2016/08/03 Ver.1.9 Y.Koh MOD End
                              obj_hist.object_header_id   AS object_header_id
-                            ,ctrct_line.contract_line_id AS contract_line_id
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL Start
+--                            ,ctrct_line.contract_line_id AS contract_line_id
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL End
                      FROM
                            xxcff_object_histories  obj_hist    -- リース物件履歴
                           ,xxcff_contract_lines    ctrct_line  -- リース契約明細
@@ -2531,8 +3046,14 @@ AS
                                                            ) -- 契約
                                                              -- 満了
                                                              -- 中途解約(自己都合),中途解約(保険対応),中途解約(満了)
-                       AND obj_hist.object_status        = cv_obj_move  -- 移動
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--                       AND obj_hist.object_status        = cv_obj_move  -- 移動
+                       AND obj_hist.object_status        IN (cv_obj_move ,cv_obj_modify)  -- 移動,物件情報変更
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD End
                        AND obj_hist.accounting_if_flag   = cv_if_yet    -- 未送信
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+                       AND obj_hist.accounting_date      >= TO_DATE(gv_period_name,'YYYY-MM')
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
                        AND obj_hist.accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
                        AND ctrct_head.contract_header_id = ctrct_line.contract_header_id
 -- 2016/08/03 Ver.1.9 Y.Koh MOD Start
@@ -2550,7 +3071,9 @@ AS
                      SELECT /*+ INDEX(ctrct_hist XXCFF_CONTRACT_HISTORIES_N02) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
 -- 2016/08/03 Ver.1.9 Y.Koh MOD End
                              ctrct_hist.object_header_id   AS object_header_id
-                            ,ctrct_hist.contract_line_id   AS contract_line_id
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL Start
+--                            ,ctrct_hist.contract_line_id   AS contract_line_id
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL End
                      FROM
                            xxcff_contract_headers    ctrct_head  -- リース契約
                           ,xxcff_contract_histories  ctrct_hist  -- リース契約明細履歴
@@ -2566,11 +3089,16 @@ AS
 -- 2016/08/03 Ver.1.9 Y.Koh MOD End
                        AND ctrct_hist.contract_status      =  cv_ctrt_info_change                    -- 情報変更
                        AND ctrct_hist.accounting_if_flag   =  cv_if_yet                              -- 未送信
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+                       AND ctrct_hist.accounting_date      >= TO_DATE(gv_period_name,'YYYY-MM')
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
                        AND ctrct_hist.accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
                        ) lse_trnsf_hist_data -- インラインビュー(物件移動履歴・契約情報変更履歴)
               GROUP BY
                  lse_trnsf_hist_data.object_header_id
-                ,lse_trnsf_hist_data.contract_line_id
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL Start
+--                ,lse_trnsf_hist_data.contract_line_id
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL End
             ) lse_trnsf_hist
       WHERE
 -- 2016/08/03 Ver.1.9 Y.Koh MOD Start
@@ -2592,10 +3120,17 @@ AS
         AND fadist_hist.book_type_code      =  les_kind.book_type_code
         AND fadist_hist.date_ineffective    IS NULL
         AND fadist_hist.code_combination_id =  gcc.code_combination_id
-        AND DECODE(obj_head.owner_company
-                     ,gv_own_comp_itoen  , gv_comp_cd_itoen
-                     ,gv_own_comp_sagara , gv_comp_cd_sagara) <> gcc.segment1
-
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--        AND DECODE(obj_head.owner_company
+--                     ,gv_own_comp_itoen  , gv_comp_cd_itoen
+--                     ,gv_own_comp_sagara , gv_comp_cd_sagara) <> gcc.segment1
+        AND obj_head.lease_class            =  flv.lookup_code
+        AND flv.lookup_type                 =  cv_xxcff1_lease_class_check
+        AND flv.language                    =  USERENV('LANG')
+        AND flv.enabled_flag                =  cv_flg_y
+        AND LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
+                                                        AND     NVL(flv.end_date_active  , LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD End
         ;
   BEGIN
 --
@@ -2639,15 +3174,27 @@ AS
                       ,g_deprn_sub_acct_tab     -- 減価償却補助勘定
                       ,g_trnsf_from_comp_cd_tab -- 振替元会社コード
                       ,g_trnsf_to_comp_cd_tab   -- 振替先会社コード
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+                      ,g_trnsf_from_dep_cd_tab  -- 振替元管理部門
+                      ,g_trnsf_from_cust_cd_tab -- 振替元顧客コード
+                      ,g_customer_code_tab      -- 顧客コード
+                      ,g_vd_cust_flag_tab       -- VD顧客フラグ
+                      ,g_dept_tran_flg_tab      -- 部門振替フラグ
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
                       ,g_location_ccid_tab      -- 事業所CCID
                       ,g_deprn_ccid_tab         -- 減価償却費勘定CCID
     ;
-    -- 対象件数カウント
-    gn_les_trnsf_target_cnt := g_contract_header_id_tab.COUNT;
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL Start
+--    -- 対象件数カウント
+--    gn_les_trnsf_target_cnt := g_contract_header_id_tab.COUNT;
+-- 2017/03/29 Ver.1.10 Y.Shoji DEL End
     -- カーソルクローズ
     CLOSE les_trn_trnsf_cur;
 --
-    IF ( gn_les_trnsf_target_cnt = 0 ) THEN
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+--    IF ( gn_les_trnsf_target_cnt = 0 ) THEN
+    IF ( g_contract_header_id_tab.COUNT = 0 ) THEN
+-- 2017/03/29 Ver.1.10 Y.Shoji MOD END
       --メッセージの設定
       lv_warnmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
                                                      ,cv_msg_013a20_m_018  -- 取得対象データ無し
@@ -3131,6 +3678,11 @@ AS
 -- T1_0759 2009/04/23 ADD START --
     ln_lease_period  NUMBER(4);
 -- T1_0759 2009/04/23 ADD END   --
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+    lt_m_owner_company    xxcff_object_histories.m_owner_company%TYPE;   -- 移動元本社/工場
+    lt_m_department_code  xxcff_object_histories.m_department_code%TYPE; -- 移動元管理部門
+    lt_customer_code      xxcff_object_histories.customer_code%TYPE;     -- 修正前顧客コード
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -3192,6 +3744,24 @@ AS
       --==============================================================
       --事業所CCID取得 (A-6)
       --==============================================================
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+      -- 物件履歴取得
+      get_obj_hist_data(
+         it_object_header_id   => g_object_header_id_tab(ln_loop_cnt) -- 1.物件ID
+        ,ot_m_owner_company    => lt_m_owner_company                  -- 2.移動元本社/工場
+        ,ot_m_department_code  => lt_m_department_code                -- 3.移動元管理部門
+        ,ot_customer_code      => lt_customer_code                    -- 4.顧客コード
+        ,ov_errbuf             => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+        ,ov_retcode            => lv_retcode                          -- リターン・コード             --# 固定 #
+        ,ov_errmsg             => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+--
+      -- 該当の履歴が存在する場合
+      g_department_code_tab(ln_loop_cnt) := NVL(lt_m_department_code ,g_department_code_tab(ln_loop_cnt));
+      g_owner_company_tab(ln_loop_cnt)   := NVL(lt_m_owner_company   ,g_owner_company_tab(ln_loop_cnt));
+      g_customer_code_tab(ln_loop_cnt)   := NVL(lt_customer_code     ,g_customer_code_tab(ln_loop_cnt));
+--
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
       xxcff_common1_pkg.chk_fa_location(
          iv_segment2      => g_department_code_tab(ln_loop_cnt) -- 管理部門
         ,iv_segment5      => g_owner_company_tab(ln_loop_cnt)   -- 本社工場区分
@@ -3217,11 +3787,37 @@ AS
         g_segments_tab(1) := gv_comp_cd_sagara;
       END IF;
 --
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+      -- セグメント値配列設定(SEG2:部門コード)
+      -- 部門振替フラグが'Y'の時
+      IF ( g_dept_tran_flg_tab(ln_loop_cnt) = cv_flg_y ) THEN
+        -- 管理部門
+        g_segments_tab(2) := g_department_code_tab(ln_loop_cnt);
+      -- 部門振替フラグが'Y'以外の時
+      ELSE
+        -- XXCFF: 部門コード_調整部門
+        g_segments_tab(2) := gv_dep_cd_chosei;
+      END IF;
+--
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
       -- セグメント値配列設定(SEG3:勘定科目)
       g_segments_tab(3) := g_deprn_acct_tab(ln_loop_cnt);
       -- セグメント値配列設定(SEG4:補助科目)
       g_segments_tab(4) := g_deprn_sub_acct_tab(ln_loop_cnt);
 --
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+      -- セグメント値配列設定(SEG5:顧客コード)
+      -- VD顧客フラグが'Y'の時
+      IF ( g_vd_cust_flag_tab(ln_loop_cnt) = cv_flg_y ) THEN
+        -- 顧客コード
+        g_segments_tab(5) := g_customer_code_tab(ln_loop_cnt);
+      -- VD顧客フラグが'Y'以外の時
+      ELSE
+        -- XXCFF: 顧客コード_定義なし
+        g_segments_tab(5) := gv_ptnr_cd_dammy;
+      END IF;
+--
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
       -- 減価償却費勘定CCID取得
       get_deprn_ccid(
          iot_segments     => g_segments_tab                  -- セグメント値配列
@@ -3343,6 +3939,10 @@ AS
     CURSOR les_trn_add_cur
     IS
       SELECT
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+             /*+ LEADING(ctrct_hist ctrct_head obj_head)
+                 USE_NL(ctrct_hist ctrct_head obj_head les_class.ffvs les_class.ffv les_class.ffvt) */
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
              ctrct_hist.contract_header_id AS contract_header_id  -- 契約内部ID
             ,ctrct_hist.contract_line_id   AS contract_line_id    -- 契約明細内部ID
             ,obj_head.object_header_id     AS object_header_id    -- 物件内部ID
@@ -3366,6 +3966,11 @@ AS
             ,les_class.deprn_acct          AS deprn_acct          -- 減価償却勘定
             ,les_class.deprn_sub_acct      AS deprn_sub_acct      -- 減価償却補助勘定
             ,ctrct_head.payment_frequency  AS payment_frequency   -- 支払回数
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+            ,obj_head.customer_code        AS customer_code       -- 顧客コード
+            ,les_class.vd_cust_flag        AS vd_cust_flag        -- VD顧客フラグ
+            ,flv.attribute1                AS dept_tran_flg       -- 部門振替フラグ
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
             ,NULL                          AS category_ccid       -- 資産カテゴリCCID
             ,NULL                          AS location_ccid       -- 事業所CCID
             ,NULL                          AS deprn_ccid          -- 減価償却費勘定CCID
@@ -3376,6 +3981,9 @@ AS
            ,xxcff_object_headers      obj_head
            ,xxcff_lease_class_v       les_class
            ,xxcff_lease_kind_v        les_kind
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+           ,fnd_lookup_values         flv           -- 参照表
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
       WHERE
             ctrct_hist.object_header_id   =   obj_head.object_header_id
         AND ctrct_head.lease_class        =   les_class.lease_class_code
@@ -3385,6 +3993,14 @@ AS
         AND ctrct_hist.lease_kind         =   les_kind.lease_kind_code
         AND ctrct_hist.accounting_if_flag =   cv_if_yet                               -- 未送信
         AND ctrct_head.first_payment_date <=  LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+        AND obj_head.lease_class          =   flv.lookup_code
+        AND flv.lookup_type               =   cv_xxcff1_lease_class_check
+        AND flv.language                  =   USERENV('LANG')
+        AND flv.enabled_flag              =   cv_flg_y
+        AND LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
+                                                        AND     NVL(flv.end_date_active  , LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
         FOR UPDATE OF ctrct_hist.contract_header_id
         NOWAIT
       ;
@@ -3436,6 +4052,11 @@ AS
                       ,g_deprn_acct_tab         -- 減価償却勘定
                       ,g_deprn_sub_acct_tab     -- 減価償却補助勘定
                       ,g_payment_frequency_tab  -- 支払回数
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+                      ,g_customer_code_tab      -- 顧客コード
+                      ,g_vd_cust_flag_tab       -- VD顧客フラグ
+                      ,g_dept_tran_flg_tab      -- 部門振替フラグ
+-- 2017/03/29 Ver.1.10 Y.Shoji ADD End
                       ,g_category_ccid_tab      -- 資産カテゴリCCID
                       ,g_location_ccid_tab      -- 事業所CCID
                       ,g_deprn_ccid_tab         -- 減価償却費勘定CCID
