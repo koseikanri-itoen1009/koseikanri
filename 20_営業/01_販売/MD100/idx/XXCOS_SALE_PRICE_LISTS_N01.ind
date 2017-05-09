@@ -1,0 +1,18 @@
+/***************************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ *
+ * Index Name  : XXCOS_SALE_PRICE_LISTS_N01
+ * Description : 特売価格表インデックスN01
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2017/03/01    1.0  S.Yamashita        新規作成
+ **************************************************************************************/
+ CREATE INDEX xxcos.xxcos_sale_price_lists_n01 ON xxcos.xxcos_sale_price_lists ( 
+   start_date_active
+  ,end_date_active
+ ) TABLESPACE xxidx2
+/
