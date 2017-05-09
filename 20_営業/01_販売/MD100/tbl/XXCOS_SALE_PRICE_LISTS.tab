@@ -1,0 +1,56 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : XXCOS_SALE_PRICE_LISTS
+ * Description     : 特売価格表
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/03/01    1.0   S.Yamahsita  新規作成
+ ************************************************************************/
+CREATE TABLE xxcos.xxcos_sale_price_lists
+(
+  sale_price_list_id              NUMBER       NOT NULL,
+  customer_id                     NUMBER       NOT NULL,
+  item_id                         NUMBER,
+  price                           NUMBER(6,2),
+  start_date_active               DATE,
+  end_date_active                 DATE,
+  created_by                      NUMBER(15)   NOT NULL,
+  creation_date                   DATE         NOT NULL,
+  last_updated_by                 NUMBER(15)   NOT NULL,
+  last_update_date                DATE         NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15),
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE,
+  CONSTRAINT xxcos_sale_price_lists_pk PRIMARY KEY
+  (
+    sale_price_list_id     --内部ID
+  )
+  USING INDEX TABLESPACE xxidx2
+)
+;
+--
+COMMENT ON TABLE xxcos.xxcos_sale_price_lists                          IS '特売価格表';
+--
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.sale_price_list_id      IS '特売価格表ID';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.customer_id             IS '顧客ID';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.item_id                 IS '品目ID';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.price                   IS '価格';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.start_date_active       IS '有効開始日';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.end_date_active         IS '有効終了日';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.created_by              IS '作成者';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcos.xxcos_sale_price_lists.program_update_date     IS 'プログラム更新日';
+--
