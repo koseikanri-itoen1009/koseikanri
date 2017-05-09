@@ -1,0 +1,32 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ * 
+ * TABLE Name      : XXCOS_TMP_HHT_PRICE_LISTS
+ * Description     : 価格表HHT連携一時表
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/03/08    1.0   S.Niki       新規作成
+ ************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcos.xxcos_tmp_hht_price_lists
+(
+  customer_number             VARCHAR2(9)
+ ,item_code                   VARCHAR2(7)
+ ,unit_price                  NUMBER(6,2)
+ ,start_date_active           VARCHAR2(8)
+ ,end_date_active             VARCHAR2(8)
+ ,price_list_div              VARCHAR2(1)
+);
+--
+COMMENT ON TABLE xxcos.xxcos_tmp_hht_price_lists                          IS '価格表HHT連携一時表';
+--
+COMMENT ON COLUMN xxcos.xxcos_tmp_hht_price_lists.customer_number         IS '顧客コード';
+COMMENT ON COLUMN xxcos.xxcos_tmp_hht_price_lists.item_code               IS '商品コード';
+COMMENT ON COLUMN xxcos.xxcos_tmp_hht_price_lists.unit_price              IS '単価';
+COMMENT ON COLUMN xxcos.xxcos_tmp_hht_price_lists.start_date_active       IS '適用開始年月日';
+COMMENT ON COLUMN xxcos.xxcos_tmp_hht_price_lists.end_date_active         IS '適用終了年月日';
+COMMENT ON COLUMN xxcos.xxcos_tmp_hht_price_lists.price_list_div          IS '価格表区分';
