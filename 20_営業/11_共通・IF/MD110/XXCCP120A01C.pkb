@@ -2,9 +2,9 @@ CREATE OR REPLACE PACKAGE BODY APPS.XXCCP120A01C
 AS
 /*****************************************************************************************
  *
- * Package Name     : XXCCP120A01C(spec)
+ * Package Name     : XXCCP120A01C(body)
  * Description      : 受入取引OIF自動リカバリ
- * Version          : 1.02
+ * Version          : 1.03
  *
  *
  * Change Record
@@ -14,6 +14,7 @@ AS
  *  2012/07/31    1.00  SCSK 小野塚香織  新規作成
  *  2016/09/12    1.01  SCSK S.Yamashita E_本稼動_13803対応
  *  2016/10/26    1.02  SCSK S.Yamashita E_本稼動_13920対応
+ *  2017/04/18    1.03  SCSK S.Niki      E_本稼動_14157対応
  *
  *****************************************************************************************/
 --
@@ -495,7 +496,10 @@ AS
         SELECT  pie.interface_transaction_id
         INTO    ln_oiferr_trn_id
         FROM    po_interface_errors  pie
-        WHERE   pie.interface_transaction_id = g_rcv_trn_if_tab( i ).interface_transaction_id
+-- Ver1.03 MOD start
+--        WHERE   pie.interface_transaction_id = g_rcv_trn_if_tab( i ).interface_transaction_id
+        WHERE   (pie.batch_id = g_rcv_trn_if_tab( i ).group_id OR pie.interface_transaction_id = g_rcv_trn_if_tab( i ).interface_transaction_id)
+-- Ver1.03 MOD end
         AND     EXISTS(SELECT 'X'
                        FROM   fnd_lookup_values_vl flvv
                        WHERE  flvv.lookup_type  = cv_lookup_type_01
