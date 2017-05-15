@@ -8,7 +8,7 @@ AS
  *                    タスクテーブルの登録／更新を行ないます。
  * MD.050           : MD050_CSO_006_A03_eSM-EBSインタフェース：（IN）訪問実績データ
  *                    
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/03/09    1.0   K.Kiriu          新規作成
+ *  2017/04/20    1.1   N.Watanabe       E_本稼動_14025対応
+ *
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -1739,6 +1741,9 @@ AS
        in_resource_id     => g_visit_data_rec.resource_id     -- リソースID
       ,in_party_id        => g_visit_data_rec.party_id        -- パーティID
       ,iv_party_name      => g_visit_data_rec.party_name      -- パーティ名称
+-- Ver1.1 ADD Start
+      ,id_input_date      => g_visit_data_rec.planned_end_date -- データ入力日時
+-- Ver1.1 ADD End
       ,id_visit_date      => g_visit_data_rec.visit_date      -- 訪問日時
       ,iv_description     => g_visit_data_rec.description     -- 詳細内容
       ,it_task_status_id  => g_visit_data_rec.task_status_id  -- タスクステータスＩＤ
