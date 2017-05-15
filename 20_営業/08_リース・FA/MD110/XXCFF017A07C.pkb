@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A07C(body)
  * Description      : 自販機部門振替
  * MD.050           : MD050_CFF_017_A07_自販機部門振替
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/04/14    1.0   SCSK小路恭弘     新規作成
+ *  2017/05/15    1.1   SCSK小路恭弘     E_本稼動_14030 パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -638,7 +639,13 @@ AS
     IS
       SELECT 
              /*+
-               INDEX(gjh GL_JE_HEADERS_N2)
+-- 2017/05/15 Ver.1.1 Y.Shoji MOD Start
+--               INDEX(gjh GL_JE_HEADERS_N2)
+               LEADING(xlcv.ffvs fdp gjct gjst flv xlcv.ffv gcc gjl fdd fab xcl)
+               USE_NL(gjl gjh)
+               USE_NL(xcl xoh)
+               INDEX(xoh XXCFF_OBJECT_HEADERS_PK)
+-- 2017/05/15 Ver.1.1 Y.Shoji MOD End
              */
              gcc.segment1           AS segment1        -- 会社コード
             ,gcc.segment3           AS segment3        -- 勘定科目
