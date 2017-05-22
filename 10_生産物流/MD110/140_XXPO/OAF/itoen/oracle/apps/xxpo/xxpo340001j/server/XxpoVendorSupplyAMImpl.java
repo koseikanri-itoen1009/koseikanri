@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -22,6 +22,7 @@
 * 2016-06-09 1.9  山下翔太     E_本稼動_13563対応
 * 2016-06-30 1.10 山下翔太     E_本稼動_13563追加対応
 * 2016-07-25 1.11 山下翔太     E_本稼動_13785対応
+* 2017-05-10 1.12 桐生和幸     E_本稼動_14069対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -2092,19 +2093,23 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     // 試験有無区分 1:有の場合
     if (XxpoConstants.QT_TYPE_ON.equals(testCode))
     {
-// 2015-10-06 S.Yamashita Add Start
-      // 既存ロットを使用しない場合、または品質検査依頼Noがない場合
-      if (XxcmnUtility.isBlankOrNull(lotNumber) || XxcmnUtility.isBlankOrNull(qtInspectReqNo))
-      {
+// 2017-05-10 K.Kiriu Del Start
+//// 2015-10-06 S.Yamashita Add Start
+//      // 既存ロットを使用しない場合、または品質検査依頼Noがない場合
+//      if (XxcmnUtility.isBlankOrNull(lotNumber) || XxcmnUtility.isBlankOrNull(qtInspectReqNo))
+//      {
 // 2015-10-06 S.Yamashita Add End
+// 2017-05-10 K.Kiriu Del End
         // 品質検査依頼情報登録が正常終了でない場合
         if (XxcmnConstants.RETURN_NOT_EXE.equals(doQtInspection()))
         {
           return XxcmnConstants.RETURN_NOT_EXE;
         }
-// 2015-10-06 S.Yamashita Add Start
-      }
-// 2015-10-06 S.Yamashita Add End
+// 2017-05-10 K.Kiriu Del Start
+//// 2015-10-06 S.Yamashita Add Start
+//      }
+//// 2015-10-06 S.Yamashita Add End
+// 2017-05-10 K.Kiriu Del End
     }
     return XxcmnConstants.RETURN_SUCCESS;
   }
