@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.16
+ * Version          : 1.15
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -61,7 +61,6 @@ AS
  *  2010/12/13    1.14  SCS S.Niki       [E_本稼動_01844] 担当営業員が複数設定されている場合は警告終了
  *  2012/03/06    1.15  SCSK K.Nakamura  [E_本稼動_08318] 問屋請求見積照合 OUTに通常NET価格、今回NET価格を追加
  *                                                        問屋請求書見積書突合ステータス取得 問屋請求見積照合呼出修正
- *  2016/12/14    1.16  SCSK S.Niki      [E_本稼動_13901] 企業コード取得 抽出条件を納品先チェーン⇒販売先チェーンに変更
  *
  *****************************************************************************************/
   -- ==============================
@@ -2300,10 +2299,7 @@ AS
     FROM   xxcmm_cust_accounts      xca
          , fnd_lookup_values        flv
     WHERE  xca.customer_code        = iv_customer_code
--- Ver.1.16 REPAIR START
---    AND    xca.delivery_chain_code  = flv.lookup_code
-    AND    xca.sales_chain_code     = flv.lookup_code
--- Ver.1.16 REPAIR END
+    AND    xca.delivery_chain_code  = flv.lookup_code
     AND    flv.lookup_type          = cv_lookup_type
     AND    flv.language             = USERENV( 'LANG' )
     AND    flv.enabled_flag         = cv_y
