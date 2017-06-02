@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,8 @@ AS
  *  2016/05/11   1.15' SCSK菅原大輔      E_本稼動_13468対応 運用テストモジュールとして作成、
  *                                       v.1.14と本番環境で並存させる
  *  2016/11/28   1.16' SCSK桐生和幸      E_本稼動_09591対応 運用テストモジュールとして作成、
+ *                                       v.1.15と本番環境で並存させる
+ *  2017/06/02   1.17' SCSK桐生和幸      E_本稼動_14307対応 運用テストモジュールとして作成、
  *                                       v.1.15と本番環境で並存させる
  *****************************************************************************************/
 --
@@ -4712,7 +4714,13 @@ AS
               AND    ili.loct_onhand > cn_zero
               UNION
               -- S1)供給数  移動入庫予定
-              SELECT  mld.lot_id   lot_id
+-- 2017/06/02 Ver1.17' Mod START
+--              SELECT  mld.lot_id   lot_id
+              SELECT  /*+
+                        INDEX(mld.xmld XXINV_MLD_N07)
+                      */
+                      mld.lot_id   lot_id
+-- 2017/06/02 Ver1.17' Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4731,7 +4739,13 @@ AS
               AND     mld.record_type_code        = cv_record_type_code_10
               UNION
               -- S4)供給数  実績計上済の移動出庫実績
-              SELECT  mld.lot_id   lot_id
+-- 2017/06/02 Ver1.17' Mod START
+--              SELECT  mld.lot_id   lot_id
+              SELECT  /*+
+                        INDEX(mld.xmld XXINV_MLD_N07)
+                      */
+                      mld.lot_id   lot_id
+-- 2017/06/02 Ver1.17' Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4754,7 +4768,13 @@ AS
               -- I2)実績未取在庫数  移動入庫（入庫報告有）
               -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
               -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有)
-              SELECT  mld.lot_id   lot_id
+-- 2017/06/02 Ver1.17' Mod START
+--              SELECT  mld.lot_id   lot_id
+              SELECT  /*+
+                        INDEX(mld.xmld XXINV_MLD_N07)
+                      */
+                      mld.lot_id   lot_id
+-- 2017/06/02 Ver1.17' Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4784,7 +4804,13 @@ AS
               UNION
               -- I5)実績未取在庫数  出荷
               -- I6)実績未取在庫数  支給
-              SELECT  mld.lot_id   lot_id
+-- 2017/06/02 Ver1.17' Mod START
+--              SELECT  mld.lot_id   lot_id
+              SELECT  /*+
+                        INDEX(mld.xmld XXINV_MLD_N07)
+                      */
+                      mld.lot_id   lot_id
+-- 2017/06/02 Ver1.17' Mod END
                      ,mld.item_id  item_id
               FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                      ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
@@ -6149,10 +6175,13 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
               -- ロット逆転防止チェック 共通関数
               -- =========================================
 -- 2016/05/11 D.Sugahara Ver1.15' Mod START
--- 運用テストモジュールとして、xxwsh_common910_pkg_PTのロット逆転防止チェックを呼び出すように変更する。
---              xxwsh_common910_pkg.check_lot_reversal(
-              xxwsh_common910_pkg_PT.check_lot_reversal(
--- 2016/05/11 D.Sugahara Ver1.15' Mod End
+-- 2017/06/02 Ver1.17' Mod START
+---- 運用テストモジュールとして、xxwsh_common910_pkg_PTのロット逆転防止チェックを呼び出すように変更する。
+----              xxwsh_common910_pkg.check_lot_reversal(
+--              xxwsh_common910_pkg_PT.check_lot_reversal(
+---- 2016/05/11 D.Sugahara Ver1.15' Mod End
+              xxwsh_common910_pkg.check_lot_reversal(
+-- 2017/06/02 Ver1.17' Mod START
                              lv_lot_biz_class                              -- 1.ロット逆転処理種別
                            , gr_demand_tbl(ln_d_cnt).shipping_item_code    -- 2.品目コード
                            , gr_supply_tbl(ln_s_cnt).lot_no                -- 3.ロットNo
@@ -6254,11 +6283,14 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
               -- =======================================
               -- 鮮度条件合格製造日取得 共通関数
               -- =======================================
--- 2016/11/28 K.kiriu Ver1.16' Mod START
--- 運用テストモジュールとして、xxwsh_common910_pkg_PTの鮮度条件合格製造日取得を呼び出すように変更する。
---              xxwsh_common910_pkg.get_fresh_pass_date(
-              xxwsh_common910_pkg_PT.get_fresh_pass_date(
--- 2016/11/28 K.kiriu Ver1.16' Mod END
+-- 2017/06/02 Ver1.17' Mod START
+---- 2016/11/28 K.kiriu Ver1.16' Mod START
+---- 運用テストモジュールとして、xxwsh_common910_pkg_PTの鮮度条件合格製造日取得を呼び出すように変更する。
+----              xxwsh_common910_pkg.get_fresh_pass_date(
+--              xxwsh_common910_pkg_PT.get_fresh_pass_date(
+---- 2016/11/28 K.kiriu Ver1.16' Mod END
+              xxwsh_common910_pkg.get_fresh_pass_date(
+-- 2017/06/02 Ver1.17' Mod START
                  gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
                , gr_demand_tbl(ln_d_cnt).shipping_item_code     -- 2.品目コード
                , gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷日
