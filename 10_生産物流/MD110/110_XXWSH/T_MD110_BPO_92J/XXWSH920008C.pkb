@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2010/01/28   1.13  SCS北寒寺         本番稼働障害#1320対応
  *  2010/02/26   1.14  SCS北寒寺         本番稼働障害#1612対応
  *  2016/02/18   1.15  SCSK山下翔太      E_本稼動_13468対応
+ *  2017/06/08   1.16  SCSK山下翔太      E_本稼動_14307対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4708,7 +4709,13 @@ AS
               AND    ili.loct_onhand > cn_zero
               UNION
               -- S1)供給数  移動入庫予定
-              SELECT  mld.lot_id   lot_id
+-- 2017/06/08 Ver1.16 Mod START
+--              SELECT  mld.lot_id   lot_id
+              SELECT  /*+
+                        INDEX(mld.xmld XXINV_MLD_N07)
+                      */
+                      mld.lot_id   lot_id
+-- 2017/06/08 Ver1.16 Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4727,7 +4734,13 @@ AS
               AND     mld.record_type_code        = cv_record_type_code_10
               UNION
               -- S4)供給数  実績計上済の移動出庫実績
-              SELECT  mld.lot_id   lot_id
+-- 2017/06/08 Ver1.16 Mod START
+--              SELECT  mld.lot_id   lot_id
+              SELECT  /*+
+                        INDEX(mld.xmld XXINV_MLD_N07)
+                      */
+                      mld.lot_id   lot_id
+-- 2017/06/08 Ver1.16 Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4750,7 +4763,13 @@ AS
               -- I2)実績未取在庫数  移動入庫（入庫報告有）
               -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
               -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有)
-              SELECT  mld.lot_id   lot_id
+-- 2017/06/08 Ver1.16 Mod START
+--              SELECT  mld.lot_id   lot_id
+              SELECT  /*+
+                        INDEX(mld.xmld XXINV_MLD_N07)
+                      */
+                      mld.lot_id   lot_id
+-- 2017/06/08 Ver1.16 Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4780,7 +4799,13 @@ AS
               UNION
               -- I5)実績未取在庫数  出荷
               -- I6)実績未取在庫数  支給
-              SELECT  mld.lot_id   lot_id
+-- 2017/06/08 Ver1.16 Mod START
+--              SELECT  mld.lot_id   lot_id
+              SELECT  /*+
+                        INDEX(mld.xmld XXINV_MLD_N07)
+                      */
+                      mld.lot_id   lot_id
+-- 2017/06/08 Ver1.16 Mod END
                      ,mld.item_id  item_id
               FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                      ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
