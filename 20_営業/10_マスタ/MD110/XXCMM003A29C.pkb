@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2015/03/18    1.12  仁木 重人        障害E_本稼動_12955対応 請求書発行サイクルのチェック追加
  *  2015/04/20    1.13  小路 恭弘        障害E_本稼動_12955対応 業態小分類チェック不具合修正
  *  2017/04/05    1.14  仁木 重人        障害E_本稼動_13976対応 顧客追加情報のeSM関連項目追加
+ *  2017/05/18    1.15  仁木 重人        障害E_本稼動_14246対応 請求書印刷単位のチェック追加
  *
  *****************************************************************************************/
 --
@@ -194,6 +195,9 @@ AS
 -- Ver1.12 add start
   cv_invoice_cycle_err_msg    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00384';                --請求書発行サイクルチェックエラー
 -- Ver1.12 add end
+-- Ver1.15 add start
+  cv_inv_prt_unit_err_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10358';                --請求書印刷単位チェックエラー
+-- Ver1.15 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -711,6 +715,13 @@ AS
     lv_esm_target_div           VARCHAR2(1)     := NULL;                        --ローカル変数・ストレポ＆商談くん連携対象フラグ
     lt_esm_target_div_mst       xxcmm_cust_accounts.esm_target_div%TYPE;        --ストレポ＆商談くん連携対象フラグ確認用変数
 -- Ver1.14 add end
+-- Ver1.15 add start
+    lt_invoice_code_bef         xxcmm_cust_accounts.invoice_code%TYPE;          --現在値・請求書用コード
+    lt_invoice_code_aft         xxcmm_cust_accounts.invoice_code%TYPE;          --更新値・請求書用コード
+    lt_invoice_class_bef        xxcmm_cust_accounts.invoice_printing_unit%TYPE; --現在値・請求書印刷単位
+    lt_invoice_class_aft        xxcmm_cust_accounts.invoice_printing_unit%TYPE; --更新値・請求書印刷単位
+    lv_invoice_trust_flag       VARCHAR2(1)     := NULL;                        --ローカル変数・業者委託時設定可否フラグ
+-- Ver1.15 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -844,6 +855,9 @@ AS
 -- 2009/10/23 Ver1.2 add start by Yutaka.Kuboshima
             ,flvv.attribute1       required_flag
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+-- Ver1.15 add start
+            ,flvv.attribute3       trust_flag
+-- Ver1.15 add end
       FROM   fnd_lookup_values_vl  flvv
       WHERE  flvv.lookup_type = cv_invoice_class
       AND    flvv.lookup_code = iv_invoice_class
@@ -1271,6 +1285,10 @@ AS
             ,xca.conclusion_day1       AS conclusion_day1       --消化計算締め日1
             ,xca.conclusion_day2       AS conclusion_day2       --消化計算締め日2
             ,xca.conclusion_day3       AS conclusion_day3       --消化計算締め日3
+-- Ver1.15 add start
+            ,xca.invoice_printing_unit AS invoice_class         --請求書印刷単位
+            ,xca.invoice_code          AS invoice_code          --請求書用コード
+-- Ver1.15 add end
       FROM   hz_cust_accounts     hca
             ,xxcmm_cust_accounts  xca
       WHERE  hca.cust_account_id     = xca.customer_id
@@ -2709,6 +2727,9 @@ AS
              which  => FND_FILE.LOG
             ,buff   => lv_item_errmsg
           );
+-- Ver1.15 add start
+          lb_invoice_chk_flg := FALSE;
+-- Ver1.15 add end
         END IF;
         -- 顧客区分'10'の場合のみエラーチェックを行う
         IF (lv_cust_customer_class = cv_kokyaku_kbn) THEN
@@ -2732,14 +2753,47 @@ AS
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
               ,buff   => gv_out_msg);
+-- Ver1.15 add start
+            lb_invoice_chk_flg := FALSE;
+-- Ver1.15 add end
           END IF;
-          IF (lv_invoice_class <> cv_null_bar) THEN
+-- Ver1.15 add start
+          IF ( lb_invoice_chk_flg = TRUE ) THEN
+            --顧客追加情報の現在値を取得
+            << get_xca_info_loop >>
+            FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+            LOOP
+              lt_invoice_class_bef := get_xca_info_rec.invoice_class;
+            END LOOP get_xca_info_loop;
+--
+            --請求書印刷単位の更新値を取得
+            IF ( lv_invoice_class = cv_null_bar )
+            THEN
+              lt_invoice_class_aft := NULL;
+            ELSIF ( lv_invoice_class IS NULL )
+            THEN
+              lt_invoice_class_aft := lt_invoice_class_bef;
+            ELSE
+              lt_invoice_class_aft := lv_invoice_class;
+            END IF;
+          END IF;
+-- Ver1.15 add end
+-- Ver1.15 mod start
+--          IF (lv_invoice_class <> cv_null_bar) THEN
+          IF ( lt_invoice_class_aft IS NOT NULL ) THEN
+-- Ver1.15 mod end
             --請求書印刷単位存在チェック
             << check_invoice_class_loop >>
-            FOR check_invoice_class_rec IN check_invoice_class_cur( lv_invoice_class )
+-- Ver1.15 mod start
+--            FOR check_invoice_class_rec IN check_invoice_class_cur( lv_invoice_class )
+            FOR check_invoice_class_rec IN check_invoice_class_cur( lt_invoice_class_aft )
+-- Ver1.15 mod end
             LOOP
               lv_invoice_class_mst     := check_invoice_class_rec.invoice_class;
               lv_invoice_required_flag := check_invoice_class_rec.required_flag;
+-- Ver1.15 add start
+              lv_invoice_trust_flag    := check_invoice_class_rec.trust_flag;
+-- Ver1.15 add end
             END LOOP check_invoice_class_loop;
             IF (lv_invoice_class_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
@@ -2753,11 +2807,17 @@ AS
                               ,iv_token_name2  => cv_col_name
                               ,iv_token_value2 => cv_invoice_kbn
                               ,iv_token_name3  => cv_input_val
-                              ,iv_token_value3 => lv_invoice_class
+-- Ver1.15 mod start
+--                              ,iv_token_value3 => lv_invoice_class
+                              ,iv_token_value3 => lt_invoice_class_aft
+-- Ver1.15 mod end
                              );
               FND_FILE.PUT_LINE(
                  which  => FND_FILE.LOG
                 ,buff   => gv_out_msg);
+-- Ver1.15 add start
+              lb_invoice_chk_flg := FALSE;
+-- Ver1.15 add end
             END IF;
           END IF;
         END IF;
@@ -2978,6 +3038,34 @@ AS
 --
         END IF;
 -- Ver1.12 add end
+-- Ver1.15 add start
+        --請求書印刷単位チェック
+        --請求書関連の妥当性チェックOK、かつ顧客区分が'10'の場合
+        IF ( lb_invoice_chk_flg = TRUE )
+          AND ( lv_cust_customer_class = cv_kokyaku_kbn )
+        THEN
+          --請求書出力形式が'4'かつ業者委託時設定可否フラグが'N'の場合エラー
+          IF ( lt_invoice_form_aft = cv_invoice_form_4 )
+            AND ( lv_invoice_trust_flag = cv_no )
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --請求書印刷単位チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_inv_prt_unit_err_msg
+                            ,iv_token_name1  => cv_value
+                            ,iv_token_value1 => lt_invoice_class_aft
+                            ,iv_token_name2  => cv_cust_code
+                            ,iv_token_value2 => lv_customer_code
+                          );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+          END IF;
+        END IF;
+-- Ver1.15 add end
         --支払条件取得
         lv_payment_term_id := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
@@ -4422,13 +4510,40 @@ AS
              which  => FND_FILE.LOG
             ,buff   => lv_item_errmsg
           );
+-- Ver1.15 add start
+          lb_invoice_chk_flg := FALSE;
+-- Ver1.15 add end
         END IF;
         --
         -- 顧客区分'10'の場合のみエラーチェックを行う
         IF (lv_cust_customer_class = cv_kokyaku_kbn) THEN
+-- Ver1.15 add start
+          IF ( lb_invoice_chk_flg = TRUE ) THEN
+            --顧客追加情報の現在値を取得
+            << get_xca_info_loop >>
+            FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+            LOOP
+              lt_invoice_code_bef := get_xca_info_rec.invoice_code;
+            END LOOP get_xca_info_loop;
+--
+            --請求書用コードの更新値を取得
+            IF ( lv_invoice_code = cv_null_bar )
+            THEN
+              lt_invoice_code_aft := NULL;
+            ELSIF ( lv_invoice_code IS NULL )
+            THEN
+              lt_invoice_code_aft := lt_invoice_code_bef;
+            ELSE
+              lt_invoice_code_aft := lv_invoice_code;
+            END IF;
+          END IF;
+-- Ver1.15 add end
           -- 請求書用コードの必須チェック
           -- 請求書用必須フラグが'Y'の場合、入力必須
-          IF (lv_invoice_code = cv_null_bar)
+-- Ver1.15 mod start
+--          IF (lv_invoice_code = cv_null_bar)
+          IF ( lt_invoice_code_aft IS NULL )
+-- Ver1.15 mod end
             AND (lv_invoice_required_flag = cv_yes)
           THEN
             lv_check_status := cv_status_error;
@@ -4442,19 +4557,31 @@ AS
                             ,iv_token_name2  => cv_cond_col_name
                             ,iv_token_value2 => cv_invoice_kbn
                             ,iv_token_name3  => cv_cond_col_val
-                            ,iv_token_value3 => lv_invoice_class
+-- Ver1.15 mod start
+--                            ,iv_token_value3 => lv_invoice_class
+                            ,iv_token_value3 => lt_invoice_class_aft
+-- Ver1.15 mod end
                             ,iv_token_name4  => cv_cust_code
                             ,iv_token_value4 => lv_customer_code
                            );
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
               ,buff   => gv_out_msg);
+-- Ver1.15 add start
+            lb_invoice_chk_flg := FALSE;
+-- Ver1.15 add end
           END IF;
           --請求書用コードが-でない場合
-          IF (lv_invoice_code <> cv_null_bar) THEN
+-- Ver1.15 mod start
+--          IF (lv_invoice_code <> cv_null_bar) THEN
+          IF ( lt_invoice_code_aft IS NOT NULL ) THEN
+-- Ver1.15 mod end
             --請求書用コード存在チェック
             << check_invoice_class_loop >>
-            FOR check_invoice_code_rec IN check_invoice_code_cur( lv_invoice_code )
+-- Ver1.15 mod start
+--            FOR check_invoice_code_rec IN check_invoice_code_cur( lv_invoice_code )
+            FOR check_invoice_code_rec IN check_invoice_code_cur( lt_invoice_code_aft )
+-- Ver1.15 mod end
             LOOP
               ln_invoice_code_mst     := check_invoice_code_rec.cust_id;
             END LOOP check_invoice_class_loop;
@@ -4470,13 +4597,19 @@ AS
                               ,iv_token_name2  => cv_col_name
                               ,iv_token_value2 => cv_invoice_code
                               ,iv_token_name3  => cv_input_val
-                              ,iv_token_value3 => lv_invoice_code
+-- Ver1.15 mod start
+--                              ,iv_token_value3 => lv_invoice_code
+                              ,iv_token_value3 => lt_invoice_code_aft
+-- Ver1.15 mod end
                               ,iv_token_name4  => cv_table
                               ,iv_token_value4 => cv_cust_acct_table
                              );
               FND_FILE.PUT_LINE(
                  which  => FND_FILE.LOG
                 ,buff   => gv_out_msg);
+-- Ver1.15 add start
+              lb_invoice_chk_flg := FALSE;
+-- Ver1.15 add end
             END IF;
           END IF;
         END IF;
@@ -8793,6 +8926,9 @@ AS
 -- 2009/10/23 Ver1.2 add start by Yutaka.Kuboshima
       lv_cust_customer_class      := NULL;
       lv_invoice_required_flag    := NULL;
+-- Ver1.15 add start
+      lv_invoice_trust_flag       := NULL;  --業者委託時設定可否フラグ
+-- Ver1.15 add end
       lv_invoice_code             := NULL;
       ln_invoice_code_mst         := NULL;
       lv_industry_div             := NULL;
@@ -8922,6 +9058,12 @@ AS
       lv_esm_target_div           := NULL;  --ローカル変数・ストレポ＆商談くん連携対象フラグ
       lt_esm_target_div_mst       := NULL;  --ストレポ＆商談くん連携対象フラグ確認用変数
 -- Ver1.14 add end
+-- Ver1.15 add start
+      lt_invoice_code_bef         := NULL;  --現在値・請求書用コード
+      lt_invoice_code_aft         := NULL;  --更新値・請求書用コード
+      lt_invoice_class_bef        := NULL;  --現在値・請求書印刷単位
+      lt_invoice_class_aft        := NULL;  --更新値・請求書印刷単位
+-- Ver1.15 add end
       --妥当性チェックフラグ
       lb_bz_low_type_chk_flg      := TRUE;  --業態(小分類)チェックフラグ
       lb_sell_trans_chk_flg       := TRUE;  --売上実績振替チェックフラグ
