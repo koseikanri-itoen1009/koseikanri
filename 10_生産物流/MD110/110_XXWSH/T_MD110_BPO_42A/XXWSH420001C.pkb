@@ -3,11 +3,11 @@ AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : XXWSH420001C(spec)
+ * Package Name     : XXWSH420001C(Body)
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -40,6 +40,9 @@ AS
 -- Ver1.18 M.Hokkanji Start
  *  upd_mov_lot_details          A21移動ロット詳細(アドオン)更新
 -- Ver1.18 M.Hokkanji End
+-- Ver1.19 ADD Start
+--    get_mov_lot_details          A22移動ロット詳細存在チェック
+-- Ver1.19 ADD End
  *  submain                      メイン処理プロシージャ
  *  main                         コンカレント実行ファイル登録プロシージャ
  *
@@ -66,6 +69,7 @@ AS
  *  2009/10/09    1.16  SCS    伊藤 ひとみ 本番#1655 中止客申請フラグを見ない
  *  2009/11/05    1.17  SCS    伊藤 ひとみ 本番#1648 顧客フラグ対応
  *  2010/03/03    1.18  SCS    北寒寺 正夫 本番稼働障害#1612 、#1703
+ *  2017/05/19    1.19  SCSK   渡邊 直樹   E_本稼動_14158対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -182,6 +186,12 @@ AS
   gv_msg_42a_027         CONSTANT VARCHAR2(15)
                          := 'APP-XXWSH-11562';  -- 移動ロット詳細ロックエラー
 -- Ver1.18 M.Hokkanji End
+-- Ver1.19 ADD Start
+  gv_msg_42a_028         CONSTANT VARCHAR2(15)
+                         := 'APP-XXWSH-13753';  -- 移動ロット詳細取得エラーメッセージ
+  gv_msg_42a_029         CONSTANT VARCHAR2(15)
+                         := 'APP-XXWSH-13139';  -- 警告件数出力
+-- Ver1.19 ADD END
 --
   --トークン(固定処理)
   gv_tkn_status          CONSTANT VARCHAR2(15) := 'STATUS';
@@ -214,6 +224,11 @@ AS
   gv_tkn_param3          CONSTANT VARCHAR2(15) := 'PARAM3';
   gv_tkn_param4          CONSTANT VARCHAR2(15) := 'PARAM4';
 --
+-- Ver1.19 ADD Start
+  gv_tkn_ship_date       CONSTANT VARCHAR2(15) := 'SHIP_DATE';
+  gv_tkn_input_date      CONSTANT VARCHAR2(15) := 'INPUT_DATE';
+  gv_tkn_warn_cnt        CONSTANT VARCHAR2(15) := 'CNT';
+-- Ver1.19 ADD End
   -- トークン表示用
   gv_api_name_1          CONSTANT VARCHAR2(30) := '予約';
   gv_api_name_2          CONSTANT VARCHAR2(30) := 'ピックリリースパッチ作成';
@@ -990,6 +1005,10 @@ AS
       NUMBER;                                           -- 対象の移動ロット詳細IDの件数
   gn_upd_mov_lot_dtl_id   ld_lot_id_type;               -- 移動ロット詳細更新用移動ロット詳細ID
 -- Ver1.18 M.Hokkanji End
+-- Ver1.19 ADD Start
+  gn_warn_cnt
+      NUMBER;                                           -- 警告件数出力用
+-- Ver1.19 ADD End
 --
   /***********************************************************************************
    * Procedure Name   : input_param_check
@@ -6337,6 +6356,129 @@ AS
 --
   END upd_mov_lot_details;
 -- Ver1.18 M.Hokkanji End
+-- Ver1.19 ADD Start
+  /***********************************************************************************
+   * Procedure Name   : get_mov_lot_details
+   * Description      : A22移動ロット詳細存在チェック
+   ***********************************************************************************/
+  PROCEDURE get_mov_lot_details(
+    ov_mov_lot_check_flag   OUT NOCOPY VARCHAR2,         -- 移動ロット詳細取得エラーフラグ('0':OK,'1':NG)
+    ov_errbuf               OUT NOCOPY VARCHAR2,         -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT NOCOPY VARCHAR2,         -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT NOCOPY VARCHAR2)         -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_mov_lot_details'; -- プログラム名
+--
+--##############################  固定ローカル変数宣言部 START   ##################################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--#####################################  固定部 END   #############################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+  lv_mov_lot_check_flag VARCHAR2(1); -- 移動ロット詳細取得チェックフラグ('0':OK,'1':NG)
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル・カーソル ***
+  CURSOR get_mov_lot_details_cur
+  IS
+    SELECT xola.order_line_id      order_line_id          -- 受注明細アドオンID
+          ,xmld.mov_lot_dtl_id     mov_lot_dtl_id         -- ロット詳細ID
+    FROM   xxwsh_order_lines_all   xola                   -- 受注明細アドオン
+          ,xxwsh_order_headers_all xoha                   -- 受注ヘッダアドオン
+          ,xxinv_mov_lot_details   xmld                   -- 移動ロット詳細
+          ,xxwsh_oe_transaction_types_v xottv             -- 受注タイプアドオンView
+    WHERE  xottv.transaction_type_id = xoha.order_type_id
+    AND    xola.order_header_id     = xoha.order_header_id
+    AND    xoha.request_no          = gt_gen_request_no   -- 依頼No
+    AND    xola.order_line_id       = xmld.mov_line_id(+)
+    AND    xmld.document_type_code(+) IN (gv_document_type_10,gv_document_type_30)
+    AND    xmld.record_type_code(+) = gv_record_type_20
+    AND    ((xoha.latest_external_flag = gv_yes)
+           OR(xottv.shipping_shikyu_class = gv_ship_class_3))
+    AND    NVL(xola.delete_flag,gv_no) = gv_no 
+    AND    xoha.req_status IN (gv_order_status_04,gv_order_status_08)
+    ;
+  get_mov_lot_details_rec get_mov_lot_details_cur%ROWTYPE;
+--
+  BEGIN
+--
+--################################  固定ステータス初期化部 START   ################################
+--
+    ov_retcode := gv_status_normal;
+--
+--#####################################  固定部 END   #############################################
+--
+    -- チェックフラグ初期化
+    lv_mov_lot_check_flag := '0';
+    -- カーソルオープン
+    OPEN get_mov_lot_details_cur;
+--
+    <<order_line_loop>>
+    LOOP
+      FETCH get_mov_lot_details_cur INTO get_mov_lot_details_rec;
+--
+      EXIT WHEN get_mov_lot_details_cur%NOTFOUND
+           OR   lv_mov_lot_check_flag = '1';
+--
+      --受注明細アドオンに紐づく移動ロット詳細が存在しない場合
+      IF (get_mov_lot_details_rec.mov_lot_dtl_id IS NULL) THEN
+        lv_mov_lot_check_flag := '1'; -- チェックフラグに'1：NG'を設定
+      END IF;
+--
+    END LOOP order_line_loop;
+--
+    -- カーソルクローズ
+    CLOSE get_mov_lot_details_cur;
+--
+    --アウトパラメータを設定
+    ov_mov_lot_check_flag := lv_mov_lot_check_flag;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   #######################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+      -- カーソルクローズ
+      IF ( get_mov_lot_details_cur%ISOPEN ) THEN
+        CLOSE get_mov_lot_details_cur;
+      END IF;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+      -- カーソルクローズ
+      IF ( get_mov_lot_details_cur%ISOPEN ) THEN
+        CLOSE get_mov_lot_details_cur;
+      END IF;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+      -- カーソルクローズ
+      IF ( get_mov_lot_details_cur%ISOPEN ) THEN
+        CLOSE get_mov_lot_details_cur;
+      END IF;
+--
+--#####################################  固定部 END   #############################################
+--
+  END get_mov_lot_details;
+-- Ver1.19 ADD End
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -6379,7 +6521,10 @@ AS
 --
      lt_order_tbl             order_tbl;                                        -- 受注データ格納配列
      lt_revised_order_tbl     order_tbl;                                        -- 訂正前受注アドオン情報格納配列
---
+-- Ver1.19 ADD Start
+     lv_mov_lot_check_flag    VARCHAR2(1);                                      -- 移動ロット詳細取得チェックフラグ
+     lt_mov_lot_err_header_id xxwsh_order_headers_all.order_header_id%TYPE;     -- 移動ロット詳細取得チェックでエラーとなった受注ヘッダアドオンIDを保持
+-- Ver1.19 ADD End
 --
   BEGIN
 --
@@ -6404,6 +6549,9 @@ AS
     gn_upd_mov_lot_cnt   := 0;                          -- 対象の移動ロット詳細IDの更新対象件数
     gn_upd_mov_lot_dtl_id.DELETE;                       -- 移動ロット詳細更新用受注ヘッダIDの初期化
 -- Ver1.18 M.Hokkanji End
+-- Ver1.19 ADD Start
+    gn_warn_cnt          := 0;                          -- 警告件数
+-- Ver1.19 ADD End
     -- WHOカラム情報取得
     gn_user_id           := FND_GLOBAL.USER_ID;         -- ログインしているユーザーのID取得
     gn_login_id          := FND_GLOBAL.LOGIN_ID;        -- 最終更新ログイン
@@ -6415,6 +6563,10 @@ AS
     --***      MD.050のフロー図を表す           ***
     --***      分岐と処理部の呼び出しを行う     ***
     --*********************************************
+-- Ver1.19 ADD Start
+    lt_mov_lot_err_header_id       :=  0;              -- 移動ロット詳細存在チェック用変数を初期化
+    lv_mov_lot_check_flag          := '0';              -- 移動ロット詳細存在チェック用変数を初期化
+-- Ver1.19 ADD End
 --
     -- ===============================
     -- A-1入力パラメータのチェック
@@ -6458,7 +6610,7 @@ AS
     IF (gn_input_cnt > 0) THEN
 --2008/09/01 Add ↓
       -- ===============================
-      -- 出荷日が未来日かどうかのチェック
+      -- A-23出荷日が未来日かどうかのチェック
       -- ===============================
       <<chk_tbl_loop>>
       FOR i IN lt_order_tbl.FIRST .. lt_order_tbl.LAST LOOP
@@ -6524,121 +6676,175 @@ AS
           lt_old_order_header_id := lt_order_tbl(gn_shori_count).order_header_id;
         END IF;
 -- 2009/01/15 H.Itou Add End 本番#981
-        
---
-        IF ( (lt_old_order_header_id = lt_order_tbl(gn_shori_count).order_header_id)
-           OR(lt_order_tbl(gn_shori_count).shipping_shikyu_class = gv_ship_class_3)) THEN
---
-          --新規登録の場合もしくは出荷支給区分が倉替返品の場合
-          IF (lt_order_tbl(gn_shori_count).order_category_code = gv_order_type_order ) THEN
-            --受注の場合
-            gv_shori_kbn := '1'; --新規登録受注
---
-            --出荷登録処理
-            shipping_process(lt_order_tbl,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg
-            );
-            IF (lv_retcode <> gv_status_normal) THEN
-              RAISE check_sub_main_expt;
-            END IF;
---
-          ELSE
-            --返品の場合
-            gv_shori_kbn := '2'; --新規登録返品
---
-            --返品登録処理
-            return_process(lt_order_tbl,
-                           lv_errbuf,
-                           lv_retcode,
-                           lv_errmsg
-            );
-            IF (lv_retcode <> gv_status_normal) THEN
-              RAISE check_sub_main_expt;
-            END IF;
---
+-- Ver1.19 ADD Start
+        -- ===============================
+        -- A-22移動ロット詳細存在チェック
+        -- ===============================
+        --受注ヘッダアドオン単位で移動ロット詳細取得エラーとなっていない場合
+        IF ( gt_gen_order_header_id <> lt_mov_lot_err_header_id ) THEN
+          get_mov_lot_details(
+                 ov_mov_lot_check_flag  =>  lv_mov_lot_check_flag                      -- 移動ロット詳細取得チェックフラグ
+               , ov_errbuf              =>  lv_errbuf         -- エラー・メッセージ           --# 固定 #
+               , ov_retcode             =>  lv_retcode        -- リターン・コード             --# 固定 #
+               , ov_errmsg              =>  lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+               ) ;
+          IF (lv_retcode <> gv_status_normal) THEN
+            RAISE check_sub_main_expt;
           END IF;
-          gn_new_order_cnt := gn_new_order_cnt + 1;
-        ELSE
-          --訂正処理の場合
+          --移動ロット詳細取得エラーとならなかった場合以下受注の登録処理を実施
+          IF ( lv_mov_lot_check_flag = '0' ) THEN
+-- Ver1.19 ADD End
 --
-          -- ===================================
-          -- A-5訂正前受注ヘッダアドオン情報取得
-          -- ===================================
-          get_revised_order_info(lt_old_order_header_id,
-                                 lt_revised_order_tbl,
+-- Ver1.19 MOD Start indent addition
+            IF ( (lt_old_order_header_id = lt_order_tbl(gn_shori_count).order_header_id)
+               OR(lt_order_tbl(gn_shori_count).shipping_shikyu_class = gv_ship_class_3)) THEN
+--
+              --新規登録の場合もしくは出荷支給区分が倉替返品の場合
+              IF (lt_order_tbl(gn_shori_count).order_category_code = gv_order_type_order ) THEN
+              --受注の場合
+                gv_shori_kbn := '1'; --新規登録受注
+--
+                --出荷登録処理
+                shipping_process(lt_order_tbl,
                                  lv_errbuf,
                                  lv_retcode,
                                  lv_errmsg
-          );
-          IF (lv_retcode <> gv_status_normal) THEN
-            lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wsh,
-                                                  gv_msg_42a_023,
-                                                  gv_tkn_order_header_id,
-                                                  lt_old_order_header_id
+                );
+                IF (lv_retcode <> gv_status_normal) THEN
+                  RAISE check_sub_main_expt;
+                END IF;
+--
+              ELSE
+                --返品の場合
+                gv_shori_kbn := '2'; --新規登録返品
+--
+                --返品登録処理
+                return_process(lt_order_tbl,
+                               lv_errbuf,
+                               lv_retcode,
+                               lv_errmsg
+                );
+                IF (lv_retcode <> gv_status_normal) THEN
+                  RAISE check_sub_main_expt;
+                END IF;
+--
+              END IF;
+              gn_new_order_cnt := gn_new_order_cnt + 1;
+            ELSE
+              --訂正処理の場合
+--
+              -- ===================================
+              -- A-5訂正前受注ヘッダアドオン情報取得
+              -- ===================================
+              get_revised_order_info(lt_old_order_header_id,
+                                     lt_revised_order_tbl,
+                                     lv_errbuf,
+                                     lv_retcode,
+                                     lv_errmsg
+              );
+              IF (lv_retcode <> gv_status_normal) THEN
+                lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wsh,
+                                                      gv_msg_42a_023,
+                                                      gv_tkn_order_header_id,
+                                                      lt_old_order_header_id
+                );
+                RAISE check_sub_main_expt;
+              END IF;
+--
+              IF (lt_order_tbl(gn_shori_count).order_category_code = gv_order_type_order ) THEN
+                gv_shori_kbn := '3'; --訂正登録受注
+--
+                --受注の場合返品登録後出荷登録
+                return_process(lt_revised_order_tbl,
+                               lv_errbuf,
+                               lv_retcode,
+                               lv_errmsg
+                );
+                IF (lv_retcode <> gv_status_normal) THEN
+                  RAISE check_sub_main_expt;
+                END IF;
+--
+                shipping_process(lt_order_tbl,
+                                 lv_errbuf,
+                                 lv_retcode,
+                                 lv_errmsg
+                );
+                IF (lv_retcode <> gv_status_normal) THEN
+                  RAISE check_sub_main_expt;
+                END IF;
+--
+              ELSE
+                gv_shori_kbn := '4'; --訂正登録返品
+--
+                --返品の場合出荷登録後返品登録
+                shipping_process(lt_revised_order_tbl,
+                                 lv_errbuf,
+                                 lv_retcode,
+                                 lv_errmsg
+                );
+                IF (lv_retcode <> gv_status_normal) THEN
+                  RAISE check_sub_main_expt;
+                END IF;
+--
+                return_process(lt_order_tbl,
+                               lv_errbuf,
+                               lv_retcode,
+                               lv_errmsg
+                );
+                IF (lv_retcode <> gv_status_normal) THEN
+                  RAISE check_sub_main_expt;
+                END IF;
+--
+              END IF;
+              gn_upd_order_cnt := gn_upd_order_cnt + 1;
+            END IF;
+--
+            -- ===================================
+            -- A-17ステータス更新
+            -- ===================================
+            upd_status(lv_errbuf,
+                       lv_retcode,
+                       lv_errmsg
             );
-            RAISE check_sub_main_expt;
+            IF (lv_retcode <> gv_status_normal) THEN
+              RAISE check_sub_main_expt;
+            END IF;
+-- Ver1.19 MOD End indent addition
+-- Ver1.19 ADD Start
+          ELSIF ( lv_mov_lot_check_flag = '1' ) THEN  -- 移動ロット詳細を取得できなかった場合
+            --終了ステータスに警告を設定
+            ov_retcode := gv_status_warn;
+            lv_errmsg  := xxcmn_common_pkg.get_msg(
+                            iv_application  => gv_msg_kbn_wsh
+                          , iv_name         => gv_msg_42a_028
+                          , iv_token_name1  => gv_tkn_request_no
+                          , iv_token_value1 => gt_gen_request_no                              -- 依頼NO
+                          , iv_token_name2  => gv_tkn_in_shipf
+                          , iv_token_value2 => lt_order_tbl(gn_shori_count).deliver_from      -- 出荷元保管場所
+                          , iv_token_name3  => gv_tkn_ship_date
+                          , iv_token_value3 => TO_CHAR(lt_order_tbl(gn_shori_count).shipped_date,'YYYY/MM/DD') -- 出荷日
+                          , iv_token_name4  => gv_tkn_input_date
+                          , iv_token_value4 => TO_CHAR(lt_order_tbl(gn_shori_count).arrival_date,'YYYY/MM/DD') -- 着荷日
+                         );
+            --区切り文字列出力
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_sep_msg);
+            --メッセージ出力
+            FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+            --処理件数をカウントアップ
+            gn_shori_count := gn_shori_count + 1;
+            --警告件数をカウントアップ
+            gn_warn_cnt    := gn_warn_cnt + 1;
+            --該当依頼Noをスキップ対象とする
+            lt_mov_lot_err_header_id := gt_gen_order_header_id;
+--
           END IF;
+        -- 同一受注ヘッダアドオン単位で既に移動ロット詳細取得エラーとなった受注明細があり、処理をスキップした場合
+        ELSIF ( gt_gen_order_header_id = lt_mov_lot_err_header_id ) THEN
+          --処理件数のみカウントアップ
+          gn_shori_count := gn_shori_count + 1;
 --
-          IF (lt_order_tbl(gn_shori_count).order_category_code = gv_order_type_order ) THEN
-            gv_shori_kbn := '3'; --訂正登録受注
---
-            --受注の場合返品登録後出荷登録
-            return_process(lt_revised_order_tbl,
-                           lv_errbuf,
-                           lv_retcode,
-                           lv_errmsg
-            );
-            IF (lv_retcode <> gv_status_normal) THEN
-              RAISE check_sub_main_expt;
-            END IF;
---
-            shipping_process(lt_order_tbl,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg
-            );
-            IF (lv_retcode <> gv_status_normal) THEN
-              RAISE check_sub_main_expt;
-            END IF;
---
-          ELSE
-            gv_shori_kbn := '4'; --訂正登録返品
---
-            --返品の場合出荷登録後返品登録
-            shipping_process(lt_revised_order_tbl,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg
-            );
-            IF (lv_retcode <> gv_status_normal) THEN
-              RAISE check_sub_main_expt;
-            END IF;
---
-            return_process(lt_order_tbl,
-                           lv_errbuf,
-                           lv_retcode,
-                           lv_errmsg
-            );
-            IF (lv_retcode <> gv_status_normal) THEN
-              RAISE check_sub_main_expt;
-            END IF;
---
-          END IF;
-          gn_upd_order_cnt := gn_upd_order_cnt + 1;
         END IF;
---
-        -- ===================================
-        -- A-17ステータス更新
-        -- ===================================
-        upd_status(lv_errbuf,
-                   lv_retcode,
-                   lv_errmsg
-        );
-        IF (lv_retcode <> gv_status_normal) THEN
-          RAISE check_sub_main_expt;
-        END IF;
+-- Ver1.19 ADD End
 --
         -- ループ抜ける判断
         IF (gn_shori_count > lt_order_tbl.LAST ) THEN
@@ -6793,7 +6999,10 @@ AS
 --
     --起動時間出力
     gv_out_msg := xxcmn_common_pkg.get_msg(gv_msg_kbn,  gv_msg_42a_006,
-                                           gv_tkn_time, TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MM:SS'));
+--Ver1.19 MOD Start
+--                                           gv_tkn_time, TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MM:SS'));
+                                           gv_tkn_time, TO_CHAR(SYSDATE,'YYYY/MM/DD HH24:MI:SS'));
+--Ver1.19 MOD End
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT, gv_out_msg);
 --
     --区切り文字取得
@@ -6866,6 +7075,12 @@ AS
                                            TO_CHAR(gn_cancell_cnt));
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 --
+-- Ver1.19 ADD Start
+    --警告件数出力
+    gv_out_msg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wsh, gv_msg_42a_029, gv_tkn_warn_cnt,
+                                           TO_CHAR(gn_warn_cnt));
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+-- Ver1.19 ADD End
     --異常件数出力
     gv_out_msg := xxcmn_common_pkg.get_msg(gv_msg_kbn_wsh, gv_msg_42a_014, gv_tkn_error_cnt,
                                            TO_CHAR(gn_error_cnt));
