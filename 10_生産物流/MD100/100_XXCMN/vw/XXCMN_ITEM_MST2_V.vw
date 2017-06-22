@@ -52,6 +52,10 @@ CREATE OR REPLACE VIEW xxcmn_item_mst2_v
   product_class,
   product_type,
   expiration_day,
+-- Ver.1.1 E_本稼動_14244 Add Start
+  expiration_month,
+  expiration_type,
+-- Ver.1.1 E_本稼動_14244 Add End
   delivery_lead_time,
   whse_county_code,
   standard_yield,
@@ -128,6 +132,10 @@ AS
           ximb.product_class,
           ximb.product_type,
           ximb.expiration_day,
+-- Ver.1.1 E_本稼動_14244 Add Start
+          ximb.expiration_month,
+          ximb.expiration_type,
+-- Ver.1.1 E_本稼動_14244 Add End
           ximb.delivery_lead_time,
           ximb.whse_county_code,
           ximb.standard_yield,
@@ -210,6 +218,10 @@ COMMENT ON COLUMN xxcmn_item_mst2_v.model_type                IS '型種別';
 COMMENT ON COLUMN xxcmn_item_mst2_v.product_class             IS '商品分類';
 COMMENT ON COLUMN xxcmn_item_mst2_v.product_type              IS '商品種別';
 COMMENT ON COLUMN xxcmn_item_mst2_v.expiration_day            IS '賞味期間';
+-- Ver.1.1 E_本稼動_14244 Add Start
+COMMENT ON COLUMN xxcmn_item_mst2_v.expiration_month          IS '賞味期間（月）';
+COMMENT ON COLUMN xxcmn_item_mst2_v.expiration_type           IS '表示区分';
+-- Ver.1.1 E_本稼動_14244 Add End
 COMMENT ON COLUMN xxcmn_item_mst2_v.delivery_lead_time        IS '納入期間';
 COMMENT ON COLUMN xxcmn_item_mst2_v.whse_county_code          IS '工場群コード';
 COMMENT ON COLUMN xxcmn_item_mst2_v.standard_yield            IS '標準歩留';
