@@ -65,6 +65,11 @@ CREATE OR REPLACE VIEW APPS.XXSKY_品目マスタ_基本_V
 ,商品種別
 ,商品種別名
 ,賞味期間
+-- 2017/06/07 K.Kiriu Add Start E_本稼動_14244
+,賞味期間_月
+,表示区分
+,表示区分名
+-- 2017/06/07 K.Kiriu Add End   E_本稼動_14244
 ,納入期間
 ,工場群コード
 ,標準歩留
@@ -253,6 +258,16 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
         ) product_type_name
 -- 2010/01/28 T.Yoshimoto Mod End 本稼動#1168
        ,XIMB.expiration_day           expiration_day              --賞味期間
+-- 2017/06/07 K.Kiriu Add Start E_本稼動_14244
+       ,XIMB.expiration_month         expiration_month            --賞味期間（月）
+       ,XIMB.expiration_type          expiration_type             --表示区分
+       ,(SELECT FLV18.meaning meaning
+         FROM fnd_lookup_values FLV18                             --クイックコード(表示区分名)
+         WHERE FLV18.language    = 'JA'                           --言語
+           AND FLV18.lookup_type = 'XXCMN_EXPIRATION_TYPE'        --クイックコードタイプ
+           AND FLV18.lookup_code = XIMB.expiration_type           --クイックコード
+        ) expiration_type_name
+-- 2017/06/07 K.Kiriu Add End   E_本稼動_14244
        ,XIMB.delivery_lead_time       delivery_lead_time          --納入期間
        ,XIMB.whse_county_code         whse_county_code            --工場群コード
        ,XIMB.standard_yield           standard_yield              --標準保留
@@ -601,6 +616,14 @@ COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.商品種別名             IS '商品種
 /
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.賞味期間               IS '賞味期間'
 /
+-- 2017/06/07 K.Kiriu Add Start E_本稼動_14244
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.賞味期間_月            IS '賞味期間_月'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.表示区分               IS '表示区分'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.表示区分名             IS '表示区分名'
+/
+-- 2017/06/07 K.Kiriu Add End   E_本稼動_14244
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.納入期間               IS '納入期間'
 /
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.工場群コード           IS '工場群コード'
