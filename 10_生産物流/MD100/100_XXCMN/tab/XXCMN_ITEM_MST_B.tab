@@ -14,6 +14,10 @@ CREATE TABLE xxcmn.xxcmn_item_mst_b
     product_class             NUMBER(2,0),
     product_type              NUMBER(2,0),
     expiration_day            NUMBER(4,0),
+-- Ver.1.1 E_本稼動_14244 Add Start
+    expiration_month          NUMBER(4,0),
+    expiration_type           VARCHAR2(2),
+-- Ver.1.1 E_本稼動_14244 Add End
     delivery_lead_time        NUMBER(4,0),
     whse_county_code          VARCHAR2(4),
     standard_yield            NUMBER(5,2),
@@ -62,6 +66,10 @@ COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.model_type                IS '型種別' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.product_class             IS '商品分類' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.product_type              IS '商品種別' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.expiration_day            IS '賞味期間' ;
+-- Ver.1.1 E_本稼動_14244 Add Start
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.expiration_month          IS '賞味期間（月）' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.expiration_type           IS '表示区分' ;
+-- Ver.1.1 E_本稼動_14244 Add End
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.delivery_lead_time        IS '納入期間' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.whse_county_code          IS '工場群コード' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.standard_yield            IS '標準歩留' ;
