@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.32
+* バージョン : 1.33
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -40,6 +40,7 @@
 * 2016-02-12 1.30 山下翔太     E_本稼動_13451対応
 * 2016-05-16 1.31 山下翔太     E_本稼動_13563対応
 * 2016-07-06 1.32 山下翔太     E_本稼動_13563追加対応
+* 2017-06-07 1.33 桐生和幸     E_本稼動_14244対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -183,8 +184,26 @@ public class XxpoUtility
     // PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(100);
     sb.append("BEGIN "                                     );
-    sb.append("   SELECT :1 + NVL(ximv.expiration_day, 0) "); // 賞味期限
+// 2017-06-07 K.Kiriu Mod Start
+//    sb.append("   SELECT :1 + NVL(ximv.expiration_day, 0) "); // 賞味期限
+//    sb.append("   INTO   :2 "                              );
+    sb.append("   SELECT NVL2( ximv.expiration_month "                                                                                );
+    sb.append("               , CASE "                                                                                                );
+    sb.append("                   WHEN ximv.expiration_type = '10' THEN "                                                             ); //年月表示
+    sb.append("                     LAST_DAY(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0) -1)) "                                      );
+    sb.append("                   ELSE "                                                                                              ); //上・中・下旬表示
+    sb.append("                     CASE "                                                                                            );
+    sb.append("                       WHEN TO_NUMBER(TO_CHAR(:1, 'DD')) >= 21 THEN "                                                  ); //製造日が21日以降
+    sb.append("                         TO_DATE(TO_CHAR(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0)),'YYYYMM') || '20','YYYYMMDD') " );
+    sb.append("                       WHEN TO_NUMBER(TO_CHAR(:1, 'DD')) >= 11 THEN "                                                  ); //製造日が11日～20日
+    sb.append("                         TO_DATE(TO_CHAR(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0)),'YYYYMM') || '10','YYYYMMDD') " );
+    sb.append("                       ELSE "                                                                                          ); //製造日が10以前
+    sb.append("                           LAST_DAY(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0) -1)) "                                );
+    sb.append("                       END "                                                                                           );
+    sb.append("                   END "                                                                                               );
+    sb.append("               , :1 + NVL(ximv.expiration_day, 0) ) expiration "                                                       );
     sb.append("   INTO   :2 "                              );
+// 2017-06-07 K.Kiriu Mod End
 // 2009-02-06 H.Itou Add Start 本番障害#1147
 //    sb.append("   FROM   xxcmn_item_mst_v ximv "           ); // OPM品目情報V
     sb.append("   FROM   xxcmn_item_mst2_v ximv "          ); // OPM品目情報V
