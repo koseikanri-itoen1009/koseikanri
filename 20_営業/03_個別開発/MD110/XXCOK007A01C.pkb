@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2010/02/18    1.13  S.Moriyama       [E_本稼動_00911]納品日先日付のEDI実績振替は一時表までの登録としスキップする
  *  2010/05/18    1.14  K.Yamaguchi      [E_本稼動_02683]営業原価の取得方法を修正
  *  2011/11/11    1.15  K.Nakamura       [E_本稼動_08340]店舗納品日のAR会計期間チェック追加
+ *  2017/06/27    1.16  S.Niki           [E_本稼動_14382]伝票Noシーケンスあふれ対応
  *
  *****************************************************************************************/
   -- =========================
@@ -195,7 +196,10 @@ AS
   cn_1                        CONSTANT NUMBER       := 1;                                --数値:1
   cn_100                      CONSTANT NUMBER       := 100;                              --数値:100
   --フォーマット
-  cv_slip_no_format           CONSTANT VARCHAR2(9)  := '00000000';                       --伝票番号フォーマット
+-- Ver.1.16 [E_本稼動_14382] Mod Start
+--  cv_slip_no_format           CONSTANT VARCHAR2(9)  := '00000000';                       --伝票番号フォーマット
+  cv_slip_no_format           CONSTANT VARCHAR2(11) := '00000000000';                    --伝票番号フォーマット
+-- Ver.1.16 [E_本稼動_14382] Mod End
   cv_date_format              CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';                     --日付フォーマット
   --WHOカラム
   cn_created_by               CONSTANT NUMBER       := fnd_global.user_id;               --CREATED_BY
@@ -219,7 +223,10 @@ AS
   gn_delivery_unit_price  NUMBER        DEFAULT 0;      --納品単価
   gv_case_uom             VARCHAR2(100) DEFAULT NULL;   --カスタムプロファイル(ケース単位)
   gv_purge_term           VARCHAR2(100) DEFAULT NULL;   --カスタムプロファイル(EDI情報削除期間)
-  gv_keep_slip_no         VARCHAR2(9)   DEFAULT '0';    --伝票番号(保持用)
+-- Ver.1.16 [E_本稼動_14382] Mod Start
+--  gv_keep_slip_no         VARCHAR2(9)   DEFAULT '0';    --伝票番号(保持用)
+  gv_keep_slip_no         VARCHAR2(12)  DEFAULT '0';    --伝票番号(保持用)
+-- Ver.1.16 [E_本稼動_14382] Mod End
   gv_base_code            VARCHAR2(4)   DEFAULT '0';    --拠点コード
   gv_cust_code            VARCHAR2(9)   DEFAULT '0';    --顧客コード
   gv_item_code            VARCHAR2(7)   DEFAULT '0';    --品目コード
@@ -682,7 +689,10 @@ AS
     lv_retcode               VARCHAR2(1)    DEFAULT NULL;   --リターン・コード
     lv_errmsg                VARCHAR2(5000) DEFAULT NULL;   --ユーザー・エラー・メッセージ
     lv_msg                   VARCHAR2(5000) DEFAULT NULL;   --メッセージ取得変数
-    lv_slip_no               VARCHAR2(9)    DEFAULT NULL;   --伝票番号
+-- Ver.1.16 [E_本稼動_14382] Mod Start
+--    lv_slip_no               VARCHAR2(9)    DEFAULT NULL;   --伝票番号
+    lv_slip_no               VARCHAR2(12)   DEFAULT NULL;   --伝票番号
+-- Ver.1.16 [E_本稼動_14382] Mod End
 -- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
 --    lv_tax_code              VARCHAR2(4)    DEFAULT NULL;   --消費税コード
 -- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
