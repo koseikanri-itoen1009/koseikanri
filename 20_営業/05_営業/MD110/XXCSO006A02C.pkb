@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_006_A02_訪問実績データ格納
  *                    
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009-09-08    1.7   Daisuke.Abe      0001312対応
  *  2010-02-15    1.8   T.Maruyama       E_本稼動_01130対応
  *  2017-04-13    1.9   K.Kiriu          E_本稼動_14025対応
+ *  2017-06-09    1.10  N.Watanabe       E_本稼動_14266対応
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -99,23 +100,56 @@ AS
   cn_account_number      CONSTANT NUMBER        := 3;                   -- 顧客コード
   cn_visit_ymd           CONSTANT NUMBER        := 5;                   -- 訪問日
   cn_visit_time          CONSTANT NUMBER        := 6;                   -- 開始時刻
-  cn_description         CONSTANT NUMBER        := 7;                   -- 詳細内容
+-- Ver1.10 ADD Start
+  cn_visit_end_time      CONSTANT NUMBER        := 7;                   -- 終了時刻
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--  cn_description         CONSTANT NUMBER        := 7;                   -- 詳細内容
+  cn_description         CONSTANT NUMBER        := 8;                   -- 詳細内容
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+  cn_active_time1         CONSTANT NUMBER       := 29;                  -- 活動時間1
+  cn_active_time2         CONSTANT NUMBER       := 30;                  -- 活動時間2
+  cn_active_time3         CONSTANT NUMBER       := 31;                  -- 活動時間3
+  cn_active_time4         CONSTANT NUMBER       := 32;                  -- 活動時間4
+  cn_active_time5         CONSTANT NUMBER       := 33;                  -- 活動時間5
+  cn_active_time6         CONSTANT NUMBER       := 34;                  -- 活動時間6
+  cn_active_time7         CONSTANT NUMBER       := 35;                  -- 活動時間7
+  cn_active_time8         CONSTANT NUMBER       := 36;                  -- 活動時間8
+  cn_active_time9         CONSTANT NUMBER       := 37;                  -- 活動時間9
+  cn_active_time10        CONSTANT NUMBER       := 38;                  -- 活動時間10
+  cn_active_time11        CONSTANT NUMBER       := 39;                  -- 活動時間11
+  cn_active_time12        CONSTANT NUMBER       := 40;                  -- 活動時間12
+  cn_active_time13        CONSTANT NUMBER       := 41;                  -- 活動時間13
+  cn_active_time14        CONSTANT NUMBER       := 42;                  -- 活動時間14
+  cn_active_time15        CONSTANT NUMBER       := 43;                  -- 活動時間15
+  cn_active_time16        CONSTANT NUMBER       := 44;                  -- 活動時間16
+  cn_active_time17        CONSTANT NUMBER       := 45;                  -- 活動時間17
+  cn_active_time18        CONSTANT NUMBER       := 46;                  -- 活動時間18
+  cn_active_time19        CONSTANT NUMBER       := 47;                  -- 活動時間19
+  cn_active_time20        CONSTANT NUMBER       := 48;                  -- 活動時間20
+-- Ver1.10 ADD End
   -- CSVファイルの訪問区分
   cn_visit_dff_0         CONSTANT NUMBER        := 0;                   -- 区分なし
   -- CSVファイルの項目名称
   cv_employee_number_nm  CONSTANT VARCHAR2(100) := '社員コード';        -- 社員コード
   cv_account_number_nm   CONSTANT VARCHAR2(100) := '顧客コード';        -- 顧客コード
   cv_visit_nm            CONSTANT VARCHAR2(100) := '訪問日時';          -- 訪問日時
-  cv_visit_dff1_nm       CONSTANT VARCHAR2(100) := '拡販活動';          -- 拡販活動
-  cv_visit_dff2_nm       CONSTANT VARCHAR2(100) := '販促フォロー';      -- 販促フォロー
-  cv_visit_dff3_nm       CONSTANT VARCHAR2(100) := '店頭調査';          -- 店頭調査
-  cv_visit_dff4_nm       CONSTANT VARCHAR2(100) := 'クレーム対応';      -- クレーム対応
-  cv_visit_dff5_nm       CONSTANT VARCHAR2(100) := '売り場支援';        -- 売り場支援
-  cv_visit_dff6_nm       CONSTANT VARCHAR2(100) := '導入チェック（お茶）';   -- 導入チェック（お茶）
-  cv_visit_dff7_nm       CONSTANT VARCHAR2(100) := '導入チェック（野菜）';   -- 導入チェック（野菜）
-  cv_visit_dff8_nm       CONSTANT VARCHAR2(100) := '導入チェック（その他）'; -- 導入チェック（その他）
-  cv_visit_dff9_nm       CONSTANT VARCHAR2(100) := '導入チェック（リーフ）'; -- 導入チェック（リーフ）
-  cv_visit_dff10_nm      CONSTANT VARCHAR2(100) := '導入チェック（チルド）'; -- 導入チェック（チルド）
+-- Ver1.10 DEL Start
+--  cv_visit_dff1_nm       CONSTANT VARCHAR2(100) := '拡販活動';          -- 拡販活動
+--  cv_visit_dff2_nm       CONSTANT VARCHAR2(100) := '販促フォロー';      -- 販促フォロー
+--  cv_visit_dff3_nm       CONSTANT VARCHAR2(100) := '店頭調査';          -- 店頭調査
+--  cv_visit_dff4_nm       CONSTANT VARCHAR2(100) := 'クレーム対応';      -- クレーム対応
+--  cv_visit_dff5_nm       CONSTANT VARCHAR2(100) := '売り場支援';        -- 売り場支援
+--  cv_visit_dff6_nm       CONSTANT VARCHAR2(100) := '導入チェック（お茶）';   -- 導入チェック（お茶）
+--  cv_visit_dff7_nm       CONSTANT VARCHAR2(100) := '導入チェック（野菜）';   -- 導入チェック（野菜）
+--  cv_visit_dff8_nm       CONSTANT VARCHAR2(100) := '導入チェック（その他）'; -- 導入チェック（その他）
+--  cv_visit_dff9_nm       CONSTANT VARCHAR2(100) := '導入チェック（リーフ）'; -- 導入チェック（リーフ）
+--  cv_visit_dff10_nm      CONSTANT VARCHAR2(100) := '導入チェック（チルド）'; -- 導入チェック（チルド）
+-- Ver1.10 DEL End
+-- Ver1.10 ADD Start
+  cv_visit_end_nm        CONSTANT VARCHAR2(100) := '訪問終了時刻';      -- 訪問終了時刻
+-- Ver1.10 ADD End
 --
   -- メッセージコード
   cv_tkn_number_01       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00175';  -- プロファイル取得エラー
@@ -146,6 +180,10 @@ AS
   /* 2009.07.16 K.Satomura 0000070対応 START */
   cv_tkn_number_21       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00578';  -- タスク存在エラー
   /* 2009.07.16 K.Satomura 0000070対応 END */
+-- Ver1.10 ADD Start
+  cv_tkn_number_22       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00840';  -- 時間形式チェックエラーメッセージ
+  cv_tkn_number_23       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00841';  -- 訪問終了時刻チェックエラーメッセージ
+-- Ver1.10 ADD End
 --
   -- トークンコード
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';
@@ -158,6 +196,13 @@ AS
   cv_tkn_prof_nm         CONSTANT VARCHAR2(20) := 'PROF_NAME';
   cv_tkn_base_val        CONSTANT VARCHAR2(20) := 'BASE_VALUE';
   cv_tkn_csv_file_nm     CONSTANT VARCHAR2(20) := 'CSV_FILE_NAME';
+-- Ver1.10 ADD Start
+  cv_tkn_emp_code        CONSTANT VARCHAR2(20)  := 'EMP_CODE';
+  cv_tkn_cust_code       CONSTANT VARCHAR2(20)  := 'CUST_CODE';
+  cv_tkn_visit_date      CONSTANT VARCHAR2(20)  := 'VISIT_DATE';
+  cv_tkn_visit_time      CONSTANT VARCHAR2(20)  := 'VISIT_TIME';
+  cv_tkn_visit_time_end  CONSTANT VARCHAR2(20)  := 'VISIT_TIME_END';
+-- Ver1.10 ADD End
 --
   -- DEBUG_LOG用メッセージ
   cv_debug_msg1           CONSTANT VARCHAR2(200) := '<< プロファイル値取得 >>';
@@ -207,26 +252,88 @@ AS
   );
   -- CSVファイル項目の順番(訪問区分)
   TYPE g_csv_order_rtype IS RECORD(
-    dff1_num             NUMBER,                                   -- 拡販活動順番
-    dff1_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff2_num             NUMBER,                                   -- 販促フォロー順番
-    dff2_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff3_num             NUMBER,                                   -- 店頭調査順番
-    dff3_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff4_num             NUMBER,                                   -- クレーム対応順番
-    dff4_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff5_num             NUMBER,                                   -- 売り場支援順番
-    dff5_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff6_num             NUMBER,                                   -- 導入チェック（お茶）順番
-    dff6_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff7_num             NUMBER,                                   -- 導入チェック（野菜）順番
-    dff7_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff8_num             NUMBER,                                   -- 導入チェック（その他）順番
-    dff8_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff9_num             NUMBER,                                   -- 導入チェック（リーフ）順番
-    dff9_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 区分コード
-    dff10_num            NUMBER,                                   -- 導入チェック（チルド）順番
-    dff10_cd             fnd_lookup_values_vl.lookup_code%TYPE     -- 区分コード
+    dff1_num             NUMBER,                                   -- 活動区分1（順番）
+    dff1_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分1（コード）
+-- Ver1.10 ADD Start
+    dff1_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分1（内容）
+-- Ver1.10 ADD End
+    dff2_num             NUMBER,                                   -- 活動区分2（順番）
+    dff2_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分2（コード）
+-- Ver1.10 ADD Start
+    dff2_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分2（内容）
+-- Ver1.10 ADD End
+    dff3_num             NUMBER,                                   -- 活動区分3（順番）
+    dff3_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分3（コード）
+-- Ver1.10 ADD Start
+    dff3_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分3（内容）
+-- Ver1.10 ADD End
+    dff4_num             NUMBER,                                   -- 活動区分4（順番）
+    dff4_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分4（コード）
+-- Ver1.10 ADD Start
+    dff4_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分4（内容）
+-- Ver1.10 ADD End
+    dff5_num             NUMBER,                                   -- 活動区分5（順番）
+    dff5_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分5（コード）
+-- Ver1.10 ADD Start
+    dff5_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分5（内容）
+-- Ver1.10 ADD End
+    dff6_num             NUMBER,                                   -- 活動区分6（順番）
+    dff6_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分6（コード）
+-- Ver1.10 ADD Start
+    dff6_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分6（内容）
+-- Ver1.10 ADD End
+    dff7_num             NUMBER,                                   -- 活動区分7（順番）
+    dff7_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分7（コード）
+-- Ver1.10 ADD Start
+    dff7_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分7（内容）
+-- Ver1.10 ADD End
+    dff8_num             NUMBER,                                   -- 活動区分8（順番）
+    dff8_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分8（コード）
+-- Ver1.10 ADD Start
+    dff8_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分8（内容）
+-- Ver1.10 ADD End
+    dff9_num             NUMBER,                                   -- 活動区分9（順番）
+    dff9_cd              fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分9（コード）
+-- Ver1.10 ADD Start
+    dff9_name            fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分9（内容）
+-- Ver1.10 ADD End
+    dff10_num            NUMBER,                                   -- 活動区分10（順番）
+    dff10_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分10（コード）
+-- Ver1.10 ADD Start
+    dff10_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分10（内容）
+-- Ver1.10 ADD End
+-- Ver1.10 ADD Start
+    dff11_num            NUMBER,                                   -- 活動区分11（順番）
+    dff11_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分11（コード）
+    dff11_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分11（内容）
+    dff12_num            NUMBER,                                   -- 活動区分12（順番）
+    dff12_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分12（コード）
+    dff12_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分12（内容）
+    dff13_num            NUMBER,                                   -- 活動区分13（順番）
+    dff13_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分13（コード）
+    dff13_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分13（内容）
+    dff14_num            NUMBER,                                   -- 活動区分14（順番）
+    dff14_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分14（コード）
+    dff14_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分14（内容）
+    dff15_num            NUMBER,                                   -- 活動区分15（順番）
+    dff15_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分15（コード）
+    dff15_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分15（内容）
+    dff16_num            NUMBER,                                   -- 活動区分16（順番）
+    dff16_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分16（コード）
+    dff16_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分16（内容）
+    dff17_num            NUMBER,                                   -- 活動区分17（順番）
+    dff17_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分17（コード）
+    dff17_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分17（内容）
+    dff18_num            NUMBER,                                   -- 活動区分18（順番）
+    dff18_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分18（コード）
+    dff18_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分18（内容）
+    dff19_num            NUMBER,                                   -- 活動区分19（順番）
+    dff19_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分19（コード）
+    dff19_name           fnd_lookup_values_vl.meaning%TYPE,        -- 活動区分19（内容）
+    dff20_num            NUMBER,                                   -- 活動区分20（順番）
+    dff20_cd             fnd_lookup_values_vl.lookup_code%TYPE,    -- 活動区分20（コード）
+    dff20_name           fnd_lookup_values_vl.meaning%TYPE         -- 活動区分20（内容）
+-- Ver1.10 ADD End
   );
   -- *** ユーザー定義グローバル例外 ***
   global_skip_error_expt EXCEPTION;
@@ -671,28 +778,44 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_activity_lookup_type     CONSTANT VARCHAR2(100) := 'XXCSO1_VISIT_ACTIVITY_NUMBER';
+-- Ver1.10 DEL Start
+--    cv_activity_lookup_type     CONSTANT VARCHAR2(100) := 'XXCSO1_VISIT_ACTIVITY_NUMBER';
+-- Ver1.10 DEL End
     cv_kubun_lookup_type        CONSTANT VARCHAR2(100) := 'XXCSO_ASN_HOUMON_KUBUN';
     cv_account_table_vl_nm      CONSTANT VARCHAR2(100) := '顧客マスタビュー';
     cv_lookup_table_nm          CONSTANT VARCHAR2(100) := '参照タイプテーブル';
+-- Ver1.10 ADD Start
+    cn_act_start_point          CONSTANT NUMBER        := 8;      --活動区分の開始位置まで加算するための定数
+-- Ver1.10 ADD End
 --
     -- *** ローカル・カーソル *** 
     CURSOR l_houmon_kubun_cur
     IS
-      SELECT xvan.lookup_code num                                     -- 順番
-            ,xahk.lookup_code code                                    -- 訪問区分コード
-            ,xvan.meaning meaning                                     -- 内容
-      FROM   fnd_lookup_values_vl xvan
-            ,fnd_lookup_values_vl xahk
-      WHERE  xvan.lookup_type = cv_activity_lookup_type
-        AND  TRUNC(SYSDATE) BETWEEN TRUNC(xvan.start_date_active)
-               AND TRUNC(NVL(xvan.end_date_active, SYSDATE))
-        AND  xvan.enabled_flag = cv_enabled_flag
-        AND  xahk.lookup_type = cv_kubun_lookup_type
-        AND  TRUNC(SYSDATE) BETWEEN TRUNC(xahk.start_date_active)
-               AND TRUNC(NVL(xahk.end_date_active, SYSDATE))
-        AND  xahk.enabled_flag = cv_enabled_flag
-        AND  xvan.meaning = xahk.meaning;
+-- Ver1.10 MOD Start
+--      SELECT xvan.lookup_code num                                     -- 順番
+--            ,xahk.lookup_code code                                    -- 訪問区分コード
+--            ,xvan.meaning meaning                                     -- 内容
+--      FROM   fnd_lookup_values_vl xvan
+--            ,fnd_lookup_values_vl xahk
+--      WHERE  xvan.lookup_type = cv_activity_lookup_type
+--        AND  TRUNC(SYSDATE) BETWEEN TRUNC(xvan.start_date_active)
+--               AND TRUNC(NVL(xvan.end_date_active, SYSDATE))
+--        AND  xvan.enabled_flag = cv_enabled_flag
+--        AND  xahk.lookup_type = cv_kubun_lookup_type
+--        AND  TRUNC(SYSDATE) BETWEEN TRUNC(xahk.start_date_active)
+--               AND TRUNC(NVL(xahk.end_date_active, SYSDATE))
+--        AND  xahk.enabled_flag = cv_enabled_flag
+--        AND  xvan.meaning = xahk.meaning;
+      SELECT flvv.attribute4  num
+            ,flvv.lookup_code code
+            ,flvv.meaning     name
+      FROM   fnd_lookup_values_vl flvv
+      WHERE  flvv.lookup_type = cv_kubun_lookup_type
+      AND    TRUNC(cd_sysdate) BETWEEN TRUNC(flvv.start_date_active)
+               AND TRUNC(NVL(flvv.end_date_active, cd_sysdate))
+      AND    flvv.enabled_flag = cv_enabled_flag
+      AND    flvv.attribute4 IS NOT NULL;
+-- Ver1.10 MOD End
 --
     -- *** ローカル・レコード *** 
     l_houmon_kubun_rec l_houmon_kubun_cur%ROWTYPE;
@@ -719,47 +842,167 @@ AS
           OR l_houmon_kubun_cur%ROWCOUNT = 0;
 --
         -- 訪問区分
-        IF (l_houmon_kubun_rec.meaning = cv_visit_dff1_nm) THEN
-        -- 拡販活動
-          g_csv_order_rec.dff1_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff1_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff2_nm) THEN
-        -- 販促フォロー
-          g_csv_order_rec.dff2_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff2_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff3_nm) THEN
-        -- 店頭調査
-          g_csv_order_rec.dff3_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff3_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff4_nm) THEN
-        -- クレーム対応
-          g_csv_order_rec.dff4_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff4_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff5_nm) THEN
-        -- 売り場支援
-          g_csv_order_rec.dff5_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff5_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff6_nm) THEN
-        -- 導入チェック（お茶）
-          g_csv_order_rec.dff6_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff6_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff7_nm) THEN
-        -- 導入チェック（野菜）
-          g_csv_order_rec.dff7_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff7_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff8_nm) THEN
-        -- 導入チェック（その他）
-          g_csv_order_rec.dff8_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff8_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff9_nm) THEN
-        -- 導入チェック（リーフ）
-          g_csv_order_rec.dff9_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff9_cd := l_houmon_kubun_rec.code;
-        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff10_nm) THEN
-        -- 導入チェック（チルド）
-          g_csv_order_rec.dff10_num := l_houmon_kubun_rec.num;
-          g_csv_order_rec.dff10_cd := l_houmon_kubun_rec.code;
+-- Ver1.10 MOD Start
+--        IF (l_houmon_kubun_rec.meaning = cv_visit_dff1_nm) THEN
+        IF (l_houmon_kubun_rec.num = 1) THEN
+        -- 訪問区分1
+--          g_csv_order_rec.dff1_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff1_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff1_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff1_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff2_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 2) THEN
+        -- 訪問区分2
+--          g_csv_order_rec.dff2_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff2_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff2_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff2_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff3_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 3) THEN
+        -- 訪問区分3
+--          g_csv_order_rec.dff3_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff3_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff3_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff3_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff4_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 4) THEN
+        -- 訪問区分4
+--          g_csv_order_rec.dff4_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff4_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff4_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff4_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff5_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 5) THEN
+        -- 訪問区分5
+--          g_csv_order_rec.dff5_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff5_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff5_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff5_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff6_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 6) THEN
+        -- 訪問区分6
+--          g_csv_order_rec.dff6_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff6_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff6_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff6_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff7_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 7) THEN
+        -- 訪問区分7
+--          g_csv_order_rec.dff7_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff7_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff7_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff7_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff8_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 8) THEN
+        -- 訪問区分8
+--          g_csv_order_rec.dff8_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff8_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff8_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff8_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff9_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 9) THEN
+        -- 訪問区分9
+--          g_csv_order_rec.dff9_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff9_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff9_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff9_name := l_houmon_kubun_rec.name;
+-- Ver1.10 ADD End
+-- Ver1.10 MOD Start
+--        ELSIF (l_houmon_kubun_rec.meaning = cv_visit_dff10_nm) THEN
+        ELSIF (l_houmon_kubun_rec.num = 10) THEN
+        -- 訪問区分10
+--          g_csv_order_rec.dff10_num := l_houmon_kubun_rec.num;
+          g_csv_order_rec.dff10_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+-- Ver1.10 MOD End
+          g_csv_order_rec.dff10_cd   := l_houmon_kubun_rec.code;
+-- Ver1.10 ADD Start
+          g_csv_order_rec.dff10_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 11) THEN
+        -- 訪問区分11
+          g_csv_order_rec.dff11_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff11_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff11_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 12) THEN
+        -- 訪問区分12
+          g_csv_order_rec.dff12_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff12_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff12_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 13) THEN
+        -- 訪問区分13
+          g_csv_order_rec.dff13_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff13_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff13_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 14) THEN
+        -- 訪問区分14
+          g_csv_order_rec.dff14_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff14_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff14_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 15) THEN
+        -- 訪問区分15
+          g_csv_order_rec.dff15_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff15_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff15_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 16) THEN
+        -- 訪問区分16
+          g_csv_order_rec.dff16_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff16_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff16_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 17) THEN
+        -- 訪問区分17
+          g_csv_order_rec.dff17_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff17_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff17_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 18) THEN
+        -- 訪問区分18
+          g_csv_order_rec.dff18_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff18_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff18_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 19) THEN
+        -- 訪問区分19
+          g_csv_order_rec.dff19_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff19_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff19_name := l_houmon_kubun_rec.name;
+        ELSIF (l_houmon_kubun_rec.num = 20) THEN
+        -- 訪問区分20
+          g_csv_order_rec.dff20_num  := TO_NUMBER(l_houmon_kubun_rec.num) + cn_act_start_point;
+          g_csv_order_rec.dff20_cd   := l_houmon_kubun_rec.code;
+          g_csv_order_rec.dff20_name := l_houmon_kubun_rec.name;
         END IF;
+-- Ver1.10 ADD End
 --
       END LOOP houmon_kubun_loop;
 --
@@ -879,12 +1122,38 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cn_format_col_cnt       CONSTANT NUMBER        := 26;                   -- 項目数
+-- Ver1.10 MOD Start
+--    cn_format_col_cnt       CONSTANT NUMBER        := 26;                   -- 項目数
+    cn_format_col_cnt       CONSTANT NUMBER        := 48;                   -- 項目数
+-- Ver1.10 MOD End
     cn_employee_number_len  CONSTANT NUMBER        := 5;                    -- 社員コードバイト数
     cn_account_number_len   CONSTANT NUMBER        := 9;                    -- 顧客コードバイト数
     cn_activity_kubun_len   CONSTANT NUMBER        := 1;                    -- 活動内容バイト数
     cn_description_cut_len  CONSTANT NUMBER        := 2000;                 -- 詳細内容範囲
     cv_visit_date_fmt       CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI'; -- DATE型
+-- Ver1.10 ADD Start
+    cv_format_minute        CONSTANT VARCHAR2(100) := 'HH24:MI';            -- DATE型（時刻）
+    cv_act_time1            CONSTANT VARCHAR2(100) := '活動時間1';          -- 活動時間1
+    cv_act_time2            CONSTANT VARCHAR2(100) := '活動時間2';          -- 活動時間2
+    cv_act_time3            CONSTANT VARCHAR2(100) := '活動時間3';          -- 活動時間3
+    cv_act_time4            CONSTANT VARCHAR2(100) := '活動時間4';          -- 活動時間4
+    cv_act_time5            CONSTANT VARCHAR2(100) := '活動時間5';          -- 活動時間5
+    cv_act_time6            CONSTANT VARCHAR2(100) := '活動時間6';          -- 活動時間6
+    cv_act_time7            CONSTANT VARCHAR2(100) := '活動時間7';          -- 活動時間7
+    cv_act_time8            CONSTANT VARCHAR2(100) := '活動時間8';          -- 活動時間8
+    cv_act_time9            CONSTANT VARCHAR2(100) := '活動時間9';          -- 活動時間9
+    cv_act_time10           CONSTANT VARCHAR2(100) := '活動時間10';         -- 活動時間10
+    cv_act_time11           CONSTANT VARCHAR2(100) := '活動時間11';         -- 活動時間11
+    cv_act_time12           CONSTANT VARCHAR2(100) := '活動時間12';         -- 活動時間12
+    cv_act_time13           CONSTANT VARCHAR2(100) := '活動時間13';         -- 活動時間13
+    cv_act_time14           CONSTANT VARCHAR2(100) := '活動時間14';         -- 活動時間14
+    cv_act_time15           CONSTANT VARCHAR2(100) := '活動時間15';         -- 活動時間15
+    cv_act_time16           CONSTANT VARCHAR2(100) := '活動時間16';         -- 活動時間16
+    cv_act_time17           CONSTANT VARCHAR2(100) := '活動時間17';         -- 活動時間17
+    cv_act_time18           CONSTANT VARCHAR2(100) := '活動時間18';         -- 活動時間18
+    cv_act_time19           CONSTANT VARCHAR2(100) := '活動時間19';         -- 活動時間19
+    cv_act_time20           CONSTANT VARCHAR2(100) := '活動時間20';         -- 活動時間20
+-- Ver1.10 ADD End
 --
     -- *** ローカル変数 ***
     l_col_data_tab            g_col_data_ttype;      -- 分割後項目データを格納する配列
@@ -900,6 +1169,42 @@ AS
     ln_cnt                    NUMBER := 1;
     lb_format_flag            BOOLEAN := TRUE;
 --
+-- Ver1.10 ADD Start
+    FUNCTION activite_time_check(
+       iv_active_time IN VARCHAR2  -- 活動時間
+    ) RETURN BOOLEAN
+    IS
+    --
+    cn_active_time_len CONSTANT NUMBER := 4; -- 活動時間桁数
+    lb_return_status            BOOLEAN;     -- リターンステータス
+    ln_active_time              NUMBER;      -- 活動時間
+    --
+    BEGIN
+      --NUMBER型かチェック
+      lb_return_status :=xxccp_common_pkg.chk_number(iv_active_time);
+      IF (lb_return_status = TRUE) THEN
+        --整数かチェック
+        ln_active_time := TO_NUMBER(iv_active_time);
+        IF (ln_active_time = TRUNC(ln_active_time)) THEN
+          --0以上かチェック
+          IF (ln_active_time >= 0) THEN
+            --4桁以内かチェック
+            IF (LENGTH(ln_active_time) <= cn_active_time_len) THEN
+              RETURN TRUE;
+            ELSE
+              RETURN FALSE;
+            END IF;
+          ELSE
+            RETURN FALSE;
+          END IF;
+        ELSE
+          RETURN FALSE;
+        END IF;
+      ELSE
+        RETURN FALSE;
+      END IF;
+    END;
+-- Ver1.10 ADD End
   BEGIN
 --
 -- ##################  固定ステータス初期化部 START   ###################
@@ -950,46 +1255,197 @@ AS
       lv_item_nm := '';
 --
       -- 1). NUMBER型チェック
-      IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff1_num)) = FALSE) THEN
-        -- 拡販活動
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff1_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff2_num)) = FALSE) THEN
-        -- 販促フォロー
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff2_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff3_num)) = FALSE) THEN
-        -- 店頭調査
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff3_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff4_num)) = FALSE) THEN
-        -- クレーム対応
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff4_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff5_num)) = FALSE) THEN
-        -- 売り場支援
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff5_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff6_num)) = FALSE) THEN
-        -- 導入チェック（お茶）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff6_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff7_num)) = FALSE) THEN
-        -- 導入チェック（野菜）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff7_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff8_num)) = FALSE) THEN
-        -- 導入チェック（その他）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff8_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff9_num)) = FALSE) THEN
-        -- 導入チェック（リーフ）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff9_nm;
-      ELSIF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff10_num)) = FALSE) THEN
-        -- 導入チェック（チルド）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff10_nm;
+-- Ver1.10 ADD Start
+      IF (g_csv_order_rec.dff1_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff1_num)) = FALSE) THEN
+        -- 活動区分1
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff1_nm;
+          lv_item_nm := g_csv_order_rec.dff1_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff2_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff2_num)) = FALSE) THEN
+        -- 活動区分2
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff2_nm;
+          lv_item_nm := g_csv_order_rec.dff2_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff3_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff3_num)) = FALSE) THEN
+        -- 活動区分3
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff3_nm;
+          lv_item_nm := g_csv_order_rec.dff3_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff4_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff4_num)) = FALSE) THEN
+        -- 活動区分4
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff4_nm;
+          lv_item_nm := g_csv_order_rec.dff4_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff5_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff5_num)) = FALSE) THEN
+        -- 活動区分5
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff5_nm;
+          lv_item_nm := g_csv_order_rec.dff5_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff6_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff6_num)) = FALSE) THEN
+        -- 活動区分6
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff6_nm;
+          lv_item_nm := g_csv_order_rec.dff6_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff7_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff7_num)) = FALSE) THEN
+        -- 活動区分7
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff7_nm;
+          lv_item_nm := g_csv_order_rec.dff7_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff8_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff8_num)) = FALSE) THEN
+        -- 活動区分8
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff8_nm;
+          lv_item_nm := g_csv_order_rec.dff8_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff9_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff9_num)) = FALSE) THEN
+        -- 活動区分9
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff9_nm;
+          lv_item_nm := g_csv_order_rec.dff9_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff10_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff10_num)) = FALSE) THEN
+        -- 活動区分10
+          lb_return  := FALSE;
+-- Ver1.10 MOD Start
+--        lv_item_nm := cv_visit_dff10_nm;
+          lv_item_nm := g_csv_order_rec.dff10_name;
+-- Ver1.10 MOD End
+-- Ver1.10 ADD Start
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff11_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff11_num)) = FALSE) THEN
+        -- 活動区分11
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff11_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff12_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff12_num)) = FALSE) THEN
+        -- 活動区分12
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff12_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff13_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff13_num)) = FALSE) THEN
+        -- 活動区分13
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff13_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff14_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff14_num)) = FALSE) THEN
+        -- 活動区分14
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff14_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff15_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff15_num)) = FALSE) THEN
+        -- 活動区分15
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff15_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff16_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff16_num)) = FALSE) THEN
+        -- 活動区分16
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff16_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff17_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff17_num)) = FALSE) THEN
+        -- 活動区分17
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff17_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff18_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff18_num)) = FALSE) THEN
+        -- 活動区分18
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff18_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff19_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff19_num)) = FALSE) THEN
+        -- 活動区分19
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff19_name;
+        END IF;
+      END IF;
+      IF (g_csv_order_rec.dff20_num IS NOT NULL) THEN
+        IF (xxccp_common_pkg.chk_number(l_col_data_tab(g_csv_order_rec.dff20_num)) = FALSE) THEN
+        -- 活動区分20
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff20_name;
+-- Ver1.10 ADD End
+        END IF;
       END IF;
 --
       IF (lb_return = FALSE) THEN
@@ -1025,6 +1481,25 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_skip_error_expt;
       END IF;
+-- Ver1.10 ADD Start
+      IF (l_col_data_tab(cn_visit_end_time) IS NOT NULL) THEN
+        --訪問終了時刻
+        lb_return := xxcso_util_common_pkg.check_date(l_col_data_tab(cn_visit_end_time), cv_format_minute);
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_visit_end_nm;
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                                                     -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_23                                                -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                         ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                         ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                         ,iv_token_value2 => iv_base_value                -- トークン値2
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+-- Ver1.10 ADD End
 --
       -- 3). サイズチェック
       IF ((l_col_data_tab(cn_employee_number) IS NULL)
@@ -1036,56 +1511,300 @@ AS
         -- 顧客コード(NULL 可能)
         lb_return  := FALSE;
         lv_item_nm := cv_account_number_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff1_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff1_num)) <> cn_activity_kubun_len)) THEN
-        -- 拡販活動
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff1_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff2_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff2_num)) <> cn_activity_kubun_len)) THEN
-        -- 販促フォロー
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff2_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff3_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff3_num)) <> cn_activity_kubun_len)) THEN
-        -- 店頭調査
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff3_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff4_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff4_num)) <> cn_activity_kubun_len)) THEN
-        -- クレーム対応
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff4_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff5_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff5_num)) <> cn_activity_kubun_len)) THEN
-        -- 売り場支援
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff5_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff6_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff6_num)) <> cn_activity_kubun_len)) THEN
-        -- 導入チェック（お茶）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff6_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff7_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff7_num)) <> cn_activity_kubun_len)) THEN
-        -- 導入チェック（野菜）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff7_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff8_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff8_num)) <> cn_activity_kubun_len)) THEN
-        -- 導入チェック（その他）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff8_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff9_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff9_num)) <> cn_activity_kubun_len)) THEN
-        -- 導入チェック（リーフ）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff9_nm;
-      ELSIF ((l_col_data_tab(g_csv_order_rec.dff10_num) IS NULL)
-             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff10_num)) <> cn_activity_kubun_len)) THEN
-        -- 導入チェック（チルド）
-        lb_return  := FALSE;
-        lv_item_nm := cv_visit_dff10_nm;
+-- Ver1.10 DEL Start
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff1_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff1_num)) <> cn_activity_kubun_len)) THEN
+--        -- 拡販活動
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff1_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff2_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff2_num)) <> cn_activity_kubun_len)) THEN
+--        -- 販促フォロー
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff2_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff3_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff3_num)) <> cn_activity_kubun_len)) THEN
+--        -- 店頭調査
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff3_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff4_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff4_num)) <> cn_activity_kubun_len)) THEN
+--        -- クレーム対応
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff4_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff5_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff5_num)) <> cn_activity_kubun_len)) THEN
+--        -- 売り場支援
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff5_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff6_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff6_num)) <> cn_activity_kubun_len)) THEN
+--        -- 導入チェック（お茶）
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff6_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff7_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff7_num)) <> cn_activity_kubun_len)) THEN
+--        -- 導入チェック（野菜）
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff7_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff8_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff8_num)) <> cn_activity_kubun_len)) THEN
+--        -- 導入チェック（その他）
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff8_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff9_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff9_num)) <> cn_activity_kubun_len)) THEN
+--        -- 導入チェック（リーフ）
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff9_nm;
+--      ELSIF ((l_col_data_tab(g_csv_order_rec.dff10_num) IS NULL)
+--             OR (LENGTHB(l_col_data_tab(g_csv_order_rec.dff10_num)) <> cn_activity_kubun_len)) THEN
+--        -- 導入チェック（チルド）
+--        lb_return  := FALSE;
+--        lv_item_nm := cv_visit_dff10_nm;
+-- Ver1.10 DEL End
+      END IF;
+ -- Ver1.10 ADD Start
+      -- 活動区分1
+      IF (g_csv_order_rec.dff1_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff1_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff1_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff1_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff1_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff1_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分2
+      IF (g_csv_order_rec.dff2_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff2_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff2_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff2_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff2_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff2_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分3
+      IF (g_csv_order_rec.dff3_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff3_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff3_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff3_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff3_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff3_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分4
+      IF (g_csv_order_rec.dff4_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff4_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff4_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff4_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff4_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff4_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分5
+      IF (g_csv_order_rec.dff5_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff5_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff5_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff5_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff5_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff5_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分6
+      IF (g_csv_order_rec.dff6_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff6_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff6_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff6_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff6_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff6_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分7
+      IF (g_csv_order_rec.dff7_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff7_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff7_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff7_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff7_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff7_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分8
+      IF (g_csv_order_rec.dff8_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff8_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff8_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff8_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff8_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff8_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分9
+      IF (g_csv_order_rec.dff9_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff9_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff9_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff9_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff9_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff9_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分10
+      IF (g_csv_order_rec.dff10_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff10_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff10_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff10_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff10_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff10_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分11
+      IF (g_csv_order_rec.dff11_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff11_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff11_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff11_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff11_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff11_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分12
+      IF (g_csv_order_rec.dff12_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff12_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff12_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff12_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff12_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff12_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分13
+      IF (g_csv_order_rec.dff13_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff13_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff13_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff13_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff13_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff13_name;
+          END IF;
+        END IF;
+      END IF;
+        -- 活動区分14
+      IF (g_csv_order_rec.dff14_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff14_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff14_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff14_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff14_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff14_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分15
+      IF (g_csv_order_rec.dff15_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff15_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff15_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff15_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff15_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff15_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分16
+      IF (g_csv_order_rec.dff16_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff16_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff16_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff16_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff16_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff16_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分17
+      IF (g_csv_order_rec.dff17_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff17_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff17_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff17_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff17_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff17_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分18
+      IF (g_csv_order_rec.dff18_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff18_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff18_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff18_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff18_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff18_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分19
+      IF (g_csv_order_rec.dff19_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff19_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff19_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff19_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff19_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff19_name;
+          END IF;
+        END IF;
+      END IF;
+      -- 活動区分20
+      IF (g_csv_order_rec.dff20_num IS NOT NULL) THEN
+        IF (l_col_data_tab(g_csv_order_rec.dff20_num) IS NULL) THEN
+          lb_return  := FALSE;
+          lv_item_nm := g_csv_order_rec.dff20_name;
+        ELSIF (l_col_data_tab(g_csv_order_rec.dff20_num) IS NOT NULL) THEN
+          IF (LENGTHB(l_col_data_tab(g_csv_order_rec.dff20_num)) <> cn_activity_kubun_len) THEN
+            lb_return  := FALSE;
+            lv_item_nm := g_csv_order_rec.dff20_name;
+          END IF;
+        END IF;
+-- Ver1.10 ADD End
       END IF;
 --
       IF (lb_return = FALSE) THEN
@@ -1100,6 +1819,348 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_skip_error_expt;
       END IF;
+-- Ver1.10 ADD Start
+      -- 活動時間1
+      IF (l_col_data_tab(cn_active_time1) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time1));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time1||'('||g_csv_order_rec.dff1_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間2
+      IF (l_col_data_tab(cn_active_time2) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time2));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time2||'('||g_csv_order_rec.dff2_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間3
+      IF (l_col_data_tab(cn_active_time3) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time3));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time3||'('||g_csv_order_rec.dff3_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間4
+      IF (l_col_data_tab(cn_active_time4) IS NOT NULL) THEN
+         lb_return := activite_time_check(l_col_data_tab(cn_active_time4));
+         IF (lb_return = FALSE) THEN
+           lv_item_nm := cv_act_time4||'('||g_csv_order_rec.dff4_name||')';
+           lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+                );
+           lv_errbuf := lv_errmsg;
+           RAISE global_skip_error_expt;
+         END IF;
+      END IF;
+      -- 活動時間5
+      IF (l_col_data_tab(cn_active_time5) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time5));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time5||'('||g_csv_order_rec.dff5_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間6
+      IF (l_col_data_tab(cn_active_time6) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time6));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time6||'('||g_csv_order_rec.dff6_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間7
+      IF (l_col_data_tab(cn_active_time7) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time7));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time7||'('||g_csv_order_rec.dff7_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間8
+      IF (l_col_data_tab(cn_active_time8) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time8));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time8||'('||g_csv_order_rec.dff8_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間9
+      IF (l_col_data_tab(cn_active_time9) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time9));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time9||'('||g_csv_order_rec.dff9_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間10
+      IF (l_col_data_tab(cn_active_time10) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time10));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time10||'('||g_csv_order_rec.dff10_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間11
+      IF (l_col_data_tab(cn_active_time11) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time11));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time11||'('||g_csv_order_rec.dff11_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間12
+      IF (l_col_data_tab(cn_active_time12) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time12));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time12||'('||g_csv_order_rec.dff12_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間13
+      IF (l_col_data_tab(cn_active_time13) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time13));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time13||'('||g_csv_order_rec.dff13_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間14
+      IF (l_col_data_tab(cn_active_time14) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time14));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time14||'('||g_csv_order_rec.dff14_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間15
+      IF (l_col_data_tab(cn_active_time15) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time15));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time15||'('||g_csv_order_rec.dff15_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間16
+      IF (l_col_data_tab(cn_active_time16) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time16));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time16||'('||g_csv_order_rec.dff16_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間17
+      IF (l_col_data_tab(cn_active_time17) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time17));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time17||'('||g_csv_order_rec.dff17_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間18
+      IF (l_col_data_tab(cn_active_time18) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time18));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time18||'('||g_csv_order_rec.dff18_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間19
+      IF (l_col_data_tab(cn_active_time19) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time19));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time19||'('||g_csv_order_rec.dff19_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+      -- 活動時間20
+      IF (l_col_data_tab(cn_active_time20) IS NOT NULL) THEN
+        lb_return := activite_time_check(l_col_data_tab(cn_active_time20));
+        IF (lb_return = FALSE) THEN
+          lv_item_nm := cv_act_time20||'('||g_csv_order_rec.dff20_name||')';
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_app_name                  -- アプリケーション短縮名
+                 ,iv_name         => cv_tkn_number_22             -- メッセージコード
+                 ,iv_token_name1  => cv_tkn_item                  -- トークンコード1
+                 ,iv_token_value1 => lv_item_nm                   -- トークン値1
+                 ,iv_token_name2  => cv_tkn_base_val              -- トークンコード2
+                 ,iv_token_value2 => iv_base_value                -- トークン値2
+               );
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_error_expt;
+        END IF;
+      END IF;
+-- Ver1.10 ADD End
     END IF;
 --
     -- 行単位データをレコードにセット
@@ -1152,66 +2213,229 @@ AS
     g_visit_data_rec.dff_cd_table := g_dff_cd_array();
     g_visit_data_rec.dff_cd_table.EXTEND(10);
     --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff1_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff1_cd;
-      ln_array_count                                := ln_array_count + 1;
+-- Ver1.10 ADD Start
+    --訪問区分1が設定されている場合
+    IF (g_csv_order_rec.dff1_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff1_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff1_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分2が設定されている場合
+    IF (g_csv_order_rec.dff2_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff2_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff2_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分3が設定されている場合
+    IF (g_csv_order_rec.dff3_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff3_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff3_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分4が設定されている場合
+    IF (g_csv_order_rec.dff4_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff4_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff4_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分5が設定されている場合
+    IF (g_csv_order_rec.dff5_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff5_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff5_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分6が設定されている場合
+    IF (g_csv_order_rec.dff6_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff6_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff6_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分7が設定されている場合
+    IF (g_csv_order_rec.dff7_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff7_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff7_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分8が設定されている場合
+    IF (g_csv_order_rec.dff8_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff8_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff8_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分9が設定されている場合
+    IF (g_csv_order_rec.dff9_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff9_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff9_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
+    END IF;
+    --訪問区分10が設定されている場合
+    IF (g_csv_order_rec.dff10_num IS NOT NULL) THEN
+-- Ver1.10 ADD End
+      --活動有りの場合
+      IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff10_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff10_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+      --
+-- Ver1.10 ADD Start
     END IF;
     --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff2_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff2_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分11が設定されている場合
+    IF (g_csv_order_rec.dff11_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff11_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff11_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff3_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff3_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分12が設定されている場合
+    IF (g_csv_order_rec.dff12_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff12_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff12_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff4_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff4_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分13が設定されている場合
+    IF (g_csv_order_rec.dff13_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff13_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff13_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff5_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff5_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分14が設定されている場合
+    IF (g_csv_order_rec.dff14_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff14_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff14_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff6_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff6_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分15が設定されている場合
+    IF (g_csv_order_rec.dff15_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff15_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff15_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff7_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff7_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分16が設定されている場合
+    IF (g_csv_order_rec.dff16_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff16_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff16_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff8_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff8_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分17が設定されている場合
+    IF (g_csv_order_rec.dff17_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff17_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff17_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff9_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff9_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分18が設定されている場合
+    IF (g_csv_order_rec.dff18_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff18_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff18_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
-    IF (TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff10_num)) <> cn_visit_dff_0) THEN
-      g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff10_cd;
-      ln_array_count                                := ln_array_count + 1;
+    --訪問区分19が設定されている場合
+    IF (g_csv_order_rec.dff19_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff19_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff19_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
       --
     END IF;
-    --
+    --訪問区分20が設定されている場合
+    IF (g_csv_order_rec.dff20_num IS NOT NULL) THEN
+      --活動有りの場合
+      IF (ln_array_count <= 10 AND TO_NUMBER(l_col_data_tab(g_csv_order_rec.dff20_num)) <> cn_visit_dff_0) THEN
+        g_visit_data_rec.dff_cd_table(ln_array_count) := g_csv_order_rec.dff20_cd;
+        ln_array_count                                := ln_array_count + 1;
+        --
+      END IF;
+    END IF;
+      --
+-- Ver1.10 ADD End
     /* 2009.05.14 K.Satomura T1_0931対応 END */
 --
   EXCEPTION
@@ -1798,16 +3022,18 @@ AS
       --,g_visit_data_rec.dff8_cd            -- 導入チェック（その他）
       --,g_visit_data_rec.dff9_cd            -- 導入チェック（リーフ）
       --,g_visit_data_rec.dff10_cd           -- 導入チェック（チルド）
-      ,g_visit_data_rec.dff_cd_table(1)      -- 拡販活動
-      ,g_visit_data_rec.dff_cd_table(2)      -- 販促フォロー
-      ,g_visit_data_rec.dff_cd_table(3)      -- 店頭調査
-      ,g_visit_data_rec.dff_cd_table(4)      -- クレーム対応
-      ,g_visit_data_rec.dff_cd_table(5)      -- 売り場支援
-      ,g_visit_data_rec.dff_cd_table(6)      -- 導入チェック（お茶）
-      ,g_visit_data_rec.dff_cd_table(7)      -- 導入チェック（野菜）
-      ,g_visit_data_rec.dff_cd_table(8)      -- 導入チェック（その他）
-      ,g_visit_data_rec.dff_cd_table(9)      -- 導入チェック（リーフ）
-      ,g_visit_data_rec.dff_cd_table(10)     -- 導入チェック（チルド）
+-- Ver1.10 MOD Start comment update only
+      ,g_visit_data_rec.dff_cd_table(1)      -- 活動区分1
+      ,g_visit_data_rec.dff_cd_table(2)      -- 活動区分2
+      ,g_visit_data_rec.dff_cd_table(3)      -- 活動区分3
+      ,g_visit_data_rec.dff_cd_table(4)      -- 活動区分4
+      ,g_visit_data_rec.dff_cd_table(5)      -- 活動区分5
+      ,g_visit_data_rec.dff_cd_table(6)      -- 活動区分6
+      ,g_visit_data_rec.dff_cd_table(7)      -- 活動区分7
+      ,g_visit_data_rec.dff_cd_table(8)      -- 活動区分8
+      ,g_visit_data_rec.dff_cd_table(9)      -- 活動区分9
+      ,g_visit_data_rec.dff_cd_table(10)     -- 活動区分10
+-- Ver1.10 MOD End comment update only
       /* 2009.05.14 K.Satomura T1_0931対応 END */
       ,'0'
       ,'2'
@@ -1944,16 +3170,18 @@ AS
       --,g_visit_data_rec.dff8_cd            -- 導入チェック（その他）
       --,g_visit_data_rec.dff9_cd            -- 導入チェック（リーフ）
       --,g_visit_data_rec.dff10_cd           -- 導入チェック（チルド）
-      ,g_visit_data_rec.dff_cd_table(1)      -- 拡販活動
-      ,g_visit_data_rec.dff_cd_table(2)      -- 販促フォロー
-      ,g_visit_data_rec.dff_cd_table(3)      -- 店頭調査
-      ,g_visit_data_rec.dff_cd_table(4)      -- クレーム対応
-      ,g_visit_data_rec.dff_cd_table(5)      -- 売り場支援
-      ,g_visit_data_rec.dff_cd_table(6)      -- 導入チェック（お茶）
-      ,g_visit_data_rec.dff_cd_table(7)      -- 導入チェック（野菜）
-      ,g_visit_data_rec.dff_cd_table(8)      -- 導入チェック（その他）
-      ,g_visit_data_rec.dff_cd_table(9)      -- 導入チェック（リーフ）
-      ,g_visit_data_rec.dff_cd_table(10)     -- 導入チェック（チルド）
+-- Ver1.10 MOD Start comment update only
+      ,g_visit_data_rec.dff_cd_table(1)      -- 活動区分1
+      ,g_visit_data_rec.dff_cd_table(2)      -- 活動区分2
+      ,g_visit_data_rec.dff_cd_table(3)      -- 活動区分3
+      ,g_visit_data_rec.dff_cd_table(4)      -- 活動区分4
+      ,g_visit_data_rec.dff_cd_table(5)      -- 活動区分5
+      ,g_visit_data_rec.dff_cd_table(6)      -- 活動区分6
+      ,g_visit_data_rec.dff_cd_table(7)      -- 活動区分7
+      ,g_visit_data_rec.dff_cd_table(8)      -- 活動区分8
+      ,g_visit_data_rec.dff_cd_table(9)      -- 活動区分9
+      ,g_visit_data_rec.dff_cd_table(10)     -- 活動区分10
+-- Ver1.10 MOD End comment update only
       /* 2009.05.14 K.Satomura T1_0931対応 END */
       ,'0'
       ,'2'
