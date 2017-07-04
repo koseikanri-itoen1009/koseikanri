@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2015/04/20    1.13  小路 恭弘        障害E_本稼動_12955対応 業態小分類チェック不具合修正
  *  2017/04/05    1.14  仁木 重人        障害E_本稼動_13976対応 顧客追加情報のeSM関連項目追加
  *  2017/05/18    1.15  仁木 重人        障害E_本稼動_14246対応 請求書印刷単位のチェック追加
+ *  2017/06/14    1.16  仁木 重人        障害E_本稼動_14271対応 自販機フォロー委託２次開発
  *
  *****************************************************************************************/
 --
@@ -198,6 +199,11 @@ AS
 -- Ver1.15 add start
   cv_inv_prt_unit_err_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10358';                --請求書印刷単位チェックエラー
 -- Ver1.15 add end
+-- Ver1.16 add start
+  cv_offset_cust_div_err_msg  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10362';                --相殺用顧客コード存在チェックエラー
+  cv_offset_cust_rel_err_msg  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10363';                --相殺用顧客コード関連チェックエラー
+  cv_bp_cust_exists_err_msg   CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10364';                --取引先顧客コード重複チェックエラー
+-- Ver1.16 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -434,6 +440,13 @@ AS
   --項目名
   cv_esm_target_div           CONSTANT VARCHAR2(36)  := 'ストレポ＆商談くん連携対象フラグ'; --ストレポ＆商談くん連携対象フラグ
 -- Ver1.14 add end
+-- Ver1.16 add start
+  --メッセージトークン
+  cv_value2                   CONSTANT VARCHAR2(6)   := 'VALUE2';                           --トークン
+  --参照タイプ
+  cv_bp_customer_code         CONSTANT VARCHAR2(30)  := '取引先顧客コード';                 --取引先顧客コード
+  cv_offset_cust_div_1        CONSTANT VARCHAR2(1)   := '1';                                --相殺用顧客区分：相殺用顧客
+-- Ver1.16 add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -722,6 +735,18 @@ AS
     lt_invoice_class_aft        xxcmm_cust_accounts.invoice_printing_unit%TYPE; --更新値・請求書印刷単位
     lv_invoice_trust_flag       VARCHAR2(1)     := NULL;                        --ローカル変数・業者委託時設定可否フラグ
 -- Ver1.15 add end
+-- Ver1.16 add start
+    lt_offset_cust_div          xxcmm_cust_accounts.offset_cust_div%TYPE;       --相殺用顧客区分確認用変数
+    lv_offset_cust_code         VARCHAR2(30)    := NULL;                        --ローカル変数・相殺用顧客コード
+    lt_offset_cust_code_mst     xxcmm_cust_accounts.offset_cust_code%TYPE;      --相殺用顧客コード確認用変数
+    lt_offset_cust_code_bef     xxcmm_cust_accounts.offset_cust_code%TYPE;      --現在値・相殺用顧客コード
+    lt_offset_cust_code_aft     xxcmm_cust_accounts.offset_cust_code%TYPE;      --更新値・相殺用顧客コード
+    lv_bp_customer_code         VARCHAR2(100)   := NULL;                        --ローカル変数・取引先顧客コード
+    lt_bp_customer_code_bef     xxcmm_cust_accounts.bp_customer_code%TYPE;      --現在値・取引先顧客コード
+    lt_bp_customer_code_aft     xxcmm_cust_accounts.bp_customer_code%TYPE;      --更新値・取引先顧客コード
+    lb_offset_cust_chk_flg      BOOLEAN         DEFAULT TRUE;                   --相殺用顧客関連チェックフラグ
+    lv_bp_cust_exists           VARCHAR2(9)     := NULL;                        --取引先顧客コード重複チェック用変数
+-- Ver1.16 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -1289,6 +1314,11 @@ AS
             ,xca.invoice_printing_unit AS invoice_class         --請求書印刷単位
             ,xca.invoice_code          AS invoice_code          --請求書用コード
 -- Ver1.15 add end
+-- Ver1.16 add start
+            ,xca.offset_cust_div       AS offset_cust_div       --相殺用顧客区分
+            ,xca.offset_cust_code      AS offset_cust_code      --相殺用顧客コード
+            ,xca.bp_customer_code      AS bp_customer_code      --取引先顧客コード
+-- Ver1.16 add end
       FROM   hz_cust_accounts     hca
             ,xxcmm_cust_accounts  xca
       WHERE  hca.cust_account_id     = xca.customer_id
@@ -1368,6 +1398,42 @@ AS
     -- 顧客使用目的現在値取得カーソルレコード型
     get_hcsu_info_rec  get_hcsu_info_cur%ROWTYPE;
 -- Ver1.12 add end
+-- Ver1.16 add start
+    -- 相殺用顧客コードチェックカーソル
+    CURSOR check_offset_cust_code_cur(
+      iv_offset_cust_code IN VARCHAR2     -- 相殺用顧客コード
+    )
+    IS
+      SELECT hca.account_number  AS offset_cust_code
+        FROM xxcmm_cust_accounts xca
+            ,hz_cust_accounts    hca
+       WHERE xca.customer_id          = hca.cust_account_id
+         AND hca.customer_class_code  = cv_kokyaku_kbn        -- 顧客区分：顧客
+         AND xca.offset_cust_div      = cv_offset_cust_div_1  -- 相殺用顧客区分：相殺用顧客
+         AND hca.account_number       = iv_offset_cust_code   -- 相殺用顧客区分
+      ;
+    -- 相殺用顧客コードカーソルレコード型
+    check_offset_cust_code_rec  check_offset_cust_code_cur%ROWTYPE;
+--
+    -- 取引先顧客コード重複チェックカーソル
+    CURSOR chk_bp_customer_code_cur(
+      iv_offset_cust_code   IN VARCHAR2   -- 相殺用顧客コード
+     ,iv_bp_customer_code   IN VARCHAR2   -- 取引先顧客コード
+     ,iv_customer_code      IN VARCHAR2   -- 顧客コード
+    )
+    IS
+      SELECT hca.account_number  AS bp_cust_exists
+        FROM xxcmm_cust_accounts xca
+            ,hz_cust_accounts    hca
+       WHERE xca.customer_id         =  hca.cust_account_id
+         AND xca.offset_cust_code    =  iv_offset_cust_code     -- 相殺用顧客コード
+         AND xca.bp_customer_code    =  iv_bp_customer_code     -- 取引先顧客コード
+         AND hca.account_number      <> iv_customer_code        -- 顧客コード
+         AND ROWNUM                  =  1
+      ;
+    -- 取引先顧客コード重複チェックレコード型
+    chk_bp_customer_code_rec chk_bp_customer_code_cur%ROWTYPE;
+-- Ver1.16 add end
 --
   BEGIN
 --
@@ -4300,7 +4366,10 @@ AS
 --                                                                    ,12);
 -- Ver1.14 mod start
 --                                                                    ,78);
-                                                                    ,79);
+-- Ver1.16 mod start
+--                                                                    ,79);
+                                                                    ,81);
+-- Ver1.16 mod end
 -- Ver1.14 mod end
 -- Ver1.10 mod end
           --与信限度額の必須チェック
@@ -4383,7 +4452,10 @@ AS
 --                                                                  ,13);
 -- Ver1.14 mod start
 --                                                                  ,79);
-                                                                  ,80);
+-- Ver1.16 mod start
+--                                                                  ,80);
+                                                                  ,82);
+-- Ver1.16 mod end
 -- Ver1.14 mod end
 -- Ver1.10 mod end
           --判定区分の必須チェック
@@ -5982,7 +6054,10 @@ AS
 --                                                                ,51);
 -- Ver1.14 mod start
 --                                                                ,76);
-                                                                ,77);
+-- Ver1.16 mod start
+--                                                                ,77);
+                                                                ,79);
+-- Ver1.16 mod end
 -- Ver1.14 mod end
 -- Ver1.10 mod end
           --CSVに設定されたTDBコードが任意の値の場合
@@ -6034,7 +6109,10 @@ AS
 --                                                                     ,52);
 -- Ver1.14 mod start
 --                                                                     ,80);
-                                                                     ,81);
+-- Ver1.16 mod start
+--                                                                     ,81);
+                                                                     ,83);
+-- Ver1.16 mod end
 -- Ver1.14 mod end
 -- Ver1.10 mod end
 --
@@ -6087,7 +6165,10 @@ AS
 --                                                                 ,53);
 -- Ver1.14 mod start
 --                                                                 ,77);
-                                                                 ,78);
+-- Ver1.16 mod start
+--                                                                 ,78);
+                                                                 ,80);
+-- Ver1.16 mod end
 -- Ver1.14 mod end
 -- Ver1.10 mod end
           --CSVに設定された本部担当拠点が任意の値の場合
@@ -7866,6 +7947,11 @@ AS
             lt_conclusion_day1_bef    := get_xca_info_rec.conclusion_day1;   --消化計算締め日1
             lt_conclusion_day2_bef    := get_xca_info_rec.conclusion_day2;   --消化計算締め日2
             lt_conclusion_day3_bef    := get_xca_info_rec.conclusion_day3;   --消化計算締め日3
+-- Ver1.16 add start
+            lt_offset_cust_div        := get_xca_info_rec.offset_cust_div;   --相殺用顧客区分
+            lt_offset_cust_code_bef   := get_xca_info_rec.offset_cust_code;  --相殺用顧客コード
+            lt_bp_customer_code_bef   := get_xca_info_rec.bp_customer_code;  --取引先顧客コード
+-- Ver1.16 add end
           END LOOP get_xca_info_loop;
 --
           --業態(小分類)の妥当性チェックOKの場合のみ取得・チェック
@@ -8620,6 +8706,182 @@ AS
               );
             END IF;
           END IF;
+-- Ver1.16 add start
+          --相殺用顧客コード取得
+          lv_offset_cust_code := xxccp_common_pkg.char_delim_partition( lv_temp
+                                                                      , cv_comma
+                                                                      , 77
+                                                                      );
+--
+          --CSV値が任意の値の場合
+          IF ( NVL( lv_offset_cust_code ,cv_null_bar ) <> cv_null_bar ) THEN
+            --マスタ存在チェック
+            << check_offset_cust_code_loop >>
+            FOR check_offset_cust_code_rec IN check_offset_cust_code_cur( lv_offset_cust_code )
+            LOOP
+              lt_offset_cust_code_mst := check_offset_cust_code_rec.offset_cust_code;
+            END LOOP check_offset_cust_code_loop;
+            --
+            IF ( lt_offset_cust_code_mst IS NULL )
+            THEN
+              --エラーセット
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --マスタ存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_offset_cust_div_err_msg
+                              ,iv_token_name1  => cv_value
+                              ,iv_token_value1 => lv_offset_cust_code
+                              ,iv_token_name2  => cv_cust_code
+                              ,iv_token_value2 => lv_customer_code
+                            );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+              --相殺用顧客関連チェックフラグ
+              lb_offset_cust_chk_flg := FALSE;
+            END IF;
+          END IF;
+--
+          --取引先顧客コード取得
+          lv_bp_customer_code := xxccp_common_pkg.char_delim_partition( lv_temp
+                                                                      , cv_comma
+                                                                      , 78
+                                                                      );
+--
+          --CSV値が任意の値の場合
+          IF ( NVL( lv_bp_customer_code ,cv_null_bar ) <> cv_null_bar ) THEN
+            --型・桁数チェック
+            xxccp_common_pkg2.upload_item_check( cv_bp_customer_code     --項目名称
+                                                ,lv_bp_customer_code     --取引先顧客コード
+                                                ,15                      --項目長
+                                                ,NULL                    --項目長（小数点以下）
+                                                ,cv_null_ok              --必須フラグ
+                                                ,cv_element_vc2          --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf          --エラーバッファ
+                                                ,lv_item_retcode         --エラーコード
+                                                ,lv_item_errmsg          --エラーメッセージ
+                                               );
+            --型・桁数チェックエラー時
+            IF ( lv_item_retcode <> cv_status_normal ) THEN
+              --エラーセット
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --取引先顧客コードエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_val_form_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_bp_customer_code
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_bp_customer_code
+                            );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+              --相殺用顧客関連チェックフラグ
+              lb_offset_cust_chk_flg := FALSE;
+            END IF;
+          END IF;
+--
+          --相殺用顧客関連チェックフラグがTRUEの場合
+          IF ( lb_offset_cust_chk_flg = TRUE )
+          THEN
+            -- ===========================================
+            -- 相殺用顧客コードの更新値を取得
+            -- ===========================================
+            --設定値が'-'の場合
+            IF ( lv_offset_cust_code = cv_null_bar )
+            THEN
+              lt_offset_cust_code_aft := NULL;
+            --設定値がNULL以外かつ、'-'以外の場合
+            ELSIF ( NVL(lv_offset_cust_code ,cv_null_bar) <> cv_null_bar )
+            THEN
+              lt_offset_cust_code_aft := lv_offset_cust_code;
+            ELSE
+              lt_offset_cust_code_aft := lt_offset_cust_code_bef;
+            END IF;
+--
+            -- ===========================================
+            -- 取引先顧客コードの更新値を取得
+            -- ===========================================
+            --設定値が'-'の場合
+            IF ( lv_bp_customer_code = cv_null_bar )
+            THEN
+              lt_bp_customer_code_aft := NULL;
+            --設定値がNULL以外かつ、'-'以外の場合
+            ELSIF ( NVL(lv_bp_customer_code ,cv_null_bar) <> cv_null_bar )
+            THEN
+              lt_bp_customer_code_aft := lv_bp_customer_code;
+            ELSE
+              lt_bp_customer_code_aft := lt_bp_customer_code_bef;
+            END IF;
+--
+            -- ===========================================
+            -- 相殺用顧客コード関連チェック
+            -- ===========================================
+            --相殺用顧客に相殺用顧客コードを設定する場合エラー
+            IF  ( lt_offset_cust_div = cv_offset_cust_div_1 )
+              AND ( lt_offset_cust_code_aft IS NOT NULL )
+            THEN
+              --エラーセット
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --相殺用顧客コード関連チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_offset_cust_rel_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+--
+            -- ===========================================
+            -- 取引先顧客コード重複チェック
+            -- ===========================================
+            --取引先顧客コード重複チェック
+            << chk_bp_customer_code_loop >>
+            FOR chk_bp_customer_code_rec IN chk_bp_customer_code_cur( lt_offset_cust_code_aft   -- 相殺用顧客コード
+                                                                    , lt_bp_customer_code_aft   -- 取引先顧客コード
+                                                                    , lv_customer_code          -- 顧客コード
+                                                                    )
+            LOOP
+              lv_bp_cust_exists := chk_bp_customer_code_rec.bp_cust_exists;
+            END LOOP chk_bp_customer_code_loop;
+            --既存レコードが取得された場合
+            IF ( lv_bp_cust_exists IS NOT NULL )
+            THEN
+              --エラーセット
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --取引先顧客コード重複チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_bp_cust_exists_err_msg
+                              ,iv_token_name1  => cv_value
+                              ,iv_token_value1 => lt_offset_cust_code_aft
+                              ,iv_token_name2  => cv_value2
+                              ,iv_token_value2 => lt_bp_customer_code_aft
+                              ,iv_token_name3  => cv_cust_code
+                              ,iv_token_value3 => lv_customer_code
+                            );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+--
+          END IF;
+-- Ver1.16 add end
         END IF;
 -- Ver1.10 add end
 -- Ver1.14 add start
@@ -8759,6 +9021,10 @@ AS
 -- Ver1.14 add start
               ,esm_target_div            --ストレポ＆商談くん連携対象フラグ
 -- Ver1.14 add end
+-- Ver1.16 add start
+              ,offset_cust_code          --相殺用顧客コード
+              ,bp_customer_code          --取引先顧客コード
+-- Ver1.16 add end
               ,created_by
               ,creation_date
               ,last_updated_by
@@ -8863,6 +9129,10 @@ AS
 -- Ver1.14 add start
               ,lv_esm_target_div              --ストレポ＆商談くん連携対象フラグ
 -- Ver1.14 add end
+-- Ver1.16 add start
+              ,lv_offset_cust_code            --相殺用顧客コード
+              ,lv_bp_customer_code            --取引先顧客コード
+-- Ver1.16 add end
               ,fnd_global.user_id
               ,sysdate
               ,fnd_global.user_id
@@ -9064,6 +9334,17 @@ AS
       lt_invoice_class_bef        := NULL;  --現在値・請求書印刷単位
       lt_invoice_class_aft        := NULL;  --更新値・請求書印刷単位
 -- Ver1.15 add end
+-- Ver1.16 add start
+      lt_offset_cust_div          := NULL;  --相殺用顧客区分確認用変数
+      lv_offset_cust_code         := NULL;  --ローカル変数・相殺用顧客コード
+      lt_offset_cust_code_mst     := NULL;  --相殺用顧客コード確認用変数
+      lt_offset_cust_code_bef     := NULL;  --現在値・相殺用顧客コード
+      lt_offset_cust_code_aft     := NULL;  --更新値・相殺用顧客コード
+      lv_bp_customer_code         := NULL;  --ローカル変数・取引先顧客コード
+      lt_bp_customer_code_bef     := NULL;  --現在値・取引先顧客コード
+      lt_bp_customer_code_aft     := NULL;  --更新値・取引先顧客コード
+      lv_bp_cust_exists           := NULL;  --取引先顧客コード重複チェック用変数
+-- Ver1.16 add end
       --妥当性チェックフラグ
       lb_bz_low_type_chk_flg      := TRUE;  --業態(小分類)チェックフラグ
       lb_sell_trans_chk_flg       := TRUE;  --売上実績振替チェックフラグ
@@ -9076,6 +9357,9 @@ AS
 -- Ver1.12 add start
       lb_invoice_chk_flg          := TRUE;  --請求書関連チェックフラグ
 -- Ver1.12 add end
+-- Ver1.16 add start
+      lb_offset_cust_chk_flg      := TRUE;  --相殺用顧客関連チェックフラグ
+-- Ver1.16 add end
     END LOOP cust_data_wk_loop;
 --
     --データエラー時メッセージ設定（コンカレント出力）
@@ -9415,6 +9699,12 @@ AS
              ,xwcbr.esm_target_div         esm_target_div            --ストレポ＆商談くん連携対象フラグ
              ,xca.esm_target_div           addon_esm_target_div      --顧客追加情報.ストレポ＆商談くん連携対象フラグ
 -- Ver1.14 add end
+-- Ver1.16 add start
+             ,xwcbr.offset_cust_code       offset_cust_code          --相殺用顧客コード
+             ,xca.offset_cust_code         addon_offset_cust_code    --顧客追加情報.相殺用顧客コード
+             ,xwcbr.bp_customer_code       bp_customer_code          --取引先顧客コード
+             ,xca.bp_customer_code         addon_bp_customer_code    --顧客追加情報.取引先顧客コード
+-- Ver1.16 add end
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -11040,6 +11330,61 @@ AS
     --
     END IF;
 -- Ver1.14 add end
+-- Ver1.16 add start
+    -- ===============================
+    -- 相殺用顧客コード
+    -- ===============================
+    --顧客区分「10：顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF ( cust_data_rec.offset_cust_code = cv_null_bar )
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.offset_cust_code := NULL;
+      --設定値がNULLの場合
+      ELSIF ( cust_data_rec.offset_cust_code IS NULL )
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.offset_cust_code := cust_data_rec.addon_offset_cust_code;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.offset_cust_code := cust_data_rec.offset_cust_code;
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.offset_cust_code := cust_data_rec.addon_offset_cust_code;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 取引先顧客コード
+    -- ===============================
+    --顧客区分「10：顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF ( cust_data_rec.bp_customer_code = cv_null_bar )
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.bp_customer_code := NULL;
+      --設定値がNULLの場合
+      ELSIF ( cust_data_rec.bp_customer_code IS NULL )
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.bp_customer_code := cust_data_rec.addon_bp_customer_code;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.bp_customer_code := cust_data_rec.bp_customer_code;
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.bp_customer_code := cust_data_rec.addon_bp_customer_code;
+    --
+    END IF;
+-- Ver1.16 add end
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -11109,6 +11454,10 @@ AS
 -- Ver1.14 add start
           ,xca.esm_target_div         = l_xxcmm_cust_accounts.esm_target_div             --ストレポ＆商談くん連携対象フラグ
 -- Ver1.14 add end
+-- Ver1.16 add start
+          ,xca.offset_cust_code       = l_xxcmm_cust_accounts.offset_cust_code           --相殺用顧客コード
+          ,xca.bp_customer_code       = l_xxcmm_cust_accounts.bp_customer_code           --取引先顧客コード
+-- Ver1.16 add end
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID
