@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A40C(body)
  * Description      : 顧客一括登録ワークテーブルに取込済のデータから顧客レコードを登録します。
  * MD.050           : 顧客一括登録 MD050_CMM_003_A40
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2012/12/14    1.2   K.Furuyama       E_本稼動_09963対応  顧客区分：13、14追加
  *  2013/04/18    1.3   K.Nakamura       E_本稼動_09963追加対応  支払方法、カード会社区分追加
  *  2015/03/10    1.4   S.Niki           E_本稼動_12955対応  請求書発行サイクルのチェック追加
+ *  2017/06/14    1.5   S.Niki           E_本稼動_14271対応  自販機フォロー委託２次開発
  *
  *****************************************************************************************/
 --
@@ -158,6 +159,10 @@ AS
 -- Ver1.4 SCSK S.Niki add start
   cv_msg_xxcmm_10356     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10356';                                  -- 請求書発行サイクルチェックエラー
 -- Ver1.4 SCSK S.Niki add end
+-- Ver1.5 add start
+  cv_msg_xxcmm_10359     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10359';                                  -- 相殺用顧客コード存在チェックエラー
+  cv_msg_xxcmm_10360     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10360';                                  -- 取引先顧客コード重複チェックエラー
+-- Ver1.5 add end
   -- トークン名
   cv_tkn_file_id         CONSTANT VARCHAR2(20)  := 'FILE_ID';                                           -- ファイルID
   cv_tkn_up_name         CONSTANT VARCHAR2(20)  := 'UPLOAD_NAME';                                       -- ファイルアップロード名称
@@ -273,6 +278,9 @@ AS
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
   cv_sales_ou            CONSTANT VARCHAR2(20)  := 'SALES-OU';                                          -- 営業OU
   cv_base_kbn            CONSTANT VARCHAR2(2)   := '1';                                                 -- 顧客区分(拠点)
+-- Ver1.5 add start
+  cv_cust_kbn            CONSTANT VARCHAR2(2)   := '10';                                                -- 顧客区分(顧客)
+-- Ver1.5 add end
   cv_tenpo_kbn           CONSTANT VARCHAR2(2)   := '15';                                                -- 顧客区分(店舗営業)
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add start
   cv_hojin_kbn           CONSTANT VARCHAR2(2)   := '13';                                                -- 顧客区分(法人)
@@ -396,6 +404,9 @@ AS
   cv_output_form_4       CONSTANT VARCHAR2(10)  := '4';                                                 -- 請求書出力形式：業者委託
   cv_prt_cycle_1         CONSTANT VARCHAR2(10)  := '1';                                                 -- 請求書発行サイクル：第一営業日
 -- Ver1.4 SCSK S.Niki add end
+-- Ver1.5 add start
+  cv_offset_cust_div_1   CONSTANT VARCHAR2(10)  := '1';                                                 -- 相殺用顧客区分：相殺用顧客
+-- Ver1.5 add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1166,6 +1177,9 @@ AS
     ln_cnt                    NUMBER;                                 -- カウント用
     lv_check_status           VARCHAR2(1);                            -- チェックステータス
     lv_check_flag             VARCHAR2(1);                            -- チェックフラグ
+-- Ver1.5 add start
+    lt_offset_cust_code       xxcmm_cust_accounts.offset_cust_code%TYPE;    -- 相殺用顧客コード
+-- Ver1.5 add end
     l_validate_cust_tab       g_check_data_ttype;
     --
     ln_check_cnt              NUMBER;
@@ -1188,6 +1202,9 @@ AS
 --
     -- チェックステータスの初期化
     lv_check_status := cv_status_normal;
+-- Ver1.5 add start
+    lt_offset_cust_code  := NULL;    -- 相殺用顧客コード
+-- Ver1.5 add end
     --==============================================================
     -- メイン処理LOOP
     --==============================================================
@@ -1222,6 +1239,10 @@ AS
 -- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete start by Shigeto.Niki
 --      l_validate_cust_tab(25) := i_wk_cust_rec.resource_s_date;                       -- 適用開始日(担当営業員)
 -- 2010/11/05 Ver1.1 障害：E_本稼動_05492 delete end by Shigeto.Niki
+-- Ver1.5 add start
+      l_validate_cust_tab(25) := i_wk_cust_rec.offset_cust_code;                      -- 相殺用顧客コード
+      l_validate_cust_tab(26) := i_wk_cust_rec.bp_customer_code;                      -- 取引先顧客コード
+-- Ver1.5 add end
     --
     -- フォーマットパターン「502:店舗営業」の場合
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama mod start
@@ -3271,6 +3292,93 @@ AS
         END IF;
       END IF;
 -- Ver1.3 K.Nakamura add end
+-- Ver1.5 add start
+      --==============================================================
+      -- A-4.45 相殺用顧客コードチェック
+      --==============================================================
+      lv_step := 'A-4.45';
+      -- フォーマットパターン「501:MC」かつ、値が入っている場合
+      IF ( gv_format = cv_file_format_mc )
+        AND ( i_wk_cust_rec.offset_cust_code IS NOT NULL ) THEN
+        BEGIN
+          -- 相殺用顧客コード存在チェック
+          SELECT hca.account_number  AS offset_cust_code
+          INTO   lt_offset_cust_code
+          FROM   xxcmm_cust_accounts xca
+                ,hz_cust_accounts    hca
+          WHERE  xca.customer_id          = hca.cust_account_id
+          AND    hca.customer_class_code  = cv_cust_kbn
+          AND    xca.offset_cust_div      = cv_offset_cust_div_1
+          AND    hca.account_number       = i_wk_cust_rec.offset_cust_code
+          ;
+        --
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lv_check_status := cv_status_error;
+            lv_check_flag   := cv_status_error;
+            ov_retcode      := cv_status_error;
+            -- 相殺用顧客コード存在チェックエラー
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmm               -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmm_10359               -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_value                     -- トークンコード1
+                          ,iv_token_value1 => i_wk_cust_rec.offset_cust_code   -- トークン値1
+                          ,iv_token_name2  => cv_tkn_input_line_no             -- トークンコード2
+                          ,iv_token_value2 => i_wk_cust_rec.line_no            -- トークン値2
+                         );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => gv_out_msg);
+            --
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+        END;
+      END IF;
+--
+      --==============================================================
+      -- A-4.46 取引先顧客コード重複チェック
+      --==============================================================
+      lv_step := 'A-4.46';
+      -- フォーマットパターン「501:MC」かつ、
+      -- 相殺用顧客コード、取引先顧客コードに値が入っている場合
+      IF ( gv_format = cv_file_format_mc )
+        AND ( lt_offset_cust_code IS NOT NULL )
+        AND ( i_wk_cust_rec.bp_customer_code IS NOT NULL ) THEN
+        -- 取引先顧客コード重複チェック
+        SELECT COUNT(1) AS chk_cnt
+        INTO   ln_cnt
+        FROM   xxcmm_cust_accounts xca
+              ,hz_cust_accounts    hca
+        WHERE  xca.customer_id         =  hca.cust_account_id
+        AND    xca.offset_cust_code    =  lt_offset_cust_code
+        AND    xca.bp_customer_code    =  i_wk_cust_rec.bp_customer_code
+        AND    ROWNUM                  =  1
+        ;
+        --
+        IF ( ln_cnt <> 0 ) THEN
+          lv_check_status   := cv_status_error;
+          ov_retcode        := cv_status_error;
+          -- 取引先顧客コード重複チェックエラー
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm               -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_10360               -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input_line_no             -- トークンコード1
+                        ,iv_token_value1 => i_wk_cust_rec.line_no            -- トークン値1
+                       );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => gv_out_msg);
+          --
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+          lv_check_flag := cv_status_error;
+        END IF;
+      END IF;
+-- Ver1.5 add end
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
     END IF;
   --
@@ -5117,6 +5225,10 @@ AS
 -- Ver1.3 K.Nakamura add start
     lv_card_company_kbn         xxcmm_cust_accounts.card_company_div%TYPE;               -- カード会社区分
 -- Ver1.3 K.Nakamura add end
+-- Ver1.5 add start
+    lt_offset_cust_code         xxcmm_cust_accounts.offset_cust_code%TYPE;               -- 相殺用顧客コード
+    lt_bp_customer_code         xxcmm_cust_accounts.bp_customer_code%TYPE;               -- 取引先顧客コード
+-- Ver1.5 add end
 --
     -- *** ローカル・カーソル ***
 --
@@ -5153,6 +5265,10 @@ AS
         lv_sales_chain_code      := i_wk_cust_rec.sales_chain_code;        -- 販売先チェーンコード
         lv_delivery_chain_code   := i_wk_cust_rec.delivery_chain_code;     -- 納品先チェーンコード
         lv_tax_div               := NULL;                                  -- 消費税区分
+-- Ver1.5 add start
+        lt_offset_cust_code      := i_wk_cust_rec.offset_cust_code;        -- 相殺用顧客コード
+        lt_bp_customer_code      := i_wk_cust_rec.bp_customer_code;        -- 取引先顧客コード
+-- Ver1.5 add end
       --ELSE
       -- フォーマットパターン「502:店舗営業」の場合
       ELSIF ( gv_format = cv_file_format_st ) THEN
@@ -5294,6 +5410,10 @@ AS
         invoice_code        ,                           -- 請求書用コード
         enclose_invoice_code,                           -- 統括請求書用コード
         store_cust_code,                                -- 店舗営業用顧客コード
+-- Ver1.5 add start
+        offset_cust_code,                               -- 相殺用顧客コード
+        bp_customer_code,                               -- 取引先顧客コード
+-- Ver1.5 add end
         created_by,                                     -- 作成者
         creation_date,                                  -- 作成日
         last_updated_by,                                -- 最終更新者
@@ -5404,6 +5524,10 @@ AS
         NULL,                                           -- 請求書用コード
         NULL,                                           -- 統括請求書用コード
         NULL,                                           -- 店舗営業用顧客コード
+-- Ver1.5 add start
+        lt_offset_cust_code,                            -- 相殺用顧客コード
+        lt_bp_customer_code,                            -- 取引先顧客コード
+-- Ver1.5 add end
         cn_created_by,                                  -- 作成者
         cd_creation_date,                               -- 作成日
         cn_last_updated_by,                             -- 最終更新者
@@ -6137,6 +6261,10 @@ AS
                 ,xwcu.receipt_method_name                 -- 支払方法
                 ,xwcu.card_company_kbn                    -- カード会社区分
 -- Ver1.3 K.Nakamura add end
+-- Ver1.5 add start
+                ,xwcu.offset_cust_code                    -- 相殺用顧客コード
+                ,xwcu.bp_customer_code                    -- 取引先顧客コード
+-- Ver1.5 add end
       FROM       xxcmm_wk_cust_upload  xwcu               -- 顧客一括登録ワーク
       WHERE      xwcu.request_id = cn_request_id          -- 要求ID
       ORDER BY   xwcu.line_no                             -- ファイルSEQ
@@ -6631,6 +6759,10 @@ AS
              ,receipt_method_name           -- 支払方法
              ,card_company_kbn              -- カード会社区分
 -- Ver1.3 K.Nakamura add end
+-- Ver1.5 add start
+             ,offset_cust_code              -- 相殺用顧客コード
+             ,bp_customer_code              -- 取引先顧客コード
+-- Ver1.5 add end
              ,created_by                    -- 作成者
              ,creation_date                 -- 作成日
              ,last_updated_by               -- 最終更新者
@@ -6697,6 +6829,10 @@ AS
              ,NULL                          -- 支払方法
              ,NULL                          -- カード会社区分
 -- Ver1.3 K.Nakamura add end
+-- Ver1.5 add start
+             ,l_wk_item_tab(25)             -- 相殺用顧客コード
+             ,l_wk_item_tab(26)             -- 取引先顧客コード
+-- Ver1.5 add end
              ,cn_created_by                 -- 作成者
              ,cd_creation_date              -- 作成日
              ,cn_last_updated_by            -- 最終更新者
