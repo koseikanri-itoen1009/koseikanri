@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCMM_WK_CUST_UPLOAD
  * Description : 顧客一括登録用ワーク(テーブル)
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2010/10/05    1.0   S.Niki           新規作成
  *  2012/12/03    1.1   M.Takasaki       [E_本稼動_09963]
  *  2013/04/15    1.2   K.Nakamura       [E_本稼動_09963追加対応]支払方法、カード会社区分追加
+ *  2017/06/14    1.3   S.Niki           [E_本稼動_14271]
  *
  ****************************************************************************************/
 CREATE TABLE XXCMM.XXCMM_WK_CUST_UPLOAD (
@@ -70,6 +71,10 @@ CREATE TABLE XXCMM.XXCMM_WK_CUST_UPLOAD (
 -- Ver1.2 Add E_本稼動_09963対応
     ,card_company_kbn               VARCHAR2(10)    -- カード会社区分
 -- Ver1.2 End
+-- Ver1.3 Add Start
+    ,offset_cust_code               VARCHAR2(30)    -- 相殺用顧客コード
+    ,bp_customer_code               VARCHAR2(100)   -- 取引先顧客コード
+-- Ver1.3 Add End
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15)    NOT NULL
@@ -186,6 +191,12 @@ COMMENT ON COLUMN xxcmm_wk_cust_upload.sales_head_base_code                     
 COMMENT ON COLUMN xxcmm_wk_cust_upload.card_company_kbn                          IS 'カード会社区分'
 /
 -- Ver1.2 End
+-- Ver1.3 Add Start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_upload.offset_cust_code                    IS '相殺用顧客コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_upload.bp_customer_code                    IS '取引先顧客コード'
+/
+-- Ver1.3 Add End
 COMMENT ON COLUMN xxcmm_wk_cust_upload.created_by                                IS '作成者'
 /
 COMMENT ON COLUMN xxcmm_wk_cust_upload.creation_date                             IS '作成日'
