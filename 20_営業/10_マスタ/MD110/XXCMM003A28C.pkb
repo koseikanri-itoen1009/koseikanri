@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2013/03/29    1.7   仁木 重人        障害E_本稼動_09963追加対応 顧客追加情報、法人情報の項目追加
  *  2014/03/11    1.8   仁木 重人        障害E_本稼動_11616対応
  *  2017/04/05    1.9   仁木 重人        障害E_本稼動_13976対応
+ *  2017/06/14    1.10  仁木 重人        障害E_本稼動_14271対応
  *
  *****************************************************************************************/
 --
@@ -549,6 +550,10 @@ AS
 -- Ver1.9 add start
               ,xca.esm_target_div                     esm_target_div        --ストレポ＆商談くん連携対象フラグ
 -- Ver1.9 add end
+-- Ver1.10 add start
+              ,xca.offset_cust_code                   offset_cust_code      --相殺用顧客コード
+              ,xca.bp_customer_code                   bp_customer_code      --取引先顧客コード
+-- Ver1.10 add end
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -1059,6 +1064,10 @@ AS
 -- Ver1.9 add start
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.esm_target_div               ,1 ,1  );  --ストレポ＆商談くん連携対象フラグ
 -- Ver1.9 add end
+-- Ver1.10 add start
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.offset_cust_code             ,1 ,9  );  --相殺用顧客コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.bp_customer_code             ,1 ,15 );  --取引先用顧客コード
+-- Ver1.10 add end
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_tdb_code                                ,1 ,12 );  --TDBコード
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_base_code                               ,1 ,4  );  --本部担当拠点
         lv_output_str := lv_output_str || cv_comma || TO_CHAR(ln_credit_limit);                                     --与信限度額
