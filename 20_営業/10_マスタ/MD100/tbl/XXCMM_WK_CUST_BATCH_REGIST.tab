@@ -4,7 +4,7 @@
  * TABLE Name      : xxcmm_wk_cust_batch_regist
  * Description     : ŒÚ‹qˆêŠ‡XV—pƒ[ƒN
  * MD.070          : 
- * Version         : 1.7
+ * Version         : 1.8
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -18,6 +18,7 @@
  *  2013/03/29    1.5  T.Nakano      áŠQE_–{‰Ò“®_09963’Ç‰Á‘Î‰
  *  2014/03/18    1.6  S.Niki        áŠQE_–{‰Ò“®_11616
  *  2017/04/05    1.7  S.Niki        áŠQE_–{‰Ò“®_13976
+ *  2017/06/14    1.8  S.Niki        áŠQE_–{‰Ò“®_14271
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
@@ -120,6 +121,10 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
 -- Ver1.7 add start
   ESM_TARGET_DIV          VARCHAR2(1),
 -- Ver1.7 add end
+-- Ver1.8 add start
+  OFFSET_CUST_CODE        VARCHAR2(30),
+  BP_CUSTOMER_CODE        VARCHAR2(100),
+-- Ver1.8 add end
   CREATED_BY              NUMBER(15,0) NOT NULL,
   CREATION_DATE           DATE NOT NULL,
   LAST_UPDATED_BY         NUMBER(15,0) NOT NULL,
@@ -311,6 +316,12 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.store_cust_code IS '“X•Ü‰c‹Æ—
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.esm_target_div IS 'ƒXƒgƒŒƒ|•¤’k‚­‚ñ˜AŒg‘ÎÛƒtƒ‰ƒO'
 /
 -- Ver1.7 add end
+-- Ver1.8 add start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.offset_cust_code IS '‘ŠE—pŒÚ‹qƒR[ƒh'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.bp_customer_code IS 'æˆøæŒÚ‹qƒR[ƒh'
+/
+-- Ver1.8 add end
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.created_by IS 'ì¬Ò'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.creation_date IS 'ì¬“ú'
