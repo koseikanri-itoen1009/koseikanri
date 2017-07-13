@@ -7,7 +7,7 @@ AS
  * Description      : 請求更新処理
  * MD.050           : 運賃計算（月次）   T_MD050_BPO_740
  * MD.070           : 請求更新           T_MD070_BPO_74B
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/01/13    1.6  野村 正幸         本番#XXX対応（繰越金額計算対応）
  *  2011/02/07    1.7  桐生 和幸         E_本稼動_06520 (同一金額のデータが1行となってしまう障害対応)
  *  2013/07/17    1.8  仁木 重人         E_本稼動_10839（消費税増税対応）
+ *  2017/06/22    1.9  小路 恭弘         E_本稼動_14242 (支払条件設定日障害対応)
  *
  *****************************************************************************************/
 --
@@ -1212,12 +1213,15 @@ AS
 --
       -- *********************************************
       -- 支払条件設定日の取得
-      -- （システム日付の翌月＋振込日の営業日）
+      -- （日付パラメータの翌月＋振込日の営業日）
       -- *********************************************
       xxwip_common_pkg.get_business_date(
         NVL(FND_DATE.STRING_TO_DATE(TO_CHAR(ADD_MONTHS(id_sysdate,1), 'YYYYMM') ||
                                     gt_masters_tbl(ln_index).money_transfer_date
-                                   ,'YYYYMMDD'),TRUNC(LAST_DAY(id_sysdate))),      -- 日付
+-- 2017/06/22 Ver1.9 Mod Start
+--                                   ,'YYYYMMDD'),TRUNC(LAST_DAY(id_sysdate))),      -- 日付
+                                   ,'YYYYMMDD'),TRUNC(LAST_DAY(ADD_MONTHS(id_sysdate,1)))),      -- 日付
+-- 2017/06/22 Ver1.9 Mod End
         0,                                                   -- 期間
         gt_masters_tbl(ln_index).condition_setting_date,   -- 支払条件設定日
         lv_errbuf,                              -- エラー・メッセージ           --# 固定 #
