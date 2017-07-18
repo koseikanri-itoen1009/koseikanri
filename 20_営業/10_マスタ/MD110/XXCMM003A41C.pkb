@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A41C(body)
  * Description      : 顧客関連一括更新
  * MD.050           : 顧客関連一括更新 MD050_CMM_003_A41
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/11/26    1.0   M.Takasaki       新規作成
+ *  2017/07/05    1.1   S.Niki           E_本稼動_14371対応
  *
  *****************************************************************************************/
 --
@@ -1711,7 +1712,10 @@ AS
                     ,iv_token_name3  => cv_tkn_seq_num           -- トークンコード3
                     ,iv_token_value3 => ln_line_no               -- トークン値3
                     ,iv_token_name4  => cv_tkn_errmsg            -- トークンコード4
-                    ,iv_token_value4 => SQLERRM                  -- トークン値4
+-- Ver.1.1 Mod Start
+--                    ,iv_token_value4 => SQLERRM                  -- トークン値4
+                    ,iv_token_value4 => lv_msg_data              -- トークン値4
+-- Ver.1.1 Mod End
                    );
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errmsg,1,5000);
@@ -1850,7 +1854,10 @@ AS
                     ,iv_token_name3  => cv_tkn_seq_num                -- トークンコード3
                     ,iv_token_value3 => ln_line_no                    -- トークン値3
                     ,iv_token_name4  => cv_tkn_errmsg                 -- トークンコード4
-                    ,iv_token_value4 => SQLERRM                       -- トークン値4
+-- Ver.1.1 Mod Start
+--                    ,iv_token_value4 => SQLERRM                  -- トークン値4
+                    ,iv_token_value4 => lv_msg_data              -- トークン値4
+-- Ver.1.1 Mod End
                    );
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errmsg,1,5000);
@@ -2033,7 +2040,9 @@ AS
       lv_step := 'A-7.3';
       l_cust_acct_relate_rec.relationship_type         := cv_relationship_type_all;              -- 関連顧客タイプ
       l_cust_acct_relate_rec.attribute1                := g_inact_keys_tab(ln_cnt).relate_class; -- DFF1(関連分類)
-      l_cust_acct_relate_rec.customer_reciprocal_flag  := cv_acc_no;                             -- 相互関連有効:'N'(無効)
+-- Ver.1.1 Mod Start
+--      l_cust_acct_relate_rec.customer_reciprocal_flag  := cv_acc_no;                             -- 相互関連有効:'N'(無効)
+-- Ver.1.1 Mod End
       l_cust_acct_relate_rec.status                    := cv_inactive_set;                       -- ステータス:'I'(無効)
       l_cust_acct_relate_rec.bill_to_flag              := cv_acc_yes;                            -- 使用目的(請求先):'Y'(有効)
       l_cust_acct_relate_rec.ship_to_flag              := cv_acc_yes;                            -- 使用目的(出荷先):'Y'(有効)
@@ -2146,7 +2155,10 @@ AS
                     ,iv_token_name3  => cv_tkn_seq_num                -- トークンコード3
                     ,iv_token_value3 => ln_line_no                    -- トークン値3
                     ,iv_token_name4  => cv_tkn_errmsg                 -- トークンコード4
-                    ,iv_token_value4 => SQLERRM                       -- トークン値4
+-- Ver.1.1 Mod Start
+--                    ,iv_token_value4 => SQLERRM                       -- トークン値4
+                    ,iv_token_value4 => lv_msg_data                   -- トークン値4
+-- Ver.1.1 Mod End
                    );
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errmsg,1,5000);
@@ -2272,7 +2284,9 @@ AS
       l_cust_acct_relate_rec.related_cust_account_id   := g_act_keys_tab(ln_cnt).rel_cust_account_id; -- 関連顧客アカウントID
       l_cust_acct_relate_rec.relationship_type         := cv_relationship_type_all;                   -- 関連顧客タイプ
       l_cust_acct_relate_rec.attribute1                := g_act_keys_tab(ln_cnt).relate_class;        -- DFF1(関連分類)
-      l_cust_acct_relate_rec.customer_reciprocal_flag  := cv_acc_no;                                  -- 相互関連有効:'N'(無効)
+-- Ver.1.1 Del Start
+--      l_cust_acct_relate_rec.customer_reciprocal_flag  := cv_acc_no;                                  -- 相互関連有効:'N'(無効)
+-- Ver.1.1 Del End
       l_cust_acct_relate_rec.status                    := cv_active_set;                              -- ステータス:'A'(有効)
       l_cust_acct_relate_rec.bill_to_flag              := cv_acc_yes;                                 -- 使用目的(請求先):'Y'(有効)
       l_cust_acct_relate_rec.ship_to_flag              := cv_acc_yes;                                 -- 使用目的(出荷先):'Y'(有効)
@@ -2386,7 +2400,10 @@ AS
                     ,iv_token_name3  => cv_tkn_seq_num                -- トークンコード3
                     ,iv_token_value3 => ln_line_no                    -- トークン値3
                     ,iv_token_name4  => cv_tkn_errmsg                 -- トークンコード4
-                    ,iv_token_value4 => SQLERRM                       -- トークン値4
+-- Ver.1.1 Mod Start
+--                    ,iv_token_value4 => SQLERRM                  -- トークン値4
+                    ,iv_token_value4 => lv_msg_data                   -- トークン値4
+-- Ver.1.1 Mod End
                    );
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_cont||lv_step||cv_msg_part||lv_errmsg,1,5000);
