@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_021A02_LINES_V
  * Description : 問屋請求見積書突き合わせ画面（明細）ビュー
- * Version     : 1.6
+ * Version     : 1.7
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -17,6 +17,7 @@
  *  2009/09/11    1.4   K.Yamaguchi      [障害0001353]障害0001230からの障害対応
  *  2012/07/05    1.5   T.Osawa          [E_本稼動_08317] 問屋請求書明細テーブルに抽出条件を追加
  *  2017/03/02    1.6   S.Niki           [E_本稼動_14059] 業態中分類の結合条件を修正
+ *  2017/06/06    1.7   S.Niki           [E_本稼動_14226] 問屋請求見積書突き合わせPT対応
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_021a02_lines_v(
@@ -127,17 +128,25 @@ FROM xxcok_wholesale_bill_line     xwbl      -- 問屋請求書明細テーブル
             , ximb.start_date_active    AS start_date_active   -- 適用開始日
             , ximb.end_date_active      AS end_date_active     -- 適用終了日
 -- 2009/09/01 Ver.1.3 [障害0001230] SCS S.Moriyama ADD END
-       FROM mtl_parameters         mp
-          , mtl_system_items_b     msib
-          , xxcmm_system_items_b   xsib
+-- Ver.1.7 MOD START
+--       FROM mtl_parameters         mp
+--          , mtl_system_items_b     msib
+--          , xxcmm_system_items_b   xsib
+       FROM xxcmm_system_items_b   xsib
+-- Ver.1.7 MOD END
           , ic_item_mst_b          iimb
           , xxcmn_item_mst_b       ximb
-       WHERE mp.organization_id     = msib.organization_id
-         AND msib.segment1          = xsib.item_code
-         AND msib.segment1          = iimb.item_no
-         AND xsib.item_id           = iimb.item_id
+-- Ver.1.7 MOD START
+--       WHERE mp.organization_id     = msib.organization_id
+--         AND msib.segment1          = xsib.item_code
+--         AND msib.segment1          = iimb.item_no
+--         AND xsib.item_id           = iimb.item_id
+       WHERE xsib.item_id           = iimb.item_id
+-- Ver.1.7 MOD END
          AND iimb.item_id           = ximb.item_id
-         AND mp.organization_code   = FND_PROFILE.VALUE( 'XXCOK1_ORG_CODE_SALES' )
+-- Ver.1.7 DEL START
+--         AND mp.organization_code   = FND_PROFILE.VALUE( 'XXCOK1_ORG_CODE_SALES' )
+-- Ver.1.7 DEL END
      )                             item      -- 品目マスタ
    , ( SELECT ffv1.flex_value                AS acct_code           -- 勘定科目コード
             , ffv2.flex_value                AS sub_acct_code       -- 補助科目コード
