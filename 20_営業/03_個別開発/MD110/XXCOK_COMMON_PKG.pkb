@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2010/12/13    1.14  SCS S.Niki       [E_本稼動_01844] 担当営業員が複数設定されている場合は警告終了
  *  2012/03/06    1.15  SCSK K.Nakamura  [E_本稼動_08318] 問屋請求見積照合 OUTに通常NET価格、今回NET価格を追加
  *                                                        問屋請求書見積書突合ステータス取得 問屋請求見積照合呼出修正
+ *  2017/06/06    1.16  SCSK S.Niki      [E_本稼動_14226] 問屋請求見積照合PT対応
  *
  *****************************************************************************************/
   -- ==============================
@@ -1639,11 +1640,18 @@ AS
     cv_quote_type_wholesale        CONSTANT VARCHAR2(1)  := '2';                                              -- 見積種別 2:帳合問屋先用
     cv_quote_status_fix            CONSTANT VARCHAR2(1)  := '2';                                              -- ステータス= 2:確定
     cv_quote_div_usuall            CONSTANT VARCHAR2(1)  := '1';                                              -- 見積区分 1:通常
-    cv_organizaiton_code           CONSTANT VARCHAR2(30) := FND_PROFILE.VALUE( 'XXCOK1_ORG_CODE_SALES' );     -- COK用_組織コード
+-- Ver.1.16 DEL START
+--    cv_organizaiton_code           CONSTANT VARCHAR2(30) := FND_PROFILE.VALUE( 'XXCOK1_ORG_CODE_SALES' );     -- COK用_組織コード
+-- Ver.1.16 DEL END
     cv_unit_type_unit              CONSTANT VARCHAR2(1)  := '1';                                              -- 単価区分:1(本)
     cv_unit_type_cs                CONSTANT VARCHAR2(1)  := '2';                                              -- 単価区分:2(C/S)
     cv_unit_type_bl                CONSTANT VARCHAR2(1)  := '3';                                              -- 単価区分:3(ボール)
     cv_inc_tax                     xxcso_quote_headers.deliv_price_tax_type%TYPE := '2'; -- 税込価格
+-- Ver.1.16 ADD START
+    cn_org_id                      CONSTANT NUMBER       := xxcoi_common_pkg.get_organization_id(
+                                                              FND_PROFILE.VALUE( 'XXCOK1_ORG_CODE_SALES' )
+                                                            );                                                -- 営業組織ID
+-- Ver.1.16 ADD END
     --==================================================
     -- ローカル変数
     --==================================================
@@ -1684,7 +1692,9 @@ AS
          , xxcmm_cust_accounts          whole_xca    -- 【問屋】顧客マスタ
          , mtl_system_items_b           msib         -- DISC品目
          , ic_item_mst_b                iimb         -- OPM品目
-         , mtl_parameters               mp           -- 組織パラメータ
+-- Ver.1.16 DEL START
+--         , mtl_parameters               mp           -- 組織パラメータ
+-- Ver.1.16 DEL END
          , xxcmm_system_items_b         xsib         -- DISC品目アドオン
       WHERE sales_xqh.quote_type                        = cv_quote_type_sales
         AND sales_xqh.status                            = cv_quote_status_fix
@@ -1697,9 +1707,14 @@ AS
         AND whole_xqh.account_number                    = whole_xca.customer_code
         AND sales_xql.inventory_item_id                 = msib.inventory_item_id
         AND msib.segment1                               = iimb.item_no
-        AND msib.organization_id                        = mp.organization_id
+-- Ver.1.16 MOD START
+--        AND msib.organization_id                        = mp.organization_id
+        AND msib.organization_id                        = cn_org_id
+-- Ver.1.16 MOD END
         AND msib.segment1                               = xsib.item_code
-        AND mp.organization_code                        = cv_organizaiton_code
+-- Ver.1.16 DEL START
+--        AND mp.organization_code                        = cv_organizaiton_code
+-- Ver.1.16 DEL END
         AND sales_xqh.account_number                    = iv_sales_outlets_code
         AND msib.segment1                               = iv_item_code
         AND whole_xca.wholesale_ctrl_code               = iv_wholesale_code
