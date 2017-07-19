@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_021A02_HEADERS_V
  * Description : 問屋請求見積書突き合わせ画面（ヘッダ）ビュー
- * Version     : 1.4
+ * Version     : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -15,6 +15,7 @@
  *  2010/02/23    1.2   K.Yamaguchi      [E_本稼動_01176] 口座種別の取得元変更
  *  2012/03/08    1.3   S.Niki           [E_本稼動_08315] ヘッダに売上対象年月を追加
  *  2012/07/05    1.4   T.Osawa          [E_本稼動_08317] 問屋請求書明細テーブルに抽出条件を追加
+ *  2017/06/06    1.5   S.Niki           [E_本稼動_14226] 問屋請求見積書突き合わせPT対応
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_021a02_headers_v(
@@ -44,7 +45,11 @@ CREATE OR REPLACE VIEW apps.xxcok_021a02_headers_v(
 , last_update_login
 )
 AS
-SELECT xwbh.ROWID                       AS row_id                     -- ROW_ID
+-- Ver.1.5 MOD START
+--SELECT xwbh.ROWID                       AS row_id                     -- ROW_ID
+SELECT DISTINCT
+       xwbh.ROWID                       AS row_id                     -- ROW_ID
+-- Ver.1.5 MOD END
      , xwbh.wholesale_bill_header_id    AS wholesale_bill_header_id   -- 問屋請求書ヘッダID
      , xwbh.base_code                   AS base_code                  -- 拠点コード
      , hp1.party_name                   AS base_name                  -- 拠点名
@@ -70,16 +75,19 @@ SELECT xwbh.ROWID                       AS row_id                     -- ROW_ID
      , xwbh.last_update_login           AS last_update_login          -- 最終更新ログイン
 FROM xxcok_wholesale_bill_head     xwbh      -- 問屋請求書ヘッダテーブル
 -- 2012/03/08 Ver.1.3 [障害E_本稼動_08315] SCSK S.Niki ADD START
-   , ( SELECT xwbl.wholesale_bill_header_id      AS wholesale_bill_header_id  -- 問屋請求書ヘッダID
-            , xwbl.selling_month                 AS selling_month             -- 売上対象年月
-       FROM   xxcok_wholesale_bill_line  xwbl  -- 問屋請求書明細テーブル
--- 2012/07/05 Ver.1.4 [障害E_本稼動_08317] SCSK T.Osawa ADD START
-       WHERE (xwbl.status               IS NULL                       -- ステータスコードがＮＵＬＬ又は 
-       OR     xwbl.status               <> 'D')                       -- ステータスコードが削除以外
--- 2012/07/05 Ver.1.4 [障害E_本稼動_08317] SCSK T.Osawa ADD END
-       GROUP BY xwbl.wholesale_bill_header_id
-              , xwbl.selling_month
-     )                             line      -- 問屋請求書明細テーブル
+-- Ver.1.5 MOD START
+--   , ( SELECT xwbl.wholesale_bill_header_id      AS wholesale_bill_header_id  -- 問屋請求書ヘッダID
+--            , xwbl.selling_month                 AS selling_month             -- 売上対象年月
+--       FROM   xxcok_wholesale_bill_line  xwbl  -- 問屋請求書明細テーブル
+---- 2012/07/05 Ver.1.4 [障害E_本稼動_08317] SCSK T.Osawa ADD START
+--       WHERE (xwbl.status               IS NULL                       -- ステータスコードがＮＵＬＬ又は 
+--       OR     xwbl.status               <> 'D')                       -- ステータスコードが削除以外
+---- 2012/07/05 Ver.1.4 [障害E_本稼動_08317] SCSK T.Osawa ADD END
+--       GROUP BY xwbl.wholesale_bill_header_id
+--              , xwbl.selling_month
+--     )                             line      -- 問屋請求書明細テーブル
+   , xxcok_wholesale_bill_line     line      -- 問屋請求書明細テーブル
+-- Ver.1.5 MOD END
 -- 2012/03/08 Ver.1.3 [障害E_本稼動_08315] SCSK S.Niki ADD END
    , hz_cust_accounts              hca1      -- 顧客マスタ（拠点）
    , hz_cust_accounts              hca2      -- 顧客マスタ（顧客）
@@ -97,6 +105,9 @@ FROM xxcok_wholesale_bill_head     xwbh      -- 問屋請求書ヘッダテーブル
 -- 2012/03/08 Ver.1.3 [障害E_本稼動_08315] SCSK S.Niki MOD START
 --WHERE xwbh.base_code                    = hca1.account_number
 WHERE line.wholesale_bill_header_id     = xwbh.wholesale_bill_header_id
+-- Ver.1.5 ADD START
+  AND NVL( line.status ,'X' )          != 'D'
+-- Ver.1.5 ADD END
   AND xwbh.base_code                    = hca1.account_number
 -- 2012/03/08 Ver.1.3 [障害E_本稼動_08315] SCSK S.Niki MOD END
   AND xwbh.cust_code                    = hca2.account_number
