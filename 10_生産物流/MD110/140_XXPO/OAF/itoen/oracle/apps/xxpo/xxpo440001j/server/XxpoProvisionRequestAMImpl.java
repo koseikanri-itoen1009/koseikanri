@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.18
+* バージョン : 1.19
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -28,6 +28,7 @@
 * 2009-03-06 1.16 飯田  甫     本番障害#1131対応
 * 2009-03-13 1.17 飯田  甫     本番障害#1300対応
 * 2010-04-13 1.18 北寒寺 正夫  本稼動障害#2103対応
+* 2017-06-30 1.19 桐生 和幸    E_本稼動_14267対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -4660,14 +4661,57 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     // 出庫日が入力されていない場合
     if (XxcmnUtility.isBlankOrNull(shippedDate)) 
     {
-      shippedDate = XxpoUtility.getOprtnDay(
-                      getOADBTransaction(),
-                      XxcmnUtility.getDate(arrivalDate, -1),
-                      shipWhseCode,
-                      null,
-                      0); 
-      // 導出されなかった場合
-      if (XxcmnUtility.isBlankOrNull(shippedDate)) 
+// v1.19 E_本稼動_14267 Add Start
+      int leadTime = 1;  // 初期値1（仕入有償の場合を考慮)
+      // 出庫日の算出に配送LTを使用する場合（支給依頼）
+      if (XxpoUtility.chkOprtnDayUseReadTime(getOADBTransaction(), orderTypeId))
+      {
+        // パラメータ作成
+        HashMap params = new HashMap();
+        params.put("ShipWhseCode",    shipWhseCode);  // 出庫倉庫
+        params.put("ShipToCode",      shipToCode);    // 配送先
+        params.put("OrderTypeId",     orderTypeId);   // 発生区分(受注タイプID)
+        params.put("ArrivalDate",     arrivalDate);   // 入庫日
+        // 配送LTを取得
+        leadTime = XxpoUtility.getLeadTime(getOADBTransaction(), params);
+      }
+
+      // 配送LT使用なし(仕入有償）、もしくは配当LT使用ありで取得できた場合
+      if (leadTime != -99)
+      {
+// v1.19 E_本稼動_14267 Add End
+        shippedDate = XxpoUtility.getOprtnDay(
+                        getOADBTransaction(),
+// v1.19 E_本稼動_14267 Mod Start
+//                        XxcmnUtility.getDate(arrivalDate, -1),
+                        arrivalDate,
+// v1.19 E_本稼動_14267 Mod End
+                        shipWhseCode,
+                        null,
+// v1.19 E_本稼動_14267 Mod Start
+//                        0); 
+                        leadTime );
+// v1.19 E_本稼動_14267 Mod End
+        // 導出されなかった場合
+        if (XxcmnUtility.isBlankOrNull(shippedDate)) 
+        {
+          exceptions.add( new OAAttrValException(
+                                OAAttrValException.TYP_VIEW_OBJECT,
+                                hdrVo.getName(),
+                                hdrRow.getKey(),
+                                "ShippedDate",
+                                shippedDate,
+                                XxcmnConstants.APPL_XXPO, 
+                                XxpoConstants.XXPO10002));
+
+        } else
+        {
+          // 出庫日にセット
+          hdrRow.setAttribute("ShippedDate", shippedDate);
+        }
+// v1.19 E_本稼動_14267 Add Start
+      // 配送LT使用ありで取得できない場合
+      } else
       {
         exceptions.add( new OAAttrValException(
                               OAAttrValException.TYP_VIEW_OBJECT,
@@ -4675,15 +4719,10 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
                               hdrRow.getKey(),
                               "ShippedDate",
                               shippedDate,
-                              XxcmnConstants.APPL_XXPO, 
-                              XxpoConstants.XXPO10002));
-
-      } else
-      {
-        // 出庫日にセット
-        hdrRow.setAttribute("ShippedDate", shippedDate);
-
+                              XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO40041));
       }
+// v1.19 E_本稼動_14267 Add End
     }
     // エラーがあった場合エラーをスローします。
     if (exceptions.size() > 0)
