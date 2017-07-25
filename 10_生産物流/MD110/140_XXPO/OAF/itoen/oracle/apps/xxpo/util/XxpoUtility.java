@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.33
+* バージョン : 1.34
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -41,6 +41,7 @@
 * 2016-05-16 1.31 山下翔太     E_本稼動_13563対応
 * 2016-07-06 1.32 山下翔太     E_本稼動_13563追加対応
 * 2017-06-07 1.33 桐生和幸     E_本稼動_14244対応
+* 2017-06-30 1.34 桐生和幸     E_本稼動_14267対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -11756,4 +11757,204 @@ public class XxpoUtility
   } // insStockResult
 
 // 2011-06-01 v1.28 K.Kubo Add End
+// v1.34 E_本稼動_14267 Add Start
+  /*****************************************************************************
+   * 稼働日付算出に配送LTを使用するか判定します。
+   * @param  trans       - トランザクション
+   * @param  OrderTypeId - 発生区分(受注タイプID）
+   * @return boolean     - 出庫日算出にリードタイムを使用する場合   true
+   *                       出庫日算出にリードタイムを使用しない場合 false
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static boolean chkOprtnDayUseReadTime(
+    OADBTransaction trans,
+    Number OrderTypeId      // 発生区分(受注タイプID）
+  ) throws OAException
+  {
+    String apiName = "chkOprtnDayUseReadTime"; // API名
+    String plSqlRet;                           // PL/SQL戻り値
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                                              );
+    sb.append("  SELECT flvv.attribute1 attribute1"                                 );
+    sb.append("  INTO   :1 "                                                        );
+    sb.append("  FROM   xxwsh_oe_transaction_types_v xottv "                        );  //受注タイプ情報VIEW
+    sb.append("        ,fnd_lookup_values_vl         flvv "                         );  //参照タイプ XXPO：発生区分（内部）
+    sb.append("  WHERE  xottv.transaction_type_id   = :2 "                          );
+    sb.append("  AND    xottv.transaction_type_name = flvv.meaning "                );
+    sb.append("  AND    flvv.lookup_type            = 'XXPO_INTERNAL_TRANS_TYPE'; " );
+    sb.append("END; "                                                               );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(OrderTypeId)); // 発生区分(受注タイプID）
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR); // 戻り値
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      plSqlRet = cstmt.getString(1);
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN,
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN,
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    // PL/SQL戻り値がY：出庫日算出にリードタイムを使用する場合true
+    if ("Y".equals(plSqlRet))
+    {
+      return true;
+    
+    // PL/SQL戻り値がN：出庫日算出にリードタイムを使用しない場合false
+    } else
+    {
+      return false;
+    }    
+  } // chkOprtnDayUseReadTime
+
+  /*****************************************************************************
+   * 配送LTを取得します。
+   * @param  trans       - トランザクション
+   * @param  params      - パラメータ
+   * @return int         - 配送LT
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static int getLeadTime(
+    OADBTransaction trans,
+    HashMap         params  //パラメータ
+  ) throws OAException
+  {
+    String apiName = "getLeadTime"; // API名
+    int    plSqlRet;                // PL/SQL戻り値
+
+    // パラメータ値取得
+    String shipWhseCode = (String)params.get("ShipWhseCode"); // 出庫倉庫
+    String shipToCode   = (String)params.get("ShipToCode");   // 配送先
+    Number orderTypeId  = (Number)params.get("OrderTypeId");  // 発生区分(受注タイプID)
+    Date   arrivalDate  = (Date)params.get("ArrivalDate");    // 入庫日
+
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE "                                  );
+    sb.append("  lv_retcode                    VARCHAR2(1); "                                        );
+    sb.append("  lv_errmsg_code                VARCHAR2(5000); "                                     );
+    sb.append("  lv_errmsg                     VARCHAR2(5000); "                                     );
+    sb.append("  ln_lead_time                  NUMBER; "                                             );
+    sb.append("BEGIN "                                                                               );
+    sb.append("  xxwsh_common910_pkg_pt.calc_lead_time( "                                            );
+    sb.append("    iv_code_class1                => '4' "                                            ); // 4(倉庫)
+    sb.append("   ,iv_entering_despatching_code1 => :1 "                                             ); // 出庫倉庫
+    sb.append("   ,iv_code_class2                => '11' "                                           ); // 11(支給先)
+    sb.append("   ,iv_entering_despatching_code2 => :2 "                                             ); // 配送先
+    sb.append("   ,iv_prod_class                 => FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') "   ); // 商品区分
+    sb.append("   ,in_transaction_type_id        => :3 "                                             ); // 発生区分
+    sb.append("   ,id_standard_date              => :4 "                                             ); // 入庫日
+    sb.append("   ,ov_retcode                    => lv_retcode "                                     ); // リターンコード
+    sb.append("   ,ov_errmsg_code                => lv_errmsg_code "                                 ); // エラーメッセージコード
+    sb.append("   ,ov_errmsg                     => lv_errmsg "                                      ); // エラーメッセージ
+    sb.append("   ,on_lead_time                  => ln_lead_time "                                   ); // 生産物流LT／引取変更LT
+    sb.append("   ,on_delivery_lt                => :5 ); "                                          ); // 配送LT
+    sb.append("  IF (:5 IS NULL ) THEN "                                                             );
+    sb.append("    :5 := -99; "                                                                      ); // 取得できない場合、設定不可の値を返す
+    sb.append("  END IF; "                                                                           );
+    sb.append("END; "                                                                                );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(1, shipWhseCode);                       // 出庫倉庫
+      cstmt.setString(2, shipToCode);                         // 配送先
+      cstmt.setInt(3, XxcmnUtility.intValue(orderTypeId));    // 発生区分(受注タイプID)
+      cstmt.setDate(4, XxcmnUtility.dateValue(arrivalDate));  // 入庫実績日
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(5, Types.INTEGER); // 戻り値(配送LT)
+
+      //PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値取得
+      plSqlRet = cstmt.getInt(5);
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      // ログ出力
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN,
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN,
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+
+    // 配送LTを返す
+    return plSqlRet;
+
+  } // getLeadTime
+
+// v1.34 E_本稼動_14267 Add End
 }
