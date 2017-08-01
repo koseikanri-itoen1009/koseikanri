@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A01C(body)
  * Description      : 商品計画用過年度販売実績集計
  * MD.050           : 商品計画用過年度販売実績集計 MD050_CSM_002_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2010/03/08    1.10  N.Abe           [E_本稼動_01628] 性能改善対応
                                         [E_本稼動_01629] 百貨店、専門店での集計対応
  *  2010/12/21    1.11  SCS OuKou       [E_本稼動_05803]
+ *  2017/07/07    1.12  S.Niki          [E_本稼動_14224] 仮データの処理対象期間修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -98,6 +99,9 @@ AS
 -- == 2010/03/08 V1.10 Added START ===============================================================
   cv_xxcsm_msg_10160        CONSTANT VARCHAR2(20)  := 'APP-XXCSM1-10160';       -- 商品計画用販売実績ワークテーブルロックエラー
 -- == 2010/03/08 V1.10 Added END   ===============================================================
+-- Ver1.12 ADD START
+  cv_xxcsm_msg_10171        CONSTANT VARCHAR2(20)  := 'APP-XXCSM1-10171';       -- 商品計画用販売実績ワークテーブルデータ取得エラーメッセージ
+-- Ver1.12 ADD END
   --トークン
   cv_tkn_cd_colmun          CONSTANT VARCHAR2(100) := 'COLMUN';                 --テーブル列名
   cv_tkn_cd_prof            CONSTANT VARCHAR2(100) := 'PROF_NAME';              --カスタム・プロファイル・オプションの英名
@@ -220,6 +224,9 @@ AS
 -- == 2010/03/08 V1.10 Added START ===============================================================
   gt_sp_code               xxcsm_item_plan_result.location_cd%TYPE;      -- 専門店管理課拠点コード
 -- == 2010/03/08 V1.10 Added END   ===============================================================
+-- Ver.1.12 ADD START
+  gd_tmp_start_date        DATE;                                         -- 仮データ作成開始日
+-- Ver.1.12 ADD END
 --  
   /**********************************************************************************
    * Procedure Name   : init
@@ -263,6 +270,9 @@ AS
 --    lv_pram_op_4         VARCHAR2(100);     -- パラメータメッセージ出力(品目コード)
     lv_prm_msg           VARCHAR2(100);     -- パラメータメッセージ出力(入力パラメータなし)
 --//+UPD END 2010/02/09 E_本稼動_01247 S.Karikomi
+-- Ver.1.12 ADD START
+    lt_year_month        xxcsm_wk_item_plan_result.year_month%TYPE;    --最大年月
+-- Ver.1.12 ADD END
     -- *** ローカル・カーソル ***
 --
       /**      年度開始日取得       **/
@@ -600,6 +610,26 @@ AS
 --    CLOSE cust_select_cur;
 --//+DEL END 2009/08/03 0000479 T.Tsukino
 --
+-- Ver1.12 ADD START
+--⑦ 仮データ作成開始日を取得
+    SELECT MAX( xwipr.year_month ) AS year_month
+      INTO lt_year_month
+      FROM xxcsm_wk_item_plan_result  xwipr    --商品計画用販売実績ワークテーブル
+    ;
+    -- 最大年月が取得できない場合
+    IF ( lt_year_month IS NULL ) THEN
+      -- 商品計画用販売実績ワークテーブルデータ取得エラーメッセージ
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application    => cv_xxcsm
+                     ,iv_name           => cv_xxcsm_msg_10171
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 仮データ作成開始日をセット
+    gd_tmp_start_date := ADD_MONTHS( TO_DATE( lt_year_month || '01' ,'YYYYMMDD' ) ,1 );
+-- Ver1.12 ADD END
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1391,9 +1421,15 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    --コンカレント起動日付から、予算年度開始日までの月数算出
+-- Ver1.12 MOD START
+--    --コンカレント起動日付から、予算年度開始日までの月数算出
+    --仮データ作成開始日から、予算年度開始日までの月数算出
+-- Ver1.12 MOD END
     ln_months := MONTHS_BETWEEN(TO_DATE(TO_CHAR(gt_start_date,'YYYYMM')||'01','YYYYMMDD'),
-                                TO_DATE(TO_CHAR(cd_process_date,'YYYYMM')||'01','YYYYMMDD'));
+-- Ver1.12 MOD START
+--                                TO_DATE(TO_CHAR(cd_process_date,'YYYYMM')||'01','YYYYMMDD'));
+                                gd_tmp_start_date ) ;
+-- Ver1.12 MOD END
     --発売日から、予算年度開始日までの月数。(実績存在月数)
     ln_start_months := MONTHS_BETWEEN(TO_DATE(TO_CHAR(gt_start_date,'YYYYMM')||'01','YYYYMMDD'),
                                 TO_DATE(TO_CHAR(ld_sales_start,'YYYYMM')||'01','YYYYMMDD'));
@@ -1405,7 +1441,10 @@ AS
       EXIT WHEN j = ln_months;
       BEGIN
         --仮データの年月を算出
-        ln_year_month := TO_NUMBER(TO_CHAR(ADD_MONTHS(cd_process_date,j),'YYYYMM'));
+-- Ver1.12 MOD START
+--        ln_year_month := TO_NUMBER(TO_CHAR(ADD_MONTHS(cd_process_date,j),'YYYYMM'));
+        ln_year_month := TO_NUMBER(TO_CHAR(ADD_MONTHS(gd_tmp_start_date,j),'YYYYMM'));
+-- Ver1.12 MOD END
         --仮データの月を算出
         ln_month_no := SUBSTR(ln_year_month,5,2);
 --//+ADD START 2010/02/09 E_本稼動_01247 S.Karikomi
