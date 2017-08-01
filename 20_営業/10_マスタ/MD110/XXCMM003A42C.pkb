@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A42C(body)
  * Description      : ロケーションマスタIF出力（自販機管理）
  * MD.050           : ロケーションマスタIF出力（自販機管理） MD050_CMM_003_A42
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/02/04    1.0   K.Kiriu          新規作成
+ *  2017/07/18    1.1   K.Kiriu          E_本稼動_14388対応
  *
  *****************************************************************************************/
 --
@@ -108,6 +109,9 @@ AS
   cv_tkn_ng_value      CONSTANT VARCHAR2(8)   := 'NG_VALUE';                   -- 項目名
   cv_tkn_word          CONSTANT VARCHAR2(7)   := 'NG_WORD';                    -- 項目名
   cv_tkn_data          CONSTANT VARCHAR2(7)   := 'NG_DATA';                    -- データ
+-- Ver1.1 E_本稼動_14388 Add Start
+  cv_tkn_date          CONSTANT VARCHAR2(7)   := 'NG_DATE';                    -- 日付
+-- Ver1.1 E_本稼動_14388 Add End
   -- メッセージ
   cv_msg_00001         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00001';           -- 対象データ無し
   cv_msg_00002         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00002';           -- プロファイル取得エラー
@@ -130,6 +134,14 @@ AS
   cv_msg_00390         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00390';           -- 文言（設置先カナ）
   cv_msg_00391         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00391';           -- 文言（設置先FAX）
   cv_msg_05132         CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-05102';           -- ファイル名出力メッセージ
+-- Ver1.1 E_本稼動_14388 Add Start
+  cv_msg_10365         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10365';           -- 文言（起動種別）
+  cv_msg_10366         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10366';           -- 担当営業員取得エラー
+  cv_msg_10367         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10367';           -- 担当営業員重複エラー
+  -- 起動種別
+  cv_boot_online       CONSTANT VARCHAR2(1)   := '1';                          -- 起動種別（オンラインバッチ）
+  cv_boot_night        CONSTANT VARCHAR2(1)   := '2';                          -- 起動種別（夜間バッチ）
+-- Ver1.1 E_本稼動_14388 Add End
   -- 参照タイプ
   cv_cust_class        CONSTANT VARCHAR2(22)  := 'XXCMM_VD_CUSTOMER_CODE';     -- 自販機S連携対象顧客区分
   cv_cust_vd_place     CONSTANT VARCHAR2(26)  := 'XXCMM_CUST_VD_SECCHI_BASYO'; -- VD設置場所
@@ -141,12 +153,20 @@ AS
   -- 汎用
   cv_date_time         CONSTANT VARCHAR2(21)  := 'YYYY/MM/DD HH24:MI:SS';      -- 日時フォーマット
   cv_date              CONSTANT VARCHAR2(8)   := 'YYYYMMDD';                   -- 日付フォーマット
+-- Ver1.1 E_本稼動_14388 Add Start
+  cv_date_slash        CONSTANT VARCHAR2(10)   := 'YYYY/MM/DD';                -- 日付フォーマット
+-- Ver1.1 E_本稼動_14388 Add End
   cn_one               CONSTANT NUMBER(1)     := 1;                            -- 汎用 NUMBER1
   cv_one               CONSTANT NUMBER(1)     := '1';                          -- 汎用 VARCHAR1
   cv_y                 CONSTANT VARCHAR(1)    := 'Y';                          -- 汎用 'Y'
   cv_n                 CONSTANT VARCHAR(1)    := 'N';                          -- 汎用 'N'
   -- 言語
   cv_language_ja       CONSTANT VARCHAR2(2)   := 'JA';                         -- 言語(JA)
+-- Ver1.1 E_本稼動_14388 Add Start
+  -- 担当営業員
+  cv_flexfield_name    CONSTANT VARCHAR2(21)  := 'HZ_ORG_PROFILES_GROUP';      -- フレックスフィールド名
+  cv_context_code      CONSTANT VARCHAR2(8)   := 'RESOURCE';                   -- コンテキスト
+-- Ver1.1 E_本稼動_14388 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -160,6 +180,10 @@ AS
   gd_from_date          DATE;                                                  -- 最終更新日（開始）
   gd_to_date            DATE;                                                  -- 最終更新日（終了）
   gv_run_flg            VARCHAR2(1);                                           -- 実行フラグ(T:定期、R:随時(リカバリ))
+-- Ver1.1 E_本稼動_14388 Add Start
+  gv_warn_flag          VARCHAR2(1) := 'N';                                    -- 警告終了判定フラグ
+  gd_get_emp_date       DATE;                                                  -- 担当営業取得用の日付
+-- Ver1.1 E_本稼動_14388 Add End
   -- ファイル出力関連
   gv_csv_file_dir       fnd_profile_option_values.profile_option_value%TYPE;   -- CSVファイル出力先
   gv_csv_file_name      fnd_profile_option_values.profile_option_value%TYPE;   -- CSVファイル名
@@ -170,8 +194,11 @@ AS
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
-    iv_update_from   IN  VARCHAR2,     -- 1.最終更新日（開始）
-    iv_update_to     IN  VARCHAR2,     -- 1.最終更新日（終了）
+-- Ver1.1 E_本稼動_14388 Add Start
+    iv_boot_flag     IN  VARCHAR2,     -- 1.起動種別
+-- Ver1.1 E_本稼動_14388 Add End
+    iv_update_from   IN  VARCHAR2,     -- 2.最終更新日（開始）
+    iv_update_to     IN  VARCHAR2,     -- 3.最終更新日（終了）
     ov_errbuf        OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode       OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg        OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -212,6 +239,20 @@ AS
     --  固定出力(入力パラメータ部)
     -- ============================================================
     -- 入力パラメータ
+-- Ver1.1 E_本稼動_14388 Add Start
+    lv_errmsg := xxccp_common_pkg.get_msg(
+                   iv_application  => cv_app_name_xxcmm      -- マスタ領域
+                  ,iv_name         => cv_msg_00037           -- メッセージ:入力パラメータ出力メッセージ
+                  ,iv_token_name1  => cv_tkn_param           -- トークン  :PARAM
+                  ,iv_token_value1 => cv_msg_10365           -- 値        :起動種別
+                  ,iv_token_name2  => cv_tkn_value           -- トークン  :VALUE
+                  ,iv_token_value2 => iv_boot_flag           -- 値        :入力パラメータ「起動種別」の値
+                 );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => lv_errmsg
+    );
+-- Ver1.1 E_本稼動_14388 Add End
     lv_errmsg := xxccp_common_pkg.get_msg(
                    iv_application  => cv_app_name_xxcmm      -- マスタ領域
                   ,iv_name         => cv_msg_00037           -- メッセージ:入力パラメータ出力メッセージ
@@ -400,6 +441,18 @@ AS
       ,buff   => ''
     );
 --
+-- Ver1.1 E_本稼動_14388 Add Start
+--
+    ----------------------------------------------------------------
+    -- 7．夜間・日中の判定から担当営業員取得の日付を設定します。
+    ----------------------------------------------------------------
+--
+    IF ( iv_boot_flag = cv_boot_online ) THEN
+      gd_get_emp_date := gd_process_date;     -- 現時点で有効(オンラインバッチ)
+    ELSE
+      gd_get_emp_date := gd_process_date + 1; -- 翌日より有効(夜間バッチ)
+    END IF;
+-- Ver1.1 E_本稼動_14388 Add End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -495,6 +548,9 @@ AS
    * Description      : 対象顧客取得処理(A-3)
    ***********************************************************************************/
   PROCEDURE get_target_cust_data(
+-- Ver1.1 E_本稼動_14388 Add Start
+    iv_boot_flag  IN  VARCHAR2,     --   起動種別
+-- Ver1.1 E_本稼動_14388 Add End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -627,6 +683,59 @@ AS
                WHERE  xtvli.cust_account_id = hca.cust_account_id
              )  --パーティ・顧客追加情報のINSERTで挿入された顧客は対象外とする。
       ;
+-- Ver1.1 E_本稼動_14388 Add Start
+      ----------------------------------------------------------------
+      -- 4．担当営業員の登録・変更データ挿入処理
+      ----------------------------------------------------------------
+      INSERT INTO xxcmm_tmp_vdms_location_if(
+         cust_account_id
+      )
+      SELECT /*
+               LEADING(hopeb)
+             */
+             DISTINCT
+             hca.cust_account_id
+      FROM   hz_org_profiles_ext_b    hopeb      -- 組織プロファイル拡張
+            ,ego_fnd_dsc_flx_ctx_ext  efdfce     -- 拡張付加フレックスコンテキストマスタ
+            ,hz_organization_profiles hop        -- 組織プロファイル
+            ,hz_parties               hp         -- パーティ
+            ,hz_cust_accounts         hca        -- 顧客マスタ
+            ,fnd_lookup_values        flv        -- 参照タイプ
+      WHERE  (
+               (
+                     ( hopeb.last_update_date     >= gd_from_date )
+                 AND ( hopeb.last_update_date     <  gd_to_date )
+               )
+               OR
+               (
+                     ( iv_boot_flag               =  cv_boot_night )
+                 AND ( hopeb.d_ext_attr1          =  gd_get_emp_date )
+               )
+             )  -- 更新があったもの、及び、夜間バッチで翌日から有効な担当営業員
+      AND    hopeb.attr_group_id                  =  efdfce.attr_group_id
+      AND    efdfce.descriptive_flexfield_name    =  cv_flexfield_name
+      AND    efdfce.descriptive_flex_context_code =  cv_context_code
+      AND    hopeb.organization_profile_id        =  hop.organization_profile_id
+      AND    hop.effective_end_date               IS NULL
+      AND    hop.party_id                         =  hp.party_id
+      AND    hp.duns_number_c                     >= cv_duns_number_c    -- 対象の顧客ステータス(SP決裁済以降)
+      AND    hp.party_id                          =  hca.party_id
+      AND    flv.lookup_type                      =  cv_cust_class       -- 自販機S連携対象顧客区分
+      AND    flv.lookup_code                      =  hca.customer_class_code
+      AND    flv.enabled_flag                     =  cv_y
+      AND    flv.language                         =  cv_language_ja
+      AND    gd_process_date                      BETWEEN flv.start_date_active
+                                                  AND     NVL( flv.end_date_active, gd_process_date )
+      AND    NOT EXISTS(
+               SELECT /*+
+                        USE_NL(xtvli)
+                      */
+                      1
+               FROM   xxcmm_tmp_vdms_location_if xtvli
+               WHERE  xtvli.cust_account_id = hca.cust_account_id
+             )  --パーティ・顧客追加情報・顧客事業所のINSERTで挿入された顧客は対象外とする。
+      ;
+-- Ver1.1 E_本稼動_14388 Add End
     EXCEPTION
       WHEN OTHERS THEN
         -- 挿入エラーメッセージ生成
@@ -700,6 +809,9 @@ AS
     -- *** ローカル変数 ***
     lv_warning_flag  VARCHAR2(1);                      -- 警告判定用
     lv_csv_text      VARCHAR2(2000);                   -- 出力１行分文字列変数
+-- Ver1.1 E_本稼動_14388 Add Start
+    lt_employee_num  hz_org_profiles_ext_b.c_ext_attr1%TYPE; -- 担当営業員
+-- Ver1.1 E_本稼動_14388 Add End
 --
     -- *** ローカル例外 ***
     output_skip_expt EXCEPTION;                        -- CSVファイル出力スキップ例外
@@ -802,6 +914,9 @@ AS
 --
       -- 初期化
       lv_warning_flag := cv_n;  -- 警告フラグ
+-- Ver1.1 E_本稼動_14388 Add Start
+      lt_employee_num := NULL;  -- 担当営業員
+-- Ver1.1 E_本稼動_14388 Add End
       -- 対象件数カウント
       gn_target_cnt   := gn_target_cnt + 1;
 --
@@ -875,6 +990,70 @@ AS
           lv_warning_flag := cv_y;
         END IF;
 --
+-- Ver1.1 E_本稼動_14388 Add Start
+        -- ===============================
+        -- 担当営業員取得処理
+        -- ===============================
+        BEGIN
+          SELECT hopeb.c_ext_attr1  employee_number
+          INTO   lt_employee_num
+          FROM   hz_cust_accounts         hca        -- 顧客マスタ
+                ,hz_parties               hp         -- パーティ
+                ,hz_organization_profiles hop        -- 組織プロファイル
+                ,hz_org_profiles_ext_b    hopeb      -- 組織プロファイル拡張
+                ,ego_fnd_dsc_flx_ctx_ext  efdfce     -- 拡張付加フレックスコンテキストマスタ
+          WHERE  hca.account_number                   =  get_cust_rec.account_number
+          AND    hca.party_id                         =  hp.party_id
+          AND    hp.party_id                          =  hop.party_id
+          AND    hop.effective_end_date               IS NULL
+          AND    hop.organization_profile_id          =  hopeb.organization_profile_id
+          AND    hopeb.attr_group_id                  =  efdfce.attr_group_id
+          AND    efdfce.descriptive_flexfield_name    =  cv_flexfield_name
+          AND    efdfce.descriptive_flex_context_code =  cv_context_code
+          AND    gd_get_emp_date                      BETWEEN  hopeb.d_ext_attr1
+                                                      AND      NVL( hopeb.d_ext_attr2, gd_get_emp_date )
+          ;
+        EXCEPTION
+          -- 担当営業員が存在しない場合
+          WHEN NO_DATA_FOUND THEN
+            -- 担当営業員にNULLを設定する。
+            lt_employee_num := NULL;
+            -- 担当営業員取得エラーメッセージ生成
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name_xxcmm                        -- マスタ領域
+                           ,iv_name         => cv_msg_10366                             -- メッセージ:担当営業員取得エラーメッセージ
+                           ,iv_token_name1  => cv_tkn_date                              -- トークン  :NG_DATE
+                           ,iv_token_value1 => TO_CHAR(gd_get_emp_date, cv_date_slash)  -- 値        :担当営業員の取得日付
+                           ,iv_token_name2  => cv_tkn_word                              -- トークン  :NG_WORD
+                           ,iv_token_value2 => get_cust_rec.account_number              -- 値        :取得した顧客コードの値
+                         );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
+            -- 警告終了とするがスキップしない
+            gv_warn_flag := cv_y;
+          -- 担当営業員が重複している場合
+          WHEN TOO_MANY_ROWS THEN
+            -- 担当営業員重複エラーメッセージ生成
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name_xxcmm                        -- マスタ領域
+                           ,iv_name         => cv_msg_10367                             -- メッセージ:担当営業員重複エラーメッセージ
+                           ,iv_token_name1  => cv_tkn_date                              -- トークン  :NG_DATE
+                           ,iv_token_value1 => TO_CHAR(gd_get_emp_date, cv_date_slash)  -- 値        :担当営業員の取得日付
+                           ,iv_token_name2  => cv_tkn_word                              -- トークン  :NG_WORD
+                           ,iv_token_value2 => get_cust_rec.account_number              -- 値        :取得した顧客コードの値
+                         );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
+            -- フラグON
+            lv_warning_flag := cv_y;
+        END;
+-- Ver1.1 E_本稼動_14388 Add End
         -- チェックエラー時
         IF ( lv_warning_flag = cv_y ) THEN
           -- CSV出力処理(A-6)をスキップする
@@ -893,7 +1072,10 @@ AS
             cv_dqu || get_cust_rec.branch_base                || cv_dqu || cv_com ||  -- 支社コード
             cv_dqu || get_cust_rec.area_code                  || cv_dqu || cv_com ||  -- 支店CD
             cv_dqu || get_cust_rec.sale_base_code             || cv_dqu || cv_com ||  -- 営業所CD
-            cv_dqu || get_cust_rec.loot_man_code              || cv_dqu || cv_com ||  -- ルートマンコード
+-- Ver1.1 E_本稼動_14388 Mod Start
+--            cv_dqu || get_cust_rec.loot_man_code              || cv_dqu || cv_com ||  -- ルートマンコード
+            cv_dqu ||lt_employee_num                          || cv_dqu || cv_com ||  -- ルートマンコード
+-- Ver1.1 E_本稼動_14388 Mod End
             cv_dqu || get_cust_rec.party_name                 || cv_dqu || cv_com ||  -- 設置先名（社名）
             cv_dqu || get_cust_rec.party_name_abbreviation    || cv_dqu || cv_com ||  -- 設置先略名
             cv_dqu || get_cust_rec.organization_name_phonetic || cv_dqu || cv_com ||  -- 設置先ｶﾅ
@@ -938,9 +1120,12 @@ AS
         gn_normal_cnt := gn_normal_cnt + 1;
 --
       EXCEPTION
-        -- 禁則文字エラー
+        -- 禁則文字エラー・担当営業員重複エラー
         WHEN output_skip_expt THEN
           gn_warn_cnt := gn_warn_cnt + 1;  --顧客単位に警告件数をカウント
+-- Ver1.1 E_本稼動_14388 Mod Start
+          gv_warn_flag := cv_y;            --警告終了とする
+-- Ver1.1 E_本稼動_14388 Mod End
       END;
 --
     END LOOP get_cust_loop;
@@ -1072,8 +1257,11 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-    iv_update_from  IN  VARCHAR2,     -- 1.最終更新日（開始）
-    iv_update_to    IN  VARCHAR2,     -- 2.最終更新日（終了）
+-- Ver1.1 E_本稼動_14388 Add Start
+    iv_boot_flag    IN  VARCHAR2,     -- 1.起動種別
+-- Ver1.1 E_本稼動_14388 Add End
+    iv_update_from  IN  VARCHAR2,     -- 2.最終更新日（開始）
+    iv_update_to    IN  VARCHAR2,     -- 3.最終更新日（終了）
     ov_errbuf       OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode      OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg       OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1118,7 +1306,11 @@ AS
     --  初期処理プロシージャ(A-1)
     -- ===============================
     init(
-       iv_update_from  => iv_update_from  -- 最終更新日（開始）
+-- Ver1.1 E_本稼動_14388 Mod Start
+--       iv_update_from  => iv_update_from  -- 最終更新日（開始）
+       iv_boot_flag    => iv_boot_flag    -- 起動種別
+      ,iv_update_from  => iv_update_from  -- 最終更新日（開始）
+-- Ver1.1 E_本稼動_14388 Mod End
       ,iv_update_to    => iv_update_to    -- 最終更新日（終了）
       ,ov_errbuf       => lv_errbuf       -- エラー・メッセージ           --# 固定 #
       ,ov_retcode      => lv_retcode      -- リターン・コード             --# 固定 #
@@ -1146,7 +1338,11 @@ AS
     -- 対象顧客取得処理(A-3)
     -- ===============================
     get_target_cust_data(
-       ov_errbuf       => lv_errbuf      -- エラー・メッセージ           --# 固定 #
+-- Ver1.1 E_本稼動_14388 Mod Start
+--       ov_errbuf       => lv_errbuf      -- エラー・メッセージ           --# 固定 #
+       iv_boot_flag    => iv_boot_flag   -- 起動種別
+      ,ov_errbuf       => lv_errbuf      -- エラー・メッセージ           --# 固定 #
+-- Ver1.1 E_本稼動_14388 Mod End
       ,ov_retcode      => lv_retcode     -- リターン・コード             --# 固定 #
       ,ov_errmsg       => lv_errmsg      -- ユーザー・エラー・メッセージ --# 固定 #
     );
@@ -1203,8 +1399,12 @@ AS
       END IF;
     END IF;
 --
-    -- 警告件数が0でない場合は警告とする
-    IF ( gn_warn_cnt <> 0 ) THEN
+-- Ver1.1 E_本稼動_14388 Mod Start
+--    -- 警告件数が0でない場合は警告とする
+--    IF ( gn_warn_cnt <> 0 ) THEN
+    -- 警告フラグがYの場合は警告とする
+    IF ( gv_warn_flag = cv_y ) THEN
+-- Ver1.1 E_本稼動_14388 Mod End
       ov_retcode := cv_status_warn;
     END IF;
 --
@@ -1250,8 +1450,11 @@ AS
   PROCEDURE main(
     errbuf          OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode         OUT VARCHAR2,      --   リターン・コード    --# 固定 #
-    iv_update_from  IN  VARCHAR2,      --   1.最終更新日（開始）
-    iv_update_to    IN  VARCHAR2       --   2.最終更新日（終了）
+-- Ver1.1 E_本稼動_14388 Add Start
+    iv_boot_flag    IN  VARCHAR2,      --   1.起動種別 1:オンラインバッチ、2：夜間バッチ
+-- Ver1.1 E_本稼動_14388 Add End
+    iv_update_from  IN  VARCHAR2,      --   2.最終更新日（開始）
+    iv_update_to    IN  VARCHAR2       --   3.最終更新日（終了）
   )
 --
 --
@@ -1303,7 +1506,11 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       iv_update_from  -- 最終更新日（開始）
+-- Ver1.1 E_本稼動_14388 Mod Start
+--       iv_update_from  -- 最終更新日（開始）
+       iv_boot_flag    -- 起動種別
+      ,iv_update_from  -- 最終更新日（開始）
+-- Ver1.1 E_本稼動_14388 Mod End
       ,iv_update_to    -- 最終更新日（終了）
       ,lv_errbuf       -- エラー・メッセージ           --# 固定 #
       ,lv_retcode      -- リターン・コード             --# 固定 #
