@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A42C(spec)
  * Description      : ロケーションマスタIF出力（自販機管理）
  * MD.050           : ロケーションマスタIF出力（自販機管理） MD050_CMM_003_A42
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/02/04    1.0   K.Kiriu          main新規作成
+ *  2017/07/11    1.1   K.Kiriu          E_本稼動_14388対応
  *
  *****************************************************************************************/
 --
@@ -26,8 +27,11 @@ AS
   PROCEDURE main(
     errbuf          OUT    VARCHAR2,         --   エラーメッセージ #固定#
     retcode         OUT    VARCHAR2,         --   エラーコード     #固定#
-    iv_update_from  IN     VARCHAR2,         --   1.最終更新日（開始）
-    iv_update_to    IN     VARCHAR2          --   1.最終更新日（終了）
+-- Ver1.1 E_本稼動_14388 Add Start
+    iv_boot_flag    IN     VARCHAR2,         --   1.起動種別 1:オンラインバッチ、2：夜間バッチ
+-- Ver1.1 E_本稼動_14388 Add End
+    iv_update_from  IN     VARCHAR2,         --   2.最終更新日（開始）
+    iv_update_to    IN     VARCHAR2          --   3.最終更新日（終了）
   );
 END XXCMM003A42C;
 /
