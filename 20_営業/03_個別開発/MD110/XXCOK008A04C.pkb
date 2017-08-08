@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A04C(body)
  * Description      : 売上振替割合の登録
  * MD.050           : 売上振替割合の登録 MD050_COK_008_A04
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  * 2009/07/13     1.4   M.Hiruta         [障害0000514]処理対象に顧客ステータス「30:承認済」「50:休止」のデータを追加
  * 2009/09/09     1.5   S.Moriyama       [障害0001303]拠点セキュリティ機能追加　振替元拠点と所属拠点が異なる場合は警告とする
  * 2009/12/04     1.6   S.Moriyama       [E_本稼動_00294]振替元/先顧客にEDIチェーン店コードが含まれる顧客を許容するように修正
+ * 2017/07/27     1.7   K.Kiriu          [E_本稼動_14389]エラーレコードが不正に処理されないよう修正
  *
  *****************************************************************************************/
   -- =========================
@@ -971,6 +972,9 @@ AS
             , xtsr.selling_trns_rate      AS  selling_trns_rate        --売上振替割合
       FROM    xxcok_tmp_selling_rate xtsr
       WHERE   xtsr.file_id                = in_file_id
+-- Ver.1.7 ADD START
+      AND     xtsr.error_flag             = cv_0
+-- Ver.1.7 ADD END
       AND     xtsr.selling_from_base_code = iv_selling_from_base_code
       AND     xtsr.selling_from_cust_code = iv_selling_from_cust_code;
     -- =======================
@@ -1111,6 +1115,9 @@ AS
                                     WHERE  xtsr.file_id    = in_file_id
                                     AND    xtsr.error_flag = cv_0
                                     AND    xtsr.selling_from_base_code = xsri.selling_from_base_code
+-- Ver.1.7 ADD START
+                                    AND    xtsr.selling_from_cust_code = xsri.selling_from_cust_code
+-- Ver.1.7 ADD END
                                    )
 -- 2009/09/09 Ver.1.5 [障害0001303] SCS S.Moriyama ADD END
                ) inline_view_a
