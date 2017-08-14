@@ -1,0 +1,16 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ * 
+ * Synonym Name    : XXCMM_TMP_ITEM_CHG_UPLOAD
+ * Description     : 変更予約情報一時表（シノニム）
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/06/22    1.0   S.Niki       E_本稼動_14300 初回作成
+ *
+ ************************************************************************/
+CREATE SYNONYM APPS.XXCMM_TMP_ITEM_CHG_UPLOAD FOR XXCMM.XXCMM_TMP_ITEM_CHG_UPLOAD
+/
