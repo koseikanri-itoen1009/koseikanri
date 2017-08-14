@@ -7,7 +7,7 @@ AS
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.13
+ * Version          : Issue3.14
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2010/04/07    1.17  Y.Kuboshima      障害対応(本稼動_02018) 標準原価 > 営業原価の場合、警告としないよう修正
  *  2012/04/17    1.18  K.Nakamura       障害対応(本稼動_07669) 品目ステータスDへ変更する場合のチェック追加
  *  2014/03/27    1.19  K.Nakamura       障害対応(本稼動_11556) 取引存在チェック条件修正
+ *  2017/08/04    1.20  N.Watanabe       障害対応(本稼動_14300) 品目ステータスDにおけるチェック条件変更
  *
  *****************************************************************************************/
 --
@@ -179,7 +180,9 @@ AS
   -- メッセージ関連
   -- メッセージ
 -- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
-  cv_msg_xxcmm_00430           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00430';   -- 品目ステータスチェックエラー
+-- Ver1.20 DEL Start
+--  cv_msg_xxcmm_00430           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00430';   -- 品目ステータスチェックエラー
+-- Ver1.20 DEL End
 -- End
 -- Ver1.5 チェック処理追加
   cv_msg_xxcmm_00436           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00436';   -- 子品目ステータスチェックエラー
@@ -1694,10 +1697,12 @@ AS
 --                        Ｄ時、または、Ｄに変更する場合、登録情報の変更をさせないよう修正
 --    AND  ( NVL( i_update_item_rec.item_status, cn_itm_status_num_tmp )  -- 変更予約のステータス
 --                                           != cn_itm_status_no_use )    -- 現在のステータスも参照する必要あり
-    -- 変更予約のステータスがＤの場合
-    -- または、変更予約のステータスが未設定で現ステータスがＤの場合、処理しない
-    AND  ( NVL( i_update_item_rec.item_status, i_update_item_rec.b_item_status )
-                                             != cn_itm_status_no_use )
+-- Ver 1.20 DEL Start
+--    -- 変更予約のステータスがＤの場合
+--    -- または、変更予約のステータスが未設定で現ステータスがＤの場合、処理しない
+--    AND  ( NVL( i_update_item_rec.item_status, i_update_item_rec.b_item_status )
+--                                             != cn_itm_status_no_use )
+-- Ver 1.20 DEL End
 -- End
     THEN
       --
@@ -1743,7 +1748,7 @@ AS
           OR l_parent_item_rec.item_status IS NULL ) THEN
           -- 仮採番時、NULL時
           lv_step := 'STEP-09030';
-          -- 政策群コード：子品目の品目ステータスがＤ以外の場合反映する
+          -- 政策群コード
           lv_policy_group    := i_update_item_rec.policy_group;
           ln_fixed_price     := NULL;         -- 定価
           ln_discrete_cost   := NULL;         -- 営業原価
@@ -1751,7 +1756,7 @@ AS
         ELSIF ( l_parent_item_rec.item_status = cn_itm_status_pre_reg ) THEN
           -- 仮登録時
           lv_step := 'STEP-09040';
-          -- 政策群コード：子品目の品目ステータスがＤ以外の場合反映する
+          -- 政策群コード
           lv_policy_group    := i_update_item_rec.policy_group;
           -- 定価        ：子品目の品目ステータスが仮登録以降Ｄ以前の場合反映する
           ln_fixed_price     := i_update_item_rec.fixed_price;
@@ -1762,7 +1767,7 @@ AS
                                                  , cn_itm_status_trn_only ) ) THEN
           -- 本登録、廃、Ｄ’時
           lv_step := 'STEP-09050';
-          -- 政策群コード：子品目の品目ステータスがＤ以外の場合反映する
+          -- 政策群コード
           lv_policy_group    := i_update_item_rec.policy_group;
           -- 定価        ：子品目の品目ステータスが仮登録以降Ｄ以前の場合反映する
           ln_fixed_price     := i_update_item_rec.fixed_price;
@@ -1772,8 +1777,11 @@ AS
         ELSE
           -- Ｄ時
           lv_step := 'STEP-09060';
-          -- なにもしない
-          lv_policy_group    := NULL;         -- 政策群コード
+-- Ver1.20 MOD Start
+--          -- なにもしない
+--          lv_policy_group    := NULL;         -- 政策群コード
+          lv_policy_group    := i_update_item_rec.policy_group;    -- 政策群コード
+-- Ver1.20 MOD End
           ln_fixed_price     := NULL;         -- 定価
           ln_discrete_cost   := NULL;         -- 営業原価
         END IF;
@@ -4711,8 +4719,10 @@ AS
     -- ===============================
     sub_proc_expt                EXCEPTION;
     --
--- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」時のチェックを追加
-    item_no_use_expt           EXCEPTION;    -- 現在の品目ステータス「Ｄ」時のチェックエラー
+-- Ver1.20 DEL Start
+---- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」時のチェックを追加
+--    item_no_use_expt           EXCEPTION;    -- 現在の品目ステータス「Ｄ」時のチェックエラー
+-- Ver1.20 DEL End
 -- End
 --
   BEGIN
@@ -4768,12 +4778,14 @@ AS
         RAISE sub_proc_expt;
       END IF;
       --
--- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
-    ELSE
-      lv_step := 'STEP-3025';
-      IF  ( i_update_item_rec.b_item_status = cn_itm_status_no_use ) THEN
-        RAISE item_no_use_expt;
-      END IF;
+-- Ver1.20 DEL Start
+---- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
+--    ELSE
+--      lv_step := 'STEP-3025';
+--      IF  ( i_update_item_rec.b_item_status = cn_itm_status_no_use ) THEN
+--        RAISE item_no_use_expt;
+--      END IF;
+-- Ver1.20 DEL End
 -- End
     --
     END IF;
@@ -4848,17 +4860,19 @@ AS
       ov_retcode := cv_status_error;
     --
 -- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
-    -- *** 現在の品目ステータスチェック例外ハンドラ ***
-    WHEN item_no_use_expt THEN
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
-                     ,iv_name         => cv_msg_xxcmm_00430                    -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_item_code                      -- トークンコード1
-                     ,iv_token_value1 => i_update_item_rec.item_no             -- トークン値1
-                    );
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- Ver1.20 DEL Start
+--    -- *** 現在の品目ステータスチェック例外ハンドラ ***
+--    WHEN item_no_use_expt THEN
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+--                     ,iv_name         => cv_msg_xxcmm_00430                    -- メッセージコード
+--                     ,iv_token_name1  => cv_tkn_item_code                      -- トークンコード1
+--                     ,iv_token_value1 => i_update_item_rec.item_no             -- トークン値1
+--                    );
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+--      ov_retcode := cv_status_error;
+-- Ver1.20 DEL End
 -- End
 --
 --#################################  固定例外処理部 START   ###################################
