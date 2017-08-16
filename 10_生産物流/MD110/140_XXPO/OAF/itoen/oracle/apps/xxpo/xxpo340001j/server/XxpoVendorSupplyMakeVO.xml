@@ -56,6 +56,9 @@ SELECT xvst.txns_id                 txns_id             -- 実績ID
 -- 2016-06-09 S.Yamashita Add Start
       ,TO_DATE(ilm.attribute25,'YYYY/MM/DD') changed_use_by_date  -- 変更賞味期限
 -- 2016-06-09 S.Yamashita Add End
+-- 2017-08-10 S.Yamashita Add Start
+      ,xvst.po_number               created_po_num         -- 発注番号
+-- 2017-08-10 S.Yamashita Add End
 FROM   xxpo_vendor_supply_txns      xvst                -- 外注出来高実績
       ,xxcmn_item_mst2_v            ximv                -- OPM品目情報2V
       ,xxcmn_vendors2_v             xvv                 -- 仕入先情報2V
@@ -706,6 +709,26 @@ AND    xvv.end_date_active    >= TRUNC(xvst.manufactured_date)
       IsQueriable="false"
       IsPersistent="false"
       Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CreatedPoNum"
+      IsPersistent="false"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CreatedPoNum"
+      Expression="CreatedPoNum"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CorrectedQuantityDef"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="15"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="VIEW_ATTR"
