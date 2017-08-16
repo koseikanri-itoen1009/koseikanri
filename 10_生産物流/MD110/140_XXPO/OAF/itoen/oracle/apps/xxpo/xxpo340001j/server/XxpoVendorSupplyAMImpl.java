@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -23,6 +23,7 @@
 * 2016-06-30 1.10 山下翔太     E_本稼動_13563追加対応
 * 2016-07-25 1.11 山下翔太     E_本稼動_13785対応
 * 2017-05-10 1.12 桐生和幸     E_本稼動_14069対応
+* 2017-08-10 1.13 山下翔太     E_本稼動_14243対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -1260,6 +1261,10 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 // 2016-06-09 v1.9 S.Yamashita Add Start
     params.put("ChangedUseByDate",  vendorSupplyMakeRow.getAttribute("ChangedUseByDate"));  // 変更賞味期限
 // 2016-06-09 v1.9 S.Yamashita Add End
+// S.Yamashita Ver.1.13 Add Start
+    params.put("CreatedPoNum",        vendorSupplyMakeRow.getAttribute("CreatedPoNum"));          // 発注番号(作成済)
+    params.put("CorrectedQuantityDef",vendorSupplyMakeRow.getAttribute("CorrectedQuantityDef"));  // 訂正数量(初期値)
+// S.Yamashita Ver.1.13 Add End
     params.put("Quantity",          vendorSupplyMakeRow.getAttribute("Quantity"));          // 数量
     params.put("ProductedQuantity", vendorSupplyMakeRow.getAttribute("ProductedQuantity")); // 出来高数量
     params.put("CorrectedQuantity", vendorSupplyMakeRow.getAttribute("CorrectedQuantity")); // 訂正数量
@@ -1505,6 +1510,64 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
               );
   }
 
+// S.Yamashita Ver.1.13 Add Start
+  /***************************************************************************
+   * 訂正数量(初期値)を取得するメソッドです。(登録画面用)
+   ***************************************************************************
+   */
+  public void getCorrectedQuantityDef()
+  {
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行めを取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // データ取得
+    Number txnsId            = (Number)vendorSupplyMakeRow.getAttribute("TxnsId"); // 実績ID
+    
+    // 訂正数量(初期値)を取得
+    String correctedQuantityDef = XxpoUtility.getCorrectedQuantityDef(
+                                    getOADBTransaction(), // トランザクション
+                                    txnsId                // 実績ID
+                                  );
+    // 訂正数量(初期値)をセット
+    vendorSupplyMakeRow.setAttribute("CorrectedQuantityDef", correctedQuantityDef); // 訂正数量(初期値)
+  }
+
+  /***************************************************************************
+   * 出来高実績変更情報反映処理(登録画面用)
+   * @return String - リターンコード
+   ***************************************************************************
+   */
+  public String refVendorSupplyChange()
+  {
+
+    // 外注出来高VOデータ取得
+    HashMap params = getAllDataHashMap();
+
+    // 出来高実績変更履歴登録 実行
+    return XxpoUtility.insertTxnsUpdateHistory(
+              getOADBTransaction(), // トランザクション
+              params                // パラメータ
+              );
+  }
+  /***************************************************************************
+   * 発注情報更新処理(登録画面用)
+   * @return String - リターンコード
+   ***************************************************************************
+   */
+  public String refPoChange()
+  {
+
+    // 外注出来高VOデータ取得
+    HashMap params = getAllDataHashMap();
+
+    // 発注情報更新 実行
+    return XxpoUtility.refPoChange(
+              getOADBTransaction(), // トランザクション
+              params                // パラメータ
+              );
+  }
+// S.Yamashita Ver.1.13 Add End
   /***************************************************************************
    * VOの初期化処理を行うメソッドです。(登録画面用)
    ***************************************************************************
@@ -1619,6 +1682,12 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       // *********************** //
       getUseByDate();
 // 2016-06-30 S.Yamashita Add End
+// S.Yamashita Ver.1.13 Add Start
+      // ******************************* //
+      // *  訂正数量(初期値)取得処理   * //
+      // ******************************* //
+      getCorrectedQuantityDef();
+// S.Yamashita Ver.1.13 Add End
     }
   }
 
@@ -2131,6 +2200,12 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 // 2009-02-18 H.Itou Add Start 本番障害#1096
     String createLotDiv      = (String)params.get("CreateLotDiv");      // 作成区分
 // 2009-02-18 H.Itou Add End
+// S.Yamashita Ver.1.13 Add Start
+    ArrayList exceptions        = new ArrayList(100);
+    String correctedQuantity    = (String)params.get("CorrectedQuantity");    // 訂正数量
+    String correctedQuantityDef = (String)params.get("CorrectedQuantityDef"); // 訂正数量(初期値)
+    String createdPoNum         = (String)params.get("CreatedPoNum");         // 発注番号(作成済)
+// S.Yamashita Ver.1.13 Add end
     
     // ********************************** //
     // * 外注出来高実績(アドオン)更新   * //
@@ -2181,6 +2256,47 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 //      }
 // 2009-02-18 H.Itou Del End
     }
+// S.Yamashita Ver.1.13 Add Start
+    // 出来高情報登録リージョン.発注番号がNULLでない場合かつ、数量が変更された場合
+    if ( !XxcmnUtility.isBlankOrNull(createdPoNum)
+      && !XxcmnUtility.isBlankOrNull(correctedQuantity)
+      && Double.parseDouble(correctedQuantity.toString()) != Double.parseDouble(correctedQuantityDef))
+    {
+      // ********************************** //
+      // * 更新対象(発注情報)存在チェック * //
+      // ********************************** //
+      String targetFlag = XxpoUtility.getPoTarget(
+                            getOADBTransaction(), // トランザクション
+                            createdPoNum          // 発注番号(作成済)
+                          );
+      
+      // 発注未作成エラーの場合
+      if ( XxcmnConstants.RETURN_NOT_EXE.equals(targetFlag) )
+      {
+        return XxcmnConstants.RETURN_NOT_EXE;
+      }
+      // 更新対象が存在する場合
+      else if ( "1".equals(targetFlag))
+      {
+        
+        // **************************** //
+        // * 出来高実績変更反映処理   * //
+        // **************************** //
+        if (XxcmnConstants.RETURN_NOT_EXE.equals(refVendorSupplyChange()))
+        {
+          return XxcmnConstants.RETURN_NOT_EXE;
+        }
+        
+        // **************************** //
+        // * 発注情報更新処理         * //
+        // **************************** //
+        if (!XxcmnConstants.RETURN_SUCCESS.equals(refPoChange()))
+        {
+          return XxcmnConstants.RETURN_NOT_EXE;
+        }
+      }
+    }
+// S.Yamashita Ver.1.13 Add End
 // 2009-02-18 H.Itou Add Start 本番障害#1096
     // **************************** //
     // * 品質検査依頼情報作成     * //
