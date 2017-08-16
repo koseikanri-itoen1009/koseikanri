@@ -1,3 +1,18 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ *
+ * Table Name      : XXSKY_外注出来高実績_V
+ * Description     : XXSKY_外注出来高実績_V
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *                1.0                    新規作成
+ *  2017/08/10    1.1   S.Yamashita      E_本稼動_14243対応
+ *
+ ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKY_外注出来高実績_V
 (
  処理タイプ
@@ -25,6 +40,9 @@ CREATE OR REPLACE VIEW APPS.XXSKY_外注出来高実績_V
 ,発注作成フラグ
 ,発注作成日
 ,摘要
+-- Ver1.1 Add Start
+,発注番号
+-- Ver1.1 Add End
 ,作成者
 ,作成日
 ,最終更新者
@@ -58,6 +76,9 @@ SELECT
        ,XVST.order_created_flg              --発注作成フラグ
        ,XVST.order_created_date             --発注作成日
        ,XVST.description                    --摘要
+-- Ver1.1 Add Start
+       ,xvst.po_number AS po_number         --発注番号
+-- Ver1.1 Add End
        ,FU_CB.user_name                     --作成者
        ,XVST.creation_date                  --作成日
        ,FU_LU.user_name                     --最終更新者
@@ -155,6 +176,10 @@ COMMENT ON COLUMN APPS.XXSKY_外注出来高実績_V.発注作成日 IS '発注作成日'
 /
 COMMENT ON COLUMN APPS.XXSKY_外注出来高実績_V.摘要 IS '摘要'
 /
+-- Ver1.1 Add Start
+COMMENT ON COLUMN APPS.XXSKY_外注出来高実績_V.発注番号 IS '発注番号'
+/
+-- Ver1.1 Add End
 COMMENT ON COLUMN APPS.XXSKY_外注出来高実績_V.作成者 IS '作成者'
 /
 COMMENT ON COLUMN APPS.XXSKY_外注出来高実績_V.作成日 IS '作成日'
