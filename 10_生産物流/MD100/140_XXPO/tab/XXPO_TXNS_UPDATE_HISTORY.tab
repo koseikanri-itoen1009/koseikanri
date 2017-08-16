@@ -1,0 +1,72 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ *
+ * Table Name      : XXPO_TXNS_UPDATE_HISTORY
+ * Description     : 出来高実績更新履歴テーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2017/06/30    1.0   S.Yamashita      新規作成
+ *
+ ************************************************************************/
+CREATE TABLE xxpo.xxpo_txns_update_history (
+     txns_history_id           NUMBER        NOT NULL
+    ,txns_id                   NUMBER        NOT NULL
+    ,po_number                 VARCHAR2(20)  NOT NULL
+    ,program_name              VARCHAR2(50)
+    ,before_qty                NUMBER(12,3)
+    ,after_qty                 NUMBER(12,3)
+    ,before_lot                VARCHAR2(10)
+    ,after_lot                 VARCHAR2(10)
+    ,created_by                NUMBER(15,0)  NOT NULL
+    ,creation_date             DATE          NOT NULL
+    ,last_updated_by           NUMBER(15,0)  NOT NULL
+    ,last_update_date          DATE          NOT NULL
+    ,last_update_login         NUMBER(15,0)
+    ,request_id                NUMBER(15,0)
+    ,program_application_id    NUMBER(15,0)
+    ,program_id                NUMBER(15,0)
+    ,program_update_date       DATE
+  ,CONSTRAINT xxpo_txns_update_history_pk PRIMARY KEY (txns_history_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 2 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxpo.xxpo_txns_update_history IS '出来高実績更新履歴テーブル'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.txns_history_id            IS '更新履歴ID'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.txns_id                    IS '外注出来高実績ID'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.po_number                  IS '発注番号'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.program_name               IS '更新機能名'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.before_qty                 IS '更新前_数量'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.after_qty                  IS '更新後_数量'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.before_lot                 IS '更新前_賞味期限'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.after_lot                  IS '更新後_賞味期限'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.created_by                 IS '作成者'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.creation_date              IS '作成日'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.last_updated_by            IS '最終更新者'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.last_update_date           IS '最終更新日'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.last_update_login          IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.request_id                 IS '要求ID'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.program_application_id     IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.program_id                 IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxpo.xxpo_txns_update_history.program_update_date        IS 'プログラム更新日'
+/
