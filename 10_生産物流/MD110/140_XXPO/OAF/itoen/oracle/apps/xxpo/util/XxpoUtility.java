@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.34
+* バージョン : 1.35
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -42,6 +42,7 @@
 * 2016-07-06 1.32 山下翔太     E_本稼動_13563追加対応
 * 2017-06-07 1.33 桐生和幸     E_本稼動_14244対応
 * 2017-06-30 1.34 桐生和幸     E_本稼動_14267対応
+* 2017-08-10 1.35 山下翔太     E_本稼動_14243対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -2310,6 +2311,9 @@ public class XxpoUtility
     String uom               = (String)params.get("Uom");               // 数量(単位コード)
     String productedUom      = (String)params.get("ProductedUom");      // 出来高数量(単位コード)
     String description       = (String)params.get("Description");       // 備考
+// S.Yamashita Ver.1.35 Add Start
+    String poNumber          = (String)params.get("PoNumber");          // 発注番号
+// S.Yamashita Ver.1.35 Add End
     
     // OUTパラメータ用
     HashMap retHashMap = new HashMap();
@@ -2348,6 +2352,9 @@ public class XxpoUtility
     sb.append("    ,xvst.order_created_flg "                        ); //    発注作成フラグ
     sb.append("    ,xvst.order_created_date "                       ); //    発注作成日
     sb.append("    ,xvst.description "                              ); // 19:摘要
+// S.Yamashita Ver.1.35 Add Start
+    sb.append("    ,xvst.po_number "                                ); // 20:発注番号
+// S.Yamashita Ver.1.35 Add End
     sb.append("    ,xvst.created_by "                               ); //   作成者
     sb.append("    ,xvst.creation_date "                            ); //   作成日
     sb.append("    ,xvst.last_updated_by "                          ); //   最終更新者
@@ -2387,14 +2394,21 @@ public class XxpoUtility
       sb.append("  ,SYSDATE "                                       ); // 発注作成日     
     }
     sb.append("    ,:19 "                                           ); // 摘要
+// S.Yamashita Ver.1.35 Add Start
+    sb.append("    ,:20 "                                           ); // 発注番号(採番済)
+// S.Yamashita Ver.1.35 Add End
     sb.append("    ,FND_GLOBAL.USER_ID "                            ); // 作成者
     sb.append("    ,SYSDATE "                                       ); // 作成日
     sb.append("    ,FND_GLOBAL.USER_ID "                            ); // 最終更新者
     sb.append("    ,SYSDATE "                                       ); // 最終更新日
     sb.append("    ,FND_GLOBAL.LOGIN_ID); "                         ); // 最終更新ログイン
                  // OUTパラメータ
-    sb.append("  :20 := '1'; "                                      ); // 1:正常終了
-    sb.append("  :21 := lt_txns_id; "                               ); // 実績ID
+// S.Yamashita Ver.1.35 Mod Start
+//    sb.append("  :20 := '1'; "                                      ); // 1:正常終了
+//    sb.append("  :21 := lt_txns_id; "                               ); // 実績ID
+    sb.append("  :21 := '1'; "                                      ); // 1:正常終了
+    sb.append("  :22 := lt_txns_id; "                               ); // 実績ID
+// S.Yamashita Ver.1.35 Mod End
     sb.append("END; "                                               );
     
     //PL/SQLの設定を行います
@@ -2423,16 +2437,26 @@ public class XxpoUtility
       cstmt.setString(17, uom);                                    // 数量(単位コード)
       cstmt.setString(18, productedUom);                           // 出来高数量(単位コード)
       cstmt.setString(19, description);                            // 備考
+// S.Yamashita Ver.1.35 Add Start
+      cstmt.setString(20, poNumber);                               // 発注番号
+// S.Yamashita Ver.1.35 Add End
       
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(20, Types.VARCHAR);   // リターンコード
-      cstmt.registerOutParameter(21, Types.INTEGER);   // 実績ID
+// S.Yamashita Ver.1.35 Mod Start
+//      cstmt.registerOutParameter(20, Types.VARCHAR);   // リターンコード
+//      cstmt.registerOutParameter(21, Types.INTEGER);   // 実績ID
+      cstmt.registerOutParameter(21, Types.VARCHAR);   // リターンコード
+      cstmt.registerOutParameter(22, Types.INTEGER);   // 実績ID
+// S.Yamashita Ver.1.35 Mod End
       
       //PL/SQL実行
       cstmt.execute();
 
       // 戻り値取得
-      String retFlag = cstmt.getString(20);
+// S.Yamashita Ver.1.35 Mod Start
+//      String retFlag = cstmt.getString(20);
+      String retFlag = cstmt.getString(21);
+// S.Yamashita Ver.1.35 Mod End
 
       // 正常終了の場合
       if (XxcmnConstants.RETURN_SUCCESS.equals(retFlag)) 
@@ -2440,7 +2464,10 @@ public class XxpoUtility
         // リターンコード：正常をセット
         retFlag = XxcmnConstants.RETURN_SUCCESS;
         retHashMap.put("RetFlag", XxcmnConstants.RETURN_SUCCESS);
-        retHashMap.put("TxnsId", cstmt.getObject(21));
+// S.Yamashita Ver.1.35 Mod Start
+//        retHashMap.put("TxnsId", cstmt.getObject(21));
+        retHashMap.put("TxnsId", cstmt.getObject(22));
+// S.Yamashita Ver.1.35 Mod End
       }
 
     // PL/SQL実行時例外の場合
@@ -11957,4 +11984,578 @@ public class XxpoUtility
   } // getLeadTime
 
 // v1.34 E_本稼動_14267 Add End
+// S.Yamashita Ver.1.35 Add Start
+  /*****************************************************************************
+   * 更新対象(発注情報)存在チェック
+   * @param trans            - トランザクション
+   * @param createdPoNum     - 発注番号(作成済)
+   * @return String          - 1 対象あり
+   *                           2 対象なし
+   *                           3 発注未作成エラー
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String getPoTarget(
+    OADBTransaction trans,
+    String createdPoNum
+  ) throws OAException
+  {
+    String apiName = "getPoTarget"; // API名
+    String retFlag = XxcmnConstants.RETURN_NOT_EXE; // 戻り値
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append(" DECLARE                                                         ");
+    sb.append("   lt_po_status     po_headers_all.attribute1%TYPE;              "); // 発注ステータス
+    sb.append("   lt_cancel_flag   po_lines_all.cancel_flag%TYPE;               "); // 取消フラグ
+    sb.append(" BEGIN                                                           ");
+                  // 発注存在チェック
+    sb.append("   SELECT pha.attribute1  AS po_status                           ");
+    sb.append("         ,pla.cancel_flag AS cancel_flag                         ");
+    sb.append("   INTO   lt_po_status                                           ");
+    sb.append("         ,lt_cancel_flag                                         ");
+    sb.append("   FROM   po_headers_all pha                                     "); // 発注ヘッダ
+    sb.append("         ,po_lines_all   pla                                     "); // 発注明細
+    sb.append("   WHERE  pha.segment1     = :1                                  "); // 1:発注番号(作成済)
+    sb.append("     AND  pha.po_header_id = pla.po_header_id                    ");
+    sb.append("     AND  pla.line_num     = 1                                   ");
+    sb.append("   ;                                                             ");
+                  // ステータスチェック
+    sb.append("   IF ( (lt_po_status = '20') AND (lt_cancel_flag = 'N' ) ) THEN "); // 発注作成済かつ、明細が取消されていない場合
+    sb.append("     :2 := '1';                                                  ");
+    sb.append("   ELSE                                                          ");
+    sb.append("     :2 := '2';                                                  ");
+    sb.append("   END IF;                                                       ");
+    sb.append(" EXCEPTION                                                       ");
+    sb.append("   WHEN NO_DATA_FOUND THEN                                       "); // 発注が存在しない場合はエラー
+    sb.append("     :2 := '3';                                                  ");
+    sb.append(" END;                                                            ");
+    
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+    
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(1, createdPoNum); // 発注番号(作成済)
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(2, Types.VARCHAR); // リターンコード
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      retFlag = cstmt.getString(2); // リターンコード
+      
+      // 発注存在エラーの場合
+      if ("3".equals(retFlag))
+      {
+        // 戻り値にエラーを設定
+        retFlag = XxcmnConstants.RETURN_NOT_EXE;
+        // ロールバック
+        rollBack(trans);
+        // 発注未作成エラー
+        throw new OAException(XxcmnConstants.APPL_XXPO,
+                               XxpoConstants.XXPO40043);
+      }
+      
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN,
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN,
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    return retFlag;
+  } // getPoTarget
+
+  /*****************************************************************************
+   * 訂正数量(初期値)を取得します。
+   * @param trans            - トランザクション
+   * @param txnsId           - 実績ID
+   * @return String          - 訂正数量(初期値)
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String getCorrectedQuantityDef(
+    OADBTransaction trans,
+    Number txnsId
+  ) throws OAException
+  {
+    String apiName = "getCorrectedQuantityDef"; // API名
+    String returnQty;   // 戻り値
+    
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append(" BEGIN                                   ");
+    sb.append("   SELECT REPLACE(TO_CHAR(NVL(xvst.corrected_quantity, xvst.producted_quantity),'999999990.000'),' ') AS corrected_qty " ); // 訂正数量(初期値)
+    sb.append("   INTO   :1                             ");
+    sb.append("   FROM   xxpo_vendor_supply_txns xvst   "); // 外注出来高実績
+    sb.append("   WHERE  xvst.txns_id = :2              ");
+    sb.append("   ;                                     ");
+    sb.append(" END;                                    ");
+    
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+    
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(txnsId)); // 実績ID
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR);   // 訂正数量(初期値)
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      returnQty    = cstmt.getString(1); // 訂正数量(初期値)
+      
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN,
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        // エラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN,
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    return returnQty;
+  } // getCorrectedQuantityDef
+
+  /*****************************************************************************
+   * 出来高実績変更履歴にデータを追加します。
+   * @param trans - トランザクション
+   * @param params - パラメータ
+   * @return String - XxcmnConstants.RETURN_SUCCESS:1 正常
+   *                  XxcmnConstants.RETURN_NOT_EXE:0 異常
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String insertTxnsUpdateHistory(
+    OADBTransaction trans,
+    HashMap params
+  ) throws OAException
+  {
+    String apiName      = "insertTxnsUpdateHistory";
+
+    // INパラメータ取得
+    Number txns_id              = (Number)params.get("TxnsId");                 // 実績ID
+    String CreatedPoNum         = (String)params.get("CreatedPoNum");           // 発注番号(作成済)
+    String programName          = (String)XxpoConstants.SAVE_POINT_XXPO340001J; // 機能名
+    String correctedQuantity    = (String)params.get("CorrectedQuantity");      // 訂正数量
+    String correctedQuantityDef = (String)params.get("CorrectedQuantityDef");   // 訂正数量(初期値)
+    
+    // OUTパラメータ用
+    String retFlag = XxcmnConstants.RETURN_NOT_EXE; // 戻り値
+    
+    //PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("DECLARE                                                      ");
+    sb.append("  lt_txns_id xxpo_txns_update_history.txns_history_id%TYPE;  ");
+    sb.append("BEGIN                                                        ");
+                 // シーケンス取得
+    sb.append("  SELECT xxpo_txns_update_history_s1.NEXTVAL AS next_val     ");
+    sb.append("  INTO   lt_txns_id                                          ");
+    sb.append("  FROM   DUAL;                                               ");
+                 // 出来高実績更新履歴登録
+    sb.append("  INSERT INTO xxpo_txns_update_history xtuh(                 ");
+    sb.append("     xtuh.txns_history_id                                    "); // 更新履歴ID
+    sb.append("    ,xtuh.txns_id                                            "); // 1:実績ID
+    sb.append("    ,xtuh.po_number                                          "); // 2:発注番号
+    sb.append("    ,xtuh.program_name                                       "); // 3:更新機能名
+    sb.append("    ,xtuh.before_qty                                         "); // 4:更新前_数量
+    sb.append("    ,xtuh.after_qty                                          "); // 5:更新後_数量
+    sb.append("    ,xtuh.before_lot                                         "); // 更新前_賞味期限
+    sb.append("    ,xtuh.after_lot                                          "); // 更新後_賞味期限
+    sb.append("    ,xtuh.created_by                                         "); // 作成者
+    sb.append("    ,xtuh.creation_date                                      "); // 作成日
+    sb.append("    ,xtuh.last_updated_by                                    "); // 最終更新者
+    sb.append("    ,xtuh.last_update_date                                   "); // 最終更新日
+    sb.append("    ,xtuh.last_update_login)                                 "); // 最終更新ログイン
+    sb.append("  VALUES(                                                    ");
+    sb.append("     lt_txns_id                                              "); // 更新履歴ID
+    sb.append("    ,:1                                                      "); // 1:実績ID
+    sb.append("    ,:2                                                      "); // 2:発注番号
+    sb.append("    ,:3                                                      "); // 3:更新機能名
+    sb.append("    ,TO_NUMBER(:4)                                           "); // 4:更新前_数量
+    sb.append("    ,TO_NUMBER(:5)                                           "); // 5:更新後_数量
+    sb.append("    ,NULL                                                    "); // 更新前_賞味期限
+    sb.append("    ,NULL                                                    "); // 更新後_賞味期限
+    sb.append("    ,FND_GLOBAL.USER_ID                                      "); // 作成者
+    sb.append("    ,SYSDATE                                                 "); // 作成日
+    sb.append("    ,FND_GLOBAL.USER_ID                                      "); // 最終更新者
+    sb.append("    ,SYSDATE                                                 "); // 最終更新日
+    sb.append("    ,FND_GLOBAL.LOGIN_ID);                                   "); // 最終更新ログイン
+                 // OUTパラメータ
+    sb.append("  :6 := '1';                                                 "); // 1:正常終了
+    sb.append("END;                                                         ");
+    
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = trans.createCallableStatement(
+                                sb.toString(),
+                                OADBTransaction.DEFAULT);
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(1,    XxcmnUtility.intValue(txns_id)); // 実績ID
+      cstmt.setString(2, CreatedPoNum);                   // 発注番号(作成済)
+      cstmt.setString(3, programName);                    // 更新機能名
+      cstmt.setString(4, correctedQuantityDef);           // 更新前_数量
+      cstmt.setString(5, correctedQuantity);              // 更新後_数量
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(6, Types.VARCHAR);   // リターンコード
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      retFlag = cstmt.getString(6);
+
+      // 正常終了の場合
+      if (XxcmnConstants.RETURN_SUCCESS.equals(retFlag))
+      {
+        // リターンコード：正常をセット
+        retFlag = XxcmnConstants.RETURN_SUCCESS;
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      //トークン生成
+      MessageToken[] tokens = { new MessageToken(XxpoConstants.TOKEN_INFO_NAME,
+                                                 XxpoConstants.TAB_XXPO_TXNS_UPDATE_HISTORY) };
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXPO,
+                             XxpoConstants.XXPO10007,
+                             tokens);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+          // ロールバック
+          rollBack(trans);
+          XxcmnUtility.writeLog(trans,
+                                XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                                s.toString(),
+                                6);
+          // エラーメッセージ出力
+          throw new OAException(XxcmnConstants.APPL_XXCMN,
+                                XxcmnConstants.XXCMN10123);
+      }
+    }
+    return retFlag;
+  } // insertTxnsUpdateHistory
+
+  /*****************************************************************************
+   * 発注情報を更新します。
+   * @param trans - トランザクション
+   * @param params - パラメータ
+   * @return String - 0 異常 (XxcmnConstants.RETURN_NOT_EXE)
+   *                  1 正常 (XxcmnConstants.RETURN_SUCCESS)
+   *                  2 ロックエラー
+   *                  3 発注明細更新エラー
+   *                  4 発注納入明細更新エラー
+   *                  5 発注APIエラー
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static String refPoChange(
+    OADBTransaction trans,
+    HashMap params
+  ) throws OAException
+  {
+    String apiName      = "refPoChange";
+
+    // INパラメータ取得
+    String CreatedPoNum      = (String)params.get("CreatedPoNum");      // 発注番号(作成済)
+    Number conversionFactor  = (Number)params.get("ConversionFactor");  // 換算入数
+    String correctedQuantity = (String)params.get("CorrectedQuantity"); // 訂正数量
+    String lastUpdateDate    = (String)params.get("LastUpdateDate");    // 最終更新日
+
+    // OUTパラメータ用
+    String retFlag = XxcmnConstants.RETURN_NOT_EXE; // 戻り値
+
+    //PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append(" DECLARE                                                                        ");
+    sb.append("   lt_po_header_id       po_headers_all.po_header_id%TYPE;                      "); // 発注ヘッダID
+    sb.append("   lt_po_line_id         po_lines_all.po_line_id%TYPE;                          "); // 発注明細ID
+    sb.append("   ln_kobikigo_tanka     NUMBER;                                                "); // 粉引後単価
+    sb.append("   ln_kousen_kingaku     NUMBER;                                                "); // 預り口銭金額
+    sb.append("   ln_huka_kingaku       NUMBER;                                                "); // 賦課金額
+    sb.append("   lt_revision_num       po_headers_all.revision_num%TYPE;                      "); // 改訂番号
+    sb.append("   ln_corrected_quantity NUMBER := TO_NUMBER(:1);                               "); // 訂正数量
+    sb.append("   ln_case_in_qty        NUMBER := :2;                                          "); // 入数
+    sb.append("   ln_return_status      NUMBER;                                                "); // 発注ヘッダID
+    sb.append("   lock_expt             EXCEPTION;                                             "); // ロックエラー
+    sb.append("   upd_pla_expt          EXCEPTION;                                             "); // 発注明細更新エラー
+    sb.append("   upd_plla_expt         EXCEPTION;                                             "); // 発注納入明細更新エラー
+    sb.append("   PRAGMA EXCEPTION_INIT(lock_expt, -54);                                       ");
+    sb.append(" BEGIN                                                                          ");
+                  // 発注情報の取得・ロック
+    sb.append("   SELECT pha.po_header_id                     AS po_header_id                  "); // 発注ヘッダID
+    sb.append("         ,pla.po_line_id                       AS po_line_id                    "); // 発注明細ID
+    sb.append("         ,TO_NUMBER(NVL(plla.attribute2, '0')) AS kobikigo_tanka                "); // 粉引後単価
+    sb.append("         ,TO_NUMBER(NVL(plla.attribute5, '0')) AS kousen_kingaku                "); // 預り口銭金額
+    sb.append("         ,TO_NUMBER(NVL(plla.attribute8, '0')) AS huka_kingaku                  "); // 賦課金額
+    sb.append("         ,pha.revision_num                     AS revision_num                  "); // 改訂番号
+    sb.append("   INTO   lt_po_header_id                                                       ");
+    sb.append("         ,lt_po_line_id                                                         ");
+    sb.append("         ,ln_kobikigo_tanka                                                     ");
+    sb.append("         ,ln_kousen_kingaku                                                     ");
+    sb.append("         ,ln_huka_kingaku                                                       ");
+    sb.append("         ,lt_revision_num                                                       ");
+    sb.append("   FROM   po_headers_all        pha                                             "); // 発注ヘッダ
+    sb.append("         ,po_lines_all          pla                                             "); // 発注明細
+    sb.append("         ,po_line_locations_all plla                                            "); // 発注納入明細
+    sb.append("   WHERE  pha.segment1      = :3                                                "); // 発注番号
+    sb.append("   AND    pha.po_header_id  = pla.po_header_id                                  ");
+    sb.append("   AND    plla.po_header_id = pha.po_header_id                                  ");
+    sb.append("   AND    plla.po_line_id   = pla.po_line_id                                    ");
+    sb.append("   AND    pla.line_num      = 1                                                 ");
+    sb.append("   FOR UPDATE NOWAIT                                                            ");
+    sb.append("   ;                                                                            ");
+                  // 発注明細更新(DFF)
+    sb.append("   BEGIN                                                                        ");
+    sb.append("     UPDATE po_lines_all pla                                                    ");
+    sb.append("     SET    pla.attribute11          = TO_CHAR(ln_corrected_quantity)           "); // 発注数量
+    sb.append("           ,pla.last_updated_by      = FND_GLOBAL.USER_ID                       "); // 最終更新者
+    sb.append("           ,pla.last_update_date     = SYSDATE                                  "); // 最終更新日
+    sb.append("           ,pla.last_update_login    = FND_GLOBAL.USER_ID                       "); // 最終更新ログイン
+    sb.append("     WHERE  pla.po_header_id = lt_po_header_id                                  ");
+    sb.append("     AND    pla.po_line_id   = lt_po_line_id                                    ");
+    sb.append("     ;                                                                          ");
+    sb.append("   EXCEPTION                                                                    ");
+    sb.append("     WHEN OTHERS THEN                                                           ");
+    sb.append("       RAISE upd_pla_expt;                                                      ");
+    sb.append("   END;                                                                         ");
+                  // 発注納入明細更新(DFF)
+    sb.append("   BEGIN                                                                        ");
+    sb.append("     UPDATE po_line_locations_all plla                                          ");
+    sb.append("     SET   plla.attribute2           = TO_CHAR(ln_kobikigo_tanka)               "); // 粉引後単価
+    sb.append("          ,plla.attribute5           = TO_CHAR(ln_kousen_kingaku)               "); // 預り口銭金額
+    sb.append("          ,plla.attribute8           = TO_CHAR(ln_huka_kingaku)                 "); // 賦課金額
+    sb.append("          ,plla.attribute9           = TO_CHAR(ln_corrected_quantity * ln_case_in_qty * ln_kobikigo_tanka ) "); // 粉引後金額(訂正数量*入数*粉引後単価)
+    sb.append("          ,plla.last_updated_by      = FND_GLOBAL.LOGIN_ID                      "); // 最終更新者
+    sb.append("          ,plla.last_update_date     = SYSDATE                                  "); // 最終更新日
+    sb.append("          ,plla.last_update_login    = FND_GLOBAL.LOGIN_ID                      "); // 最終更新ログイン
+    sb.append("     WHERE plla.po_header_id = lt_po_header_id                                  ");
+    sb.append("     AND   plla.po_line_id   = lt_po_line_id                                    ");
+    sb.append("     ;                                                                          ");
+    sb.append("   EXCEPTION                                                                    ");
+    sb.append("     WHEN OTHERS THEN                                                           ");
+    sb.append("       RAISE upd_plla_expt;                                                     ");
+    sb.append("   END;                                                                         ");
+                  // 発注更新API
+    sb.append("   ln_return_status :=                                                          ");
+    sb.append("     xxpo_common_pkg.update_po(                                                 ");
+    sb.append("       :3                                                                       "); // IN 発注番号
+    sb.append("      ,NULL                                                                     "); // IN リリース番号
+    sb.append("      ,lt_revision_num                                                          "); // IN 改訂番号
+    sb.append("      ,1                                                                        "); // IN 明細番号
+    sb.append("      ,NULL                                                                     "); // IN 出荷番号
+    sb.append("      ,ln_corrected_quantity * ln_case_in_qty                                   "); // IN 数量(更新後)
+    sb.append("      ,NULL                                                                     "); // IN 単価(更新後)
+    sb.append("      ,NULL                                                                     "); // IN 出荷日(更新後)
+    sb.append("      ,'Y'                                                                      "); // IN 承認フラグ
+    sb.append("      ,NULL                                                                     "); // IN 更新ソース
+    sb.append("      ,'1.0'                                                                    "); // IN バージョン
+    sb.append("      ,NULL                                                                     "); // IN 無効日
+    sb.append("      ,NULL                                                                     "); // IN 購入者
+    sb.append("      ,'xxpo340001j'                                                            "); // IN 呼出元モジュール名（ログ出力用）
+    sb.append("      ,'XxpoUtility'                                                            "); // IN 呼出元パッケージ名（ログ出力用）
+    sb.append("     );                                                                         ");
+    sb.append("   :4 := '1';                                                                   "); // 正常
+    sb.append("   IF (ln_return_status <> 1) THEN                                              "); // 発注更新APIエラー
+    sb.append("     :4 := '5';                                                                 ");
+    sb.append("   END IF;                                                                      ");
+    sb.append(" EXCEPTION                                                                      ");
+    sb.append("   WHEN lock_expt THEN                                                          "); // ロックエラー
+    sb.append("       :4 := '2';                                                               ");
+    sb.append("   WHEN upd_pla_expt THEN                                                       "); // 発注明細更新エラー
+    sb.append("       :4 := '3';                                                               ");
+    sb.append("   WHEN upd_plla_expt THEN                                                      "); // 発注納入明細更新エラー
+    sb.append("       :4 := '4';                                                               ");
+    sb.append(" END;                                                                           ");
+    
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = trans.createCallableStatement(
+                                sb.toString(),
+                                OADBTransaction.DEFAULT);
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(1, correctedQuantity);                    // 訂正数量
+      cstmt.setInt(2, XxcmnUtility.intValue(conversionFactor)); // 換算入数
+      cstmt.setString(3, CreatedPoNum);                         // 発注番号(作成済)
+      
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(4, Types.VARCHAR);   // リターンコード
+      
+      //PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値取得
+      retFlag = cstmt.getString(4); // リターンコード
+
+      // 正常終了の場合
+      if (XxcmnConstants.RETURN_SUCCESS.equals(retFlag))
+      {
+        // リターンコード：正常をセット
+        retFlag = XxcmnConstants.RETURN_SUCCESS;
+        
+      // ロックエラーの場合
+      } else if ("2".equals(retFlag))
+      {
+        // ロールバック
+        rollBack(trans);
+        // ロックエラー
+        throw new OAException(XxcmnConstants.APPL_XXPO,
+                               XxpoConstants.XXPO10138);
+
+      // 発注明細更新エラーの場合
+      } else if ("3".equals(retFlag))
+      {
+        // ロールバック
+        rollBack(trans);
+        
+        //トークン生成
+        MessageToken[] tokens = new MessageToken[3];
+        tokens[0] = new MessageToken(XxpoConstants.TOKEN_INFO_NAME, XxpoConstants.TOKEN_NAME_UPD_PO_LINES);
+        tokens[1] = new MessageToken(XxpoConstants.TOKEN_PARAMETER, XxpoConstants.TOKEN_NAME_PO_NUMBER);
+        tokens[2] = new MessageToken(XxpoConstants.TOKEN_VALUE    , CreatedPoNum);
+        
+        // 処理失敗エラー
+        throw new OAException(XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO40042,
+                              tokens);
+       
+      // 発注納入明細更新エラーの場合
+      } else if ("4".equals(retFlag))
+      {
+        // ロールバック
+        rollBack(trans);
+        
+        //トークン生成
+        MessageToken[] tokens = new MessageToken[3];
+        tokens[0] = new MessageToken(XxpoConstants.TOKEN_INFO_NAME, XxpoConstants.TOKEN_NAME_UPD_PO_LINES_LOC);
+        tokens[1] = new MessageToken(XxpoConstants.TOKEN_PARAMETER, XxpoConstants.TOKEN_NAME_PO_NUMBER);
+        tokens[2] = new MessageToken(XxpoConstants.TOKEN_VALUE    , CreatedPoNum);
+        
+        // 処理失敗エラー
+        throw new OAException(XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO40042,
+                              tokens);
+      
+      // 発注APIエラーの場合
+      } else if ("5".equals(retFlag))
+      {
+        // ロールバック
+        rollBack(trans);
+        
+        //トークン生成
+        MessageToken[] tokens = new MessageToken[3];
+        tokens[0] = new MessageToken(XxpoConstants.TOKEN_INFO_NAME, XxpoConstants.TOKEN_NAME_UPD_PO_API);
+        tokens[1] = new MessageToken(XxpoConstants.TOKEN_PARAMETER, XxpoConstants.TOKEN_NAME_PO_NUMBER);
+        tokens[2] = new MessageToken(XxpoConstants.TOKEN_VALUE    , CreatedPoNum);
+        
+        // 処理失敗エラー
+        throw new OAException(XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO40042,
+                              tokens);
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXCMN,
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+          // ロールバック
+          rollBack(trans);
+          XxcmnUtility.writeLog(trans,
+                                XxpoConstants.CLASS_XXPO_UTILITY + XxcmnConstants.DOT + apiName,
+                                s.toString(),
+                                6);
+          // エラーメッセージ出力
+          throw new OAException(XxcmnConstants.APPL_XXCMN,
+                                XxcmnConstants.XXCMN10123);
+      }
+    }
+    return retFlag;
+  } // refPoChange
+// S.Yamashita Ver.1.35 Add End
 }
