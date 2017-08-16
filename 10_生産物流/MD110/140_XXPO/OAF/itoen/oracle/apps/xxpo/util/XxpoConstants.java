@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 * 2016-02-12 1.10 山下  翔太     E_本稼動_13451対応
 * 2016-06-30 1.11 山下  翔太     E_本稼動_13563追加対応
 * 2017-06-30 1.12 桐生  和幸     E_本稼動_14267対応
+* 2017-08-10 1.13 山下  翔太     E_本稼動_14243対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -268,6 +269,12 @@ public class XxpoConstants
 // v1.12 Add Start E_本稼動_14267
   public static final String XXPO40041   = "APP-XXPO-40041";
 // v1.12 Add End  E_本稼動_14267
+// S.Yamashita Ver.1.13 Add Start
+  /** メッセージ：APP-XXPO-40042 処理失敗エラー */
+  public static final String XXPO40042   = "APP-XXPO-40042";
+  /** メッセージ：APP-XXPO-40043 発注未作成エラー */
+  public static final String XXPO40043   = "APP-XXPO-40043";
+// S.Yamashita Ver.1.13 Add End
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
   /** トークン：DATA */
@@ -404,6 +411,16 @@ public class XxpoConstants
   /** トークン名称：仕入実績情報チェック */
   public static final String TOKEN_NAME_CHK_STOCK_RESULT_MANE = "仕入実績情報チェック";
 // 2011-06-01 v1.9 K.Kubo Add End   本番#1786
+// S.Yamashita Ver.1.13 Add Start
+  /** トークン名称：発注明細更新 */
+  public static final String TOKEN_NAME_UPD_PO_LINES     = "発注明細更新";
+  /** トークン名称：発注納入明細更新 */
+  public static final String TOKEN_NAME_UPD_PO_LINES_LOC = "発注納入明細更新";
+  /** トークン名称：発注更新API */
+  public static final String TOKEN_NAME_UPD_PO_API       = "発注更新API";
+  /** トークン名称：発注番号 */
+  public static final String TOKEN_NAME_PO_NUMBER        = "発注番号";
+// S.Yamashita Ver.1.13 Add End
   /** アプリケーション短縮名：XXPO⇒使用不可 */
   public static final String APPL_XXPO = "XXPO";
   /** 試験有無区分：1 有 */
@@ -596,6 +613,10 @@ public class XxpoConstants
   public static final String TAB_MTL_TRANSACTION_LOTS_INTERFACE = "品目ロットトランザクションオープンインタフェース";
   /** テーブル日本語名：rcv_lots_interface */
   public static final String TAB_RCV_LOTS_INTERFACE = "受入ロットトランザクションオープンインタフェース";
+// S.Yamashita Ver.1.13 Add Start
+  /** テーブル日本語名：tab_xxpo_txns_update_history */
+  public static final String TAB_XXPO_TXNS_UPDATE_HISTORY = "出来高実績更新履歴";
+// S.Yamashita Ver.1.13 Add End
   /** 列名：qt_inspect_req_no */
   public static final String COL_QT_INSPECT_REQ_NO  = "検査依頼No";
   /** 列名：manufactured_date */
