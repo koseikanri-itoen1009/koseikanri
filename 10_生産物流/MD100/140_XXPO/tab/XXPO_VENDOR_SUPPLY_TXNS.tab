@@ -1,3 +1,18 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ *
+ * Table Name      : xxpo_vendor_supply_txns
+ * Description     : 外注出来高実績（アドオン）
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *                1.0                    新規作成
+ *  2017/08/10    1.1   S.Yamashita      E_本稼動_14243対応
+ *
+ ************************************************************************/
 CREATE TABLE xxpo.xxpo_vendor_supply_txns (
      txns_id                   NUMBER        NOT NULL ,
      txns_type                 VARCHAR2(30)  NOT NULL ,
@@ -23,6 +38,9 @@ CREATE TABLE xxpo.xxpo_vendor_supply_txns (
      order_created_flg         VARCHAR2(1)   DEFAULT 'N'   ,
      order_created_date        DATE   ,
      description               VARCHAR2(150)     ,
+-- Ver1.1 Add Start
+     po_number                 VARCHAR2(20),      -- 発注番号
+-- Ver1.1 Add End
      created_by                NUMBER(15)    NOT NULL ,
      creation_date             DATE          NOT NULL ,
      last_updated_by           NUMBER(15)    NOT NULL ,
@@ -62,6 +80,9 @@ COMMENT ON COLUMN XXPO.XXPO_VENDOR_SUPPLY_TXNS.CONVERSION_FACTOR IS '換算入数';
 COMMENT ON COLUMN XXPO.XXPO_VENDOR_SUPPLY_TXNS.ORDER_CREATED_FLG IS '発注作成フラグ';
 COMMENT ON COLUMN XXPO.XXPO_VENDOR_SUPPLY_TXNS.ORDER_CREATED_DATE IS '発注作成日';
 COMMENT ON COLUMN XXPO.XXPO_VENDOR_SUPPLY_TXNS.DESCRIPTION IS '摘要';
+-- Ver1.1 Add Start
+COMMENT ON COLUMN XXPO.XXPO_VENDOR_SUPPLY_TXNS.PO_NUMBER IS '発注番号';
+-- Ver1.1 Add End
 COMMENT ON COLUMN XXPO.XXPO_VENDOR_SUPPLY_TXNS.CREATED_BY IS '作成者';
 COMMENT ON COLUMN XXPO.XXPO_VENDOR_SUPPLY_TXNS.CREATION_DATE IS '作成日';
 COMMENT ON COLUMN XXPO.XXPO_VENDOR_SUPPLY_TXNS.LAST_UPDATED_BY IS '最終更新者';
