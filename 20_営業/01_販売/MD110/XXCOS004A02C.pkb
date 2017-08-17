@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *                                       を修正
  *  2014/04/22    1.19  K.Nakamura       [E_本稼働_09071]消化締め後のAR入力対応
  *  2015/01/08    1.20  T.Ishiwata       [E_本稼働_xxxxx]緊急パフォーマンス対応
+ *  2017/08/08    1.21  K.Kiriu          [E_本稼働_14500]パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -1092,6 +1093,9 @@ AS
   PROCEDURE get_object_data(
     iv_base_code       IN         VARCHAR2,     -- 拠点コード
     iv_customer_number IN         VARCHAR2,     -- 顧客コード
+--Ver1.21 Add Start
+    iv_exec_div        IN         VARCHAR2,     -- 定期随時区分
+--Ver1.21 Add End
     ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1441,6 +1445,318 @@ AS
       FOR UPDATE OF xsdh.shop_digestion_hdr_id,xsdl.invent_seq NOWAIT
 --****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
     ;
+-- Ver1.21 Add Start
+    -- 随時（顧客指定時）
+    CURSOR get_data_cur_cust
+    IS
+        SELECT
+             xsdh.shop_digestion_hdr_id         shop_digestion_hdr_id,            --店舗別用消化計算ヘッダID
+             xsdh.digestion_due_date            digestion_due_date,               --消化計算締年月日
+             xsdh.customer_number               customer_number,                  --顧客コード
+             xsdh.sales_base_code               sales_base_code,                  --売上拠点コード
+             xsdh.cust_account_id               cust_account_id,                  --顧客ID
+             xsdh.digestion_exe_date            digestion_exe_date,               --消化計算実行日
+             xsdh.ar_sales_amount               ar_sales_amount,                  --店舗別売上金額
+             xsdh.check_sales_amount            check_sales_amount,               --チェック用売上金額
+             xsdh.digestion_calc_rate           digestion_calc_rate,              --消化計算掛率
+             xsdh.master_rate                   master_rate,                      --マスタ掛率
+             xsdh.balance_amount                balance_amount,                   --差額
+             xsdh.cust_gyotai_sho               cust_gyotai_sho,                  --業態小分類
+             xsdh.performance_by_code           performance_by_code,              --成績者コード
+             xsdh.sales_result_creation_date    sales_result_creation_date,       --販売実績登録日
+             xsdh.sales_result_creation_flag    sales_result_creation_flag,       --販売実績作成済フラグ
+             xsdh.pre_digestion_due_date        pre_digestion_due_date,           --前回消化計算締年月日
+             xsdh.uncalculate_class             uncalculate_class,                --未計算区分
+             xsdl.shop_digestion_ln_id          shop_digestion_ln_id,             --店舗別用消化計算明細ID
+             xsdl.digestion_ln_number           digestion_ln_number,              --枝番
+             xsdl.item_code                     item_code,                        --品目コード
+             xsdl.invent_seq                    invent_seq,                       --棚卸SEQ
+             xsdl.item_price                    item_price,                       --定価
+             xsdl.inventory_item_id             inventory_item_id,                --品目ID
+             xsdl.business_cost                 business_cost,                    --営業原価
+             xsdl.standard_cost                 standard_cost,                    --標準原価
+             xsdl.item_sales_amount             item_sales_amount,                --店舗品目別販売金額
+             xsdl.uom_code                      uom_code,                         --単位コード
+             xsdl.sales_quantity                sales_quantity,                   --販売数
+             xsdl.delivery_base_code            delivery_base_code,               --納品拠点コード
+             xsdl.ship_from_subinventory_code   ship_from_subinventory_code,      --出荷元保管場所
+             amt.past_sale_base_code            past_sale_base_code,              --前月売上拠点コード
+             amt.tax_div                        tax_div,                          --消費税区分
+             amt.tax_rounding_rule              tax_rounding_rule,                --税金－端数処理
+             avta.tax_code                      tax_code,                         --AR税コード
+             avta.tax_rate                      tax_rate,                         --消費税率
+             xchv.cash_receiv_base_code         cash_receiv_base_code               --入金拠点コード
+      FROM   xxcos_shop_digestion_hdrs xsdh,    -- 店舗別用消化計算ヘッダテーブル
+             xxcos_shop_digestion_lns  xsdl,    -- 店舗別用消化計算明細テーブル
+             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+             ar_vat_tax_all_b          avta,    -- AR税金マスタ
+             fnd_lookup_values         flv,
+             -- 管理元拠点
+             (
+              SELECT hca1.account_number      account_number        --顧客コード
+                    ,xca1.past_sale_base_code past_sale_base_code   --前月売上拠点コード
+                    ,xca1.tax_div             tax_div               --消費税区分
+                    ,hca1.tax_rounding_rule   tax_rounding_rule     --税金－端数処理
+              FROM   hz_cust_accounts    hca1,                   --顧客マスタ
+                     xxcmm_cust_accounts xca1                    --顧客アドオン
+              WHERE  hca1.cust_account_id     = xca1.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+              AND    EXISTS (SELECT flv.meaning
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_cust_type
+                             AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = hca1.customer_class_code
+                            ) --顧客マスタ.顧客区分 = 10(顧客)
+              AND    EXISTS (SELECT   hcae1.account_number --拠点コード
+                               FROM   hz_cust_accounts    hcae1,
+                                      xxcmm_cust_accounts xcae1,
+                                      fnd_lookup_values   flv
+                               WHERE  hcae1.cust_account_id = xcae1.customer_id--顧客マスタ.顧客ID =顧客アドオン.顧客ID
+                               AND    flv.lookup_type      = ct_qct_cust_type
+                               AND    flv.lookup_code      LIKE ct_qcc_cust_code_1
+                               AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                           AND     NVL( flv.end_date_active, gd_last_month_date )
+                               AND    flv.enabled_flag     = ct_enabled_flag_yes
+                               AND    flv.language         = ct_lang
+                               AND    flv.meaning          = hcae1.customer_class_code
+                               AND    xcae1.management_base_code = iv_base_code --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+                               AND    hcae1.account_number = NVL( xca1.past_sale_base_code,xca1.sale_base_code )
+                              ) --管理拠点に所属する拠点コード=顧客アドオン.前月拠点or売上拠点
+              AND    hca1.account_number = iv_customer_number  --顧客コード=INパラ(顧客コード)
+              AND    EXISTS (SELECT flv.meaning
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_gyo_type
+                             AND    flv.lookup_code      LIKE ct_qcc_it_code
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = xca1.business_low_type
+                            )  --業態小分類=インショップ,当社直営店
+              UNION
+              -- 自拠点
+              SELECT  hca2.account_number      account_number       --顧客コード
+                     ,xca2.past_sale_base_code past_sale_base_code  --前月売上拠点コード
+                     ,xca2.tax_div             tax_div              --消費税率
+                     ,hca2.tax_rounding_rule   tax_rounding_rule    --税金－端数処理
+              FROM   hz_cust_accounts    hca2,                   --顧客マスタ
+                     xxcmm_cust_accounts xca2                    --顧客アドオン
+              WHERE  hca2.cust_account_id     = xca2.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+              AND    EXISTS (SELECT flv.meaning
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_cust_type
+                             AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = hca2.customer_class_code
+                            ) --顧客マスタ.顧客区分 = 10(顧客)
+              AND    (
+                      xca2.past_sale_base_code = iv_base_code
+                      OR
+                      xca2.sale_base_code      = iv_base_code
+                     ) --顧客アドオン.前月拠点or売上拠点 = INパラ拠点コード
+              AND    hca2.account_number = iv_customer_number  --顧客コード=INパラ(顧客コード)
+              AND    EXISTS (SELECT flv.meaning
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_gyo_type
+                             AND    flv.lookup_code      LIKE ct_qcc_it_code
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = xca2.business_low_type
+                            )  --業態小分類=インショップ,当社直営店
+             ) amt
+      WHERE  amt.account_number                        = xsdh.customer_number       --ヘッダ.顧客コード           = 取得した顧客コード
+      AND    xsdh.shop_digestion_hdr_id                = xsdl.shop_digestion_hdr_id --ヘッダ.ヘッダID             = 明細.ヘッダID
+      AND    xsdh.sales_result_creation_flag           = ct_make_flag_no            --ヘッダ.販売実績作成済フラグ = ‘N’
+      AND    xsdh.uncalculate_class                    = ct_un_calc_flag_0          --ヘッダ.未計算区分(0)
+      AND    flv.lookup_type                           = ct_qct_tax_type
+      AND    gd_last_month_date                        BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                       AND     NVL( flv.end_date_active, gd_last_month_date )
+      AND    flv.enabled_flag                          = ct_enabled_flag_yes
+      AND    flv.language                              = ct_lang
+      AND    flv.attribute3                            = amt.tax_div                --税コード特定マスタ.DFF3     = 顧客マスタ. 消費税区分
+      AND    flv.attribute2                            = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
+      AND    avta.set_of_books_id                      = gn_gl_id                   --AR税金マスタ.セットブックス = GL会計帳簿ID
+      AND    avta.enabled_flag                         = ct_tax_enabled_yes         --AR税金マスタ.有効           = 'Y'
+      AND    avta.start_date                          <= gd_last_month_date         --AR税金マスタ.有効日自      <= 消化計算締日
+      AND    NVL( avta.end_date, gd_last_month_date ) >= gd_last_month_date         --AR税金マスタ.有効日至      >= 消化計算締日
+      AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+      AND    xsdl.sales_quantity                      != cn_sales_zero
+      AND   NOT EXISTS(
+                        SELECT flv.lookup_code               not_inv_code
+                        FROM   fnd_lookup_values             flv
+                        WHERE  flv.lookup_type      = ct_qct_not_inv_type
+                        AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                    AND     NVL( flv.end_date_active, gd_last_month_date )
+                        AND    flv.enabled_flag     = ct_enabled_flag_yes
+                        AND    flv.language         = ct_lang
+                        AND    flv.lookup_code      = xsdl.item_code
+                      )
+      ORDER BY xsdh.shop_digestion_hdr_id,xsdl.shop_digestion_ln_id
+      FOR UPDATE OF xsdh.shop_digestion_hdr_id,xsdl.invent_seq NOWAIT
+      ;
+    -- 随時（拠点指定時）
+    CURSOR get_data_cur_base
+    IS
+        SELECT
+             xsdh.shop_digestion_hdr_id         shop_digestion_hdr_id,            --店舗別用消化計算ヘッダID
+             xsdh.digestion_due_date            digestion_due_date,               --消化計算締年月日
+             xsdh.customer_number               customer_number,                  --顧客コード
+             xsdh.sales_base_code               sales_base_code,                  --売上拠点コード
+             xsdh.cust_account_id               cust_account_id,                  --顧客ID
+             xsdh.digestion_exe_date            digestion_exe_date,               --消化計算実行日
+             xsdh.ar_sales_amount               ar_sales_amount,                  --店舗別売上金額
+             xsdh.check_sales_amount            check_sales_amount,               --チェック用売上金額
+             xsdh.digestion_calc_rate           digestion_calc_rate,              --消化計算掛率
+             xsdh.master_rate                   master_rate,                      --マスタ掛率
+             xsdh.balance_amount                balance_amount,                   --差額
+             xsdh.cust_gyotai_sho               cust_gyotai_sho,                  --業態小分類
+             xsdh.performance_by_code           performance_by_code,              --成績者コード
+             xsdh.sales_result_creation_date    sales_result_creation_date,       --販売実績登録日
+             xsdh.sales_result_creation_flag    sales_result_creation_flag,       --販売実績作成済フラグ
+             xsdh.pre_digestion_due_date        pre_digestion_due_date,           --前回消化計算締年月日
+             xsdh.uncalculate_class             uncalculate_class,                --未計算区分
+             xsdl.shop_digestion_ln_id          shop_digestion_ln_id,             --店舗別用消化計算明細ID
+             xsdl.digestion_ln_number           digestion_ln_number,              --枝番
+             xsdl.item_code                     item_code,                        --品目コード
+             xsdl.invent_seq                    invent_seq,                       --棚卸SEQ
+             xsdl.item_price                    item_price,                       --定価
+             xsdl.inventory_item_id             inventory_item_id,                --品目ID
+             xsdl.business_cost                 business_cost,                    --営業原価
+             xsdl.standard_cost                 standard_cost,                    --標準原価
+             xsdl.item_sales_amount             item_sales_amount,                --店舗品目別販売金額
+             xsdl.uom_code                      uom_code,                         --単位コード
+             xsdl.sales_quantity                sales_quantity,                   --販売数
+             xsdl.delivery_base_code            delivery_base_code,               --納品拠点コード
+             xsdl.ship_from_subinventory_code   ship_from_subinventory_code,      --出荷元保管場所
+             amt.past_sale_base_code            past_sale_base_code,              --前月売上拠点コード
+             amt.tax_div                        tax_div,                          --消費税区分
+             amt.tax_rounding_rule              tax_rounding_rule,                --税金－端数処理
+             avta.tax_code                      tax_code,                         --AR税コード
+             avta.tax_rate                      tax_rate,                         --消費税率
+             xchv.cash_receiv_base_code         cash_receiv_base_code               --入金拠点コード
+      FROM   xxcos_shop_digestion_hdrs xsdh,    -- 店舗別用消化計算ヘッダテーブル
+             xxcos_shop_digestion_lns  xsdl,    -- 店舗別用消化計算明細テーブル
+             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+             ar_vat_tax_all_b          avta,    -- AR税金マスタ
+             fnd_lookup_values         flv,
+             (
+              -- 管理元拠点
+              SELECT hca1.account_number  account_number            --顧客コード
+                    ,xca1.past_sale_base_code past_sale_base_code   --前月売上拠点コード
+                    ,xca1.tax_div             tax_div               --消費税区分
+                    ,hca1.tax_rounding_rule   tax_rounding_rule     --税金－端数処理
+              FROM   hz_cust_accounts    hca1,                   --顧客マスタ
+                     xxcmm_cust_accounts xca1                    --顧客アドオン
+              WHERE  hca1.cust_account_id     = xca1.customer_id  --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+              AND    EXISTS (SELECT flv.meaning
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_cust_type
+                             AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = hca1.customer_class_code
+                            ) --顧客マスタ.顧客区分 = 10(顧客)
+              AND    EXISTS (SELECT   hcae1.account_number --拠点コード
+                               FROM   hz_cust_accounts    hcae1,
+                                      xxcmm_cust_accounts xcae1,
+                                      fnd_lookup_values   flv
+                               WHERE  hcae1.cust_account_id = xcae1.customer_id--顧客マスタ.顧客ID =顧客アドオン.顧客ID
+                               AND    flv.lookup_type      = ct_qct_cust_type
+                               AND    flv.lookup_code      LIKE ct_qcc_cust_code_1
+                               AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                           AND     NVL( flv.end_date_active, gd_last_month_date )
+                               AND    flv.enabled_flag     = ct_enabled_flag_yes
+                               AND    flv.language         = ct_lang
+                               AND    flv.meaning          = hcae1.customer_class_code
+                               AND    xcae1.management_base_code = iv_base_code --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+                               AND    hcae1.account_number = NVL( xca1.past_sale_base_code,xca1.sale_base_code )
+                              ) --管理拠点に所属する拠点コード=顧客アドオン.前月拠点or売上拠点
+              AND    EXISTS (SELECT flv.meaning
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_gyo_type
+                             AND    flv.lookup_code      LIKE ct_qcc_it_code
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = xca1.business_low_type
+                            )  --業態小分類=インショップ,当社直営店
+              UNION
+              -- 自拠点
+              SELECT hca2.account_number      account_number        --顧客コード
+                    ,xca2.past_sale_base_code past_sale_base_code   --前月売上拠点コード
+                    ,xca2.tax_div             tax_div               --消費税区分
+                    ,hca2.tax_rounding_rule   tax_rounding_rule     --税金－端数処理
+              FROM   hz_cust_accounts    hca2,                   --顧客マスタ
+                     xxcmm_cust_accounts xca2                    --顧客アドオン
+              WHERE  hca2.cust_account_id     = xca2.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+              AND    EXISTS (SELECT flv.meaning
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_cust_type
+                             AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = hca2.customer_class_code
+                            ) --顧客マスタ.顧客区分 = 10(顧客)
+              AND    (
+                      xca2.past_sale_base_code = iv_base_code
+                      OR
+                      xca2.sale_base_code      = iv_base_code
+                     )--顧客アドオン.前月拠点or売上拠点 = INパラ拠点コード
+              AND    EXISTS (SELECT flv.meaning
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_gyo_type
+                             AND    flv.lookup_code      LIKE ct_qcc_it_code
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = xca2.business_low_type
+                            )  --業態小分類=インショップ,当社直営店
+             ) amt
+      WHERE  amt.account_number                        = xsdh.customer_number       --ヘッダ.顧客コード           = 取得した顧客コード
+      AND    xsdh.shop_digestion_hdr_id                = xsdl.shop_digestion_hdr_id --ヘッダ.ヘッダID             = 明細.ヘッダID
+      AND    xsdh.sales_result_creation_flag           = ct_make_flag_no            --ヘッダ.販売実績作成済フラグ = ‘N’
+      AND    xsdh.uncalculate_class                    = ct_un_calc_flag_0          --ヘッダ.未計算区分(0)
+      AND    flv.lookup_type                           = ct_qct_tax_type
+      AND    gd_last_month_date                        BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                       AND     NVL( flv.end_date_active, gd_last_month_date )
+      AND    flv.enabled_flag                          = ct_enabled_flag_yes
+      AND    flv.language                              = ct_lang
+      AND    flv.attribute3                            = amt.tax_div                --税コード特定マスタ.DFF3     = 顧客マスタ. 消費税区分
+      AND    flv.attribute2                            = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
+      AND    avta.set_of_books_id                      = gn_gl_id                   --AR税金マスタ.セットブックス = GL会計帳簿ID
+      AND    avta.enabled_flag                         = ct_tax_enabled_yes         --AR税金マスタ.有効           = 'Y'
+      AND    avta.start_date                          <= gd_last_month_date         --AR税金マスタ.有効日自      <= 消化計算締日
+      AND    NVL( avta.end_date, gd_last_month_date ) >= gd_last_month_date         --AR税金マスタ.有効日至      >= 消化計算締日
+      AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+      AND    xsdl.sales_quantity                      != cn_sales_zero
+      AND   NOT EXISTS(
+                        SELECT flv.lookup_code               not_inv_code
+                        FROM   fnd_lookup_values             flv
+                        WHERE  flv.lookup_type      = ct_qct_not_inv_type
+                        AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                    AND     NVL( flv.end_date_active, gd_last_month_date )
+                        AND    flv.enabled_flag     = ct_enabled_flag_yes
+                        AND    flv.language         = ct_lang
+                        AND    flv.lookup_code      = xsdl.item_code
+                      )
+      ORDER BY xsdh.shop_digestion_hdr_id,xsdl.shop_digestion_ln_id
+      FOR UPDATE OF xsdh.shop_digestion_hdr_id,xsdl.invent_seq NOWAIT
+      ;
+-- Ver1.21 Add End
     -- *** ローカル・レコード ***
 --
 --
@@ -1458,13 +1774,40 @@ AS
     -- ***************************************
     --対象データ取得用カーソルOPEN
     BEGIN
-      OPEN get_data_cur;
-      -- バルクフェッチ
-      FETCH get_data_cur BULK COLLECT INTO gt_tab_work_data;
-      --取得件数
-      gn_list_cnt := get_data_cur%ROWCOUNT;
-      -- カーソルCLOSE
-      CLOSE get_data_cur;
+-- Ver.1.21 Add Start
+      -- 定期の場合
+      IF ( iv_exec_div = cv_exec_div_1 ) THEN
+-- Ver.1.21 Add End
+        OPEN get_data_cur;
+        -- バルクフェッチ
+        FETCH get_data_cur BULK COLLECT INTO gt_tab_work_data;
+        --取得件数
+        gn_list_cnt := get_data_cur%ROWCOUNT;
+        -- カーソルCLOSE
+        CLOSE get_data_cur;
+-- Ver.1.21 Add Start
+      -- 随時の場合
+      ELSE
+        --顧客指定
+        IF ( iv_customer_number IS NOT NULL ) THEN
+          OPEN get_data_cur_cust;
+          -- バルクフェッチ
+          FETCH get_data_cur_cust BULK COLLECT INTO gt_tab_work_data;
+          --取得件数
+          gn_list_cnt := get_data_cur_cust%ROWCOUNT;
+          -- カーソルCLOSE
+          CLOSE get_data_cur_cust;
+        ELSE
+          OPEN get_data_cur_base;
+          -- バルクフェッチ
+          FETCH get_data_cur_base BULK COLLECT INTO gt_tab_work_data;
+          --取得件数
+          gn_list_cnt := get_data_cur_base%ROWCOUNT;
+          -- カーソルCLOSE
+          CLOSE get_data_cur_base;
+        END IF;
+      END IF;
+-- Ver.1.21 Add End
     EXCEPTION
 --****************************** 2009/06/09 1.12 T.Kitajima ADD START ******************************--
       WHEN global_data_lock_expt THEN
@@ -1472,6 +1815,14 @@ AS
         IF ( get_data_cur%ISOPEN ) THEN
           CLOSE get_data_cur;
         END IF;
+--Ver1.21 Add Start
+        IF ( get_data_cur_cust%ISOPEN ) THEN
+          CLOSE get_data_cur_cust;
+        END IF;
+        IF ( get_data_cur_base%ISOPEN ) THEN
+          CLOSE get_data_cur_base;
+        END IF;
+--Ver1.21 Add End
         RAISE global_data_lock_expt;
 --****************************** 2009/06/09 1.12 T.Kitajima ADD  END  ******************************--
       WHEN OTHERS THEN
@@ -1479,6 +1830,14 @@ AS
         IF ( get_data_cur%ISOPEN ) THEN
           CLOSE get_data_cur;
         END IF;
+--Ver1.21 Add Start
+        IF ( get_data_cur_cust%ISOPEN ) THEN
+          CLOSE get_data_cur_cust;
+        END IF;
+        IF ( get_data_cur_base%ISOPEN ) THEN
+          CLOSE get_data_cur_base;
+        END IF;
+--Ver1.21 Add End
         --
         RAISE global_select_err_expt;
     END;
@@ -3213,6 +3572,9 @@ AS
     get_object_data(
        iv_base_code       -- 拠点コード
       ,iv_customer_number -- 顧客コード
+--Ver1.21 Add Start
+      ,iv_exec_div        -- 定期随時区分
+--Ver1.21 Add End
       ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode         -- リターン・コード             --# 固定 #
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
