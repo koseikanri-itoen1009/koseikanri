@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF015A34C(body)
  * Description      : 自販機リース料予算作成
  * MD.050           : 自販機リース料予算作成 MD050_CFF_015_A34
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2014/09/29    1.1   SCSK 小路恭弘    E_本稼働_11719対応
  *  2014/10/08    1.2   SCSK 小路恭弘    E_本稼働_11719対応 不具合対応
  *  2014/10/17    1.3   SCSK 小路恭弘    E_本稼動_11719対応 不具合対応
+ *  2017/08/17    1.4   SCSK 小路恭弘    E_本稼動_14390対応
  *
  *****************************************************************************************/
 --
@@ -132,6 +133,11 @@ AS
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD START
   cv_msg_xxcff_50275        CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50275'; -- XXCFF:リース料率
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD END
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+  cv_msg_xxcff_50230        CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50230'; -- 減価償却期間
+  cv_msg_xxcff_50273        CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50273'; -- XXCFF:台帳名
+  cv_msg_xxcff_50287        CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50287'; -- XXCFF:台帳名_FINリース台帳
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
   -- トークン
   cv_tkn_prof               CONSTANT VARCHAR2(10)  := 'PROF_NAME';        -- プロファイル名
   cv_tkn_table_name         CONSTANT VARCHAR2(10)  := 'TABLE_NAME';       -- テーブル名
@@ -157,6 +163,10 @@ AS
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD START
   cv_lease_rate             CONSTANT VARCHAR2(30)  := 'XXCFF1_LEASE_RATE';               -- リース料率
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD END
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+  cv_book_type_fin_lease    CONSTANT VARCHAR2(30)  := 'XXCFF1_FIN_LEASE_BOOKS';          -- XXCFF:台帳名_FINリース台帳
+  cv_book_type_fixed_asset  CONSTANT VARCHAR2(30)  := 'XXCFF1_FIXED_ASSETS_BOOKS';       -- XXCFF:台帳名
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
   -- 値セット
   cv_department             CONSTANT VARCHAR2(40)  := 'XX03_DEPARTMENT';   -- 部門
   -- 資産会計年度名
@@ -217,6 +227,10 @@ AS
   cn_lease_type_1_year      CONSTANT NUMBER        := 5;         -- 原契約期間
   -- 言語
   ct_language               CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG'); -- 言語
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+  cv_lease_amt_kbn_1        CONSTANT VARCHAR2(1)   := '1';       -- リース料区分：リース料
+  cv_lease_amt_kbn_2        CONSTANT VARCHAR2(1)   := '2';       -- リース料区分：減価償却費
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -340,6 +354,10 @@ AS
     ,moved_date                      xxcff_vd_object_headers.moved_date%TYPE
     ,date_retired                    xxcff_vd_object_headers.date_retired%TYPE
     ,assets_cost                     xxcff_vd_object_headers.assets_cost%TYPE
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+    ,deprn_amount                    fa_deprn_detail.deprn_amount%TYPE
+    ,org_end_months                  xxcff_vd_object_headers.date_placed_in_service%TYPE
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
   );
   TYPE g_vd_budget_ttype          IS TABLE OF g_vd_budget_rtype INDEX BY PLS_INTEGER;
   -- 固定資産物件履歴の修正情報
@@ -405,6 +423,12 @@ AS
   gn_april_cost                      NUMBER;   -- 4月_取得価格
   gn_count                           NUMBER;   -- レコード取得カウント用
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD END
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+  gv_book_type_fin_lease             VARCHAR2(15) DEFAULT NULL; -- XXCFF:台帳名_FINリース台帳
+  gv_book_type_fixed_asset           VARCHAR2(15) DEFAULT NULL; -- XXCFF:台帳名
+  gv_lease_amt_kbn                   VARCHAR2(1)  DEFAULT NULL; -- リース料区分
+  gv_assets_kbn                      VARCHAR2(1)  DEFAULT NULL; -- 資産区分
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
   -- 初期処理情報格納配列
   g_init_rec                         xxcff_common1_pkg.init_rtype;
   -- 出力前年度および出力年度情報格納配列
@@ -803,6 +827,42 @@ AS
     END;
 --
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD END
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+    --======================================================
+    -- XXCFF:台帳名_FINリース台帳
+    --======================================================
+    gv_book_type_fin_lease := FND_PROFILE.VALUE(cv_book_type_fin_lease);
+    -- プロファイルが取得できない場合
+    IF ( gv_book_type_fin_lease IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                              iv_application  => cv_appl_short_name_cff
+                             ,iv_name         => cv_msg_xxcff_00020
+                             ,iv_token_name1  => cv_tkn_prof
+                             ,iv_token_value1 => cv_msg_xxcff_50287)
+                                                   , 1
+                                                   , 5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --======================================================
+    -- XXCFF:台帳名
+    --======================================================
+    gv_book_type_fixed_asset := FND_PROFILE.VALUE(cv_book_type_fixed_asset);
+    -- プロファイルが取得できない場合
+    IF ( gv_book_type_fixed_asset IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                              iv_application  => cv_appl_short_name_cff
+                             ,iv_name         => cv_msg_xxcff_00020
+                             ,iv_token_name1  => cv_tkn_prof
+                             ,iv_token_value1 => cv_msg_xxcff_50273)
+                                                   , 1
+                                                   , 5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
   EXCEPTION
     -- *** 共通関数例外ハンドラ ****
     WHEN global_api_expt THEN
@@ -1353,6 +1413,12 @@ AS
           ELSIF ( j = 41 ) THEN
             ln_ot_lease_charge                             := TO_NUMBER(lv_head_data);                 -- 新台リース料_その他
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD END
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+          ELSIF ( j = 42 ) THEN
+            gv_lease_amt_kbn                               := lv_head_data;                            -- リース料区分
+          ELSIF ( j = 43 ) THEN
+            gv_assets_kbn                                  := lv_head_data;                            -- 資産区分
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
           END IF;
         END LOOP char_delim_head_loop;
       -- 明細（新規台数）行
@@ -3708,6 +3774,9 @@ AS
     ln_february_number               NUMBER DEFAULT 0;         -- 2月_台数
     ln_march_number                  NUMBER DEFAULT 0;         -- 3月_台数
     ln_april_number                  NUMBER DEFAULT 0;         -- 4月_台数
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+    ln_sum_number                    NUMBER DEFAULT 0;         -- 合計台数
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
 --
   BEGIN
 --
@@ -3722,8 +3791,12 @@ AS
       -- 比較のために日付書式を変換（YYYY-MM）
       ld_start_months := TRUNC(id_start_months, cv_format_mm);
       ld_end_months   := TRUNC(id_end_months, cv_format_mm);
-      -- 処理開始月が処理終了月以前の場合に処理する
-      IF ( ld_start_months <= ld_end_months ) THEN
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
+      -- 処理開始月が処理終了月以前、かつリース料区分が1（リース料）の場合
+--      IF ( ld_start_months <= ld_end_months ) THEN
+      IF (  ld_start_months <= ld_end_months 
+        AND gv_lease_amt_kbn = cv_lease_amt_kbn_1 ) THEN
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD END
         -- 台数設定
         -- 月が対象期間内かつ取得価格が0ではない場合、台数1
         IF ( ( TO_DATE(g_next_year_rec.may, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_may_cost <> 0 )) THEN
@@ -3776,9 +3849,69 @@ AS
         ln_february_charge  := TRUNC(ln_february_number * gn_february_cost  * gn_lease_rate / 100); -- 2月_リース料
         ln_march_charge     := TRUNC(ln_march_number    * gn_march_cost     * gn_lease_rate / 100); -- 3月_リース料
         ln_april_charge     := TRUNC(ln_april_number    * gn_april_cost     * gn_lease_rate / 100); -- 4月_リース料
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+      -- 処理開始月が処理終了月以前、かつリース料区分が2（減価償却費）の場合
+      ELSIF ( ld_start_months <= ld_end_months 
+        AND   gv_lease_amt_kbn = cv_lease_amt_kbn_2 ) THEN
+        -- 台数設定
+        -- 月が対象期間内の場合
+        IF ( TO_DATE(g_next_year_rec.may, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_may_number       := 1; -- 5月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.june, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_june_number      := 1; -- 6月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.july, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_july_number      := 1; -- 7月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.august, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_august_number    := 1; -- 8月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.september, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_september_number := 1; -- 9月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.october, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_october_number   := 1; -- 10月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.november, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_november_number  := 1; -- 11月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.december, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_december_number  := 1; -- 12月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.january, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_january_number   := 1; -- 1月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.february, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_february_number  := 1; -- 2月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.march, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_march_number     := 1; -- 3月_台数
+        END IF;
+        IF ( TO_DATE(g_next_year_rec.april, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+          ln_april_number     := 1; -- 4月_台数
+        END IF;
+        -- X月_台数 * X月_取得価格（減価償却費）
+        ln_may_charge       := ln_may_number       * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 5月_リース料
+        ln_june_charge      := ln_june_number      * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 6月_リース料
+        ln_july_charge      := ln_july_number      * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 7月_リース料
+        ln_august_charge    := ln_august_number    * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 8月_リース料
+        ln_september_charge := ln_september_number * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 9月_リース料
+        ln_october_charge   := ln_october_number   * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 10月_リース料
+        ln_november_charge  := ln_november_number  * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 11月_リース料
+        ln_december_charge  := ln_december_number  * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 12月_リース料
+        ln_january_charge   := ln_january_number   * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 1月_リース料
+        ln_february_charge  := ln_february_number  * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 2月_リース料
+        ln_march_charge     := ln_march_number     * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 3月_リース料
+        ln_april_charge     := ln_april_number     * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 4月_リース料
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       END IF;
-    -- リース区分が'2'（再リース）の場合
-    ELSIF ( iv_lease_type = cv_lease_type_2 ) THEN
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
+    -- リース区分が'2'（再リース）、かつリース料区分が1（リース料）の場合
+--    ELSIF ( iv_lease_type = cv_lease_type_2 ) THEN
+    ELSIF ( iv_lease_type    = cv_lease_type_2
+      AND   gv_lease_amt_kbn = cv_lease_amt_kbn_1 ) THEN
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD END
       -- 再リース月のみを取得
       ln_re_lease_months := SUBSTR(TO_CHAR(g_vd_budget_bulk_tab(gn_count).date_placed_in_service, cv_format_yyyymm), 6, 2);
       -- 再リースに使用する取得価格と再リース年月を設定
@@ -3874,43 +4007,90 @@ AS
         ln_april_number     := 1;                  -- 4月_台数
       END IF;
     END IF;
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
     -- リース料予算用情報格納配列設定
-    g_lease_budget_tab(gn_line_cnt).record_type      := cv_record_type_1;                                -- レコード区分
-    g_lease_budget_tab(gn_line_cnt).lease_class      := g_vd_budget_bulk_tab(gn_count).lease_class;      -- リース種別
-    g_lease_budget_tab(gn_line_cnt).lease_class_name := g_vd_budget_bulk_tab(gn_count).lease_class_name; -- リース種別名
-    g_lease_budget_tab(gn_line_cnt).lease_type       := iv_lease_type;                                   -- リース区分
-    g_lease_budget_tab(gn_line_cnt).lease_type_name  := iv_lease_type_name;                              -- リース区分名
-    g_lease_budget_tab(gn_line_cnt).chiku_code       := iv_chiku_code;                                   -- 地区コード
-    g_lease_budget_tab(gn_line_cnt).department_code  := iv_department_code;                              -- 拠点コード
-    g_lease_budget_tab(gn_line_cnt).department_name  := iv_department_name;                              -- 拠点名
-    g_lease_budget_tab(gn_line_cnt).object_name      := g_vd_budget_bulk_tab(gn_count).object_name;      -- 物件コード
-    g_lease_budget_tab(gn_line_cnt).lease_start_year := g_vd_budget_bulk_tab(gn_count).lease_start_year; -- リース開始年度
-    g_lease_budget_tab(gn_line_cnt).may_charge       := ln_may_charge;                                   -- 5月_リース料
-    g_lease_budget_tab(gn_line_cnt).may_number       := ln_may_number;                                   -- 5月_台数
-    g_lease_budget_tab(gn_line_cnt).june_charge      := ln_june_charge;                                  -- 6月_リース料
-    g_lease_budget_tab(gn_line_cnt).june_number      := ln_june_number;                                  -- 6月_台数
-    g_lease_budget_tab(gn_line_cnt).july_charge      := ln_july_charge;                                  -- 7月_リース料
-    g_lease_budget_tab(gn_line_cnt).july_number      := ln_july_number;                                  -- 7月_台数
-    g_lease_budget_tab(gn_line_cnt).august_charge    := ln_august_charge;                                -- 8月_リース料
-    g_lease_budget_tab(gn_line_cnt).august_number    := ln_august_number;                                -- 8月_台数
-    g_lease_budget_tab(gn_line_cnt).september_charge := ln_september_charge;                             -- 9月_リース料
-    g_lease_budget_tab(gn_line_cnt).september_number := ln_september_number;                             -- 9月_台数
-    g_lease_budget_tab(gn_line_cnt).october_charge   := ln_october_charge;                               -- 10月_リース料
-    g_lease_budget_tab(gn_line_cnt).october_number   := ln_october_number;                               -- 10月_台数
-    g_lease_budget_tab(gn_line_cnt).november_charge  := ln_november_charge;                              -- 11月_リース料
-    g_lease_budget_tab(gn_line_cnt).november_number  := ln_november_number;                              -- 11月_台数
-    g_lease_budget_tab(gn_line_cnt).december_charge  := ln_december_charge;                              -- 12月_リース料
-    g_lease_budget_tab(gn_line_cnt).december_number  := ln_december_number;                              -- 12月_台数
-    g_lease_budget_tab(gn_line_cnt).january_charge   := ln_january_charge;                               -- 1月_リース料
-    g_lease_budget_tab(gn_line_cnt).january_number   := ln_january_number;                               -- 1月_台数
-    g_lease_budget_tab(gn_line_cnt).february_charge  := ln_february_charge;                              -- 2月_リース料
-    g_lease_budget_tab(gn_line_cnt).february_number  := ln_february_number;                              -- 2月_台数
-    g_lease_budget_tab(gn_line_cnt).march_charge     := ln_march_charge;                                 -- 3月_リース料
-    g_lease_budget_tab(gn_line_cnt).march_number     := ln_march_number;                                 -- 3月_台数
-    g_lease_budget_tab(gn_line_cnt).april_charge     := ln_april_charge;                                 -- 4月_リース料
-    g_lease_budget_tab(gn_line_cnt).april_number     := ln_april_number;                                 -- 4月_台数
-    -- カウントアップ
-    gn_line_cnt := gn_line_cnt + 1;
+--    g_lease_budget_tab(gn_line_cnt).record_type      := cv_record_type_1;                                -- レコード区分
+--    g_lease_budget_tab(gn_line_cnt).lease_class      := g_vd_budget_bulk_tab(gn_count).lease_class;      -- リース種別
+--    g_lease_budget_tab(gn_line_cnt).lease_class_name := g_vd_budget_bulk_tab(gn_count).lease_class_name; -- リース種別名
+--    g_lease_budget_tab(gn_line_cnt).lease_type       := iv_lease_type;                                   -- リース区分
+--    g_lease_budget_tab(gn_line_cnt).lease_type_name  := iv_lease_type_name;                              -- リース区分名
+--    g_lease_budget_tab(gn_line_cnt).chiku_code       := iv_chiku_code;                                   -- 地区コード
+--    g_lease_budget_tab(gn_line_cnt).department_code  := iv_department_code;                              -- 拠点コード
+--    g_lease_budget_tab(gn_line_cnt).department_name  := iv_department_name;                              -- 拠点名
+--    g_lease_budget_tab(gn_line_cnt).object_name      := g_vd_budget_bulk_tab(gn_count).object_name;      -- 物件コード
+--    g_lease_budget_tab(gn_line_cnt).lease_start_year := g_vd_budget_bulk_tab(gn_count).lease_start_year; -- リース開始年度
+--    g_lease_budget_tab(gn_line_cnt).may_charge       := ln_may_charge;                                   -- 5月_リース料
+--    g_lease_budget_tab(gn_line_cnt).may_number       := ln_may_number;                                   -- 5月_台数
+--    g_lease_budget_tab(gn_line_cnt).june_charge      := ln_june_charge;                                  -- 6月_リース料
+--    g_lease_budget_tab(gn_line_cnt).june_number      := ln_june_number;                                  -- 6月_台数
+--    g_lease_budget_tab(gn_line_cnt).july_charge      := ln_july_charge;                                  -- 7月_リース料
+--    g_lease_budget_tab(gn_line_cnt).july_number      := ln_july_number;                                  -- 7月_台数
+--    g_lease_budget_tab(gn_line_cnt).august_charge    := ln_august_charge;                                -- 8月_リース料
+--    g_lease_budget_tab(gn_line_cnt).august_number    := ln_august_number;                                -- 8月_台数
+--    g_lease_budget_tab(gn_line_cnt).september_charge := ln_september_charge;                             -- 9月_リース料
+--    g_lease_budget_tab(gn_line_cnt).september_number := ln_september_number;                             -- 9月_台数
+--    g_lease_budget_tab(gn_line_cnt).october_charge   := ln_october_charge;                               -- 10月_リース料
+--    g_lease_budget_tab(gn_line_cnt).october_number   := ln_october_number;                               -- 10月_台数
+--    g_lease_budget_tab(gn_line_cnt).november_charge  := ln_november_charge;                              -- 11月_リース料
+--    g_lease_budget_tab(gn_line_cnt).november_number  := ln_november_number;                              -- 11月_台数
+--    g_lease_budget_tab(gn_line_cnt).december_charge  := ln_december_charge;                              -- 12月_リース料
+--    g_lease_budget_tab(gn_line_cnt).december_number  := ln_december_number;                              -- 12月_台数
+--    g_lease_budget_tab(gn_line_cnt).january_charge   := ln_january_charge;                               -- 1月_リース料
+--    g_lease_budget_tab(gn_line_cnt).january_number   := ln_january_number;                               -- 1月_台数
+--    g_lease_budget_tab(gn_line_cnt).february_charge  := ln_february_charge;                              -- 2月_リース料
+--    g_lease_budget_tab(gn_line_cnt).february_number  := ln_february_number;                              -- 2月_台数
+--    g_lease_budget_tab(gn_line_cnt).march_charge     := ln_march_charge;                                 -- 3月_リース料
+--    g_lease_budget_tab(gn_line_cnt).march_number     := ln_march_number;                                 -- 3月_台数
+--    g_lease_budget_tab(gn_line_cnt).april_charge     := ln_april_charge;                                 -- 4月_リース料
+--    g_lease_budget_tab(gn_line_cnt).april_number     := ln_april_number;                                 -- 4月_台数
+--    -- カウントアップ
+--    gn_line_cnt := gn_line_cnt + 1;
+    -- 5月から4月の台数の合計を取得
+    ln_sum_number :=   ln_may_number + ln_june_number + ln_july_number
+                     + ln_august_number + ln_september_number + ln_october_number
+                     + ln_november_number + ln_december_number + ln_january_number
+                     + ln_february_number + ln_march_number + ln_april_number;
+--
+    -- 合計台数が1件以上の場合
+    IF ( ln_sum_number > 0 ) THEN
+      -- リース料予算用情報格納配列設定
+      g_lease_budget_tab(gn_line_cnt).record_type      := cv_record_type_1;                                -- レコード区分
+      g_lease_budget_tab(gn_line_cnt).lease_class      := g_vd_budget_bulk_tab(gn_count).lease_class;      -- リース種別
+      g_lease_budget_tab(gn_line_cnt).lease_class_name := g_vd_budget_bulk_tab(gn_count).lease_class_name; -- リース種別名
+      g_lease_budget_tab(gn_line_cnt).lease_type       := iv_lease_type;                                   -- リース区分
+      g_lease_budget_tab(gn_line_cnt).lease_type_name  := iv_lease_type_name;                              -- リース区分名
+      g_lease_budget_tab(gn_line_cnt).chiku_code       := iv_chiku_code;                                   -- 地区コード
+      g_lease_budget_tab(gn_line_cnt).department_code  := iv_department_code;                              -- 拠点コード
+      g_lease_budget_tab(gn_line_cnt).department_name  := iv_department_name;                              -- 拠点名
+      g_lease_budget_tab(gn_line_cnt).object_name      := g_vd_budget_bulk_tab(gn_count).object_name;      -- 物件コード
+      g_lease_budget_tab(gn_line_cnt).lease_start_year := g_vd_budget_bulk_tab(gn_count).lease_start_year; -- リース開始年度
+      g_lease_budget_tab(gn_line_cnt).may_charge       := ln_may_charge;                                   -- 5月_リース料
+      g_lease_budget_tab(gn_line_cnt).may_number       := ln_may_number;                                   -- 5月_台数
+      g_lease_budget_tab(gn_line_cnt).june_charge      := ln_june_charge;                                  -- 6月_リース料
+      g_lease_budget_tab(gn_line_cnt).june_number      := ln_june_number;                                  -- 6月_台数
+      g_lease_budget_tab(gn_line_cnt).july_charge      := ln_july_charge;                                  -- 7月_リース料
+      g_lease_budget_tab(gn_line_cnt).july_number      := ln_july_number;                                  -- 7月_台数
+      g_lease_budget_tab(gn_line_cnt).august_charge    := ln_august_charge;                                -- 8月_リース料
+      g_lease_budget_tab(gn_line_cnt).august_number    := ln_august_number;                                -- 8月_台数
+      g_lease_budget_tab(gn_line_cnt).september_charge := ln_september_charge;                             -- 9月_リース料
+      g_lease_budget_tab(gn_line_cnt).september_number := ln_september_number;                             -- 9月_台数
+      g_lease_budget_tab(gn_line_cnt).october_charge   := ln_october_charge;                               -- 10月_リース料
+      g_lease_budget_tab(gn_line_cnt).october_number   := ln_october_number;                               -- 10月_台数
+      g_lease_budget_tab(gn_line_cnt).november_charge  := ln_november_charge;                              -- 11月_リース料
+      g_lease_budget_tab(gn_line_cnt).november_number  := ln_november_number;                              -- 11月_台数
+      g_lease_budget_tab(gn_line_cnt).december_charge  := ln_december_charge;                              -- 12月_リース料
+      g_lease_budget_tab(gn_line_cnt).december_number  := ln_december_number;                              -- 12月_台数
+      g_lease_budget_tab(gn_line_cnt).january_charge   := ln_january_charge;                               -- 1月_リース料
+      g_lease_budget_tab(gn_line_cnt).january_number   := ln_january_number;                               -- 1月_台数
+      g_lease_budget_tab(gn_line_cnt).february_charge  := ln_february_charge;                              -- 2月_リース料
+      g_lease_budget_tab(gn_line_cnt).february_number  := ln_february_number;                              -- 2月_台数
+      g_lease_budget_tab(gn_line_cnt).march_charge     := ln_march_charge;                                 -- 3月_リース料
+      g_lease_budget_tab(gn_line_cnt).march_number     := ln_march_number;                                 -- 3月_台数
+      g_lease_budget_tab(gn_line_cnt).april_charge     := ln_april_charge;                                 -- 4月_リース料
+      g_lease_budget_tab(gn_line_cnt).april_number     := ln_april_number;                                 -- 4月_台数
+      -- カウントアップ
+      gn_line_cnt := gn_line_cnt + 1;
+    END IF;
 --
   EXCEPTION
 --
@@ -3977,6 +4157,13 @@ AS
     cv_months_1                      CONSTANT VARCHAR2(2)   := '01';       -- 1月
     cv_months_4                      CONSTANT VARCHAR2(2)   := '04';       -- 4月
     cv_join                          CONSTANT VARCHAR2(1)   := '-';        -- -(ハイフン)
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+    cv_assets_kbn_1                  CONSTANT VARCHAR2(1)   := '1';                        -- 資産区分：リース
+    cv_assets_kbn_2                  CONSTANT VARCHAR2(1)   := '2';                        -- 資産区分：購入
+    cn_deprn_end_months_95           CONSTANT NUMBER        := 95;                         -- 8年償却計算用
+    cn_org_end_months_59             CONSTANT NUMBER        := 59;                         -- 5年計算用
+    cv_asset_category_id             CONSTANT VARCHAR2(27)  := 'XXCFF1_ASSET_CATEGORY_ID'; -- 自販機資産カテゴリ固定値
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
 --
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD END
     -- *** ローカル変数 ***
@@ -3988,7 +4175,7 @@ AS
     ld_output_may                    DATE        DEFAULT NULL;  -- 出力対象初日
     ld_output_april                  DATE        DEFAULT NULL;  -- 出力対象最終日
     ld_creation_date_before          DATE        DEFAULT NULL;  -- 1レコード前の作成日
-    ld_vd_end_months                 DATE        DEFAULT NULL;  -- 原契約終了月（事業供用日から59ヵ月後）
+    ld_vd_end_months                 DATE        DEFAULT NULL;  -- 原契約終了月
     ld_moved_date_before             DATE        DEFAULT NULL;  -- 1レコード前の移動日
     ld_vd_end_output_months          DATE        DEFAULT NULL;  -- 出力年度の事業供用月
     ln_re_lease_flag                 VARCHAR2(1) DEFAULT NULL;  -- 再リース処理フラグ
@@ -3996,6 +4183,9 @@ AS
 -- 2014/10/08 Ver.1.2 Y.Shouji ADD START
     ln_count_his_move                NUMBER      DEFAULT 0;     -- 移動履歴件数
 -- 2014/10/08 Ver.1.2 Y.Shouji ADD END
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+    lt_period_counter                fa_deprn_periods.period_counter%TYPE; -- 最新の期間ID
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -4286,6 +4476,475 @@ AS
            , lease_end_months DESC
     ;
 --
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+    -- リース料予算（減価償却費）抽出カーソル
+    CURSOR get_lease_budget_deprn_cur
+    IS
+      SELECT /*+ LEADING( FFVS FFV FFVT )
+                 INDEX( FFVT FND_FLEX_VALUES_TL_U1 )
+                 INDEX( XOH  XXCFF_OBJECT_HEADERS_N03 )
+                 INDEX( XCL  XXCFF_CONTRACT_LINES_N03)
+                 INDEX( XCH  XXCFF_CONTRACT_HEADERS_PK )
+                 INDEX( FAB  XXCFF_FA_ADDITIONS_B_N04)    */
+             cv_record_type_1                                                             AS record_type         -- レコード区分
+           , xoh.lease_class                                                              AS lease_class         -- リース種別
+           , DECODE(xoh.lease_class, cv_lease_class_11, g_lookup_budget_itemnm_tab(19)
+                                   , cv_lease_class_12, g_lookup_budget_itemnm_tab(20)
+                                   , cv_lease_class_15, g_lookup_budget_itemnm_tab(26)
+                                   , cv_lease_class_16, g_lookup_budget_itemnm_tab(27)
+                                   , cv_lease_class_17, g_lookup_budget_itemnm_tab(28))   AS lease_class_name    -- リース種別名
+           , xch.lease_type                                                               AS lease_type          -- リース区分
+           , g_lookup_budget_itemnm_tab(21)                                               AS lease_type_name     -- リース区分名
+           , hz.chiku_code                                                                AS chiku_code          -- 地区コード
+           , xoh.department_code                                                          AS department_code     -- 拠点コード
+           , ffvt.description                                                             AS department_name     -- 拠点名
+           , xoh.object_code                                                              AS object_name         -- 物件コード
+           , ( SELECT ffy.fiscal_year
+               FROM   fa_fiscal_year ffy
+               WHERE  ffy.fiscal_year_name = cv_fiscal_year_name
+               AND    xch.lease_start_date BETWEEN ffy.start_date
+                                           AND     ffy.end_date )                         AS lease_start_year    -- リース開始年度
+           , CASE
+               WHEN xoh.lease_class = cv_lease_class_11
+                 THEN TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+               WHEN xoh.lease_class <> cv_lease_class_11
+                 THEN TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+             END                                                                          AS lease_end_months    -- リース支払最終月
+           , xch.re_lease_times                                                           AS re_lease_times      -- 再リース回数
+           , cv_re_lease_flag_1                                                           AS re_lease_flag       -- 再リース要フラグ
+           , fdd.deprn_amount                                                             AS lease_type_1_charge -- 原契約金額
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.may <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.may <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS may_charge          -- 5月_リース料
+           , 0                                                                            AS may_number          -- 5月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.june <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.june <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS june_charge         -- 6月_リース料
+           , 0                                                                            AS june_number         -- 6月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.july <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.july <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS july_charge         -- 7月_リース料
+           , 0                                                                            AS july_number         -- 7月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.august <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.august <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS august_charge       -- 8月_リース料
+           , 0                                                                            AS august_number       -- 8月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.september <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.september <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS september_charge    -- 9月_リース料
+           , 0                                                                            AS september_number    -- 9月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.october <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.october <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS october_charge      -- 10月_リース料
+           , 0                                                                            AS october_number      -- 10月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.november <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.november <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS november_charge     -- 11月_リース料
+           , 0                                                                            AS november_number     -- 11月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.december <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.december <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS december_charge     -- 12月_リース料
+           , 0                                                                            AS december_number     -- 12月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.january <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.january <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS january_charge      -- 1月_リース料
+           , 0                                                                            AS january_number      -- 1月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.february <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.february <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS february_charge     -- 2月_リース料
+           , 0                                                                            AS february_number     -- 2月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.march <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.march <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS march_charge        -- 3月_リース料
+           , 0                                                                            AS march_number        -- 3月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.april <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.april <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS april_charge        -- 4月_リース料
+           , 0                                                                            AS april_number        -- 4月_台数
+           , TO_CHAR(xcsi1.cust_shift_date, cv_format_yyyymm)                             AS cust_shift_date     -- 顧客移行日
+           , xcsi1.new_base_code                                                          AS new_base_code       -- 新拠点コード
+           , xcsi1.department_name                                                        AS new_department_name -- 新拠点名
+      FROM   xxcff_contract_headers xch                              -- リース契約ヘッダ
+           , xxcff_contract_lines   xcl                              -- リース契約明細
+           , xxcff_object_headers   xoh                              -- リース物件
+           , fnd_flex_value_sets    ffvs                             -- 値セット値
+           , fnd_flex_values        ffv                              -- 値セット
+           , fnd_flex_values_tl     ffvt                             -- 値定義
+           , fa_additions_b         fab                              -- 資産詳細情報
+           , fa_books               fb                               -- 資産台帳情報
+           , fa_deprn_detail        fdd                              -- 資産償却詳細
+           , ( SELECT hca.account_number     account_number    -- 顧客コード
+                    , hl.address3            chiku_code        -- 地区コード
+               FROM   hz_cust_accounts       hca                              -- 顧客アカウント
+                    , hz_parties             hp                               -- パーティ
+                    , hz_party_sites         hps                              -- パーティサイト
+                    , hz_cust_acct_sites     hcas                             -- 顧客所在地
+                    , hz_locations           hl                               -- ロケーション
+               WHERE  hca.party_id        = hp.party_id             -- パーティID
+               AND    hp.party_id         = hps.party_id            -- パーティID
+               AND    hca.cust_account_id = hcas.cust_account_id    -- 顧客ID
+               AND    hps.party_site_id   = hcas.party_site_id      -- パーティサイトID
+               AND    hcas.org_id         = g_init_rec.org_id       -- 営業単位
+               AND    hl.location_id      = hps.location_id         -- ロケーションID
+               AND    hca.status          = cv_cust_status_a        -- 顧客ステータスが有効
+             )                      hz
+           , ( SELECT /*+ INDEX( FFVT FND_FLEX_VALUES_TL_U1 ) */
+                      xcsi.cust_code        AS cust_code             -- 顧客コード
+                    , xcsi.cust_shift_date  AS cust_shift_date       -- 顧客移行日
+                    , xcsi.prev_base_code   AS prev_base_code        -- 旧拠点コード
+                    , xcsi.new_base_code    AS new_base_code         -- 新拠点コード
+                    , ffvt.description      AS department_name       -- 新拠点名
+               FROM   xxcok_cust_shift_info xcsi                     -- 顧客移行情報
+                    , fnd_flex_value_sets   ffvs                     -- 値セット値
+                    , fnd_flex_values       ffv                      -- 値セット
+                    , fnd_flex_values_tl    ffvt                     -- 値定義
+               WHERE  xcsi.new_base_code       = ffv.flex_value(+)      -- 新拠点コード
+               AND    ffvs.flex_value_set_id   = ffv.flex_value_set_id  -- 値セットID
+               AND    ffvs.flex_value_set_name = cv_department          -- 値セット名
+               AND    ffv.flex_value_id        = ffvt.flex_value_id     -- 値ID
+               AND    ffvt.language            = ct_language            -- 言語
+               AND    xcsi.status              = cv_cust_shift_status_a -- ステータス:確定
+               AND    xcsi.cust_shift_date BETWEEN g_init_rec.process_date
+                                           AND     LAST_DAY(TRUNC(TO_DATE(g_next_year_rec.april, cv_format_yyyymm)))
+             )                      xcsi1
+      WHERE  xch.contract_header_id        =  xcl.contract_header_id  -- 契約内部ID
+      AND    xcl.object_header_id          =  xoh.object_header_id    -- 物件内部ID
+      AND    xoh.department_code           =  ffv.flex_value(+)       -- 管理部門コード
+      AND    ffvs.flex_value_set_id        =  ffv.flex_value_set_id   -- 値セットID
+      AND    ffvs.flex_value_set_name      =  cv_department           -- 値セット名
+      AND    ffv.flex_value_id             =  ffvt.flex_value_id      -- 値ID
+      AND    ffvt.language                 =  ct_language             -- 言語
+      AND    xoh.customer_code             =  hz.account_number       -- 顧客コード
+      AND    xoh.customer_code             =  xcsi1.cust_code(+)      -- 顧客コード
+      AND    xoh.department_code           =  xcsi1.prev_base_code(+) -- 旧拠点コード
+      AND    xoh.lease_class               IN ( cv_lease_class_11     -- リース種別
+                                              , cv_lease_class_12
+                                              , cv_lease_class_15
+                                              , cv_lease_class_16
+                                              , cv_lease_class_17 )   -- 自販機、ショーケース、カードリーダー、電光掲示板、その他
+      AND    xoh.object_status             >  cv_object_status_101    -- 物件ステータスが未契約を除く
+      AND    xoh.object_status             <  cv_object_status_110    -- 物件ステータスが解約を除く
+      AND  ( ( g_lord_head_data_rec.lease_class  IS NULL )                   -- パラメータ<種別>がNULL
+        OR   ( xoh.lease_class        = g_lord_head_data_rec.lease_class ) ) -- またはパラメータ<種別>と一致
+      AND  ( ( g_lord_head_data_rec.chiku_code   IS NULL )                   -- パラメータ<地区>がNULL
+        OR   ( ( g_lord_head_data_rec.chiku_code IS NOT NULL )               -- またはパラメータ<地区>がNOT NULL
+        AND    ( hz.chiku_code        = g_lord_head_data_rec.chiku_code ) )  --   パラメータ<地区>と地区が一致
+           )
+      AND  ( ( g_lord_head_data_rec.department_code IS NULL )                     -- パラメータ<拠点>がNULL
+        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )               -- またはパラメータ<拠点>がNOT NULL
+        AND    ( ( xoh.department_code = g_lord_head_data_rec.department_code )   --   パラメータ<拠点>と旧拠点が一致
+        OR       ( xcsi1.new_base_code = g_lord_head_data_rec.department_code ) ) --   またはパラメータ<拠点>と新拠点が一致
+             )
+           )
+      AND    xch.lease_type                =  cv_lease_type_1
+      AND    TO_CHAR(xcl.contract_line_id) =  fab.attribute10         -- 契約明細内部ID
+      AND    fab.asset_id                  =  fb.asset_id
+      AND    fb.book_type_code             =  gv_book_type_fin_lease
+      AND    fb.date_ineffective           IS NULL
+      AND    fab.asset_id                  =  fdd.asset_id
+      AND    fdd.deprn_amount              >  0
+      AND    fdd.book_type_code            =  gv_book_type_fin_lease
+      AND    fdd.period_counter            =  lt_period_counter
+      --
+      UNION ALL
+      --
+      SELECT /*+ LEADING( FFVS FFV FFVT )
+                 INDEX( FFVT FFVT FND_FLEX_VALUES_TL_U1 )
+                 INDEX( XOH  XXCFF_OBJECT_HEADERS_N03 )
+                 INDEX( XCL  XXCFF_CONTRACT_LINES_N03)
+                 INDEX( XCH  XXCFF_CONTRACT_HEADERS_PK )
+                 INDEX( FAB  XXCFF_FA_ADDITIONS_B_N04) */
+             cv_record_type_1                                                             AS record_type         -- レコード区分
+           , xoh.lease_class                                                              AS lease_class         -- リース種別
+           , DECODE(xoh.lease_class, cv_lease_class_11, g_lookup_budget_itemnm_tab(19)
+                                   , cv_lease_class_12, g_lookup_budget_itemnm_tab(20)
+                                   , cv_lease_class_15, g_lookup_budget_itemnm_tab(26)
+                                   , cv_lease_class_16, g_lookup_budget_itemnm_tab(27)
+                                   , cv_lease_class_17, g_lookup_budget_itemnm_tab(28))   AS lease_class_name    -- リース種別名
+           , xch.lease_type                                                               AS lease_type          -- リース区分
+           , g_lookup_budget_itemnm_tab(21)                                               AS lease_type_name     -- リース区分名
+           , NULL                                                                         AS chiku_code          -- 地区コード
+           , xoh.department_code                                                          AS department_code     -- 拠点コード
+           , ffvt.description                                                             AS department_name     -- 拠点名
+           , xoh.object_code                                                              AS object_name         -- 物件コード
+           , ( SELECT ffy.fiscal_year
+               FROM   fa_fiscal_year ffy
+               WHERE  ffy.fiscal_year_name = cv_fiscal_year_name
+               AND    xch.lease_start_date BETWEEN ffy.start_date
+                                           AND ffy.end_date )                             AS lease_start_year    -- リース開始年度
+           , CASE
+               WHEN xoh.lease_class = cv_lease_class_11
+                 THEN TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+               WHEN xoh.lease_class <> cv_lease_class_11
+                 THEN TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+             END                                                                          AS lease_end_months    -- リース支払最終月
+           , xch.re_lease_times                                                           AS re_lease_times      -- 再リース回数
+           , cv_re_lease_flag_1                                                           AS re_lease_flag       -- 再リース要フラグ
+           , fdd.deprn_amount                                                             AS lease_type_1_charge -- 原契約金額
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.may <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.may <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS may_charge          -- 5月_リース料
+           , 0                                                                            AS may_number          -- 5月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.june <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.june <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS june_charge         -- 6月_リース料
+           , 0                                                                            AS june_number         -- 6月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.july <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.july <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS july_charge         -- 7月_リース料
+           , 0                                                                            AS july_number         -- 7月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.august <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.august <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS august_charge       -- 8月_リース料
+           , 0                                                                            AS august_number       -- 8月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.september <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.september <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS september_charge    -- 9月_リース料
+           , 0                                                                            AS september_number    -- 9月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.october <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.october <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS october_charge      -- 10月_リース料
+           , 0                                                                            AS october_number      -- 10月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.november <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.november <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS november_charge     -- 11月_リース料
+           , 0                                                                            AS november_number     -- 11月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.december <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.december <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS december_charge     -- 12月_リース料
+           , 0                                                                            AS december_number     -- 12月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.january <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.january <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS january_charge      -- 1月_リース料
+           , 0                                                                            AS january_number      -- 1月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.february <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.february <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS february_charge     -- 2月_リース料
+           , 0                                                                            AS february_number     -- 2月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.march <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.march <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS march_charge        -- 3月_リース料
+           , 0                                                                            AS march_number        -- 3月_台数
+           , CASE
+               WHEN  xoh.lease_class = cv_lease_class_11
+                 AND g_next_year_rec.april <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,cn_deprn_end_months_95) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               WHEN  xoh.lease_class <> cv_lease_class_11
+                 AND g_next_year_rec.april <= TO_CHAR(ADD_MONTHS(TRUNC(fb.date_placed_in_service ,cv_format_mm) ,xch.payment_frequency - 1) ,cv_format_yyyymm)
+                   THEN fdd.deprn_amount
+               ELSE
+                 0
+             END                                                                          AS april_charge        -- 4月_リース料
+           , 0                                                                            AS april_number        -- 4月_台数
+           , NULL                                                                         AS cust_shift_date     -- 顧客移行日
+           , NULL                                                                         AS new_base_code       -- 新拠点コード
+           , NULL                                                                         AS new_department_name -- 新拠点名
+      FROM   xxcff_contract_headers xch                        -- リース契約ヘッダ
+           , xxcff_contract_lines   xcl                        -- リース契約明細
+           , xxcff_object_headers   xoh                        -- リース物件
+           , fnd_flex_value_sets    ffvs                       -- 値セット値
+           , fnd_flex_values        ffv                        -- 値セット
+           , fnd_flex_values_tl     ffvt                       -- 値定義
+           , fa_additions_b         fab                        -- 資産詳細情報
+           , fa_books               fb                         -- 資産台帳情報
+           , fa_deprn_detail        fdd                        -- 資産償却詳細
+      WHERE  xch.contract_header_id        =  xcl.contract_header_id -- 契約内部ID
+      AND    xcl.object_header_id          =  xoh.object_header_id   -- 物件内部ID
+      AND    xoh.department_code           =  ffv.flex_value(+)      -- 管理部門コード
+      AND    ffvs.flex_value_set_id        =  ffv.flex_value_set_id  -- 値セットID
+      AND    ffvs.flex_value_set_name      =  cv_department          -- 値セット名
+      AND    ffv.flex_value_id             =  ffvt.flex_value_id     -- 値ID
+      AND    ffvt.language                 =  ct_language            -- 言語
+      AND (  ( xoh.customer_code           IS NULL )                 -- 顧客コードがNULL
+        OR   ( xoh.customer_code           =  gv_aff_cust_code ) )   -- 顧客コードがプロファイルと一致
+      AND    xoh.lease_class               IN ( cv_lease_class_11    -- リース種別
+                                              , cv_lease_class_12
+                                              , cv_lease_class_15
+                                              , cv_lease_class_16
+                                              , cv_lease_class_17 )  -- 自販機、ショーケース、カードリーダー、電光掲示板、その他
+      AND    xoh.object_status        > cv_object_status_101         -- 物件ステータスが未契約を除く
+      AND    xoh.object_status        < cv_object_status_110         -- 物件ステータスが解約を除く
+      AND  ( ( g_lord_head_data_rec.lease_class IS NULL )            -- パラメータ<種別>がNULL
+        OR   ( xoh.lease_class        = g_lord_head_data_rec.lease_class ) )      -- またはパラメータ<種別>と一致
+      AND  ( ( g_lord_head_data_rec.department_code   IS NULL )                   -- パラメータ<拠点>がNULL
+        OR   ( ( g_lord_head_data_rec.department_code IS NOT NULL )               -- またはパラメータ<拠点>がNOT NULL
+        AND    ( xoh.department_code   = g_lord_head_data_rec.department_code ) ) --   パラメータ<拠点>と旧拠点が一致
+           )
+      AND    xch.lease_type                =  cv_lease_type_1
+      AND    TO_CHAR(xcl.contract_line_id) =  fab.attribute10         -- 契約明細内部ID
+      AND    fab.asset_id                  =  fb.asset_id
+      AND    fb.book_type_code             =  gv_book_type_fin_lease
+      AND    fb.date_ineffective           IS NULL
+      AND    fab.asset_id                  =  fdd.asset_id
+      AND    fdd.deprn_amount              >  0
+      AND    fdd.book_type_code            =  gv_book_type_fin_lease
+      AND    fdd.period_counter            =  lt_period_counter
+      ORDER BY
+             object_name
+    ;
+--
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
 -- 2014/09/29 Ver.1.1 Y.Shouji ADD START
     CURSOR get_vd_budget_cur
     IS
@@ -4306,9 +4965,18 @@ AS
             ,xvohe.moved_date                   -- 移動日
             ,xvohe.date_retired                 -- 除売却日
             ,xvohe.assets_cost                  -- 取得価格
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+            ,xvohe.deprn_amount                 -- 減価償却費
+            ,xvohe.org_end_months               -- 原契約終了月
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       FROM (
 -- 2014/10/08 Ver.1.2 Y.Shouji ADD END
       SELECT 
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+             /*+ LEADING( FFVS FFV FFVT )
+                 INDEX( FFVT FND_FLEX_VALUES_TL_U1 )
+                 INDEX( XVOH XXCFF_VD_OBJECT_HEADERS_N02 ) */
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
              xvoh.object_code                                                             AS object_name            -- 物件コード
            , xvoh.lease_class                                                             AS lease_class            -- リース種別
            , DECODE(xvoh.lease_class, cv_lease_class_11, g_lookup_budget_itemnm_tab(19)
@@ -4317,12 +4985,24 @@ AS
                                     , cv_lease_class_16, g_lookup_budget_itemnm_tab(27)
                                     , cv_lease_class_17, g_lookup_budget_itemnm_tab(28))  AS lease_class_name       -- リース種別名
            , CASE
-               WHEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, 59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm) THEN cv_lease_type_2
-               ELSE                                                                                                                        cv_lease_type_1
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
+--               WHEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, 59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm) THEN cv_lease_type_2
+--               ELSE                                                                                                                        cv_lease_type_1
+               WHEN  gv_lease_amt_kbn = cv_lease_amt_kbn_1
+                 AND TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, cn_org_end_months_59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm)
+                   THEN cv_lease_type_2
+               ELSE     cv_lease_type_1
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD END
              END                                                                          AS lease_type             -- リース区分
            , CASE
-               WHEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, 59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm) THEN g_lookup_budget_itemnm_tab(22)
-               ELSE                                                                                                                        g_lookup_budget_itemnm_tab(21)
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
+--               WHEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, 59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm) THEN g_lookup_budget_itemnm_tab(22)
+--               ELSE                                                                                                                        g_lookup_budget_itemnm_tab(21)
+               WHEN  gv_lease_amt_kbn = cv_lease_amt_kbn_1
+                 AND TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, cn_org_end_months_59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm)
+                   THEN g_lookup_budget_itemnm_tab(22)
+               ELSE     g_lookup_budget_itemnm_tab(21)
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD END
              END                                                                          AS lease_type_name        -- リース区分名
            , hl.address3                                                                  AS chiku_code             -- 地区コード
            , xvoh.department_code                                                         AS department_code        -- 拠点コード
@@ -4338,6 +5018,15 @@ AS
            , xvoh.moved_date                                                              AS moved_date             -- 移動日
            , xvoh.date_retired                                                            AS date_retired           -- 除売却日
            , xvoh.assets_cost                                                             AS assets_cost            -- 取得価格
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+           , fa.deprn_amount                                                              AS deprn_amount           -- 減価償却費
+           ，CASE
+               WHEN gv_lease_amt_kbn = cv_lease_amt_kbn_1
+                 THEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service ,cn_org_end_months_59), cv_format_mm)
+               WHEN gv_lease_amt_kbn = cv_lease_amt_kbn_2
+                 THEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service ,(flv.attribute5 * 12) - 1) ,cv_format_mm)
+             END                                                                          AS org_end_months         -- 原契約終了月
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       FROM   xxcff_vd_object_headers  xvoh                           -- 自販機情報管理
            , fnd_flex_value_sets      ffvs                           -- 値セット値
            , fnd_flex_values          ffv                            -- 値セット
@@ -4365,6 +5054,19 @@ AS
                AND    xcsi.status              = cv_cust_shift_status_a -- ステータス:確定
                AND    xcsi.cust_shift_date    <= LAST_DAY(TO_DATE(g_next_year_rec.april, cv_format_yyyymm))
              ) xcsi1
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+           , (SELECT fab.tag_number    object_code     -- 現品票番号（物件コード）
+                   , fdd.deprn_amount  deprn_amount    -- 減価償却費
+              FROM   fa_additions_b    fab             -- 資産詳細情報
+                   , fa_deprn_detail   fdd             -- 資産償却詳細
+              WHERE  fab.asset_id        =  fdd.asset_id
+              AND    fab.tag_number      IS NOT NULL
+              AND    fdd.deprn_amount    >  0
+              AND    fdd.book_type_code  =  gv_book_type_fixed_asset
+              AND    fdd.period_counter  =  lt_period_counter
+             ) fa
+           , fnd_lookup_values        flv                            -- 参照表
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       WHERE  ( (xvoh.date_placed_in_service <= LAST_DAY(TO_DATE(g_next_year_rec.april, cv_format_yyyymm))) -- 事業供用日
         AND    ( (xvoh.date_retired >= TRUNC(TO_DATE(g_next_year_rec.may, cv_format_yyyymm)))              -- 除売却日
         OR       (xvoh.date_retired IS NULL)))                                                             -- 除売却日
@@ -4402,8 +5104,19 @@ AS
 --             )
 --           )
 -- 2014/10/08 Ver.1.2 Y.Shouji DEL END
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+      AND    xvoh.object_code         = fa.object_code(+)
+      AND    xvoh.machine_type        = flv.lookup_code
+      AND    flv.lookup_type          = cv_asset_category_id
+      AND    flv.language             = ct_language
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       UNION ALL
       SELECT 
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+             /*+ LEADING( FFVS FFV FFVT )
+                 INDEX( FFVT FND_FLEX_VALUES_TL_U1 )
+                 INDEX( XVOH XXCFF_VD_OBJECT_HEADERS_N02 ) */
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
              xvoh.object_code                                                             AS object_name            -- 物件コード
            , xvoh.lease_class                                                             AS lease_class            -- リース種別
            , DECODE(xvoh.lease_class, cv_lease_class_11, g_lookup_budget_itemnm_tab(19)
@@ -4412,12 +5125,24 @@ AS
                                     , cv_lease_class_16, g_lookup_budget_itemnm_tab(27)
                                     , cv_lease_class_17, g_lookup_budget_itemnm_tab(28))  AS lease_class_name       -- リース種別名
            , CASE
-               WHEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, 59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm) THEN cv_lease_type_2
-               ELSE                                                                                                                        cv_lease_type_1
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
+--               WHEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, 59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm) THEN cv_lease_type_2
+--               ELSE                                                                                                                        cv_lease_type_1
+               WHEN  gv_lease_amt_kbn = cv_lease_amt_kbn_1
+                 AND TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, cn_org_end_months_59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm)
+                   THEN cv_lease_type_2
+               ELSE     cv_lease_type_1
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD END
              END                                                                          AS lease_type             -- リース区分
            , CASE
-               WHEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, 59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm) THEN g_lookup_budget_itemnm_tab(22)
-               ELSE                                                                                                                        g_lookup_budget_itemnm_tab(21)
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
+--               WHEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, 59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm) THEN g_lookup_budget_itemnm_tab(22)
+--               ELSE                                                                                                                        g_lookup_budget_itemnm_tab(21)
+               WHEN  gv_lease_amt_kbn = cv_lease_amt_kbn_1
+                 AND TRUNC(ADD_MONTHS(xvoh.date_placed_in_service, cn_org_end_months_59), cv_format_mm) < to_date(g_next_year_rec.may, cv_format_yyyymm)
+                   THEN g_lookup_budget_itemnm_tab(22)
+               ELSE     g_lookup_budget_itemnm_tab(21)
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD END
              END                                                                          AS lease_type_name        -- リース区分名
            , NULL                                                                         AS chiku_code             -- 地区コード
            , xvoh.department_code                                                         AS department_code        -- 拠点コード
@@ -4433,10 +5158,32 @@ AS
            , xvoh.moved_date                                                              AS moved_date             -- 移動日
            , xvoh.date_retired                                                            AS date_retired           -- 除売却日
            , xvoh.assets_cost                                                             AS assets_cost            -- 取得価格
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+           , fa.deprn_amount                                                              AS deprn_amount           -- 減価償却費
+           , CASE
+               WHEN gv_lease_amt_kbn = cv_lease_amt_kbn_1
+                 THEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service ,cn_org_end_months_59), cv_format_mm)
+               WHEN gv_lease_amt_kbn = cv_lease_amt_kbn_2
+                 THEN TRUNC(ADD_MONTHS(xvoh.date_placed_in_service ,(flv.attribute5 * 12) - 1) ,cv_format_mm)
+             END                                                                          AS org_end_months         -- 原契約終了月
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       FROM   xxcff_vd_object_headers  xvoh                           -- 自販機情報管理
            , fnd_flex_value_sets      ffvs                           -- 値セット値
            , fnd_flex_values          ffv                            -- 値セット
            , fnd_flex_values_tl       ffvt                           -- 値セット定義
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+           , (SELECT fab.tag_number    object_code     -- 現品票番号（物件コード）
+                   , fdd.deprn_amount  deprn_amount    -- 減価償却費
+              FROM   fa_additions_b    fab             -- 資産詳細情報
+                   , fa_deprn_detail   fdd             -- 資産償却詳細
+              WHERE  fab.asset_id        =  fdd.asset_id
+              AND    fab.tag_number      IS NOT NULL
+              AND    fdd.deprn_amount    >  0
+              AND    fdd.book_type_code  =  gv_book_type_fixed_asset
+              AND    fdd.period_counter  =  lt_period_counter
+             ) fa
+           , fnd_lookup_values        flv                            -- 参照表
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       WHERE  ( (xvoh.date_placed_in_service <= LAST_DAY(TO_DATE(g_next_year_rec.april, cv_format_yyyymm))) -- 事業供用日
         AND    ( (xvoh.date_retired >= TRUNC(TO_DATE(g_next_year_rec.may, cv_format_yyyymm)))              -- 除売却日
         OR       (xvoh.date_retired IS NULL)))                                                             -- 除売却日
@@ -4466,7 +5213,18 @@ AS
 --        AND    ( xvoh.department_code = g_lord_head_data_rec.department_code )                           --   パラメータ<拠点>と旧拠点が一致
 --             )
 --           )
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+      AND    xvoh.object_code         = fa.object_code(+)
+      AND    xvoh.machine_type        = flv.lookup_code
+      AND    flv.lookup_type          = cv_asset_category_id
+      AND    flv.language             = ct_language
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       ) xvohe
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+      WHERE  ( gv_lease_amt_kbn = cv_lease_amt_kbn_1
+        OR     ( gv_lease_amt_kbn   =  cv_lease_amt_kbn_2
+          AND    xvohe.deprn_amount IS NOT NULL ) )
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       GROUP BY 
              xvohe.object_name
             ,xvohe.lease_class
@@ -4484,6 +5242,10 @@ AS
             ,xvohe.moved_date
             ,xvohe.date_retired
             ,xvohe.assets_cost
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+            ,xvohe.deprn_amount
+            ,xvohe.org_end_months
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
 -- 2014/10/08 Ver.1.2 Y.Shouji MOD END
       ORDER BY
              object_name
@@ -4685,470 +5447,762 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
+--    -- ===============================
+--    -- リース料予算抽出 (A-5)
+--    -- ===============================
+--    OPEN get_lease_budget_cur;
+--    --
+--    <<lease_budget_loop>>
+--    LOOP
+--      -- 初期化
+--      g_lease_budget_bulk_tab.DELETE;
+--      -- 初回のみ新台情報が格納されているため初期化しない
+--      IF ( ln_cnt > 0 ) THEN
+--        g_lease_budget_tab.DELETE;
+--      END IF;
+--      --
+--      FETCH get_lease_budget_cur BULK COLLECT INTO g_lease_budget_bulk_tab LIMIT gn_bulk_collect_cnt;
+--      -- 新台情報および取得データが存在しない場合、ループを抜ける
+--      IF ( ( g_lease_budget_tab.COUNT = 0 ) AND ( g_lease_budget_bulk_tab.COUNT = 0 ) ) THEN
+--        EXIT lease_budget_loop;
+--      END IF;
+--      -- データ存在チェック用
+--      ln_cnt := ln_cnt + 1;
+--      -- 取得データが存在する場合
+--      IF ( g_lease_budget_bulk_tab.COUNT > 0 ) THEN
+--        <<set_g_lease_budget_tab_loop>>
+--        FOR i IN g_lease_budget_bulk_tab.FIRST .. g_lease_budget_bulk_tab.LAST LOOP
+--          -- リース区分が再リース、かつ、
+--          -- 再リース要フラグが1(再リースしない)の場合
+--          IF (  ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_2 )
+--            AND ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_1 ) ) THEN
+--            -- リース終了日が出力年度5月～出力年度4月の場合、再リースレコードのみ出力
+--            -- リース終了日が上記以外の場合、出力しない
+--            IF (  ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may )
+--              AND ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.april ) ) THEN
+--              -- 取得した再リースレコード
+--              set_g_lease_budget_tab(
+--                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+--                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+--                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+--                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+--                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+--                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+--                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+--                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+--                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+--                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+--                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+--                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+--                iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
+--                                            - cn_lease_type_1_year
+--                                            - g_lease_budget_bulk_tab(i).re_lease_times
+--                                            + 1 ),                                        -- リース開始年度
+--                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+--                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--              IF (lv_retcode = cv_status_error) THEN
+--                RAISE global_process_expt;
+--              END IF;
+--            END IF;
+--          -- 前回処理レコードと物件コードが相違する、かつ、
+--          -- リース区分が再リース、かつ、
+--          -- 再リース要フラグが0(再リースする)の場合
+--          ELSIF ( ( g_lease_budget_bulk_tab(i).object_name <> lt_chk_object_code )
+--            AND   ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_2 )
+--            AND   ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_0 ) ) THEN
+--            -- リース終了日が出力年度5月～出力年度4月の場合、取得した再リースレコードのみ出力
+--            IF ( ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may )
+--              AND   ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.april ) ) THEN
+--              -- 取得した再リースレコード
+--              set_g_lease_budget_tab(
+--                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+--                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+--                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+--                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+--                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+--                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+--                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+--                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+--                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+--                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+--                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+--                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+--                iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
+--                                            - cn_lease_type_1_year
+--                                            - g_lease_budget_bulk_tab(i).re_lease_times
+--                                            + 1 ),                                        -- リース開始年度
+--                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+--                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--              IF (lv_retcode = cv_status_error) THEN
+--                RAISE global_process_expt;
+--              END IF;
+--            -- リース終了日が出力前年度5月～出力前年度4月の場合、シミュレーション再リースレコードの作成
+--            ELSIF (  ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.this_may )
+--              AND ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.this_april ) ) THEN
+--              -- 再リース支払月の取得
+--              lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 12), cv_format_yyyymm);
+--              -- 再リース料の取得
+--              IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
+--                g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
+--                g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
+--                g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
+--                g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
+--                g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
+--                g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
+--                g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
+--                g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
+--                g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
+--                g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
+--                g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
+--                g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              END IF;
+--              -- シミュレーション再リースレコード
+--              set_g_lease_budget_tab(
+--                iv_record_type         => cv_record_type_2,                               -- レコード区分
+--                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+--                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+--                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+--                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+--                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+--                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+--                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+--                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+--                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+--                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+--                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+--                iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
+--                                            - cn_lease_type_1_year
+--                                            - g_lease_budget_bulk_tab(i).re_lease_times
+--                                            + 1 ),                                        -- リース開始年度
+--                iv_lease_end_months    => lv_re_lease_months,                             -- リース支払最終月
+--                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--              IF (lv_retcode = cv_status_error) THEN
+--                RAISE global_process_expt;
+--              END IF;
+--            -- リース終了日が出力前年度5月より前の場合、シミュレーション再リースレコードの作成
+--            ELSIF ( g_lease_budget_bulk_tab(i).lease_end_months < g_next_year_rec.this_may ) THEN
+--              -- 再リース支払月の取得
+--              lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 24), cv_format_yyyymm);
+--              -- 再リース料の取得
+--              IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
+--                g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
+--                g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
+--                g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
+--                g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
+--                g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
+--                g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
+--                g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
+--                g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
+--                g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
+--                g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
+--                g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
+--                g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              END IF;
+--              -- シミュレーション再リースレコード
+--              set_g_lease_budget_tab(
+--                iv_record_type         => cv_record_type_2,                               -- レコード区分
+--                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+--                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+--                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+--                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+--                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+--                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+--                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+--                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+--                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+--                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+--                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+--                iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
+--                                            - cn_lease_type_1_year
+--                                            - g_lease_budget_bulk_tab(i).re_lease_times
+--                                            + 1 ),                                        -- リース開始年度
+--                iv_lease_end_months    => lv_re_lease_months,                             -- リース支払最終月
+--                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--              IF (lv_retcode = cv_status_error) THEN
+--                RAISE global_process_expt;
+--              END IF;
+--            END IF;
+--          -- リース区分が原契約、かつ、再リース要フラグが1(再リースしない)の場合
+--          ELSIF (  ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_1 )
+--            AND ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_1 ) ) THEN
+--            -- リース終了日が出力年度5月より前の場合、出力対象外のため処理しない
+--            -- リース終了日が出力年度5月以降の場合、取得した原契約レコードのみ出力
+--            IF ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may ) THEN
+--              -- 原契約レコード
+--              set_g_lease_budget_tab(
+--                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+--                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+--                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+--                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+--                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+--                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+--                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+--                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+--                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+--                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+--                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+--                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+--                iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+--                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+--                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--              IF (lv_retcode = cv_status_error) THEN
+--                RAISE global_process_expt;
+--              END IF;
+--            END IF;
+--          -- リース区分が原契約、かつ、再リース要フラグが0(再リースする)の場合
+--          ELSIF ( ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_1 )
+--            AND   ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_0 ) ) THEN
+--            -- リース終了日が出力年度3月以降の場合、原契約レコードのみ出力
+--            IF ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.march ) THEN
+--              -- 原契約レコード
+--              set_g_lease_budget_tab(
+--                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+--                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+--                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+--                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+--                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+--                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+--                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+--                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+--                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+--                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+--                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+--                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+--                iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+--                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+--                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--              IF (lv_retcode = cv_status_error) THEN
+--                RAISE global_process_expt;
+--              END IF;
+--            -- 前回処理レコードと物件コードが相違する、かつ、
+--            -- リース終了日が出力年度5月より前の場合
+--            ELSIF ( ( g_lease_budget_bulk_tab(i).object_name <> lt_chk_object_code )
+--              AND   ( g_lease_budget_bulk_tab(i).lease_end_months < g_next_year_rec.may ) ) THEN
+--              -- リース終了日が出力前年度3月or出力前年度4月の場合
+--              IF ( ( g_lease_budget_bulk_tab(i).lease_end_months = g_next_year_rec.this_march )
+--                OR ( g_lease_budget_bulk_tab(i).lease_end_months = g_next_year_rec.this_april ) )THEN
+--                -- 初回再リース支払月の取得
+--                lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 2), cv_format_yyyymm);
+--              -- 上記以外の場合
+--              ELSE
+--                -- 2回目再リース支払月の取得
+--                lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 14), cv_format_yyyymm);
+--              END IF;
+--              -- 再リース料の取得
+--              IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
+--                g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
+--                g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
+--                g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
+--                g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
+--                g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
+--                g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
+--                g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
+--                g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
+--                g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
+--                g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
+--                g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
+--                g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--              END IF;
+--              -- シミュレーション再リースレコード
+--              set_g_lease_budget_tab(
+--                iv_record_type         => cv_record_type_2,                                 -- レコード区分
+--                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,           -- リース種別
+--                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,      -- リース種別名
+--                iv_lease_type          => cv_lease_type_2,                                  -- リース区分
+--                iv_lease_type_name     => g_lookup_budget_itemnm_tab(22),                   -- リース区分名
+--                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,            -- 地区コード
+--                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,       -- 拠点コード
+--                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,       -- 拠点名
+--                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,       -- 顧客移行日
+--                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,         -- 新拠点コード
+--                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name,   -- 新拠点名
+--                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,           -- 物件コード
+--                iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,      -- リース開始年度
+--                iv_lease_end_months    => lv_re_lease_months,                               -- リース支払最終月
+--                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--              IF (lv_retcode = cv_status_error) THEN
+--                RAISE global_process_expt;
+--              END IF;
+--            -- リース終了日が出力年度5月～出力年度2月の場合、原契約と再リースレコードの出力
+--            ELSIF ( ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may ) 
+--              AND   ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.february ) ) THEN
+--              -- 原契約レコード
+--              set_g_lease_budget_tab(
+--                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+--                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+--                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+--                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+--                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+--                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+--                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+--                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+--                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+--                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+--                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+--                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+--                iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+--                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+--                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--              IF (lv_retcode = cv_status_error) THEN
+--                RAISE global_process_expt;
+--              END IF;
+--              -- 再リースレコード作成前の場合、シミュレーション再リースレコード作成
+--              -- 再リースレコード作成済の場合、処理しない
+--              IF ( g_lease_budget_bulk_tab(i).object_name <> lt_chk_object_code ) THEN
+--                -- 再リース支払月の取得
+--                lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 2), cv_format_yyyymm);
+--                -- 再リース料の取得
+--                -- 原契約の金額が存在するため0にする
+--                g_lease_budget_bulk_tab(i).may_charge       := 0;
+--                g_lease_budget_bulk_tab(i).june_charge      := 0;
+--                g_lease_budget_bulk_tab(i).july_charge      := 0;
+--                g_lease_budget_bulk_tab(i).august_charge    := 0;
+--                g_lease_budget_bulk_tab(i).september_charge := 0;
+--                g_lease_budget_bulk_tab(i).october_charge   := 0;
+--                g_lease_budget_bulk_tab(i).november_charge  := 0;
+--                g_lease_budget_bulk_tab(i).december_charge  := 0;
+--                g_lease_budget_bulk_tab(i).january_charge   := 0;
+--                g_lease_budget_bulk_tab(i).february_charge  := 0;
+--                g_lease_budget_bulk_tab(i).march_charge     := 0;
+--                g_lease_budget_bulk_tab(i).april_charge     := 0;
+--                -- 支払月の再リース料のみ設定
+--                IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
+--                  g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
+--                  g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
+--                  g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
+--                  g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
+--                  g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
+--                  g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
+--                  g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
+--                  g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
+--                  g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
+--                  g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
+--                  g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
+--                  g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+--                END IF;
+--                -- シミュレーション再リースレコード
+--                set_g_lease_budget_tab(
+--                  iv_record_type         => cv_record_type_2,                               -- レコード区分
+--                  iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+--                  iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+--                  iv_lease_type          => cv_lease_type_2,                                -- リース区分
+--                  iv_lease_type_name     => g_lookup_budget_itemnm_tab(22),                 -- リース区分名
+--                  iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+--                  iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+--                  iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+--                  iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+--                  iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+--                  iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+--                  iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+--                  iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+--                  iv_lease_end_months    => lv_re_lease_months,                             -- リース支払最終月
+--                  in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+--                  in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+--                  in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+--                  in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+--                  in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+--                  in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+--                  in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+--                  in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+--                  in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+--                  in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+--                  in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+--                  in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+--                  ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+--                  ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--                IF (lv_retcode = cv_status_error) THEN
+--                  RAISE global_process_expt;
+--                END IF;
+--              END IF;
+--            END IF;
+--          END IF;
+--          -- 物件コード変更
+--          lt_chk_object_code := g_lease_budget_bulk_tab(i).object_name;
+--          --
+--        END LOOP set_g_lease_budget_tab_loop;
+--      END IF;
+----
+--      -- ===============================
+--      -- リース料予算ワーク作成 (A-6)
+--      -- ===============================
+--      ins_lease_budget_wk(
+--        in_file_id,        -- 1.ファイルID(必須)
+--        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--        lv_retcode,        -- リターン・コード             --# 固定 #
+--        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--      IF (lv_retcode = cv_status_error) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--    END LOOP lease_budget_loop;
+--    --
+--    CLOSE get_lease_budget_cur;
+----
+---- 2014/09/29 Ver.1.1 Y.Shouji DEL START
+----    -- 取得件数0件の場合
+----    IF ( ln_cnt = 0 ) THEN
+----      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+----                              iv_application  => cv_appl_short_name_cff
+----                             ,iv_name         => cv_msg_xxcff_00165
+----                             ,iv_token_name1  => cv_tkn_get_data
+----                             ,iv_token_value1 => cv_msg_xxcff_50190)
+----                                                   , 1
+----                                                   , 5000);
+----      lv_errbuf := lv_errmsg;
+----      RAISE global_process_expt;
+----    END IF;
+----
+---- -- 2014/09/29 Ver.1.1 Y.Shouji DEL END
+--    -- ===============================
+--    -- 出力対象外物件コードデータ削除 (A-7)
+--    -- ===============================
+--    IF ( g_lookup_budget_objcode_tab.COUNT <> 0 ) THEN
+--      del_object_code_data(
+--        in_file_id,        -- 1.ファイルID(必須)
+--        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--        lv_retcode,        -- リターン・コード             --# 固定 #
+--        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--      IF (lv_retcode = cv_status_error) THEN
+--        RAISE global_process_expt;
+--      END IF;
+--    END IF;
+----
+--    -- ===============================
+--    -- 廃棄率データ更新 (A-8)
+--    -- ===============================
+--    upd_scrap_data(
+--      in_file_id,        -- 1.ファイルID(必須)
+--      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--      lv_retcode,        -- リターン・コード             --# 固定 #
+--      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
     -- ===============================
-    -- リース料予算抽出 (A-5)
+    -- 減価償却期間の取得 (A-15)
     -- ===============================
-    OPEN get_lease_budget_cur;
-    --
-    <<lease_budget_loop>>
-    LOOP
-      -- 初期化
-      g_lease_budget_bulk_tab.DELETE;
-      -- 初回のみ新台情報が格納されているため初期化しない
-      IF ( ln_cnt > 0 ) THEN
-        g_lease_budget_tab.DELETE;
+    -- リース料区分が2（減価償却費）の場合
+    IF ( gv_lease_amt_kbn = cv_lease_amt_kbn_2 ) THEN
+      -- 最新の減価償却期間を取得
+      SELECT max(fdp.period_counter) period_counter        -- 最新の期間ID
+      INTO   lt_period_counter
+      FROM   fa_deprn_periods  fdp                         -- 減価償却期間
+      WHERE  fdp.book_type_code = gv_book_type_fin_lease   -- 台帳名
+      AND    fdp.deprn_run      = cv_flag_on
+      ;
+--
+      -- 最新の減価償却期間を取得できない場合
+      IF ( lt_period_counter IS NULL) THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                                iv_application  => cv_appl_short_name_cff
+                               ,iv_name         => cv_msg_xxcff_00165
+                               ,iv_token_name1  => cv_tkn_get_data
+                               ,iv_token_value1 => cv_msg_xxcff_50230)
+                                                     , 1
+                                                     , 5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+--
+    -- 資産区分がNULLまたは、1（リース）の場合
+    IF ( gv_assets_kbn IS NULL
+      OR gv_assets_kbn = cv_assets_kbn_1) THEN
+--
+      -- ===============================
+      -- リース料予算抽出 (A-5)
+      -- ===============================
+      -- リース料区分が1（リース料）の場合
+      IF ( gv_lease_amt_kbn = cv_lease_amt_kbn_1 ) THEN
+        OPEN get_lease_budget_cur;
+      -- リース料区分が2（減価償却費）の場合
+      ELSIF ( gv_lease_amt_kbn = cv_lease_amt_kbn_2 ) THEN
+        OPEN get_lease_budget_deprn_cur;
       END IF;
       --
-      FETCH get_lease_budget_cur BULK COLLECT INTO g_lease_budget_bulk_tab LIMIT gn_bulk_collect_cnt;
-      -- 新台情報および取得データが存在しない場合、ループを抜ける
-      IF ( ( g_lease_budget_tab.COUNT = 0 ) AND ( g_lease_budget_bulk_tab.COUNT = 0 ) ) THEN
-        EXIT lease_budget_loop;
-      END IF;
-      -- データ存在チェック用
-      ln_cnt := ln_cnt + 1;
-      -- 取得データが存在する場合
-      IF ( g_lease_budget_bulk_tab.COUNT > 0 ) THEN
-        <<set_g_lease_budget_tab_loop>>
-        FOR i IN g_lease_budget_bulk_tab.FIRST .. g_lease_budget_bulk_tab.LAST LOOP
-          -- リース区分が再リース、かつ、
-          -- 再リース要フラグが1(再リースしない)の場合
-          IF (  ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_2 )
-            AND ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_1 ) ) THEN
-            -- リース終了日が出力年度5月～出力年度4月の場合、再リースレコードのみ出力
-            -- リース終了日が上記以外の場合、出力しない
-            IF (  ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may )
-              AND ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.april ) ) THEN
-              -- 取得した再リースレコード
-              set_g_lease_budget_tab(
-                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
-                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
-                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
-                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
-                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
-                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
-                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
-                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
-                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
-                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
-                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
-                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
-                iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
-                                            - cn_lease_type_1_year
-                                            - g_lease_budget_bulk_tab(i).re_lease_times
-                                            + 1 ),                                        -- リース開始年度
-                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
-                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
-                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
-                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
-                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
-                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
-                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
-                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
-                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
-                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
-                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
-                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
-                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
-                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
-                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-            END IF;
-          -- 前回処理レコードと物件コードが相違する、かつ、
-          -- リース区分が再リース、かつ、
-          -- 再リース要フラグが0(再リースする)の場合
-          ELSIF ( ( g_lease_budget_bulk_tab(i).object_name <> lt_chk_object_code )
-            AND   ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_2 )
-            AND   ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_0 ) ) THEN
-            -- リース終了日が出力年度5月～出力年度4月の場合、取得した再リースレコードのみ出力
-            IF ( ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may )
-              AND   ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.april ) ) THEN
-              -- 取得した再リースレコード
-              set_g_lease_budget_tab(
-                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
-                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
-                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
-                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
-                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
-                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
-                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
-                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
-                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
-                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
-                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
-                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
-                iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
-                                            - cn_lease_type_1_year
-                                            - g_lease_budget_bulk_tab(i).re_lease_times
-                                            + 1 ),                                        -- リース開始年度
-                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
-                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
-                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
-                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
-                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
-                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
-                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
-                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
-                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
-                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
-                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
-                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
-                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
-                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
-                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-            -- リース終了日が出力前年度5月～出力前年度4月の場合、シミュレーション再リースレコードの作成
-            ELSIF (  ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.this_may )
-              AND ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.this_april ) ) THEN
-              -- 再リース支払月の取得
-              lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 12), cv_format_yyyymm);
-              -- 再リース料の取得
-              IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
-                g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
-                g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
-                g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
-                g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
-                g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
-                g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
-                g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
-                g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
-                g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
-                g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
-                g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
-                g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              END IF;
-              -- シミュレーション再リースレコード
-              set_g_lease_budget_tab(
-                iv_record_type         => cv_record_type_2,                               -- レコード区分
-                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
-                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
-                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
-                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
-                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
-                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
-                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
-                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
-                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
-                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
-                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
-                iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
-                                            - cn_lease_type_1_year
-                                            - g_lease_budget_bulk_tab(i).re_lease_times
-                                            + 1 ),                                        -- リース開始年度
-                iv_lease_end_months    => lv_re_lease_months,                             -- リース支払最終月
-                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
-                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
-                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
-                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
-                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
-                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
-                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
-                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
-                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
-                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
-                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
-                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
-                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
-                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-            -- リース終了日が出力前年度5月より前の場合、シミュレーション再リースレコードの作成
-            ELSIF ( g_lease_budget_bulk_tab(i).lease_end_months < g_next_year_rec.this_may ) THEN
-              -- 再リース支払月の取得
-              lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 24), cv_format_yyyymm);
-              -- 再リース料の取得
-              IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
-                g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
-                g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
-                g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
-                g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
-                g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
-                g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
-                g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
-                g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
-                g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
-                g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
-                g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
-                g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              END IF;
-              -- シミュレーション再リースレコード
-              set_g_lease_budget_tab(
-                iv_record_type         => cv_record_type_2,                               -- レコード区分
-                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
-                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
-                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
-                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
-                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
-                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
-                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
-                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
-                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
-                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
-                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
-                iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
-                                            - cn_lease_type_1_year
-                                            - g_lease_budget_bulk_tab(i).re_lease_times
-                                            + 1 ),                                        -- リース開始年度
-                iv_lease_end_months    => lv_re_lease_months,                             -- リース支払最終月
-                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
-                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
-                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
-                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
-                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
-                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
-                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
-                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
-                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
-                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
-                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
-                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
-                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
-                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-            END IF;
-          -- リース区分が原契約、かつ、再リース要フラグが1(再リースしない)の場合
-          ELSIF (  ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_1 )
-            AND ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_1 ) ) THEN
-            -- リース終了日が出力年度5月より前の場合、出力対象外のため処理しない
-            -- リース終了日が出力年度5月以降の場合、取得した原契約レコードのみ出力
-            IF ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may ) THEN
-              -- 原契約レコード
-              set_g_lease_budget_tab(
-                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
-                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
-                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
-                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
-                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
-                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
-                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
-                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
-                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
-                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
-                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
-                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
-                iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
-                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
-                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
-                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
-                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
-                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
-                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
-                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
-                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
-                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
-                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
-                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
-                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
-                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
-                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
-                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-            END IF;
-          -- リース区分が原契約、かつ、再リース要フラグが0(再リースする)の場合
-          ELSIF ( ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_1 )
-            AND   ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_0 ) ) THEN
-            -- リース終了日が出力年度3月以降の場合、原契約レコードのみ出力
-            IF ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.march ) THEN
-              -- 原契約レコード
-              set_g_lease_budget_tab(
-                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
-                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
-                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
-                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
-                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
-                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
-                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
-                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
-                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
-                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
-                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
-                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
-                iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
-                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
-                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
-                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
-                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
-                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
-                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
-                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
-                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
-                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
-                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
-                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
-                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
-                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
-                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
-                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
+      <<lease_budget_loop>>
+      LOOP
+        -- 初期化
+        g_lease_budget_bulk_tab.DELETE;
+        -- 初回のみ新台情報が格納されているため初期化しない
+        IF ( ln_cnt > 0 ) THEN
+          g_lease_budget_tab.DELETE;
+        END IF;
+        --
+        -- リース料区分が1（リース料）の場合
+        IF ( gv_lease_amt_kbn = cv_lease_amt_kbn_1 ) THEN
+          FETCH get_lease_budget_cur BULK COLLECT INTO g_lease_budget_bulk_tab LIMIT gn_bulk_collect_cnt;
+        -- リース料区分が2（減価償却費）の場合
+        ELSIF ( gv_lease_amt_kbn = cv_lease_amt_kbn_2 ) THEN
+          FETCH get_lease_budget_deprn_cur BULK COLLECT INTO g_lease_budget_bulk_tab LIMIT gn_bulk_collect_cnt;
+        END IF;
+--
+        -- 新台情報および取得データが存在しない場合、ループを抜ける
+        IF ( ( g_lease_budget_tab.COUNT = 0 ) AND ( g_lease_budget_bulk_tab.COUNT = 0 ) ) THEN
+          EXIT lease_budget_loop;
+        END IF;
+        -- データ存在チェック用
+        ln_cnt := ln_cnt + 1;
+        -- 取得データが存在する場合
+        IF ( g_lease_budget_bulk_tab.COUNT > 0 ) THEN
+          <<set_g_lease_budget_tab_loop>>
+          FOR i IN g_lease_budget_bulk_tab.FIRST .. g_lease_budget_bulk_tab.LAST LOOP
+            -- リース区分が再リース、かつ、
+            -- 再リース要フラグが1(再リースしない)の場合
+            IF (  ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_2 )
+              AND ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_1 ) ) THEN
+              -- リース終了日が出力年度5月～出力年度4月の場合、再リースレコードのみ出力
+              -- リース終了日が上記以外の場合、出力しない
+              IF (  ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may )
+                AND ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.april ) ) THEN
+                -- 取得した再リースレコード
+                set_g_lease_budget_tab(
+                  iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+                  iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+                  iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+                  iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+                  iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+                  iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+                  iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+                  iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+                  iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+                  iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+                  iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+                  iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+                  iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
+                                              - cn_lease_type_1_year
+                                              - g_lease_budget_bulk_tab(i).re_lease_times
+                                              + 1 ),                                        -- リース開始年度
+                  iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+                  in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+                  in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+                  in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+                  in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+                  in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+                  in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+                  in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+                  in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+                  in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+                  in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+                  in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+                  in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+                  ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                  ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+                  ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
               END IF;
             -- 前回処理レコードと物件コードが相違する、かつ、
-            -- リース終了日が出力年度5月より前の場合
+            -- リース区分が再リース、かつ、
+            -- 再リース要フラグが0(再リースする)の場合
             ELSIF ( ( g_lease_budget_bulk_tab(i).object_name <> lt_chk_object_code )
-              AND   ( g_lease_budget_bulk_tab(i).lease_end_months < g_next_year_rec.may ) ) THEN
-              -- リース終了日が出力前年度3月or出力前年度4月の場合
-              IF ( ( g_lease_budget_bulk_tab(i).lease_end_months = g_next_year_rec.this_march )
-                OR ( g_lease_budget_bulk_tab(i).lease_end_months = g_next_year_rec.this_april ) )THEN
-                -- 初回再リース支払月の取得
-                lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 2), cv_format_yyyymm);
-              -- 上記以外の場合
-              ELSE
-                -- 2回目再リース支払月の取得
-                lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 14), cv_format_yyyymm);
-              END IF;
-              -- 再リース料の取得
-              IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
-                g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
-                g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
-                g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
-                g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
-                g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
-                g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
-                g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
-                g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
-                g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
-                g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
-                g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
-                g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
-              END IF;
-              -- シミュレーション再リースレコード
-              set_g_lease_budget_tab(
-                iv_record_type         => cv_record_type_2,                                 -- レコード区分
-                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,           -- リース種別
-                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,      -- リース種別名
-                iv_lease_type          => cv_lease_type_2,                                  -- リース区分
-                iv_lease_type_name     => g_lookup_budget_itemnm_tab(22),                   -- リース区分名
-                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,            -- 地区コード
-                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,       -- 拠点コード
-                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,       -- 拠点名
-                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,       -- 顧客移行日
-                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,         -- 新拠点コード
-                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name,   -- 新拠点名
-                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,           -- 物件コード
-                iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,      -- リース開始年度
-                iv_lease_end_months    => lv_re_lease_months,                               -- リース支払最終月
-                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
-                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
-                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
-                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
-                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
-                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
-                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
-                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
-                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
-                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
-                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
-                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
-                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
-                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-            -- リース終了日が出力年度5月～出力年度2月の場合、原契約と再リースレコードの出力
-            ELSIF ( ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may ) 
-              AND   ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.february ) ) THEN
-              -- 原契約レコード
-              set_g_lease_budget_tab(
-                iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
-                iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
-                iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
-                iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
-                iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
-                iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
-                iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
-                iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
-                iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
-                iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
-                iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
-                iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
-                iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
-                iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
-                in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
-                in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
-                in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
-                in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
-                in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
-                in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
-                in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
-                in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
-                in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
-                in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
-                in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
-                in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
-                ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-                ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
-                ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-              -- 再リースレコード作成前の場合、シミュレーション再リースレコード作成
-              -- 再リースレコード作成済の場合、処理しない
-              IF ( g_lease_budget_bulk_tab(i).object_name <> lt_chk_object_code ) THEN
+              AND   ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_2 )
+              AND   ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_0 ) ) THEN
+              -- リース終了日が出力年度5月～出力年度4月の場合、取得した再リースレコードのみ出力
+              IF ( ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may )
+                AND   ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.april ) ) THEN
+                -- 取得した再リースレコード
+                set_g_lease_budget_tab(
+                  iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+                  iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+                  iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+                  iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+                  iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+                  iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+                  iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+                  iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+                  iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+                  iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+                  iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+                  iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+                  iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
+                                              - cn_lease_type_1_year
+                                              - g_lease_budget_bulk_tab(i).re_lease_times
+                                              + 1 ),                                        -- リース開始年度
+                  iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+                  in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+                  in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+                  in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+                  in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+                  in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+                  in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+                  in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+                  in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+                  in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+                  in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+                  in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+                  in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+                  ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                  ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+                  ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+              -- リース終了日が出力前年度5月～出力前年度4月の場合、シミュレーション再リースレコードの作成
+              ELSIF (  ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.this_may )
+                AND ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.this_april ) ) THEN
                 -- 再リース支払月の取得
-                lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 2), cv_format_yyyymm);
+                lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 12), cv_format_yyyymm);
                 -- 再リース料の取得
-                -- 原契約の金額が存在するため0にする
-                g_lease_budget_bulk_tab(i).may_charge       := 0;
-                g_lease_budget_bulk_tab(i).june_charge      := 0;
-                g_lease_budget_bulk_tab(i).july_charge      := 0;
-                g_lease_budget_bulk_tab(i).august_charge    := 0;
-                g_lease_budget_bulk_tab(i).september_charge := 0;
-                g_lease_budget_bulk_tab(i).october_charge   := 0;
-                g_lease_budget_bulk_tab(i).november_charge  := 0;
-                g_lease_budget_bulk_tab(i).december_charge  := 0;
-                g_lease_budget_bulk_tab(i).january_charge   := 0;
-                g_lease_budget_bulk_tab(i).february_charge  := 0;
-                g_lease_budget_bulk_tab(i).march_charge     := 0;
-                g_lease_budget_bulk_tab(i).april_charge     := 0;
-                -- 支払月の再リース料のみ設定
                 IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
                   g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
                 ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
@@ -5179,8 +6233,8 @@ AS
                   iv_record_type         => cv_record_type_2,                               -- レコード区分
                   iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
                   iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
-                  iv_lease_type          => cv_lease_type_2,                                -- リース区分
-                  iv_lease_type_name     => g_lookup_budget_itemnm_tab(22),                 -- リース区分名
+                  iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+                  iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
                   iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
                   iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
                   iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
@@ -5188,7 +6242,77 @@ AS
                   iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
                   iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
                   iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
-                  iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+                  iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
+                                              - cn_lease_type_1_year
+                                              - g_lease_budget_bulk_tab(i).re_lease_times
+                                              + 1 ),                                        -- リース開始年度
+                  iv_lease_end_months    => lv_re_lease_months,                             -- リース支払最終月
+                  in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+                  in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+                  in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+                  in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+                  in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+                  in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+                  in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+                  in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+                  in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+                  in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+                  in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+                  in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+                  ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                  ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+                  ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+              -- リース終了日が出力前年度5月より前の場合、シミュレーション再リースレコードの作成
+              ELSIF ( g_lease_budget_bulk_tab(i).lease_end_months < g_next_year_rec.this_may ) THEN
+                -- 再リース支払月の取得
+                lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 24), cv_format_yyyymm);
+                -- 再リース料の取得
+                IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
+                  g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
+                  g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
+                  g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
+                  g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
+                  g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
+                  g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
+                  g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
+                  g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
+                  g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
+                  g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
+                  g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
+                  g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                END IF;
+                -- シミュレーション再リースレコード
+                set_g_lease_budget_tab(
+                  iv_record_type         => cv_record_type_2,                               -- レコード区分
+                  iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+                  iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+                  iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+                  iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+                  iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+                  iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+                  iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+                  iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+                  iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+                  iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+                  iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+                  iv_lease_start_year    => ( g_lease_budget_bulk_tab(i).lease_start_year
+                                              - cn_lease_type_1_year
+                                              - g_lease_budget_bulk_tab(i).re_lease_times
+                                              + 1 ),                                        -- リース開始年度
                   iv_lease_end_months    => lv_re_lease_months,                             -- リース支払最終月
                   in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
                   in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
@@ -5209,1226 +6333,2708 @@ AS
                   RAISE global_process_expt;
                 END IF;
               END IF;
-            END IF;
-          END IF;
-          -- 物件コード変更
-          lt_chk_object_code := g_lease_budget_bulk_tab(i).object_name;
-          --
-        END LOOP set_g_lease_budget_tab_loop;
-      END IF;
---
-      -- ===============================
-      -- リース料予算ワーク作成 (A-6)
-      -- ===============================
-      ins_lease_budget_wk(
-        in_file_id,        -- 1.ファイルID(必須)
-        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-        lv_retcode,        -- リターン・コード             --# 固定 #
-        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_process_expt;
-      END IF;
---
-    END LOOP lease_budget_loop;
-    --
-    CLOSE get_lease_budget_cur;
---
--- 2014/09/29 Ver.1.1 Y.Shouji DEL START
---    -- 取得件数0件の場合
---    IF ( ln_cnt = 0 ) THEN
---      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
---                              iv_application  => cv_appl_short_name_cff
---                             ,iv_name         => cv_msg_xxcff_00165
---                             ,iv_token_name1  => cv_tkn_get_data
---                             ,iv_token_value1 => cv_msg_xxcff_50190)
---                                                   , 1
---                                                   , 5000);
---      lv_errbuf := lv_errmsg;
---      RAISE global_process_expt;
---    END IF;
---
--- -- 2014/09/29 Ver.1.1 Y.Shouji DEL END
-    -- ===============================
-    -- 出力対象外物件コードデータ削除 (A-7)
-    -- ===============================
-    IF ( g_lookup_budget_objcode_tab.COUNT <> 0 ) THEN
-      del_object_code_data(
-        in_file_id,        -- 1.ファイルID(必須)
-        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-        lv_retcode,        -- リターン・コード             --# 固定 #
-        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_process_expt;
-      END IF;
-    END IF;
---
-    -- ===============================
-    -- 廃棄率データ更新 (A-8)
-    -- ===============================
-    upd_scrap_data(
-      in_file_id,        -- 1.ファイルID(必須)
-      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-      lv_retcode,        -- リターン・コード             --# 固定 #
-      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
---
--- 2014/09/29 Ver.1.1 Y.Shouji ADD START
-    -- ===============================
-    -- 固定資産物件のリース料予算データ抽出 (A-13)
-    -- ===============================
-    OPEN get_vd_budget_cur;
-    --
-    <<vd_budget_loop>>
-    LOOP
-      -- 初期化
-      g_vd_budget_bulk_tab.DELETE;
-      g_vd_budget_tab.DELETE;
-      g_lease_budget_tab.DELETE;   -- リース料予算用情報格納配列
-      gn_line_cnt := 0;            -- リース料予算用情報格納配列設定用カウンタ
-      --
-      FETCH get_vd_budget_cur BULK COLLECT INTO g_vd_budget_bulk_tab LIMIT gn_bulk_collect_cnt;
-
-      -- 取得データが存在しない場合、ループを抜ける
-      IF ( ( g_vd_budget_tab.COUNT = 0 ) AND ( g_vd_budget_bulk_tab.COUNT = 0 ) ) THEN
-        EXIT vd_budget_loop;
-      END IF;
-      -- 出力年度の最初の日と最後の日を設定
-      IF ( ld_output_may IS NULL ) THEN
-        ld_output_may   := TO_DATE(g_next_year_rec.may, cv_format_yyyymm);
-        ld_output_april := LAST_DAY(TO_DATE(g_next_year_rec.april, cv_format_yyyymm));
-      END IF;
-      --
-      -- データ存在チェック用
-      ln_cnt := ln_cnt + 1;
-      -- 取得データが存在する場合
-      IF ( g_vd_budget_bulk_tab.COUNT > 0 ) THEN
-        <<set_g_vd_budget_tab_loop>>
-        FOR i IN g_vd_budget_bulk_tab.FIRST .. g_vd_budget_bulk_tab.LAST LOOP
-          -- ループカウントを設定
-          gn_count := i;
-          -- 事業供用日から59ヵ月後の月を設定（原契約終了月）
-          ld_vd_end_months := TRUNC(ADD_MONTHS(g_vd_budget_bulk_tab(i).date_placed_in_service, 59), cv_format_mm);
-          --
-          -- ① 物件コードから、自販機物件履歴の作成日と取得価格を取得して、出力年度の各月の取得価格を設定する
-          OPEN get_vd_his_mod_cur;
-          FETCH get_vd_his_mod_cur BULK COLLECT INTO g_vd_his_mod_tab;
-          CLOSE get_vd_his_mod_cur;
-          --
-          -- ①-1 ①でレコードを取得した場合
-          IF ( g_vd_his_mod_tab.COUNT >= 1 ) THEN
-            -- 変数初期化
-            ld_creation_date_before := NULL;
-            <<set_g_vd_his_mod_loop>>
-            FOR j IN g_vd_his_mod_tab.FIRST .. g_vd_his_mod_tab.LAST LOOP
-              --
-              -- 初期化
-              ln_re_lease_flag := cv_flag_no;
-              --
-              -- 1 1レコード目かつ①で取得した作成日が出力年度より前の場合
-              IF ( ( j = 1 ) AND ( g_vd_his_mod_tab(j).creation_date < ld_output_may) ) THEN
-                -- 1.1 A-13除売却日がNULLもしくは出力年度より後の場合
-                IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
-                  -- 出力年度の全ての月に取得価格を設定
-                  set_g_assets_cost_tab (
-                    id_vd_start_months => ld_output_may,                   -- 出力年度の最初の月
-                    id_vd_end_months   => ld_output_april,                 -- 出力年度の最後の月
-                    in_assets_cost     => g_vd_his_mod_tab(j).assets_cost, -- 取得価格
-                    ov_errbuf          => lv_errbuf,                       -- エラー・メッセージ           --# 固定 #
-                    ov_retcode         => lv_retcode,                      -- リターン・コード             --# 固定 #
-                    ov_errmsg          => lv_errmsg                        -- ユーザー・エラー・メッセージ --# 固定 #
-                  );
-                  -- ①の処理を終了する
-                  EXIT set_g_vd_his_mod_loop;
-                -- 1.2 A-13除売却日が出力年度内の場合
-                ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
-                  -- 出力年度の最初の月から除売却日の月まで取得価格を設定
-                  set_g_assets_cost_tab (
-                    id_vd_start_months => ld_output_may,                        -- 出力年度の最初の月
-                    id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
-                    in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,      -- 取得価格
-                    ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
-                    ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
-                    ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-                  );
-                  -- ①の処理を終了する
-                  EXIT set_g_vd_his_mod_loop;
+            -- リース区分が原契約、かつ、再リース要フラグが1(再リースしない)の場合
+            ELSIF (  ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_1 )
+              AND ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_1 ) ) THEN
+              -- リース終了日が出力年度5月より前の場合、出力対象外のため処理しない
+              -- リース終了日が出力年度5月以降の場合、取得した原契約レコードのみ出力
+              IF ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may ) THEN
+                -- 原契約レコード
+                set_g_lease_budget_tab(
+                  iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+                  iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+                  iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+                  iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+                  iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+                  iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+                  iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+                  iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+                  iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+                  iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+                  iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+                  iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+                  iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+                  iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+                  in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+                  in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+                  in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+                  in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+                  in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+                  in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+                  in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+                  in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+                  in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+                  in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+                  in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+                  in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+                  ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                  ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+                  ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
                 END IF;
-              -- 2 1レコード目かつ①で取得した作成日が出力年度内の場合
-              ELSIF ( ( j = 1 ) AND ( g_vd_his_mod_tab(j).creation_date >= ld_output_may ) ) THEN
-                -- 2.1 A-13除売却日がNULLもしくは出力年度より後の場合
-                IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
-                  -- 作成月から出力年度の最終月まで取得価格を設定
-                  set_g_assets_cost_tab (
-                    id_vd_start_months => g_vd_his_mod_tab(j).creation_date, -- 作成日の月
-                    id_vd_end_months   => ld_output_april,                   -- 出力年度の最後の月
-                    in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,   -- 取得価格
-                    ov_errbuf          => lv_errbuf,                         -- エラー・メッセージ           --# 固定 #
-                    ov_retcode         => lv_retcode,                        -- リターン・コード             --# 固定 #
-                    ov_errmsg          => lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
-                  );
-                  -- 処理したレコードの作成日をセットする
-                  ld_creation_date_before := g_vd_his_mod_tab(j).creation_date;
-                -- 2.2 A-13除売却日が出力年度内の場合
-                ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
-                  -- 作成月から除売却日の月まで取得価格を設定
-                  set_g_assets_cost_tab (
-                    id_vd_start_months => g_vd_his_mod_tab(j).creation_date,    -- 作成日の月
-                    id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
-                    in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,      -- 取得価格
-                    ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
-                    ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
-                    ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-                  );
-                  -- 処理したレコードの作成日をセットする
-                  ld_creation_date_before := g_vd_his_mod_tab(j).creation_date;
+              END IF;
+            -- リース区分が原契約、かつ、再リース要フラグが0(再リースする)の場合
+            ELSIF ( ( g_lease_budget_bulk_tab(i).lease_type = cv_lease_type_1 )
+              AND   ( g_lease_budget_bulk_tab(i).re_lease_flag = cv_re_lease_flag_0 ) ) THEN
+              -- リース終了日が出力年度3月以降の場合、原契約レコードのみ出力
+              IF ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.march ) THEN
+                -- 原契約レコード
+                set_g_lease_budget_tab(
+                  iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+                  iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+                  iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+                  iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+                  iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+                  iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+                  iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+                  iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+                  iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+                  iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+                  iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+                  iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+                  iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+                  iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+                  in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+                  in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+                  in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+                  in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+                  in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+                  in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+                  in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+                  in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+                  in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+                  in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+                  in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+                  in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+                  ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                  ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+                  ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
                 END IF;
-                -- 2.3 ①の取得件数が1件の場合
-                IF ( g_vd_his_mod_tab.COUNT = 1 ) THEN
-                  -- 2.3.1 事業供用日が出力年度より前の場合
-                  IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
-                    -- 出力年度の最初の月から1レコード目の作成日の前月まで取得価格を設定
-                    set_g_assets_cost_tab (
-                      id_vd_start_months => ld_output_may,                           -- 出力年度の最初の月
-                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1), -- 1レコード前の作成日の前月
-                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,         -- 取得価格
-                      ov_errbuf          => lv_errbuf,                               -- エラー・メッセージ           --# 固定 #
-                      ov_retcode         => lv_retcode,                              -- リターン・コード             --# 固定 #
-                      ov_errmsg          => lv_errmsg                                -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
-                  -- 2.3.2 事業供用日が出力年度内の場合
-                  ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
-                    -- 事業供用日の月から1レコード目の作成日の前月まで取得価格を設定
-                    set_g_assets_cost_tab (
-                      id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 出力年度の最初の月
-                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),        -- 1レコード前の作成日の前月
-                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,                -- 取得価格
-                      ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
-                      ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
-                      ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
+              -- 前回処理レコードと物件コードが相違する、かつ、
+              -- リース終了日が出力年度5月より前の場合
+              ELSIF ( ( g_lease_budget_bulk_tab(i).object_name <> lt_chk_object_code )
+                AND   ( g_lease_budget_bulk_tab(i).lease_end_months < g_next_year_rec.may ) ) THEN
+                -- リース終了日が出力前年度3月or出力前年度4月の場合
+                IF ( ( g_lease_budget_bulk_tab(i).lease_end_months = g_next_year_rec.this_march )
+                  OR ( g_lease_budget_bulk_tab(i).lease_end_months = g_next_year_rec.this_april ) )THEN
+                  -- 初回再リース支払月の取得
+                  lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 2), cv_format_yyyymm);
+                -- 上記以外の場合
+                ELSE
+                  -- 2回目再リース支払月の取得
+                  lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 14), cv_format_yyyymm);
+                END IF;
+                -- 再リース料の取得
+                IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
+                  g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
+                  g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
+                  g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
+                  g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
+                  g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
+                  g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
+                  g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
+                  g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
+                  g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
+                  g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
+                  g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
+                  g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                END IF;
+                -- シミュレーション再リースレコード
+                set_g_lease_budget_tab(
+                  iv_record_type         => cv_record_type_2,                                 -- レコード区分
+                  iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,           -- リース種別
+                  iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,      -- リース種別名
+                  iv_lease_type          => cv_lease_type_2,                                  -- リース区分
+                  iv_lease_type_name     => g_lookup_budget_itemnm_tab(22),                   -- リース区分名
+                  iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,            -- 地区コード
+                  iv_department_code     => g_lease_budget_bulk_tab(i).department_code,       -- 拠点コード
+                  iv_department_name     => g_lease_budget_bulk_tab(i).department_name,       -- 拠点名
+                  iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,       -- 顧客移行日
+                  iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,         -- 新拠点コード
+                  iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name,   -- 新拠点名
+                  iv_object_name         => g_lease_budget_bulk_tab(i).object_name,           -- 物件コード
+                  iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,      -- リース開始年度
+                  iv_lease_end_months    => lv_re_lease_months,                               -- リース支払最終月
+                  in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+                  in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+                  in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+                  in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+                  in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+                  in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+                  in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+                  in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+                  in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+                  in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+                  in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+                  in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+                  ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                  ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+                  ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+              -- リース終了日が出力年度5月～出力年度2月の場合、原契約と再リースレコードの出力
+              ELSIF ( ( g_lease_budget_bulk_tab(i).lease_end_months >= g_next_year_rec.may ) 
+                AND   ( g_lease_budget_bulk_tab(i).lease_end_months <= g_next_year_rec.february ) ) THEN
+                -- 原契約レコード
+                set_g_lease_budget_tab(
+                  iv_record_type         => g_lease_budget_bulk_tab(i).record_type,         -- レコード区分
+                  iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+                  iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+                  iv_lease_type          => g_lease_budget_bulk_tab(i).lease_type,          -- リース区分
+                  iv_lease_type_name     => g_lease_budget_bulk_tab(i).lease_type_name,     -- リース区分名
+                  iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+                  iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+                  iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+                  iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+                  iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+                  iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+                  iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+                  iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+                  iv_lease_end_months    => g_lease_budget_bulk_tab(i).lease_end_months,    -- リース支払最終月
+                  in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+                  in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+                  in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+                  in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+                  in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+                  in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+                  in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+                  in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+                  in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+                  in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+                  in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+                  in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+                  ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                  ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+                  ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                END IF;
+                -- 再リースレコード作成前の場合、シミュレーション再リースレコード作成
+                -- 再リースレコード作成済の場合、処理しない
+                IF ( g_lease_budget_bulk_tab(i).object_name <> lt_chk_object_code ) THEN
+                  -- 再リース支払月の取得
+                  lv_re_lease_months := TO_CHAR(ADD_MONTHS(TO_DATE(g_lease_budget_bulk_tab(i).lease_end_months, cv_format_yyyymm), 2), cv_format_yyyymm);
+                  -- 再リース料の取得
+                  -- 原契約の金額が存在するため0にする
+                  g_lease_budget_bulk_tab(i).may_charge       := 0;
+                  g_lease_budget_bulk_tab(i).june_charge      := 0;
+                  g_lease_budget_bulk_tab(i).july_charge      := 0;
+                  g_lease_budget_bulk_tab(i).august_charge    := 0;
+                  g_lease_budget_bulk_tab(i).september_charge := 0;
+                  g_lease_budget_bulk_tab(i).october_charge   := 0;
+                  g_lease_budget_bulk_tab(i).november_charge  := 0;
+                  g_lease_budget_bulk_tab(i).december_charge  := 0;
+                  g_lease_budget_bulk_tab(i).january_charge   := 0;
+                  g_lease_budget_bulk_tab(i).february_charge  := 0;
+                  g_lease_budget_bulk_tab(i).march_charge     := 0;
+                  g_lease_budget_bulk_tab(i).april_charge     := 0;
+                  -- 支払月の再リース料のみ設定
+                  IF ( lv_re_lease_months = g_next_year_rec.may ) THEN
+                    g_lease_budget_bulk_tab(i).may_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.june ) THEN
+                    g_lease_budget_bulk_tab(i).june_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.july ) THEN
+                    g_lease_budget_bulk_tab(i).july_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.august ) THEN
+                    g_lease_budget_bulk_tab(i).august_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.september ) THEN
+                    g_lease_budget_bulk_tab(i).september_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.october ) THEN
+                    g_lease_budget_bulk_tab(i).october_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.november ) THEN
+                    g_lease_budget_bulk_tab(i).november_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.december ) THEN
+                    g_lease_budget_bulk_tab(i).december_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.january ) THEN
+                    g_lease_budget_bulk_tab(i).january_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.february ) THEN
+                    g_lease_budget_bulk_tab(i).february_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.march ) THEN
+                    g_lease_budget_bulk_tab(i).march_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  ELSIF ( lv_re_lease_months = g_next_year_rec.april ) THEN
+                    g_lease_budget_bulk_tab(i).april_charge := g_lease_budget_bulk_tab(i).lease_type_1_charge;
+                  END IF;
+                  -- シミュレーション再リースレコード
+                  set_g_lease_budget_tab(
+                    iv_record_type         => cv_record_type_2,                               -- レコード区分
+                    iv_lease_class         => g_lease_budget_bulk_tab(i).lease_class,         -- リース種別
+                    iv_lease_class_name    => g_lease_budget_bulk_tab(i).lease_class_name,    -- リース種別名
+                    iv_lease_type          => cv_lease_type_2,                                -- リース区分
+                    iv_lease_type_name     => g_lookup_budget_itemnm_tab(22),                 -- リース区分名
+                    iv_chiku_code          => g_lease_budget_bulk_tab(i).chiku_code,          -- 地区コード
+                    iv_department_code     => g_lease_budget_bulk_tab(i).department_code,     -- 拠点コード
+                    iv_department_name     => g_lease_budget_bulk_tab(i).department_name,     -- 拠点名
+                    iv_cust_shift_date     => g_lease_budget_bulk_tab(i).cust_shift_date,     -- 顧客移行日
+                    iv_new_department_code => g_lease_budget_bulk_tab(i).new_base_code,       -- 新拠点コード
+                    iv_new_department_name => g_lease_budget_bulk_tab(i).new_department_name, -- 新拠点名
+                    iv_object_name         => g_lease_budget_bulk_tab(i).object_name,         -- 物件コード
+                    iv_lease_start_year    => g_lease_budget_bulk_tab(i).lease_start_year,    -- リース開始年度
+                    iv_lease_end_months    => lv_re_lease_months,                             -- リース支払最終月
+                    in_may_charge          => g_lease_budget_bulk_tab(i).may_charge,          -- 5月_リース料
+                    in_june_charge         => g_lease_budget_bulk_tab(i).june_charge,         -- 6月_リース料
+                    in_july_charge         => g_lease_budget_bulk_tab(i).july_charge,         -- 7月_リース料
+                    in_august_charge       => g_lease_budget_bulk_tab(i).august_charge,       -- 8月_リース料
+                    in_september_charge    => g_lease_budget_bulk_tab(i).september_charge,    -- 9月_リース料
+                    in_october_charge      => g_lease_budget_bulk_tab(i).october_charge,      -- 10月_リース料
+                    in_november_charge     => g_lease_budget_bulk_tab(i).november_charge,     -- 11月_リース料
+                    in_december_charge     => g_lease_budget_bulk_tab(i).december_charge,     -- 12月_リース料
+                    in_january_charge      => g_lease_budget_bulk_tab(i).january_charge,      -- 1月_リース料
+                    in_february_charge     => g_lease_budget_bulk_tab(i).february_charge,     -- 2月_リース料
+                    in_march_charge        => g_lease_budget_bulk_tab(i).march_charge,        -- 3月_リース料
+                    in_april_charge        => g_lease_budget_bulk_tab(i).april_charge,        -- 4月_リース料
+                    ov_errbuf              => lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+                    ov_retcode             => lv_retcode,        -- リターン・コード             --# 固定 #
+                    ov_errmsg              => lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+                  IF (lv_retcode = cv_status_error) THEN
+                    RAISE global_process_expt;
                   END IF;
                 END IF;
-              -- 3 2レコード以上存在する場合
-              ELSIF ( j > 1 ) THEN
-                -- 3.1 最終レコードではない場合
-                IF ( j <> g_vd_his_mod_tab.COUNT ) THEN
-                  -- 3.1.1 ①で取得した作成日が出力年度より前の場合
-                  IF ( g_vd_his_mod_tab(j).creation_date < ld_output_may ) THEN
-                    -- 出力年度の最初の月から1レコード前の作成日の前月まで取得価格を設定
+              END IF;
+            END IF;
+            -- 物件コード変更
+            lt_chk_object_code := g_lease_budget_bulk_tab(i).object_name;
+            --
+          END LOOP set_g_lease_budget_tab_loop;
+        END IF;
+--
+        -- ===============================
+        -- リース料予算ワーク作成 (A-6)
+        -- ===============================
+        ins_lease_budget_wk(
+          in_file_id,        -- 1.ファイルID(必須)
+          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+          lv_retcode,        -- リターン・コード             --# 固定 #
+          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+      END LOOP lease_budget_loop;
+      --
+      -- リース料区分が1（リース料）の場合
+      IF ( gv_lease_amt_kbn = cv_lease_amt_kbn_1 ) THEN
+        CLOSE get_lease_budget_cur;
+      -- リース料区分が2（減価償却費）の場合
+      ELSIF ( gv_lease_amt_kbn = cv_lease_amt_kbn_2 ) THEN
+        CLOSE get_lease_budget_deprn_cur;
+      END IF;
+--
+      -- ===============================
+      -- 出力対象外物件コードデータ削除 (A-7)
+      -- ===============================
+      IF ( g_lookup_budget_objcode_tab.COUNT <> 0 ) THEN
+        del_object_code_data(
+          in_file_id,        -- 1.ファイルID(必須)
+          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+          lv_retcode,        -- リターン・コード             --# 固定 #
+          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+--
+      -- ===============================
+      -- 廃棄率データ更新 (A-8)
+      -- ===============================
+      upd_scrap_data(
+        in_file_id,        -- 1.ファイルID(必須)
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD END
+--
+-- 2014/09/29 Ver.1.1 Y.Shouji ADD START
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD START
+--    -- ===============================
+--    -- 固定資産物件のリース料予算データ抽出 (A-13)
+--    -- ===============================
+--    OPEN get_vd_budget_cur;
+--    --
+--    <<vd_budget_loop>>
+--    LOOP
+--      -- 初期化
+--      g_vd_budget_bulk_tab.DELETE;
+--      g_vd_budget_tab.DELETE;
+--      g_lease_budget_tab.DELETE;   -- リース料予算用情報格納配列
+--      gn_line_cnt := 0;            -- リース料予算用情報格納配列設定用カウンタ
+--      --
+--      FETCH get_vd_budget_cur BULK COLLECT INTO g_vd_budget_bulk_tab LIMIT gn_bulk_collect_cnt;
+--
+--      -- 取得データが存在しない場合、ループを抜ける
+--      IF ( ( g_vd_budget_tab.COUNT = 0 ) AND ( g_vd_budget_bulk_tab.COUNT = 0 ) ) THEN
+--        EXIT vd_budget_loop;
+--      END IF;
+--      -- 出力年度の最初の日と最後の日を設定
+--      IF ( ld_output_may IS NULL ) THEN
+--        ld_output_may   := TO_DATE(g_next_year_rec.may, cv_format_yyyymm);
+--        ld_output_april := LAST_DAY(TO_DATE(g_next_year_rec.april, cv_format_yyyymm));
+--      END IF;
+--      --
+--      -- データ存在チェック用
+--      ln_cnt := ln_cnt + 1;
+--      -- 取得データが存在する場合
+--      IF ( g_vd_budget_bulk_tab.COUNT > 0 ) THEN
+--        <<set_g_vd_budget_tab_loop>>
+--        FOR i IN g_vd_budget_bulk_tab.FIRST .. g_vd_budget_bulk_tab.LAST LOOP
+--          -- ループカウントを設定
+--          gn_count := i;
+--          -- 事業供用日から59ヵ月後の月を設定（原契約終了月）
+--          ld_vd_end_months := TRUNC(ADD_MONTHS(g_vd_budget_bulk_tab(i).date_placed_in_service, 59), cv_format_mm);
+--          --
+--          -- ① 物件コードから、自販機物件履歴の作成日と取得価格を取得して、出力年度の各月の取得価格を設定する
+--          OPEN get_vd_his_mod_cur;
+--          FETCH get_vd_his_mod_cur BULK COLLECT INTO g_vd_his_mod_tab;
+--          CLOSE get_vd_his_mod_cur;
+--          --
+--          -- ①-1 ①でレコードを取得した場合
+--          IF ( g_vd_his_mod_tab.COUNT >= 1 ) THEN
+--            -- 変数初期化
+--            ld_creation_date_before := NULL;
+--            <<set_g_vd_his_mod_loop>>
+--            FOR j IN g_vd_his_mod_tab.FIRST .. g_vd_his_mod_tab.LAST LOOP
+--              --
+--              -- 初期化
+--              ln_re_lease_flag := cv_flag_no;
+--              --
+--              -- 1 1レコード目かつ①で取得した作成日が出力年度より前の場合
+--              IF ( ( j = 1 ) AND ( g_vd_his_mod_tab(j).creation_date < ld_output_may) ) THEN
+--                -- 1.1 A-13除売却日がNULLもしくは出力年度より後の場合
+--                IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
+--                  -- 出力年度の全ての月に取得価格を設定
+--                  set_g_assets_cost_tab (
+--                    id_vd_start_months => ld_output_may,                   -- 出力年度の最初の月
+--                    id_vd_end_months   => ld_output_april,                 -- 出力年度の最後の月
+--                    in_assets_cost     => g_vd_his_mod_tab(j).assets_cost, -- 取得価格
+--                    ov_errbuf          => lv_errbuf,                       -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode         => lv_retcode,                      -- リターン・コード             --# 固定 #
+--                    ov_errmsg          => lv_errmsg                        -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                  -- ①の処理を終了する
+--                  EXIT set_g_vd_his_mod_loop;
+--                -- 1.2 A-13除売却日が出力年度内の場合
+--                ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
+--                  -- 出力年度の最初の月から除売却日の月まで取得価格を設定
+--                  set_g_assets_cost_tab (
+--                    id_vd_start_months => ld_output_may,                        -- 出力年度の最初の月
+--                    id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
+--                    in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,      -- 取得価格
+--                    ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
+--                    ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                  -- ①の処理を終了する
+--                  EXIT set_g_vd_his_mod_loop;
+--                END IF;
+--              -- 2 1レコード目かつ①で取得した作成日が出力年度内の場合
+--              ELSIF ( ( j = 1 ) AND ( g_vd_his_mod_tab(j).creation_date >= ld_output_may ) ) THEN
+--                -- 2.1 A-13除売却日がNULLもしくは出力年度より後の場合
+--                IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
+--                  -- 作成月から出力年度の最終月まで取得価格を設定
+--                  set_g_assets_cost_tab (
+--                    id_vd_start_months => g_vd_his_mod_tab(j).creation_date, -- 作成日の月
+--                    id_vd_end_months   => ld_output_april,                   -- 出力年度の最後の月
+--                    in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,   -- 取得価格
+--                    ov_errbuf          => lv_errbuf,                         -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode         => lv_retcode,                        -- リターン・コード             --# 固定 #
+--                    ov_errmsg          => lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                  -- 処理したレコードの作成日をセットする
+--                  ld_creation_date_before := g_vd_his_mod_tab(j).creation_date;
+--                -- 2.2 A-13除売却日が出力年度内の場合
+--                ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
+--                  -- 作成月から除売却日の月まで取得価格を設定
+--                  set_g_assets_cost_tab (
+--                    id_vd_start_months => g_vd_his_mod_tab(j).creation_date,    -- 作成日の月
+--                    id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
+--                    in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,      -- 取得価格
+--                    ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
+--                    ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                  -- 処理したレコードの作成日をセットする
+--                  ld_creation_date_before := g_vd_his_mod_tab(j).creation_date;
+--                END IF;
+--                -- 2.3 ①の取得件数が1件の場合
+--                IF ( g_vd_his_mod_tab.COUNT = 1 ) THEN
+--                  -- 2.3.1 事業供用日が出力年度より前の場合
+--                  IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
+--                    -- 出力年度の最初の月から1レコード目の作成日の前月まで取得価格を設定
+--                    set_g_assets_cost_tab (
+--                      id_vd_start_months => ld_output_may,                           -- 出力年度の最初の月
+--                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1), -- 1レコード前の作成日の前月
+--                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,         -- 取得価格
+--                      ov_errbuf          => lv_errbuf,                               -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode         => lv_retcode,                              -- リターン・コード             --# 固定 #
+--                      ov_errmsg          => lv_errmsg                                -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                  -- 2.3.2 事業供用日が出力年度内の場合
+--                  ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
+--                    -- 事業供用日の月から1レコード目の作成日の前月まで取得価格を設定
+--                    set_g_assets_cost_tab (
+--                      id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 出力年度の最初の月
+--                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),        -- 1レコード前の作成日の前月
+--                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,                -- 取得価格
+--                      ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
+--                      ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                  END IF;
+--                END IF;
+--              -- 3 2レコード以上存在する場合
+--              ELSIF ( j > 1 ) THEN
+--                -- 3.1 最終レコードではない場合
+--                IF ( j <> g_vd_his_mod_tab.COUNT ) THEN
+--                  -- 3.1.1 ①で取得した作成日が出力年度より前の場合
+--                  IF ( g_vd_his_mod_tab(j).creation_date < ld_output_may ) THEN
+--                    -- 出力年度の最初の月から1レコード前の作成日の前月まで取得価格を設定
+--                    set_g_assets_cost_tab (
+--                      id_vd_start_months => ld_output_may,                            -- 出力年度の最初の月
+--                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),  -- 1レコード前の作成日の前月
+--                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,          -- 取得価格
+--                      ov_errbuf          => lv_errbuf,                                -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode         => lv_retcode,                               -- リターン・コード             --# 固定 #
+--                      ov_errmsg          => lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                    -- ①の処理を終了する
+--                    EXIT set_g_vd_his_mod_loop;
+--                  -- 3.1.2 ①で取得した作成日が出力年度内の場合
+--                  ELSIF ( g_vd_his_mod_tab(j).creation_date >= ld_output_may ) THEN
+--                    -- 作成日から1レコード前の作成月の前月まで取得価格を設定
+--                    set_g_assets_cost_tab (
+--                      id_vd_start_months => g_vd_his_mod_tab(j).creation_date,        -- 作成日の月
+--                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),  -- 1レコード前の作成日の前月
+--                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,          -- 取得価格
+--                      ov_errbuf          => lv_errbuf,                                -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode         => lv_retcode,                               -- リターン・コード             --# 固定 #
+--                      ov_errmsg          => lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                    -- 処理したレコードの作成日をセットする
+--                    ld_creation_date_before := g_vd_his_mod_tab(j).creation_date;
+--                  END IF;
+--                -- 3.2 最終レコードの場合
+--                ELSIF ( j = g_vd_his_mod_tab.COUNT ) THEN
+--                  -- 3.2.1 事業供用日が出力年度より前の場合
+--                  IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
+--                    -- 出力年度の最初の月から1レコード前の作成日の前月まで取得価格を設定
+--                    set_g_assets_cost_tab (
+--                      id_vd_start_months => ld_output_may,                           -- 出力年度の最初の月
+--                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1), -- 1レコード前の作成日の前月
+--                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,         -- 取得価格
+--                      ov_errbuf          => lv_errbuf,                               -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode         => lv_retcode,                              -- リターン・コード             --# 固定 #
+--                      ov_errmsg          => lv_errmsg                                -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                  -- 3.2.2 事業供用日が出力年度内の場合
+--                  ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
+--                    -- 事業供用日の月から1レコード前の作成日の前月まで取得価格を設定
+--                    set_g_assets_cost_tab (
+--                      id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
+--                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),        -- 1レコード前の作成日の前月
+--                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,                -- 取得価格
+--                      ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
+--                      ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                  END IF;
+--                END IF;
+--              END IF;
+--            END LOOP set_g_vd_his_mod_loop;
+--          --
+--          -- ①-2 ①でレコードを取得しない場合
+--          ELSIF ( g_vd_his_mod_tab.COUNT = 0 ) THEN
+--            -- 1 除売却日がNULLもしくは出力年度より後の場合
+--            IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
+--              -- 1.1 事業供用日が出力年度より前の場合
+--              IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
+--                -- 出力年度の全ての月に取得価格を設定
+--                set_g_assets_cost_tab (
+--                  id_vd_start_months => ld_output_may,                       -- 出力年度の最初の月
+--                  id_vd_end_months   => ld_output_april,                     -- 出力年度の最後の月
+--                  in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost, -- 取得価格
+--                  ov_errbuf          => lv_errbuf,                           -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode         => lv_retcode,                          -- リターン・コード             --# 固定 #
+--                  ov_errmsg          => lv_errmsg                            -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              -- 1.2 事業供用日が出力年度内の場合
+--              ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
+--                -- 事業供用日の月から出力年度の最後の月まで取得価格を設定
+--                set_g_assets_cost_tab (
+--                  id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
+--                  id_vd_end_months   => ld_output_april,                                -- 出力年度の最後の月
+--                  in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,            -- 取得価格
+--                  ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
+--                  ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              END IF;
+--            -- 2 除売却日が出力年度内の場合
+--            ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
+--              -- 2.1 事業供用日が出力年度より前の場合
+--              IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
+--                -- 出力年度の最初の月から除売却日の月まで取得価格を設定
+--                set_g_assets_cost_tab (
+--                  id_vd_start_months => ld_output_may,                        -- 出力年度の最初の月
+--                  id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
+--                  in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,  -- 取得価格
+--                  ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
+--                  ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              -- 2.2 事業供用日が出力年度内の場合
+--              ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
+--                -- 事業供用日から除売却の月まで取得価格を設定
+--                set_g_assets_cost_tab (
+--                  id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
+--                  id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired,           -- 除売却日の月
+--                  in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,            -- 取得価格
+--                  ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
+--                  ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              END IF;
+--            END IF;
+--          END IF;
+----
+---- 2014/10/08 Ver.1.2 Y.Shouji ADD START
+--          -- 自販機履歴情報の存在確認
+--          SELECT 
+--                 COUNT(object_code)
+--          INTO
+--                 ln_count_his_move
+--          FROM   xxcff_vd_object_histories  xvohi                        -- 自販機情報履歴
+--          WHERE  xvohi.object_code        = g_vd_budget_bulk_tab(gn_count).object_name -- 物件コード
+--          AND    ( (xvohi.process_type = cv_process_type_103)                          -- 処理区分
+--            OR     (xvohi.process_type = cv_process_type_102))                         -- 処理区分
+--          AND    rownum = 1
+--          ;
+----
+---- 2014/10/08 Ver.1.2 Y.Shouji ADD END
+---- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+--          -- ② A-13で取得した移動日が存在する、かつ履歴情報が存在する場合
+----          IF ( g_vd_budget_bulk_tab(i).moved_date IS NOT NULL ) THEN
+--          IF    ( g_vd_budget_bulk_tab(i).moved_date IS NOT NULL ) 
+--            AND ( ln_count_his_move > 0 ) THEN
+---- 2014/10/08 Ver.1.2 Y.Shouji MOD END
+--            -- 自販機情報履歴から物件の移動情報を取得
+--            OPEN get_vd_his_move_cur;
+--            FETCH get_vd_his_move_cur BULK COLLECT INTO g_vd_his_move_tab;
+--            CLOSE get_vd_his_move_cur;
+--            --
+--            <<set_g_vd_his_move_loop>>
+--            FOR k IN g_vd_his_move_tab.FIRST .. g_vd_his_move_tab.LAST LOOP
+--              -- ②-1 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過しない（原契約が終了しない）
+--              IF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months >= ld_output_april ) ) THEN
+--                -- 1 1レコード目の場合
+--                IF ( k = 1 ) THEN
+--                  -- 1.1 ②移動日が出力年度内の場合
+--                  IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may ) 
+--                    AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
+--                    -- 1.1.1 ②顧客移行日が②移動日以降の場合
+--                    IF ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date ) THEN
+--                      -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).moved_date,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日の月から出力年度の最終月に、台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ld_output_april,
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 処理したレコードの移動日をセットする
+--                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                    -- 1.1.2 ②顧客移行日なしまたは②移動日より前の場合
+--                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date ) ) THEN
+--                      -- ②移動日の月から出力年度の最終月の台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).moved_date,
+--                        id_end_months             => ld_output_april,
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 処理したレコードの移動日をセットする
+--                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                    END IF;
+--                  -- 1.2 ②移動日が出力年度より前の場合
+--                  ELSIF  ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
+--                    -- 1.2.1 ②顧客移行日が出力年度の最初の月より後の場合
+--                    IF ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may ) THEN
+--                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => ld_output_may,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日以降は、台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ld_output_april,
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- ①の処理を終了する
+--                      EXIT set_g_vd_his_move_loop;
+--                    -- 1.2.2 ②顧客移行日なしまたは出力年度の最初の月より前の場合
+--                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) ) THEN
+--                      -- 全ての月に台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => ld_output_may,
+--                        id_end_months             => ld_output_april,
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                    END IF;
+--                    -- ①の処理を終了する
+--                    EXIT set_g_vd_his_move_loop;
+--                  -- 1.3 ②移動日が出力年度より後の場合
+--                  ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
+--                    -- 処理したレコードの移動日をセットする
+--                    ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                  END IF;
+--                -- 2レコード目以降で最終レコードではない場合
+--                ELSIF ( ( k > 1 ) AND ( k <> g_vd_his_move_tab.COUNT ) ) THEN
+--                  -- 2.1 ②移動日が出力年度内の場合
+--                  IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may )
+--                    AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
+--                    -- 2.1.1 ②顧客移行日が②移動日の月から1レコード前の移動日の前月までの場合
+--                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
+--                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1)) )  ) THEN
+--                      -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).moved_date,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 処理したレコードの移動日をセットする
+--                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                    -- 2.1.2 ②顧客移行日がない、または②移動日より前、または1レコード前の移動日の前月より後の場合
+--                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                         OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
+--                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm ) ) ) THEN
+--                      -- ②移動日の月から1レコード前の移動日の前月まで取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).moved_date,
+--                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 処理したレコードの移動日をセットする
+--                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                    END IF;
+--                  -- 2.2 ②移動日が出力年度より前の場合
+--                  ELSIF ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
+--                    -- 2.2.1 ②顧客移行日が出力年度の最初の月から1レコード前の移動日の前月までの場合
+--                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
+--                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => ld_output_may,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- ①の処理を終了する
+--                      EXIT set_g_vd_his_move_loop;
+--                    -- 2.2.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
+--                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                         OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+--                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm ) ) ) THEN
+--                      -- ②顧客移行日がNULLではない、かつ出力年度の最初の月より前、かつ②移動日以降の場合
+--                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL)
+--                        AND ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+--                        AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
+--                        -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
+--                        set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                      -- 上記以外の場合
+--                      ELSE
+--                        -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
+--                        set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                      END IF;
+--                      -- ①の処理を終了する
+--                      EXIT set_g_vd_his_move_loop;
+--                    END IF;
+--                  -- 2.3 ②移動日が出力年度より後の場合
+--                  ELSIF ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
+--                    -- 処理レコードの移動日をセットする
+--                    ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                  END IF;
+--                END IF;
+--                --
+--                -- 3 最終レコードの場合
+--                IF ( k = g_vd_his_move_tab.COUNT ) THEN
+--                  -- 3.1 ②顧客移行日が出力年度の最初の月から、1レコード前の移動日の前月までの場合
+--                  IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
+--                   AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => ld_output_may,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                  -- 3.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
+--                  ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                       OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+--                       OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                    -- ②顧客移行日がない、または1レコード前の移動日の前月より後の場合
+--                    IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                       OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                      -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                    -- 出力年度の最初の月より前の場合
+--                    ELSIF ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) THEN
+--                      -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                    END IF;
+--                  END IF;
+--                END IF;
+--              --
+--              -- ②-2 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過する（以下、原契約終了月）
+--              ELSIF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months < ld_output_april ) ) THEN
+--                -- 再リースのテーブル変数作成がされていない、かつ（移動日が原契約終了月の次の月以前またはNULL）の場合
+--                IF ( ( ln_re_lease_flag = cv_flag_no )
+--                 AND ( ( TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) <= ADD_MONTHS(ld_vd_end_months, 1))
+--                   OR  ( g_vd_his_move_tab(k).moved_date IS NULL ) ) ) THEN
+--                  -- 顧客移行日がNULL、または原契約終了月の次の月より後または、移動日より前の場合
+--                  IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                    OR  ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ADD_MONTHS(ld_vd_end_months, 1) )
+--                    OR  ( ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
+--                      AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) < TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) ) THEN
+--                    -- 再リースのテーブル変数を作成する
+--                    set_g_lease_budget_tab_vd (
+--                      id_start_months           => NULL,
+--                      id_end_months             => NULL,
+--                      iv_lease_type             => cv_lease_type_2,
+--                      iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+--                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                      iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                      iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                    -- 再リースのテーブル変数作成のフラグを立てる
+--                    ln_re_lease_flag := cv_flag_yes;
+--                  -- 上記以外の場合
+--                  ELSE
+--                    set_g_lease_budget_tab_vd (
+--                      id_start_months           => NULL,
+--                      id_end_months             => NULL,
+--                      iv_lease_type             => cv_lease_type_2,
+--                      iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+--                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                      iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                      iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                    -- 再リースのテーブル変数作成のフラグを立てる
+--                    ln_re_lease_flag := cv_flag_yes;
+--                  END IF;
+--                END IF;
+--                -- 1 1レコード目の場合
+--                IF ( k = 1 ) THEN
+--                  -- ②移動日が出力年度内の場合
+--                  -- 1.1 ②移動日が出力年度内の場合
+--                  IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may ) 
+--                    AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
+--                    -- 1.1.1 ②顧客移行日が②移動日以降かつ、原契約終了月以前の場合
+--                    IF  ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
+--                      AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_months ) ) THEN
+--                      -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).moved_date,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日の月から原契約終了月に、台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ld_vd_end_months,
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 処理したレコードの移動日をセットする
+--                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                    -- 1.1.2 ②顧客移行日がない、または②移動日より前、または原契約終了月より後の場合
+--                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                      OR    ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
+--                      OR    ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ld_vd_end_months ) ) THEN
+--                      -- ②移動日の月から原契約終了月の台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).moved_date,
+--                        id_end_months             => ld_vd_end_months,
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 処理したレコードの移動日をセットする
+--                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                    END IF;
+--                  -- 1.2 ②移動日が出力年度より前の場合
+--                  ELSIF  ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
+--                    -- 1.2.1 ②顧客移行日が出力年度の最初の月より後の場合
+--                    IF ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may ) THEN
+--                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => ld_output_may,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日から原契約終了月まで、台数1
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ld_vd_end_months,
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- ①の処理を終了する
+--                      EXIT set_g_vd_his_move_loop;
+--                    -- 1.2.2 ②顧客移行日なしまたは出力年度の最初の月より前の場合
+--                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) ) THEN
+--                      -- ②顧客移行日が②移動日以降の場合
+--                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL )
+--                        AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
+--                        -- 出力年度の最初の月から原契約終了月まで、台数1
+--                        set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ld_vd_end_months,
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                      ELSE
+--                        -- 出力年度の最初の月から原契約終了月まで、台数1
+--                        set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ld_vd_end_months,
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                      END IF;
+--                    END IF;
+--                    -- ①の処理を終了する
+--                    EXIT set_g_vd_his_move_loop;
+--                  -- 1.3 ②移動日が出力年度より後の場合
+--                  ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
+--                    -- 原契約終了月の次の月をセット
+--                    ld_moved_date_before := ADD_MONTHS(ld_vd_end_months, 1);
+--                  END IF;
+--                -- 2 2レコード目以降で、最終レコードではない場合
+--                ELSIF ( ( k > 1 ) AND ( k <> g_vd_his_move_tab.COUNT ) ) THEN
+--                  -- 2.1 ②移動日が出力年度内の場合
+--                  IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may )
+--                    AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
+--                    -- 2.1.1 ②顧客移行日が②移動日の月から1レコード前の移動日の前月までの場合
+--                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
+--                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1)) )  ) THEN
+--                      -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).moved_date,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 処理したレコードの移動日をセットする
+--                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                    -- 2.1.2 ②顧客移行日がない、または②移動日より前、または1レコード前の移動日の前月より後の場合
+--                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                         OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
+--                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                      -- ②移動日の月から1レコード前の移動日の前月まで取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).moved_date,
+--                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 処理したレコードの移動日をセットする
+--                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+--                    END IF;
+--                  -- 2.2 ②移動日が出力年度より前の場合
+--                  ELSIF ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
+--                    -- 2.2.1 ②顧客移行日が出力年度の最初の月から1レコード前の移動日の前月までの場合
+--                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
+--                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => ld_output_may,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- ①の処理を終了する
+--                      EXIT set_g_vd_his_move_loop;
+--                    -- 2.2.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
+--                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                         OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+--                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                      -- ②顧客移行日がNULLではない、かつ出力年度の最初の月より前、かつ②移動日以降の場合
+--                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL)
+--                        AND ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+--                        AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
+--                        -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
+--                        set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                      -- 上記以外の場合
+--                      ELSE
+--                        -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
+--                        set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                      END IF;
+--                      -- ①の処理を終了する
+--                      EXIT set_g_vd_his_move_loop;
+--                    END IF;
+--                  -- 2.3 ②移動日が出力年度より後の場合
+--                  ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
+--                    -- 原契約終了月の次の月をセット
+--                    ld_moved_date_before := ADD_MONTHS(ld_vd_end_months, 1);
+--                  END IF;
+--                END IF;
+--                --
+--                -- 3 最終レコードの場合
+--                IF ( k = g_vd_his_move_tab.COUNT ) THEN
+--                  -- 3.1 ②顧客移行日が出力年度の最初の月から、1レコード前の移動日の前月までの場合
+--                  IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
+--                   AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => ld_output_may,
+--                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+--                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                      );
+--                  -- 3.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
+--                  ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                       OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+--                       OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                    -- ②顧客移行日がない、または1レコード前の移動日の前月より後の場合
+--                    IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                       OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+--                      -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                    -- 出力年度の最初の月より前の場合
+--                    ELSIF ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) THEN
+--                      -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
+--                      set_g_lease_budget_tab_vd (
+--                          id_start_months           => ld_output_may,
+--                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+--                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                        );
+--                    END IF;
+--                  END IF;
+--                END IF;
+--              --
+--              -- ②-3 A-13で取得したリース区分が’2’（再リース）
+--              ELSIF (g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_2) THEN
+--                -- 出力年度の事業供用月を設定
+--                -- 1月-4月の場合
+--                IF ( TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm) BETWEEN cv_months_1 AND cv_months_4 ) THEN
+--                  ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year +1) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
+--                -- 5月-12月の場合
+--                ELSE
+--                  ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
+--                END IF;
+---- 2014/10/17 Ver.1.3 Y.Shouji MOD START
+--                -- 1 最終レコードではなく、②で取得した移動日が事業供用月以前の場合
+--                --IF  ( ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
+--                IF  ( ( k <> g_vd_his_move_tab.COUNT )
+--                  AND ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
+---- 2014/10/17 Ver.1.3 Y.Shouji MOD END
+--                  AND ( g_vd_his_move_tab(k).moved_date <= ld_vd_end_output_months ) ) THEN
+--                  -- 1.1 ②顧客移行日が②移動日以降かつ、事業供用月以前の場合
+--                  IF ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL )
+--                   AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) )
+--                   AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) ) THEN
+--                    set_g_lease_budget_tab_vd (
+--                      id_start_months           => NULL,
+--                      id_end_months             => NULL,
+--                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                      iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                      iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                    -- ①の処理を終了する
+--                    EXIT set_g_vd_his_move_loop;
+--                  -- 1.2 1.1以外の場合
+--                  ELSE
+--                    set_g_lease_budget_tab_vd (
+--                      id_start_months           => NULL,
+--                      id_end_months             => NULL,
+--                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                      iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                      iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                    -- ①の処理を終了する
+--                    EXIT set_g_vd_his_move_loop;
+--                  END IF;
+--                END IF;
+--                --
+--                -- 2 最終レコードの場合
+--                IF ( k = g_vd_his_move_tab.COUNT ) THEN
+--                  -- 2.1 ②顧客移行日なし、または出力年度の事業供用月より後の場合
+--                  IF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+--                    OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ld_vd_end_output_months ) ) THEN
+--                    set_g_lease_budget_tab_vd (
+--                      id_start_months           => NULL,
+--                      id_end_months             => NULL,
+--                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                      iv_department_code        => g_vd_his_move_tab(k).department_code,
+--                      iv_department_name        => g_vd_his_move_tab(k).department_name,
+--                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                  -- 2.2 ②顧客移行日が出力年度の事業供用日の月より前の場合
+--                  ELSIF ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) THEN
+--                    set_g_lease_budget_tab_vd (
+--                      id_start_months           => NULL,
+--                      id_end_months             => NULL,
+--                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+--                      iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+--                      iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+--                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                    );
+--                  END IF;
+--                END IF;
+--              END IF;
+--            END LOOP set_g_vd_his_move_loop;
+----
+---- 2014/10/08 Ver.1.2 Y.Shouji MOD START
+--          -- ③ A-13で取得した移動日が存在しない、または履歴情報が存在しない場合
+----          ELSIF ( g_vd_budget_bulk_tab(i).moved_date IS NULL ) THEN
+--          ELSIF ( g_vd_budget_bulk_tab(i).moved_date IS NULL ) 
+--            OR  ( ln_count_his_move = 0 ) THEN
+---- 2014/10/08 Ver.1.2 Y.Shouji MOD END
+--            -- ③-1 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過しない
+--            IF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months >= ld_output_april ) ) THEN
+--              -- 1 A-13顧客移行日が出力年度の最初の月より後の場合
+--              IF ( g_vd_budget_bulk_tab(i).cust_shift_date >= ld_output_may ) THEN
+--                -- 顧客移行日前：出力年度の最初の月からA-13顧客移行日の前月まで
+--                set_g_lease_budget_tab_vd (
+--                  id_start_months           => ld_output_may,
+--                  id_end_months             => ADD_MONTHS(g_vd_budget_bulk_tab(i).cust_shift_date, -1),
+--                  iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                  iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                  iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+--                  iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+--                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--                -- 顧客移行日後：A-13顧客移行日の月から出力年度の最終月まで
+--                set_g_lease_budget_tab_vd (
+--                  id_start_months           => g_vd_budget_bulk_tab(i).cust_shift_date,
+--                  id_end_months             => ld_output_april,
+--                  iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                  iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                  iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+--                  iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+--                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              -- 2 A-13顧客移行日なしまたは出力年度の最初の月より前の場合
+--              ELSIF ( ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) OR ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) ) THEN
+--                -- A-13顧客移行日なし
+--                IF ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) THEN
+--                  -- 全ての月
+--                  set_g_lease_budget_tab_vd (
+--                    id_start_months           => ld_output_may,
+--                    id_end_months             => ld_output_april,
+--                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                    iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+--                    iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+--                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                -- A-13顧客移行日が出力年度の最初の月より前の場合
+--                ELSIF ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) THEN
+--                  -- 全ての月
+--                  set_g_lease_budget_tab_vd (
+--                    id_start_months           => ld_output_may,
+--                    id_end_months             => ld_output_april,
+--                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                    iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+--                    iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+--                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                END IF;
+--              END IF;
+--            --
+--            -- ③-2 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過する
+--            ELSIF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months < ld_output_april ) ) THEN
+--              -- 1 A-13顧客移行日が出力年度内の場合
+--              IF ( g_vd_budget_bulk_tab(i).cust_shift_date >= ld_output_may ) THEN
+--                -- 顧客移行日が原契約終了月より後の場合
+--                IF ( ld_vd_end_months < TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) ) THEN
+--                  -- 顧客移行日前：出力年度の最初の月から原契約終了月まで
+--                  set_g_lease_budget_tab_vd (
+--                    id_start_months           => ld_output_may,
+--                    id_end_months             => ld_vd_end_months,
+--                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                    iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+--                    iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+--                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                ELSE
+--                  -- 顧客移行日前：出力年度の最初の月からA-13顧客移行日の前月まで
+--                  set_g_lease_budget_tab_vd (
+--                    id_start_months           => ld_output_may,
+--                    id_end_months             => ADD_MONTHS(g_vd_budget_bulk_tab(i).cust_shift_date, -1),
+--                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                    iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+--                    iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+--                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                  -- 顧客移行日後：A-13顧客移行日の月から原契約終了月まで
+--                  set_g_lease_budget_tab_vd (
+--                    id_start_months           => g_vd_budget_bulk_tab(i).cust_shift_date,
+--                    id_end_months             => ld_vd_end_months,
+--                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                    iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+--                    iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+--                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                END IF;
+--              -- 2 A-13顧客移行日なしまたは出力年度の最初の月より前の場合
+--              ELSIF ( ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) OR ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) ) THEN
+--                -- A-13顧客移行日なし
+--                IF ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) THEN
+--                  -- 出力年度の最初の月から原契約終了月
+--                  set_g_lease_budget_tab_vd (
+--                    id_start_months           => ld_output_may,
+--                    id_end_months             => ld_vd_end_months,
+--                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                    iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+--                    iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+--                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                -- A-13顧客移行日が出力年度の最初の月より前の場合
+--                ELSIF ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) THEN
+--                  -- 出力年度の最初の月から原契約終了月
+--                  set_g_lease_budget_tab_vd (
+--                    id_start_months           => ld_output_may,
+--                    id_end_months             => ld_vd_end_months,
+--                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+--                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+--                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                    iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+--                    iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+--                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                  );
+--                END IF;
+--              END IF;
+--              -- 3 再リースのテーブル変数を作成
+--              -- 3.1 A-13顧客移行日が再リース開始月以前の場合
+--              IF ( TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) <= ADD_MONTHS(ld_vd_end_months,1) ) THEN
+--                set_g_lease_budget_tab_vd (
+--                  id_start_months           => NULL,
+--                  id_end_months             => NULL,
+--                  iv_lease_type             => cv_lease_type_2,
+--                  iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+--                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                  iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+--                  iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+--                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              -- 3.2 3.1以外の場合
+--              ELSE
+--                set_g_lease_budget_tab_vd (
+--                  id_start_months           => NULL,
+--                  id_end_months             => NULL,
+--                  iv_lease_type             => cv_lease_type_2,
+--                  iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+--                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                  iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+--                  iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+--                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              END IF;
+--            --
+--            -- ③-3 A-13で取得したリース区分が’2’（再リース）
+--            ELSIF ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_2 ) THEN
+--              -- 出力年度の契約終了月を設定
+--              -- 1月-4月の場合
+--              IF ( TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm) BETWEEN cv_months_1 AND cv_months_4 ) THEN
+--                ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year +1) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
+--              -- 5月-12月の場合
+--              ELSE
+--                ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
+--              END IF;
+--              -- 1 A-13顧客移行日が出力年度の事業供用日の月以前の場合
+--              IF ( TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) THEN
+--                set_g_lease_budget_tab_vd (
+--                  id_start_months           => NULL,
+--                  id_end_months             => NULL,
+--                  iv_lease_type             => cv_lease_type_2,
+--                  iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+--                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                  iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+--                  iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+--                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              -- 2 1以外の場合
+--              ELSE
+--                set_g_lease_budget_tab_vd (
+--                  id_start_months           => NULL,
+--                  id_end_months             => NULL,
+--                  iv_lease_type             => cv_lease_type_2,
+--                  iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+--                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+--                  iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+--                  iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+--                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+--                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+--                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+--                );
+--              END IF;
+--            END IF;
+--          END IF;
+--        END LOOP set_g_vd_budget_tab_loop;
+--      -- 固定資産の取得データが存在しない場合は処理なし
+--      END IF;
+----
+--      -- ===============================
+--      -- リース料予算ワーク作成 (A-14)
+--      -- ===============================
+--      ins_lease_budget_wk(
+--        in_file_id,        -- 1.ファイルID(必須)
+--        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+--        lv_retcode,        -- リターン・コード             --# 固定 #
+--        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+--      IF (lv_retcode = cv_status_error) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+--    END LOOP vd_budget_loop;
+--    --
+--    CLOSE get_vd_budget_cur;
+    -- 資産区分がNULLまたは、2（購入）の場合
+    IF ( gv_assets_kbn IS NULL
+      OR gv_assets_kbn = cv_assets_kbn_2) THEN
+      -- ===============================
+      -- 固定資産物件のリース料予算データ抽出 (A-13)
+      -- ===============================
+      OPEN get_vd_budget_cur;
+      --
+      <<vd_budget_loop>>
+      LOOP
+        -- 初期化
+        g_vd_budget_bulk_tab.DELETE;
+        g_vd_budget_tab.DELETE;
+        g_lease_budget_tab.DELETE;   -- リース料予算用情報格納配列
+        gn_line_cnt := 0;            -- リース料予算用情報格納配列設定用カウンタ
+        --
+        FETCH get_vd_budget_cur BULK COLLECT INTO g_vd_budget_bulk_tab LIMIT gn_bulk_collect_cnt;
+        --
+        -- 取得データが存在しない場合、ループを抜ける
+        IF ( ( g_vd_budget_tab.COUNT = 0 ) AND ( g_vd_budget_bulk_tab.COUNT = 0 ) ) THEN
+          EXIT vd_budget_loop;
+        END IF;
+        -- 出力年度の最初の日と最後の日を設定
+        IF ( ld_output_may IS NULL ) THEN
+          ld_output_may   := TO_DATE(g_next_year_rec.may, cv_format_yyyymm);
+          ld_output_april := LAST_DAY(TO_DATE(g_next_year_rec.april, cv_format_yyyymm));
+        END IF;
+        --
+        -- データ存在チェック用
+        ln_cnt := ln_cnt + 1;
+        -- 取得データが存在する場合
+        IF ( g_vd_budget_bulk_tab.COUNT > 0 ) THEN
+          <<set_g_vd_budget_tab_loop>>
+          FOR i IN g_vd_budget_bulk_tab.FIRST .. g_vd_budget_bulk_tab.LAST LOOP
+            -- ループカウントを設定
+            gn_count := i;
+            -- 原契約終了月
+            ld_vd_end_months := g_vd_budget_bulk_tab(i).org_end_months;
+            --
+            -- ① 物件コードから、自販機物件履歴の作成日と取得価格を取得して、出力年度の各月の取得価格を設定する
+            OPEN get_vd_his_mod_cur;
+            FETCH get_vd_his_mod_cur BULK COLLECT INTO g_vd_his_mod_tab;
+            CLOSE get_vd_his_mod_cur;
+            --
+            -- ①-1 ①でレコードを取得した場合
+            IF ( g_vd_his_mod_tab.COUNT >= 1 ) THEN
+              -- 変数初期化
+              ld_creation_date_before := NULL;
+              <<set_g_vd_his_mod_loop>>
+              FOR j IN g_vd_his_mod_tab.FIRST .. g_vd_his_mod_tab.LAST LOOP
+                --
+                -- 初期化
+                ln_re_lease_flag := cv_flag_no;
+                --
+                -- 1 1レコード目かつ①で取得した作成日が出力年度より前の場合
+                IF ( ( j = 1 ) AND ( g_vd_his_mod_tab(j).creation_date < ld_output_may) ) THEN
+                  -- 1.1 A-13除売却日がNULLもしくは出力年度より後の場合
+                  IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
+                    -- 出力年度の全ての月に取得価格を設定
                     set_g_assets_cost_tab (
-                      id_vd_start_months => ld_output_may,                            -- 出力年度の最初の月
-                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),  -- 1レコード前の作成日の前月
-                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,          -- 取得価格
-                      ov_errbuf          => lv_errbuf,                                -- エラー・メッセージ           --# 固定 #
-                      ov_retcode         => lv_retcode,                               -- リターン・コード             --# 固定 #
-                      ov_errmsg          => lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+                      id_vd_start_months => ld_output_may,                   -- 出力年度の最初の月
+                      id_vd_end_months   => ld_output_april,                 -- 出力年度の最後の月
+                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost, -- 取得価格
+                      ov_errbuf          => lv_errbuf,                       -- エラー・メッセージ           --# 固定 #
+                      ov_retcode         => lv_retcode,                      -- リターン・コード             --# 固定 #
+                      ov_errmsg          => lv_errmsg                        -- ユーザー・エラー・メッセージ --# 固定 #
                     );
                     -- ①の処理を終了する
                     EXIT set_g_vd_his_mod_loop;
-                  -- 3.1.2 ①で取得した作成日が出力年度内の場合
-                  ELSIF ( g_vd_his_mod_tab(j).creation_date >= ld_output_may ) THEN
-                    -- 作成日から1レコード前の作成月の前月まで取得価格を設定
+                  -- 1.2 A-13除売却日が出力年度内の場合
+                  ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
+                    -- 出力年度の最初の月から除売却日の月まで取得価格を設定
                     set_g_assets_cost_tab (
-                      id_vd_start_months => g_vd_his_mod_tab(j).creation_date,        -- 作成日の月
-                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),  -- 1レコード前の作成日の前月
-                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,          -- 取得価格
-                      ov_errbuf          => lv_errbuf,                                -- エラー・メッセージ           --# 固定 #
-                      ov_retcode         => lv_retcode,                               -- リターン・コード             --# 固定 #
-                      ov_errmsg          => lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+                      id_vd_start_months => ld_output_may,                        -- 出力年度の最初の月
+                      id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
+                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,      -- 取得価格
+                      ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
+                      ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
+                      ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                    -- ①の処理を終了する
+                    EXIT set_g_vd_his_mod_loop;
+                  END IF;
+                -- 2 1レコード目かつ①で取得した作成日が出力年度内の場合
+                ELSIF ( ( j = 1 ) AND ( g_vd_his_mod_tab(j).creation_date >= ld_output_may ) ) THEN
+                  -- 2.1 A-13除売却日がNULLもしくは出力年度より後の場合
+                  IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
+                    -- 作成月から出力年度の最終月まで取得価格を設定
+                    set_g_assets_cost_tab (
+                      id_vd_start_months => g_vd_his_mod_tab(j).creation_date, -- 作成日の月
+                      id_vd_end_months   => ld_output_april,                   -- 出力年度の最後の月
+                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,   -- 取得価格
+                      ov_errbuf          => lv_errbuf,                         -- エラー・メッセージ           --# 固定 #
+                      ov_retcode         => lv_retcode,                        -- リターン・コード             --# 固定 #
+                      ov_errmsg          => lv_errmsg                          -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                    -- 処理したレコードの作成日をセットする
+                    ld_creation_date_before := g_vd_his_mod_tab(j).creation_date;
+                  -- 2.2 A-13除売却日が出力年度内の場合
+                  ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
+                    -- 作成月から除売却日の月まで取得価格を設定
+                    set_g_assets_cost_tab (
+                      id_vd_start_months => g_vd_his_mod_tab(j).creation_date,    -- 作成日の月
+                      id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
+                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,      -- 取得価格
+                      ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
+                      ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
+                      ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
                     );
                     -- 処理したレコードの作成日をセットする
                     ld_creation_date_before := g_vd_his_mod_tab(j).creation_date;
                   END IF;
-                -- 3.2 最終レコードの場合
-                ELSIF ( j = g_vd_his_mod_tab.COUNT ) THEN
-                  -- 3.2.1 事業供用日が出力年度より前の場合
-                  IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
-                    -- 出力年度の最初の月から1レコード前の作成日の前月まで取得価格を設定
-                    set_g_assets_cost_tab (
-                      id_vd_start_months => ld_output_may,                           -- 出力年度の最初の月
-                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1), -- 1レコード前の作成日の前月
-                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,         -- 取得価格
-                      ov_errbuf          => lv_errbuf,                               -- エラー・メッセージ           --# 固定 #
-                      ov_retcode         => lv_retcode,                              -- リターン・コード             --# 固定 #
-                      ov_errmsg          => lv_errmsg                                -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
-                  -- 3.2.2 事業供用日が出力年度内の場合
-                  ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
-                    -- 事業供用日の月から1レコード前の作成日の前月まで取得価格を設定
-                    set_g_assets_cost_tab (
-                      id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
-                      id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),        -- 1レコード前の作成日の前月
-                      in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,                -- 取得価格
-                      ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
-                      ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
-                      ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
+                  -- 2.3 ①の取得件数が1件の場合
+                  IF ( g_vd_his_mod_tab.COUNT = 1 ) THEN
+                    -- 2.3.1 事業供用日が出力年度より前の場合
+                    IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
+                      -- 出力年度の最初の月から1レコード目の作成日の前月まで取得価格を設定
+                      set_g_assets_cost_tab (
+                        id_vd_start_months => ld_output_may,                           -- 出力年度の最初の月
+                        id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1), -- 1レコード前の作成日の前月
+                        in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,         -- 取得価格
+                        ov_errbuf          => lv_errbuf,                               -- エラー・メッセージ           --# 固定 #
+                        ov_retcode         => lv_retcode,                              -- リターン・コード             --# 固定 #
+                        ov_errmsg          => lv_errmsg                                -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                    -- 2.3.2 事業供用日が出力年度内の場合
+                    ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
+                      -- 事業供用日の月から1レコード目の作成日の前月まで取得価格を設定
+                      set_g_assets_cost_tab (
+                        id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 出力年度の最初の月
+                        id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),        -- 1レコード前の作成日の前月
+                        in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,                -- 取得価格
+                        ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
+                        ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
+                        ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                    END IF;
+                  END IF;
+                -- 3 2レコード以上存在する場合
+                ELSIF ( j > 1 ) THEN
+                  -- 3.1 最終レコードではない場合
+                  IF ( j <> g_vd_his_mod_tab.COUNT ) THEN
+                    -- 3.1.1 ①で取得した作成日が出力年度より前の場合
+                    IF ( g_vd_his_mod_tab(j).creation_date < ld_output_may ) THEN
+                      -- 出力年度の最初の月から1レコード前の作成日の前月まで取得価格を設定
+                      set_g_assets_cost_tab (
+                        id_vd_start_months => ld_output_may,                            -- 出力年度の最初の月
+                        id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),  -- 1レコード前の作成日の前月
+                        in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,          -- 取得価格
+                        ov_errbuf          => lv_errbuf,                                -- エラー・メッセージ           --# 固定 #
+                        ov_retcode         => lv_retcode,                               -- リターン・コード             --# 固定 #
+                        ov_errmsg          => lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                      -- ①の処理を終了する
+                      EXIT set_g_vd_his_mod_loop;
+                    -- 3.1.2 ①で取得した作成日が出力年度内の場合
+                    ELSIF ( g_vd_his_mod_tab(j).creation_date >= ld_output_may ) THEN
+                      -- 作成日から1レコード前の作成月の前月まで取得価格を設定
+                      set_g_assets_cost_tab (
+                        id_vd_start_months => g_vd_his_mod_tab(j).creation_date,        -- 作成日の月
+                        id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),  -- 1レコード前の作成日の前月
+                        in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,          -- 取得価格
+                        ov_errbuf          => lv_errbuf,                                -- エラー・メッセージ           --# 固定 #
+                        ov_retcode         => lv_retcode,                               -- リターン・コード             --# 固定 #
+                        ov_errmsg          => lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                      -- 処理したレコードの作成日をセットする
+                      ld_creation_date_before := g_vd_his_mod_tab(j).creation_date;
+                    END IF;
+                  -- 3.2 最終レコードの場合
+                  ELSIF ( j = g_vd_his_mod_tab.COUNT ) THEN
+                    -- 3.2.1 事業供用日が出力年度より前の場合
+                    IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
+                      -- 出力年度の最初の月から1レコード前の作成日の前月まで取得価格を設定
+                      set_g_assets_cost_tab (
+                        id_vd_start_months => ld_output_may,                           -- 出力年度の最初の月
+                        id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1), -- 1レコード前の作成日の前月
+                        in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,         -- 取得価格
+                        ov_errbuf          => lv_errbuf,                               -- エラー・メッセージ           --# 固定 #
+                        ov_retcode         => lv_retcode,                              -- リターン・コード             --# 固定 #
+                        ov_errmsg          => lv_errmsg                                -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                    -- 3.2.2 事業供用日が出力年度内の場合
+                    ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
+                      -- 事業供用日の月から1レコード前の作成日の前月まで取得価格を設定
+                      set_g_assets_cost_tab (
+                        id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
+                        id_vd_end_months   => ADD_MONTHS(ld_creation_date_before, -1),        -- 1レコード前の作成日の前月
+                        in_assets_cost     => g_vd_his_mod_tab(j).assets_cost,                -- 取得価格
+                        ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
+                        ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
+                        ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                    END IF;
                   END IF;
                 END IF;
-              END IF;
-            END LOOP set_g_vd_his_mod_loop;
-          --
-          -- ①-2 ①でレコードを取得しない場合
-          ELSIF ( g_vd_his_mod_tab.COUNT = 0 ) THEN
-            -- 1 除売却日がNULLもしくは出力年度より後の場合
-            IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
-              -- 1.1 事業供用日が出力年度より前の場合
-              IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
-                -- 出力年度の全ての月に取得価格を設定
-                set_g_assets_cost_tab (
-                  id_vd_start_months => ld_output_may,                       -- 出力年度の最初の月
-                  id_vd_end_months   => ld_output_april,                     -- 出力年度の最後の月
-                  in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost, -- 取得価格
-                  ov_errbuf          => lv_errbuf,                           -- エラー・メッセージ           --# 固定 #
-                  ov_retcode         => lv_retcode,                          -- リターン・コード             --# 固定 #
-                  ov_errmsg          => lv_errmsg                            -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-              -- 1.2 事業供用日が出力年度内の場合
-              ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
-                -- 事業供用日の月から出力年度の最後の月まで取得価格を設定
-                set_g_assets_cost_tab (
-                  id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
-                  id_vd_end_months   => ld_output_april,                                -- 出力年度の最後の月
-                  in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,            -- 取得価格
-                  ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
-                  ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
-                  ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-              END IF;
-            -- 2 除売却日が出力年度内の場合
-            ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
-              -- 2.1 事業供用日が出力年度より前の場合
-              IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
-                -- 出力年度の最初の月から除売却日の月まで取得価格を設定
-                set_g_assets_cost_tab (
-                  id_vd_start_months => ld_output_may,                        -- 出力年度の最初の月
-                  id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
-                  in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,  -- 取得価格
-                  ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
-                  ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
-                  ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-              -- 2.2 事業供用日が出力年度内の場合
-              ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
-                -- 事業供用日から除売却の月まで取得価格を設定
-                set_g_assets_cost_tab (
-                  id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
-                  id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired,           -- 除売却日の月
-                  in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,            -- 取得価格
-                  ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
-                  ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
-                  ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
-                );
+              END LOOP set_g_vd_his_mod_loop;
+            --
+            -- ①-2 ①でレコードを取得しない場合
+            ELSIF ( g_vd_his_mod_tab.COUNT = 0 ) THEN
+              -- 1 除売却日がNULLもしくは出力年度より後の場合
+              IF ( ( g_vd_budget_bulk_tab(i).date_retired IS NULL ) OR ( g_vd_budget_bulk_tab(i).date_retired > ld_output_april ) ) THEN
+                -- 1.1 事業供用日が出力年度より前の場合
+                IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
+                  -- 出力年度の全ての月に取得価格を設定
+                  set_g_assets_cost_tab (
+                    id_vd_start_months => ld_output_may,                       -- 出力年度の最初の月
+                    id_vd_end_months   => ld_output_april,                     -- 出力年度の最後の月
+                    in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost, -- 取得価格
+                    ov_errbuf          => lv_errbuf,                           -- エラー・メッセージ           --# 固定 #
+                    ov_retcode         => lv_retcode,                          -- リターン・コード             --# 固定 #
+                    ov_errmsg          => lv_errmsg                            -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
+                -- 1.2 事業供用日が出力年度内の場合
+                ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
+                  -- 事業供用日の月から出力年度の最後の月まで取得価格を設定
+                  set_g_assets_cost_tab (
+                    id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
+                    id_vd_end_months   => ld_output_april,                                -- 出力年度の最後の月
+                    in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,            -- 取得価格
+                    ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
+                    ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
+                    ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
+                END IF;
+              -- 2 除売却日が出力年度内の場合
+              ELSIF ( g_vd_budget_bulk_tab(i).date_retired <= ld_output_april ) THEN
+                -- 2.1 事業供用日が出力年度より前の場合
+                IF ( g_vd_budget_bulk_tab(i).date_placed_in_service < ld_output_may ) THEN
+                  -- 出力年度の最初の月から除売却日の月まで取得価格を設定
+                  set_g_assets_cost_tab (
+                    id_vd_start_months => ld_output_may,                        -- 出力年度の最初の月
+                    id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired, -- 除売却日の月
+                    in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,  -- 取得価格
+                    ov_errbuf          => lv_errbuf,                            -- エラー・メッセージ           --# 固定 #
+                    ov_retcode         => lv_retcode,                           -- リターン・コード             --# 固定 #
+                    ov_errmsg          => lv_errmsg                             -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
+                -- 2.2 事業供用日が出力年度内の場合
+                ELSIF ( g_vd_budget_bulk_tab(i).date_placed_in_service >= ld_output_may ) THEN
+                  -- 事業供用日から除売却の月まで取得価格を設定
+                  set_g_assets_cost_tab (
+                    id_vd_start_months => g_vd_budget_bulk_tab(i).date_placed_in_service, -- 事業供用日の月
+                    id_vd_end_months   => g_vd_budget_bulk_tab(i).date_retired,           -- 除売却日の月
+                    in_assets_cost     => g_vd_budget_bulk_tab(i).assets_cost,            -- 取得価格
+                    ov_errbuf          => lv_errbuf,                                      -- エラー・メッセージ           --# 固定 #
+                    ov_retcode         => lv_retcode,                                     -- リターン・コード             --# 固定 #
+                    ov_errmsg          => lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
+                END IF;
               END IF;
             END IF;
-          END IF;
 --
--- 2014/10/08 Ver.1.2 Y.Shouji ADD START
-          -- 自販機履歴情報の存在確認
-          SELECT 
-                 COUNT(object_code)
-          INTO
-                 ln_count_his_move
-          FROM   xxcff_vd_object_histories  xvohi                        -- 自販機情報履歴
-          WHERE  xvohi.object_code        = g_vd_budget_bulk_tab(gn_count).object_name -- 物件コード
-          AND    ( (xvohi.process_type = cv_process_type_103)                          -- 処理区分
-            OR     (xvohi.process_type = cv_process_type_102))                         -- 処理区分
-          AND    rownum = 1
-          ;
+            -- 自販機履歴情報の存在確認
+            SELECT 
+                   COUNT(object_code)
+            INTO
+                   ln_count_his_move
+            FROM   xxcff_vd_object_histories  xvohi                        -- 自販機情報履歴
+            WHERE  xvohi.object_code        = g_vd_budget_bulk_tab(gn_count).object_name -- 物件コード
+            AND    ( (xvohi.process_type = cv_process_type_103)                          -- 処理区分
+              OR     (xvohi.process_type = cv_process_type_102))                         -- 処理区分
+            AND    rownum = 1
+            ;
 --
--- 2014/10/08 Ver.1.2 Y.Shouji ADD END
--- 2014/10/08 Ver.1.2 Y.Shouji MOD START
-          -- ② A-13で取得した移動日が存在する、かつ履歴情報が存在する場合
---          IF ( g_vd_budget_bulk_tab(i).moved_date IS NOT NULL ) THEN
-          IF    ( g_vd_budget_bulk_tab(i).moved_date IS NOT NULL ) 
-            AND ( ln_count_his_move > 0 ) THEN
--- 2014/10/08 Ver.1.2 Y.Shouji MOD END
-            -- 自販機情報履歴から物件の移動情報を取得
-            OPEN get_vd_his_move_cur;
-            FETCH get_vd_his_move_cur BULK COLLECT INTO g_vd_his_move_tab;
-            CLOSE get_vd_his_move_cur;
-            --
-            <<set_g_vd_his_move_loop>>
-            FOR k IN g_vd_his_move_tab.FIRST .. g_vd_his_move_tab.LAST LOOP
-              -- ②-1 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過しない（原契約が終了しない）
+            -- ② A-13で取得した移動日が存在する、かつ履歴情報が存在する場合
+            IF    ( g_vd_budget_bulk_tab(i).moved_date IS NOT NULL ) 
+              AND ( ln_count_his_move > 0 ) THEN
+              -- 自販機情報履歴から物件の移動情報を取得
+              OPEN get_vd_his_move_cur;
+              FETCH get_vd_his_move_cur BULK COLLECT INTO g_vd_his_move_tab;
+              CLOSE get_vd_his_move_cur;
+              --
+              <<set_g_vd_his_move_loop>>
+              FOR k IN g_vd_his_move_tab.FIRST .. g_vd_his_move_tab.LAST LOOP
+                -- ②-1 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過しない（原契約が終了しない）
+                IF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months >= ld_output_april ) ) THEN
+                  -- 1 1レコード目の場合
+                  IF ( k = 1 ) THEN
+                    -- 1.1 ②移動日が出力年度内の場合
+                    IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may ) 
+                      AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
+                      -- 1.1.1 ②顧客移行日が②移動日以降の場合
+                      IF ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date ) THEN
+                        -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).moved_date,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日の月から出力年度の最終月に、台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ld_output_april,
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 処理したレコードの移動日をセットする
+                        ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                      -- 1.1.2 ②顧客移行日なしまたは②移動日より前の場合
+                      ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date ) ) THEN
+                        -- ②移動日の月から出力年度の最終月の台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).moved_date,
+                          id_end_months             => ld_output_april,
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 処理したレコードの移動日をセットする
+                        ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                      END IF;
+                    -- 1.2 ②移動日が出力年度より前の場合
+                    ELSIF  ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
+                      -- 1.2.1 ②顧客移行日が出力年度の最初の月より後の場合
+                      IF ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may ) THEN
+                        -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => ld_output_may,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日以降は、台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ld_output_april,
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- ①の処理を終了する
+                        EXIT set_g_vd_his_move_loop;
+                      -- 1.2.2 ②顧客移行日なしまたは出力年度の最初の月より前の場合
+                      ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) ) THEN
+                        -- 全ての月に台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => ld_output_may,
+                          id_end_months             => ld_output_april,
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                      END IF;
+                      -- ①の処理を終了する
+                      EXIT set_g_vd_his_move_loop;
+                    -- 1.3 ②移動日が出力年度より後の場合
+                    ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
+                      -- 処理したレコードの移動日をセットする
+                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                    END IF;
+                  -- 2レコード目以降で最終レコードではない場合
+                  ELSIF ( ( k > 1 ) AND ( k <> g_vd_his_move_tab.COUNT ) ) THEN
+                    -- 2.1 ②移動日が出力年度内の場合
+                    IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may )
+                      AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
+                      -- 2.1.1 ②顧客移行日が②移動日の月から1レコード前の移動日の前月までの場合
+                      IF ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
+                       AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1)) )  ) THEN
+                        -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).moved_date,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 処理したレコードの移動日をセットする
+                        ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                      -- 2.1.2 ②顧客移行日がない、または②移動日より前、または1レコード前の移動日の前月より後の場合
+                      ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                           OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
+                           OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm ) ) ) THEN
+                        -- ②移動日の月から1レコード前の移動日の前月まで取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).moved_date,
+                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 処理したレコードの移動日をセットする
+                        ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                      END IF;
+                    -- 2.2 ②移動日が出力年度より前の場合
+                    ELSIF ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
+                      -- 2.2.1 ②顧客移行日が出力年度の最初の月から1レコード前の移動日の前月までの場合
+                      IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
+                       AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                        -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => ld_output_may,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- ①の処理を終了する
+                        EXIT set_g_vd_his_move_loop;
+                      -- 2.2.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
+                      ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                           OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+                           OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm ) ) ) THEN
+                        -- ②顧客移行日がNULLではない、かつ出力年度の最初の月より前、かつ②移動日以降の場合
+                        IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL)
+                          AND ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+                          AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
+                          -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
+                          set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                        -- 上記以外の場合
+                        ELSE
+                          -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
+                          set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                        END IF;
+                        -- ①の処理を終了する
+                        EXIT set_g_vd_his_move_loop;
+                      END IF;
+                    -- 2.3 ②移動日が出力年度より後の場合
+                    ELSIF ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
+                      -- 処理レコードの移動日をセットする
+                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                    END IF;
+                  END IF;
+                  --
+                  -- 3 最終レコードの場合
+                  IF ( k = g_vd_his_move_tab.COUNT ) THEN
+                    -- 3.1 ②顧客移行日が出力年度の最初の月から、1レコード前の移動日の前月までの場合
+                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
+                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                        -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => ld_output_may,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                    -- 3.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
+                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                         OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                      -- ②顧客移行日がない、または1レコード前の移動日の前月より後の場合
+                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                        -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                      -- 出力年度の最初の月より前の場合
+                      ELSIF ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) THEN
+                        -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                      END IF;
+                    END IF;
+                  END IF;
+                --
+                -- ②-2 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過する（以下、原契約終了月）
+                ELSIF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months < ld_output_april ) ) THEN
+                  -- 再リースのテーブル変数作成がされていない、かつ（移動日が原契約終了月の次の月以前またはNULL）の場合
+                  IF ( ( ln_re_lease_flag = cv_flag_no )
+                   AND ( ( TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) <= ADD_MONTHS(ld_vd_end_months, 1))
+                     OR  ( g_vd_his_move_tab(k).moved_date IS NULL ) ) ) THEN
+                    -- 顧客移行日がNULL、または原契約終了月の次の月より後または、移動日より前の場合
+                    IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                      OR  ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ADD_MONTHS(ld_vd_end_months, 1) )
+                      OR  ( ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
+                        AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) < TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) ) THEN
+                      -- 再リースのテーブル変数を作成する
+                      set_g_lease_budget_tab_vd (
+                        id_start_months           => NULL,
+                        id_end_months             => NULL,
+                        iv_lease_type             => cv_lease_type_2,
+                        iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                      -- 再リースのテーブル変数作成のフラグを立てる
+                      ln_re_lease_flag := cv_flag_yes;
+                    -- 上記以外の場合
+                    ELSE
+                      set_g_lease_budget_tab_vd (
+                        id_start_months           => NULL,
+                        id_end_months             => NULL,
+                        iv_lease_type             => cv_lease_type_2,
+                        iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                      -- 再リースのテーブル変数作成のフラグを立てる
+                      ln_re_lease_flag := cv_flag_yes;
+                    END IF;
+                  END IF;
+                  -- 1 1レコード目の場合
+                  IF ( k = 1 ) THEN
+                    -- ②移動日が出力年度内の場合
+                    -- 1.1 ②移動日が出力年度内の場合
+                    IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may ) 
+                      AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
+                      -- 1.1.1 ②顧客移行日が②移動日以降かつ、原契約終了月以前の場合
+                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
+                        AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_months ) ) THEN
+                        -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).moved_date,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日の月から原契約終了月に、台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ld_vd_end_months,
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 処理したレコードの移動日をセットする
+                        ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                      -- 1.1.2 ②顧客移行日がない、または②移動日より前、または原契約終了月より後の場合
+                      ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                        OR    ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
+                        OR    ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ld_vd_end_months ) ) THEN
+                        -- ②移動日の月から原契約終了月の台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).moved_date,
+                          id_end_months             => ld_vd_end_months,
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 処理したレコードの移動日をセットする
+                        ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                      END IF;
+                    -- 1.2 ②移動日が出力年度より前の場合
+                    ELSIF  ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
+                      -- 1.2.1 ②顧客移行日が出力年度の最初の月より後の場合
+                      IF ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may ) THEN
+                        -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => ld_output_may,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日から原契約終了月まで、台数1
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ld_vd_end_months,
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- ①の処理を終了する
+                        EXIT set_g_vd_his_move_loop;
+                      -- 1.2.2 ②顧客移行日なしまたは出力年度の最初の月より前の場合
+                      ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) ) THEN
+                        -- ②顧客移行日が②移動日以降の場合
+                        IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL )
+                          AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
+                          -- 出力年度の最初の月から原契約終了月まで、台数1
+                          set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ld_vd_end_months,
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                        ELSE
+                          -- 出力年度の最初の月から原契約終了月まで、台数1
+                          set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ld_vd_end_months,
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                        END IF;
+                      END IF;
+                      -- ①の処理を終了する
+                      EXIT set_g_vd_his_move_loop;
+                    -- 1.3 ②移動日が出力年度より後の場合
+                    ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
+                      -- 原契約終了月の次の月をセット
+                      ld_moved_date_before := ADD_MONTHS(ld_vd_end_months, 1);
+                    END IF;
+                  -- 2 2レコード目以降で、最終レコードではない場合
+                  ELSIF ( ( k > 1 ) AND ( k <> g_vd_his_move_tab.COUNT ) ) THEN
+                    -- 2.1 ②移動日が出力年度内の場合
+                    IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may )
+                      AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
+                      -- 2.1.1 ②顧客移行日が②移動日の月から1レコード前の移動日の前月までの場合
+                      IF ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
+                       AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1)) )  ) THEN
+                        -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).moved_date,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 処理したレコードの移動日をセットする
+                        ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                      -- 2.1.2 ②顧客移行日がない、または②移動日より前、または1レコード前の移動日の前月より後の場合
+                      ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                           OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
+                           OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                        -- ②移動日の月から1レコード前の移動日の前月まで取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).moved_date,
+                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 処理したレコードの移動日をセットする
+                        ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
+                      END IF;
+                    -- 2.2 ②移動日が出力年度より前の場合
+                    ELSIF ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
+                      -- 2.2.1 ②顧客移行日が出力年度の最初の月から1レコード前の移動日の前月までの場合
+                      IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
+                       AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                        -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => ld_output_may,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- ①の処理を終了する
+                        EXIT set_g_vd_his_move_loop;
+                      -- 2.2.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
+                      ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                           OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+                           OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                        -- ②顧客移行日がNULLではない、かつ出力年度の最初の月より前、かつ②移動日以降の場合
+                        IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL)
+                          AND ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+                          AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
+                          -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
+                          set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                        -- 上記以外の場合
+                        ELSE
+                          -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
+                          set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                        END IF;
+                        -- ①の処理を終了する
+                        EXIT set_g_vd_his_move_loop;
+                      END IF;
+                    -- 2.3 ②移動日が出力年度より後の場合
+                    ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
+                      -- 原契約終了月の次の月をセット
+                      ld_moved_date_before := ADD_MONTHS(ld_vd_end_months, 1);
+                    END IF;
+                  END IF;
+                  --
+                  -- 3 最終レコードの場合
+                  IF ( k = g_vd_his_move_tab.COUNT ) THEN
+                    -- 3.1 ②顧客移行日が出力年度の最初の月から、1レコード前の移動日の前月までの場合
+                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
+                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                        -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => ld_output_may,
+                          id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                        -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                          id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
+                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                        );
+                    -- 3.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
+                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                         OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
+                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                      -- ②顧客移行日がない、または1レコード前の移動日の前月より後の場合
+                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
+                        -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                      -- 出力年度の最初の月より前の場合
+                      ELSIF ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) THEN
+                        -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
+                        set_g_lease_budget_tab_vd (
+                            id_start_months           => ld_output_may,
+                            id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
+                            iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                            iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                            iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                            iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                            iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                            ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                            ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                            ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                          );
+                      END IF;
+                    END IF;
+                  END IF;
+                --
+                -- ②-3 A-13で取得したリース区分が’2’（再リース）
+                ELSIF (g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_2) THEN
+                  -- 出力年度の事業供用月を設定
+                  -- 1月-4月の場合
+                  IF ( TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm) BETWEEN cv_months_1 AND cv_months_4 ) THEN
+                    ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year +1) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
+                  -- 5月-12月の場合
+                  ELSE
+                    ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
+                  END IF;
+                  -- 1 最終レコードではなく、②で取得した移動日が事業供用月以前の場合
+                  IF  ( ( k <> g_vd_his_move_tab.COUNT )
+                    AND ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
+                    AND ( g_vd_his_move_tab(k).moved_date <= ld_vd_end_output_months ) ) THEN
+                    -- 1.1 ②顧客移行日が②移動日以降かつ、事業供用月以前の場合
+                    IF ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL )
+                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) )
+                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) ) THEN
+                      set_g_lease_budget_tab_vd (
+                        id_start_months           => NULL,
+                        id_end_months             => NULL,
+                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                      -- ①の処理を終了する
+                      EXIT set_g_vd_his_move_loop;
+                    -- 1.2 1.1以外の場合
+                    ELSE
+                      set_g_lease_budget_tab_vd (
+                        id_start_months           => NULL,
+                        id_end_months             => NULL,
+                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                      -- ①の処理を終了する
+                      EXIT set_g_vd_his_move_loop;
+                    END IF;
+                  END IF;
+                  --
+                  -- 2 最終レコードの場合
+                  IF ( k = g_vd_his_move_tab.COUNT ) THEN
+                    -- 2.1 ②顧客移行日なし、または出力年度の事業供用月より後の場合
+                    IF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
+                      OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ld_vd_end_output_months ) ) THEN
+                      set_g_lease_budget_tab_vd (
+                        id_start_months           => NULL,
+                        id_end_months             => NULL,
+                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                        iv_department_code        => g_vd_his_move_tab(k).department_code,
+                        iv_department_name        => g_vd_his_move_tab(k).department_name,
+                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                    -- 2.2 ②顧客移行日が出力年度の事業供用日の月より前の場合
+                    ELSIF ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) THEN
+                      set_g_lease_budget_tab_vd (
+                        id_start_months           => NULL,
+                        id_end_months             => NULL,
+                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
+                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
+                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
+                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                      );
+                    END IF;
+                  END IF;
+                END IF;
+              END LOOP set_g_vd_his_move_loop;
+--
+            -- ③ A-13で取得した移動日が存在しない、または履歴情報が存在しない場合
+            ELSIF ( g_vd_budget_bulk_tab(i).moved_date IS NULL ) 
+              OR  ( ln_count_his_move = 0 ) THEN
+              -- ③-1 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過しない
               IF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months >= ld_output_april ) ) THEN
-                -- 1 1レコード目の場合
-                IF ( k = 1 ) THEN
-                  -- 1.1 ②移動日が出力年度内の場合
-                  IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may ) 
-                    AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
-                    -- 1.1.1 ②顧客移行日が②移動日以降の場合
-                    IF ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date ) THEN
-                      -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).moved_date,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日の月から出力年度の最終月に、台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ld_output_april,
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 処理したレコードの移動日をセットする
-                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                    -- 1.1.2 ②顧客移行日なしまたは②移動日より前の場合
-                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date ) ) THEN
-                      -- ②移動日の月から出力年度の最終月の台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).moved_date,
-                        id_end_months             => ld_output_april,
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 処理したレコードの移動日をセットする
-                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                    END IF;
-                  -- 1.2 ②移動日が出力年度より前の場合
-                  ELSIF  ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
-                    -- 1.2.1 ②顧客移行日が出力年度の最初の月より後の場合
-                    IF ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may ) THEN
-                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => ld_output_may,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日以降は、台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ld_output_april,
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- ①の処理を終了する
-                      EXIT set_g_vd_his_move_loop;
-                    -- 1.2.2 ②顧客移行日なしまたは出力年度の最初の月より前の場合
-                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) ) THEN
-                      -- 全ての月に台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => ld_output_may,
-                        id_end_months             => ld_output_april,
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                    END IF;
-                    -- ①の処理を終了する
-                    EXIT set_g_vd_his_move_loop;
-                  -- 1.3 ②移動日が出力年度より後の場合
-                  ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
-                    -- 処理したレコードの移動日をセットする
-                    ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                  END IF;
-                -- 2レコード目以降で最終レコードではない場合
-                ELSIF ( ( k > 1 ) AND ( k <> g_vd_his_move_tab.COUNT ) ) THEN
-                  -- 2.1 ②移動日が出力年度内の場合
-                  IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may )
-                    AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
-                    -- 2.1.1 ②顧客移行日が②移動日の月から1レコード前の移動日の前月までの場合
-                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
-                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1)) )  ) THEN
-                      -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).moved_date,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 処理したレコードの移動日をセットする
-                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                    -- 2.1.2 ②顧客移行日がない、または②移動日より前、または1レコード前の移動日の前月より後の場合
-                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                         OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
-                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm ) ) ) THEN
-                      -- ②移動日の月から1レコード前の移動日の前月まで取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).moved_date,
-                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 処理したレコードの移動日をセットする
-                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                    END IF;
-                  -- 2.2 ②移動日が出力年度より前の場合
-                  ELSIF ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
-                    -- 2.2.1 ②顧客移行日が出力年度の最初の月から1レコード前の移動日の前月までの場合
-                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
-                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => ld_output_may,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- ①の処理を終了する
-                      EXIT set_g_vd_his_move_loop;
-                    -- 2.2.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
-                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                         OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
-                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm ) ) ) THEN
-                      -- ②顧客移行日がNULLではない、かつ出力年度の最初の月より前、かつ②移動日以降の場合
-                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL)
-                        AND ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
-                        AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
-                        -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
-                        set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                      -- 上記以外の場合
-                      ELSE
-                        -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
-                        set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                      END IF;
-                      -- ①の処理を終了する
-                      EXIT set_g_vd_his_move_loop;
-                    END IF;
-                  -- 2.3 ②移動日が出力年度より後の場合
-                  ELSIF ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
-                    -- 処理レコードの移動日をセットする
-                    ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                  END IF;
-                END IF;
-                --
-                -- 3 最終レコードの場合
-                IF ( k = g_vd_his_move_tab.COUNT ) THEN
-                  -- 3.1 ②顧客移行日が出力年度の最初の月から、1レコード前の移動日の前月までの場合
-                  IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
-                   AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => ld_output_may,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                  -- 3.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
-                  ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                       OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
-                       OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                    -- ②顧客移行日がない、または1レコード前の移動日の前月より後の場合
-                    IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                       OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                      -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                    -- 出力年度の最初の月より前の場合
-                    ELSIF ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) THEN
-                      -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                    END IF;
-                  END IF;
-                END IF;
-              --
-              -- ②-2 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過する（以下、原契約終了月）
-              ELSIF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months < ld_output_april ) ) THEN
-                -- 再リースのテーブル変数作成がされていない、かつ（移動日が原契約終了月の次の月以前またはNULL）の場合
-                IF ( ( ln_re_lease_flag = cv_flag_no )
-                 AND ( ( TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) <= ADD_MONTHS(ld_vd_end_months, 1))
-                   OR  ( g_vd_his_move_tab(k).moved_date IS NULL ) ) ) THEN
-                  -- 顧客移行日がNULL、または原契約終了月の次の月より後または、移動日より前の場合
-                  IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                    OR  ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ADD_MONTHS(ld_vd_end_months, 1) )
-                    OR  ( ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
-                      AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) < TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) ) THEN
-                    -- 再リースのテーブル変数を作成する
-                    set_g_lease_budget_tab_vd (
-                      id_start_months           => NULL,
-                      id_end_months             => NULL,
-                      iv_lease_type             => cv_lease_type_2,
-                      iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
-                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                      iv_department_code        => g_vd_his_move_tab(k).department_code,
-                      iv_department_name        => g_vd_his_move_tab(k).department_name,
-                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
-                    -- 再リースのテーブル変数作成のフラグを立てる
-                    ln_re_lease_flag := cv_flag_yes;
-                  -- 上記以外の場合
-                  ELSE
-                    set_g_lease_budget_tab_vd (
-                      id_start_months           => NULL,
-                      id_end_months             => NULL,
-                      iv_lease_type             => cv_lease_type_2,
-                      iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
-                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                      iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                      iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
-                    -- 再リースのテーブル変数作成のフラグを立てる
-                    ln_re_lease_flag := cv_flag_yes;
-                  END IF;
-                END IF;
-                -- 1 1レコード目の場合
-                IF ( k = 1 ) THEN
-                  -- ②移動日が出力年度内の場合
-                  -- 1.1 ②移動日が出力年度内の場合
-                  IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may ) 
-                    AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
-                    -- 1.1.1 ②顧客移行日が②移動日以降かつ、原契約終了月以前の場合
-                    IF  ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
-                      AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_months ) ) THEN
-                      -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).moved_date,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日の月から原契約終了月に、台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ld_vd_end_months,
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 処理したレコードの移動日をセットする
-                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                    -- 1.1.2 ②顧客移行日がない、または②移動日より前、または原契約終了月より後の場合
-                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                      OR    ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
-                      OR    ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ld_vd_end_months ) ) THEN
-                      -- ②移動日の月から原契約終了月の台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).moved_date,
-                        id_end_months             => ld_vd_end_months,
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 処理したレコードの移動日をセットする
-                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                    END IF;
-                  -- 1.2 ②移動日が出力年度より前の場合
-                  ELSIF  ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
-                    -- 1.2.1 ②顧客移行日が出力年度の最初の月より後の場合
-                    IF ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may ) THEN
-                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => ld_output_may,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日から原契約終了月まで、台数1
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ld_vd_end_months,
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- ①の処理を終了する
-                      EXIT set_g_vd_his_move_loop;
-                    -- 1.2.2 ②顧客移行日なしまたは出力年度の最初の月より前の場合
-                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL ) OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) ) THEN
-                      -- ②顧客移行日が②移動日以降の場合
-                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL )
-                        AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
-                        -- 出力年度の最初の月から原契約終了月まで、台数1
-                        set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ld_vd_end_months,
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                      ELSE
-                        -- 出力年度の最初の月から原契約終了月まで、台数1
-                        set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ld_vd_end_months,
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                      END IF;
-                    END IF;
-                    -- ①の処理を終了する
-                    EXIT set_g_vd_his_move_loop;
-                  -- 1.3 ②移動日が出力年度より後の場合
-                  ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
-                    -- 原契約終了月の次の月をセット
-                    ld_moved_date_before := ADD_MONTHS(ld_vd_end_months, 1);
-                  END IF;
-                -- 2 2レコード目以降で、最終レコードではない場合
-                ELSIF ( ( k > 1 ) AND ( k <> g_vd_his_move_tab.COUNT ) ) THEN
-                  -- 2.1 ②移動日が出力年度内の場合
-                  IF  ( ( g_vd_his_move_tab(k).moved_date >= ld_output_may )
-                    AND ( g_vd_his_move_tab(k).moved_date <= ld_output_april ) ) THEN
-                    -- 2.1.1 ②顧客移行日が②移動日の月から1レコード前の移動日の前月までの場合
-                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= g_vd_his_move_tab(k).moved_date )
-                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1)) )  ) THEN
-                      -- 顧客移行日前：②移動日の月から②顧客移行日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).moved_date,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 処理したレコードの移動日をセットする
-                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                    -- 2.1.2 ②顧客移行日がない、または②移動日より前、または1レコード前の移動日の前月より後の場合
-                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                         OR ( g_vd_his_move_tab(k).cust_shift_date < g_vd_his_move_tab(k).moved_date )
-                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                      -- ②移動日の月から1レコード前の移動日の前月まで取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).moved_date,
-                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 処理したレコードの移動日をセットする
-                      ld_moved_date_before := g_vd_his_move_tab(k).moved_date;
-                    END IF;
-                  -- 2.2 ②移動日が出力年度より前の場合
-                  ELSIF ( g_vd_his_move_tab(k).moved_date < ld_output_may ) THEN
-                    -- 2.2.1 ②顧客移行日が出力年度の最初の月から1レコード前の移動日の前月までの場合
-                    IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
-                     AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => ld_output_may,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- ①の処理を終了する
-                      EXIT set_g_vd_his_move_loop;
-                    -- 2.2.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
-                    ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                         OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
-                         OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                      -- ②顧客移行日がNULLではない、かつ出力年度の最初の月より前、かつ②移動日以降の場合
-                      IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL)
-                        AND ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
-                        AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) ) ) THEN
-                        -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
-                        set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                      -- 上記以外の場合
-                      ELSE
-                        -- 出力年度の最初の月から1レコード前の移動日の前月まで、取得価格を設定
-                        set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                      END IF;
-                      -- ①の処理を終了する
-                      EXIT set_g_vd_his_move_loop;
-                    END IF;
-                  -- 2.3 ②移動日が出力年度より後の場合
-                  ELSIF  ( g_vd_his_move_tab(k).moved_date > ld_output_april ) THEN
-                    -- 原契約終了月の次の月をセット
-                    ld_moved_date_before := ADD_MONTHS(ld_vd_end_months, 1);
-                  END IF;
-                END IF;
-                --
-                -- 3 最終レコードの場合
-                IF ( k = g_vd_his_move_tab.COUNT ) THEN
-                  -- 3.1 ②顧客移行日が出力年度の最初の月から、1レコード前の移動日の前月までの場合
-                  IF ( ( g_vd_his_move_tab(k).cust_shift_date >= ld_output_may )
-                   AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                      -- 顧客移行日前：出力年度の最初の月から②顧客移行日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => ld_output_may,
-                        id_end_months             => ADD_MONTHS(g_vd_his_move_tab(k).cust_shift_date, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                      -- 顧客移行日後：②顧客移行日の月から1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                        id_start_months           => g_vd_his_move_tab(k).cust_shift_date,
-                        id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                        iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                        iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                        iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                        iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                        iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                        ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                        ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                        ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                      );
-                  -- 3.2 ②顧客移行日がない、または出力年度の最初の月より前、または1レコード前の移動日の前月より後の場合
-                  ELSIF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                       OR ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may )
-                       OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                    -- ②顧客移行日がない、または1レコード前の移動日の前月より後の場合
-                    IF  ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                       OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > TRUNC(ADD_MONTHS(ld_moved_date_before, -1), cv_format_mm) ) ) THEN
-                      -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                    -- 出力年度の最初の月より前の場合
-                    ELSIF ( g_vd_his_move_tab(k).cust_shift_date < ld_output_may ) THEN
-                      -- ②で取得した1レコード前の移動日の前月まで、取得価格設定
-                      set_g_lease_budget_tab_vd (
-                          id_start_months           => ld_output_may,
-                          id_end_months             => ADD_MONTHS(ld_moved_date_before, -1),
-                          iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                          iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                          iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                          iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                          iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                          ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                          ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                          ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                        );
-                    END IF;
-                  END IF;
-                END IF;
-              --
-              -- ②-3 A-13で取得したリース区分が’2’（再リース）
-              ELSIF (g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_2) THEN
-                -- 出力年度の事業供用月を設定
-                -- 1月-4月の場合
-                IF ( TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm) BETWEEN cv_months_1 AND cv_months_4 ) THEN
-                  ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year +1) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
-                -- 5月-12月の場合
-                ELSE
-                  ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
-                END IF;
--- 2014/10/17 Ver.1.3 Y.Shouji MOD START
-                -- 1 最終レコードではなく、②で取得した移動日が事業供用月以前の場合
-                --IF  ( ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
-                IF  ( ( k <> g_vd_his_move_tab.COUNT )
-                  AND ( g_vd_his_move_tab(k).moved_date IS NOT NULL )
--- 2014/10/17 Ver.1.3 Y.Shouji MOD END
-                  AND ( g_vd_his_move_tab(k).moved_date <= ld_vd_end_output_months ) ) THEN
-                  -- 1.1 ②顧客移行日が②移動日以降かつ、事業供用月以前の場合
-                  IF ( ( g_vd_his_move_tab(k).cust_shift_date IS NOT NULL )
-                   AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) >= TRUNC(g_vd_his_move_tab(k).moved_date, cv_format_mm) )
-                   AND ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) ) THEN
-                    set_g_lease_budget_tab_vd (
-                      id_start_months           => NULL,
-                      id_end_months             => NULL,
-                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                      iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                      iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
-                    -- ①の処理を終了する
-                    EXIT set_g_vd_his_move_loop;
-                  -- 1.2 1.1以外の場合
-                  ELSE
-                    set_g_lease_budget_tab_vd (
-                      id_start_months           => NULL,
-                      id_end_months             => NULL,
-                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                      iv_department_code        => g_vd_his_move_tab(k).department_code,
-                      iv_department_name        => g_vd_his_move_tab(k).department_name,
-                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
-                    -- ①の処理を終了する
-                    EXIT set_g_vd_his_move_loop;
-                  END IF;
-                END IF;
-                --
-                -- 2 最終レコードの場合
-                IF ( k = g_vd_his_move_tab.COUNT ) THEN
-                  -- 2.1 ②顧客移行日なし、または出力年度の事業供用月より後の場合
-                  IF ( ( g_vd_his_move_tab(k).cust_shift_date IS NULL )
-                    OR ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) > ld_vd_end_output_months ) ) THEN
-                    set_g_lease_budget_tab_vd (
-                      id_start_months           => NULL,
-                      id_end_months             => NULL,
-                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                      iv_department_code        => g_vd_his_move_tab(k).department_code,
-                      iv_department_name        => g_vd_his_move_tab(k).department_name,
-                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
-                  -- 2.2 ②顧客移行日が出力年度の事業供用日の月より前の場合
-                  ELSIF ( TRUNC(g_vd_his_move_tab(k).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) THEN
-                    set_g_lease_budget_tab_vd (
-                      id_start_months           => NULL,
-                      id_end_months             => NULL,
-                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                      iv_chiku_code             => g_vd_his_move_tab(k).chiku_code,
-                      iv_department_code        => g_vd_his_move_tab(k).new_department_code,
-                      iv_department_name        => g_vd_his_move_tab(k).new_department_name,
-                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                    );
-                  END IF;
-                END IF;
-              END IF;
-            END LOOP set_g_vd_his_move_loop;
---
--- 2014/10/08 Ver.1.2 Y.Shouji MOD START
-          -- ③ A-13で取得した移動日が存在しない、または履歴情報が存在しない場合
---          ELSIF ( g_vd_budget_bulk_tab(i).moved_date IS NULL ) THEN
-          ELSIF ( g_vd_budget_bulk_tab(i).moved_date IS NULL ) 
-            OR  ( ln_count_his_move = 0 ) THEN
--- 2014/10/08 Ver.1.2 Y.Shouji MOD END
-            -- ③-1 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過しない
-            IF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months >= ld_output_april ) ) THEN
-              -- 1 A-13顧客移行日が出力年度の最初の月より後の場合
-              IF ( g_vd_budget_bulk_tab(i).cust_shift_date >= ld_output_may ) THEN
-                -- 顧客移行日前：出力年度の最初の月からA-13顧客移行日の前月まで
-                set_g_lease_budget_tab_vd (
-                  id_start_months           => ld_output_may,
-                  id_end_months             => ADD_MONTHS(g_vd_budget_bulk_tab(i).cust_shift_date, -1),
-                  iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                  iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                  iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
-                  iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
-                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-                -- 顧客移行日後：A-13顧客移行日の月から出力年度の最終月まで
-                set_g_lease_budget_tab_vd (
-                  id_start_months           => g_vd_budget_bulk_tab(i).cust_shift_date,
-                  id_end_months             => ld_output_april,
-                  iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                  iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                  iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
-                  iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
-                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-              -- 2 A-13顧客移行日なしまたは出力年度の最初の月より前の場合
-              ELSIF ( ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) OR ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) ) THEN
-                -- A-13顧客移行日なし
-                IF ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) THEN
-                  -- 全ての月
-                  set_g_lease_budget_tab_vd (
-                    id_start_months           => ld_output_may,
-                    id_end_months             => ld_output_april,
-                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                    iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
-                    iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
-                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                  );
-                -- A-13顧客移行日が出力年度の最初の月より前の場合
-                ELSIF ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) THEN
-                  -- 全ての月
-                  set_g_lease_budget_tab_vd (
-                    id_start_months           => ld_output_may,
-                    id_end_months             => ld_output_april,
-                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                    iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
-                    iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
-                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                  );
-                END IF;
-              END IF;
-            --
-            -- ③-2 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過する
-            ELSIF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months < ld_output_april ) ) THEN
-              -- 1 A-13顧客移行日が出力年度内の場合
-              IF ( g_vd_budget_bulk_tab(i).cust_shift_date >= ld_output_may ) THEN
-                -- 顧客移行日が原契約終了月より後の場合
-                IF ( ld_vd_end_months < TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) ) THEN
-                  -- 顧客移行日前：出力年度の最初の月から原契約終了月まで
-                  set_g_lease_budget_tab_vd (
-                    id_start_months           => ld_output_may,
-                    id_end_months             => ld_vd_end_months,
-                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
-                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                    iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
-                    iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
-                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                  );
-                ELSE
+                -- 1 A-13顧客移行日が出力年度の最初の月より後の場合
+                IF ( g_vd_budget_bulk_tab(i).cust_shift_date >= ld_output_may ) THEN
                   -- 顧客移行日前：出力年度の最初の月からA-13顧客移行日の前月まで
                   set_g_lease_budget_tab_vd (
                     id_start_months           => ld_output_may,
@@ -6442,10 +9048,10 @@ AS
                     ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
                     ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
                   );
-                  -- 顧客移行日後：A-13顧客移行日の月から原契約終了月まで
+                  -- 顧客移行日後：A-13顧客移行日の月から出力年度の最終月まで
                   set_g_lease_budget_tab_vd (
                     id_start_months           => g_vd_budget_bulk_tab(i).cust_shift_date,
-                    id_end_months             => ld_vd_end_months,
+                    id_end_months             => ld_output_april,
                     iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
                     iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
                     iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
@@ -6455,17 +9061,144 @@ AS
                     ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
                     ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
                   );
+                -- 2 A-13顧客移行日なしまたは出力年度の最初の月より前の場合
+                ELSIF ( ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) OR ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) ) THEN
+                  -- A-13顧客移行日なし
+                  IF ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) THEN
+                    -- 全ての月
+                    set_g_lease_budget_tab_vd (
+                      id_start_months           => ld_output_may,
+                      id_end_months             => ld_output_april,
+                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                      iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                      iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+                      iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                  -- A-13顧客移行日が出力年度の最初の月より前の場合
+                  ELSIF ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) THEN
+                    -- 全ての月
+                    set_g_lease_budget_tab_vd (
+                      id_start_months           => ld_output_may,
+                      id_end_months             => ld_output_april,
+                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                      iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                      iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+                      iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                  END IF;
                 END IF;
-              -- 2 A-13顧客移行日なしまたは出力年度の最初の月より前の場合
-              ELSIF ( ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) OR ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) ) THEN
-                -- A-13顧客移行日なし
-                IF ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) THEN
-                  -- 出力年度の最初の月から原契約終了月
+              --
+              -- ③-2 A-13で取得したリース区分が’1’（原契約）かつ出力年度内に事業供用日から60ヵ月を経過する
+              ELSIF ( ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_1 ) AND ( ld_vd_end_months < ld_output_april ) ) THEN
+                -- 1 A-13顧客移行日が出力年度内の場合
+                IF ( g_vd_budget_bulk_tab(i).cust_shift_date >= ld_output_may ) THEN
+                  -- 顧客移行日が原契約終了月より後の場合
+                  IF ( ld_vd_end_months < TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) ) THEN
+                    -- 顧客移行日前：出力年度の最初の月から原契約終了月まで
+                    set_g_lease_budget_tab_vd (
+                      id_start_months           => ld_output_may,
+                      id_end_months             => ld_vd_end_months,
+                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                      iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                      iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+                      iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                  ELSE
+                    -- 顧客移行日前：出力年度の最初の月からA-13顧客移行日の前月まで
+                    set_g_lease_budget_tab_vd (
+                      id_start_months           => ld_output_may,
+                      id_end_months             => ADD_MONTHS(g_vd_budget_bulk_tab(i).cust_shift_date, -1),
+                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                      iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                      iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+                      iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                    -- 顧客移行日後：A-13顧客移行日の月から原契約終了月まで
+                    set_g_lease_budget_tab_vd (
+                      id_start_months           => g_vd_budget_bulk_tab(i).cust_shift_date,
+                      id_end_months             => ld_vd_end_months,
+                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                      iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                      iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+                      iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                  END IF;
+                -- 2 A-13顧客移行日なしまたは出力年度の最初の月より前の場合
+                ELSIF ( ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) OR ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) ) THEN
+                  -- A-13顧客移行日なし
+                  IF ( g_vd_budget_bulk_tab(i).cust_shift_date IS NULL ) THEN
+                    -- 出力年度の最初の月から原契約終了月
+                    set_g_lease_budget_tab_vd (
+                      id_start_months           => ld_output_may,
+                      id_end_months             => ld_vd_end_months,
+                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                      iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                      iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+                      iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                  -- A-13顧客移行日が出力年度の最初の月より前の場合
+                  ELSIF ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) THEN
+                    -- 出力年度の最初の月から原契約終了月
+                    set_g_lease_budget_tab_vd (
+                      id_start_months           => ld_output_may,
+                      id_end_months             => ld_vd_end_months,
+                      iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
+                      iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                      iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                      iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+                      iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+                      ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                      ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                      ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                    );
+                  END IF;
+                END IF;
+                -- 3 再リースのテーブル変数を作成
+                -- 3.1 A-13顧客移行日が再リース開始月以前の場合
+                IF ( TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) <= ADD_MONTHS(ld_vd_end_months,1) ) THEN
                   set_g_lease_budget_tab_vd (
-                    id_start_months           => ld_output_may,
-                    id_end_months             => ld_vd_end_months,
-                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                    id_start_months           => NULL,
+                    id_end_months             => NULL,
+                    iv_lease_type             => cv_lease_type_2,
+                    iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                    iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
+                    iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
+                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
+                -- 3.2 3.1以外の場合
+                ELSE
+                  set_g_lease_budget_tab_vd (
+                    id_start_months           => NULL,
+                    id_end_months             => NULL,
+                    iv_lease_type             => cv_lease_type_2,
+                    iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
                     iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
                     iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
                     iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
@@ -6473,14 +9206,25 @@ AS
                     ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
                     ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
                   );
-                -- A-13顧客移行日が出力年度の最初の月より前の場合
-                ELSIF ( g_vd_budget_bulk_tab(i).cust_shift_date < ld_output_may ) THEN
-                  -- 出力年度の最初の月から原契約終了月
+                END IF;
+              --
+              -- ③-3 A-13で取得したリース区分が’2’（再リース）
+              ELSIF ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_2 ) THEN
+                -- 出力年度の契約終了月を設定
+                -- 1月-4月の場合
+                IF ( TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm) BETWEEN cv_months_1 AND cv_months_4 ) THEN
+                  ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year +1) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
+                -- 5月-12月の場合
+                ELSE
+                  ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
+                END IF;
+                -- 1 A-13顧客移行日が出力年度の事業供用日の月以前の場合
+                IF ( TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) THEN
                   set_g_lease_budget_tab_vd (
-                    id_start_months           => ld_output_may,
-                    id_end_months             => ld_vd_end_months,
-                    iv_lease_type             => g_vd_budget_bulk_tab(i).lease_type,
-                    iv_lease_type_name        => g_vd_budget_bulk_tab(i).lease_type_name,
+                    id_start_months           => NULL,
+                    id_end_months             => NULL,
+                    iv_lease_type             => cv_lease_type_2,
+                    iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
                     iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
                     iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
                     iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
@@ -6488,99 +9232,44 @@ AS
                     ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
                     ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
                   );
+                -- 2 1以外の場合
+                ELSE
+                  set_g_lease_budget_tab_vd (
+                    id_start_months           => NULL,
+                    id_end_months             => NULL,
+                    iv_lease_type             => cv_lease_type_2,
+                    iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
+                    iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
+                    iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
+                    iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
+                    ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
+                    ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
+                    ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
                 END IF;
               END IF;
-              -- 3 再リースのテーブル変数を作成
-              -- 3.1 A-13顧客移行日が再リース開始月以前の場合
-              IF ( TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) <= ADD_MONTHS(ld_vd_end_months,1) ) THEN
-                set_g_lease_budget_tab_vd (
-                  id_start_months           => NULL,
-                  id_end_months             => NULL,
-                  iv_lease_type             => cv_lease_type_2,
-                  iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
-                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                  iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
-                  iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
-                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-              -- 3.2 3.1以外の場合
-              ELSE
-                set_g_lease_budget_tab_vd (
-                  id_start_months           => NULL,
-                  id_end_months             => NULL,
-                  iv_lease_type             => cv_lease_type_2,
-                  iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
-                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                  iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
-                  iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
-                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-              END IF;
-            --
-            -- ③-3 A-13で取得したリース区分が’2’（再リース）
-            ELSIF ( g_vd_budget_bulk_tab(i).lease_type = cv_lease_type_2 ) THEN
-              -- 出力年度の契約終了月を設定
-              -- 1月-4月の場合
-              IF ( TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm) BETWEEN cv_months_1 AND cv_months_4 ) THEN
-                ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year +1) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
-              -- 5月-12月の場合
-              ELSE
-                ld_vd_end_output_months := TO_DATE(TO_CHAR(g_lord_head_data_rec.output_year) || cv_join || TO_CHAR(g_vd_budget_bulk_tab(i).date_placed_in_service, cv_format_mm), cv_format_yyyymm);
-              END IF;
-              -- 1 A-13顧客移行日が出力年度の事業供用日の月以前の場合
-              IF ( TRUNC(g_vd_budget_bulk_tab(i).cust_shift_date, cv_format_mm) <= ld_vd_end_output_months ) THEN
-                set_g_lease_budget_tab_vd (
-                  id_start_months           => NULL,
-                  id_end_months             => NULL,
-                  iv_lease_type             => cv_lease_type_2,
-                  iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
-                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                  iv_department_code        => g_vd_budget_bulk_tab(i).new_department_code,
-                  iv_department_name        => g_vd_budget_bulk_tab(i).new_department_name,
-                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-              -- 2 1以外の場合
-              ELSE
-                set_g_lease_budget_tab_vd (
-                  id_start_months           => NULL,
-                  id_end_months             => NULL,
-                  iv_lease_type             => cv_lease_type_2,
-                  iv_lease_type_name        => g_lookup_budget_itemnm_tab(22),
-                  iv_chiku_code             => g_vd_budget_bulk_tab(i).chiku_code,
-                  iv_department_code        => g_vd_budget_bulk_tab(i).department_code,
-                  iv_department_name        => g_vd_budget_bulk_tab(i).department_name,
-                  ov_errbuf                 => lv_errbuf,                                  -- エラー・メッセージ           --# 固定 #
-                  ov_retcode                => lv_retcode,                                 -- リターン・コード             --# 固定 #
-                  ov_errmsg                 => lv_errmsg                                   -- ユーザー・エラー・メッセージ --# 固定 #
-                );
-              END IF;
             END IF;
-          END IF;
-        END LOOP set_g_vd_budget_tab_loop;
-      -- 固定資産の取得データが存在しない場合は処理なし
-      END IF;
+          END LOOP set_g_vd_budget_tab_loop;
+        -- 固定資産の取得データが存在しない場合は処理なし
+        END IF;
 --
-      -- ===============================
-      -- リース料予算ワーク作成 (A-14)
-      -- ===============================
-      ins_lease_budget_wk(
-        in_file_id,        -- 1.ファイルID(必須)
-        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-        lv_retcode,        -- リターン・コード             --# 固定 #
-        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_process_expt;
-      END IF;
+        -- ===============================
+        -- リース料予算ワーク作成 (A-14)
+        -- ===============================
+        ins_lease_budget_wk(
+          in_file_id,        -- 1.ファイルID(必須)
+          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+          lv_retcode,        -- リターン・コード             --# 固定 #
+          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
 --
-    END LOOP vd_budget_loop;
-    --
-    CLOSE get_vd_budget_cur;
+      END LOOP vd_budget_loop;
+      --
+      CLOSE get_vd_budget_cur;
+    END IF;
+-- 2017/08/17 Ver.1.4 Y.Shouji MOD END
 --
     -- 取得件数0件の場合
     IF ( ln_cnt = 0 ) THEN
@@ -6638,6 +9327,17 @@ AS
 --
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+      IF ( get_lease_budget_cur%ISOPEN ) THEN
+        CLOSE get_lease_budget_cur;
+      END IF;
+      IF ( get_lease_budget_deprn_cur%ISOPEN ) THEN
+        CLOSE get_lease_budget_deprn_cur;
+      END IF;
+      IF ( get_vd_budget_cur%ISOPEN ) THEN
+        CLOSE get_vd_budget_cur;
+      END IF;
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
@@ -6650,6 +9350,14 @@ AS
       IF ( get_lease_budget_cur%ISOPEN ) THEN
         CLOSE get_lease_budget_cur;
       END IF;
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD START
+      IF ( get_lease_budget_deprn_cur%ISOPEN ) THEN
+        CLOSE get_lease_budget_deprn_cur;
+      END IF;
+      IF ( get_vd_budget_cur%ISOPEN ) THEN
+        CLOSE get_vd_budget_cur;
+      END IF;
+-- 2017/08/17 Ver.1.4 Y.Shouji ADD END
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
