@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2015/12/24    1.8   S.Yamashita      E_本稼動_13401対応
  *  2016/02/25    1.9   S.Yamashita      E_本稼動_13478対応
  *  2016/04/15    1.10  S.Niki           E_本稼動_13552対応
+ *  2017/09/01    1.11  H.Sasaki         E_本稼動_14592対応
  *
  *****************************************************************************************/
 --
@@ -2535,7 +2536,13 @@ AS
     -- 引当対象データ取得カーソル
     CURSOR l_kbn_1_cur
     IS
-      SELECT /*+ LEADING(ooha oola) */
+--  V1.11 2017/09/01 Modified START
+--      SELECT /*+ LEADING(ooha oola) */
+      SELECT
+              /*+ LEADING(ooha oola)
+                  INDEX( ooha OE_ORDER_HEADERS_N5 )
+              */
+--  V1.11 2017/09/01 Modified END
              ooha.header_id                                AS header_id                 -- 受注ヘッダID
            , ottt1.name                                    AS header_name               -- 受注タイプ名称
            , ooha.cust_po_number                           AS slip_num                  -- 伝票No
@@ -2660,8 +2667,11 @@ AS
          OR ( xca1.chain_store_code          = gv_login_chain_store_code ) )
       AND ( ( gv_login_customer_code IS NULL )
          OR ( hca1.account_number            = gv_login_customer_code ) )
-      AND ( ( gv_customer_po_number IS NULL )
-         OR ( ooha.cust_po_number            = gv_customer_po_number ) )
+--  V1.11 2017/09/01 Modified START
+--      AND ( ( gv_customer_po_number IS NULL )
+--         OR ( ooha.cust_po_number            = gv_customer_po_number ) )
+      AND    ooha.cust_po_number            =  gv_customer_po_number
+--  V1.11 2017/09/01 Modified END
       AND EXISTS ( SELECT 1
                    FROM   xxcoi_tmp_lot_reserve_subinv xtlrs
                    WHERE  xtlrs.subinventory_code = oola.subinventory )
