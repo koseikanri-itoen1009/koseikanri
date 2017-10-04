@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2012/01/17    1.7   Y.Horikawa       [E_本稼動_08919]HHT2次開発（販売予測情報連携）追加対応：次回補充の出力制御対応
  *  2012/02/20    1.8   Y.Horikawa       [E_本稼動_09140]販売予測算出時にコラム変更日を考慮するように変更
  *  2012/03/12    1.9   Y.Horikawa       [E_本稼動_09139]販売予測の次回補充の算出方法を変更
+ *  2017/10/04    1.10  K.Kiriu          [E_本稼動_14658]パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -412,7 +413,16 @@ AS
 
   CURSOR  get_xmvc_tbl_cur3
   IS
-    SELECT   /*+ leading(@a bc) */
+-- Ver1.10 Mod Start
+--    SELECT   /*+ leading(@a bc) */
+     SELECT  /*+
+               leading(@a bc)
+               use_nl(hp hca xca xmvc msib)
+               index( hp HZ_PARTIES_N17 )
+               index( xmvc XXCOI_MST_VD_COLUMN_N01 )
+               index( msib MTL_SYSTEM_ITEMS_B_U1 )
+             */
+-- Ver1.10 Mod End
              xmvc.column_no                AS column_no                   -- コラムNO.
            , NVL( xmvc.price, cn_price_dummy )          AS price          -- 単価
            , xmvc.inventory_quantity       AS inventory_quantity          -- 満タン数
@@ -444,8 +454,13 @@ AS
            , xxcmm_cust_accounts           xca                            -- 顧客追加情報
     WHERE    msib.inventory_item_id (+)    =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
     AND      msib.organization_id   (+)    =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
-    AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
+-- Ver1.10 Del Start
+--    AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
+-- Ver1.10 Del End
     AND      hp.party_id                   =  hca.party_id                -- 結合条件：パーティと顧客マスタ
+-- Ver1.10 Add Start
+    AND      hca.cust_account_id           =  xca.customer_id             -- 結合条件：顧客マスタと顧客追加情報
+-- Ver1.10 Add End
     AND      xca.customer_id               =  xmvc.customer_id            -- 結合条件：顧客追加情報とVDコラムマスタ
     AND      EXISTS (SELECT /*+ qb_name(a) */
                             'X'
