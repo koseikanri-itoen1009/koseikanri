@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM004A05C(body)
  * Description      : 資格ポイント・新規獲得ポイント情報系システムI/F
  * MD.050           : 資格ポイント・新規獲得ポイント情報系システムI/F MD050_CSM_004_A05
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/12/22    1.2   T.Nakano         E_本番稼動_00589 対応
  *  2010/01/13    1.3   S.Karikomi       E_本稼働_1039 対応
  *  2011/01/13    1.4   T.Ishiwata       E_本稼動_02764 対応
+ *  2017/09/28    1.5   Y.Omuro          E_本稼動_14597 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -453,9 +454,15 @@ AS
              ,xncph.location_cd                                                            --拠点コード
 --//+UPD START 2010/01/13 E_本稼動_01039 S.Karikomi
 --             ,DECODE(xncph.data_kbn,1,xncph.account_number,'0') account_number             --顧客コード
+/* 2017/09/28 Ver1.5 Y.Omuro MOD Start */
+--             ,DECODE(xncph.data_kbn,1,xncph.account_number
+--                                   ,2,xncph.account_number
+--                                   ,3,xncph.account_number,'0') account_number             --顧客コード
              ,DECODE(xncph.data_kbn,1,xncph.account_number
                                    ,2,xncph.account_number
-                                   ,3,xncph.account_number,'0') account_number             --顧客コード
+                                   ,3,xncph.account_number
+                                   ,9,xncph.account_number,'0') account_number             --顧客コード
+/* 2017/09/28 Ver1.5 Y.Omuro MOD End   */
 --//+UPD END 2010/01/13 E_本稼動_01039 S.Karikomi
              ,xncph.data_kbn                                                               --データ区分
              ,xncph.get_intro_kbn                                                          --獲得・紹介区分
@@ -465,9 +472,15 @@ AS
 --             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,NULL) evaluration_kbn          --新規評価対象区分
 --//+UPD START 2010/01/13 E_本稼動_01039 S.Karikomi
 --             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,2,xncph.evaluration_kbn,NULL) evaluration_kbn        --新規評価対象区分
+/* 2017/09/28 Ver1.5 Y.Omuro MOD Start */
+--             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn
+--                                   ,2,xncph.evaluration_kbn
+--                                   ,3,xncph.evaluration_kbn,NULL) evaluration_kbn          --新規評価対象区分
              ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn
                                    ,2,xncph.evaluration_kbn
-                                   ,3,xncph.evaluration_kbn,NULL) evaluration_kbn          --新規評価対象区分
+                                   ,3,xncph.evaluration_kbn
+                                   ,9,xncph.evaluration_kbn,NULL) evaluration_kbn          --新規評価対象区分
+/* 2017/09/28 Ver1.5 Y.Omuro MOD End   */
 --//+UPD END 2010/01/13 E_本稼動_01039 S.Karikomi
 --//+UPD END 2009/12/22 E_本番稼動_00589 対応 T.Nakano
              ,xncph.point                                                                  --ポイント
