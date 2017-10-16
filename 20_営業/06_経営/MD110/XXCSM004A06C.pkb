@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた什器ポイントデータを
  *                  : 新規獲得ポイント顧客別履歴テーブルに取込みます。
  * MD.050           : MD050_CSM_004_A06_什器ポイント一括取込
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2010/01/18    1.5   SCS T.Nakano     [E_本稼動_01039]データ区分チェック追加対応
  *  2010/02/15    1.6   SCS S.Karikomi   [E_本稼動_01534]項目妥当性チェックの変更対応
  *  2010/04/16    1.7   SCS T.Yoshimoto  [E_本稼動_01895]業態(小分類)固定値設定対応
+ *  2017/09/28    1.8   SCSK Y.Omuro     [E_本稼動_14597]什器ポイントアップロードの区分追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -635,9 +636,14 @@ AS
     END IF;
 --
 --//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
-    --データ区分が2,3以外はエラー
+/* 2017/09/28 Ver1.8 Y.Omuro Mod Start */
+    --データ区分が2,3,9以外はエラー
+--    IF (lv_data_kbn_no <> '2' AND
+--        lv_data_kbn_no <> '3') THEN
     IF (lv_data_kbn_no <> '2' AND
-        lv_data_kbn_no <> '3') THEN
+        lv_data_kbn_no <> '3' AND
+        lv_data_kbn_no <> '9') THEN
+/* 2017/09/28 Ver1.8 Y.Omuro Mod End   */
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_xxcsm                                                    -- アプリケーション短縮名
                     ,iv_name         => cv_csm_msg_158                                              -- メッセージコード
@@ -764,6 +770,9 @@ AS
     cn_jyuki_2      CONSTANT NUMBER(1)     := 2;                                                      -- データ区分(什器ポイント = 2)
     cn_jyuki_3      CONSTANT NUMBER(1)     := 3;                                                      -- データ区分(什器ポイント = 3)
 --//+UPD END 2010/01/14 E_本稼動_01039 T.Nakano
+/* 2017/09/28 Ver1.8 Y.Omuro Add Start */
+    cn_modi_9       CONSTANT NUMBER(1)     := 9;                                                      -- データ区分(修正ポイント = 9)
+/* 2017/09/28 Ver1.8 Y.Omuro Add End   */
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -783,7 +792,10 @@ AS
         AND   ncp.month_no     = in_month_no                                                        -- 月
 --//+UPD START 2010/01/14 E_本稼動_01039 T.Nakano
 --        AND   ncp.data_kbn     = cn_jyuki                                                           -- データ区分
-        AND   ncp.data_kbn in (cn_jyuki_2,cn_jyuki_3)                                               -- データ区分
+/* 2017/09/28 Ver1.8 Y.Omuro Mod Start */
+--        AND   ncp.data_kbn in (cn_jyuki_2,cn_jyuki_3)                                               -- データ区分
+        AND   ncp.data_kbn in (cn_jyuki_2,cn_jyuki_3,cn_modi_9)                                    -- データ区分
+/* 2017/09/28 Ver1.8 Y.Omuro Mod End   */
 --//+UPD END 2010/01/14 E_本稼動_01039 T.Nakano
       FOR UPDATE NOWAIT;
 --
@@ -823,7 +835,10 @@ AS
       AND   ncp.month_no     = ln_month_no                                                          -- 月
 --//+UPD START 2010/01/14 E_本稼動_01039 T.Nakano
 --      AND   ncp.data_kbn     = cn_jyuki;                                                            -- データ区分
-      AND   ncp.data_kbn     in (cn_jyuki_2,cn_jyuki_3);                                            -- データ区分
+/* 2017/09/28 Ver1.8 Y.Omuro Mod Start */
+--      AND   ncp.data_kbn     in (cn_jyuki_2,cn_jyuki_3);                                            -- データ区分
+      AND   ncp.data_kbn     in (cn_jyuki_2,cn_jyuki_3,cn_modi_9);                                 -- データ区分
+/* 2017/09/28 Ver1.8 Y.Omuro Mod End   */
 --//+UPD END 2010/01/14 E_本稼動_01039 T.Nakano
 --
   EXCEPTION
@@ -1341,6 +1356,9 @@ AS
     lv_employee_cd       VARCHAR2(100);                                                             -- 判断用_従業員コード
     lv_customer_cd       VARCHAR2(100);                                                             -- 判断用_顧客コード
     ln_nodata_cnt        VARCHAR2(100);
+/* 2017/09/28 Ver1.8 Y.Omuro Add Start */
+    lv_data_kbn          VARCHAR2(100);                                                             -- 判断用_データ区分
+/* 2017/09/28 Ver1.8 Y.Omuro Add End */
 --
     lr_data_rec          xxcsm_wk_vending_pnt%ROWTYPE;                                              -- テーブル型変数を宣言
 --
@@ -1382,6 +1400,9 @@ AS
       EXIT WHEN get_data_cur%NOTFOUND;                                                              -- 対象データ件数処理を繰り返す
 --
       IF ((get_data_cur%ROWCOUNT = 1)                                                               -- 1件目
+/* 2017/09/28 Ver1.8 Y.Omuro Add Start */
+        OR (lv_data_kbn <> NVL(get_data_rec.data_kbn,cv_null))                                      -- データ区分ブレイク時
+/* 2017/09/28 Ver1.8 Y.Omuro Add End */
         OR (lv_year_month  <> NVL(get_data_rec.year_month,cv_null))) THEN                           -- 獲得年月ブレイク時
 --
         IF (get_data_cur%ROWCOUNT <> 1) THEN                                                        -- 1件目以外
@@ -1430,7 +1451,12 @@ AS
         IF (lv_retcode <> cv_status_normal) THEN                                                    -- 戻り値が正常以外の場合
             RAISE sub_proc_other_expt;
         END IF;
+/* 2017/09/28 Ver1.8 Y.Omuro Add Start */
+      END IF;
 --
+      IF ((get_data_cur%ROWCOUNT = 1)                                                               -- 1件目
+        OR (lv_year_month  <> NVL(get_data_rec.year_month,cv_null))) THEN                           -- 獲得年月ブレイク時
+/* 2017/09/28 Ver1.8 Y.Omuro Add End   */
     --==============================================================
     -- A-5 新規獲得ポイント顧客別履歴テーブル既存データの削除
     --==============================================================
@@ -1526,6 +1552,9 @@ AS
       lv_location_cd := get_data_rec.location_cd;                                                   -- 拠点コードを変数に保持
       lv_employee_cd := get_data_rec.employee_cd;                                                   -- 従業員コードを変数に保持
       lv_customer_cd := get_data_rec.customer_cd;                                                   -- 顧客コードを変数に保持
+/* 2017/09/28 Ver1.8 Y.Omuro Add Start */
+      lv_data_kbn    := get_data_rec.data_kbn;                                                      -- データ区分を変数に保持
+/* 2017/09/28 Ver1.8 Y.Omuro Add End   */
 --
       gn_counter     := gn_counter + 1;                                                             -- 処理件数を加算
 --
@@ -1935,4 +1964,3 @@ AS
 --
 END XXCSM004A06C;
 /
-
