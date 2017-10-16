@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2011/07/14    1.17  K.Kubo           [E_本稼動_07885]対応 PT対応（タスク情報2ヶ月抽出処理）
  *  2012/12/27    1.18  K.Furuyama       [E_本稼動_10190]対応
  *  2013/05/27    1.19  K.Kiriu          [E_本稼動_10735]対応 (ヒント句追加)
+ *  2017/09/28    1.20  Y.Omuro          [E_本稼動_14597]対応
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -457,6 +458,10 @@ AS
   --  什器ぶら下がり（Fixture and furniture burasagari）
   ct_point_data_cls_f_and_f_bur CONSTANT  xxcsm_new_cust_point_hst.data_kbn%TYPE := '3';
 /* 2010/01/19 Ver1.12 Add End   */
+/* 2017/09/28 Ver1.20 Add Start */
+  --  修正ポイント
+  ct_point_data_cls_modi_p      CONSTANT  xxcsm_new_cust_point_hst.data_kbn%TYPE := '9';
+/* 2017/09/28 Ver1.20 Add End */
 /* 2009/04/28 Ver1.4 Add Start */
   --  新規評価対象区分(新規獲得ポイント顧客別履歴テーブル)
   --  達成
@@ -5369,6 +5374,9 @@ AS
 /* 2010/01/19 Ver1.12 Add Start */
                                   OR ncph.data_kbn = ct_point_data_cls_f_and_f_bur
 /* 2010/01/19 Ver1.12 Add End   */
+/* 2017/09/28 Ver1.20 Add Start */
+                                  OR ncph.data_kbn = ct_point_data_cls_modi_p
+/* 2017/09/28 Ver1.20 Add End   */
                                   )
 /* 2009/04/28 Ver1.4 Mod End   */
                               THEN  ncph.point
