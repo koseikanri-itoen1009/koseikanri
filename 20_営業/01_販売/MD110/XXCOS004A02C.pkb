@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2014/04/22    1.19  K.Nakamura       [E_本稼働_09071]消化締め後のAR入力対応
  *  2015/01/08    1.20  T.Ishiwata       [E_本稼働_xxxxx]緊急パフォーマンス対応
  *  2017/08/08    1.21  K.Kiriu          [E_本稼働_14500]パフォーマンス対応
+ *  2017/09/12    1.22  K.Kiriu          [E_本稼働_14598]パフォーマンス対応２次
  *
  *****************************************************************************************/
 --
@@ -214,6 +215,12 @@ AS
   ct_msg_inser_control_err  CONSTANT  fnd_new_messages.message_name%TYPE
                                       := 'APP-XXCOS1-10978';               --消化計算AR管理テーブル登録エラーメッセージ
 /* 2014/04/22 Ver1.19 Add End   */
+-- Ver.1.22 Add Start
+  ct_msg_c_base_code_err    CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10979';               --入金拠点取得エラーメッセージ
+  ct_msg_data_skip_err      CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10980';               --入金拠点取得エラー時の処理終了メッセージ
+-- Ver.1.22 Add End
   --クイックコードタイプ
   ct_qct_regular_type       CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -257,6 +264,9 @@ AS
   cv_tkn_quick2             CONSTANT  VARCHAR2(10) :=  'QUICK2';           --クイック
   cv_tkn_table              CONSTANT  VARCHAR2(10) :=  'TABLE_NAME';       --テーブル名称
   cv_tkn_key_data           CONSTANT  VARCHAR2(10) :=  'KEY_DATA';         --キーデータ
+-- Ver.1.22 Add Start
+  cv_tkn_err_msg            CONSTANT  VARCHAR2(10) :=  'ERR_MSG';          --エラーメッセージ
+-- Ver.1.22 Add End
   --プロファイル名称
   cv_Profile_item_cd        CONSTANT  fnd_profile_options.profile_option_name%TYPE
                                       := 'XXCOS1_DIGESTION_DIFF_ITEM_CODE';  -- 消化計算差異品目コード
@@ -372,6 +382,10 @@ AS
 /* 2014/04/22 Ver1.19 Add Start */
   cv_1                      CONSTANT  VARCHAR2(1) := '1';         -- 固定値
 /* 2014/04/22 Ver1.19 Add End   */
+-- Ver.1.22 Add Start
+  cv_yes                    CONSTANT  VARCHAR2(1) := 'Y';         -- 固定値
+  cv_no                     CONSTANT  VARCHAR2(1) := 'N';         -- 固定値
+-- Ver.1.22 Add End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -464,6 +478,9 @@ AS
   gt_tab_cons_control_work        g_tab_consumption_control;             -- 消化計算AR管理テーブル一時格納用
   gt_tab_cons_control_ins         g_tab_consumption_control;             -- 消化計算AR管理テーブルINSERT用
 /* 2014/04/22 Ver1.19 Add End   */
+-- Ver.1.22 Add Start
+  gv_proc_err_flag                VARCHAR2(1);                           -- 入金拠点取得エラー判定用（定期実行のみ）
+-- Ver.1.22 Add End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -1119,6 +1136,14 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- Ver.1.22 Add Start
+    lt_customer_id           xxcos_shop_digestion_hdrs.cust_account_id%TYPE;  -- 顧客ブレーク用変数
+    lt_cash_receiv_base_code xxcmm_cust_accounts.receiv_base_code%TYPE;       -- 入金拠点取得用
+    ln_data_cnt              PLS_INTEGER := 0;                                -- 処理用の配列の添え字用
+    lv_err_flag              VARCHAR2(1);                                     -- 入金拠点取得エラー判定用
+    -- *** ローカル配列 ***
+    lt_tab_wart_data         g_tab_work_data;                                 -- データ取得用
+-- Ver.1.22 Add End
 --
     -- *** ローカル・カーソル ***
     CURSOR get_data_cur
@@ -1135,23 +1160,31 @@ AS
 --                 USE_NL(xchv.cust_hier.bill_hasa_4)
 --                 USE_NL(flv xxca)
 --               */
+-- Ver.1.22 Mod Start
+--        SELECT /*+
+---- 2015/01/09 Ver.1.20 Add Start
+--                 OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
+---- 2015/01/09 Ver.1.20 Add End
+--                 LEADING(xsdh)
+--                 INDEX(xsdh xxcos_shop_digestion_hdrs_n04 )
+--                 INDEX(xxca xxcmm_cust_accounts_pk)
+--                 INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+--                 INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+--                 INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+--                 INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
+--                 USE_NL(xchv.cust_hier.cash_hcar_3)
+--                 USE_NL(xchv.cust_hier.bill_hasa_3)
+--                 USE_NL(xchv.cust_hier.bill_hasa_4)
+--                 USE_NL(flv xxca)
+--               */
+--/* 2009/09/11 Ver1.15 Mod Start */
         SELECT /*+
--- 2015/01/09 Ver.1.20 Add Start
-                 OPTIMIZER_FEATURES_ENABLE('10.2.0.3')
--- 2015/01/09 Ver.1.20 Add End
                  LEADING(xsdh)
-                 INDEX(xsdh xxcos_shop_digestion_hdrs_n04 )
-                 INDEX(xxca xxcmm_cust_accounts_pk)
-                 INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
-                 INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
-                 INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
-                 INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
-                 USE_NL(xchv.cust_hier.cash_hcar_3)
-                 USE_NL(xchv.cust_hier.bill_hasa_3)
-                 USE_NL(xchv.cust_hier.bill_hasa_4)
-                 USE_NL(flv xxca)
+                 INDEX_SS(xsdh XXCOS_SHOP_DIGESTION_HDRS_N03)
+                 USE_NL(xsdh amt)
+                 INDEX(amt.hca HZ_CUST_ACCOUNTS_U2)
                */
-/* 2009/09/11 Ver1.15 Mod Start */
+-- Ver.1.22 Mod End
              xsdh.shop_digestion_hdr_id         shop_digestion_hdr_id,            --店舗別用消化計算ヘッダID
 /* 2009/08/17 Ver1.14 Mod End   */
              xsdh.digestion_due_date            digestion_due_date,               --消化計算締年月日
@@ -1183,20 +1216,30 @@ AS
              xsdl.sales_quantity                sales_quantity,                   --販売数
              xsdl.delivery_base_code            delivery_base_code,               --納品拠点コード
              xsdl.ship_from_subinventory_code   ship_from_subinventory_code,      --出荷元保管場所
-             xxca.past_sale_base_code           past_sale_base_code,              --前月売上拠点コード
-             xxca.tax_div                       tax_div,                          --消費税区分
-             hnas.tax_rounding_rule             tax_rounding_rule,                --税金－端数処理
+-- Ver.1.22 Mod Start
+--             xxca.past_sale_base_code           past_sale_base_code,              --前月売上拠点コード
+--             xxca.tax_div                       tax_div,                          --消費税区分
+--             hnas.tax_rounding_rule             tax_rounding_rule,                --税金－端数処理
+             amt.past_sale_base_code            past_sale_base_code,              --前月売上拠点コード
+             amt.tax_div                        tax_div,                          --消費税区分
+             amt.tax_rounding_rule              tax_rounding_rule,                --税金－端数処理
+-- Ver.1.22 Mod End
              avta.tax_code                      tax_code,                         --AR税コード
              avta.tax_rate                      tax_rate,                         --消費税率
-             xchv.cash_receiv_base_code         cash_receiv_base_code               --入金拠点コード
+-- Ver.1.22 Mod Start
+--             xchv.cash_receiv_base_code         cash_receiv_base_code               --入金拠点コード
+             NULL                               cash_receiv_base_code               --入金拠点コード(ロジック内で取得)
+-- Ver.1.22 Mod End
       FROM   xxcos_shop_digestion_hdrs xsdh,    -- 店舗別用消化計算ヘッダテーブル
              xxcos_shop_digestion_lns  xsdl,    -- 店舗別用消化計算明細テーブル
-             hz_cust_accounts          hnas,    -- 顧客マスタ
-             xxcmm_cust_accounts       xxca,    -- 顧客アドオンマスタ
-/* 2009/08/17 Ver1.14 Mod Start */
---             xxcfr_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
-             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
-/* 2009/08/17 Ver1.14 Mod End   */
+-- Ver1.22 Del Start
+--             hz_cust_accounts          hnas,    -- 顧客マスタ
+--             xxcmm_cust_accounts       xxca,    -- 顧客アドオンマスタ
+--/* 2009/08/17 Ver1.14 Mod Start */
+----             xxcfr_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+--             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+--/* 2009/08/17 Ver1.14 Mod End   */
+-- Ver.1.22 Del End
              ar_vat_tax_all_b          avta,    -- AR税金マスタ
 /* 2009/08/17 Ver1.14 Mod Start */
 --             (SELECT flv.attribute3  tax_class,
@@ -1216,7 +1259,118 @@ AS
              fnd_lookup_values         flv,
 /* 2009/08/17 Ver1.14 Mod End   */
              (
+-- Ver.1.22 Del Start
+--              SELECT hca.account_number  account_number         --顧客コード
+--              FROM   hz_cust_accounts    hca,                   --顧客マスタ
+--                     xxcmm_cust_accounts xca                    --顧客アドオン
+--              WHERE  hca.cust_account_id     = xca.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+--              AND    EXISTS (SELECT flv.meaning
+--/* 2009/08/17 Ver1.14 Mod Start */
+----                             FROM   fnd_application               fa,
+----                                    fnd_lookup_types              flt,
+----                                    fnd_lookup_values             flv
+----                             WHERE  fa.application_id                               =    flt.application_id
+----                             AND    flt.lookup_type                                 =    flv.lookup_type
+----                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+----                             AND    flv.lookup_type                                 =    ct_qct_cust_type
+----                             AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
+----                             AND    flv.start_date_active                          <=    gd_last_month_date
+----                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+----                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+----                             AND    flv.language                                    =    USERENV( 'LANG' )
+----                             AND    flv.meaning                                     =    hca.customer_class_code
+--                             FROM   fnd_lookup_values  flv
+--                             WHERE  flv.lookup_type      = ct_qct_cust_type
+--                             AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+--                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+--                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+--                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+--                             AND    flv.language         = ct_lang
+--                             AND    flv.meaning          = hca.customer_class_code
+--/* 2009/08/17 Ver1.14 Mod End   */
+--                            ) --顧客マスタ.顧客区分 = 10(顧客)
+--              AND    EXISTS (SELECT hcae.account_number --拠点コード
+--                               FROM   hz_cust_accounts    hcae,
+--/* 2009/08/17 Ver1.14 Mod Start */
+----                                      xxcmm_cust_accounts xcae
+--                                      xxcmm_cust_accounts xcae,
+--                                      fnd_lookup_values   flv
+--/* 2009/08/17 Ver1.14 Mod End   */
+--                               WHERE  hcae.cust_account_id = xcae.customer_id--顧客マスタ.顧客ID =顧客アドオン.顧客ID
+--/* 2009/08/17 Ver1.14 Mod Start */
+----                               AND    EXISTS (SELECT flv.meaning
+----                                              FROM   fnd_application               fa,
+----                                                     fnd_lookup_types              flt,
+----                                                     fnd_lookup_values             flv
+----                                              WHERE  fa.application_id                               =    flt.application_id
+----                                              AND    flt.lookup_type                                 =    flv.lookup_type
+----                                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+----                                              AND    flv.lookup_type                                 =    ct_qct_cust_type
+----                                              AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_1
+----                                              AND    flv.start_date_active                          <=    gd_last_month_date
+----                                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+----                                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+----                                              AND    flv.language                                    =    USERENV( 'LANG' )
+----                                              AND    flv.meaning                                     =    hcae.customer_class_code
+----                                             ) --顧客マスタ.顧客区分 = 1(拠点)
+----                               AND    xcae.management_base_code = NVL( iv_base_code,xcae.management_base_code )
+----                                               --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+--                               AND    flv.lookup_type      = ct_qct_cust_type
+--                               AND    flv.lookup_code      LIKE ct_qcc_cust_code_1
+--                               AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+--                                                           AND     NVL( flv.end_date_active, gd_last_month_date )
+--                               AND    flv.enabled_flag     = ct_enabled_flag_yes
+--                               AND    flv.language         = ct_lang
+--                               AND    flv.meaning          = hcae.customer_class_code
+--                               AND    (
+--                                        ( iv_base_code IS NULL )
+--                                        OR
+--                                        ( iv_base_code IS NOT NULL AND  xcae.management_base_code = iv_base_code )
+--                                      ) --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+--/* 2009/08/17 Ver1.14 Mod End   */
+--                               AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
+--                              ) --管理拠点に所属する拠点コード=顧客アドオン.前月拠点or売上拠点
+--/* 2009/08/17 Ver1.14 Mod Start */
+----              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+--              AND    (
+--                       ( iv_customer_number IS NULL )
+--                       OR
+--                       ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
+--                     ) --顧客コード=INパラ(顧客コード)
+--/* 2009/08/17 Ver1.14 Mod End   */
+--              AND    EXISTS (SELECT flv.meaning
+--/* 2009/08/17 Ver1.14 Mod Start */
+----                             FROM   fnd_application               fa,
+----                                    fnd_lookup_types              flt,
+----                                    fnd_lookup_values             flv
+----                             WHERE  fa.application_id                               =    flt.application_id
+----                             AND    flt.lookup_type                                 =    flv.lookup_type
+----                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+----                             AND    flv.lookup_type                                 =    ct_qct_gyo_type
+----                             AND    flv.lookup_code                                 LIKE ct_qcc_it_code
+----                             AND    flv.start_date_active                          <=    gd_last_month_date
+----                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+----                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+----                             AND    flv.language                                    =    USERENV( 'LANG' )
+----                             AND    flv.meaning = xca.business_low_type
+--                             FROM   fnd_lookup_values  flv
+--                             WHERE  flv.lookup_type      = ct_qct_gyo_type
+--                             AND    flv.lookup_code      LIKE ct_qcc_it_code
+--                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+--                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+--                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+--                             AND    flv.language         = ct_lang
+--                             AND    flv.meaning          = xca.business_low_type
+--/* 2009/08/17 Ver1.14 Mod End   */
+--                            )  --業態小分類=インショップ,当社直営店
+--              UNION
+-- Ver.1.22 Del End
               SELECT hca.account_number  account_number         --顧客コード
+-- Ver.1.22 Add Start
+                    ,xca.past_sale_base_code  past_sale_base_code   --前月売上拠点コード
+                    ,xca.tax_div              tax_div               --消費税区分
+                    ,hca.tax_rounding_rule    tax_rounding_rule     --税金－端数処理
+-- Ver.1.22 Add End
               FROM   hz_cust_accounts    hca,                   --顧客マスタ
                      xxcmm_cust_accounts xca                    --顧客アドオン
               WHERE  hca.cust_account_id     = xca.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
@@ -1245,123 +1399,21 @@ AS
                              AND    flv.meaning          = hca.customer_class_code
 /* 2009/08/17 Ver1.14 Mod End   */
                             ) --顧客マスタ.顧客区分 = 10(顧客)
-              AND    EXISTS (SELECT hcae.account_number --拠点コード
-                               FROM   hz_cust_accounts    hcae,
-/* 2009/08/17 Ver1.14 Mod Start */
---                                      xxcmm_cust_accounts xcae
-                                      xxcmm_cust_accounts xcae,
-                                      fnd_lookup_values   flv
-/* 2009/08/17 Ver1.14 Mod End   */
-                               WHERE  hcae.cust_account_id = xcae.customer_id--顧客マスタ.顧客ID =顧客アドオン.顧客ID
-/* 2009/08/17 Ver1.14 Mod Start */
---                               AND    EXISTS (SELECT flv.meaning
---                                              FROM   fnd_application               fa,
---                                                     fnd_lookup_types              flt,
---                                                     fnd_lookup_values             flv
---                                              WHERE  fa.application_id                               =    flt.application_id
---                                              AND    flt.lookup_type                                 =    flv.lookup_type
---                                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
---                                              AND    flv.lookup_type                                 =    ct_qct_cust_type
---                                              AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_1
---                                              AND    flv.start_date_active                          <=    gd_last_month_date
---                                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
---                                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
---                                              AND    flv.language                                    =    USERENV( 'LANG' )
---                                              AND    flv.meaning                                     =    hcae.customer_class_code
---                                             ) --顧客マスタ.顧客区分 = 1(拠点)
---                               AND    xcae.management_base_code = NVL( iv_base_code,xcae.management_base_code )
---                                               --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
-                               AND    flv.lookup_type      = ct_qct_cust_type
-                               AND    flv.lookup_code      LIKE ct_qcc_cust_code_1
-                               AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
-                                                           AND     NVL( flv.end_date_active, gd_last_month_date )
-                               AND    flv.enabled_flag     = ct_enabled_flag_yes
-                               AND    flv.language         = ct_lang
-                               AND    flv.meaning          = hcae.customer_class_code
-                               AND    (
-                                        ( iv_base_code IS NULL )
-                                        OR
-                                        ( iv_base_code IS NOT NULL AND  xcae.management_base_code = iv_base_code )
-                                      ) --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
-/* 2009/08/17 Ver1.14 Mod End   */
-                               AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
-                              ) --管理拠点に所属する拠点コード=顧客アドオン.前月拠点or売上拠点
-/* 2009/08/17 Ver1.14 Mod Start */
---              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
-              AND    (
-                       ( iv_customer_number IS NULL )
-                       OR
-                       ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
-                     ) --顧客コード=INパラ(顧客コード)
-/* 2009/08/17 Ver1.14 Mod End   */
-              AND    EXISTS (SELECT flv.meaning
-/* 2009/08/17 Ver1.14 Mod Start */
---                             FROM   fnd_application               fa,
---                                    fnd_lookup_types              flt,
---                                    fnd_lookup_values             flv
---                             WHERE  fa.application_id                               =    flt.application_id
---                             AND    flt.lookup_type                                 =    flv.lookup_type
---                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
---                             AND    flv.lookup_type                                 =    ct_qct_gyo_type
---                             AND    flv.lookup_code                                 LIKE ct_qcc_it_code
---                             AND    flv.start_date_active                          <=    gd_last_month_date
---                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
---                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
---                             AND    flv.language                                    =    USERENV( 'LANG' )
---                             AND    flv.meaning = xca.business_low_type
-                             FROM   fnd_lookup_values  flv
-                             WHERE  flv.lookup_type      = ct_qct_gyo_type
-                             AND    flv.lookup_code      LIKE ct_qcc_it_code
-                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
-                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
-                             AND    flv.enabled_flag     = ct_enabled_flag_yes
-                             AND    flv.language         = ct_lang
-                             AND    flv.meaning          = xca.business_low_type
-/* 2009/08/17 Ver1.14 Mod End   */
-                            )  --業態小分類=インショップ,当社直営店
-              UNION
-              SELECT hca.account_number  account_number         --顧客コード
-              FROM   hz_cust_accounts    hca,                   --顧客マスタ
-                     xxcmm_cust_accounts xca                    --顧客アドオン
-              WHERE  hca.cust_account_id     = xca.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
-              AND    EXISTS (SELECT flv.meaning
-/* 2009/08/17 Ver1.14 Mod Start */
---                             FROM   fnd_application               fa,
---                                    fnd_lookup_types              flt,
---                                    fnd_lookup_values             flv
---                             WHERE  fa.application_id                               =    flt.application_id
---                             AND    flt.lookup_type                                 =    flv.lookup_type
---                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
---                             AND    flv.lookup_type                                 =    ct_qct_cust_type
---                             AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
---                             AND    flv.start_date_active                          <=    gd_last_month_date
---                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
---                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
---                             AND    flv.language                                    =    USERENV( 'LANG' )
---                             AND    flv.meaning                                     =    hca.customer_class_code
-                             FROM   fnd_lookup_values  flv
-                             WHERE  flv.lookup_type      = ct_qct_cust_type
-                             AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
-                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
-                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
-                             AND    flv.enabled_flag     = ct_enabled_flag_yes
-                             AND    flv.language         = ct_lang
-                             AND    flv.meaning          = hca.customer_class_code
-/* 2009/08/17 Ver1.14 Mod End   */
-                            ) --顧客マスタ.顧客区分 = 10(顧客)
-              AND    (
-                      xca.past_sale_base_code = NVL( iv_base_code,xca.past_sale_base_code )
-                      OR
-                      xca.sale_base_code = NVL( iv_base_code,xca.sale_base_code )
-                     )--顧客アドオン.前月拠点or売上拠点 = INパラ拠点コード
-/* 2009/08/17 Ver1.14 Mod Start */
---              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
-              AND    (
-                       ( iv_customer_number IS NULL )
-                       OR
-                       ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
-                     ) --顧客コード=INパラ(顧客コード)
-/* 2009/08/17 Ver1.14 Mod End   */
+-- Ver.1.22 Del Start
+--              AND    (
+--                      xca.past_sale_base_code = NVL( iv_base_code,xca.past_sale_base_code )
+--                      OR
+--                      xca.sale_base_code = NVL( iv_base_code,xca.sale_base_code )
+--                     )--顧客アドオン.前月拠点or売上拠点 = INパラ拠点コード
+--/* 2009/08/17 Ver1.14 Mod Start */
+----              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+--              AND    (
+--                       ( iv_customer_number IS NULL )
+--                       OR
+--                       ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
+--                     ) --顧客コード=INパラ(顧客コード)
+--/* 2009/08/17 Ver1.14 Mod End   */
+-- Ver.1.22 Del End
               AND    EXISTS (SELECT flv.meaning
 /* 2009/08/17 Ver1.14 Mod Start */
 --                             FROM   fnd_application               fa,
@@ -1395,8 +1447,10 @@ AS
       AND    xsdh.uncalculate_class                    IN (ct_un_calc_flag_0,gt_un_calc_flag) --ヘッダ.未計算区分(0、定期の場合のみ4)
 --      AND    xsdh.uncalculate_class                    = ct_un_calc_flag_0          --ヘッダ.未計算区分           = 0
 --******************************* 2010/02/15 1.17 M.Hokkanji MOD END   **************************************************************
-      AND    xsdh.cust_account_id                      = hnas.cust_account_id       --ヘッダ.顧客ID               = 顧客マスタ.顧客ID
-      AND    hnas.cust_account_id                      = xxca.customer_id           --顧客マスタ.顧客ID           = アドオン.顧客ID
+-- Ver.1.22 Del Start
+--      AND    xsdh.cust_account_id                      = hnas.cust_account_id       --ヘッダ.顧客ID               = 顧客マスタ.顧客ID
+--      AND    hnas.cust_account_id                      = xxca.customer_id           --顧客マスタ.顧客ID           = アドオン.顧客ID
+-- Ver.1.22 Del End
 /* 2009/08/17 Ver1.14 Mod Start */
 --      AND    xxca.tax_div                              = tcm.tax_class              --顧客マスタ. 消費税区分      = 税コード特定マスタ.LOCKUPコード
 --      AND    tcm.tax_code                              = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
@@ -1405,14 +1459,19 @@ AS
                                                        AND     NVL( flv.end_date_active, gd_last_month_date )
       AND    flv.enabled_flag                          = ct_enabled_flag_yes
       AND    flv.language                              = ct_lang
-      AND    flv.attribute3                            = xxca.tax_div               --税コード特定マスタ.DFF3     = 顧客マスタ. 消費税区分
+-- Ver.1.22 Mod Start
+--      AND    flv.attribute3                            = xxca.tax_div               --税コード特定マスタ.DFF3     = 顧客マスタ. 消費税区分
+      AND    flv.attribute3                            = amt.tax_div                --税コード特定マスタ.DFF3     = 顧客マスタ. 消費税区分
+-- Ver.1.22 Mod End
       AND    flv.attribute2                            = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
 /* 2009/08/17 Ver1.14 Mod End   */
       AND    avta.set_of_books_id                      = gn_gl_id                   --AR税金マスタ.セットブックス = GL会計帳簿ID
       AND    avta.enabled_flag                         = ct_tax_enabled_yes         --AR税金マスタ.有効           = 'Y'
       AND    avta.start_date                          <=    gd_last_month_date      --AR税金マスタ.有効日自      <= 消化計算締日
       AND    NVL( avta.end_date, gd_last_month_date ) >=    gd_last_month_date      --AR税金マスタ.有効日至      >= 消化計算締日
-      AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+-- Ver1.22 Del Start
+--      AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+-- Ver1.22 DelEnd
 --****************************** 2009/05/07 1.10 T.Kitajima ADD START ******************************--
       AND    xsdl.sales_quantity                      != cn_sales_zero
       AND   NOT EXISTS(
@@ -1780,11 +1839,84 @@ AS
 -- Ver.1.21 Add End
         OPEN get_data_cur;
         -- バルクフェッチ
-        FETCH get_data_cur BULK COLLECT INTO gt_tab_work_data;
-        --取得件数
-        gn_list_cnt := get_data_cur%ROWCOUNT;
+-- Var.1.22 Mod Start
+--        FETCH get_data_cur BULK COLLECT INTO gt_tab_work_data;
+        FETCH get_data_cur BULK COLLECT INTO lt_tab_wart_data;
+--        --取得件数
+--        gn_list_cnt := get_data_cur%ROWCOUNT;
+-- Var.1.22 Mod End
         -- カーソルCLOSE
         CLOSE get_data_cur;
+-- Var.1.22 Add Start
+        -- 入金拠点コードの取得(パフォーマンス対応の為、ロジックで取得)
+        << r_base_code_loop >>
+        FOR i IN 1.. lt_tab_wart_data.COUNT LOOP
+--
+          -- 初回、もしくは、前レコードから出荷先顧客が変わった場合
+          IF (
+               ( lt_customer_id IS NULL )
+               OR
+               ( lt_customer_id <> lt_tab_wart_data(i).cust_account_id )
+             )
+          THEN
+--
+            -- 初期化
+            lv_err_flag              := cv_no;
+            lt_cash_receiv_base_code := NULL;
+--
+            -- 顧客階層ビューより入金拠点コードを取得
+            BEGIN
+              SELECT xchv.cash_receiv_base_code
+              INTO   lt_cash_receiv_base_code
+              FROM   xxcos_cust_hierarchy_v xchv
+              WHERE  xchv.ship_account_id = lt_tab_wart_data(i).cust_account_id
+              ;
+            EXCEPTION
+              -- その他例外
+              WHEN OTHERS THEN
+                -- 取得エラーとする(チェックは全レコード行う)
+                lv_err_flag      := cv_yes;
+                -- 1顧客でも当エラーとなった場合、該当データのみスキップするが処理結果はエラーとする
+                gv_proc_err_flag := cv_yes;
+                -- 警告件数カウント
+                gn_warn_cnt      := gn_warn_cnt + 1;
+                -- メッセー生成
+                lv_errmsg        := xxccp_common_pkg.get_msg(
+                                      iv_application        => ct_xxcos_appl_short_name,
+                                      iv_name               => ct_msg_c_base_code_err,
+                                      iv_token_name1        => cv_tkn_parm_data1,
+                                      iv_token_value1       => lt_tab_wart_data(i).customer_number,
+                                      iv_token_name2        => cv_tkn_err_msg,
+                                      iv_token_value2       => SQLERRM
+                                    );
+                -- メッセージ出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.OUTPUT
+                  ,buff   => lv_errmsg
+                );
+            END;
+--
+          END IF;
+--
+          -- 取得エラーで無い場合のみ、処理用の配列にデータを格納
+          IF ( lv_err_flag = cv_no ) THEN
+            -- 処理用配列の添え字のカウントアップ
+            ln_data_cnt                               := ln_data_cnt + 1;
+            -- 入金拠点コードをデータ取得用の配列に設定
+            lt_tab_wart_data(i).cash_receiv_base_code := lt_cash_receiv_base_code;
+            -- 処理用の配列にデータ取得用の配列データを設定
+            gt_tab_work_data(ln_data_cnt)             := lt_tab_wart_data(i);
+          END IF;
+--
+          -- ブレーク変数の設定
+          lt_customer_id := lt_tab_wart_data(i).cust_account_id;
+--
+        END LOOP r_base_code_loop;
+--
+        --取得件数
+        gn_list_cnt := ln_data_cnt;
+--
+-- Var.1.22 Add End
 -- Ver.1.21 Add Start
       -- 随時の場合
       ELSE
@@ -3517,6 +3649,10 @@ AS
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
 --
+-- Ver.1.22 Add Start
+    -- 入金拠点エラー時のフラグ初期化（定期実行時のみフラグの更新あり）
+    gv_proc_err_flag := cv_no;
+-- Ver.1.22 Add End
     --*********************************************
     --***      MD.050のフロー図を表す           ***
     --***      分岐と処理部の呼び出しを行う     ***
@@ -3784,6 +3920,9 @@ AS
     lv_retcode         VARCHAR2(1);     -- リターン・コード
     lv_errmsg          VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
     lv_message_code    VARCHAR2(100);   -- 終了メッセージコード
+-- Ver.1.22 Mod Start
+    lv_appl_short_name VARCHAR2(10);    -- メッセージアプリケーション制御用
+-- Ver.1.22 Mod End
     --
   BEGIN
 --
@@ -3846,6 +3985,12 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
+-- Ver.1.22 Add Start
+   -- 定期実行で、入金拠点取得エラーがある場合の対象件数制御
+   IF (gv_proc_err_flag = cv_yes) THEN
+     gn_target_cnt := gn_target_cnt + gn_warn_cnt;
+   END IF;
+-- Ver.1.22 Add End
     --対象件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
@@ -3895,16 +4040,30 @@ AS
     );
     --
     --終了メッセージ
-    IF (lv_retcode = cv_status_normal) THEN
+-- Ver.1.22 Mod Start
+--    IF (lv_retcode = cv_status_normal) THEN
+--
+    -- メッセージのアプリケーション初期化
+    lv_appl_short_name := cv_appl_short_name;
+--
+    IF(lv_retcode <> cv_status_error AND gv_proc_err_flag = cv_yes) THEN
+      lv_message_code    := ct_msg_data_skip_err;      -- 入金拠点取得エラー用のメッセージとする
+      lv_appl_short_name := ct_xxcos_appl_short_name;  -- メッセージのアプリケーションを変更する。
+    ELSIF (lv_retcode = cv_status_normal) THEN
+-- Ver.1.22 Mod End
       lv_message_code := cv_normal_msg;
     ELSIF(lv_retcode = cv_status_warn) THEN
       lv_message_code := cv_warn_msg;
+    -- 定期で入金拠点の取得エラーが発生した場合
     ELSIF(lv_retcode = cv_status_error) THEN
       lv_message_code := cv_error_msg;
     END IF;
     --
     gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
+-- Ver.1.22 Mod Start
+--                     iv_application  => cv_appl_short_name
+                     iv_application  => lv_appl_short_name
+-- Ver.1.22 Mod End
                     ,iv_name         => lv_message_code
                    );
     FND_FILE.PUT_LINE(
@@ -3916,6 +4075,13 @@ AS
     --終了ステータスがエラーの場合はROLLBACKする
     IF (retcode = cv_status_error) THEN
       ROLLBACK;
+-- Ver.1.22 Add Start
+    --入金拠点の取得エラー(定期実行のみ)の場合
+    ELSIF (gv_proc_err_flag = cv_yes) THEN
+      -- コミットするが処理はエラーとする(エラーとすると処理終了後ロールバックされるのでここでコミット)
+      COMMIT;
+      retcode := cv_status_error;
+-- Ver.1.22 Add End
     END IF;
 --
   EXCEPTION
