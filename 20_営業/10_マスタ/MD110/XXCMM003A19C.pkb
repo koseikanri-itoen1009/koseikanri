@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCMM003A19C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCMM003A19C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2009. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2011/10/18    1.11  Yasuhiro.Horikawa 障害E_本稼動_08440の対応
  *  2013/07/25    1.12  Shigeto.Niki     障害E_本稼動_10904の対応(消費税増税対応)
  *  2013/09/18    1.12  Shigeto.Niki     障害E_本稼動_10904の再対応(消費税増税対応)
+ *  2017/08/29    1.13  Shigeto.Niki     障害E_本稼動_14486の対応
  *
  *****************************************************************************************/
 --
@@ -863,6 +864,9 @@ AS
 -- 2011/05/16 Ver1.10 E_本稼動_07429 add start by Shigeto.Niki
              xca.longitude                                               vendor_offset_time,          --自販機オフセット時刻
 -- 2011/05/16 Ver1.10 E_本稼動_07429 add end by Shigeto.Niki
+-- Ver1.13 add start
+             xca.business_low_type                                       business_low_type,           --業態コード
+-- Ver1.13 add end
              hp.duns_number_c                                            duns_number_c,               --顧客ステータスコード
              xca.change_amount                                           change_amount,               --つり銭
              hp.organization_name_phonetic                               org_name_phonetic,           --顧客名カナ
@@ -1379,6 +1383,9 @@ AS
 -- 2011/05/16 Ver1.10 E_本稼動_07429 add start by Shigeto.Niki
         lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.vendor_offset_time, 1, 4), cv_date_null)      || cv_dqu;  --自販機オフセット時刻
 -- 2011/05/16 Ver1.10 E_本稼動_07429 add end by Shigeto.Niki
+-- Ver1.13 add start
+        lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.business_low_type, 1, 2), cv_date_null)       || cv_dqu;  --業態コード
+-- Ver1.13 add end
 --
         --文字列出力
         BEGIN
