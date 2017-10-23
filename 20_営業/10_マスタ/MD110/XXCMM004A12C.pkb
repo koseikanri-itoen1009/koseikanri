@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY      XXCMM004A12C
+CREATE OR REPLACE PACKAGE BODY      APPS.XXCMM004A12C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -8,7 +8,7 @@ AS
  *                      営業品目として登録された品目（カテゴリマスタの商品製品区分が2:製品）のみを抽出し、
  *                      HHT向けのCSVファイルを提供します。
  * MD.050           : 品目マスタIF出力（HHT） CMM_004_A12
- * Version          : Draft2H
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/05/22    1.8   H.Yoshikawa      障害T1_0317の対応 製品商品区分の条件削除し
  *                                                         品目コードの先導２桁が「00」に変更
  *  2009/09/03    1.9   Y.Kuboshima      障害0001255の対応 メインカーソルにヒント句を追加
+ *  2017/08/29    1.10  S.Niki           E_本稼動_14486の対応
  *
  *****************************************************************************************/
 --
@@ -202,6 +203,10 @@ AS
     ,case_jan_code              xxcmm_system_items_b.case_jan_code%TYPE           -- ケースJANコード
     ,parent_item_code           ic_item_mst_b.item_no%TYPE                        -- 親商品コード
     ,search_update_date         xxcmm_system_items_b.search_update_date%TYPE      -- 検索対象更新日
+--Ver1.10 Add
+    ,crowd_code                 ic_item_mst_b.attribute2%TYPE                     -- 政策群コード
+    ,renewal_item_code          xxcmm_system_items_b.renewal_item_code%TYPE       -- リニューアル元商品コード
+--End 1.10
   );
 --
   -- 品目マスタIF出力（HHT）レイアウト テーブルタイプ
@@ -585,6 +590,10 @@ AS
 --End1.3
                  ,xoiv.item_status                                           -- 品目ステータス
                  ,xoiv.search_update_date                                    -- 検索対象更新日
+--Ver1.10 Add
+                 ,xoiv.crowd_code_new        AS crowd_code                   -- 政策群コード
+                 ,xoiv.renewal_item_code     AS renewal_item_code            -- リニューアル元商品コード
+--End 1.10
       FROM        xxcmm_opmmtl_items_v    xoiv                               --
                  ,ic_item_mst_b           parent_iimb                        -- OPM品目（親品目）
 -- Ver1.8  2009/05/22 Del  商品製品区分の条件を削除
@@ -775,6 +784,12 @@ AS
       lv_step := 'A-2.search_update_date';
       lv_message_token := '更新日時';
       l_csv_item_tab( ln_data_index ).search_update_date   := l_csv_item_rec.search_update_date;    -- 検索対象更新日
+--Ver1.10 Add
+      lv_step := 'A-2.crowd_code';
+      l_csv_item_tab( ln_data_index ).crowd_code           := l_csv_item_rec.crowd_code;            -- 政策群コード
+      lv_step := 'A-2.renewal_item_code';
+      l_csv_item_tab( ln_data_index ).renewal_item_code    := l_csv_item_rec.renewal_item_code;     -- リニューアル元商品コード
+--End1.10
       --
     END LOOP csv_item_loop;
     --
@@ -911,6 +926,16 @@ AS
 --          TO_CHAR( l_csv_item_tab( ln_index ).search_update_date , cv_date_format_all );
           TO_CHAR( l_csv_item_tab( ln_index ).search_update_date , cv_date_format_all ) || cv_dqu;
 --End1.7 by Y.Kuboshima
+--Ver1.10 Add
+        -- 政策群コード
+        lv_step := 'A-3.crowd_code';
+        lv_out_csv_line := lv_out_csv_line || cv_sep || cv_dqu ||
+          l_csv_item_tab( ln_index ).crowd_code || cv_dqu;
+        -- リニューアル元商品コード
+        lv_step := 'A-3.renewal_item_code';
+        lv_out_csv_line := lv_out_csv_line || cv_sep || cv_dqu ||
+          l_csv_item_tab( ln_index ).renewal_item_code || cv_dqu;
+--End1.10
         --
         -- CSVファイル出力
         lv_step := 'A-3.1b';
