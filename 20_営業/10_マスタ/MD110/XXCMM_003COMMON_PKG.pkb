@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmm_003common_pkg(body)
  * Description            :
  * MD.110                 : MD110_CMM_顧客_共通関数
- * Version                : 1.10
+ * Version                : 1.11
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/09/15    1.8  Yutaka.Kuboshima 統合テスト障害0001350の対応
  *  2009/10/30    1.9  Yutaka.Kuboshima 障害E_T4_00100の対応
  *  2009/11/26    1.10 Yutaka.Kuboshima 障害E_本稼動_00106の対応
+ *  2017/10/18    1.11 Yoshiharu.Omuro  障害E_本稼動_14667の対応
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -159,6 +160,14 @@ AS
       IF (iv_cust_status = cv_out_cust) AND (iv_cust_will_status = cv_stop_approved) THEN
         RETURN cv_success;
       END IF;
+-- 2017/10/18 Ver1.11 add start by Y.Omuro
+    ELSIF (iv_cust_class IS NULL) THEN
+      IF (iv_cust_status = cv_mc) AND (iv_cust_will_status = cv_stop_approved) THEN
+        RETURN cv_success;
+      ELSIF (iv_cust_status = cv_mc_candidates) AND (iv_cust_will_status = cv_stop_approved)  THEN
+        RETURN cv_success;
+      END IF;
+-- 2017/10/18 Ver1.11 add end   by Y.Omuro
     END IF;
     RETURN cv_error;
   END cust_status_update_allow;
