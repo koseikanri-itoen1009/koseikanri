@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2017/04/05    1.14  仁木 重人        障害E_本稼動_13976対応 顧客追加情報のeSM関連項目追加
  *  2017/05/18    1.15  仁木 重人        障害E_本稼動_14246対応 請求書印刷単位のチェック追加
  *  2017/06/14    1.16  仁木 重人        障害E_本稼動_14271対応 自販機フォロー委託２次開発
+ *  2017/10/18    1.17  大室 慶治        障害E_本稼動_14667対応 MC顧客の中止
  *
  *****************************************************************************************/
 --
@@ -447,6 +448,10 @@ AS
   cv_bp_customer_code         CONSTANT VARCHAR2(30)  := '取引先顧客コード';                 --取引先顧客コード
   cv_offset_cust_div_1        CONSTANT VARCHAR2(1)   := '1';                                --相殺用顧客区分：相殺用顧客
 -- Ver1.16 add end
+-- 2017/10/18 Ver1.17 E_本稼動_14667 add start by Y.Omuro
+  cv_mc_candidates            CONSTANT VARCHAR2(2)   := '10';                               --顧客ステータス・MC候補
+  cv_mc                       CONSTANT VARCHAR2(2)   := '20';                               --顧客ステータス・MC
+-- 2017/10/18 Ver1.17 E_本稼動_14667 add end by Y.Omuro
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1612,65 +1617,83 @@ AS
         lv_customer_class := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                     ,cv_comma
                                                                     ,1);
-        --顧客区分存在チェック
-        << check_cust_class_loop >>
-        FOR check_cust_class_rec IN check_cust_class_cur( lv_customer_class )
+-- 2017/10/18 Ver1.17 E_本稼動_14667 add start by Y.Omuro
+        --現行顧客ステータス取得
+        << get_cust_status_loop >>
+        FOR get_cust_status_rec IN get_cust_status_cur( ln_party_id )
         LOOP
-          lv_cust_class_mst := check_cust_class_rec.cust_class;
-        END LOOP check_cust_class_loop;
-        IF (lv_cust_class_mst IS NULL) THEN
-          lv_check_status   := cv_status_error;
-          lv_retcode        := cv_status_error;
-          --顧客区分参照表存在チェックエラーメッセージ取得
-          gv_out_msg := xxccp_common_pkg.get_msg(
-                           iv_application  => gv_xxcmm_msg_kbn
-                          ,iv_name         => cv_lookup_err_msg
-                          ,iv_token_name1  => cv_cust_code
-                          ,iv_token_value1 => lv_customer_code
-                          ,iv_token_name2  => cv_col_name
-                          ,iv_token_value2 => cv_cust_class
-                          ,iv_token_name3  => cv_input_val
-                          ,iv_token_value3 => lv_customer_class
-                         );
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.LOG
-            ,buff   => gv_out_msg);
-        END IF;
-        --顧客区分の型・桁数チェック
-        xxccp_common_pkg2.upload_item_check( cv_cust_class      --項目名称
-                                            ,lv_customer_class  --顧客区分
-                                            ,2                  --項目長
-                                            ,NULL               --項目長（小数点以下）
-                                            ,cv_null_ok         --必須フラグ
-                                            ,cv_element_vc2     --属性（0・検証なし、1、数値、2、日付）
-                                            ,lv_item_errbuf     --エラーバッファ
-                                            ,lv_item_retcode    --エラーコード
-                                            ,lv_item_errmsg);   --エラーメッセージ
-        --顧客区分が存在し、かつ型・桁数チェックエラー時
-        IF (lv_customer_class IS NOT NULL)
-          AND (lv_item_retcode <> cv_status_normal) THEN
-          lv_check_status := cv_status_error;
+          lv_get_cust_status := get_cust_status_rec.cust_status;
+        END LOOP get_cust_status_loop;
+--
+        IF    (lv_customer_class IS NULL
+          AND  (lv_get_cust_status = cv_mc_candidates
+            OR  lv_get_cust_status = cv_mc)) THEN
+          -- 顧客区分がNULL、かつ顧客ステータスが10(MC候補)または20(MC)はチェックしない
+          NULL;
+        ELSE
+-- 2017/10/18 Ver1.17 E_本稼動_14667 add end by Y.Omuro
+          --顧客区分存在チェック
+          << check_cust_class_loop >>
+          FOR check_cust_class_rec IN check_cust_class_cur( lv_customer_class )
+          LOOP
+            lv_cust_class_mst := check_cust_class_rec.cust_class;
+          END LOOP check_cust_class_loop;
+          IF (lv_cust_class_mst IS NULL) THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --顧客区分参照表存在チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_lookup_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_cust_class
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_customer_class
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+          --顧客区分の型・桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_cust_class      --項目名称
+                                              ,lv_customer_class  --顧客区分
+                                              ,2                  --項目長
+                                              ,NULL               --項目長（小数点以下）
+                                              ,cv_null_ok         --必須フラグ
+                                              ,cv_element_vc2     --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf     --エラーバッファ
+                                              ,lv_item_retcode    --エラーコード
+                                              ,lv_item_errmsg);   --エラーメッセージ
+          --顧客区分が存在し、かつ型・桁数チェックエラー時
+          IF (lv_customer_class IS NOT NULL)
+            AND (lv_item_retcode <> cv_status_normal) THEN
+            lv_check_status := cv_status_error;
 --不具合ID007 2007/02/24 add start
-          lv_retcode      := cv_status_error;
+            lv_retcode      := cv_status_error;
 --add end
-          --顧客区分エラーメッセージ取得
-          gv_out_msg := xxccp_common_pkg.get_msg(
-                           iv_application  => gv_xxcmm_msg_kbn
-                          ,iv_name         => cv_val_form_err_msg
-                          ,iv_token_name1  => cv_cust_code
-                          ,iv_token_value1 => lv_customer_code
-                          ,iv_token_name2  => cv_col_name
-                          ,iv_token_value2 => cv_cust_class
-                          ,iv_token_name3  => cv_input_val
-                          ,iv_token_value3 => lv_customer_class
-                         );
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.LOG
-            ,buff   => gv_out_msg);
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.LOG
-            ,buff   => lv_item_errmsg);
+            --顧客区分エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_cust_class
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_customer_class
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg);
+          END IF;
+-- 2017/10/18 Ver1.17 E_本稼動_14667 add start by Y.Omuro
         END IF;
+-- 2017/10/18 Ver1.17 E_本稼動_14667 add end by Y.Omuro
 --
         --顧客名称取得
         lv_customer_name := xxccp_common_pkg.char_delim_partition(  lv_temp
@@ -9718,6 +9741,10 @@ AS
       AND     hcas.cust_acct_site_id    = hcsu.cust_acct_site_id
       AND     ((hcsu.site_use_code      = cv_bill_to
               AND hca.customer_class_code IN (cv_customer, cv_su_customer, cv_ar_manage))
+-- 2017/10/18 Ver1.17 E_本稼動_14667 add start by Y.Omuro
+      OR      (hcsu.site_use_code       = cv_bill_to
+              AND hca.customer_class_code IS NULL)
+-- 2017/10/18 Ver1.17 E_本稼動_14667 add end by Y.Omuro
       OR      (hcsu.site_use_code       = cv_other_to
               AND hca.customer_class_code NOT IN (cv_customer, cv_su_customer, cv_ar_manage)))
       AND     hca.party_id              = hp.party_id
