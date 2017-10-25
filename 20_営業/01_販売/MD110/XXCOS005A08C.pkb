@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -86,8 +86,9 @@ AS
  *                                            値が入っていない場合は自動で導出
  *                                         ・「通常訂正」「返品訂正」「返品受注」の『オーダーNO』の必須チェック追加
  *                                         ・「変動電気代」の『オーダーNO』に値が設定されていた場合はNULLを設定
-                                           ・『データ種別』の必須チェックを外す
-                                           ・「問屋」「国際」の『売上区分』の必須チェックを外す
+ *                                         ・『データ種別』の必須チェックを外す
+ *                                         ・「問屋」「国際」の『売上区分』の必須チェックを外す
+ *  2017/10/18    1.30  S.Niki           [E_本稼動_14671] 自拠点セキュリティ変更
  *
  *****************************************************************************************/
 --
@@ -1297,7 +1298,10 @@ AS
     CURSOR get_data_cur
     IS
       SELECT lbi.base_code base_code
-        FROM xxcos_login_base_info_v lbi
+-- ************** Ver1.30 MOD START *************** --
+--        FROM xxcos_login_base_info_v lbi
+        FROM xxcos_all_or_login_base_info_v lbi
+-- ************** Ver1.30 MOD END   *************** --
     ;
     -- *** ローカル・レコード ***
     l_data_rec               get_data_cur%ROWTYPE;
@@ -4802,7 +4806,10 @@ AS
                                     )
                 )
             OR  (msi.attribute7  IN (SELECT xlbi.base_code  base_code
-                                     FROM   xxcos_login_base_info_v  xlbi
+-- ************** Ver1.30 MOD START *************** --
+--                                     FROM   xxcos_login_base_info_v  xlbi
+                                     FROM   xxcos_all_or_login_base_info_v  xlbi
+-- ************** Ver1.30 MOD END   *************** --
                                     )
                 )
               )
