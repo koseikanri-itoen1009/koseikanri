@@ -20,6 +20,9 @@ AND    xcav.account_number = (SELECT xxcso_util_common_pkg.get_rs_base_code(xrv.
                               FROM   xxcso_resources_v2 xrv
                               WHERE  xrv.user_id = fnd_global.user_id
                              )
+-- E_–{‰Ò“®_14671 Add Start
+AND    '0' = FND_PROFILE.VALUE('XXCSO1_SECURITY_019_A09')
+-- E_–{‰Ò“®_14671 Add End
 UNION
 SELECT xcav.account_number base_code,
        xcav.party_name base_name,
@@ -30,10 +33,19 @@ AND    xcav.management_base_code = (SELECT xxcso_util_common_pkg.get_rs_base_cod
                                     FROM   xxcso_resources_v2 xrv
                                     WHERE  xrv.user_id = fnd_global.user_id
                                    )
+-- E_–{‰Ò“®_14671 Add ˆÈ~‚ÌSQL•¶
+AND    '0' = FND_PROFILE.VALUE('XXCSO1_SECURITY_019_A09')
+UNION ALL
+SELECT xcav.account_number base_code,
+       xcav.party_name base_name,
+       'Y' base_code_flag
+FROM   xxcso_cust_accounts_v xcav
+WHERE  xcav.customer_class_code = '1'
+AND    '1' = FND_PROFILE.VALUE('XXCSO1_SECURITY_019_A09')
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
