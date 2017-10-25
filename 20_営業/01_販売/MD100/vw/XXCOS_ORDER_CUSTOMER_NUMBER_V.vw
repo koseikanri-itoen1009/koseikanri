@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_order_customer_number_v
  * Description     : 顧客コードのセキュリティ（クイック受注用）
- * Version         : 1.5
+ * Version         : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -19,6 +19,7 @@
  *  2009/07/15    1.4   K.Kakishita      [T3_0757]重複データが表示される障害対応
  *                                       ・GROUP BY句を追加
  *  2009/09/03    1.5   M.Sano           [0001277]業務日付取得方法をテーブル参照へ変更
+ *  2017/10/18    1.6   S.Niki           [E_本稼動_14671]事務センター構想に伴なう拠点セキュリティ変更
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_order_customer_number_v (
@@ -50,7 +51,10 @@ AS
     hz_parties                            party,
     hz_cust_accounts                      acct,
     xxcmm_cust_accounts                   xca,
-    xxcos_login_base_info_v               xlbiv
+-- Ver1.6 Mod Start
+--    xxcos_login_base_info_v               xlbiv
+    xxcos_all_or_login_base_info_v        xlbiv
+-- Ver1.6 Mod End
   WHERE
     acct.party_id                       = party.party_id
   AND acct.status                       = 'A'
