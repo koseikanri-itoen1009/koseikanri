@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A06R (body)
  * Description      : HHTエラーリスト
  * MD.050           : HHTエラーリスト MD050_COS_001_A06
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *                                       ・処理件数0件：正常  処理件数1件以上⇒警告
  *  2009/11/25    1.4   N.Maeda          [E_本稼動_00064] 帳票ワークテーブル削除プロシージャ
  *                                                          ⇒帳票ワークテーブル(出力済)更新へ修正
+ *  2017/11/01    1.5   S.Niki           [E_本稼動_14671] ・事務センター構想に伴なう拠点セキュリティ変更
+ *                                                        ・入力パラメータ「拠点コード」「実行区分」追加
  *
  *****************************************************************************************/
 --
@@ -117,11 +119,17 @@ AS
   cv_msg_update_err         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00011';    -- データ更新エラーメッセージ
   cv_msg_delete_err         CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00012';    -- データ削除エラーメッセージ
   cv_msg_api_err            CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00017';    -- APIエラーメッセージ
+-- ****************** 1.5 ADD START ****************** --
+  cv_msg_parameter          CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-10304';    -- パラメータ出力メッセージ
+-- ****************** 1.5 ADD END   ****************** --
   --トークン名
   cv_tkn_nm_table_name      CONSTANT  VARCHAR2(100) :=  'TABLE_NAME';          --テーブル名称
   cv_tkn_nm_table_lock      CONSTANT  VARCHAR2(100) :=  'TABLE';               --テーブル名称(ロックエラー時用)
   cv_tkn_nm_key_data        CONSTANT  VARCHAR2(100) :=  'KEY_DATA';            --キーデータ
   cv_tkn_nm_api_name        CONSTANT  VARCHAR2(100) :=  'API_NAME';            --API名称
+-- ****************** 1.5 ADD START ****************** --
+  cv_tkn_nm_base_code       CONSTANT  VARCHAR2(100) :=  'BASE_CODE';           --拠点コード
+-- ****************** 1.5 ADD END ****************** --
   --トークン値
   cv_msg_vl_table_name      CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-10302';    --テーブル名称
   cv_msg_vl_api_name        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00041';    --API名称
@@ -133,6 +141,9 @@ AS
   cv_tkn_y                  CONSTANT  VARCHAR2(1)   :=  'Y';                    --'Y'
   cv_tkn_n                  CONSTANT  VARCHAR2(1)   :=  'N';                    --'N'
 -- ****************** 2009/11/25 1.4 N.Maeda ADD  END  ****************** --
+-- ****************** 1.5 ADD START ****************** --
+  cv_act_mode_all           CONSTANT  VARCHAR2(1)   :=  '2';                    --全拠点用
+-- ****************** 1.5 ADD END   ****************** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -152,6 +163,10 @@ AS
    * Description      : 前処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
+-- ****************** 1.5 ADD START ****************** --
+    iv_base_code  IN  VARCHAR2,     --   拠点コード
+    iv_act_mode   IN  VARCHAR2,     --   実行区分
+-- ****************** 1.5 ADD END   ****************** --
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -192,12 +207,25 @@ AS
 --###########################  固定部 END   ############################
 --
     --========================================
-    -- 1.パラメータ無しメッセージ出力処理
+    -- 1.入力パラメータメッセージ出力処理
     --========================================
-    lv_no_para_msg            :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxccp_short_name,
-        iv_name               =>  cv_msg_no_para
-      );
+-- ****************** 1.5 ADD START ****************** --
+    IF ( iv_act_mode = cv_act_mode_all ) THEN
+      lv_no_para_msg            :=  xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxcos_short_name,
+          iv_name               =>  cv_msg_parameter,
+          iv_token_name1        =>  cv_tkn_nm_base_code,
+          iv_token_value1       =>  iv_base_code
+        );
+    ELSE
+-- ****************** 1.5 ADD END   ****************** --
+      lv_no_para_msg            :=  xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxccp_short_name,
+          iv_name               =>  cv_msg_no_para
+        );
+-- ****************** 1.5 ADD START ****************** --
+    END IF;
+-- ****************** 1.5 ADD END   ****************** --
     FND_FILE.PUT_LINE(
        which  => FND_FILE.LOG
       ,buff   => lv_no_para_msg
@@ -240,6 +268,9 @@ AS
    * Description      : 処理対象データ特定(A-2)
    ***********************************************************************************/
   PROCEDURE get_data(
+-- ****************** 1.5 ADD START ****************** --
+    iv_base_code  IN  VARCHAR2,     --   拠点コード
+-- ****************** 1.5 ADD END   ****************** --
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -286,8 +317,14 @@ AS
       BULK COLLECT INTO
              g_record_id_tab
       FROM   xxcos_rep_hht_err_list hel,            --HHTエラーリスト帳票ワークテーブル
-             xxcos_login_base_info_v lbiv           --ログインユーザ拠点ビュー
+-- ****************** 1.5 MOD START ****************** --
+--             xxcos_login_base_info_v lbiv           --ログインユーザ拠点ビュー
+             xxcos_all_or_login_base_info_v lbiv    --全拠点またはログインユーザ所属拠点ビュー
+-- ****************** 1.5 MOD END   ****************** --
       WHERE  hel.base_code = lbiv.base_code         --拠点コード
+-- ****************** 1.5 ADD START ****************** --
+      AND    lbiv.base_code = NVL( iv_base_code, lbiv.base_code )  --パラメータ.拠点コード
+-- ****************** 1.5 ADD END   ****************** --
 -- ****************** 2009/11/25 1.4 N.Maeda ADD START ****************** --
       AND    NVL( hel.output_flag, cv_tkn_n ) = cv_tkn_n -- エラー帳票出力済フラグ = 'N'(未出力)
 -- ****************** 2009/11/25 1.4 N.Maeda ADD  END  ****************** --
@@ -798,6 +835,10 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- ****************** 1.5 ADD START ****************** --
+    iv_base_code  IN  VARCHAR2,     --   拠点コード
+    iv_act_mode   IN  VARCHAR2,     --   実行区分
+-- ****************** 1.5 ADD END   ****************** --
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -843,6 +884,10 @@ AS
     -- A-1  前処理
     -- ===============================
     init(
+-- ****************** 1.5 ADD START ****************** --
+      iv_base_code,      -- 拠点コード
+      iv_act_mode,       -- 実行区分
+-- ****************** 1.5 ADD END   ****************** --
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -856,6 +901,9 @@ AS
     -- A-2  処理対象データ特定
     -- ===============================
     get_data(
+-- ****************** 1.5 ADD START ****************** --
+      iv_base_code,      -- 拠点コード
+-- ****************** 1.5 ADD END   ****************** --
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
@@ -943,7 +991,12 @@ AS
 --
   PROCEDURE main(
     errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
-    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+-- ****************** 1.5 MOD START ****************** --
+--    retcode       OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_base_code  IN  VARCHAR2,      --   拠点コード
+    iv_act_mode   IN  VARCHAR2       --   実行区分
+-- ****************** 1.5 MOD END   ****************** --
   )
 --
 --
@@ -997,7 +1050,12 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+-- ****************** 1.5 MOD START ****************** --
+--       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+       iv_base_code  -- 拠点コード
+      ,iv_act_mode   -- 実行区分
+      ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+-- ****************** 1.5 MOD END   ****************** --
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
