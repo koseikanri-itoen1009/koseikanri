@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A11C (body)
  * Description      : 受注一覧ファイル出力（EDI用）（本部確認用）
  * MD.050           : 受注一覧ファイル出力 <MD050_COS_009_A11>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  * 2012/12/26    1.0   K.Onotsuka       新規作成[E_本稼働_08657対応]
  * 2013/05/27    1.1   K.Nakamura       [E_本稼働_10732対応]
+ * 2017/11/01    1.2   S.Niki           [E_本稼動_14671対応]
+ *                                        事務センター構想に伴なう拠点セキュリティ変更
  *
  *****************************************************************************************/
 --
@@ -1076,7 +1078,10 @@ AS
                1
         INTO   ln_dummy
         FROM   xxcmm_cust_accounts      xca    --顧客追加情報
-              ,xxcos_login_base_info_v  xlbiv  --ログインユーザビュー
+-- Ver1.2 Mod Start
+--              ,xxcos_login_base_info_v  xlbiv  --ログインユーザビュー
+              ,xxcos_all_or_login_base_info_v  xlbiv  --全拠点またはログインユーザ所属拠点ビュー
+-- Ver1.2 Mod End
         WHERE  xca.delivery_base_code     = xlbiv.base_code
         AND    xca.chain_store_code       = iv_chain_code
         AND    ROWNUM = 1
@@ -1098,7 +1103,10 @@ AS
                  1
           INTO   ln_dummy
           FROM   xxcmm_cust_accounts xca
-                ,xxcos_login_base_info_v  xlbiv  --ログインユーザビュー
+-- Ver1.2 Mod Start
+--                ,xxcos_login_base_info_v  xlbiv  --ログインユーザビュー
+                ,xxcos_all_or_login_base_info_v  xlbiv  --全拠点またはログインユーザ所属拠点ビュー
+-- Ver1.2 Mod End
           WHERE  xca.sale_base_code         = xlbiv.base_code
           AND    xca.chain_store_code       = iv_chain_code
           AND    ROWNUM = 1
