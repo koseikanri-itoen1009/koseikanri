@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A12C (body)
  * Description      : 納品確定データダウンロード
  * MD.050           : 納品確定データダウンロード <MD050_COS_009_A12>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/04/01    1.0   S.Yamashita      新規作成[E_本稼働_13436対応]
+ *  2017/11/01    1.1   S.Niki           [E_本稼動_14671対応]
+ *                                         事務センター構想に伴なう拠点セキュリティ変更
  *
  *****************************************************************************************/
 --
@@ -1096,7 +1098,10 @@ AS
                  1 AS dummy
           INTO   ln_dummy
           FROM   xxcmm_cust_accounts      xca    -- 顧客追加情報
-                ,xxcos_login_base_info_v  xlbiv  -- ログインユーザ拠点ビュー
+-- ****************** 1.1 MOD START ****************** --
+--                ,xxcos_login_base_info_v  xlbiv  -- ログインユーザ拠点ビュー
+                ,xxcos_all_or_login_base_info_v xlbiv    --全拠点またはログインユーザ所属拠点ビュー
+-- ****************** 1.1 MOD END   ****************** --
           WHERE  xca.delivery_base_code   = xlbiv.base_code
           AND    xca.chain_store_code     = iv_chain_code
           AND    ROWNUM = 1
@@ -1119,7 +1124,10 @@ AS
                  1 AS dummy
           INTO   ln_dummy
           FROM   xxcmm_cust_accounts      xca    -- 顧客追加情報
-                ,xxcos_login_base_info_v  xlbiv  -- ログインユーザ拠点ビュー
+-- ****************** 1.1 MOD START ****************** --
+--                ,xxcos_login_base_info_v  xlbiv  -- ログインユーザ拠点ビュー
+                ,xxcos_all_or_login_base_info_v xlbiv    --全拠点またはログインユーザ所属拠点ビュー
+-- ****************** 1.1 MOD END   ****************** --
           WHERE  xca.sale_base_code       = xlbiv.base_code
           AND    xca.chain_store_code     = iv_chain_code
           AND    ROWNUM = 1
@@ -1142,7 +1150,10 @@ AS
                  1 AS dummy
           INTO   ln_dummy
           FROM   xxcmm_cust_accounts      xca    -- 顧客追加情報
-                ,xxcos_login_base_info_v  xlbiv  -- ログインユーザ拠点ビュー
+-- ****************** 1.1 MOD START ****************** --
+--                ,xxcos_login_base_info_v  xlbiv  -- ログインユーザ拠点ビュー
+                ,xxcos_all_or_login_base_info_v xlbiv    --全拠点またはログインユーザ所属拠点ビュー
+-- ****************** 1.1 MOD END   ****************** --
           WHERE  xca.bill_base_code       = xlbiv.base_code
           AND    xca.chain_store_code     = iv_chain_code
           AND    ROWNUM = 1
@@ -1165,7 +1176,10 @@ AS
                  1 AS dummy
           INTO   ln_dummy
           FROM   xxcmm_cust_accounts      xca    -- 顧客追加情報
-                ,xxcos_login_base_info_v  xlbiv  -- ログインユーザ拠点ビュー
+-- ****************** 1.1 MOD START ****************** --
+--                ,xxcos_login_base_info_v  xlbiv  -- ログインユーザ拠点ビュー
+                ,xxcos_all_or_login_base_info_v xlbiv    --全拠点またはログインユーザ所属拠点ビュー
+-- ****************** 1.1 MOD END   ****************** --
           WHERE  xca.receiv_base_code     = xlbiv.base_code
           AND    xca.chain_store_code     = iv_chain_code
           AND    ROWNUM = 1
