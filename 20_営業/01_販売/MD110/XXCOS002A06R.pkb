@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(body)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *                                                         配列格納処理から除外する]
  * 2013/11/12    1.2   T.Ishiwata       E_本稼働_11134対応
  *                                        入力パラメータに「納品日FROM」と「納品日TO」を追加する
+ * 2017/11/01    1.3   N.Koyama         E_本稼働_14702対応
+ *                                        事務センター対応により問合せ拠点指定を追加
  *
  *****************************************************************************************/
 --
@@ -111,6 +113,9 @@ AS
   cv_1                     CONSTANT VARCHAR2(1)   := '1';                         -- VARCHAR型汎用固定値1
   cv_2                     CONSTANT VARCHAR2(1)   := '2';                         -- VARCHAR型汎用固定値2
   cv_3                     CONSTANT VARCHAR2(1)   := '3';                         -- VARCHAR型汎用固定値3
+-- Ver.1.3 Add Start
+  cv_10                    CONSTANT VARCHAR2(2)   := '10';                        -- VARCHAR型汎用固定値10
+-- Ver.1.3 Add End
   cv_30                    CONSTANT VARCHAR2(2)   := '30';                        -- VARCHAR型汎用固定値30
   cv_y                     CONSTANT VARCHAR2(1)   := 'Y';                         -- VARCHAR型汎用固定値Y
   cv_n                     CONSTANT VARCHAR2(1)   := 'N';                         -- VARCHAR型汎用固定値N
@@ -143,6 +148,9 @@ AS
   cv_msg_required_err      CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14363';          -- パラメータ納品日FROM-TO設定チェック
   cv_msg_range_err         CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14364';          -- パラメータ納品日FROM-TO範囲チェック
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
+-- Ver.1.3 Add Start
+  cv_msg_param_base        CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14367';          -- メッセージ出力(問合せ拠点)
+-- Ver.1.3 Add End
   --メッセージトークン用
   cv_msg_tkn_org           CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00047';          -- MO:営業単位
   cv_msg_tkn_organization  CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00048';          -- XXCOI:在庫組織コード
@@ -403,6 +411,32 @@ AS
          which  => FND_FILE.LOG
         ,buff   => lv_param_msg
       );
+-- Ver.1.3 Add Start
+    --実行区分が3（問合せ拠点指定で実行時）の場合
+    ELSIF ( g_input_rec.execute_type = cv_3 ) THEN
+      --メッセージ編集
+      lv_param_msg := xxccp_common_pkg.get_msg(
+                         iv_application   => cv_application                -- アプリケーション
+                        ,iv_name          => cv_msg_param_base             -- メッセージコード
+                        ,iv_token_name1   => cv_tkn_manager_flag           -- トークンコード１
+                        ,iv_token_value1  => g_input_rec.manager_flag      -- 管理者フラグ
+                        ,iv_token_name2   => cv_tkn_proc_type              -- トークンコード２
+                        ,iv_token_value2  => lv_proc_type_name             -- 実行区分
+                        ,iv_token_name3   => cv_tkn_trget_date             -- トークンコード３
+                        ,iv_token_value3  => g_input_rec.target_date       -- 年月
+                        ,iv_token_name4   => cv_tkn_dlv_date_from                                     -- トークンコード９
+                        ,iv_token_value4  => TO_CHAR( g_input_rec.dlv_date_from , cv_date_yyyymmdd )  -- 納品日FROM
+                        ,iv_token_name5   => cv_tkn_dlv_date_to                                       -- トークンコード１０
+                        ,iv_token_value5  => TO_CHAR( g_input_rec.dlv_date_to   , cv_date_yyyymmdd )  -- 納品日TO
+                        ,iv_token_name6   => cv_tkn_sales_base                                        -- トークンコード１０
+                        ,iv_token_value6  => g_input_rec.sales_base_code   -- 問合せ拠点
+                      );
+      --ログへ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_param_msg
+      );
+-- Ver.1.3 Add End
     END IF;
 --
     --ログ空行
@@ -1302,6 +1336,140 @@ AS
       --配列を削除
       l_vend_tab.DELETE;
 --
+-- Ver.1.3 Add Start
+    -- =======================================
+    -- 実行区分が3（問合せ拠点指定で実行）の場合
+    -- =======================================
+    ELSIF ( g_input_rec.execute_type = cv_3 ) THEN
+--
+      BEGIN
+        -----------------------------------------
+        -- 自販機販売報告書顧客情報一時表作成
+        -----------------------------------------
+        INSERT INTO xxcos_tmp_vd_cust_info (
+           customer_code        -- 顧客コード
+          ,customer_name        -- 顧客名称
+          ,party_id             -- パーティID
+          ,sales_base_name      -- 売上拠点名称
+          ,sales_base_city      -- 都道府県市区（売上拠点
+          ,sales_base_address1  -- 住所１（売上拠点）
+          ,sales_base_address2  -- 住所２（売上拠点）
+          ,sales_base_tel       -- 電話番号（売上拠点）
+          ,vendor_code          -- 仕入先コード
+          ,vendor_name          -- 仕入先名称（送付先）
+          ,vendor_zip           -- 郵便番号（送付先）
+          ,vendor_address1      -- 住所１（送付先）
+          ,vendor_address2      -- 住所２（送付先）
+          ,date_from            -- 対象期間開始日
+          ,date_to              -- 対象期間終了日
+        )
+        SELECT /*+
+                 LEADING(pvs)
+                 USE_NL(pvs pv xca hca)
+               */
+               hca.account_number         customer_code       -- 顧客コード
+              ,hp.party_name              customer_name       -- 顧客名称
+              ,hp.party_id                party_id            -- パーティID
+              ,hpb.party_name             sales_base_name     -- 売上拠点名称
+              ,hlb.state || hlb.city      sales_base_city     -- 都道府県市区(売上拠点)
+              ,hlb.address1               sales_base_address1 -- 住所１(売上拠点)
+              ,hlb.address2               sales_base_address2 -- 住所２(売上拠点)
+              ,hlb.address_lines_phonetic sales_base_tel      -- 電話番号(売上拠点)
+              ,pv.segment1                vendor_code         -- 仕入先コード
+              ,pvs.attribute1             vendor_name         -- 仕入先名称
+              ,pvs.zip                    vendor_zip          -- 郵便番号
+              ,pvs.address_line1          address_line1       -- 住所１
+              ,pvs.address_line2          address_line2       -- 住所２
+              ,CASE
+                 -- 入力パラメータ「年月」で検索
+                 WHEN g_input_rec.dlv_date_from IS NULL THEN
+                   --
+                   CASE
+                     -- 末締の場合
+                     WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                       -- 指定月の1日
+                       ld_first_date
+                     -- 2月の28日,29日締考慮
+                     WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
+                       TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
+                                || xcm.close_day_code, cv_date_yyyymmdd) + 1
+                     -- 末締以外
+                     ELSE
+                       -- 前月締日+1日
+                       ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+                   END
+                 -- 入力パラメータ「納品日FROM/TO」で検索
+                 ELSE
+                   -- 入力パラメータ「納品日FROM」
+                   g_input_rec.dlv_date_from 
+               END                        date_from           -- 対象期間開始日
+              ,CASE
+                 -- 入力パラメータ「年月」で検索
+                 WHEN g_input_rec.dlv_date_to IS NULL THEN
+                   --
+                   CASE
+                     -- 末締の場合
+                     WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                       -- 指定月の最終日
+                       ld_last_date
+                     --2月の28日,29日締考慮
+                     WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
+                       -- 指定月の最終日(2月28 or 29)
+                       ld_last_date
+                     -- 末締以外
+                     ELSE
+                       --指定月の締日
+                       TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+                   END
+                 -- 入力パラメータ「納品日FROM/TO」で検索
+                 ELSE
+                   -- 入力パラメータ「納品日TO」
+                   g_input_rec.dlv_date_to
+               END                        date_to             -- 対象期間終了日
+        FROM   hz_cust_accounts           hca       -- 顧客マスタ(顧客)
+              ,xxcmm_cust_accounts        xca       -- 顧客追加情報(顧客)
+              ,hz_parties                 hp        -- パーティマスタ(顧客)
+              ,xxcso_contract_managements xcm       -- 契約管理
+              ,hz_cust_accounts           hcab      -- 顧客マスタ(売上拠点)
+              ,hz_parties                 hpb       -- パーティマスタ(売上拠点)
+              ,hz_cust_acct_sites_all     hcasab    -- 顧客所在地マスタ(売上拠点)
+              ,hz_party_sites             hpsb      -- パーティサイトマスタ(売上拠点)
+              ,hz_locations               hlb       -- 顧客事業所マスタ(売上拠点)
+              ,po_vendors                 pv        -- 仕入先マスタ(送付先)
+              ,po_vendor_sites_all        pvs       -- 仕入先サイト(送付先)
+        WHERE  pvs.attribute5                = g_input_rec.sales_base_code   --指定された問合せ拠点
+        AND    xca.business_low_type         IN ( cv_bus_low_type_24, cv_bus_low_type_25 )  --業態小分類：24(フルVD消化)、25（フルVD）
+        AND    hca.customer_class_code       = cv_10
+        AND    hca.cust_account_id           = xca.customer_id
+        AND    hca.party_id                  = hp.party_id
+        AND    hca.cust_account_id           = xcm.install_account_id
+        AND    xcm.contract_management_id    = (
+                 SELECT /*+
+                          INDEX( xcms xxcso_contract_managements_n06 )
+                        */
+                        MAX(xcms.contract_management_id) contract_management_id
+                 FROM   xxcso_contract_managements xcms
+                 WHERE  xcms.install_account_id     = hca.cust_account_id
+                 AND    xcms.status                 = cv_1
+                 AND    xcms.cooperate_flag         = cv_1
+               )                                   --確定済・マスタ連携済の最新契約
+        AND    xca.sale_base_code            = hcab.account_number
+        AND    hcab.party_id                 = hpb.party_id
+        AND    hcab.cust_account_id          = hcasab.cust_account_id
+        AND    hcasab.party_site_id          = hpsb.party_site_id
+        AND    hcasab.org_id                 = gn_org_id
+        AND    hpsb.location_id              = hlb.location_id
+        AND    xca.contractor_supplier_code  = pv.segment1
+        AND    pv.vendor_id                  = pvs.vendor_id
+        AND    pv.segment1                   = pvs.vendor_site_code
+        AND    pvs.org_id                    = gn_org_id
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_sqlerrm := SUBSTRB( SQLERRM, 1, 5000 );  --SQLERRM格納
+          RAISE insert_expt;
+      END;
+-- Ver.1.3 Add End
     END IF;
 --
     --処理終了時刻をログへ出力
@@ -2184,14 +2352,14 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
-     iv_manager_flag     IN  VARCHAR2  --  1.管理者フラグ(Y:管理者 N:拠点)
-    ,iv_execute_type     IN  VARCHAR2  --  2.実行区分(1:顧客指定 2:仕入先指定)
+     iv_manager_flag     IN  VARCHAR2  --  1.管理者フラグ(Y:管理者 N:拠点 A:事務センター)
+    ,iv_execute_type     IN  VARCHAR2  --  2.実行区分(1:顧客指定 2:仕入先指定 3:問合せ拠点指定)
     ,iv_target_date      IN  VARCHAR2  --  3.対象年月
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
     ,iv_dlv_date_from    IN  VARCHAR2  --    納品日FROM
     ,iv_dlv_date_to      IN  VARCHAR2  --    納品日TO
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
-    ,iv_sales_base_code  IN  VARCHAR2  --  4.売上拠点コード(顧客指定時のみ)
+    ,iv_sales_base_code  IN  VARCHAR2  --  4.売上拠点コード(顧客指定時・問合せ拠点指定時)
     ,iv_customer_code_01 IN  VARCHAR2  --  5.顧客コード1(顧客指定時のみ)
     ,iv_customer_code_02 IN  VARCHAR2  --  6.顧客コード2(顧客指定時のみ)
     ,iv_customer_code_03 IN  VARCHAR2  --  7.顧客コード3(顧客指定時のみ)
@@ -2258,8 +2426,8 @@ AS
     -------------------------------------------------
     -- 入力パラメータをグローバルレコード・配列に保持
     -------------------------------------------------
-    g_input_rec.manager_flag     := iv_manager_flag;     --  1.管理者フラグ(Y:管理者 N:拠点)
-    g_input_rec.execute_type     := iv_execute_type;     --  2.実行区分(1:顧客指定 2:仕入先指定)
+    g_input_rec.manager_flag     := iv_manager_flag;     --  1.管理者フラグ(Y:管理者 N:拠点 A:事務センター)
+    g_input_rec.execute_type     := iv_execute_type;     --  2.実行区分(1:顧客指定 2:仕入先指定 3:問合せ拠点指定)
     g_input_rec.target_date      := iv_target_date;      --  3.対象年月
     g_input_rec.sales_base_code  := iv_sales_base_code;  --  4.売上拠点コード(顧客指定時のみ)
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
@@ -2435,14 +2603,14 @@ AS
   PROCEDURE main(
      errbuf              OUT VARCHAR2  --    エラー・メッセージ  --# 固定 #
     ,retcode             OUT VARCHAR2  --    リターン・コード    --# 固定 #
-    ,iv_manager_flag     IN  VARCHAR2  --  1.管理者フラグ(Y:管理者 N:拠点)
-    ,iv_execute_type     IN  VARCHAR2  --  2.実行区分(1:顧客指定 2:仕入先指定)
+    ,iv_manager_flag     IN  VARCHAR2  --  1.管理者フラグ(Y:管理者 N:拠点 A:事務センター)
+    ,iv_execute_type     IN  VARCHAR2  --  2.実行区分(1:顧客指定 2:仕入先指定 3:問合せ拠点指定)
     ,iv_target_date      IN  VARCHAR2  --  3.対象年月
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
     ,iv_dlv_date_from    IN  VARCHAR2  --    納品日FROM
     ,iv_dlv_date_to      IN  VARCHAR2  --    納品日TO
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
-    ,iv_sales_base_code  IN  VARCHAR2  --  4.売上拠点コード(顧客指定時のみ)
+    ,iv_sales_base_code  IN  VARCHAR2  --  4.売上拠点コード(顧客指定時・問合せ拠点指定時)
     ,iv_customer_code_01 IN  VARCHAR2  --  5.顧客コード1(顧客指定時のみ)
     ,iv_customer_code_02 IN  VARCHAR2  --  6.顧客コード2(顧客指定時のみ)
     ,iv_customer_code_03 IN  VARCHAR2  --  7.顧客コード3(顧客指定時のみ)
