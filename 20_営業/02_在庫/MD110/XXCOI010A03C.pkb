@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2012/02/20    1.8   Y.Horikawa       [E_本稼動_09140]販売予測算出時にコラム変更日を考慮するように変更
  *  2012/03/12    1.9   Y.Horikawa       [E_本稼動_09139]販売予測の次回補充の算出方法を変更
  *  2017/10/04    1.10  K.Kiriu          [E_本稼動_14658]パフォーマンス対応
+ *  2017/11/15    1.11  H.Sasaki         [E_本稼動_14744]パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -1189,7 +1190,11 @@ AS
       , id_from_date      DATE
       , id_to_date        DATE)
     IS
-      SELECT COUNT(1) workdays
+--  V1.11 2017/11/15 Modified START
+--      SELECT COUNT(1) workdays
+      SELECT  /*+ INDEX( bcd BOM_CALENDAR_DATES_U1 ) */ 
+            COUNT(1) workdays
+--  V1.11 2017/11/15 Modified END
       FROM  bom_calendar_dates bcd
       WHERE bcd.calendar_code = iv_calendar_code
       AND   bcd.calendar_date >= id_from_date
