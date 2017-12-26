@@ -4,7 +4,7 @@ AS
  *
  * Package Name     : XXCCP120A01C(body)
  * Description      : 受入取引OIF自動リカバリ
- * Version          : 1.03
+ * Version          : 1.04
  *
  *
  * Change Record
@@ -15,6 +15,7 @@ AS
  *  2016/09/12    1.01  SCSK S.Yamashita E_本稼動_13803対応
  *  2016/10/26    1.02  SCSK S.Yamashita E_本稼動_13920対応
  *  2017/04/18    1.03  SCSK S.Niki      E_本稼動_14157対応
+ *  2017/12/07    1.04  SCSK K.Nara      E_本稼動_14304,14604対応
  *
  *****************************************************************************************/
 --
@@ -511,6 +512,9 @@ AS
                        AND    gd_process_date BETWEEN NVL( flvv.start_date_active, gd_process_date )
                                                   AND NVL( flvv.end_date_active  , gd_process_date )
                       )
+-- Ver1.04 K.Nara ADD start
+        AND     ROWNUM = 1
+-- Ver1.04 K.Nara ADD end
         ;
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -1294,7 +1298,11 @@ AS
           ,v.group_id         AS group_id        -- グループID
           ,v.error_message    AS error_message   -- IFエラー内容
     BULK COLLECT INTO  lt_error_massage_tab
-    FROM (SELECT pha.segment1                AS segment1
+-- Ver1.04 K.Nara MOD start
+--    FROM (SELECT pha.segment1                AS segment1
+    FROM (SELECT /*+ FULL(rti) */
+                 pha.segment1                AS segment1
+-- Ver1.04 K.Nara MOD end
                 ,pla.line_num                AS line_num
                 ,CASE 
                   WHEN (cicv.item_class_code = '5' AND cicv.prod_class_code = '2' AND cimv.conv_unit = 'CS' ) THEN TO_NUMBER(pla.attribute11) * TO_NUMBER(pla.attribute4)
@@ -1326,6 +1334,10 @@ AS
           AND   pha.attribute1          IN ('25','30','35')
           AND   TO_DATE(pha.attribute4,'YYYY/MM/DD') >= ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period,'YYYYMM'),1) -- 対象年月(最新クローズ月の翌月1日)
           AND   pha.po_header_id         = rti.po_header_id
+-- Ver1.04 K.Nara ADD start
+          AND   ( rti.transaction_status_code = cv_error
+            OR    rti.processing_status_code  = cv_error )
+-- Ver1.04 K.Nara ADD end
           AND   rti.group_id             = pie.batch_id
           AND   rti.creation_date        < cd_creation_date  -- 作成日
           ) v
