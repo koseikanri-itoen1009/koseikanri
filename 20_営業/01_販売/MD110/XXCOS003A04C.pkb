@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2011/09/27   1.10   Y.Horikawa       [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応（再）
  *  2011/10/24   1.11   Y.Horikawa       [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応（再）（PT追加対応）
  *  2011/10/27   1.12   Y.Horikawa       [障害No.E_本稼動_08442対応]消化VDの処理対象外にする。
+ *  2017/12/20   1.13   K.Kiriu          [障害No.E_本稼動_14486対応]VDコラムの商品入替対応。
  *
  *****************************************************************************************/
 --
@@ -284,6 +285,9 @@ AS
   gd_min_date                 DATE;    -- XXCOS:MIN日付
   gd_vd_change_dlv_date_time  DATE;    -- 納品日時（ベンダ変更前）
 -- 2011/09/27 ADD Ver.1.10 End
+-- Ver.1.13 Add Start
+  gd_hht_item_change_date     DATE;    -- 商品入替日
+-- Ver.1.13 Add End
 -- 2011/09/27 DEL Ver.1.10 Start
 --  --件数カウンタ
 --  gn_warn_tran_count          NUMBER DEFAULT 0;
@@ -524,6 +528,9 @@ AS
 -- 2011/10/24 Add Ver.1.11 Start
     , vd_change_dlv_date_time       DATE  -- 納品日時（ベンダ変更前）
 -- 2011/10/24 Add Ver.1.11 End
+-- Ver.1.13 Add Start
+    , vd_hht_item_change_date       DATE  -- 商品入替日
+-- Ver.1.13 Add End
     );
 
 --
@@ -1397,6 +1404,9 @@ AS
 -- 2011/09/27 ADD Ver.1.10 Start
     lt_vd_change_date  xxcos_vd_deliv_lines.dlv_date%TYPE;
 -- 2011/09/27 ADD Ver.1.10 End
+-- Ver.1.13 Add Start
+    ld_base_date       DATE;
+-- Ver.1.13 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1411,17 +1421,31 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- Ver.1.13 Add Start
+    -- 品目・H/Cの変更前の納品日を元に判定する場合(品目もしくはHOTに切り替わった日より判定する場合)
+    IF ( gt_deli_l_tab(main_rec.column_no).vd_hht_item_change_date IS NULL ) THEN
+-- Ver.1.13 Add End
 -- 2011/09/27 ADD Ver.1.10 Start
-    SELECT MIN(xvdl.dlv_date)
-    INTO   lt_vd_change_date
-    FROM   xxcos_vd_deliv_lines xvdl
-    WHERE  xvdl.customer_number = main_rec.account_number
-    AND    xvdl.column_num      = main_rec.column_no
+      SELECT MIN(xvdl.dlv_date)
+      INTO   lt_vd_change_date
+      FROM   xxcos_vd_deliv_lines xvdl
+      WHERE  xvdl.customer_number = main_rec.account_number
+      AND    xvdl.column_num      = main_rec.column_no
 -- 2011/10/24 Mod Ver.1.11 Start
 --    AND    xvdl.dlv_date_time   > gd_vd_change_dlv_date_time;
-    AND    xvdl.dlv_date_time   > gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time;
+      AND    xvdl.dlv_date_time   > gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time;
 -- 2011/10/24 Mod Ver.1.11 End
-
+-- Ver.1.13 Add Start
+      -- 売上数量の取得に品目・H/Cの変更前の納品日を使用
+      ld_base_date := gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time;
+    -- 商品入替日を元に判定する場合
+    ELSE
+      lt_vd_change_date := gt_deli_l_tab(main_rec.column_no).vd_hht_item_change_date;
+      -- 売上数量の取得に商品入替日を使用
+      ld_base_date      := gt_deli_l_tab(main_rec.column_no).vd_hht_item_change_date;
+    END IF;
+--
+-- Ver.1.13 Add End
     IF (main_rec.dlv_date < lt_vd_change_date + TO_NUMBER(main_rec.hot_stock_days)) THEN
       RAISE column_change_data_expt;
     END IF;
@@ -1504,7 +1528,10 @@ AS
 -- 2011/10/24 Mod Ver.1.11 Start
 --      AND    xvdl.dlv_date_time > GREATEST((gd_standard_date - TO_NUMBER(main_rec.hot_stock_days)), gd_vd_change_dlv_date_time)
       AND    xvdl.dlv_date_time > GREATEST((gd_standard_date - TO_NUMBER(main_rec.hot_stock_days)),
-                                           gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time)
+-- Ver.1.13 Mod Start
+--                                           gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time)
+                                           ld_base_date)
+-- Ver.1.13 Mod End
 -- 2011/10/24 Mod Ver.1.11 End
       AND    xvdl.item_code     = NVL(main_rec.item_code, cv_blank_c);
 -- 2011/09/27 ADD Ver.1.10 End
@@ -1828,6 +1855,9 @@ AS
     -- *** ローカル変数 ***
     ld_item_change_date_time  DATE;
     ld_hc_change_date_time    DATE;
+-- Ver.1.13 Add Start
+    ld_invoice_date           DATE;
+-- Ver.1.13 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1860,6 +1890,32 @@ AS
 
     -- 品目、Hot/Cold区分の変更日のどちらか大きい方を納品日時（ベンダ変更日）として保持
     gd_vd_change_dlv_date_time := GREATEST(ld_item_change_date_time, ld_hc_change_date_time);
+-- Ver.1.13 Add Start
+    BEGIN
+      -- 初期化
+      ld_invoice_date := NULL;
+      -- VD商品入替マテリアライズドビュー（入出庫一次表）より商品入替の伝票日付を取得する
+      SELECT xirm.invoice_date
+      INTO   ld_invoice_date
+      FROM   xxcos_item_replaces_mv xirm
+      WHERE  xirm.item_code = main_rec.item_code
+      AND    xirm.column_no = main_rec.column_no
+      AND    xirm.cust_code = main_rec.account_number
+      ;
+      -- 取得できた場合、品目、Hot/Cold区分の変更日として比較し大きい場合、商品入替日として保持
+      IF ( ld_invoice_date > gd_vd_change_dlv_date_time ) THEN
+        gd_hht_item_change_date := ld_invoice_date;
+      ELSE
+        -- 小さい場合、保持しない（NULL)
+        gd_hht_item_change_date := NULL;
+      END IF;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合、保持しない（NULL)
+        gd_hht_item_change_date := NULL;
+    END;
+-- Ver.1.13 Add End
 --
   EXCEPTION
 --
@@ -2103,6 +2159,9 @@ AS
           END IF;
 -- 2011/10/24 Add Ver1.11 Start
           gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time := gd_vd_change_dlv_date_time;
+-- Ver.1.13 Add Start
+          gt_deli_l_tab(main_rec.column_no).vd_hht_item_change_date := gd_hht_item_change_date;
+-- Ver.1.13 Add End
         END IF;
 -- 2011/10/24 Add Ver1.11 End
 -- 2011/10/24 Mod Ver1.11 Start
