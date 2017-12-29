@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : ”[•iƒf[ƒ^‚Ìæ‚ğs‚¤
  * MD.050           : HHT”[•iƒf[ƒ^æ (MD050_COS_001_A01)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2013/09/06    1.27  R.Watanabe       [E_–{‰Ò“®_10904‡I]Á”ïÅ‹æ•ª‚ÌQÆæ•ÏX
  *  2016/03/01    1.28  S.Niki           [E_–{‰Ò“®_13480] ”[•i‘ƒ`ƒFƒbƒNƒŠƒXƒg‘Î‰
  *  2017/04/19    1.29  N.Watanabe       [E_–{‰Ò“®_14025] HHT‚©‚ç‚ÌƒVƒXƒeƒ€“ú•t˜AŒg’Ç‰Á
+ *  2017/12/18    1.30  S.Yamashita      [E_–{‰Ò“®_14486] HHT‚©‚ç‚Ì–K–â‹æ•ª˜AŒg’Ç‰Á
  *
  *****************************************************************************************/
 --
@@ -323,6 +324,13 @@ AS
 -- Ver.1.29 MOD Start
       hht_input_date    xxcos_dlv_headers.hht_input_date%TYPE           -- HHT“ü—Í“ú
 -- Ver.1.29 MOD End
+-- Ver.1.30 ADD Start
+     ,visit_class1      xxcos_dlv_headers_work.visit_class1%TYPE        -- –K–â‹æ•ª1
+     ,visit_class2      xxcos_dlv_headers_work.visit_class2%TYPE        -- –K–â‹æ•ª2
+     ,visit_class3      xxcos_dlv_headers_work.visit_class3%TYPE        -- –K–â‹æ•ª3
+     ,visit_class4      xxcos_dlv_headers_work.visit_class4%TYPE        -- –K–â‹æ•ª4
+     ,visit_class5      xxcos_dlv_headers_work.visit_class5%TYPE        -- –K–â‹æ•ª5
+-- Ver.1.30 ADD End
 -- 2011/03/16 Ver.1.26 S.Ochiai MOD End
     );
   TYPE g_tab_headwk_data IS TABLE OF g_rec_headwk_data INDEX BY PLS_INTEGER;
@@ -487,6 +495,18 @@ AS
   TYPE g_tab_head_hht_input_date    IS TABLE OF xxcos_dlv_headers.hht_input_date%TYPE
     INDEX BY PLS_INTEGER;   -- HHT“ü—Í“ú
 -- Ver.1.29 ADD End
+-- Ver.1.30 ADD Start
+  TYPE g_tab_head_visit_class1      IS TABLE OF xxcos_dlv_headers_work.visit_class1%TYPE
+    INDEX BY PLS_INTEGER;   -- –K–â‹æ•ª1
+  TYPE g_tab_head_visit_class2      IS TABLE OF xxcos_dlv_headers_work.visit_class2%TYPE
+    INDEX BY PLS_INTEGER;   -- –K–â‹æ•ª2
+  TYPE g_tab_head_visit_class3      IS TABLE OF xxcos_dlv_headers_work.visit_class3%TYPE
+    INDEX BY PLS_INTEGER;   -- –K–â‹æ•ª3
+  TYPE g_tab_head_visit_class4      IS TABLE OF xxcos_dlv_headers_work.visit_class4%TYPE
+    INDEX BY PLS_INTEGER;   -- –K–â‹æ•ª4
+  TYPE g_tab_head_visit_class5      IS TABLE OF xxcos_dlv_headers_work.visit_class5%TYPE
+    INDEX BY PLS_INTEGER;   -- –K–â‹æ•ª5
+-- Ver.1.30 ADD End
 --
   -- ”[•i–¾×ƒf[ƒ^“o˜^—p•Ï”
   TYPE g_tab_line_order_no_hht     IS TABLE OF xxcos_dlv_lines.order_no_hht%TYPE
@@ -641,6 +661,13 @@ AS
 -- Ver.1.29 ADD Start
   gt_head_hht_input_date    g_tab_head_hht_input_date;      -- HHT“ü—Í“ú
 -- Ver.1.29 ADD End
+-- Ver.1.30 ADD Start
+  gt_head_visit_class1      g_tab_head_visit_class1;        -- –K–â‹æ•ª1
+  gt_head_visit_class2      g_tab_head_visit_class2;        -- –K–â‹æ•ª2
+  gt_head_visit_class3      g_tab_head_visit_class3;        -- –K–â‹æ•ª3
+  gt_head_visit_class4      g_tab_head_visit_class4;        -- –K–â‹æ•ª4
+  gt_head_visit_class5      g_tab_head_visit_class5;        -- –K–â‹æ•ª5
+-- Ver.1.30 ADD End
 --
   -- ”[•i–¾×ƒe[ƒuƒ‹“o˜^ƒf[ƒ^
   gt_line_order_no_hht      g_tab_line_order_no_hht;        -- ó’No.iHHTj
@@ -985,6 +1012,13 @@ AS
 -- Ver.1.29 ADD Start
              headers.hht_input_date                  hht_input_date            -- HHT“ü—Í“ú
 -- Ver.1.29 ADD End
+-- Ver.1.30 ADD Start
+            ,headers.visit_class1                    visit_class1              -- –K–â‹æ•ª1
+            ,headers.visit_class2                    visit_class2              -- –K–â‹æ•ª2
+            ,headers.visit_class3                    visit_class3              -- –K–â‹æ•ª3
+            ,headers.visit_class4                    visit_class4              -- –K–â‹æ•ª4
+            ,headers.visit_class5                    visit_class5              -- –K–â‹æ•ª5
+-- Ver.1.30 ADD End
 -- 2011/03/16 Ver.1.26 S.Ochiai MOD End
       FROM   xxcos_dlv_headers_work           headers                   -- ”[•iƒwƒbƒ_ƒ[ƒNƒe[ƒuƒ‹
       ORDER BY order_no_hht
@@ -1985,6 +2019,13 @@ AS
 -- Ver.1.29 ADD Start
     lt_hht_input_date       xxcos_dlv_headers.hht_input_date%TYPE;           -- HHT“ü—Í“ú
 -- Ver.1.29 ADD End
+-- Ver.1.30 ADD Start
+    lt_visit_class1         xxcos_dlv_headers_work.visit_class1%TYPE;        -- –K–â‹æ•ª1
+    lt_visit_class2         xxcos_dlv_headers_work.visit_class2%TYPE;        -- –K–â‹æ•ª2
+    lt_visit_class3         xxcos_dlv_headers_work.visit_class3%TYPE;        -- –K–â‹æ•ª3
+    lt_visit_class4         xxcos_dlv_headers_work.visit_class4%TYPE;        -- –K–â‹æ•ª4
+    lt_visit_class5         xxcos_dlv_headers_work.visit_class5%TYPE;        -- –K–â‹æ•ª5
+-- Ver.1.30 ADD End
 --
     -- ”[•i–¾×ƒf[ƒ^•Ï”
     lt_order_nol_hht        xxcos_dlv_lines.order_no_hht%TYPE;                 -- ó’No.(HHT)
@@ -2123,6 +2164,13 @@ AS
 -- Ver.1.29 ADD Start
       lt_hht_input_date   := gt_headers_work_data(ck_no).hht_input_date;      -- HHT“ü—Í“ú
 -- Ver.1.29 ADD End
+-- Ver.1.30 ADD Start
+      lt_visit_class1     := gt_headers_work_data(ck_no).visit_class1;        -- –K–â‹æ•ª1
+      lt_visit_class2     := gt_headers_work_data(ck_no).visit_class2;        -- –K–â‹æ•ª2
+      lt_visit_class3     := gt_headers_work_data(ck_no).visit_class3;        -- –K–â‹æ•ª3
+      lt_visit_class4     := gt_headers_work_data(ck_no).visit_class4;        -- –K–â‹æ•ª4
+      lt_visit_class5     := gt_headers_work_data(ck_no).visit_class5;        -- –K–â‹æ•ª5
+-- Ver.1.30 ADD End
 --
   /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
       -- ‰Šú‰» --
@@ -4005,6 +4053,13 @@ AS
 -- Ver.1.29 ADD Start
         gt_head_hht_input_date(ln_header_ok_no)   := lt_hht_input_date;      -- HHT“ü—Í“ú
 -- Ver.1.29 ADD End
+-- Ver.1.30 ADD Start
+        gt_head_visit_class1(ln_header_ok_no)     := lt_visit_class1;         -- –K–â‹æ•ª1
+        gt_head_visit_class2(ln_header_ok_no)     := lt_visit_class2;         -- –K–â‹æ•ª2
+        gt_head_visit_class3(ln_header_ok_no)     := lt_visit_class3;         -- –K–â‹æ•ª3
+        gt_head_visit_class4(ln_header_ok_no)     := lt_visit_class4;         -- –K–â‹æ•ª4
+        gt_head_visit_class5(ln_header_ok_no)     := lt_visit_class5;         -- –K–â‹æ•ª5
+-- Ver.1.30 ADD End
         gt_resource_id(ln_header_ok_no)          := lt_resource_id;          -- ƒŠƒ\[ƒXID
         gt_party_id(ln_header_ok_no)             := lt_party_id;             -- ƒp[ƒeƒBID
         gt_party_name(ln_header_ok_no)           := lt_customer_name;        -- ŒÚ‹q–¼Ì
@@ -4289,6 +4344,18 @@ AS
        ,NULL                      -- Ú×“à—e
        ,gt_head_total_amount(i)   -- ‡Œv‹àŠz
        ,gt_head_input_class(i)    -- “ü—Í‹æ•ª
+-- Ver.1.30 ADD Start
+       ,gt_head_visit_class1(i)   -- DFF1i–K–â‹æ•ª1j
+       ,gt_head_visit_class2(i)   -- DFF2i–K–â‹æ•ª2j
+       ,gt_head_visit_class3(i)   -- DFF3i–K–â‹æ•ª3j
+       ,gt_head_visit_class4(i)   -- DFF4i–K–â‹æ•ª4j
+       ,gt_head_visit_class5(i)   -- DFF5i–K–â‹æ•ª5j
+       ,NULL                      -- DFF6i–K–â‹æ•ª6j
+       ,NULL                      -- DFF7i–K–â‹æ•ª7j
+       ,NULL                      -- DFF8i–K–â‹æ•ª8j
+       ,NULL                      -- DFF9i–K–â‹æ•ª9j
+       ,NULL                      -- DFF10i–K–â‹æ•ª10j
+-- Ver.1.30 ADD End
        ,cv_entry_class            -- DFF12i“o˜^‹æ•ªj 3
        ,gt_head_order_no_hht(i)   -- DFF13i“o˜^Œ³ƒ\[ƒX”Ô†j ó’No.iHHTj
        ,gt_cus_status(i)          -- DFF14iŒÚ‹qƒXƒe[ƒ^ƒXj
