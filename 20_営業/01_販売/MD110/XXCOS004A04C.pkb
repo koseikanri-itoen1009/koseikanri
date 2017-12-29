@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2010/04/28   1.30  K.Atsushiba       [E_本稼動_02483]販売実績登録エラー対応
  *  2010/10/28   1.31  K.Kiriu           [E_本稼動_05352]参照カレンダ変更対応
  *  2014/04/22   1.32  K.Nakamura        [E_本稼働_09071]消化締め後のAR入力対応
+ *  2017/12/19   1.33  Y.Omuro           [E_本稼動_14486]タスク登録共通関数の引数追加
  *
  *****************************************************************************************/
 --
@@ -4231,6 +4232,18 @@ AS
          ,NULL                                            -- 詳細内容
          ,gt_tab_for_comfunc_inpara(i).ar_sales_amount    -- 合計金額
          ,cv_0                                            -- 入力区分
+-- 2017/12/19 Ver.1.33 ADD Start
+         ,NULL                      -- DFF1（訪問区分1）
+         ,NULL                      -- DFF2（訪問区分2）
+         ,NULL                      -- DFF3（訪問区分3）
+         ,NULL                      -- DFF4（訪問区分4）
+         ,NULL                      -- DFF5（訪問区分5）
+         ,NULL                      -- DFF6（訪問区分6）
+         ,NULL                      -- DFF7（訪問区分7）
+         ,NULL                      -- DFF8（訪問区分8）
+         ,NULL                      -- DFF9（訪問区分9）
+         ,NULL                      -- DFF10（訪問区分10）
+-- 2017/12/19 Ver.1.33 ADD End
          ,cv_entry_class                                  -- DFF12（登録区分）＝ 5
          ,gt_tab_for_comfunc_inpara(i).deli_seq           -- DFF13（登録元ソース番号）＝ 受注No.（HHT）
          ,gt_tab_for_comfunc_inpara(i).cust_status        -- DFF14（顧客ステータス）
@@ -5225,4 +5238,3 @@ AS
 --
 END XXCOS004A04C;
 /
-
