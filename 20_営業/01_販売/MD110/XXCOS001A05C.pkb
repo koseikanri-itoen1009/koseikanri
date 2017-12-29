@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.35
+ * Version          : 1.36
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -98,6 +98,7 @@ AS
  *  2013/10/17    1.33  K.Kiriu          [E_本稼動_10904] 消費税対応
  *  2014/01/29    1.34  K.Nakamura       [E_本稼動_11449] 消費税率取得基準日を納品日・検収日⇒オリジナル納品日・オリジナル検収日に変更
  *  2017/04/19    1.35  N.Watanabe       [E_本稼動_14025] HHTからのシステム日付連携追加
+ *  2017/12/19    1.36  Y.Omuro          [E_本稼動_14486] 受注ソースが｢online:手入力｣も受注クローズ対象とする
  *
  *****************************************************************************************/
 --
@@ -3431,14 +3432,23 @@ AS
     IS
 -- 2011/04/05 1.29 T.Ishiwata MOD START
 --      SELECT ooh.order_number      order_number,            -- 受注番号
+/* 2017/12/19 Ver1.36 Mod Start */
+--      SELECT /*+
+--                LEADING(ooh)
+--                INDEX(oos OE_ORDER_SOURCES_U2)
+--                INDEX(ooh OE_ORDER_HEADERS_U2)
+--                INDEX(ool XXCOS_ORDER_LINES_ALL_N21)
+--                INDEX(msi MTL_SECONDARY_INVENTORIES_U1)
+--                INDEX(flv FND_LOOKUP_VALUES_U2)
+--              */
       SELECT /*+
                 LEADING(ooh)
-                INDEX(oos OE_ORDER_SOURCES_U2)
                 INDEX(ooh OE_ORDER_HEADERS_U2)
                 INDEX(ool XXCOS_ORDER_LINES_ALL_N21)
                 INDEX(msi MTL_SECONDARY_INVENTORIES_U1)
                 INDEX(flv FND_LOOKUP_VALUES_U2)
               */
+/* 2017/12/19 Ver1.36 Mod End   */
              ooh.order_number      order_number,            -- 受注番号
 -- 2011/04/05 1.29 T.Ishiwata MOD END
              ooh.header_id         header_id,               -- 受注ヘッダID
@@ -3454,19 +3464,25 @@ AS
              ,ool.rowid            row_id                   -- 行ID
 -- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
       FROM   oe_order_headers_all ooh,                      -- OM受注ヘッダ
-             oe_order_lines_all ool,                        -- OM受注明細テーブル
-             oe_order_sources oos                           -- オーダーソース
+             oe_order_lines_all ool                         -- OM受注明細テーブル
+/* 2017/12/19 Ver1.36 Del Start */
+--             oe_order_sources oos                           -- オーダーソース
+/* 2017/12/19 Ver1.36 Del End   */
 -- 2011/04/05 1.29 T.Ishiwata ADD START
             ,mtl_secondary_inventories msi
             ,fnd_lookup_values         flv
 -- 2011/04/05 1.29 T.Ishiwata ADD END
       WHERE  ooh.header_id = ool.header_id
-      AND    ooh.order_source_id = oos.order_source_id
-      AND    ool.order_source_id = oos.order_source_id
+/* 2017/12/19 Ver1.36 Del Start */
+--      AND    ooh.order_source_id = oos.order_source_id
+--      AND    ool.order_source_id = oos.order_source_id
+/* 2017/12/19 Ver1.36 Del End   */
       AND    ooh.org_id = TO_NUMBER ( gv_salse_unit )
       AND    ooh.order_number = lt_order_no_ebs
       AND    ool.flow_status_code NOT IN ( cv_status_type_can , cv_status_type_clo )
-      AND    oos.name = lv_edi_order_name
+/* 2017/12/19 Ver1.36 Del Start */
+--      AND    oos.name = lv_edi_order_name
+/* 2017/12/19 Ver1.36 Del End   */
 -- ************ 2009/10/13 1.22 N.Maeda ADD START *********** --
       AND    ool.global_attribute5 IS NULL
 -- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
@@ -6710,14 +6726,23 @@ AS
     IS
 -- 2011/04/05 1.29 T.Ishiwata MOD START
 --      SELECT ooh.order_number      order_number,            -- 受注番号
+/* 2017/12/19 Ver1.36 Mod Start */
+--      SELECT /*+
+--                LEADING(ooh)
+--                INDEX(oos OE_ORDER_SOURCES_U2)
+--                INDEX(ooh OE_ORDER_HEADERS_U2)
+--                INDEX(ool XXCOS_ORDER_LINES_ALL_N21)
+--                INDEX(msi MTL_SECONDARY_INVENTORIES_U1)
+--                INDEX(flv FND_LOOKUP_VALUES_U2)
+--              */
       SELECT /*+
                 LEADING(ooh)
-                INDEX(oos OE_ORDER_SOURCES_U2)
                 INDEX(ooh OE_ORDER_HEADERS_U2)
                 INDEX(ool XXCOS_ORDER_LINES_ALL_N21)
                 INDEX(msi MTL_SECONDARY_INVENTORIES_U1)
                 INDEX(flv FND_LOOKUP_VALUES_U2)
               */
+/* 2017/12/19 Ver1.36 Mod End   */
              ooh.order_number      order_number,            -- 受注番号
 -- 2011/04/05 1.29 T.Ishiwata MOD END
              ooh.header_id         header_id,               -- 受注ヘッダID
@@ -6733,19 +6758,25 @@ AS
              ,ool.rowid            row_id                   -- 行ID
 -- ************ 2009/10/13 1.22 N.Maeda ADD  END  *********** --
       FROM   oe_order_headers_all ooh,                      -- OM受注ヘッダ
-             oe_order_lines_all ool,                        -- OM受注明細テーブル
-             oe_order_sources oos                           -- オーダーソース
+             oe_order_lines_all ool                         -- OM受注明細テーブル
+/* 2017/12/19 Ver1.36 Del Start */
+--             oe_order_sources oos                           -- オーダーソース
+/* 2017/12/19 Ver1.36 Del End   */
 -- 2011/04/05 1.29 T.Ishiwata ADD START
             ,mtl_secondary_inventories msi
             ,fnd_lookup_values         flv
 -- 2011/04/05 1.29 T.Ishiwata ADD END
       WHERE  ooh.header_id = ool.header_id
-      AND    ooh.order_source_id = oos.order_source_id
-      AND    ool.order_source_id = oos.order_source_id
+/* 2017/12/19 Ver1.36 Del Start */
+--      AND    ooh.order_source_id = oos.order_source_id
+--      AND    ool.order_source_id = oos.order_source_id
+/* 2017/12/19 Ver1.36 Del End   */
       AND    ooh.org_id = TO_NUMBER ( gv_salse_unit )
       AND    ooh.order_number = lt_order_no_ebs
       AND    ool.flow_status_code NOT IN ( cv_status_type_can , cv_status_type_clo )
-      AND    oos.name = lv_edi_order_name
+/* 2017/12/19 Ver1.36 Del Start */
+--      AND    oos.name = lv_edi_order_name
+/* 2017/12/19 Ver1.36 Del End   */
 -- ************ 2009/10/13 N.Maeda ADD START *********** --
       AND    ool.global_attribute5 IS NULL
 -- ************ 2009/10/13 N.Maeda ADD  END  *********** --
@@ -12990,10 +13021,13 @@ AS
       AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
 --******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-      AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
-          AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
-        OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero ) 
-          AND ( dhs.input_class  = cv_input_delivery ) ) )
+--******************************* 2017/12/19 Y.Omuro Var1.36 MOD START ****************************************
+--      AND ( ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) = cn_tkn_zero )
+--          AND dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return ))
+--        OR ( ( NVL ( dhs.order_no_ebs , cn_tkn_zero ) <> cn_tkn_zero ) 
+--          AND ( dhs.input_class  = cv_input_delivery ) ) )
+      AND    dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
+--******************************* 2017/12/19 Y.Omuro Var1.36 MOD END ******************************************
       AND    dhs.results_forward_flag = cv_untreated_flg
       AND    dhs.program_application_id IS NULL
 --******************************* 2009/12/08 M.Fujinuma Var1.24 DEL START ***************************************
@@ -13188,7 +13222,10 @@ AS
       AND    dhs.digestion_ln_number = dls.digestion_ln_number(+)
 --******************************* 2009/12/08 M.Fujinuma Var1.24 MOD END ***************************************
       AND    dhs.system_class NOT IN ( cv_fs_vd, cv_fs_vd_s )
-      AND    dhs.input_class  = cv_input_delivery
+--******************************* 2017/12/19 Y.Omuro Var1.36 MOD START ****************************************
+--      AND    dhs.input_class  = cv_input_delivery
+      AND    dhs.input_class  NOT IN ( cv_input_return, cv_input_vd_return,cv_input_fs_vd_return )
+--******************************* 2017/12/19 Y.Omuro Var1.36 MOD END ******************************************
       AND    dhs.results_forward_flag = cv_untreated_flg
       AND    dhs.order_no_ebs <> cn_tkn_zero
       AND    dhs.program_application_id IS NOT NULL
