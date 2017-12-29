@@ -1,0 +1,76 @@
+/*****************************************************************************************
+ * Copyright(c) 2017, SCSK Corporation. All rights reserved.
+ *
+ * Table Name  : XXCOS_HHT_ORDER_HEADERS
+ * Description : HHT受注ヘッダテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2017/09/20    1.0   SCSK K.Kiriu     E_本稼動_14486（新規作成）
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_HHT_ORDER_HEADERS
+(
+  ORDER_NO_HHT                 NUMBER(9)     NOT NULL,         --受注No.(HHT)
+  BASE_CODE                    VARCHAR2(4),                    --拠点コード
+  DLV_BY_CODE                  VARCHAR2(5),                    --納品者コード
+  DLV_BY_CODE_CONV             VARCHAR2(5),                    --変換後納品者コード
+  INVOICE_NO                   VARCHAR2(9),                    --伝票No.
+  DLV_DATE                     DATE,                           --納品予定日
+  SALES_CLASSIFICATION         VARCHAR2(4),                    --売上分類区分
+  SALES_INVOICE                VARCHAR2(3),                    --売上伝票区分
+  DLV_TIME                     VARCHAR2(4),                    --時間
+  CUSTOMER_NUMBER              VARCHAR2(9),                    --顧客コード
+  CONSUMPTION_TAX_CLASS        VARCHAR2(1),                    --消費税区分
+  TOTAL_AMOUNT                 NUMBER(11),                     --合計金額
+  SALES_CONSUMPTION_TAX        NUMBER(11),                     --売上消費税額
+  TAX_INCLUDE                  NUMBER(11),                     --税込金額
+  SYSTEM_DATE                  DATE,                           --システム日時
+  ORDER_NO                     VARCHAR2(16),                   --オーダーNo
+  RECEIVED_DATE                DATE,                           --受信日時
+  ORIG_SYS_DOCUMENT_REF        VARCHAR2(50),                   --受注関連番号
+  CREATED_BY                   NUMBER(15)    NOT NULL,         --作成者
+  CREATION_DATE                DATE          NOT NULL,         --作成日
+  LAST_UPDATED_BY              NUMBER(15)    NOT NULL,         --最終更新者
+  LAST_UPDATE_DATE             DATE          NOT NULL,         --最終更新日
+  LAST_UPDATE_LOGIN            NUMBER(15),                     --最終更新ログイン
+  REQUEST_ID                   NUMBER(15),                     --要求ID
+  PROGRAM_APPLICATION_ID       NUMBER(15),                     --コンカレント・プログラム・アプリケーションID
+  PROGRAM_ID                   NUMBER(15),                     --コンカレント・プログラムID
+  PROGRAM_UPDATE_DATE          DATE,                           --プログラム更新日
+  CONSTRAINT XXCOS_HHT_ORDER_HEADERS_PK PRIMARY KEY ( ORDER_NO_HHT )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.ORDER_NO_HHT            IS '受注No.(HHT)';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.BASE_CODE               IS '拠点コード';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.DLV_BY_CODE             IS '納品者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.DLV_BY_CODE_CONV        IS '変換後納品者コード';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.INVOICE_NO              IS '伝票No.';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.DLV_DATE                IS '納品予定日';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.SALES_CLASSIFICATION    IS '売上分類区分';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.SALES_INVOICE           IS '売上伝票区分';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.DLV_TIME                IS '時間';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.CUSTOMER_NUMBER         IS '顧客コード';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.CONSUMPTION_TAX_CLASS   IS '消費税区分';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.TOTAL_AMOUNT            IS '合計金額';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.SALES_CONSUMPTION_TAX   IS '売上消費税額';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.TAX_INCLUDE             IS '税込金額';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.SYSTEM_DATE             IS 'システム日付';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.ORDER_NO                IS 'オーダーNo';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.RECEIVED_DATE           IS '受信日時';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.ORIG_SYS_DOCUMENT_REF   IS '受注関連番号';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.CREATED_BY              IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.CREATION_DATE           IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.LAST_UPDATED_BY         IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.LAST_UPDATE_DATE        IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.LAST_UPDATE_LOGIN       IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.REQUEST_ID              IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.PROGRAM_APPLICATION_ID  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.PROGRAM_ID              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_HEADERS.PROGRAM_UPDATE_DATE     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_HHT_ORDER_HEADERS                         IS 'HHT受注ヘッダテーブル';
