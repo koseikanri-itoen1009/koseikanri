@@ -1,0 +1,58 @@
+/*****************************************************************************************
+ * Copyright(c) 2017, SCSK Corporation. All rights reserved.
+ *
+ * Table Name  : XXCOS_HHT_ORDER_LINES_WORK
+ * Description : HHT受注明細ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2017/09/20    1.0   SCSK K.Kiriu     E_本稼動_14486（新規作成）
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_HHT_ORDER_LINES_WORK
+(
+  ORDER_NO_HHT              NUMBER(9)    NOT NULL,          --受注No.(HHT)
+  LINE_NO_HHT               NUMBER(2)    NOT NULL,          --行No.(HHT)
+  ITEM_CODE_SELF            VARCHAR2(7),                    --品名コード(自社)
+  CASE_NUMBER               NUMBER(7),                      --ケース数
+  QUANTITY                  NUMBER(7,2),                    --数量
+  SALE_CLASS                VARCHAR2(1),                    --売上区分
+  WHOLESALE_UNIT_PLICE      NUMBER(9,2),                    --卸単価
+  SELLING_PRICE             NUMBER(7),                      --売単価
+  RECEIVED_DATE             DATE,                           --受信日時
+  CREATED_BY                NUMBER(15)   NOT NULL,          --作成者
+  CREATION_DATE             DATE         NOT NULL,          --作成日
+  LAST_UPDATED_BY           NUMBER(15)   NOT NULL,          --最終更新者
+  LAST_UPDATE_DATE          DATE         NOT NULL,          --最終更新日
+  LAST_UPDATE_LOGIN         NUMBER(15),                     --最終更新ログイン
+  REQUEST_ID                NUMBER(15),                     --要求ID
+  PROGRAM_APPLICATION_ID    NUMBER(15),                     --コンカレント・プログラム・アプリケーションID
+  PROGRAM_ID                NUMBER(15),                     --コンカレント・プログラムID
+  PROGRAM_UPDATE_DATE       DATE,                           --プログラム更新日
+  CONSTRAINT XXCOS_HHT_ORDER_L_WORK_PK PRIMARY KEY ( ORDER_NO_HHT, LINE_NO_HHT )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.ORDER_NO_HHT               IS '受注No.(HHT)';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.LINE_NO_HHT                IS '行No.(HHT)';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.ITEM_CODE_SELF             IS '品名コード(自社)';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.CASE_NUMBER                IS 'ケース数';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.QUANTITY                   IS '数量';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.SALE_CLASS                 IS '売上区分';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.WHOLESALE_UNIT_PLICE       IS '卸単価';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.SELLING_PRICE              IS '売単価';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.RECEIVED_DATE              IS '受信日時';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.CREATED_BY                 IS '作成者';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.CREATION_DATE              IS '作成日';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.LAST_UPDATED_BY            IS '最終更新者';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.LAST_UPDATE_DATE           IS '最終更新日';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.LAST_UPDATE_LOGIN          IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.REQUEST_ID                 IS '要求ID';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.PROGRAM_APPLICATION_ID     IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.PROGRAM_ID                 IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOS.XXCOS_HHT_ORDER_LINES_WORK.PROGRAM_UPDATE_DATE        IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_HHT_ORDER_LINES_WORK IS 'HHT受注明細ワークテーブル';
