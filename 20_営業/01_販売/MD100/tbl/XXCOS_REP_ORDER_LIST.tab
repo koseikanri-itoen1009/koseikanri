@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_ORDER_LIST
  * Description : 受注一覧リスト帳票ワークテーブル
- * Version     : 1.2
+ * Version     : 1.4
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -20,7 +20,7 @@
  *                                     [E_本稼動_00583]伝票区分、分類区分追加
  *  2010/01/22    1.2   SCS K.Kikuchi  [E_本稼動_00408]伝票番号計出力対応
  *                                                     レコードタイプ,受注金額合計追加
- *
+ *  2017/12/19    1.4   SCSK Y.Omuro   [E_本稼動_14486]伝票区分のサイズ2桁→3桁に変更
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_ORDER_LIST 
 (
@@ -61,7 +61,10 @@ CREATE TABLE XXCOS.XXCOS_REP_ORDER_LIST
     DELIVER_FROM_CODE              VARCHAR2(9),                      --出荷先コード 
     DELIVER_TO_NAME                VARCHAR2(40),                     --出荷先名称 
 /* 2009/12/28 Ver1.2 Add Start */
-    INVOICE_CLASS                  VARCHAR2(2),                      --伝票区分
+/* 2017/12/19 Ver1.4 Mod Start */
+--    INVOICE_CLASS                  VARCHAR2(2),                      --伝票区分
+    INVOICE_CLASS                  VARCHAR2(3),                      --伝票区分
+/* 2017/12/19 Ver1.4 Mod End   */
     CLASSIFICATION_CLASS           VARCHAR2(4),                      --分類区分
     REPORT_OUTPUT_TYPE             VARCHAR2(10),                     --出力区分
     EDI_RE_OUTPUT_FLAG             VARCHAR2(1),                      --EDI再出力フラグ
