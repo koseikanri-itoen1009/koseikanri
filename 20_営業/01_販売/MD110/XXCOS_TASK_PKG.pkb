@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_TASK_PKG(spec)
  * Description      : ã§í ä÷êîÉpÉbÉPÅ[ÉW(îÃîÑ)
  * MD.070           : ã§í ä÷êî    MD070_IPO_COS
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -25,6 +25,7 @@ AS
  *  2010/11/15    1.4   K.Kiriu          [E_ñ{â“ìÆ_05129]É^ÉXÉNçÏê¨PTëŒâû
  *  2011/03/28    1.5   Oukou            [E_ñ{â“ìÆ_00153]HHTì¸ã‡ÉfÅ[É^éÊçûàŸèÌèIóπëŒâû
  *  2017/04/12    1.6   Y.Shoji          [E_ñ{â“ìÆ_14025]HHTÇ©ÇÁÇÃÉVÉXÉeÉÄì˙ïtòAågí«â¡ëŒâû
+ *  2017/12/18    1.7   S.Yamashita      [E_ñ{â“ìÆ_14486] HHTÇ©ÇÁÇÃñKñ‚ãÊï™òAågí«â¡
  ****************************************************************************************/
 --
 --#######################  å≈íËÉOÉçÅ[ÉoÉãíËêîêÈåæïî START   #######################
@@ -212,6 +213,18 @@ AS
               ,iv_description     IN          VARCHAR2  DEFAULT NULL  --è⁄ç◊ì‡óe
               ,in_sales_amount    IN          NUMBER    DEFAULT NULL  --îÑè„ã‡äz(2008/12/12 í«â¡)
               ,iv_input_division  IN          VARCHAR2  DEFAULT NULL  --ì¸óÕãÊï™(2008/12/17 í«â¡)
+-- Ver.1.7 ADD Start
+              ,iv_attribute1      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇPÅiñKñ‚ãÊï™1Åj
+              ,iv_attribute2      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇQÅiñKñ‚ãÊï™2Åj
+              ,iv_attribute3      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇRÅiñKñ‚ãÊï™3Åj
+              ,iv_attribute4      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇSÅiñKñ‚ãÊï™4Åj
+              ,iv_attribute5      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇTÅiñKñ‚ãÊï™5Åj
+              ,iv_attribute6      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇUÅiñKñ‚ãÊï™6Åj
+              ,iv_attribute7      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇVÅiñKñ‚ãÊï™7Åj
+              ,iv_attribute8      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇWÅiñKñ‚ãÊï™8Åj
+              ,iv_attribute9      IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇXÅiñKñ‚ãÊï™9Åj
+              ,iv_attribute10     IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇPÇOÅiñKñ‚ãÊï™10Åj
+-- Ver.1.7 ADD End
               ,iv_entry_class     IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇPÇQÅiìoò^ãÊï™Åj
               ,iv_source_no       IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇPÇRÅiìoò^å≥É\Å[ÉXî‘çÜÅj
               ,iv_customer_status IN          VARCHAR2  DEFAULT NULL  --ÇcÇeÇeÇPÇSÅiå⁄ãqÉXÉeÅ[É^ÉXÅj
@@ -572,16 +585,28 @@ AS
 -- 2017/04/12 Ver.1.6 Y.Shoji ADD End
             ,id_visit_date  => id_visit_date            --ñKñ‚ì˙éû
             ,iv_description => lv_description           --è⁄ç◊ì‡óe
-            ,iv_attribute1  => NULL
-            ,iv_attribute2  => NULL
-            ,iv_attribute3  => NULL
-            ,iv_attribute4  => NULL
-            ,iv_attribute5  => NULL
-            ,iv_attribute6  => NULL
-            ,iv_attribute7  => NULL
-            ,iv_attribute8  => NULL
-            ,iv_attribute9  => NULL
-            ,iv_attribute10 => NULL
+-- Ver.1.7 MOD Start
+--            ,iv_attribute1  => NULL
+--            ,iv_attribute2  => NULL
+--            ,iv_attribute3  => NULL
+--            ,iv_attribute4  => NULL
+--            ,iv_attribute5  => NULL
+--            ,iv_attribute6  => NULL
+--            ,iv_attribute7  => NULL
+--            ,iv_attribute8  => NULL
+--            ,iv_attribute9  => NULL
+--            ,iv_attribute10 => NULL
+            ,iv_attribute1  => iv_attribute1            --ñKñ‚ãÊï™1
+            ,iv_attribute2  => iv_attribute2            --ñKñ‚ãÊï™2
+            ,iv_attribute3  => iv_attribute3            --ñKñ‚ãÊï™3
+            ,iv_attribute4  => iv_attribute4            --ñKñ‚ãÊï™4
+            ,iv_attribute5  => iv_attribute5            --ñKñ‚ãÊï™5
+            ,iv_attribute6  => iv_attribute6            --ñKñ‚ãÊï™6
+            ,iv_attribute7  => iv_attribute7            --ñKñ‚ãÊï™7
+            ,iv_attribute8  => iv_attribute8            --ñKñ‚ãÊï™8
+            ,iv_attribute9  => iv_attribute9            --ñKñ‚ãÊï™9
+            ,iv_attribute10 => iv_attribute10           --ñKñ‚ãÊï™10
+-- Ver.1.7 MOD End
             ,iv_attribute11 => lv_effective_visi        --óLå¯ñKñ‚ãÊï™
             ,iv_attribute12 => iv_entry_class           --ìoò^ãÊï™
             ,iv_attribute13 => iv_source_no             --ìoò^å≥É\Å[ÉXî‘çÜ
@@ -606,16 +631,28 @@ AS
 -- 2017-04-12 Ver.1.6 Y.Shoji ADD End
             ,id_visit_date  => id_visit_date            --ñKñ‚ì˙éû
             ,iv_description => lv_description           --è⁄ç◊ì‡óe
-            ,iv_attribute1  => NULL
-            ,iv_attribute2  => NULL
-            ,iv_attribute3  => NULL
-            ,iv_attribute4  => NULL
-            ,iv_attribute5  => NULL
-            ,iv_attribute6  => NULL
-            ,iv_attribute7  => NULL
-            ,iv_attribute8  => NULL
-            ,iv_attribute9  => NULL
-            ,iv_attribute10 => NULL
+-- Ver.1.7 MOD Start
+--            ,iv_attribute1  => NULL
+--            ,iv_attribute2  => NULL
+--            ,iv_attribute3  => NULL
+--            ,iv_attribute4  => NULL
+--            ,iv_attribute5  => NULL
+--            ,iv_attribute6  => NULL
+--            ,iv_attribute7  => NULL
+--            ,iv_attribute8  => NULL
+--            ,iv_attribute9  => NULL
+--            ,iv_attribute10 => NULL
+            ,iv_attribute1  => iv_attribute1            --ñKñ‚ãÊï™1
+            ,iv_attribute2  => iv_attribute2            --ñKñ‚ãÊï™2
+            ,iv_attribute3  => iv_attribute3            --ñKñ‚ãÊï™3
+            ,iv_attribute4  => iv_attribute4            --ñKñ‚ãÊï™4
+            ,iv_attribute5  => iv_attribute5            --ñKñ‚ãÊï™5
+            ,iv_attribute6  => iv_attribute6            --ñKñ‚ãÊï™6
+            ,iv_attribute7  => iv_attribute7            --ñKñ‚ãÊï™7
+            ,iv_attribute8  => iv_attribute8            --ñKñ‚ãÊï™8
+            ,iv_attribute9  => iv_attribute9            --ñKñ‚ãÊï™9
+            ,iv_attribute10 => iv_attribute10           --ñKñ‚ãÊï™10
+-- Ver.1.7 MOD End
             ,iv_attribute11 => lv_effective_visi        --óLå¯ñKñ‚ãÊï™
             ,iv_attribute12 => iv_entry_class           --ìoò^ãÊï™
             ,iv_attribute13 => iv_source_no             --ìoò^å≥É\Å[ÉXî‘çÜ
@@ -651,16 +688,28 @@ AS
 -- 2017-04-12 Ver.1.6 Y.Shoji ADD End
             ,id_visit_date  => id_visit_date            --ñKñ‚ì˙éû
             ,iv_description => lv_description           --è⁄ç◊ì‡óe
-            ,iv_attribute1  => NULL
-            ,iv_attribute2  => NULL
-            ,iv_attribute3  => NULL
-            ,iv_attribute4  => NULL
-            ,iv_attribute5  => NULL
-            ,iv_attribute6  => NULL
-            ,iv_attribute7  => NULL
-            ,iv_attribute8  => NULL
-            ,iv_attribute9  => NULL
-            ,iv_attribute10 => NULL
+-- Ver.1.7 MOD Start
+--            ,iv_attribute1  => NULL
+--            ,iv_attribute2  => NULL
+--            ,iv_attribute3  => NULL
+--            ,iv_attribute4  => NULL
+--            ,iv_attribute5  => NULL
+--            ,iv_attribute6  => NULL
+--            ,iv_attribute7  => NULL
+--            ,iv_attribute8  => NULL
+--            ,iv_attribute9  => NULL
+--            ,iv_attribute10 => NULL
+            ,iv_attribute1  => iv_attribute1            --ñKñ‚ãÊï™1
+            ,iv_attribute2  => iv_attribute2            --ñKñ‚ãÊï™2
+            ,iv_attribute3  => iv_attribute3            --ñKñ‚ãÊï™3
+            ,iv_attribute4  => iv_attribute4            --ñKñ‚ãÊï™4
+            ,iv_attribute5  => iv_attribute5            --ñKñ‚ãÊï™5
+            ,iv_attribute6  => iv_attribute6            --ñKñ‚ãÊï™6
+            ,iv_attribute7  => iv_attribute7            --ñKñ‚ãÊï™7
+            ,iv_attribute8  => iv_attribute8            --ñKñ‚ãÊï™8
+            ,iv_attribute9  => iv_attribute9            --ñKñ‚ãÊï™9
+            ,iv_attribute10 => iv_attribute10           --ñKñ‚ãÊï™10
+-- Ver.1.7 MOD End
             ,iv_attribute11 => lv_effective_visi        --óLå¯ñKñ‚ãÊï™
             ,iv_attribute12 => iv_entry_class           --ìoò^ãÊï™
             ,iv_attribute13 => iv_source_no             --ìoò^å≥É\Å[ÉXî‘çÜ
