@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -14,7 +14,11 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理(A-1)
  *  proc_break_process     受注ヘッダ情報IDブレイク後の処理（ファイル出力、ステータス更新）
+ *  proc_break_process_online
+ *                         受注ヘッダ情報IDブレイク後の処理（ファイル出力、ステータス更新）
+ *                         ONLINE用
  *  proc_main_loop         ループ部 A-2データ抽出
+ *  proc_main_online_loop  ループ部 A-11データ抽出
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -33,6 +37,7 @@ AS
  *  2010/03/30   1.6    S.Miyakoshi      [E_本稼動_02058]単位換算処理の追加
  *  2014/03/04   1.7    T.Nakano         [E_本稼動_11551]パフォーマンス対応
  *  2015/01/08   1.8    H.Wajima         [E_本稼動_12806]単位換算処理の修正
+ *  2017/12/18   1.9    Y.Omuro          [E_本稼動_14486]次期HHTシステムからの受注取込
  *
  *****************************************************************************************/
 --
@@ -70,6 +75,13 @@ AS
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
   gn_set_cnt       NUMBER;                    -- 設定カウンタ
+/* 2017/12/18 Ver1.9 Add Start */
+  gn_target_o_cnt  NUMBER;                    -- 対象件数（online）
+  gn_normal_o_cnt  NUMBER;                    -- 正常件数（online）
+  gn_set_o_cnt     NUMBER;                    -- 設定カウンタ（online）
+  gn_target_all    NUMBER;                    -- 対象件数（合計）
+  gn_normal_all    NUMBER;                    -- 正常件数（合計）
+/* 2017/12/18 Ver1.9 Add End   */
 --
 --################################  固定部 END   ##################################
 --
@@ -156,6 +168,10 @@ AS
   cv_msg_proc_date_err    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00014';         -- 業務日付取得エラーメッセージ
   cv_msg_ord_keep_day     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10671';         -- HHT納品用受注保持日数
 /* 2014/03/04 Ver1.7 Add End */
+/* 2017/12/18 Ver1.9 Add Start */
+  cv_on_lock_table        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00070';          -- 受注明細情報テーブル
+  cv_on_update_table      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11810';          -- 受注明細テーブル
+/* 2017/12/18 Ver1.9 Add End   */
   -- その他
   cv_file_access_mode     CONSTANT VARCHAR2(10) := 'W';                         -- ファイルアクセスモード
   cv_cust_class_cust      CONSTANT VARCHAR2(10) := '10';                        -- 顧客区分（顧客）
@@ -172,6 +188,18 @@ AS
   --情報区分
   cv_target_order_01      CONSTANT  VARCHAR2(2) := '01';                        -- 受注作成対象01
 /* 2009/07/08 Ver1.4 Add End   */
+/* 2017/12/18 Ver1.9 Add Start */
+  --受注リソース名称
+  cv_online               CONSTANT VARCHAR2(240):= 'Online';                    -- Onlineで作成された受注
+  --保管場所分類
+  cv_base                 CONSTANT VARCHAR2(150):= '1';                         -- １：通常拠点
+  --顧客区分
+  cv_cust_code_chain      CONSTANT VARCHAR2(2)  := '18';                        -- １８:チェーン店
+  --顧客ステータス
+  cv_cust_status_99       CONSTANT VARCHAR2(2)  := '99';                        -- ９９:対象外
+  --売上区分
+  cv_sale_class_5         CONSTANT VARCHAR2(1)  := '5';                         -- ５：協賛
+/* 2017/12/18 Ver1.9 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -220,6 +248,16 @@ AS
   gn_hht_deli_ord_keep_day    NUMBER;                               -- HHT納品用受注保持日数
   gv_msg_tkn_ord_keep_day     fnd_new_messages.message_text%TYPE;   -- 'HHT納品用受注保持日数'
 /* 2014/03/04 Ver1.7 Add End */
+/* 2017/12/18 Ver1.9 Add Start */
+  gv_msg_on_lock_table        fnd_new_messages.message_text%TYPE;               -- 受注明細テーブル
+  gv_msg_on_update_table      fnd_new_messages.message_text%TYPE;               -- 受注明細テーブル
+  gv_subinventory             oe_order_lines_all.subinventory%TYPE;             -- 保管場所コード
+  gv_shipping_instructions    oe_order_headers_all.shipping_instructions%TYPE;  -- 備考（出荷指示）
+  gv_order_from_code          oe_order_headers_all.global_attribute5%TYPE;      -- 発生元区分
+  gv_order_number_hht         oe_order_headers_all.global_attribute4%TYPE;      -- 受注No.（HHT）
+  gv_order_no                 oe_order_headers_all.attribute19%TYPE;            -- オーダーNo
+  gt_order_type_id            fnd_lookup_values.meaning%TYPE;                   -- 受注タイプID
+/* 2017/12/18 Ver1.9 Add End   */
 --
   --カーソル
   CURSOR main_cur
@@ -281,6 +319,14 @@ AS
          , oola.inventory_item_id          inventory_item_id          --品目ID
          , oola.ship_from_org_id           ship_from_org_id           --出荷先顧客
          , ooha.sold_to_org_id             sold_to_org_id             --売上先顧客
+/* 2017/12/18 Ver1.9 Add Start */
+         , ooha.shipping_instructions      shipping_instructions      --出荷指示
+         , oola.subinventory               subinventory               --保管場所コード
+         , DECODE( oola.line_type_id
+                  ,gt_order_type_id ,cv_sale_class_5
+                  ,oola.attribute5
+             )                             selling_code               --売上区分
+/* 2017/12/18 Ver1.9 Add End   */
     FROM   oe_order_headers_all            ooha                       --受注ヘッダテーブル
          , oe_order_lines_all              oola                       --受注明細テーブル
          , xxcos_edi_headers               xieh                       --EDIヘッダ情報テーブル
@@ -296,7 +342,10 @@ AS
     AND   ooha.header_id                    =  oola.header_id
     AND   oola.subinventory                 =  msiv.secondary_inventory_name
     AND   oola.ship_from_org_id             =  msiv.organization_id
-    AND   msiv.attribute13                  =  cv_sales_car
+/* 2017/12/18 Ver1.9 Mod Start */
+--    AND   msiv.attribute13                  =  cv_sales_car
+    AND   msiv.attribute13                  IN (cv_base, cv_sales_car)
+/* 2017/12/18 Ver1.9 Mod End   */
     AND   xieh.order_connection_number      =  ooha.orig_sys_document_ref
     AND   xiel.edi_header_info_id           =  xieh.edi_header_info_id
     AND   xiel.order_connection_line_number =  oola.orig_sys_line_ref
@@ -338,13 +387,118 @@ AS
       ordered_quantity     oe_order_lines_all.ordered_quantity%TYPE,       -- 数量
       unit_selling_price   oe_order_lines_all.unit_selling_price%TYPE,     -- 卸単価
       selling_price        xxcos_edi_lines.selling_price%TYPE,             -- 売単価
-      edi_line_info_id     xxcos_edi_lines.edi_line_info_id%TYPE           -- 受注明細情報ID
+      edi_line_info_id     xxcos_edi_lines.edi_line_info_id%TYPE,          -- 受注明細情報ID
+/* 2017/12/18 Ver1.9 Add Start */
+      selling_code         oe_order_lines_all.attribute5%TYPE              -- 売上区分
+/* 2017/12/18 Ver1.9 Add End   */
     );
 --
   TYPE g_tab_vndor_deli_l_ttype IS TABLE OF g_rec_vndor_deli_l_rtype INDEX BY PLS_INTEGER;
 --
   gt_vndor_deli_lines         g_tab_vndor_deli_l_ttype; -- 納品明細ワークテーブル抽出データ
 --
+/* 2017/12/18 Ver1.9 Add Start */
+  --online:手入力データ
+  CURSOR main_online_cur
+  IS
+    SELECT
+          ooha.order_number               order_number               --受注ヘッダテーブル．受注番号
+        , ooha.request_date               request_date               --受注ヘッダテーブル．要求日
+        , xcac.chain_store_code           edi_chain_code             --顧客追加情報．チェーン店コード（EDI）
+        , xcac.customer_code              conv_customer_code         --顧客追加情報．顧客コード
+        , hp1.organization_name_phonetic  shop_name_alt              --店名（カナ）
+        , xcac.delivery_base_code         delivery_base_code         --顧客追加情報．納品拠点コード
+        , civ.organization_name_phonetic  company_name_alt           --社名（カナ）
+        , ooha.attribute20                big_classification_code    --受注ヘッダテーブル．分類区分
+        , ooha.attribute5                 invoice_class              --受注ヘッダテーブル．伝票区分
+        , ooha.attribute15                invoice_number             --受注ヘッダテーブル．伝票番号
+        , ooha.header_id                  edi_header_info_id         --受注ヘッダテーブル．受注ヘッダID
+        , oola.attribute10                selling_price              --受注明細テーブル．売単価
+        , oola.line_id                    edi_line_info_id           --受注明細テーブル．受注明細ID
+        , null                            product_code2              --商品コード２
+        , null                            product_name_alt           --商品名２（カナ）
+        , oola.ordered_quantity           ordered_quantity           --受注明細テーブル．数量
+        , oola.unit_selling_price         unit_selling_price         --受注明細テーブル．販売単価
+        , oola.line_number                line_number                --受注明細テーブル．明細番号
+        , oola.ordered_item               ordered_item               --受注明細テーブル．受注品目
+        , oola.line_category_code         line_category_code         --受注明細テーブル．受注カテゴリ明細カテゴリコード
+        , oola.order_quantity_uom         order_quantity_uom         --受注明細テーブル．単位
+        , oola.inventory_item_id          inventory_item_id          --品目ID
+        , oola.ship_from_org_id           ship_from_org_id           --出荷先顧客
+        , ooha.sold_to_org_id             sold_to_org_id             --売上先顧客
+        , ooha.shipping_instructions      shipping_instructions      --受注ヘッダテーブル．出荷指示
+        , ooha.attribute19                order_no                   --受注ヘッダテーブル．オーダーNo
+        , ooha.global_attribute4          order_number_hht           --受注ヘッダテーブル．受注No.(HHT)
+        , ooha.global_attribute5          order_from_code            --受注ヘッダテーブル．発生元区分
+        , oola.subinventory               subinventory               --受注明細テーブル．保管場所コード
+        , DECODE( oola.line_type_id
+                 ,gt_order_type_id ,cv_sale_class_5
+                 ,oola.attribute5
+            )                             selling_code               --売上区分
+    FROM  oe_order_headers_all            ooha                       --受注ヘッダテーブル
+        , oe_order_lines_all              oola                       --受注明細テーブル
+        , oe_order_sources                oosc                       --受注ソーステーブル
+        , mtl_secondary_inventories       msiv                       --保管場所マスタ
+        , xxcmm_cust_accounts             xcac                       --顧客追加情報
+        , hz_cust_accounts                hca1                       --顧客マスタ
+        , hz_parties                      hp1                        --顧客パーティ
+        ,(SELECT hp2.organization_name_phonetic  organization_name_phonetic
+                ,xca2.edi_chain_code             edi_chain_code
+          FROM   hz_cust_accounts                hca2                       --チェーン店マスタ
+                ,hz_parties                      hp2                        --チェーン店パーティ
+                ,xxcmm_cust_accounts             xca2                       --チェーン店追加情報
+          WHERE hca2.cust_account_id             =  xca2.customer_id
+          AND   hca2.party_id                    =  hp2.party_id
+          AND   hca2.customer_class_code         =  cv_cust_code_chain
+          AND   hp2.duns_number_c                =  cv_cust_status_99) civ
+    WHERE
+        ooha.order_source_id              =  oosc.order_source_id
+    AND oosc.name                         =  cv_online
+    AND ooha.org_id                       =  gn_org_id
+    AND ooha.flow_status_code             =  cv_booked
+    AND ooha.header_id                    =  oola.header_id
+    AND oola.subinventory                 =  msiv.secondary_inventory_name
+    AND oola.ship_from_org_id             =  msiv.organization_id
+    AND msiv.attribute13                  IN (cv_base, cv_sales_car)
+    AND oola.global_attribute7            IS NULL
+    AND xcac.customer_id(+)               =  oola.sold_to_org_id
+    AND hca1.cust_account_id(+)           =  xcac.customer_id
+    AND hp1.party_id                      =  hca1.party_id
+    AND civ.edi_chain_code(+)             =  xcac.chain_store_code
+    AND ooha.ordered_date >=  gd_proc_date - gn_hht_deli_ord_keep_day + 1
+    AND ooha.ordered_date <   gd_proc_date + 1
+    ORDER BY
+          ooha.header_id
+        , oola.line_id
+    ;
+--
+  -- ===============================
+  -- ユーザー定義グローバル型
+  -- ===============================
+  --EOS明細ファイル用online
+  TYPE g_rec_vndor_deli_l_o_rtype IS RECORD
+    (
+      delivery_base_code   xxcmm_cust_accounts.delivery_base_code%TYPE,    -- 拠点コード
+      order_number         oe_order_headers_all.order_number%TYPE,         -- 受注No
+      line_number          oe_order_lines_all.line_number%TYPE,            -- 行No
+      conv_customer_code   xxcmm_cust_accounts.customer_code%TYPE,         -- 顧客コード
+      invoice_number       oe_order_headers_all.attribute15%TYPE,          -- 伝票番号
+      ordered_item         oe_order_lines_all.ordered_item%TYPE,           -- 自社品名コード
+      customer_item_number mtl_customer_items.customer_item_number%TYPE,   -- 他社品名コード
+      customer_item_desc   mtl_customer_items.customer_item_desc%TYPE,     -- 他社品名
+      quantity_sign        VARCHAR2(1),                                    -- 数量サイン（明細カテゴリコード）
+      ordered_quantity     oe_order_lines_all.ordered_quantity%TYPE,       -- 数量
+      unit_selling_price   oe_order_lines_all.unit_selling_price%TYPE,     -- 卸単価
+      selling_price        oe_order_lines_all.attribute10%TYPE,            -- 売単価
+      edi_line_info_id     oe_order_lines_all.line_id%TYPE,                -- 受注明細情報ID
+      selling_code         oe_order_lines_all.attribute5%TYPE              -- 売上区分
+    );
+--
+  TYPE g_tab_vndor_deli_l_o_ttype IS TABLE OF g_rec_vndor_deli_l_o_rtype INDEX BY PLS_INTEGER;
+--
+  gt_vndor_deli_lines_online    g_tab_vndor_deli_l_o_ttype; -- 納品明細ワークテーブル抽出データ（online）
+/* 2017/12/18 Ver1.9 Add End   */
+
   /**********************************************************************************
    * Procedure Name   : log_output
    * Description      : ログ出力
@@ -427,6 +581,10 @@ AS
     -- クイックコードタイプ
     cv_qck_odr_src_mst_type  CONSTANT VARCHAR2(50) := 'XXCOS1_ODR_SRC_MST_003_A01'; -- 受注ソース特定タイプ
     cv_qck_odr_src_mst_code  CONSTANT VARCHAR2(50) := 'XXCOS_003_A01_01';           -- 受注ソース特定コード
+/* 2017/12/18 Ver1.9 Add Start */
+    cv_txn_type_mst_001_a10  CONSTANT VARCHAR2(50) := 'XXCOS1_TXN_TYPE_MST_001_A10';   -- 受注タイプ
+    cv_001_a10_03            CONSTANT VARCHAR2(50) := 'XXCOS_001_A10_03';           -- 参照タイプコード（20_協賛）
+/* 2017/12/18 Ver1.9 Add End   */
     -- メッセージID
     cv_msg_no_parameter      CONSTANT VARCHAR2(20) := 'APP-XXCCP1-90008';           -- パラメータなし
     cv_msg_pro               CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00004';           -- プロファイル取得エラー
@@ -434,11 +592,18 @@ AS
     cv_msg_mst_notfound      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10002';           -- マスタチェックエラーメッセージ
     cv_msg_lookup_value      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00046';           -- クイックコード
     cv_msg_order_source      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00158';           -- 受注ソース
+/* 2017/12/18 Ver1.9 Add Start */
+    cv_msg_order_type        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-15261';           -- 受注タイプ取得エラー
+    cv_msg_order_type_30     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00147';           -- 受注タイプ 30_協賛（文言）
+/* 2017/12/18 Ver1.9 Add End   */
     -- トークン
     cv_tkn_profile           CONSTANT VARCHAR2(20) := 'PROFILE';                    -- プロファイル名
     cv_tkn_file_name         CONSTANT VARCHAR2(20) := 'FILE_NAME';                  -- ファイル名
     cv_tkn_table             CONSTANT VARCHAR2(20) := 'TABLE';                      -- テーブル名
     cv_tkn_column            CONSTANT VARCHAR2(20) := 'COLMUN';                     -- カラム名
+/* 2017/12/18 Ver1.9 Add Start */
+    cv_tkn_order_type        CONSTANT VARCHAR2(20) := 'ORDER_TYPE';                 -- 受注タイプ
+/* 2017/12/18 Ver1.9 Add End   */
 --
     -- *** ローカル変数 ***
     lv_dir_path              VARCHAR2(100);                                         -- HHTアウトバウンド用ディレクトリパス
@@ -462,6 +627,22 @@ AS
     -- *** ローカル・レコード ***
     lt_order_source_rec      order_source_cur%ROWTYPE;                              -- EDI作成元区分カーソル レコード変数
 --
+/* 2017/12/18 Ver1.9 Add Start */
+    -- 受注タイプカーソル
+    CURSOR order_type_cur
+    IS
+      SELECT  ott.transaction_type_id   transaction_type_id
+      FROM    oe_transaction_types_tl   ott
+             ,fnd_lookup_values_vl      flv
+      WHERE   flv.lookup_type           = cv_txn_type_mst_001_a10
+      AND     flv.lookup_code           = cv_001_a10_03
+      AND     flv.meaning               = ott.name
+      AND     ott.language              = cv_default_language
+      ;
+--
+    -- *** ローカル・レコード ***
+    lt_order_type_cur      order_type_cur%ROWTYPE;                                  -- EDI作成元受注タイプカーソル レコード変数
+/* 2017/12/18 Ver1.9 Add End   */
 --
   BEGIN
 --
@@ -510,6 +691,11 @@ AS
     gv_msg_order_number         := xxccp_common_pkg.get_msg(iv_application  => cv_application
                                                            ,iv_name         => cv_order_number
                                                            );
+/* 2017/12/18 Ver1.9 Add Start */
+    gv_msg_line_number          := xxccp_common_pkg.get_msg(iv_application  => cv_application
+                                                           ,iv_name         => cv_line_number
+                                                           );
+/* 2017/12/18 Ver1.9 Add End   */
     gv_msg_ordered_item         := xxccp_common_pkg.get_msg(iv_application  => cv_application
                                                            ,iv_name         => cv_ordered_item
                                                            );
@@ -563,6 +749,14 @@ AS
                                                        ,iv_name         => cv_msg_ord_keep_day
                                                            );
 /* 2014/03/04 Ver1.7 Add End */
+/* 2017/12/18 Ver1.9 Add Start */
+    gv_msg_on_lock_table        := xxccp_common_pkg.get_msg(iv_application  => cv_application
+                                                           ,iv_name         => cv_on_lock_table
+                                                           );
+    gv_msg_on_update_table      := xxccp_common_pkg.get_msg(iv_application  => cv_application
+                                                           ,iv_name         => cv_on_update_table
+                                                           );
+/* 2017/12/18 Ver1.9 Add End   */
 --
     --==============================================================
     -- プロファイルの取得(XXCOS:HHTアウトバウンド用ディレクトリパス)
@@ -724,6 +918,31 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+/* 2017/12/18 Ver1.9 Add Start */
+    --==============================================================
+    -- 受注タイプ取得
+    --==============================================================
+    gt_order_type_id := NULL;
+    -- クイックコードから受注タイプを取得
+    <<loop_set_order_type>>
+    FOR lt_order_type_rec IN order_type_cur LOOP
+      gt_order_type_id := lt_order_type_rec.transaction_type_id;
+    END LOOP;
+--
+    -- 受注タイプが取得できなかった場合
+    IF ( gt_order_type_id IS NULL ) THEN
+      -- マスタチェックエラーを出力
+      lv_errmsg := xxccp_common_pkg.get_msg( cv_application
+                                           , cv_msg_order_type
+                                           , cv_tkn_order_type
+                                           , cv_msg_order_type_30
+                                           , cv_tkn_err_msg
+                                           , SQLERRM );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+/* 2017/12/18 Ver1.9 Add Start */
+--
 /* 2014/03/04 Ver1.7 Add Start */
     --==============================================================
     -- 業務日付取得
@@ -808,6 +1027,9 @@ AS
 --
     -- *** 例外処理 ***
     break_process_expt EXCEPTION;
+/* 2017/12/18 Ver1.9 Add Start */
+    break_process_err_expt EXCEPTION;
+/* 2017/12/18 Ver1.9 Add End   */
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -883,7 +1105,10 @@ AS
                                               );
           -- ログ出力
           log_output( cv_prg_name, lv_errmsg );
-          RAISE break_process_expt;
+/* 2017/12/18 Ver1.9 Mod Start */
+          --RAISE break_process_expt;
+          RAISE break_process_err_expt;
+/* 2017/12/18 Ver1.9 Mod End   */
       END;
     END LOOP lines_update_loop;
 --
@@ -902,6 +1127,13 @@ AS
               || cv_delimit || cv_quot || gv_company_name_alt                 || cv_quot--社名（カナ）
               || cv_delimit || cv_quot || gv_shop_name_alt                    || cv_quot--店名（カナ）
               || cv_delimit || cv_quot || gv_edi_chain_code                   || cv_quot--チェーン店コード
+/* 2017/12/18 Ver1.9 Add Start */
+              || cv_delimit || cv_quot || gv_subinventory                     || cv_quot--保管場所コード
+              || cv_delimit || cv_quot || gv_shipping_instructions            || cv_quot--備考（出荷指示）
+              || cv_delimit || cv_quot || cv_quot                                       --発生元区分
+              || cv_delimit || cv_quot || cv_quot                                       --受注No.（HHT）
+              || cv_delimit || cv_quot || cv_quot                                       --オーダーNo
+/* 2017/12/18 Ver1.9 Add End   */
       ;
       UTL_FILE.PUT_LINE(g_h_handle
                        ,gv_h_file_data
@@ -935,6 +1167,9 @@ AS
                 || cv_delimit || TO_CHAR(gt_vndor_deli_lines(i).ordered_quantity, cv_number_format8)--数量
                 || cv_delimit || TO_CHAR(gt_vndor_deli_lines(i).unit_selling_price, cv_number_format7)  --卸単価
                 || cv_delimit || TO_CHAR(gt_vndor_deli_lines(i).selling_price)                      --売単価
+/* 2017/12/18 Ver1.9 Add Start */
+                || cv_delimit || cv_quot || gt_vndor_deli_lines(i).selling_code          || cv_quot --売上区分
+/* 2017/12/18 Ver1.9 Add End   */
         ;
         UTL_FILE.PUT_LINE(g_l_handle
                          ,gv_l_file_data
@@ -950,7 +1185,9 @@ AS
     -- ===============================
     -- A-7 トランザクション制御
     -- ===============================
-    COMMIT;
+/* 2017/12/18 Ver1.9 Del Start */
+--    COMMIT;
+/* 2017/12/18 Ver1.9 Del End   */
 --
   EXCEPTION
     WHEN break_process_expt THEN
@@ -960,6 +1197,12 @@ AS
       -- 警告件数に明細数を加算
       gn_warn_cnt := gn_warn_cnt + gt_vndor_deli_lines.COUNT;
       ov_retcode  := cv_status_warn;
+/* 2017/12/18 Ver1.9 Add Start */
+    WHEN break_process_err_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+      gn_error_cnt := gn_error_cnt + 1;
+/* 2017/12/18 Ver1.9 Add End   */
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -983,6 +1226,227 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END proc_break_process;
+--
+/* 2017/12/18 Ver1.9 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : proc_break_process_online
+   * Description      : 受注ヘッダ情報IDブレイク後の処理（ファイル出力、ステータス更新）
+   *                    ONLINE用
+   ***********************************************************************************/
+  PROCEDURE proc_break_process_online(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_break_process_online'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_lock_error_code   CONSTANT NUMBER := -54;
+--
+    -- *** ローカル変数 ***
+    lv_edi_line_info_id      oe_order_lines_all.line_id%TYPE;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** 例外処理 ***
+    break_process_expt     EXCEPTION;
+    break_process_err_expt EXCEPTION;
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ===============================
+    -- Loop5 明細
+    -- ===============================
+    <<lines_update_loop>>
+    FOR i IN 1..gt_vndor_deli_lines_online.COUNT LOOP
+      -- ===============================
+      -- A-12 受注明細テーブルレコードロック
+      -- ===============================
+      BEGIN
+        SELECT oola.line_id
+        INTO   lv_edi_line_info_id
+        FROM   oe_order_lines_all oola
+        WHERE  oola.line_id = gt_vndor_deli_lines_online(i).edi_line_info_id
+        FOR UPDATE NOWAIT
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+          IF (SQLCODE = cn_lock_error_code) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                                , cv_msg_lock
+                                                , cv_tkn_lock
+                                                , gv_msg_on_lock_table
+                                                 );
+            -- ログ出力
+            log_output( cv_prg_name, lv_errmsg );
+          ELSE
+            lv_errmsg  := NULL;
+          END IF;
+          RAISE break_process_expt;
+      END;
+--
+      -- ===============================
+      -- A-13 受注明細テーブル出力済フラグ更新
+      -- ===============================
+      BEGIN
+        UPDATE oe_order_lines_all
+        SET    global_attribute7          = cv_output_flag
+              ,last_updated_by            = cn_last_updated_by
+              ,last_update_date           = cd_last_update_date
+              ,last_update_login          = cn_last_update_login
+              ,request_id                 = cn_request_id
+              ,program_application_id     = cn_program_application_id
+              ,program_id                 = cn_program_id
+              ,program_update_date        = cd_program_update_date
+        WHERE  line_id                    = gt_vndor_deli_lines_online(i).edi_line_info_id
+        ;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+          xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                              -- エラー・メッセージ
+                                          ,ov_retcode     => lv_retcode                             -- リターン・コード
+                                          ,ov_errmsg      => lv_errmsg                              -- ユーザー・エラー・メッセージ
+                                          ,ov_key_info    => gv_key_info                            -- キー情報
+                                          ,iv_item_name1  => gv_msg_edi_line_id                     -- 項目名称1
+                                          ,iv_data_value1 => gt_vndor_deli_lines_online(i).edi_line_info_id-- データの値1
+                                          );
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                              , cv_msg_update_err
+                                              , cv_tkn_table_name
+                                              , gv_msg_on_update_table
+                                              , cv_tkn_key_data
+                                              , gv_key_info
+                                              );
+          -- ログ出力
+          log_output( cv_prg_name, lv_errmsg );
+          RAISE break_process_err_expt;
+      END;
+    END LOOP lines_update_loop;
+--
+      -- ===============================
+      -- A-14 EOSヘッダファイルデータ出力
+      -- ===============================
+    BEGIN
+      --データ編集
+      gv_h_file_data :=        cv_quot || gv_delivery_base_code               || cv_quot--納品拠点コード
+              || cv_delimit ||  TO_CHAR(gv_order_number)                                --受注No
+              || cv_delimit || cv_quot || gv_conv_customer_code               || cv_quot--顧客コード
+              || cv_delimit || cv_quot || gv_invoice_number                   || cv_quot--伝票番号
+              || cv_delimit ||  TO_CHAR(gd_request_date,'YYYYMMDD')                     --納品日
+              || cv_delimit || cv_quot || gv_big_classification_code          || cv_quot--売上分類区分
+              || cv_delimit || cv_quot || gv_invoice_class                    || cv_quot--売上伝票区分
+              || cv_delimit || cv_quot || gv_company_name_alt                 || cv_quot--社名（カナ）
+              || cv_delimit || cv_quot || gv_shop_name_alt                    || cv_quot--店名（カナ）
+              || cv_delimit || cv_quot || gv_edi_chain_code                   || cv_quot--チェーン店コード
+              || cv_delimit || cv_quot || gv_subinventory                     || cv_quot--保管場所コード
+              || cv_delimit || cv_quot || gv_shipping_instructions            || cv_quot--備考（出荷指示）
+              || cv_delimit || cv_quot || gv_order_from_code                  || cv_quot--発生元区分
+              || cv_delimit || cv_quot || gv_order_number_hht                 || cv_quot--受注No.（HHT）
+              || cv_delimit || cv_quot || gv_order_no                         || cv_quot--オーダーNo
+      ;
+      UTL_FILE.PUT_LINE(g_h_handle
+                       ,gv_h_file_data
+                       );
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+        RAISE;
+    END;
+--
+   --   ===============================
+   --   Loop6 明細(ファイル)
+   --   ===============================
+    <<lins_out_loop>>
+    FOR i IN 1..gt_vndor_deli_lines_online.COUNT LOOP
+--
+      -- ===============================
+      -- A-15 EOS明細ファイルデータ出力
+      -- ===============================
+      BEGIN
+        --データ編集
+        gv_l_file_data :=        cv_quot || gt_vndor_deli_lines_online(i).delivery_base_code    || cv_quot   --納品拠点コード
+                || cv_delimit ||  gt_vndor_deli_lines_online(i).order_number                                 --受注No
+                || cv_delimit ||  gt_vndor_deli_lines_online(i).line_number                                  --行No
+                || cv_delimit || cv_quot || gt_vndor_deli_lines_online(i).conv_customer_code    || cv_quot   --顧客コード
+                || cv_delimit || cv_quot || gt_vndor_deli_lines_online(i).invoice_number        || cv_quot   --伝票番号
+                || cv_delimit || cv_quot || gt_vndor_deli_lines_online(i).ordered_item          || cv_quot   --自社品名コード
+                || cv_delimit || cv_quot || gt_vndor_deli_lines_online(i).customer_item_number  || cv_quot   --他社品名コード
+                || cv_delimit || cv_quot || gt_vndor_deli_lines_online(i).customer_item_desc    || cv_quot   --他社品名
+                || cv_delimit || cv_quot || gt_vndor_deli_lines_online(i).quantity_sign         || cv_quot   --数量サイン
+                || cv_delimit || TO_CHAR(gt_vndor_deli_lines_online(i).ordered_quantity, cv_number_format8)  --数量
+                || cv_delimit || TO_CHAR(gt_vndor_deli_lines_online(i).unit_selling_price, cv_number_format7)--卸単価
+                || cv_delimit || TO_CHAR(gt_vndor_deli_lines_online(i).selling_price)                        --売単価
+                || cv_delimit || cv_quot || gt_vndor_deli_lines_online(i).selling_code          || cv_quot   --売上区分
+        ;
+        UTL_FILE.PUT_LINE(g_l_handle
+                         ,gv_l_file_data
+                         );
+        gn_normal_o_cnt := gn_normal_o_cnt + 1;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+          RAISE;
+      END;
+    END LOOP lins_out_loop;
+--
+  EXCEPTION
+    WHEN break_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := lv_errbuf;
+      -- 警告件数に明細数を加算
+      gn_warn_cnt := gn_warn_cnt + gt_vndor_deli_lines_online.COUNT;
+      ov_retcode  := cv_status_warn;
+    WHEN break_process_err_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+      gn_error_cnt := gn_error_cnt + 1;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      -- 警告件数に明細数を加算
+      gn_warn_cnt := gn_warn_cnt + gt_vndor_deli_lines_online.COUNT;
+      ov_retcode := cv_status_warn;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+      gn_error_cnt := gn_error_cnt + 1;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END proc_break_process_online;
+/* 2017/12/18 Ver1.9 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : proc_main_loop（ループ部）
@@ -1357,19 +1821,39 @@ AS
       gt_vndor_deli_lines(gn_set_cnt).selling_price        := ln_tmp_selling_price          ;--売単価
 /* 2015/01/08 Ver1.8 Mod End */
       gt_vndor_deli_lines(gn_set_cnt).edi_line_info_id     := main_rec.edi_line_info_id     ;--EDI明細情報ID
+/* 2017/12/18 Ver1.9 Add Start */
+      gt_vndor_deli_lines(gn_set_cnt).selling_code         := main_rec.selling_code         ;--売上区分
+/* 2017/12/18 Ver1.9 Add End   */
 --
+/* 2017/12/18 Ver1.9 Mod Start */
       --次ループ時に使用するためにヘッダファイル出力用に変数設定
-      gv_delivery_base_code      := main_rec.delivery_base_code     ;--納品拠点コード
-      gv_order_number            := main_rec.order_number           ;--受注No
-      gv_conv_customer_code      := main_rec.conv_customer_code     ;--顧客コード
-      gv_invoice_number          := lv_invoice_number               ;--伝票番号
-      gd_request_date            := main_rec.request_date           ;--納品日
-      gv_big_classification_code := main_rec.big_classification_code;--売上分類区分
-      gv_invoice_class           := main_rec.invoice_class          ;--売上伝票区分
-      gv_company_name_alt        := main_rec.company_name_alt       ;--社名（カナ）
-      gv_shop_name_alt           := main_rec.shop_name_alt          ;--店名（カナ）
-      gv_edi_chain_code          := main_rec.edi_chain_code         ;--チェーン店コード
-      gn_edi_header_info_id      := main_rec.edi_header_info_id     ;--受注ヘッダ情報ID
+      --gv_delivery_base_code      := main_rec.delivery_base_code     ;--納品拠点コード
+      --gv_order_number            := main_rec.order_number           ;--受注No
+      --gv_conv_customer_code      := main_rec.conv_customer_code     ;--顧客コード
+      --gv_invoice_number          := lv_invoice_number               ;--伝票番号
+      --gd_request_date            := main_rec.request_date           ;--納品日
+      --gv_big_classification_code := main_rec.big_classification_code;--売上分類区分
+      --gv_invoice_class           := main_rec.invoice_class          ;--売上伝票区分
+      --gv_company_name_alt        := main_rec.company_name_alt       ;--社名（カナ）
+      --gv_shop_name_alt           := main_rec.shop_name_alt          ;--店名（カナ）
+      --gv_edi_chain_code          := main_rec.edi_chain_code         ;--チェーン店コード
+      --gn_edi_header_info_id      := main_rec.edi_header_info_id     ;--受注ヘッダ情報ID
+      IF ( gn_set_cnt = 1 ) THEN
+        gv_delivery_base_code      := main_rec.delivery_base_code     ;--納品拠点コード
+        gv_order_number            := main_rec.order_number           ;--受注No
+        gv_conv_customer_code      := main_rec.conv_customer_code     ;--顧客コード
+        gv_invoice_number          := lv_invoice_number               ;--伝票番号
+        gd_request_date            := main_rec.request_date           ;--納品日
+        gv_big_classification_code := main_rec.big_classification_code;--売上分類区分
+        gv_invoice_class           := main_rec.invoice_class          ;--売上伝票区分
+        gv_company_name_alt        := main_rec.company_name_alt       ;--社名（カナ）
+        gv_shop_name_alt           := main_rec.shop_name_alt          ;--店名（カナ）
+        gv_edi_chain_code          := main_rec.edi_chain_code         ;--チェーン店コード
+        gv_subinventory            := main_rec.subinventory           ;--保管場所コード
+        gv_shipping_instructions   := main_rec.shipping_instructions  ;--出荷指示
+        gn_edi_header_info_id      := main_rec.edi_header_info_id     ;--受注ヘッダ情報ID
+      END IF;
+/* 2017/12/18 Ver1.9 Mod End   */
     END LOOP main_loop;
 --
   EXCEPTION
@@ -1399,6 +1883,376 @@ AS
 --
   END proc_main_loop;
 
+--
+/* 2017/12/18 Ver1.9 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : proc_main_online_loop（ループ部）
+   * Description      : A-11データ抽出
+   ***********************************************************************************/
+  PROCEDURE proc_main_online_loop(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_main_online_loop'; -- メインループ処理（ONLINE）
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_max_val_order_number       NUMBER := 999999999;      -- 受注番号最大値
+    cn_max_val_line_number        NUMBER := 999;            -- 明細番号最大値
+    cn_max_len_ordered_item       NUMBER := 7;              -- 受注品目最大桁数
+    cn_max_len_customer_item_num  NUMBER := 13;             -- 顧客品目コード最大桁数
+    cn_max_len_customer_item_desc NUMBER := 15;             -- 顧客品目摘要最大桁数
+    cn_max_val_ordered_quantity   NUMBER := 99999999.99;    -- 受注数量最大値
+    cn_max_val_unit_selling_price NUMBER := 9999999.99;     -- 販売単価最大値
+    cn_max_val_selling_price      NUMBER := 9999999;        -- 売単価最大値
+    cn_max_len_invoice_number     NUMBER := 9;              -- 伝票番号最大桁数
+    cn_cut_len_invoice_number     NUMBER := -9;             -- 伝票番号切り出し桁数（後ろ9桁）
+    cn_max_len_shop_name_alt      NUMBER := 20;             -- 店名（カナ）最大桁数
+    cn_max_len_company_name_alt   NUMBER := 20;             -- 社名（カナ）最大桁数
+--
+    -- *** ローカル変数 ***
+    lv_sign                VARCHAR2(1);
+    lv_invoice_number      VARCHAR2(9);
+    lv_shop_name_alt       VARCHAR2(20);                    -- 店名（カナ）
+    lv_company_name_alt    VARCHAR2(20);                    -- 社名（カナ）
+    lv_item_name           VARCHAR2(20);
+    lv_message_code        VARCHAR2(20);
+    lv_item_value          VARCHAR2(100);
+    lv_organization_id     VARCHAR2(10);                    -- 在庫組織ＩＤ
+    lv_after_uom_code      VARCHAR2(10);                    -- 換算後単位コード
+    ln_after_quantity      NUMBER;                          -- 換算後数量
+    ln_content             NUMBER;                          -- 入数
+    ln_tmp_selling_price      oe_order_lines_all.attribute10%TYPE;         -- 売単価(一時)
+    ln_tmp_unit_selling_price oe_order_lines_all.unit_selling_price%TYPE;  -- 卸単価(一時)
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        ループ処理の記述         ***
+    -- ***       処理部の呼び出し          ***
+    -- ***************************************
+--
+    -- チェックステータス初期化
+    gv_transaction_status := NULL;
+    gn_edi_header_info_id := NULL;
+--
+    <<main_online_loop>>
+    FOR main_online_rec in main_online_cur LOOP
+--
+      -- 対象件数をインクリメント
+      gn_target_o_cnt := gn_target_o_cnt + 1;
+--
+      -- ===============================
+      -- 受注ヘッダ情報IDブレイク判定
+      -- ===============================
+      IF (gn_edi_header_info_id IS NULL                                    -- メインループ初回
+      OR main_online_rec.edi_header_info_id = gn_edi_header_info_id)       -- ブレイクしてない
+      THEN
+        NULL;
+      ELSE
+        -- 受注ヘッダ情報ID内にエラー無し
+        IF (gv_transaction_status IS NULL) THEN
+          proc_break_process_online(
+             lv_errbuf   -- エラー・メッセージ           --# 固定 #
+            ,lv_retcode  -- リターン・コード             --# 固定 #
+            ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            --(エラー処理)
+            RAISE global_process_expt;
+          ELSIF (lv_retcode = cv_status_warn) THEN
+            --警告処理
+            ov_retcode := lv_retcode;
+          END IF;
+--
+        ELSE
+          -- 警告件数にエラー明細数を加算
+          gn_warn_cnt := gn_warn_cnt + gn_set_o_cnt;
+--
+        END IF;
+--
+        -- 設定カウンタ初期化
+        gn_set_o_cnt := 0;
+        -- PL/SQL表クリア
+        gt_vndor_deli_lines_online.DELETE;
+        -- 受注ヘッダ情報ID内のエラー判定ステータスの初期化
+        gv_transaction_status := NULL;
+      END IF;
+--
+      -- ===============================
+      -- A-10 データチェック
+      -- ===============================
+      BEGIN
+        --------------------
+        -- 必須チェック
+        --------------------
+        --拠点コード
+        IF ( main_online_rec.delivery_base_code IS NULL ) THEN
+          lv_message_code := cv_msg_notnull;
+          lv_item_name    := gv_msg_delivery_base_code;
+          lv_item_value   := main_online_rec.delivery_base_code;    --必ずnullになるが、桁数チェックとパラメータを揃える為。
+          RAISE global_data_check_expt;
+        END IF;
+--
+        --------------------
+        -- 桁数チェック
+        --------------------
+        -- 受注ヘッダテーブル：受注番号
+        IF ( main_online_rec.order_number > cn_max_val_order_number ) THEN
+          lv_message_code := cv_msg_overflow;
+          lv_item_name    := gv_msg_order_number;
+          lv_item_value   := main_online_rec.order_number;
+          RAISE global_data_check_expt;
+        END IF;
+--
+        -- 受注明細テーブル：明細番号
+        IF  (main_online_rec.line_number > cn_max_val_line_number ) THEN
+          lv_message_code := cv_msg_overflow;
+          lv_item_name    := gv_msg_line_number;
+          lv_item_value   := main_online_rec.line_number;
+          RAISE global_data_check_expt;
+        END IF;
+--
+        -- 受注明細テーブル：受注品目
+        IF ( LENGTHB(main_online_rec.ordered_item) > cn_max_len_ordered_item ) THEN
+          lv_message_code := cv_msg_overflow;
+          lv_item_name    := gv_msg_ordered_item;
+          lv_item_value   := main_online_rec.ordered_item;
+          RAISE global_data_check_expt;
+        END IF;
+--
+        -- 顧客品目：顧客品目コード
+        -- NULL
+--
+        -- 顧客品目：顧客品目摘要
+        -- NULL
+--
+        -- 受注数量の単位換算
+        lv_organization_id        := NULL;  --NULLを設定（共通関数内で導出）
+        lv_after_uom_code         := NULL;  --換算後単位コードの初期化
+        ln_tmp_unit_selling_price := NULL;  --卸単価の初期化
+        ln_tmp_selling_price      := NULL;  --売単価の初期化
+        xxcos_common_pkg.get_uom_cnv(
+                                     main_online_rec.order_quantity_uom,    -- 換算前単位コード
+                                     main_online_rec.ordered_quantity,      -- 換算前数量
+                                     main_online_rec.ordered_item,          -- 品目コード
+                                     gv_organization_code,                  -- 在庫組織コード
+                                     main_online_rec.inventory_item_id,     -- 品目ID
+                                     lv_organization_id,                    -- 在庫組織ＩＤ
+                                     lv_after_uom_code,                     -- 換算後単位コード
+                                     ln_after_quantity,                     -- 換算後数量
+                                     ln_content,                            -- 入数
+                                     lv_errbuf,                             -- エラー･メッセージ
+                                     lv_retcode,                            -- リターンコード
+                                     lv_errmsg                              -- ユーザ･エラー･メッセージ
+                                    );
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_change_err_expt;
+        END IF;
+        -- 換算前数量と換算後数量が異なる場合
+        IF ( main_online_rec.ordered_quantity <> ln_after_quantity ) THEN
+           ln_tmp_unit_selling_price := TRUNC(main_online_rec.unit_selling_price / ln_content, 2);--卸単価
+           ln_tmp_selling_price      := TRUNC(main_online_rec.selling_price      / ln_content);   --売単価
+        -- 換算前後で数量が等しい場合
+        ELSE
+           ln_tmp_unit_selling_price := main_online_rec.unit_selling_price;                       --卸単価
+           ln_tmp_selling_price      := main_online_rec.selling_price;                            --売単価
+        END IF;
+--
+        -- 受注明細テーブル：受注数量
+        IF ( ln_after_quantity > cn_max_val_ordered_quantity ) THEN
+          lv_message_code := cv_msg_overflow;
+          lv_item_name    := gv_msg_ordered_quantity;
+          lv_item_value   := main_online_rec.ordered_quantity;
+          RAISE global_data_check_expt;
+        END IF;
+--
+        -- 受注明細テーブル：販売単価
+        IF ( ln_tmp_unit_selling_price > cn_max_val_unit_selling_price ) THEN
+          lv_message_code := cv_msg_overflow;
+          lv_item_name    := gv_msg_unit_selling_price;
+          lv_item_value   := main_online_rec.unit_selling_price;
+          RAISE global_data_check_expt;
+        END IF;
+--
+        -- EDI明細情報テーブル：売単価
+        IF ( ln_tmp_selling_price > cn_max_val_selling_price ) THEN
+          lv_message_code := cv_msg_overflow;
+          lv_item_name    := gv_msg_selling_price;
+          lv_item_value   := main_online_rec.selling_price;
+          RAISE global_data_check_expt;
+        END IF;
+--
+      EXCEPTION
+        WHEN global_data_check_expt THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                               ,lv_message_code
+                                               ,cv_tkn_order_number
+                                               ,main_online_rec.order_number
+                                               ,cv_tkn_line_number
+                                               ,main_online_rec.line_number
+                                               ,cv_tkn_item_name
+                                               ,lv_item_name
+                                               ,cv_tkn_item_value
+                                               ,lv_item_value
+                                               );
+                                               
+          -- ログ出力
+          log_output( cv_prg_name, lv_errmsg );
+          ov_errmsg := lv_errmsg;
+          ov_errbuf := lv_errmsg;
+          gv_transaction_status := cv_error_status;
+          ov_retcode  := cv_status_warn;
+        WHEN global_change_err_expt THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                               ,cv_msg_change_err
+                                               ,cv_tkn_order_number
+                                               ,main_online_rec.order_number
+                                               ,cv_tkn_line_number
+                                               ,main_online_rec.line_number
+                                               ,cv_tkn_err_msg
+                                               ,lv_errmsg
+                                               );
+--
+          -- ログ出力
+          log_output( cv_prg_name, lv_errmsg );
+          ov_errmsg := lv_errmsg;
+          ov_errbuf := lv_errmsg;
+          gv_transaction_status := cv_error_status;
+          ov_retcode  := cv_status_warn;
+--
+          --空行
+          FND_FILE.PUT_LINE(which  => FND_FILE.OUTPUT
+                           ,buff   => ''
+                           );
+          FND_FILE.PUT_LINE(which  => FND_FILE.LOG
+                           ,buff   => ''
+                           );
+      END;
+--
+      -- ===============================
+      -- A-16 EOS明細ファイル出力用に変数設定
+      -- ===============================
+      -- 数量サインの編集
+      IF ( main_online_rec.line_category_code = cv_order ) THEN
+        lv_sign := cv_brank;
+      ELSE
+        lv_sign := cv_minus;
+      END IF;
+--
+      -- 伝票番号の編集
+      IF ( LENGTHB(main_online_rec.invoice_number) > cn_max_len_invoice_number ) THEN
+        -- 伝票番号が9桁超の場合は、末尾9桁分を出力
+        lv_invoice_number := SUBSTRB( main_online_rec.invoice_number, cn_cut_len_invoice_number );
+      ELSE
+        -- 伝票番号が9桁以下の場合は、そのまま出力
+        lv_invoice_number := main_online_rec.invoice_number;
+      END IF;
+--
+      -- 店名（カナ）の編集
+      IF ( LENGTHB(main_online_rec.shop_name_alt) > cn_max_len_shop_name_alt ) THEN
+        -- 店名（カナ）が20桁超の場合は、先頭20桁分を出力
+        lv_shop_name_alt := SUBSTRB( main_online_rec.shop_name_alt, 1, cn_max_len_shop_name_alt );
+      ELSE
+        -- 店名（カナ）が20桁以下の場合は、そのまま出力
+        lv_shop_name_alt := main_online_rec.shop_name_alt;
+      END IF;
+--
+      -- 社名（カナ）の編集
+      IF ( LENGTHB(main_online_rec.company_name_alt) > cn_max_len_company_name_alt ) THEN
+        -- 社名（カナ）が20桁超の場合は、先頭20桁分を出力
+        lv_company_name_alt := SUBSTRB( main_online_rec.company_name_alt, 1, cn_max_len_company_name_alt );
+      ELSE
+        -- 社名（カナ）が20桁以下の場合は、そのまま出力
+        lv_company_name_alt := main_online_rec.company_name_alt;
+      END IF;
+--
+      -- 設定カウンタをインクリメント
+      gn_set_o_cnt := gn_set_o_cnt + 1;
+--
+      gt_vndor_deli_lines_online(gn_set_o_cnt).delivery_base_code   := main_online_rec.delivery_base_code;    --拠点コード
+      gt_vndor_deli_lines_online(gn_set_o_cnt).order_number         := main_online_rec.order_number;          --受注No
+      gt_vndor_deli_lines_online(gn_set_o_cnt).line_number          := main_online_rec.line_number;           --行No
+      gt_vndor_deli_lines_online(gn_set_o_cnt).conv_customer_code   := main_online_rec.conv_customer_code;    --顧客コード
+      gt_vndor_deli_lines_online(gn_set_o_cnt).invoice_number       := lv_invoice_number;                     --伝票番号
+      gt_vndor_deli_lines_online(gn_set_o_cnt).ordered_item         := main_online_rec.ordered_item;          --自社品名コード
+      gt_vndor_deli_lines_online(gn_set_o_cnt).customer_item_number := main_online_rec.product_code2;         --他社品名コード
+      gt_vndor_deli_lines_online(gn_set_o_cnt).customer_item_desc   := main_online_rec.product_name_alt;      --他社品名
+      gt_vndor_deli_lines_online(gn_set_o_cnt).quantity_sign        := lv_sign;                               --数量サイン（明細カテゴリコード）
+      gt_vndor_deli_lines_online(gn_set_o_cnt).ordered_quantity     := ln_after_quantity;                     --数量
+      gt_vndor_deli_lines_online(gn_set_o_cnt).unit_selling_price   := ln_tmp_unit_selling_price;             --卸単価
+      gt_vndor_deli_lines_online(gn_set_o_cnt).selling_price        := ln_tmp_selling_price;                  --売単価
+      gt_vndor_deli_lines_online(gn_set_o_cnt).edi_line_info_id     := main_online_rec.edi_line_info_id;      --EDI明細情報ID
+      gt_vndor_deli_lines_online(gn_set_o_cnt).selling_code         := main_online_rec.selling_code;          --売上区分
+--
+      --次ループ時に使用するためにヘッダファイル出力用に変数設定
+      IF ( gn_set_o_cnt = 1 ) THEN
+        gv_delivery_base_code      := main_online_rec.delivery_base_code;     --納品拠点コード
+        gv_order_number            := main_online_rec.order_number;           --受注No
+        gv_conv_customer_code      := main_online_rec.conv_customer_code;     --顧客コード
+        gv_invoice_number          := lv_invoice_number;                      --伝票番号
+        gd_request_date            := main_online_rec.request_date;           --納品日
+        gv_big_classification_code := main_online_rec.big_classification_code;--売上分類区分
+        gv_invoice_class           := main_online_rec.invoice_class;          --売上伝票区分
+        gv_company_name_alt        := lv_company_name_alt;                    --社名（カナ）
+        gv_shop_name_alt           := lv_shop_name_alt;                       --店名（カナ）
+        gv_edi_chain_code          := main_online_rec.edi_chain_code;         --チェーン店コード
+        gv_subinventory            := main_online_rec.subinventory;           --保管場所コード
+        gv_shipping_instructions   := main_online_rec.shipping_instructions;  --出荷指示
+        gv_order_from_code         := main_online_rec.order_from_code;        --発生元区分
+        gv_order_number_hht        := main_online_rec.order_number_hht;       --受注No.(HHT)
+        gv_order_no                := main_online_rec.order_no;               --オーダーNo
+        gn_edi_header_info_id      := main_online_rec.edi_header_info_id;     --受注ヘッダ情報ID
+      END IF;
+    END LOOP main_online_loop;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END proc_main_online_loop;
+/* 2017/12/18 Ver1.9 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -1454,6 +2308,13 @@ AS
     gn_error_cnt  := 0;
     gn_warn_cnt   := 0;
     gn_set_cnt    := 0;
+/* 2017/12/18 Ver1.9 Add Start */
+    gn_target_o_cnt := 0;
+    gn_normal_o_cnt := 0;
+    gn_set_o_cnt    := 0;
+    gn_target_all   := 0;
+    gn_normal_all   := 0;
+/* 2017/12/18 Ver1.9 Add End */
 --
     -- ===============================================
     -- 初期処理
@@ -1513,6 +2374,53 @@ AS
       END IF;
 --
     END IF;
+--
+/* 2017/12/18 Ver1.9 Add Start */
+    -- ===============================
+    -- Loop4 メイン A-11データ抽出
+    -- ===============================
+--
+    proc_main_online_loop(
+       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode  -- リターン・コード             --# 固定 #
+      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    ELSIF (gn_target_o_cnt > 0) THEN
+--
+      IF (lv_retcode != cv_status_normal) THEN
+        -- リターンコード設定
+        ov_retcode := lv_retcode;
+      END IF;
+--
+      -- 受注ヘッダ情報ID内にエラー無し
+      IF (gv_transaction_status IS NULL) THEN
+--
+        --(警告処理または正常処理)
+        proc_break_process_online(
+           lv_errbuf   -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode  -- リターン・コード             --# 固定 #
+          ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        IF (lv_retcode != cv_status_normal) THEN
+          -- リターンコード設定
+          ov_retcode := lv_retcode;
+        END IF;
+--
+      ELSE
+          -- 警告件数にエラー明細数を加算
+          gn_warn_cnt := gn_warn_cnt + gn_set_o_cnt;
+--
+      END IF;
+--
+    END IF;
+/* 2017/12/18 Ver1.9 Add End   */
 --
   EXCEPTION
 --
@@ -1607,6 +2515,13 @@ AS
     -- ===============================================
     -- 終了処理
     -- ===============================================
+/* 2017/12/18 Ver1.9 Add Start */
+    -- 件数の集計
+    -- 対象件数
+    gn_target_all := gn_target_cnt + gn_target_o_cnt;
+    -- 正常件数
+    gn_normal_all := gn_normal_cnt + gn_normal_o_cnt;
+/* 2017/12/18 Ver1.9 Add End   */
     --ファイルのクローズ
     UTL_FILE.FCLOSE(g_h_handle);
     UTL_FILE.FCLOSE(g_l_handle);
@@ -1639,7 +2554,10 @@ AS
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_target_rec_msg
                     ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+/* 2017/12/18 Ver1.9 Mod Start */
+--                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+                    ,iv_token_value1 => TO_CHAR(gn_target_all)
+/* 2017/12/18 Ver1.9 Mod End   */
                    );
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
@@ -1651,7 +2569,10 @@ AS
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_success_rec_msg
                     ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+/* 2017/12/18 Ver1.9 Mod Start */
+--                    ,iv_token_value1 => TO_CHAR(gn_normal_cnt)
+                    ,iv_token_value1 => TO_CHAR(gn_normal_all)
+/* 2017/12/18 Ver1.9 Mod End   */
                    );
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
@@ -1699,11 +2620,19 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+--
+    -- ===============================
+    -- A-7 トランザクション制御
+    -- ===============================
     --ステータスセット
     retcode := lv_retcode;
     --終了ステータスがエラーの場合はROLLBACKする
     IF (retcode = cv_status_error) THEN
       ROLLBACK;
+/* 2017/12/18 Ver1.9 Add Start */
+    ELSE
+      COMMIT;
+/* 2017/12/18 Ver1.9 Add End   */
     END IF;
 --
   EXCEPTION
