@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2014/03/04   1.7    T.Nakano         [E_本稼動_11551]パフォーマンス対応
  *  2015/01/08   1.8    H.Wajima         [E_本稼動_12806]単位換算処理の修正
  *  2017/12/18   1.9    Y.Omuro          [E_本稼動_14486]次期HHTシステムからの受注取込
+ *  2018/01/18   1.10   K.Kiriu          [E_本稼動_14486]次期HHTシステムからの受注取込（伝票区分対応）
  *
  *****************************************************************************************/
 --
@@ -212,7 +213,10 @@ AS
   gv_invoice_number           xxcos_edi_headers.invoice_number%TYPE         ;--伝票番号
   gd_request_date             oe_order_headers_all.request_date%TYPE        ;--納品日
   gv_big_classification_code  xxcos_edi_headers.big_classification_code%TYPE;--売上分類区分
-  gv_invoice_class            xxcos_edi_headers.invoice_class%TYPE          ;--売上伝票区分
+-- Ver.1.10 Mod Start
+--  gv_invoice_class            xxcos_edi_headers.invoice_class%TYPE          ;--売上伝票区分
+  gv_invoice_class            oe_order_headers_all.attribute5%TYPE          ;--売上伝票区分
+-- Ver.1.10 Mod End
   gv_company_name_alt         xxcos_edi_headers.company_name_alt%TYPE       ;--社名（カナ）
   gv_shop_name_alt            xxcos_edi_headers.shop_name_alt%TYPE          ;--店名（カナ）
   gv_edi_chain_code           xxcos_edi_headers.edi_chain_code%TYPE         ;--チェーン店コード
