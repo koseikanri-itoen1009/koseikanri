@@ -13,6 +13,9 @@
 ##                       HWリプレース対応(リプレース_00007)                   ##
 ##                         ・Copyrightの削除                                  ##
 ##                         ・TNSリスナーの起動確認対象プロセスを変更          ##
+##                     SCSK 廣守             2018/01/12 2.0.1                 ##
+##                       E_本稼動_14800対応                                   ##
+##                         ・Formsサーバ起動確認追加                          ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      なし                                                                  ##
@@ -37,6 +40,9 @@ L_web_f=""                         ##Webサーバ確認用フラグ
 L_apps_f=""                        ##APサーバ確認用フラグ
 L_tns_f=""                         ##TNSリスナー確認用フラグ
 L_db_f=""                          ##DBサーバ確認用フラグ
+## 2018/01/12 Add Start ※E_本稼動_14800対応
+L_forms_f=""                       ##Formsサーバ確認用フラグ
+## 2018/01/12 Add End ※E_本稼動_14800対応
 
 
 ################################################################################
@@ -65,11 +71,28 @@ L_ap_kakunin()
       L_apps_f=1
    fi
 
+## 2018/01/12 Add Start ※E_本稼動_14800対応
+   # Formsサーバ起動確認
+   L_purosesu=`/usr/bin/ps -ef | grep ${L_uzamei} | /usr/bin/grep f60srvm | /usr/bin/grep -v "grep" | /usr/bin/wc -l`
+   if [ "${L_purosesu}" -eq 0 ]
+   then
+      L_forms_f=0            # Formsサーバ停止済み
+   else
+      L_forms_f=1
+   fi
+## 2018/01/12 Add End ※E_本稼動_14800対応
+
    # 判定
-   if [ "${L_web_f}" -eq 0 -a "${L_apps_f}" -eq 0 ]
+## 2018/01/12 Mod Start ※E_本稼動_14800対応
+#   if [ "${L_web_f}" -eq 0 -a "${L_apps_f}" -eq 0 ]
+   if [ "${L_web_f}" -eq 0 -a "${L_apps_f}" -eq 0 -a "${L_forms_f}" -eq 0 ]
+## 2018/01/12 Mod End ※E_本稼動_14800対応
    then
       echo "${L_hosutomei}サーバのEBSプロセスは停止しています"
-   elif [ "${L_web_f}" -eq 1 -a "${L_apps_f}" -eq 1 ]
+## 2018/01/12 Mod Start ※E_本稼動_14800対応
+#   elif [ "${L_web_f}" -eq 1 -a "${L_apps_f}" -eq 1 ]
+   elif [ "${L_web_f}" -eq 1 -a "${L_apps_f}" -eq 1 -a "${L_forms_f}" -eq 1 ]
+## 2018/01/12 Mod End ※E_本稼動_14800対応
    then
       echo "${L_hosutomei}サーバのEBSプロセスは起動しています"
    else
