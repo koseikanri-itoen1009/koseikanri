@@ -18,6 +18,10 @@
 ##                         ・DB停止コマンドの変更                             ##
 ##                         ・TNSリスナープロセスの監視対象の変更              ##
 ##                         ・シェル名変更                                     ##
+##                     SCSK   廣守           2017/12/06 2.0.1                 ##
+##                       E_本稼動_14688対応                                   ##
+##                         ・TNSエラーメッセージ変更                          ##
+##                             TE_ZCZZ00504 -> TE_ZCZZ00506                   ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -228,8 +232,12 @@ trap 'L_shuryo 8' 1 2 3 15
     then
       L_rogushuturyoku "${TE_ZCZZ00505}"
   else
-      L_rogushuturyoku "${TE_ZCZZ00504}"
-      echo "${TE_ZCZZ00504}" 1>&2
+##2017/12/06 S.Hiromori Message Change Start TE_ZCZZ00504 -> TE_ZCZZ00506
+#      L_rogushuturyoku "${TE_ZCZZ00504}"
+#      echo "${TE_ZCZZ00504}" 1>&2
+      L_rogushuturyoku "${TE_ZCZZ00506}"
+      echo "${TE_ZCZZ00506}" 1>&2
+##2017/12/06 S.Hiromori Message Change END
       L_shuryo ${L_ijou}
   fi
 
@@ -249,8 +257,12 @@ trap 'L_shuryo 8' 1 2 3 15
 
   if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ne 0 ]
     then
-      L_rogushuturyoku "${TE_ZCZZ00504}"
-      echo "${TE_ZCZZ00504}" 1>&2
+##2017/12/06 S.Hiromori Message Change Start TE_ZCZZ00504 -> TE_ZCZZ00506
+#      L_rogushuturyoku "${TE_ZCZZ00504}"
+#      echo "${TE_ZCZZ00504}" 1>&2
+      L_rogushuturyoku "${TE_ZCZZ00506}"
+      echo "${TE_ZCZZ00506}" 1>&2
+##2017/12/06 S.Hiromori Message Change End
       L_shuryo ${L_ijou}
   fi
 
