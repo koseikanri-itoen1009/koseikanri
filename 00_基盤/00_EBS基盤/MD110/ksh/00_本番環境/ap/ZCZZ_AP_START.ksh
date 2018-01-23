@@ -14,6 +14,9 @@
 ##                         ・Copyrightの削除                                  ##
 ##                         ・環境依存値の変数化                               ##
 ##                         ・シェル名変更                                     ##
+##                     SCSK 廣守             2018/01/12 2.0.1                 ##
+##                       E_本稼動_14800対応                                   ##
+##                         ・Formsサーバ起動追加                              ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -159,6 +162,29 @@ trap 'L_shuryo 8' 1 2 3 15
       L_shuryo ${L_ijou}
   fi
 
+## 2018/01/12 Add Start ※E_本稼動_14800対応
+### Formsサーバ起動 ###
+
+  ## コマンド設定
+  L_formskaisi="${TE_ZCZZAPKOMANDOPASU}/adfrmctl.sh start"     ##Formsサーバ起動コマンド
+
+  L_rogushuturyoku "Formsサーバを起動します。"
+
+  ${L_formskaisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
+  L_dashutu=${?}
+  /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+
+## 戻り値から、adfrmctlの動作を判定
+  if [ ${L_dashutu} -eq 0 ]
+    then
+      L_rogushuturyoku "${TE_ZCZZ00403}"
+  else
+      L_rogushuturyoku "${TE_ZCZZ00402}"
+      echo "${TE_ZCZZ00402}" 1>&2
+      L_shuryo ${L_ijou}
+  fi
+## 2018/01/12 Add End ※E_本稼動_14800対応
+
 
 ### APサーバ起動確認 ###
 
@@ -190,6 +216,20 @@ trap 'L_shuryo 8' 1 2 3 15
   fi
 
   L_rogushuturyoku "APPSリスナーの起動を確認しました。"
+
+## 2018/01/12 Add Start ※E_本稼動_14800対応
+## Formsサーバ起動確認
+  L_rogushuturyoku "Formsサーバ起動確認"
+  /usr/bin/ps -ef | grep `/usr/bin/whoami` | /usr/bin/grep f60srvm | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+  if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
+    then
+      L_rogushuturyoku "${TE_ZCZZ00402}"
+      echo "${TE_ZCZZ00402}" 1>&2
+      L_shuryo ${L_ijou}
+  fi
+
+  L_rogushuturyoku "Formsサーバの起動を確認しました。"
+## 2018/01/12 Add End ※E_本稼動_14800対応
   L_rogushuturyoku "APサーバを起動しました。"
 
 
