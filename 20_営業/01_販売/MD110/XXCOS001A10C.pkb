@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A10C(body)
  * Description      : HHT受注データの取込を行う
  * MD.050           : HHT受注データ取込(MD050_COS_001_A10)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/12/08    1.0   K.Kiriu          main新規作成(E_本稼動_14486)
+ *  2018/01/18    1.1   K.Nara           E_本稼動_14486(追加対応：受注品目数量の単位を品目の基準単位とする)
  *
  *****************************************************************************************/
 --
@@ -159,7 +160,9 @@ AS
   -- プロファイル
   cv_prof_interval          CONSTANT VARCHAR2(27)  := 'XXCOS1_INTERVAL_XXCOS001A10';  -- XXCOS:待機間隔（HHT受注インポート）
   cv_prof_max_wait          CONSTANT VARCHAR2(27)  := 'XXCOS1_MAX_WAIT_XXCOS001A10';  -- XXCOS:最大待機時間（HHT受注インポート）
-  cv_prof_hon_uom           CONSTANT VARCHAR2(19)  := 'XXCOS1_HON_UOM_CODE';          -- XXCOS:本単位コード
+-- Ver.1.1 E_本稼動_14486(追加対応) DEL START
+--  cv_prof_hon_uom           CONSTANT VARCHAR2(19)  := 'XXCOS1_HON_UOM_CODE';          -- XXCOS:本単位コード
+-- Ver.1.1 E_本稼動_14486(追加対応) DEL END
   cv_prof_organization      CONSTANT VARCHAR2(24)  := 'XXCOI1_ORGANIZATION_CODE';     -- XXCOI:在庫組織コード
   cv_prof_parge_date        CONSTANT VARCHAR2(27)  := 'XXCOS1_HHT_ORDER_PURGE_DATE';  -- XXCOS:HHT受注データ取込パージ処理日算出基準日数
   cv_org_id                 CONSTANT VARCHAR2(6)   := 'ORG_ID';                       -- MO:営業単位
@@ -251,7 +254,9 @@ AS
   -- プロファイル
   gn_interval           NUMBER;       -- XXCOS:待機間隔（HHT受注インポート）
   gn_max_wait           NUMBER;       -- XXCOS:最大待機時間（HHT受注インポート）
-  gv_hon_uom            VARCHAR2(50); -- XXCOS:本単位コード
+-- Ver.1.1 E_本稼動_14486(追加対応) DEL START
+--  gv_hon_uom            VARCHAR2(50); -- XXCOS:本単位コード
+-- Ver.1.1 E_本稼動_14486(追加対応) DEL END
   gv_organization       VARCHAR2(50); -- XXCOI:在庫組織コード
   gn_parge_date         NUMBER;       -- XXCOS:HHT受注データ取込パージ処理日算出基準日数
   gn_org_id             NUMBER;       -- MO:営業単位
@@ -372,19 +377,21 @@ AS
         RAISE global_process_expt;
       END IF;
 --
-      -- XXCOS:本単位コード
-      gv_hon_uom := fnd_profile.value( cv_prof_hon_uom );
---
-      IF ( gv_hon_uom IS NULL ) THEN
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application   => cv_xxcos_appl_short_name
-                      ,iv_name          => cv_msg_00004
-                      ,iv_token_name1   => cv_tkn_profile             -- プロファイル
-                      ,iv_token_value1  => cv_prof_hon_uom            -- プロファイル名
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE global_process_expt;
-      END IF;
+-- Ver.1.1 E_本稼動_14486(追加対応) DEL START
+--      -- XXCOS:本単位コード
+--      gv_hon_uom := fnd_profile.value( cv_prof_hon_uom );
+----
+--      IF ( gv_hon_uom IS NULL ) THEN
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application   => cv_xxcos_appl_short_name
+--                      ,iv_name          => cv_msg_00004
+--                      ,iv_token_name1   => cv_tkn_profile             -- プロファイル
+--                      ,iv_token_value1  => cv_prof_hon_uom            -- プロファイル名
+--                     );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_process_expt;
+--      END IF;
+-- Ver.1.1 E_本稼動_14486(追加対応) DEL END
 --
       -- XXCOI:在庫組織コード
       gv_organization := fnd_profile.value( cv_prof_organization );
@@ -647,6 +654,9 @@ AS
     ln_line_data_cnt      NUMBER;                                               -- 明細件数
     lt_item_code          mtl_system_items_b.segment1%TYPE;                     -- 品目コード
     lt_cust_order_e_flag  mtl_system_items_b.customer_order_enabled_flag%TYPE;  -- 顧客受注可能フラグ
+-- Ver.1.1 E_本稼動_14486(追加対応) ADD START
+    lt_primary_uom_code   mtl_system_items_b.primary_uom_code%TYPE;             -- 品目基準単位コード
+-- Ver.1.1 E_本稼動_14486(追加対応) ADD END
     lt_sales_target_class ic_item_mst_b.attribute26%TYPE;                       -- 売上対象区分
     lv_item_err_flag      VARCHAR2(1);                                          -- 品目のエラー制御用フラグ
     cn_h_cnt              NUMBER;                                               -- ヘッダ配列用カウンタ
@@ -942,9 +952,15 @@ AS
         BEGIN
           SELECT msib.segment1                     item_code
                 ,msib.customer_order_enabled_flag  customer_order_enabled_flag
+-- Ver.1.1 E_本稼動_14486(追加対応) ADD START
+                ,msib.primary_uom_code             primary_uom_code
+-- Ver.1.1 E_本稼動_14486(追加対応) ADD END
                 ,iimb.attribute26                  sales_target_class
           INTO   lt_item_code
                 ,lt_cust_order_e_flag
+-- Ver.1.1 E_本稼動_14486(追加対応) ADD START
+                ,lt_primary_uom_code
+-- Ver.1.1 E_本稼動_14486(追加対応) ADD END
                 ,lt_sales_target_class
           FROM   mtl_system_items_b msib  -- Disc品目
                 ,ic_item_mst_b      iimb  -- OPM品目
@@ -1108,7 +1124,10 @@ AS
         gt_order_oif_line(cn_l_cnt).line_number            := l_line_data_rec.line_no_hht;          -- 明細番号
         gt_order_oif_line(cn_l_cnt).inventory_item         := lt_item_code;                         -- 受注品目
         gt_order_oif_line(cn_l_cnt).ordered_quantity       := l_line_data_rec.quantity;             -- 受注数量
-        gt_order_oif_line(cn_l_cnt).order_quantity_uom     := gv_hon_uom;                           -- 受注単位
+-- Ver.1.1 E_本稼動_14486(追加対応) MOD START
+--        gt_order_oif_line(cn_l_cnt).order_quantity_uom     := gv_hon_uom;                           -- 受注単位
+        gt_order_oif_line(cn_l_cnt).order_quantity_uom     := lt_primary_uom_code;                  -- 受注単位
+-- Ver.1.1 E_本稼動_14486(追加対応) MOD END
         gt_order_oif_line(cn_l_cnt).customer_po_number     := l_header_data_rec.invoice_no;         -- 顧客発注番号
         gt_order_oif_line(cn_l_cnt).customer_line_number   := l_line_data_rec.line_no_hht;          -- 顧客発注明細番号
         gt_order_oif_line(cn_l_cnt).request_date           := l_header_data_rec.dlv_date;           -- 要求日
