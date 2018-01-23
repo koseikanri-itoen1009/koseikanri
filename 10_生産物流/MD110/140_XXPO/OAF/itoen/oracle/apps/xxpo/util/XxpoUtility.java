@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.35
+* バージョン : 1.36
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -43,6 +43,7 @@
 * 2017-06-07 1.33 桐生和幸     E_本稼動_14244対応
 * 2017-06-30 1.34 桐生和幸     E_本稼動_14267対応
 * 2017-08-10 1.35 山下翔太     E_本稼動_14243対応
+* 2018-01-09 1.36 桐生和幸     E_本稼動_14243対応（メッセージ追加）
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -12101,21 +12102,36 @@ public class XxpoUtility
    * @return String          - 訂正数量(初期値)
    * @throws OAException - OA例外
    ****************************************************************************/
-  public static String getCorrectedQuantityDef(
+// V1.36 Added START
+//  public static String getCorrectedQuantityDef(
+  public static HashMap getCorrectedQuantityDef(
+// V1.36 Added END
     OADBTransaction trans,
     Number txnsId
   ) throws OAException
   {
     String apiName = "getCorrectedQuantityDef"; // API名
-    String returnQty;   // 戻り値
+// V1.36 Mod START
+//    String returnQty;   // 戻り値
+    HashMap retHash = new HashMap();  // 戻り値
+// V1.36 Mod END
     
     // PL/SQL作成
     StringBuffer sb = new StringBuffer(1000);
     sb.append(" BEGIN                                   ");
     sb.append("   SELECT REPLACE(TO_CHAR(NVL(xvst.corrected_quantity, xvst.producted_quantity),'999999990.000'),' ') AS corrected_qty " ); // 訂正数量(初期値)
+// V1.36 Add START
+    sb.append("         ,REPLACE(TO_CHAR(xvst.corrected_quantity,'999999990.000'),' ') AS corrected_qty_org "                           ); // 訂正数量(オリジナル初期値)
+// V1.36 Add END
     sb.append("   INTO   :1                             ");
+// V1.36 Add START
+    sb.append("         ,:2                             ");
+// V1.36 Add END
     sb.append("   FROM   xxpo_vendor_supply_txns xvst   "); // 外注出来高実績
-    sb.append("   WHERE  xvst.txns_id = :2              ");
+// V1.36 Mod END
+//    sb.append("   WHERE  xvst.txns_id = :2              ");
+    sb.append("   WHERE  xvst.txns_id = :3              ");
+// V1.36 Mod END
     sb.append("   ;                                     ");
     sb.append(" END;                                    ");
     
@@ -12126,16 +12142,25 @@ public class XxpoUtility
     try
     {
       // パラメータ設定(INパラメータ)
-      cstmt.setInt(2, XxcmnUtility.intValue(txnsId)); // 実績ID
+// V1.36 Mod START
+//      cstmt.setInt(2, XxcmnUtility.intValue(txnsId)); // 実績ID
+      cstmt.setInt(3, XxcmnUtility.intValue(txnsId)); // 実績ID
+// V1.36 Mod END
       
       // パラメータ設定(OUTパラメータ)
       cstmt.registerOutParameter(1, Types.VARCHAR);   // 訂正数量(初期値)
-      
+// V1.36 Add START
+      cstmt.registerOutParameter(2, Types.VARCHAR);   // 訂正数量(オリジナル初期値)
+// V1.36 Add END
       //PL/SQL実行
       cstmt.execute();
       
       // 戻り値取得
-      returnQty    = cstmt.getString(1); // 訂正数量(初期値)
+// V1.36 Mod START
+//      returnQty    = cstmt.getString(1); // 訂正数量(初期値)
+      retHash.put("CorrectedQuantityDef", cstmt.getString(1)); // 訂正数量(初期値)
+      retHash.put("CorrectedQuantityOrg", cstmt.getString(2)); // 訂正数量(オリジナル初期値)
+// V1.36 Mod END
       
     // PL/SQL実行時例外の場合
     } catch(SQLException s)
@@ -12168,7 +12193,10 @@ public class XxpoUtility
                               XxcmnConstants.XXCMN10123);
       }
     }
-    return returnQty;
+// V1.36 Mod START
+//    return returnQty;
+    return retHash;
+// V1.36 Mod END
   } // getCorrectedQuantityDef
 
   /*****************************************************************************
@@ -12192,6 +12220,9 @@ public class XxpoUtility
     String programName          = (String)XxpoConstants.SAVE_POINT_XXPO340001J; // 機能名
     String correctedQuantity    = (String)params.get("CorrectedQuantity");      // 訂正数量
     String correctedQuantityDef = (String)params.get("CorrectedQuantityDef");   // 訂正数量(初期値)
+// V1.36 Added START
+    String productedQuantity    = (String)params.get("ProductedQuantity");      // 出来高数量
+// V1.36 Added END
     
     // OUTパラメータ用
     String retFlag = XxcmnConstants.RETURN_NOT_EXE; // 戻り値
@@ -12249,8 +12280,18 @@ public class XxpoUtility
       cstmt.setString(2, CreatedPoNum);                   // 発注番号(作成済)
       cstmt.setString(3, programName);                    // 更新機能名
       cstmt.setString(4, correctedQuantityDef);           // 更新前_数量
-      cstmt.setString(5, correctedQuantity);              // 更新後_数量
-      
+// V1.36 Added START
+      if ( !XxcmnUtility.isBlankOrNull(correctedQuantity) )
+      {
+// V1.36 Added END
+        cstmt.setString(5, correctedQuantity);            // 更新後_数量
+// V1.36 Added START
+      }
+      else
+      {
+        cstmt.setString(5, productedQuantity);            // 更新後_数量(訂正数量がNULLの場合は出来高数量とする)
+      }
+// V1.36 Added END
       // パラメータ設定(OUTパラメータ)
       cstmt.registerOutParameter(6, Types.VARCHAR);   // リターンコード
       
@@ -12329,6 +12370,9 @@ public class XxpoUtility
     Number conversionFactor  = (Number)params.get("ConversionFactor");  // 換算入数
     String correctedQuantity = (String)params.get("CorrectedQuantity"); // 訂正数量
     String lastUpdateDate    = (String)params.get("LastUpdateDate");    // 最終更新日
+// V1.36 Added START
+    String productedQuantity = (String)params.get("ProductedQuantity"); // 出来高数量
+// V1.36 Added END
 
     // OUTパラメータ用
     String retFlag = XxcmnConstants.RETURN_NOT_EXE; // 戻り値
@@ -12443,7 +12487,18 @@ public class XxpoUtility
     try
     {
       // パラメータ設定(INパラメータ)
-      cstmt.setString(1, correctedQuantity);                    // 訂正数量
+// V1.36 Added START
+      if ( !XxcmnUtility.isBlankOrNull(correctedQuantity) )
+      {
+// V1.36 Added END
+        cstmt.setString(1, correctedQuantity);                  // 訂正数量
+// V1.36 Added START
+      }
+      else
+      {
+        cstmt.setString(1, productedQuantity);                  // 出来高数量(訂正数量がNULLの場合は出来高数量とする)
+      }
+// V1.36 Added END
       cstmt.setInt(2, XxcmnUtility.intValue(conversionFactor)); // 換算入数
       cstmt.setString(3, CreatedPoNum);                         // 発注番号(作成済)
       
