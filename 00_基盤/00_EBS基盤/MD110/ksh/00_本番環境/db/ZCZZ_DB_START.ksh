@@ -22,6 +22,10 @@
 ##                         ・APPSリスナーの起動・確認処理を削除               ##
 ##                         ・終了処理のログ出力内容を修正                     ##
 ##                         ・シェル名変更                                     ##
+##                     SCSK   廣守           2017/12/06 2.0.1                 ##
+##                       E_本稼動_14688対応                                   ##
+##                         ・TNSエラーメッセージ変更                          ##
+##                             TE_ZCZZ00603 -> TE_ZCZZ00605                   ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -168,8 +172,12 @@ trap 'L_shuryo 8' 1 2 3 15
     then
       L_rogushuturyoku "${TE_ZCZZ00604}"
   else
-    L_rogushuturyoku "${TE_ZCZZ00603}"
-    echo "${TE_ZCZZ00603}" 1>&2
+##2017/12/06 S.Hiromori Message Change Start TE_ZCZZ00603 -> TE_ZCZZ00605
+#    L_rogushuturyoku "${TE_ZCZZ00603}"
+#    echo "${TE_ZCZZ00603}" 1>&2
+    L_rogushuturyoku "${TE_ZCZZ00605}"
+    echo "${TE_ZCZZ00605}" 1>&2
+##2017/12/06 S.Hiromori Message Change End
     L_shuryo ${L_ijou}
   fi
 
@@ -207,8 +215,12 @@ trap 'L_shuryo 8' 1 2 3 15
 ##2014/07/31 S.Takahashi Mod End
   if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -eq 0 ]
     then
-      L_rogushuturyoku "${TE_ZCZZ00603}"
-      echo "${TE_ZCZZ00603}" 1>&2
+##2017/12/06 S.Hiromori Message Change Start TE_ZCZZ00603 -> TE_ZCZZ00605
+#      L_rogushuturyoku "${TE_ZCZZ00603}"
+#      echo "${TE_ZCZZ00603}" 1>&2
+      L_rogushuturyoku "${TE_ZCZZ00605}"
+      echo "${TE_ZCZZ00605}" 1>&2
+##2017/12/06 S.Hiromori Message Change End
       L_shuryo ${L_ijou}
   fi
 
