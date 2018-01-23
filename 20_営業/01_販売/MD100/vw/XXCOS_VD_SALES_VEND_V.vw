@@ -3,13 +3,14 @@
  *
  * View Name       : xxcos_vd_sales_vend_v
  * Description     : 自販機販売報告書用仕入先(拠点用)ビュー
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  * 2012/02/09    1.0   K.Kiriu          [E_本稼動_08359]新規作成
+ * 2018/01/05    1.1   H.Maeda          [E_本稼動_14793]対応
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_vd_sales_vend_v(
@@ -37,6 +38,29 @@ AND    hca1.customer_class_code      =  '10'                   --顧客区分(顧客)
 AND    hca1.party_id                 =  hp1.party_id
 AND    hp1.duns_number_c             >= '30'                   --顧客ステータス(売上が上がるステータス)
 AND    xca1.contractor_supplier_code =  pv1.segment1           --BM1の仕入先
+-- 2018/01/05 Ver.1.1 H.Maeda E_本稼動_14793 ADD START
+UNION
+-- ユーザ拠点(管理下込み)が紹介者チェーン店コード２の仕入先
+SELECT /*+
+         NO_MERGE(xlbiv1)
+       */
+       DISTINCT
+       pv1.segment1        vendor_code
+      ,REPLACE( pv1.vendor_name, pv1.segment1, '' )
+                           vendor_name
+FROM   xxcos_login_base_info_v xlbiv1  --ユーザ拠点ビュー
+      ,xxcmm_cust_accounts     xca1    --顧客追加情報
+      ,hz_cust_accounts        hca1    --顧客マスタ
+      ,hz_parties              hp1     --パーティマスタ
+      ,po_vendors              pv1     --仕入先マスタ
+WHERE  xlbiv1.base_code              =  xca1.intro_chain_code2
+AND    xca1.business_low_type        =  '25'                   --フルVD(フルVD消化は仕入先なしかダミー)
+AND    xca1.customer_id              =  hca1.cust_account_id
+AND    hca1.customer_class_code      =  '10'                   --顧客区分(顧客)
+AND    hca1.party_id                 =  hp1.party_id
+AND    hp1.duns_number_c             >= '30'                   --顧客ステータス(売上が上がるステータス)
+AND    xca1.contractor_supplier_code =  pv1.segment1           --BM1の仕入先
+-- 2018/01/05 Ver.1.1 H.Maeda E_本稼動_14793 ADD END
 UNION
 -- 自拠点が問合せ担当拠点の仕入先
 SELECT /*+
