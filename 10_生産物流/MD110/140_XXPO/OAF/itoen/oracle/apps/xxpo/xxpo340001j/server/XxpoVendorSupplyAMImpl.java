@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -24,6 +24,7 @@
 * 2016-07-25 1.11 山下翔太     E_本稼動_13785対応
 * 2017-05-10 1.12 桐生和幸     E_本稼動_14069対応
 * 2017-08-10 1.13 山下翔太     E_本稼動_14243対応
+* 2017-12-25 1.14 佐々木宏之   E_本稼動_14243対応(メッセージ追加)
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -1265,6 +1266,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     params.put("CreatedPoNum",        vendorSupplyMakeRow.getAttribute("CreatedPoNum"));          // 発注番号(作成済)
     params.put("CorrectedQuantityDef",vendorSupplyMakeRow.getAttribute("CorrectedQuantityDef"));  // 訂正数量(初期値)
 // S.Yamashita Ver.1.13 Add End
+// V1.14 Add START
+    params.put("CorrectedQuantityOrg",vendorSupplyMakeRow.getAttribute("CorrectedQuantityOrg"));  // 訂正数量(オリジナル初期値)
+// V1.14 Add END
     params.put("Quantity",          vendorSupplyMakeRow.getAttribute("Quantity"));          // 数量
     params.put("ProductedQuantity", vendorSupplyMakeRow.getAttribute("ProductedQuantity")); // 出来高数量
     params.put("CorrectedQuantity", vendorSupplyMakeRow.getAttribute("CorrectedQuantity")); // 訂正数量
@@ -1525,12 +1529,19 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     Number txnsId            = (Number)vendorSupplyMakeRow.getAttribute("TxnsId"); // 実績ID
     
     // 訂正数量(初期値)を取得
-    String correctedQuantityDef = XxpoUtility.getCorrectedQuantityDef(
+// V1.14 Mod START
+//    String correctedQuantityDef = XxpoUtility.getCorrectedQuantityDef(
+    HashMap retHashMap = XxpoUtility.getCorrectedQuantityDef(
+// V1.14 Mod END
                                     getOADBTransaction(), // トランザクション
                                     txnsId                // 実績ID
                                   );
     // 訂正数量(初期値)をセット
-    vendorSupplyMakeRow.setAttribute("CorrectedQuantityDef", correctedQuantityDef); // 訂正数量(初期値)
+// V1.14 Mod START
+//    vendorSupplyMakeRow.setAttribute("CorrectedQuantityDef", correctedQuantityDef); // 訂正数量(初期値)
+    vendorSupplyMakeRow.setAttribute("CorrectedQuantityDef", retHashMap.get("CorrectedQuantityDef")); // 訂正数量(初期値)
+    vendorSupplyMakeRow.setAttribute("CorrectedQuantityOrg", retHashMap.get("CorrectedQuantityOrg")); // 訂正数量(オリジナル初期値)
+// V1.14 Mod END
   }
 
   /***************************************************************************
@@ -2206,6 +2217,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     String correctedQuantityDef = (String)params.get("CorrectedQuantityDef"); // 訂正数量(初期値)
     String createdPoNum         = (String)params.get("CreatedPoNum");         // 発注番号(作成済)
 // S.Yamashita Ver.1.13 Add end
+// V1.14 Added START
+  String correctedQuantityOrg = (String)params.get("CorrectedQuantityOrg");   // 訂正数量(オリジナル初期値)
+// V1.14 Added END
     
     // ********************************** //
     // * 外注出来高実績(アドオン)更新   * //
@@ -2256,11 +2270,29 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
 //      }
 // 2009-02-18 H.Itou Del End
     }
+// V1.14 Added START
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+// V1.14 Added END
 // S.Yamashita Ver.1.13 Add Start
     // 出来高情報登録リージョン.発注番号がNULLでない場合かつ、数量が変更された場合
     if ( !XxcmnUtility.isBlankOrNull(createdPoNum)
-      && !XxcmnUtility.isBlankOrNull(correctedQuantity)
-      && Double.parseDouble(correctedQuantity.toString()) != Double.parseDouble(correctedQuantityDef))
+// V1.14 Modified START
+//      && !XxcmnUtility.isBlankOrNull(correctedQuantity)
+//      && Double.parseDouble(correctedQuantity.toString()) != Double.parseDouble(correctedQuantityDef))
+      && (
+           (     !XxcmnUtility.isBlankOrNull(correctedQuantity)
+              && Double.parseDouble(correctedQuantity.toString()) != Double.parseDouble(correctedQuantityDef)
+           )  // 訂正数量があり、変更されている場合
+           ||
+           (
+                 !XxcmnUtility.isBlankOrNull(correctedQuantityOrg)
+              && XxcmnUtility.isBlankOrNull(correctedQuantity)
+           )  // 検索時訂正数量があり、NULLに変更された場合
+         ))
+// V1.14 Modified END
     {
       // ********************************** //
       // * 更新対象(発注情報)存在チェック * //
@@ -2275,6 +2307,13 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       {
         return XxcmnConstants.RETURN_NOT_EXE;
       }
+// V1.14 Added START
+      // 更新対象が存在しない（発注ステータスが発注作成済以外（数量確定済・金額確定済・取消））場合、発注を更新しない
+      else if ( "2".equals(targetFlag) )
+      {
+        vendorSupplyMakeRow.setAttribute("PoChangeStatus", XxpoConstants.PO_CHANGE_STATUS_2);
+      }
+// V1.14 Added END
       // 更新対象が存在する場合
       else if ( "1".equals(targetFlag))
       {
@@ -2287,16 +2326,47 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
           return XxcmnConstants.RETURN_NOT_EXE;
         }
         
-        // **************************** //
-        // * 発注情報更新処理         * //
-        // **************************** //
-        if (!XxcmnConstants.RETURN_SUCCESS.equals(refPoChange()))
+// V1.14 Added START
+        // 訂正数量が0ではない場合(NULLも可)、発注を更新
+        if ( !"0".equals(correctedQuantity)
+            || XxcmnUtility.isBlankOrNull(correctedQuantity) )
         {
-          return XxcmnConstants.RETURN_NOT_EXE;
+// V1.14 Added END
+          // **************************** //
+          // * 発注情報更新処理         * //
+          // **************************** //
+          if (!XxcmnConstants.RETURN_SUCCESS.equals(refPoChange()))
+          {
+            return XxcmnConstants.RETURN_NOT_EXE;
+          }
+// V1.14 Added START
+          // 訂正数量で発注を更新した場合
+          if ( !XxcmnUtility.isBlankOrNull(correctedQuantity) )  
+          {
+            vendorSupplyMakeRow.setAttribute("PoChangeStatus", XxpoConstants.PO_CHANGE_STATUS_1);
+          }
+          // 数量で発注を更新した場合（訂正数量がNULL）
+          else
+          {
+            vendorSupplyMakeRow.setAttribute("PoChangeStatus", XxpoConstants.PO_CHANGE_STATUS_4);
+          }
         }
+        // 訂正数量が0の場合、発注を更新しない
+        else
+        {
+          vendorSupplyMakeRow.setAttribute("PoChangeStatus", XxpoConstants.PO_CHANGE_STATUS_3);
+        }
+// V1.14 Added END
       }
     }
 // S.Yamashita Ver.1.13 Add End
+// V1.14 Added START
+    // 発注が紐づかない、もしくは、訂正数量が変わらない場合
+    else
+    {
+      vendorSupplyMakeRow.setAttribute("PoChangeStatus", XxpoConstants.PO_CHANGE_STATUS_0);
+    }
+// V1.14 Added END
 // 2009-02-18 H.Itou Add Start 本番障害#1096
     // **************************** //
     // * 品質検査依頼情報作成     * //
@@ -2391,7 +2461,17 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap params = getAllDataHashMap();
     Number txnsId      = (Number)params.get("TxnsId");      //実績ID
     Object processFlag = (Object)params.get("ProcessFlag"); // 処理フラグ
-      
+// V1.14 Added START
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行目を取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    String poChangeStatus     = (String)vendorSupplyMakeRow.getAttribute("PoChangeStatus");   // 発注更新ステータス
+    String poNumber           = (String)vendorSupplyMakeRow.getAttribute("CreatedPoNum");     // 発注番号
+    String correctedQuantity  = (String)params.get("CorrectedQuantity");                      // 訂正数量
+    String productedQuantity  = (String)params.get("ProductedQuantity");                      // 出来高数量
+// V1.14 Added END
+
     // VO初期化処理(更新画面として再表示します。)
     initializeMake();
 
@@ -2412,13 +2492,73 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     // 処理フラグが2:更新の場合
     } else if (XxpoConstants.PROCESS_FLAG_U.equals(processFlag))
     {
-      // 更新完了メッセージ
-      throw new OAException(
-        XxcmnConstants.APPL_XXPO,
-        XxpoConstants.XXPO30042, 
-        null, 
-        OAException.INFORMATION, 
-        null);
+// V1.14 Modified START
+//      // 更新完了メッセージ
+//      throw new OAException(
+//        XxcmnConstants.APPL_XXPO,
+//        XxpoConstants.XXPO30042, 
+//        null, 
+//        OAException.INFORMATION, 
+//        null);
+      // メッセージトークン取得
+      MessageToken[] tokens = new MessageToken[2];
+      tokens[0] = new MessageToken(XxpoConstants.TOKEN_PO_NUMBER, poNumber);
+      //  メッセージ表示
+      if ( XxpoConstants.PO_CHANGE_STATUS_0.equals(poChangeStatus) )
+      {
+        // 更新完了メッセージ
+        throw new OAException(
+          XxcmnConstants.APPL_XXPO,
+          XxpoConstants.XXPO30042,
+          null,
+          OAException.INFORMATION,
+          null);
+      }
+      else if ( XxpoConstants.PO_CHANGE_STATUS_1.equals(poChangeStatus) )
+      {
+        tokens[1] = new MessageToken(XxpoConstants.TOKEN_QUANTITY, correctedQuantity);
+        // 発注数量更新メッセージ
+        throw new OAException(
+          XxcmnConstants.APPL_XXPO,
+          XxpoConstants.XXPO40044,
+          tokens,
+          OAException.INFORMATION,
+          null);
+      }
+      else if  ( XxpoConstants.PO_CHANGE_STATUS_2.equals(poChangeStatus) )
+      {
+        tokens[1] = new MessageToken(XxpoConstants.TOKEN_QUANTITY, correctedQuantity);
+        // 発注数量未更新メッセージ
+        throw new OAException(
+          XxcmnConstants.APPL_XXPO,
+          XxpoConstants.XXPO40045,
+          tokens,
+          OAException.INFORMATION,
+          null);
+      }
+      else if  ( XxpoConstants.PO_CHANGE_STATUS_3.equals(poChangeStatus) )
+      {
+        tokens[1] = new MessageToken(XxpoConstants.TOKEN_QUANTITY, correctedQuantity);
+        // 訂正数量0更新メッセージ
+        throw new OAException(
+          XxcmnConstants.APPL_XXPO,
+          XxpoConstants.XXPO40046,
+          tokens,
+          OAException.INFORMATION,
+          null);
+      }
+      else if  ( XxpoConstants.PO_CHANGE_STATUS_4.equals(poChangeStatus) )
+      {
+        tokens[1] = new MessageToken(XxpoConstants.TOKEN_QUANTITY, productedQuantity);
+        // 訂正数量NULL更新メッセージ
+        throw new OAException(
+          XxcmnConstants.APPL_XXPO,
+          XxpoConstants.XXPO40047,
+          tokens,
+          OAException.INFORMATION,
+          null);
+      }
+// V1.14 Modified END
     }
   } // doEndOfProcess
   
