@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(body)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *                                        入力パラメータに「納品日FROM」と「納品日TO」を追加する
  * 2017/11/01    1.3   N.Koyama         E_本稼働_14702対応
  *                                        事務センター対応により問合せ拠点指定を追加
+ * 2018/01/05    1.4   H.Maeda          E_本稼働_14793対応
+ *                                        自販機販売報告書の仕入先指定時の顧客抽出条件を追加
  *
  *****************************************************************************************/
 --
@@ -1309,6 +1311,13 @@ AS
                           xca.sale_base_code  IN    ( SELECT xlbiv2.base_code base_code
                                                       FROM   xxcos_login_base_info_v xlbiv2
                                                     )
+-- 2018/01/05 Ver.1.4 H.Maeda E_本稼動_14793 ADD START
+                          OR
+                          ( xca.intro_chain_code2 IN  ( SELECT xlbiv2.base_code base_code
+                                                        FROM   xxcos_login_base_info_v xlbiv2
+                                                      )
+                          )
+-- 2018/01/05 Ver.1.4 H.Maeda E_本稼動_14793 ADD END
                         )
                    )                                                -- 問合せ担当拠点で無い場合、自拠点分のみ
                    OR
