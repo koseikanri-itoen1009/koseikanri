@@ -14,6 +14,9 @@
 ##                         ・Copyrightの削除                                  ##
 ##                         ・環境依存値の変数化                               ##
 ##                         ・シェル名変更                                     ##
+##                     SCSK 廣守             2018/01/12 2.0.1                 ##
+##                       E_本稼動_14800対応                                   ##
+##                         ・Formsサーバ停止追加                              ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -118,6 +121,31 @@ trap 'L_shuryo 8' 1 2 3 15
       L_shuryo ${L_ijou}
   fi
 
+## 2018/01/12 Add Start ※E_本稼動_14800対応
+### Formsサーバ停止 ###
+
+  ## コマンド設定
+  L_formsteisi="${TE_ZCZZAPKOMANDOPASU}/adfrmctl.sh stop"     ##Formsサーバ停止コマンド
+
+  L_rogushuturyoku "Formsサーバを停止します。"
+
+  ${L_formsteisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
+  L_dashutu=${?}
+  /usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU} ${TE_ZCZZHYOUJUNERA} >> ${L_rogumei} 
+
+## 戻り値から、adfrmctlの動作を判定
+  if [ ${L_dashutu} -eq 0 ]
+    then
+      L_rogushuturyoku "${TE_ZCZZ00206}"
+  elif [ ${L_dashutu} -eq 2 ]
+    then
+      L_rogushuturyoku "${TE_ZCZZ00205}"
+  else
+      L_rogushuturyoku "${TE_ZCZZ00204}"
+      echo "${TE_ZCZZ00204}" 1>&2
+      L_shuryo ${L_ijou}
+  fi
+## 2018/01/12 Add End ※E_本稼動_14800対応
 
 ### APPSリスナー停止 ###
 
@@ -172,6 +200,20 @@ trap 'L_shuryo 8' 1 2 3 15
   L_rogushuturyoku "APサーバ停止確認"
   L_rogushuturyoku "APサーバの停止を待っています。"
   sleep ${TE_ZCZZTAIKI}
+
+## 2018/01/12 Add Start ※E_本稼動_14800対応
+## Formsサーバ停止確認
+  L_rogushuturyoku "Formsサーバ停止確認"
+  /usr/bin/ps -ef | grep `/usr/bin/whoami` | /usr/bin/grep f60srvm | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+  if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ne 0 ]
+    then
+      L_rogushuturyoku "${TE_ZCZZ00204}"
+      echo "${TE_ZCZZ00204}" 1>&2
+      L_shuryo ${L_ijou}
+  fi
+
+  L_rogushuturyoku "Formsサーバの停止を確認しました。"
+## 2018/01/12 Add End ※E_本稼動_14800対応
 
 ## APPSリスナー停止確認
   L_rogushuturyoku "APPSリスナー停止確認"
