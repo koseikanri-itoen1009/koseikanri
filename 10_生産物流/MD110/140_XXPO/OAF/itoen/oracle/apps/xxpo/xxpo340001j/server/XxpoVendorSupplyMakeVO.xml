@@ -734,6 +734,26 @@ AND    xvv.end_date_active    >= TRUNC(xvst.manufactured_date)
       AliasName="VIEW_ATTR"
       SQLType="VARCHAR" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="PoChangeStatus"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CorrectedQuantityOrg"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="15"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="TxnsId" />
    </AttrArray>
