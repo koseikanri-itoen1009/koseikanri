@@ -1,0 +1,1 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n29 ON xxcmm.xxcmm_cust_accounts(intro_chain_code2) TABLESPACE XXIDX2;
