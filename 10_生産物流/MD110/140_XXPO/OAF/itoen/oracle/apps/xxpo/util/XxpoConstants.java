@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2016-06-30 1.11 山下  翔太     E_本稼動_13563追加対応
 * 2017-06-30 1.12 桐生  和幸     E_本稼動_14267対応
 * 2017-08-10 1.13 山下  翔太     E_本稼動_14243対応
+* 2017-12-22 1.14 佐々木宏之     E_本稼動_14243対応(メッセージ追加)
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -275,6 +276,16 @@ public class XxpoConstants
   /** メッセージ：APP-XXPO-40043 発注未作成エラー */
   public static final String XXPO40043   = "APP-XXPO-40043";
 // S.Yamashita Ver.1.13 Add End
+// V1.14 Added START
+  /** メッセージ：APP-XXPO-40044 発注数量更新メッセージ */
+  public static final String XXPO40044   = "APP-XXPO-40044";
+  /** メッセージ：APP-XXPO-40045 発注数量未更新メッセージ */
+  public static final String XXPO40045   = "APP-XXPO-40045";
+  /** メッセージ：APP-XXPO-40046 数量0更新メッセージ */
+  public static final String XXPO40046   = "APP-XXPO-40046";
+  /** メッセージ：APP-XXPO-40047 訂正数量NULL更新メッセージ */
+  public static final String XXPO40047   = "APP-XXPO-40047";
+// V1.14 Added END
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
   /** トークン：DATA */
@@ -311,6 +322,12 @@ public class XxpoConstants
 /** トークン：USE_BY_DATE */
   public static final String USE_BY_DATE       = "USE_BY_DATE";
 // 2016-06-30 v1.11 S.Yamashita Add End E_本稼動_13563
+// V1.14 Added START
+  /** トークン：PO_NUMBER */
+  public static final String TOKEN_PO_NUMBER   = "PO_NUMBER";
+  /** トークン：QUANTITY */
+  public static final String TOKEN_QUANTITY    = "QUANTITY";
+// V1.14 Added END
   /** トークン名称：取引先 */
   public static final String TOKEN_NAME_ENTRY  = "取引先";
   /** トークン名称：出来高報告 */
@@ -508,6 +525,18 @@ public class XxpoConstants
   public static final String CUSTOMER_STOCK_WHSE_ITOEN = "0";
   /** 相手先在庫管理対象：1 相手先在庫管理対象  */
   public static final String CUSTOMER_STOCK_WHSE_AITE = "1";
+// V1.14 Added START
+  /** 発注更新ステータス:0 更新対象外 */
+  public static final String PO_CHANGE_STATUS_0   = "0";
+  /** 発注更新ステータス:1 数量更新 */
+  public static final String PO_CHANGE_STATUS_1   = "1";
+  /** 発注更新ステータス:2 数量未更新 */
+  public static final String PO_CHANGE_STATUS_2   = "2";
+  /** 発注更新ステータス:3 数量0更新 */
+  public static final String PO_CHANGE_STATUS_3   = "3";
+  /** 発注更新ステータス:4 NULL更新 */
+  public static final String PO_CHANGE_STATUS_4   = "4";
+// V1.14 Added END
 // 2008-10-23 H.Itou Add End
   /** URL：発注受入:検索画面 */
   public static final String URL_XXPO310001JS = "OA.jsp?page=/itoen/oracle/apps/xxpo/xxpo310001j/webui/XxpoOrderReceiptPG";
