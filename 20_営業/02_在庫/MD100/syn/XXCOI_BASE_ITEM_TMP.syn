@@ -1,0 +1,15 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2018. All rights reserved.
+ *
+ * Index Name  : XXCOI_BASE_ITEM_TMP
+ * Description : 拠点品目情報連携一時表（シノニム）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2018/01/15    1.0   H.Sasaki         新規作成
+ *
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM APPS.XXCOI_BASE_ITEM_TMP FOR XXCOI.XXCOI_BASE_ITEM_TMP;
