@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(spec)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.0
+ * Version          : 1.22
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/20    1.0   S.Moriyama       main新規作成
+ *  2018/01/10    1.22  H.Sasaki         [E_本稼動_14486] JOB起動順序変更に伴う対応
  *
  *****************************************************************************************/
 --
@@ -26,6 +27,8 @@ AS
   PROCEDURE main(
      errbuf        OUT    VARCHAR2          --   エラーメッセージ #固定#
     ,retcode       OUT    VARCHAR2          --   エラーコード     #固定#
+    , iv_inv_close_flag   IN  VARCHAR2      --  INV締め日フラグ       --  2018/01/10 V1.22 Added
+    , iv_exec_flag        IN  VARCHAR2      --  起動フラグ            --  2018/01/10 V1.22 Added
   );
 END XXCOI001A01C;
 /
