@@ -19,5 +19,4 @@ ON xxcoi_base_item_tmp
 , item_number
 , deliver_from
 )
-TABLESPACE XXIDX2;
 /
