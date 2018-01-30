@@ -6,14 +6,15 @@ AS
  * Package Name     : XXCOI010A04C(body)
  * Description      : 拠点で扱う品目の組合せ情報を抽出しCSVファイルを作成して連携する。
  * MD.050           : 拠点品目情報HHT連携 MD050_COI_010_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
+ *  get_item_record        拠点品目CSV作成処理(A-4)
+ *  create_tmp             拠点品目取得処理(A-3)
  *  init                   初期処理(A-1)
- *  get_item_record        拠点品目取得処理(A-3),拠点品目CSV作成処理(A-4)
  *  submain                メイン処理プロシージャ
  *                           ・ファイルのオープン処理(A-2)
  *                           ・終了処理(A-5)
@@ -25,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2011/04/05    1.0   H.Sekine         main新規作成
  *  2011/09/05    1.1   K.Nakamura       [E_本稼動_08224]管理元拠点の取得判定追加
+ *  2018/01/11    1.2   H.Sasaki         [E_本稼動_14486]連携項目に出庫元倉庫を追加
  *
  *****************************************************************************************/
 --
@@ -116,6 +118,7 @@ AS
   cv_prf_file_base_item      CONSTANT VARCHAR2(30)  := 'XXCOI1_FILE_BASE_ITEM';      -- XXCOI:拠点品目IF出力ファイル名
   cv_base_code_item_bulk_cnt CONSTANT VARCHAR2(30)  := 'XXCOI1_BASE_CODE_ITEM_BULK_CNT';
                                                                                      -- XXCOI:拠点品目情報取得件数(バルク)
+  cv_prf_base_code_item_term CONSTANT VARCHAR2(30)  := 'XXCOI1_BASE_CODE_ITEM_TERM'; -- XXCOI:拠点品目情報取得期間        --  V1.2 2018/01/11 Added
   --
   cv_y                       CONSTANT VARCHAR2(1)   := 'Y';                          -- フラグ値:Y
   cv_n                       CONSTANT VARCHAR2(1)   := 'N';                          -- フラグ値:N
@@ -132,10 +135,11 @@ AS
   cv_csv_com                 CONSTANT VARCHAR2(1)   := ',';                          -- CSVデータ区切り用
   cv_csv_encloser            CONSTANT VARCHAR2(1)   := '"';                          -- CSVデータ括り用
   cv_file_mode_w             CONSTANT VARCHAR2(1)   := 'W';                          -- オープンモード:W
+  cv_deliver_from_null       CONSTANT VARCHAR2(4)   := '9999';                       -- 出庫元倉庫固定値                  --  V1.2 2018/01/11 Added
+  cv_deliver_from_name_null  CONSTANT VARCHAR2(20)  := '該当なし';                   -- 出庫元倉庫名固定値                --  V1.2 2018/01/11 Added
 --
   -- ===============================
   -- ユーザー定義グローバル変数
-  
   -- ===============================
   gt_org_code                 mtl_parameters.organization_code%TYPE;      -- 在庫組織コード
   gt_org_id                   mtl_parameters.organization_id%TYPE;        -- 在庫組織ID
@@ -153,10 +157,11 @@ AS
   gd_target_date              DATE;                                       -- 処理対象日
   gv_limit_num                VARCHAR2(100);                              -- バルク用リミット件数(ダミー)
   gn_limit_num                NUMBER;                                     -- バルク用リミット件数
+  gn_target_term              NUMBER;                                     -- 拠点品目情報取得期間                 --  V1.2 2018/01/11 Added
 --
   /**********************************************************************************
    * Procedure Name   : get_item_record
-   * Description      : 拠点品目取得処理(A-3),拠点品目CSV作成処理(A-4)
+   * Description      : 拠点品目CSV作成処理(A-4)
    ***********************************************************************************/
   PROCEDURE get_item_record(
       ov_errbuf      OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
@@ -190,98 +195,110 @@ AS
     -- 拠点品目情報取得
     CURSOR base_code_item_cur
     IS
-      -- 月次在庫受払表(累計)
--- == 2011/09/05 V1.1 Modified START ===============================================================
---      SELECT   xirs.base_code                  base_code              -- 拠点コード
-      SELECT   DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, xirs.base_code)
-                                               base_code              -- 拠点コード
--- == 2011/09/05 V1.1 Modified END   ===============================================================
-             , msib.segment1                   item_no                -- 品目コード
-      FROM     xxcoi_inv_reception_sum         xirs                   -- 月次在庫受払表（累計）
-             , mtl_system_items_b              msib                   -- Disc品目マスタ
--- == 2011/09/05 V1.1 Added START    ===============================================================
-             , hz_cust_accounts                hca                    -- 顧客マスタ
-             , xxcmm_cust_accounts             xca                    -- 顧客追加情報マスタ
--- == 2011/09/05 V1.1 Added END      ===============================================================
-      WHERE    msib.inventory_item_id = xirs.inventory_item_id
-      AND      msib.organization_id   = xirs.organization_id
-      AND      xirs.organization_id   = gt_org_id
-      AND      xirs.practice_date     = TO_CHAR(gd_target_date, cv_date_mask_2 )
--- == 2011/09/05 V1.1 Added START    ===============================================================
-      AND      hca.cust_account_id     = xca.customer_id
-      AND      hca.customer_class_code = cv_class_code_1
-      AND      hca.account_number      = xirs.base_code
--- == 2011/09/05 V1.1 Added END      ===============================================================
--- == 2011/09/05 V1.1 Modified START ===============================================================
---      GROUP by xirs.base_code
-      GROUP by DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, xirs.base_code)
--- == 2011/09/05 V1.1 Modified END   ===============================================================
-             , msib.segment1
-      --
-      UNION
-      --
-      -- 出荷依頼/実績
--- == 2011/09/05 V1.1 Modified START ===============================================================
---      SELECT  hca.account_number               base_code              -- 拠点コード
-      SELECT  DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number)
-                                               base_code              -- 拠点コード
--- == 2011/09/05 V1.1 Modified END   ===============================================================
-            , imbp.item_no                     item_no                -- 品目コード
-      FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
-            , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
-            , ic_item_mst_b                    imbc                   -- OPM品目マスタ（子）
-            , ic_item_mst_b                    imbp                   -- OPM品目マスタ（親）
-            , xxcmn_item_mst_b                 ximb                   -- OPM品目アドオンマスタ
-            , mtl_system_items_b               msib                   -- Disc品目マスタ
-            , hz_cust_accounts                 hca                    -- 顧客マスタ
--- == 2011/09/05 V1.1 Added START    ===============================================================
-            , xxcmm_cust_accounts              xca                    -- 顧客追加情報マスタ
--- == 2011/09/05 V1.1 Added END      ===============================================================
-            , oe_transaction_types_all         otta                   -- 受注タイプマスタ
-            , hz_party_sites                   hps                    -- パーティサイトマスタ
-      WHERE  xoha.order_header_id   =   xola.order_header_id
-      AND    xola.request_item_id   =   msib.inventory_item_id
-      AND    imbc.item_no           =   msib.segment1
-      AND    imbc.item_id           =   ximb.item_id
-      AND    imbp.item_id           =   ximb.parent_item_id
-      AND    msib.organization_id   =   gt_org_id
-      AND ( (  -- 締め済み、確定通知済出荷依頼
-                  xoha.req_status            = gt_ship_status_close
-              AND xoha.notif_status          = gt_notice_status
-              AND xoha.schedule_arrival_date = gd_target_date + 1
-              AND xoha.deliver_to_id         = hps.party_site_id
-              AND 
-              xoha.schedule_arrival_date BETWEEN ximb.start_date_active
-                                         AND     NVL(ximb.end_date_active, xoha.schedule_arrival_date )
-            )
-         OR (  -- 出荷実績計上済出荷実績
-                  xoha.req_status            = gt_ship_status_result
-              AND xoha.actual_confirm_class  = cv_y
-              AND xoha.arrival_date          = gd_target_date + 1
-              AND xoha.result_deliver_to_id  = hps.party_site_id
-              AND
-              xoha.arrival_date BETWEEN ximb.start_date_active
-                                         AND     NVL(ximb.end_date_active, xoha.arrival_date )
-            ) )
-      AND     NVL(xola.delete_flag, cv_n ) = cv_n
-      AND     otta.attribute1              = cv_shukka_shikyuu_kbn_1
-      AND     NVL(otta.attribute4, cv_zaiko_chousei_kbn_1 ) = cv_zaiko_chousei_kbn_1
-      AND     hps.party_id                 = hca.party_id
-      AND     otta.org_id                  = gt_itou_ou_id 
-      AND     xoha.order_type_id           = otta.transaction_type_id
-      AND     hca.customer_class_code      = cv_class_code_1
-      AND     hca.status                   = cv_status_a
-      AND     xoha.latest_external_flag    = cv_y
--- == 2011/09/05 V1.1 Added START    ===============================================================
-      AND     hca.cust_account_id          = xca.customer_id
--- == 2011/09/05 V1.1 Added END      ===============================================================
--- == 2011/09/05 V1.1 Modified START ===============================================================
---      GROUP BY hca.account_number
-      GROUP BY DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number)
--- == 2011/09/05 V1.1 Modified END   ===============================================================
-             , imbp.item_no
-      ORDER BY base_code
-             , item_no;
+--  V1.2 2018/01/11 Modified START
+--      -- 月次在庫受払表(累計)
+---- == 2011/09/05 V1.1 Modified START ===============================================================
+----      SELECT   xirs.base_code                  base_code              -- 拠点コード
+--      SELECT   DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, xirs.base_code)
+--                                               base_code              -- 拠点コード
+---- == 2011/09/05 V1.1 Modified END   ===============================================================
+--             , msib.segment1                   item_no                -- 品目コード
+--      FROM     xxcoi_inv_reception_sum         xirs                   -- 月次在庫受払表（累計）
+--             , mtl_system_items_b              msib                   -- Disc品目マスタ
+---- == 2011/09/05 V1.1 Added START    ===============================================================
+--             , hz_cust_accounts                hca                    -- 顧客マスタ
+--             , xxcmm_cust_accounts             xca                    -- 顧客追加情報マスタ
+---- == 2011/09/05 V1.1 Added END      ===============================================================
+--      WHERE    msib.inventory_item_id = xirs.inventory_item_id
+--      AND      msib.organization_id   = xirs.organization_id
+--      AND      xirs.organization_id   = gt_org_id
+--      AND      xirs.practice_date     = TO_CHAR(gd_target_date, cv_date_mask_2 )
+---- == 2011/09/05 V1.1 Added START    ===============================================================
+--      AND      hca.cust_account_id     = xca.customer_id
+--      AND      hca.customer_class_code = cv_class_code_1
+--      AND      hca.account_number      = xirs.base_code
+---- == 2011/09/05 V1.1 Added END      ===============================================================
+---- == 2011/09/05 V1.1 Modified START ===============================================================
+----      GROUP by xirs.base_code
+--      GROUP by DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, xirs.base_code)
+---- == 2011/09/05 V1.1 Modified END   ===============================================================
+--             , msib.segment1
+--      --
+--      UNION
+--      --
+--      -- 出荷依頼/実績
+---- == 2011/09/05 V1.1 Modified START ===============================================================
+----      SELECT  hca.account_number               base_code              -- 拠点コード
+--      SELECT  DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number)
+--                                               base_code              -- 拠点コード
+---- == 2011/09/05 V1.1 Modified END   ===============================================================
+--            , imbp.item_no                     item_no                -- 品目コード
+--      FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
+--            , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
+--            , ic_item_mst_b                    imbc                   -- OPM品目マスタ（子）
+--            , ic_item_mst_b                    imbp                   -- OPM品目マスタ（親）
+--            , xxcmn_item_mst_b                 ximb                   -- OPM品目アドオンマスタ
+--            , mtl_system_items_b               msib                   -- Disc品目マスタ
+--            , hz_cust_accounts                 hca                    -- 顧客マスタ
+---- == 2011/09/05 V1.1 Added START    ===============================================================
+--            , xxcmm_cust_accounts              xca                    -- 顧客追加情報マスタ
+---- == 2011/09/05 V1.1 Added END      ===============================================================
+--            , oe_transaction_types_all         otta                   -- 受注タイプマスタ
+--            , hz_party_sites                   hps                    -- パーティサイトマスタ
+--      WHERE  xoha.order_header_id   =   xola.order_header_id
+--      AND    xola.request_item_id   =   msib.inventory_item_id
+--      AND    imbc.item_no           =   msib.segment1
+--      AND    imbc.item_id           =   ximb.item_id
+--      AND    imbp.item_id           =   ximb.parent_item_id
+--      AND    msib.organization_id   =   gt_org_id
+--      AND ( (  -- 締め済み、確定通知済出荷依頼
+--                  xoha.req_status            = gt_ship_status_close
+--              AND xoha.notif_status          = gt_notice_status
+--              AND xoha.schedule_arrival_date = gd_target_date + 1
+--              AND xoha.deliver_to_id         = hps.party_site_id
+--              AND 
+--              xoha.schedule_arrival_date BETWEEN ximb.start_date_active
+--                                         AND     NVL(ximb.end_date_active, xoha.schedule_arrival_date )
+--            )
+--         OR (  -- 出荷実績計上済出荷実績
+--                  xoha.req_status            = gt_ship_status_result
+--              AND xoha.actual_confirm_class  = cv_y
+--              AND xoha.arrival_date          = gd_target_date + 1
+--              AND xoha.result_deliver_to_id  = hps.party_site_id
+--              AND
+--              xoha.arrival_date BETWEEN ximb.start_date_active
+--                                         AND     NVL(ximb.end_date_active, xoha.arrival_date )
+--            ) )
+--      AND     NVL(xola.delete_flag, cv_n ) = cv_n
+--      AND     otta.attribute1              = cv_shukka_shikyuu_kbn_1
+--      AND     NVL(otta.attribute4, cv_zaiko_chousei_kbn_1 ) = cv_zaiko_chousei_kbn_1
+--      AND     hps.party_id                 = hca.party_id
+--      AND     otta.org_id                  = gt_itou_ou_id 
+--      AND     xoha.order_type_id           = otta.transaction_type_id
+--      AND     hca.customer_class_code      = cv_class_code_1
+--      AND     hca.status                   = cv_status_a
+--      AND     xoha.latest_external_flag    = cv_y
+---- == 2011/09/05 V1.1 Added START    ===============================================================
+--      AND     hca.cust_account_id          = xca.customer_id
+---- == 2011/09/05 V1.1 Added END      ===============================================================
+---- == 2011/09/05 V1.1 Modified START ===============================================================
+----      GROUP BY hca.account_number
+--      GROUP BY DECODE(xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number)
+---- == 2011/09/05 V1.1 Modified END   ===============================================================
+--             , imbp.item_no
+--      ORDER BY base_code
+--             , item_no;
+    --
+      SELECT  xbit.base_code              AS  "BASE_CODE"                 --  拠点コード
+            , xbit.item_number            AS  "ITEM_NUMBER"               --  品番
+            , xbit.deliver_from           AS  "DELIVER_FROM"              --  出庫元倉庫コード
+            , xbit.deliver_from_name      AS  "DELIVER_FROM_NAME"         --  出庫元倉庫名
+      FROM    xxcoi_base_item_tmp   xbit                                  --  拠点品目情報連携一時表
+      ORDER BY  xbit.base_code
+              , xbit.item_number
+              , xbit.deliver_from
+      ;
+--  V1.2 2018/01/11 Modified END
 --
     -- *** ローカル・レコード ***
     --
@@ -332,9 +349,18 @@ AS
         gn_target_cnt := gn_target_cnt + 1;
         --
         -- カーソルで取得した値をCSVファイルに格納
-        lv_base_code_item_csv :=                cv_csv_encloser || l_base_code_item_tab( ln_index ).base_code || cv_csv_encloser ||
-                                 cv_csv_com ||  cv_csv_encloser || l_base_code_item_tab( ln_index ).item_no   || cv_csv_encloser ||
-                                 cv_csv_com ||  cv_csv_encloser || lv_sysdate                                 || cv_csv_encloser;
+--  V1.2 2018/01/11 Modified START
+--        lv_base_code_item_csv :=                cv_csv_encloser || l_base_code_item_tab( ln_index ).base_code || cv_csv_encloser ||
+--                                 cv_csv_com ||  cv_csv_encloser || l_base_code_item_tab( ln_index ).item_no   || cv_csv_encloser ||
+--                                 cv_csv_com ||  cv_csv_encloser || lv_sysdate                                 || cv_csv_encloser;
+        lv_base_code_item_csv :=
+                          cv_csv_encloser ||  l_base_code_item_tab( ln_index ).base_code          ||  cv_csv_encloser ||          --  拠点コード
+          cv_csv_com  ||  cv_csv_encloser ||  l_base_code_item_tab( ln_index ).item_number        ||  cv_csv_encloser ||          --  商品コード
+          cv_csv_com  ||  cv_csv_encloser ||  l_base_code_item_tab( ln_index ).deliver_from       ||  cv_csv_encloser ||          --  出庫元倉庫コード
+          cv_csv_com  ||  cv_csv_encloser ||  l_base_code_item_tab( ln_index ).deliver_from_name  ||  cv_csv_encloser ||          --  出庫元倉庫名
+          cv_csv_com  ||  cv_csv_encloser ||  lv_sysdate                                          ||  cv_csv_encloser             --  連携日時
+        ;
+--  V1.2 2018/01/11 Modified END
         --
         -- CSVファイルを出力
         UTL_FILE.PUT_LINE(
@@ -402,6 +428,209 @@ AS
 --
   END get_item_record;
 --
+--  V1.2 2018/01/11 Added START
+  /**********************************************************************************
+   * Procedure Name   : create_tmp
+   * Description      : 拠点品目取得処理(A-3)
+   ***********************************************************************************/
+  PROCEDURE create_tmp(
+      ov_errbuf      OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode     OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg      OUT VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
+    )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'create_tmp';                   -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- *** ローカル変数 ***
+    -- *** ローカル・カーソル ***
+  BEGIN
+    --  ==============================================================
+    --  受注情報（出荷実績計上済）抽出
+    --  ==============================================================
+    --  出荷実績計上済のデータを拠点品目情報連携一時表に登録する
+    --  抽出範囲は、gn_target_term日前から業務日付の翌日まで
+    INSERT INTO xxcoi_base_item_tmp(
+        base_code                       --  拠点コード
+      , item_number                     --  品目コード
+      , deliver_from                    --  出庫元倉庫
+      , deliver_from_name               --  出庫元倉庫名
+    )
+      SELECT  /*+ INDEX( ximb XXCMN_IMB_N01 ) */
+              DISTINCT
+              DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+                                          AS  "BASE_CODE"             --  拠点コード
+            , imbp.item_no                AS  "ITEM_NUMBER"           --  品目コード
+            , xoha.deliver_from           AS  "DELIVER_FROM"          --  出庫元倉庫
+            , xilv.description            AS  "DELIVER_FROM_NAME"     --  出庫元倉庫名
+      FROM    xxwsh_order_headers_all   xoha                          --  受注ヘッダアドオン
+            , xxwsh_order_lines_all     xola                          --  受注明細アドオン
+            , oe_transaction_types_all  otta                          --  受注タイプマスタ
+            , mtl_system_items_b        msib                          --  DISC品目マスタ
+            , ic_item_mst_b             imbc                          --  OPM品目マスタ（子）
+            , xxcmn_item_mst_b          ximb                          --  OPM品目アドオンマスタ
+            , ic_item_mst_b             imbp                          --  OPM品目マスタ（親）
+            , hz_party_sites            hps                           --  パーティサイト
+            , hz_cust_accounts          hca                           --  顧客マスタ
+            , xxcmm_cust_accounts       xca                           --  顧客追加情報マスタ
+            , xxcmn_item_locations2_v   xilv                          --  OPM保管場所
+      WHERE   xoha.req_status                                 =   gt_ship_status_result         --  出荷実績計上済
+      AND     xoha.actual_confirm_class                       =   cv_y
+      AND     xoha.arrival_date                               >=  TRUNC( gd_target_date ) - gn_target_term
+      AND     xoha.arrival_date                               <   TRUNC( gd_target_date + 1 ) + 1
+      AND     xoha.latest_external_flag                       =   cv_y
+      AND     xoha.order_header_id                            =   xola.order_header_id
+      AND     NVL( xola.delete_flag, cv_n )                   =   cv_n
+      AND     xoha.order_type_id                              =   otta.transaction_type_id
+      AND     otta.org_id                                     =   gt_itou_ou_id
+      AND     otta.attribute1                                 =   cv_shukka_shikyuu_kbn_1
+      AND     NVL( otta.attribute4, cv_zaiko_chousei_kbn_1 )  =   cv_zaiko_chousei_kbn_1
+      AND     xola.request_item_id                            =   msib.inventory_item_id
+      AND     msib.organization_id                            =   gt_org_id
+      AND     msib.segment1                                   =   imbc.item_no
+      AND     imbc.item_id                                    =   ximb.item_id
+      AND     xoha.arrival_date BETWEEN ximb.start_date_active AND NVL( ximb.end_date_active, xoha.arrival_date )
+      AND     ximb.parent_item_id                             =   imbp.item_id
+      AND     xoha.result_deliver_to_id                       =   hps.party_site_id
+      AND     hps.party_id                                    =   hca.party_id
+      AND     hca.customer_class_code                         =   cv_class_code_1
+      AND     hca.status                                      =   cv_status_a
+      AND     hca.cust_account_id                             =   xca.customer_id
+      AND     xoha.deliver_from                               =   xilv.segment1
+    ;
+    --  ==============================================================
+    --  受注情報（締め済・確定通知済）抽出
+    --  ==============================================================
+    --  締め済・確定通知済のデータを拠点品目情報連携一時表に登録する
+    --  ただし、拠点、品目、出荷元倉庫で既に登録済みの場合は除外する
+    INSERT INTO xxcoi_base_item_tmp(
+        base_code                       --  拠点コード
+      , item_number                     --  品目コード
+      , deliver_from                    --  出庫元倉庫
+      , deliver_from_name               --  出庫元倉庫名
+    )
+      SELECT  /*+ INDEX( imbc IC_ITEM_MST_B_UNQ1 )
+                  INDEX( ximb XXCMN_IMB_N01 )
+              */
+              DISTINCT
+              DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+                                          AS  "BASE_CODE"             --  拠点コード
+            , imbp.item_no                AS  "ITEM_NUMBER"           --  品目コード
+            , xoha.deliver_from           AS  "DELIVER_FROM"          --  出庫元倉庫
+            , xilv.description            AS  "DELIVER_FROM_NAME"     --  出庫元倉庫名
+      FROM    xxwsh_order_headers_all   xoha                          --  受注ヘッダアドオン
+            , xxwsh_order_lines_all     xola                          --  受注明細アドオン
+            , oe_transaction_types_all  otta                          --  受注タイプマスタ
+            , mtl_system_items_b        msib                          --  DISC品目マスタ
+            , ic_item_mst_b             imbc                          --  OPM品目マスタ（子）
+            , xxcmn_item_mst_b          ximb                          --  OPM品目アドオンマスタ
+            , ic_item_mst_b             imbp                          --  OPM品目マスタ（親）
+            , hz_party_sites            hps                           --  パーティサイト
+            , hz_cust_accounts          hca                           --  顧客マスタ
+            , xxcmm_cust_accounts       xca                           --  顧客追加情報マスタ
+            , xxcmn_item_locations2_v   xilv                          --  OPM保管場所
+      WHERE   xoha.req_status                                 =   gt_ship_status_close          --  締め済み
+      AND     xoha.notif_status                               =   gt_notice_status              --  確定通知済み
+      AND     xoha.schedule_arrival_date                      >=  TRUNC( gd_target_date ) - gn_target_term
+      AND     xoha.schedule_arrival_date                      <   TRUNC( gd_target_date + 1 ) + 1
+      AND     xoha.latest_external_flag                       =   cv_y
+      AND     xoha.order_header_id                            =   xola.order_header_id
+      AND     NVL( xola.delete_flag, cv_n )                   =   cv_n
+      AND     xoha.order_type_id                              =   otta.transaction_type_id
+      AND     otta.org_id                                     =   gt_itou_ou_id
+      AND     otta.attribute1                                 =   cv_shukka_shikyuu_kbn_1
+      AND     NVL( otta.attribute4, cv_zaiko_chousei_kbn_1 )  =   cv_zaiko_chousei_kbn_1
+      AND     xola.request_item_id                            =   msib.inventory_item_id
+      AND     msib.organization_id                            =   gt_org_id
+      AND     msib.segment1                                   =   imbc.item_no
+      AND     imbc.item_id                                    =   ximb.item_id
+      AND     xoha.schedule_arrival_date BETWEEN ximb.start_date_active AND NVL( ximb.end_date_active, xoha.schedule_arrival_date )
+      AND     ximb.parent_item_id                             =   imbp.item_id
+      AND     xoha.deliver_to_id                              =   hps.party_site_id
+      AND     hps.party_id                                    =   hca.party_id
+      AND     hca.customer_class_code                         =   cv_class_code_1
+      AND     hca.status                                      =   cv_status_a
+      AND     hca.cust_account_id                             =   xca.customer_id
+      AND     xoha.deliver_from                               =   xilv.segment1
+      AND NOT EXISTS( SELECT  1
+                      FROM    xxcoi_base_item_tmp     tmp     --  拠点品目情報連携一時表
+                      WHERE   tmp.base_code       =   DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, hca.account_number )
+                      AND     tmp.item_number     =   imbp.item_no
+                      AND     tmp.deliver_from    =   xoha.deliver_from
+              )
+    ;
+    --  ==============================================================
+    --  受払累計抽出
+    --  ==============================================================
+    --  受払累計情報を一時表に登録する
+    --  ただし、拠点、品目で既に登録済みの場合は除外する
+    INSERT INTO xxcoi_base_item_tmp(
+        base_code                       --  拠点コード
+      , item_number                     --  品目コード
+      , deliver_from                    --  出庫元倉庫
+      , deliver_from_name               --  出庫元倉庫名
+    )
+      SELECT  DISTINCT
+              DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, xirs.base_code )
+                                          AS  "BASE_CODE"             --  拠点コード
+            , msib.segment1               AS  "ITEM_NUMBER"           --  品目コード
+            , cv_deliver_from_null        AS  "DELIVER_FROM"          --  固定値：'9999'
+            , cv_deliver_from_name_null   AS  "DELIVER_FROM_NAME"     --  固定値：'該当なし'
+      FROM    xxcoi_inv_reception_sum     xirs                        --  月次在庫受払表（累計）
+            , mtl_system_items_b          msib                        --  DISC品目マスタ
+            , hz_cust_accounts            hca                         --  顧客マスタ
+            , xxcmm_cust_accounts         xca                         --  顧客追加情報マスタ
+      WHERE   xirs.practice_date        =   TO_CHAR( gd_target_date, cv_date_mask_2 )
+      AND     xirs.organization_id      =   gt_org_id
+      AND     xirs.inventory_item_id    =   msib.inventory_item_id
+      AND     xirs.organization_id      =   msib.organization_id
+      AND     xirs.base_code            =   hca.account_number
+      AND     hca.customer_class_code   =   cv_class_code_1
+      AND     hca.cust_account_id       =   xca.customer_id
+      AND NOT EXISTS( SELECT  /*+ INDEX( tmp XXCOI_BASE_ITEM_TMP_N01 ) */
+                              1
+                      FROM    xxcoi_base_item_tmp     tmp             --  拠点品目情報連携一時表
+                      WHERE   tmp.base_code       =   DECODE( xca.dept_hht_div, cv_dept_hht_div_1, xca.management_base_code, xirs.base_code )
+                      AND     tmp.item_number     =   msib.segment1
+              )
+    ;
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END create_tmp;
+--  V1.2 2018/01/11 Added END
+--
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -464,6 +693,7 @@ AS
     gt_itou_ou_id         := NULL;
     gt_org_id             := NULL;
     gd_process_date       := NULL;
+    gn_target_term        := NULL;    --  V1.2 2018/01/11 Added
 --
     --
     --==================================
@@ -699,6 +929,38 @@ AS
         RAISE global_api_expt;
     END;
 --
+--  V1.2 2018/01/11 Added START
+    --==============================================================
+    --プロファイルより拠点品目情報取得期間を取得
+    --==============================================================
+    BEGIN
+      gn_target_term  :=  TO_NUMBER( fnd_profile.value( cv_prf_base_code_item_term ) );
+      --
+      IF ( gn_target_term IS NULL ) THEN
+        -- プロファイルが取得できない場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_appl_short_name
+                       , iv_name         => cv_bulk_cnt_err_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => cv_prf_base_code_item_term
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- 型変換に失敗した場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_appl_short_name
+                       , iv_name         => cv_bulk_cnt_err_msg
+                       , iv_token_name1  => cv_tkn_pro
+                       , iv_token_value1 => cv_prf_base_code_item_term
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--  V1.2 2018/01/11 Added END
+--
     --==============================================================
     --共通関数より在庫組織ID取得
     --==============================================================
@@ -917,6 +1179,13 @@ AS
     -- ========================================
     -- A-3.拠点品目取得処理,A-4.拠点品目CSV作成処理
     -- ========================================
+--  V1.2 2018/01/11 Added START
+    create_tmp(
+        lv_errbuf                                       -- エラー・メッセージ           --# 固定 #
+      , lv_retcode                                      -- リターン・コード             --# 固定 #
+      , lv_errmsg                                       -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--  V1.2 2018/01/11 Added END
     get_item_record(
         lv_errbuf                                       -- エラー・メッセージ           --# 固定 #
       , lv_retcode                                      -- リターン・コード             --# 固定 #
