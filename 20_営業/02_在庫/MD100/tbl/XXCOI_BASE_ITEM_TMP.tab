@@ -1,0 +1,31 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2018. All rights reserved.
+ *
+ * Table Name  : XXCOI_BASE_ITEM_TMP
+ * Description : 拠点品目情報連携一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2018/01/15    1.0   H.Sasaki         新規作成
+ *
+ *****************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_base_item_tmp (
+    base_code                 VARCHAR2(30)
+  , item_number               VARCHAR2(40)
+  , deliver_from              VARCHAR2(40)
+  , deliver_from_name         VARCHAR2(50)
+) ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  xxcoi.xxcoi_base_item_tmp IS '拠点品目情報連携一時表';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_base_item_tmp.base_code                 IS '拠点コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_base_item_tmp.item_number               IS '品目コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_base_item_tmp.deliver_from              IS '出庫元倉庫コード';
+/
+COMMENT ON COLUMN xxcoi.xxcoi_base_item_tmp.deliver_from_name         IS '出庫元倉庫名';
+/
