@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,10 @@ AS
  *  2011/05/24    1.21  H.Sasaki         [E_本稼動_06875]受注明細アドオンの取込済みフラグを更新処理の修正
  *                                                       一伝票同一品目複数行に対する対応
  *                                       [E_本稼動_06875追加]取込済みフラグの条件変更、日付指定
+ *  2018/01/10    1.22  H.Sasaki         [E_本稼動_14486] JOB起動順序変更に伴う対応
+ *                                                        業務日付を翌日に変更
+ *                                                        締め処理日の場合、最古OPEN期間をクローズ済みと判断
+ *                                                        起動パラメータ追加
  *
  *****************************************************************************************/
 --
@@ -172,6 +176,7 @@ AS
   cv_0             CONSTANT VARCHAR2(100) := '0';                     -- コード固定値:0
   cv_1             CONSTANT VARCHAR2(100) := '1';                     -- コード固定値:1
   cv_2             CONSTANT VARCHAR2(100) := '2';                     -- コード固定値:2
+  cv_exec_1        CONSTANT VARCHAR2(100) := '1';                     -- 起動フラグ1:定期実行     --  2018/01/10 V1.22 Added
 --
   cv_tkn_pro       CONSTANT VARCHAR2(100) := 'PRO_TOK';
   cv_tkn_org       CONSTANT VARCHAR2(100) := 'ORG_CODE_TOK';
@@ -187,6 +192,8 @@ AS
 -- == 2010/03/23 V1.19 Added START   =============================================================
   cv_tkn_slip_num  CONSTANT VARCHAR2(30)  := 'SLIP_NUM';
 -- == 2010/03/23 V1.19 Added END   ===============================================================
+  cv_token_10735   CONSTANT VARCHAR2(30)  := 'IN_PARAM';            --  2018/01/10 V1.22 Added
+  cv_token_10737   CONSTANT VARCHAR2(30)  := 'IN_PARAM';            --  2018/01/10 V1.22 Added
 -- == 2011/02/03 V1.20 Added START   =============================================================
   cv_cust_class    CONSTANT VARCHAR2(2)   := '10';
   cv_date_format1  CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
@@ -230,6 +237,8 @@ AS
 --
   cv_conc_not_parm_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなし
   cv_not_found_slip_msg       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008'; -- 対象データ無し
+  cv_msg_xxcoi1_10735         CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10735'; -- パラメータ・INV締め日フラグ      --  2018/01/10 V1.22 Added
+  cv_msg_xxcoi1_10737         CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10737'; -- パラメータ・起動フラグ           --  2018/01/10 V1.22 Added
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -262,6 +271,9 @@ AS
   gd_start_date               DATE;                                   --  受注検索用開始日
   gd_end_date                 DATE;                                   --  受注検索用終了日
 -- == 2011/05/24 V1.21 Modified END   ==============================================================
+  gv_param_inv_close_flag     VARCHAR2(1);                            --  パラメータ：INV締め日フラグ(Y:締め日/N:締め日以外)      --  2018/01/10 V1.22 Added
+  gv_param_exec_flag          VARCHAR2(1);                            --  パラメータ：起動フラグ(1:夜間実行,2:随時実行)           --  2018/01/10 V1.22 Added
+  gd_open_min_date            DATE;                                   --  最小会計開始日                                          --  2018/01/10 V1.22 Added
 --
   TYPE g_summary_rtype IS RECORD(
       req_status        xxwsh_order_headers_all.req_status%TYPE       -- 出荷実績ステータス
@@ -750,12 +762,27 @@ AS
     -- ***************************************
 --
     --==============================================================
-    --コンカレントパラメータ出力（なし）
+    --コンカレントパラメータ出力（パラメータ・INV締め日フラグ）
     --==============================================================
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                      iv_application => cv_appl_short_name
-                    , iv_name        => cv_conc_not_parm_msg
-                  );
+--  2018/01/10 V1.22 Modified START
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                      iv_application => cv_appl_short_name
+--                    , iv_name        => cv_conc_not_parm_msg
+--                  );
+--    fnd_file.put_line(
+--       which => fnd_file.output
+--      ,buff  => gv_out_msg
+--    );
+--    fnd_file.put_line(
+--       which => fnd_file.log
+--      ,buff  => gv_out_msg
+--    );
+    gv_out_msg  :=  xxccp_common_pkg.get_msg(
+                        iv_application    =>  cv_application
+                      , iv_name           =>  cv_msg_xxcoi1_10735
+                      , iv_token_name1    =>  cv_token_10735
+                      , iv_token_value1   =>  gv_param_inv_close_flag
+                    );
     fnd_file.put_line(
        which => fnd_file.output
       ,buff  => gv_out_msg
@@ -764,6 +791,21 @@ AS
        which => fnd_file.log
       ,buff  => gv_out_msg
     );
+    gv_out_msg  :=  xxccp_common_pkg.get_msg(
+                        iv_application    =>  cv_application
+                      , iv_name           =>  cv_msg_xxcoi1_10737
+                      , iv_token_name1    =>  cv_token_10737
+                      , iv_token_value1   =>  gv_param_exec_flag
+                    );
+    fnd_file.put_line(
+       which => fnd_file.output
+      ,buff  => gv_out_msg
+    );
+    fnd_file.put_line(
+       which => fnd_file.log
+      ,buff  => gv_out_msg
+    );
+--  2018/01/10 V1.22 Modified END
     fnd_file.put_line(
         which  => fnd_file.output
       , buff   => ''
@@ -948,6 +990,22 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+    --  2018/01/10 V1.22 Added START
+    IF ( gv_param_exec_flag = cv_exec_1 ) THEN
+      --  定期実行時は、業務日付+1日（翌業務日扱いで本処理を実行するため）
+      gd_process_date :=  gd_process_date + 1;
+    END IF;
+    --  2018/01/10 V1.22 Added END
+--
+    --  2018/01/10 V1.22 Added START
+    --  OPEN在庫会計期間の最小日（最小会計開始日）を取得
+    SELECT  MIN(oap.period_start_date)    open_min_date       --  最小会計開始日
+    INTO    gd_open_min_date
+    FROM    org_acct_periods        oap                       --  在庫会計期間
+    WHERE   oap.open_flag           =   cv_y_flag
+    AND     oap.organization_id     =   gt_org_id
+    ;
+    --  2018/01/10 V1.22 Added END
 --
 -- == 2011/05/24 V1.21 Modified START ==============================================================
     --============================================
@@ -961,6 +1019,13 @@ AS
     FROM    org_acct_periods        oap
     WHERE   oap.open_flag           =   cv_y_flag
     AND     oap.organization_id     =   gt_org_id
+    --  2018/01/10 V1.22 Added START
+    --  INV締め日では、最小会計期間がCLOSE済であるものとして実行される
+    AND     ( ( gv_param_inv_close_flag = cv_y_flag AND oap.period_start_date <> gd_open_min_date )
+              OR
+              ( gv_param_inv_close_flag = cv_n_flag AND 1 = 1 )
+            )
+    --  2018/01/10 V1.22 Added END
     ;
 -- == 2011/05/24 V1.21 Modified END   ==============================================================
     --==============================================================
@@ -4444,7 +4509,15 @@ AS
         , ov_retcode         => lv_retcode
         , ov_errmsg          => lv_errmsg
       );
-      IF ( lb_fnc_status = FALSE ) THEN
+--  2018/01/10 V1.22 Modified START
+--      IF ( lb_fnc_status = FALSE ) THEN
+      --  在庫会計期間がCLOSEしている場合（INV締め日の場合、最小会計開始日はCLOSE済み扱いとする）
+      IF  ( ( lb_fnc_status = FALSE )
+            OR
+            ( gv_param_inv_close_flag = cv_y_flag AND TO_CHAR( g_summary_tab( in_slip_cnt ).slip_date, 'YYYYMM' ) <= TO_CHAR( gd_open_min_date, 'YYYYMM' ) )
+          )
+      THEN
+--  2018/01/10 V1.22 Modified END
 -- == 2009/12/14 V1.13 Added START ===============================================================
         -- 受注明細ロック取得
         OPEN    cur_upd_lines;
@@ -4758,11 +4831,24 @@ AS
 --###########################  固定部 END   ############################
     --
     -- OPEN在庫会計期間を取得
+--  2018/01/10 V1.22 Modified START
+--    SELECT  MIN( TO_CHAR( oap.period_start_date , cv_date_format2 ) ) -- 最も古い会計年月
+--    INTO    lv_f_inv_acct_period
+--    FROM    org_acct_periods      oap                     -- 在庫会計期間テーブル
+--    WHERE   oap.organization_id = gt_org_id
+--    AND     oap.open_flag       = cv_y_flag;
+    --  INV締め日では、最小会計期間がCLOSE済であるものとして実行される
     SELECT  MIN( TO_CHAR( oap.period_start_date , cv_date_format2 ) ) -- 最も古い会計年月
     INTO    lv_f_inv_acct_period
     FROM    org_acct_periods      oap                     -- 在庫会計期間テーブル
     WHERE   oap.organization_id = gt_org_id
-    AND     oap.open_flag       = cv_y_flag;
+    AND     oap.open_flag       = cv_y_flag
+    AND     ( ( gv_param_inv_close_flag = cv_y_flag AND oap.period_start_date <> gd_open_min_date )
+              OR
+              ( gv_param_inv_close_flag = cv_n_flag AND 1 = 1 )
+            )
+    ;
+--  2018/01/10 V1.22 Modified END
     --
     -- ループ処理
     <<storage_information_loop>>
@@ -5536,6 +5622,8 @@ AS
   PROCEDURE main(
       errbuf      OUT VARCHAR2       --   エラー・メッセージ  --# 固定 #
     , retcode     OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    , iv_inv_close_flag   IN  VARCHAR2  --  INV締め日フラグ       --  2018/01/10 V1.22 Added
+    , iv_exec_flag        IN  VARCHAR2  --  起動フラグ            --  2018/01/10 V1.22 Added
   )
 --
 --
@@ -5583,6 +5671,10 @@ AS
     --
 --###########################  固定部 END   #############################
 --
+    --  パラメータ保持
+    gv_param_inv_close_flag   :=  NVL( iv_inv_close_flag, cv_n_flag );            --  2018/01/10 V1.22 Added
+    gv_param_exec_flag        :=  iv_exec_flag;                                   --  2018/01/10 V1.22 Added
+    --
     -- ===============================================
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
