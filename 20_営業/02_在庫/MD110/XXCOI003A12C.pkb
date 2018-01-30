@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2014/10/27    1.11  Y.Koh            [E_本稼動_12237]倉庫管理システム対応
  *  2015/03/19    1.12  S.Niki           [E_本稼動_12237]E_本稼動_07570対応の取消
  *  2015/11/11    1.13  S.Yamashita      [E_本稼動_13356]パフォーマンス改善対応
+ *  2017/12/28    1.14  K.Nara           [E_本稼動_14486]レコード種別：22（商品入替）の追加対応
  *
  *****************************************************************************************/
 --
@@ -547,6 +548,9 @@ AS
 -- == 2011/04/14 V1.9 Added START ===============================================================
                 WHEN  '21'  THEN          SUBSTRB(TRIM(xihit.outside_code), -5, 5)
 -- == 2011/04/14 V1.9 Added END =================================================================
+-- 2017/12/28 E_本稼動_14486 V1.14 Add START
+                WHEN  '22'  THEN          SUBSTRB(TRIM(xihit.outside_code), -5, 5)
+-- 2017/12/28 E_本稼動_14486 V1.14 Add END
                 WHEN  '30'  THEN
                   CASE  TRIM(xihit.invoice_type)
                     WHEN  '1'  THEN       SUBSTRB(TRIM(xihit.outside_code), -2, 2)
@@ -614,6 +618,9 @@ AS
             ,xihit.interface_date           AS interface_date           -- 受信日時
       FROM   xxcoi_in_hht_inv_transactions xihit                        -- HHT入出庫情報IF
       WHERE  TRUNC( NVL(xihit.invoice_date , gd_process_date ) ) <= TRUNC( gd_process_date )
+-- 2017/12/28 E_本稼動_14486 V1.14 Add START
+      AND    ( NVL(TRIM(xihit.record_type), '@') != '22'  OR  NVL(TRIM(xihit.item_code), '@') != '0000000' )
+-- 2017/12/28 E_本稼動_14486 V1.14 Add END
       ORDER BY
              xihit.interface_id
 -- == 2009/06/01 V1.4 Modified END   ===============================================================
@@ -727,6 +734,9 @@ AS
 -- == 2011/04/14 V1.9 Added START ===============================================================
     cv_record_type_new      CONSTANT VARCHAR2(2) := '21';                           -- レコード種別：新規ベンダ基準在庫
 -- == 2011/04/14 V1.9 Added END =================================================================
+-- 2017/12/28 E_本稼動_14486 V1.14 Add START
+    cv_record_type_replace  CONSTANT VARCHAR2(2) := '22';                           -- レコード種別：商品入替
+-- 2017/12/28 E_本稼動_14486 V1.14 Add END
     cv_record_type_inv      CONSTANT VARCHAR2(2) := '30';                           -- レコード種別：入出庫
     cv_record_type_sample   CONSTANT VARCHAR2(2) := '40';                           -- レコード種別：見本
     cv_lookup_record_type   CONSTANT VARCHAR2(23) := 'XXCOI1_HHT_INV_DATA_DIV';     -- LOOKUP_TYPE：レコード種別
@@ -848,7 +858,10 @@ AS
     -- (1).コラム№
 -- == 2011/04/14 V1.9 Modified START ===============================================================
 --    IF g_hht_inv_if_tab( in_work_count ).record_type = cv_record_type_vd
-    IF g_hht_inv_if_tab( in_work_count ).record_type IN( cv_record_type_vd, cv_record_type_new )
+-- 2017/12/28 E_本稼動_14486 V1.14 Modified START
+--    IF g_hht_inv_if_tab( in_work_count ).record_type IN( cv_record_type_vd, cv_record_type_new )
+    IF g_hht_inv_if_tab( in_work_count ).record_type IN( cv_record_type_vd, cv_record_type_new, cv_record_type_replace )
+-- 2017/12/28 E_本稼動_14486 V1.14 Modified END
 -- == 2011/04/14 V1.9 Modified END =================================================================
     AND  g_hht_inv_if_tab( in_work_count ).column_no IS NULL THEN
         --
@@ -981,8 +994,12 @@ AS
 -- == 2011/04/14 V1.9 Modified START ===============================================================
 --    -- 取引を作成しないVD初回は除く（単価、H/C更新のみ）
 --    IF g_hht_inv_if_tab( in_work_count ).record_type != cv_record_type_vd THEN
-    -- 取引を作成しないVD初回（単価、H/C更新のみ）、新規ベンダ基準在庫は除く
-    IF g_hht_inv_if_tab( in_work_count ).record_type NOT IN( cv_record_type_vd, cv_record_type_new ) THEN
+-- 2017/12/28 E_本稼動_14486 V1.14 Modified START
+--    -- 取引を作成しないVD初回（単価、H/C更新のみ）、新規ベンダ基準在庫は除く
+--    IF g_hht_inv_if_tab( in_work_count ).record_type NOT IN( cv_record_type_vd, cv_record_type_new ) THEN
+    -- 取引を作成しないVD初回（単価、H/C更新のみ）、新規ベンダ基準在庫、商品入替は除く
+    IF g_hht_inv_if_tab( in_work_count ).record_type NOT IN( cv_record_type_vd, cv_record_type_new, cv_record_type_replace ) THEN
+-- 2017/12/28 E_本稼動_14486 V1.14 Modified END
 -- == 2011/04/14 V1.9 Modified START ===============================================================
         -- 総本数0判定
         IF gn_total_quantity = 0 THEN
@@ -1709,6 +1726,9 @@ AS
 -- == 2011/04/14 V1.9 Added START ===============================================================
     cv_record_type_21 CONSTANT VARCHAR2(2)   := '21';                   -- レコード種別：新規ベンダ基準在庫
 -- == 2011/04/14 V1.9 Added END =================================================================
+-- 2017/12/28 E_本稼動_14486 V1.14 Add START
+    cv_record_type_22 CONSTANT VARCHAR2(2)   := '22';                   -- レコード種別：商品入替
+-- 2017/12/28 E_本稼動_14486 V1.14 Add END
     cv_dummy          CONSTANT VARCHAR2(2)   := '99';                   -- 伝票区分：ダミー
 --
 --#####################  固定ローカル変数宣言部 START   ########################
@@ -1827,6 +1847,9 @@ AS
         ,DECODE( g_hht_inv_if_tab( in_work_count ).record_type
                 ,cv_record_type_20,cv_dummy
                 ,cv_record_type_21,cv_dummy
+-- 2017/12/28 E_本稼動_14486 V1.14 Add START
+                ,cv_record_type_22,cv_dummy
+-- 2017/12/28 E_本稼動_14486 V1.14 Add END
                 ,g_hht_inv_if_tab( in_work_count ).invoice_type )-- 12.伝票区分
 -- == 2011/04/14 V1.9 Modified END =================================================================
         ,g_hht_inv_if_tab( in_work_count ).base_delivery_flag    -- 13.拠点間倉替フラグ
@@ -2483,6 +2506,15 @@ AS
     -- ===========================================
     --  終了処理(B-9)
     -- ===========================================
+-- 2017/12/28 E_本稼動_14486 V1.14 Add START
+    -- 空コラムの商品入替データを削除
+    DELETE 
+    FROM   xxcoi_in_hht_inv_transactions xihit                        -- HHT入出庫情報IF
+    WHERE  TRUNC( NVL(xihit.invoice_date , gd_process_date ) ) <= TRUNC( gd_process_date )
+    AND    TRIM(xihit.record_type) = '22'
+    AND    TRIM(xihit.item_code) = '0000000';
+    --
+-- 2017/12/28 E_本稼動_14486 V1.14 Add START
     -- 正常処理件数の設定
     gn_normal_cnt := gn_target_cnt - gn_warn_cnt - gn_error_cnt;
     -- 警告ステータス設定
