@@ -6,14 +6,14 @@ AS
  * Package Name     : XXCOI010A01C(body)
  * Description      : 営業員在庫IF出力
  * MD.050           : 営業員在庫IF出力 MD050_COI_010_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理 (A-1)
- *  get_sal_stf_inv        営業員在庫情報抽出 (A-3)
+ *  get_sal_stf_inv        在庫情報抽出 (A-3)
  *  submain                メイン処理プロシージャ
  *                         UTLファイルオープン (A-2)
  *                         必須項目チェック処理 (A-4)
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/18    1.0   T.Nakamura       新規作成
  *  2009/05/12    1.1   T.Nakamura       [障害T1_0813]容器群コードNULLチェックを削除
+ *  2018/01/10    1.2   S.Yamashita      [E_本稼動_14486]次期HHTシステム リアルタイム在庫対応
  *
  *****************************************************************************************/
 --
@@ -106,6 +107,9 @@ AS
   cv_tkn_file_name            CONSTANT VARCHAR2(20)  := 'FILE_NAME';        -- ファイル名
   cv_tkn_dir_tok              CONSTANT VARCHAR2(20)  := 'DIR_TOK';          -- ディレクトリ名
 --
+-- Ver.1.2 S.Yamashita Add Start
+  cv_subinv_type_warehouse    CONSTANT VARCHAR2(20)  := '1';                -- 保管場所区分：倉庫
+-- Ver.1.2 S.Yamashita Add End
   cv_subinv_type_sal_stf      CONSTANT VARCHAR2(20)  := '2';                -- 保管場所区分：営業員
   cv_dept_hht_div_dept        CONSTANT VARCHAR2(20)  := '1';                -- 百貨店HHT区分：百貨店
   cv_cust_class_code_base     CONSTANT VARCHAR2(20)  := '1';                -- 顧客区分：拠点
@@ -140,6 +144,9 @@ AS
            , msib.segment1                AS item_code              -- 品目コード
            , mcb.segment1                 AS item_division          -- 商品区分
            , msi.secondary_inventory_name AS inv_code               -- 保管場所コード
+-- Ver.1.2 S.Yamashita Add Start
+           , xird.subinventory_type       AS subinventory_type      -- 保管場所区分
+-- Ver.1.2 S.Yamashita Add ENd
     FROM     xxcoi_inv_reception_daily    xird                      -- 月次在庫受払表(日次)テーブル
            , mtl_secondary_inventories    msi                       -- 保管場所マスタ
            , mtl_system_items_b           msib                      -- 品目マスタ
@@ -149,7 +156,10 @@ AS
            , xxcmm_system_items_b         xsib                      -- Disc品目アドオン
            , hz_cust_accounts             hca                       -- 顧客マスタ
            , xxcmm_cust_accounts          xca                       -- 顧客追加情報
-    WHERE    xird.subinventory_type       = cv_subinv_type_sal_stf  -- 抽出条件：保管場所区分が営業員
+-- Ver.1.2 S.Yamashita Mod Start
+--    WHERE    xird.subinventory_type       = cv_subinv_type_sal_stf  -- 抽出条件：保管場所区分が営業員
+    WHERE    xird.subinventory_type       IN ( cv_subinv_type_warehouse, cv_subinv_type_sal_stf )  -- 抽出条件：保管場所区分が倉庫または営業員
+-- Ver.1.2 S.Yamashita Mod End
     AND      xird.practice_date           = NVL( gd_target_date     -- 抽出条件：年月日が処理対象日と等しい
                                                , gd_process_date )  -- 処理対象日がNULLの場合、業務日付と等しい
     AND      msi.secondary_inventory_name = xird.subinventory_code  -- 結合条件：保管場所マスタと月次在庫受払表(日次)
@@ -424,7 +434,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : get_sal_stf_inv
-   * Description      : 営業員在庫情報抽出(A-3)
+   * Description      : 在庫情報抽出(A-3)
    ***********************************************************************************/
   PROCEDURE get_sal_stf_inv(
       ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
@@ -629,7 +639,7 @@ AS
                      );
 --
     -- ===============================
-    -- 営業員在庫情報抽出 (A-3)
+    -- 在庫情報抽出 (A-3)
     -- ===============================
     get_sal_stf_inv(
         ov_errbuf  => lv_errbuf         -- エラー・メッセージ           --# 固定 #
@@ -650,33 +660,40 @@ AS
       -- 必須チェックステータスの初期化
       lv_chk_status := TRUE;
 --
-      -- ===============================
-      -- 必須項目チェック処理 (A-4)
-      -- ===============================
-      -- 営業員コードNULLチェック
-      IF ( g_get_sal_stf_inv_tab(i).sale_staff_code IS NULL ) THEN
-        gv_out_msg := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_appl_short_name_xxcoi
-                        , iv_name         => cv_ss_code_chk_err_msg
-                        , iv_token_name1  => cv_tkn_base_code_tok
-                        , iv_token_value1 => g_get_sal_stf_inv_tab(i).sale_base_code
-                        , iv_token_name2  => cv_tkn_inv_code_tok
-                        , iv_token_value2 => g_get_sal_stf_inv_tab(i).inv_code
-                        , iv_token_name3  => cv_tkn_item_code_tok
-                        , iv_token_value3 => g_get_sal_stf_inv_tab(i).item_code
-                      );
-        -- メッセージ出力
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-          , buff   => gv_out_msg
-        );
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.LOG
-          , buff   => SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||gv_out_msg,1,5000 )
-        );
-        lv_chk_status := FALSE;
-        ov_retcode    := cv_status_warn;
+-- Ver.1.2 S.Yamashita Add Start
+      -- 営業員の場合
+      IF ( g_get_sal_stf_inv_tab(i).subinventory_type = cv_subinv_type_sal_stf ) THEN
+-- Ver.1.2 S.Yamashita Add End
+        -- ===============================
+        -- 必須項目チェック処理 (A-4)
+        -- ===============================
+        -- 営業員コードNULLチェック
+        IF ( g_get_sal_stf_inv_tab(i).sale_staff_code IS NULL ) THEN
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_appl_short_name_xxcoi
+                          , iv_name         => cv_ss_code_chk_err_msg
+                          , iv_token_name1  => cv_tkn_base_code_tok
+                          , iv_token_value1 => g_get_sal_stf_inv_tab(i).sale_base_code
+                          , iv_token_name2  => cv_tkn_inv_code_tok
+                          , iv_token_value2 => g_get_sal_stf_inv_tab(i).inv_code
+                          , iv_token_name3  => cv_tkn_item_code_tok
+                          , iv_token_value3 => g_get_sal_stf_inv_tab(i).item_code
+                        );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+            , buff   => gv_out_msg
+          );
+          FND_FILE.PUT_LINE(
+              which  => FND_FILE.LOG
+            , buff   => SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||gv_out_msg,1,5000 )
+          );
+          lv_chk_status := FALSE;
+          ov_retcode    := cv_status_warn;
+        END IF;
+-- Ver.1.2 S.Yamashita Add Start
       END IF;
+-- Ver.1.2 S.Yamashita Add End
 --
 -- == 2009/05/12 V1.1 Deleted START ================================================================
 --      -- 容器群コードNULLチェック
@@ -713,7 +730,16 @@ AS
         -- ===============================
         -- 営業員在庫CSV作成 (A-5)
         -- ===============================
-        lv_prev_inv_quantity := TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity ); -- 前日在庫数
+-- Ver.1.2 S.Yamashita Add Start
+        -- 倉庫の場合
+        IF ( g_get_sal_stf_inv_tab(i).subinventory_type = cv_subinv_type_warehouse ) THEN
+          lv_prev_inv_quantity := NULL; -- 前日在庫数
+        ELSE
+-- Ver.1.2 S.Yamashita Add End
+          lv_prev_inv_quantity := TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity ); -- 前日在庫数
+-- Ver.1.2 S.Yamashita Add Start
+        END IF;
+-- Ver.1.2 S.Yamashita Add End
         lv_sysdate           := TO_CHAR( gd_sysdate, 'YYYY/MM/DD HH24:MI:SS' );        -- SYSDATE
 --
         -- CSVデータを作成
@@ -727,6 +753,10 @@ AS
                          cv_const_zero                                             || cv_delimiter || -- 売上出庫
           cv_encloser || lv_sysdate                                 || cv_encloser || cv_delimiter || -- SYSDATE
           cv_encloser || g_get_sal_stf_inv_tab(i).item_division     || cv_encloser                    -- 商品区分
+-- Ver.1.2 S.Yamashita Add Start
+          || cv_delimiter || cv_encloser || g_get_sal_stf_inv_tab(i).inv_code                     || cv_encloser  -- 保管場所コード
+          || cv_delimiter ||                TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity )                 -- 前日在庫数（営業車・倉庫）
+-- Ver.1.2 S.Yamashita Add End
         );
 --
         -- ===============================
