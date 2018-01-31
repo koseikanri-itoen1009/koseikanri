@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2015/01/08   1.8    H.Wajima         [E_本稼動_12806]単位換算処理の修正
  *  2017/12/18   1.9    Y.Omuro          [E_本稼動_14486]次期HHTシステムからの受注取込
  *  2018/01/18   1.10   K.Kiriu          [E_本稼動_14486]次期HHTシステムからの受注取込（伝票区分対応）
+ *  2018/01/29   1.11   N.Koyama         [E_本稼動_14486]次期HHTシステムからの受注取込（伝票番号不具合対応）
  *
  *****************************************************************************************/
 --
@@ -411,11 +412,17 @@ AS
         , xcac.chain_store_code           edi_chain_code             --顧客追加情報．チェーン店コード（EDI）
         , xcac.customer_code              conv_customer_code         --顧客追加情報．顧客コード
         , hp1.organization_name_phonetic  shop_name_alt              --店名（カナ）
-        , xcac.delivery_base_code         delivery_base_code         --顧客追加情報．納品拠点コード
+/* 2018/1/29 Ver1.11Mod Start */
+--        , xcac.delivery_base_code         delivery_base_code         --顧客追加情報．納品拠点コード
+        , SUBSTR(msiv.attribute7,1,4)     delivery_base_code         --保管場所マスタ.拠点コード
+/* 2018/1/29 Ver1.11Mod End */
         , civ.organization_name_phonetic  company_name_alt           --社名（カナ）
         , ooha.attribute20                big_classification_code    --受注ヘッダテーブル．分類区分
         , ooha.attribute5                 invoice_class              --受注ヘッダテーブル．伝票区分
-        , ooha.attribute15                invoice_number             --受注ヘッダテーブル．伝票番号
+/* 2018/1/29 Ver1.11Mod Start */
+--        , ooha.attribute15                invoice_number             --受注ヘッダテーブル．伝票番号
+        , ooha.cust_po_number             invoice_number             --受注ヘッダテーブル．伝票番号
+/* 2018/1/29 Ver1.11Mod End */
         , ooha.header_id                  edi_header_info_id         --受注ヘッダテーブル．受注ヘッダID
         , oola.attribute10                selling_price              --受注明細テーブル．売単価
         , oola.line_id                    edi_line_info_id           --受注明細テーブル．受注明細ID
@@ -486,7 +493,10 @@ AS
       order_number         oe_order_headers_all.order_number%TYPE,         -- 受注No
       line_number          oe_order_lines_all.line_number%TYPE,            -- 行No
       conv_customer_code   xxcmm_cust_accounts.customer_code%TYPE,         -- 顧客コード
-      invoice_number       oe_order_headers_all.attribute15%TYPE,          -- 伝票番号
+/* 2018/1/29 Ver1.11Mod Start */
+--      invoice_number       oe_order_headers_all.attribute15%TYPE,          -- 伝票番号
+      invoice_number       oe_order_headers_all.cust_po_number%TYPE,          -- 伝票番号
+/* 2018/1/29 Ver1.11Mod End */
       ordered_item         oe_order_lines_all.ordered_item%TYPE,           -- 自社品名コード
       customer_item_number mtl_customer_items.customer_item_number%TYPE,   -- 他社品名コード
       customer_item_desc   mtl_customer_items.customer_item_desc%TYPE,     -- 他社品名
