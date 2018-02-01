@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -89,6 +89,7 @@ AS
  *                                         ・『データ種別』の必須チェックを外す
  *                                         ・「問屋」「国際」の『売上区分』の必須チェックを外す
  *  2017/10/18    1.30  S.Niki           [E_本稼動_14671] 自拠点セキュリティ変更
+ *  2018/01/23    1.31  H.Sasaki         [E_本稼動_14788] 変動電気代アップロード時、受注のステータスを記帳済で作成する
  *
  *****************************************************************************************/
 --
@@ -186,6 +187,10 @@ AS
 -- ************** Ver1.28 ADD START *************** --
   global_e_fee_item_cd_expt         EXCEPTION;                                                       --変動電気料品目コードエラー時
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+  global_business_low_type_expt     EXCEPTION;                                                        --  業態小分類のチェック例外
+  global_electric_pay_expt          EXCEPTION;                                                        --  支払条件（電気代）のチェック例外
+-- ************** 2018/01/23 V1.31 Added END      *************** --
   --*** 処理対象データロック例外 ***
   global_data_lock_expt             EXCEPTION;
   PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
@@ -409,6 +414,16 @@ AS
   ct_msg_sls_cls_mst_err    CONSTANT  fnd_new_messages.message_name%TYPE
                                               := 'APP-XXCOS1-13863';                                 -- 売上区分チェックエラー
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+  ct_msg_chk_bus_low_type_err   CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-13864';                                 -- ベンダーチェックエラーメッセージ
+  ct_msg_chk_electric_pay_err   CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-13865';                                 -- 支払条件（電気代）チェックエラーメッセージ
+  ct_msg_get_order_a_oif        CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-00134';                                 -- 受注処理OIF(メッセージ文字列)
+  ct_msg_get_ordup_biz_ctr      CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-13866';                                 -- XXCOS:受注アップロード事務センター(メッセージ文字列)
+-- ************** 2018/01/23 V1.31 Added END      *************** --
 --
   --トークン
   cv_tkn_profile                    CONSTANT  VARCHAR2(512) := 'PROFILE';                            --プロファイル名
@@ -452,6 +467,9 @@ AS
 -- ************** Ver1.28 ADD START *************** --
   cv_e_fee_item_cd                  CONSTANT  VARCHAR2(50)  := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE';      -- プロファイル：変動電気料品目コード
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+  cv_order_up_bis_center            CONSTANT  VARCHAR2(50)  := 'XXCOS1_ORDER_UPLOAD_BIS_CENTER';  --  プロファイル：受注アップロード事務センター
+-- ************** 2018/01/23 V1.31 Added END      *************** --
 --
   cv_normal_order                   CONSTANT  VARCHAR2(64)  := 'XXCOS_005_A08_01';                   --通常受注
   cv_normal_shipment                CONSTANT  VARCHAR2(64)  := 'XXCOS_005_A08_02';                   --通常出荷
@@ -621,6 +639,16 @@ AS
 --****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
   cv_trunc_mm                       CONSTANT VARCHAR2(2)    := 'MM';                                 --日付切捨用
 --****************************** 2010/04/15 1.19 M.Sano ADD  END   *******************************--
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+  cv_bis_center                     CONSTANT VARCHAR2(1)    :=  'Y';                                --  事務センター職責
+  cv_book_order                     CONSTANT VARCHAR2(10)   :=  'BOOK_ORDER';                       --  記帳済
+  cv_management_status_1            CONSTANT VARCHAR2(1)    :=  '1';                                --  ステータス：1.確定済
+  cv_finish_cooperate               CONSTANT VARCHAR2(1)    :=  '1';                                --  マスタ連携フラグ：1.連携済
+  cv_electricity_type_change        CONSTANT VARCHAR2(1)    :=  '2';                                --  電気代区分：2.変動
+  cv_sp_electric_pay_type_1         CONSTANT VARCHAR2(1)    :=  '1';                                --  支払条件（電気代）：1.契約先
+  cv_business_low_type_24           CONSTANT VARCHAR2(2)    :=  '24';                               --  業態小分類：24.フルVD(消化)
+  cv_business_low_type_25           CONSTANT VARCHAR2(2)    :=  '25';                               --  業態小分類：25.フルVD
+-- ************** 2018/01/23 V1.31 Added END      *************** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -634,9 +662,15 @@ AS
 --
   TYPE g_tab_order_oif_rec          IS TABLE OF oe_headers_iface_all%ROWTYPE INDEX BY PLS_INTEGER;   --受注ヘッダOIF
   TYPE g_tab_t_order_line_oif_rec   IS TABLE OF oe_lines_iface_all%ROWTYPE   INDEX BY PLS_INTEGER;   --受注明細OIF
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+  TYPE g_tab_oif_act_rec            IS TABLE OF oe_actions_iface_all%ROWTYPE INDEX BY PLS_INTEGER;   --受注処理OIF
+-- ************** 2018/01/23 V1.31 Added END      *************** --
   TYPE g_tab_login_base_info_rec    IS TABLE OF VARCHAR(10)                  INDEX BY PLS_INTEGER;   --自拠点
   gr_order_oif_data                 g_tab_order_oif_rec;                                             --受注ヘッダOIF
   gr_order_line_oif_data            g_tab_t_order_line_oif_rec;                                      --受注明細OIF
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+  gr_oif_act_data                   g_tab_oif_act_rec;                                               --受注処理OIF
+-- ************** 2018/01/23 V1.31 Added END      *************** --
   gr_g_login_base_info              g_tab_login_base_info_rec;                                       --自拠点
 --
   -- ===============================
@@ -721,6 +755,10 @@ AS
 -- ************** Ver1.29 ADD START *************** --
   gt_orig_sys_document_ref   oe_order_headers.orig_sys_document_ref%TYPE; -- 受注ソース参照(シーケンス設定)
 -- ************** Ver1.29 ADD END   *************** --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+  gv_order_up_bis_center            VARCHAR2(1);
+  gn_line_act_cnt                   NUMBER;
+-- ************** 2018/01/23 V1.31 Added END      *************** --
 --
   /**********************************************************************************
    * Procedure Name   : para_out
@@ -1693,6 +1731,21 @@ AS
       END IF;
     END IF;
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+    ------------------------------------
+    -- 19.プロファイル「XXCOS:受注アップロード事務センター」取得
+    ------------------------------------
+    gv_order_up_bis_center  :=  fnd_profile.value( cv_order_up_bis_center );
+    --
+    IF ( gv_order_up_bis_center IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      lv_key_info :=  xxccp_common_pkg.get_msg(
+                          iv_application  =>  ct_xxcos_appl_short_name    --  XXCOS
+                        , iv_name         =>  ct_msg_get_ordup_biz_ctr    --  XXCOS:受注アップロード事務センター
+                      );
+      RAISE global_get_profile_expt;
+    END IF;
+-- ************** 2018/01/23 V1.31 Added END      *************** --
 --
   EXCEPTION
 --****************************** 2010/04/15 1.19 M.Sano ADD  START *******************************--
@@ -1709,6 +1762,7 @@ AS
      --***** プロファイル取得例外ハンドラ(MO:営業単位の取得)
      --***** プロファイル取得例外ハンドラ(XXCOI:在庫組織コードの取得)
      --***** プロファイル取得例外ハンドラ(受注ソースの取得)
+     --***** プロファイル取得例外ハンドラ(XXCOS:受注アップロード事務センター)
     WHEN global_get_profile_expt THEN
       ov_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => ct_xxcos_appl_short_name,
@@ -3961,6 +4015,9 @@ AS
     lv_subinv_chk     VARCHAR2(128);   -- 保管場所
     lv_sls_cls_chk    VARCHAR2(128);   -- 売上区分
 -- ************** Ver1.28 ADD END   *************** --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+    ln_dummy          NUMBER;          -- 存在チェック用ダミー
+-- ************** 2018/01/23 V1.31 Added END      *************** --
 --
     -- *** ローカル・カーソル ***
     -- *** ローカル・レコード ***
@@ -4251,6 +4308,58 @@ AS
 --
     END IF;
 --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+    IF  (     iv_get_format = cv_electricity_format
+          AND gv_order_up_bis_center = cv_bis_center
+        )
+    THEN
+      ------------------------------------
+      -- 業態小分類のチェックのチェック(変動電気代CSV)  事務センターの場合のみ
+      --  24.フルVD(消化), 25.フルVD以外はNG
+      ------------------------------------
+      BEGIN
+        SELECT  1       exists_flag
+        INTO    ln_dummy
+        FROM    xxcmm_cust_accounts   xca       --  顧客アドオン
+        WHERE   xca.customer_code       =   iv_delivery
+        AND     xca.business_low_type   IN( cv_business_low_type_24, cv_business_low_type_25 )
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_key_info := in_line_no;
+          RAISE global_business_low_type_expt;    --  業態小分類のチェック例外
+      END;
+      --
+      ------------------------------------
+      -- 支払条件（電気代）のチェック(変動電気代CSV)  事務センターの場合のみ
+      --  最新の契約が、電気代区分「変動」、支払条件（電気代）「契約先」以外はNG
+      ------------------------------------
+      BEGIN
+        SELECT  1       exists_flag
+        INTO    ln_dummy
+        FROM    xxcso_contract_managements    xcm     --  契約管理テーブル
+              , xxcso_sp_decision_headers     xsdh    --  ＳＰ専決ヘッダテーブル
+        WHERE   xcm.sp_decision_header_id           =   xsdh.sp_decision_header_id
+        AND     xcm.install_account_number          =   iv_delivery
+        AND     xcm.status                          =   cv_management_status_1            --  ステータス：1.確定済
+        AND     xcm.cooperate_flag                  =   cv_finish_cooperate               --  マスタ連携フラグ：1.連携済
+        AND     xsdh.electricity_type               =   cv_electricity_type_change        --  電気代区分：2.変動
+        AND     xsdh.electric_payment_type          =   cv_sp_electric_pay_type_1         --  支払条件（電気代）：1.契約先
+        AND     xcm.contract_management_id          =   ( --  確定済、連携済の中で最新の契約
+                                                          SELECT  MAX( sub.contract_management_id )     max_contract_management_id
+                                                          FROM    xxcso_contract_managements    sub
+                                                          WHERE   sub.install_account_number    =   xcm.install_account_number
+                                                          AND     sub.status                    =   cv_management_status_1
+                                                          AND     sub.cooperate_flag            =   cv_finish_cooperate
+                                                        )
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_key_info := in_line_no;
+          RAISE global_electric_pay_expt;         --  支払条件（電気代）のチェック例外
+      END;
+    END IF;
+-- ************** 2018/01/23 V1.31 Added END      *************** --
     ------------------------------------
     -- 2.フォーマットパターンの判定
     ------------------------------------
@@ -5134,6 +5243,40 @@ AS
       ov_retcode := cv_status_warn;
 -- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+    --  業態小分類のチェック例外
+    WHEN global_business_low_type_expt THEN
+      ov_errmsg :=  xxccp_common_pkg.get_msg(
+                        iv_application    =>  ct_xxcos_appl_short_name
+                      , iv_name           =>  ct_msg_chk_bus_low_type_err
+                      , iv_token_name1    =>  cv_tkn_param1                                               --  パラメータ1(トークン)
+                      , iv_token_value1   =>  gv_temp_line_no                                             --  行番号
+                      , iv_token_name2    =>  cv_tkn_param2                                               --  パラメータ2(トークン)
+                      , iv_token_value2   =>  gv_temp_oder_no                                             --  オーダーNO
+                      , iv_token_name3    =>  cv_tkn_param3                                               --  パラメータ3(トークン)
+                      , iv_token_value3   =>  gv_temp_line                                                --  行No
+                      , iv_token_name4    =>  cv_tkn_param4                                               --  パラメータ4(トークン)
+                      , iv_token_value4   =>  iv_delivery                                                 --  納品先コード
+                    );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_warn;
+    --  支払条件（電気代）のチェック例外
+    WHEN global_electric_pay_expt THEN
+      ov_errmsg :=  xxccp_common_pkg.get_msg(
+                        iv_application    =>  ct_xxcos_appl_short_name
+                      , iv_name           =>  ct_msg_chk_electric_pay_err
+                      , iv_token_name1    =>  cv_tkn_param1                                               --  パラメータ1(トークン)
+                      , iv_token_value1   =>  gv_temp_line_no                                             --  行番号
+                      , iv_token_name2    =>  cv_tkn_param2                                               --  パラメータ2(トークン)
+                      , iv_token_value2   =>  gv_temp_oder_no                                             --  オーダーNO
+                      , iv_token_name3    =>  cv_tkn_param3                                               --  パラメータ3(トークン)
+                      , iv_token_value3   =>  gv_temp_line                                                --  行No
+                      , iv_token_name4    =>  cv_tkn_param4                                               --  パラメータ4(トークン)
+                      , iv_token_value4   =>  iv_delivery                                                 --  納品先コード
+                    );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_warn;
+-- ************** 2018/01/23 V1.31 Added END      *************** --
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -6026,6 +6169,18 @@ AS
 --      gr_order_oif_data(gn_hed_cnt).attribute5                := in_category_class;         -- 分類区分
 ---- *********** 2009/12/04 1.15 N.Maeda ADD  END  ***********--
 -- *********** 2009/12/04 1.15 N.Maeda MOD  END  ***********--
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+      --  変動電気代、かつ、事務センターの場合
+      IF  (     iv_get_format = cv_electricity_format
+            AND gv_order_up_bis_center = cv_bis_center
+          )
+      THEN
+        --  受注処理OIFを作成（受注を記帳済とする）
+        gr_oif_act_data(gn_hed_cnt).order_source_id       :=  in_order_source_id;
+        gr_oif_act_data(gn_hed_cnt).orig_sys_document_ref :=  gt_orig_sys_document_ref;
+        gr_oif_act_data(gn_hed_cnt).operation_code        :=  cv_book_order;
+      END IF;
+-- ************** 2018/01/23 V1.31 Added END      *************** --
     END IF;
 --
 -- *********** 2009/12/16 1.16 N.Maeda ADD START ***********--]
@@ -6216,6 +6371,22 @@ AS
        RAISE global_insert_expt;
     END;
 --
+-- ************** 2018/01/23 V1.31 Added START    *************** --
+    --  受注処理OIF登録処理
+    BEGIN
+      FORALL ln_i IN 1 .. gr_oif_act_data.COUNT
+        INSERT INTO oe_actions_iface_all VALUES gr_oif_act_data(ln_i);
+      --件数カウント
+      gn_line_act_cnt :=  SQL%ROWCOUNT;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_tab_name :=  xxccp_common_pkg.get_msg(
+                            iv_application  =>  ct_xxcos_appl_short_name
+                          , iv_name         =>  ct_msg_get_order_a_oif
+                        );
+       RAISE global_insert_expt;
+    END;
+-- ************** 2018/01/23 V1.31 Added END      *************** --
   EXCEPTION
     --登録例外
     WHEN global_insert_expt THEN
