@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2012/07/04    1.7   K.Onotsuka       [E_本稼動_08365]処理区分が以下の場合、販手残高テーブルの処理区分に各々の区分値を更新する
  *                                                       「残高取消」⇒'1'「保留」⇒'2'「保留解除」⇒'0'
  *  2012/09/20    1.8   T.Osawa          [E_本稼動_10100]残高更新Excelアップロードの改修について
+ *  2018/01/23    1.9   K.Nara           [E_本稼動_14790]事務センター対応（事務センタユーザの顧客指定残高取消）
  *
  *****************************************************************************************/
 --
@@ -158,6 +159,9 @@ AS
   cv_errmsg_10457   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10477';                 -- 残高取消組み合わせチェックエラー（拠点）
   cv_errmsg_10458   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10478';                 -- 金額未確定チェックエラー（拠点）
 -- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+-- Ver_1.9 E_本稼動_14790 ADD Start
+  cv_errmsg_10544   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10544';                 -- 事務センター顧客指定 処理区分チェックエラー
+-- Ver_1.9 E_本稼動_14790 ADD End
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata ADD START
   cv_errmsg_10487   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10487';                 -- 残高取消組み合わせチェックエラー2（拠点）
   cv_errmsg_10488   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10488';                 -- 保留顧客組み合わせチェックエラーメッセージ（拠点）
@@ -186,6 +190,9 @@ AS
   -- プロファイル定義
   cv_dept_act_code  CONSTANT VARCHAR2(20) := 'XXCOK1_AFF2_DEPT_ACT';             -- 業務管理部部門コード
   cv_prof_org_id    CONSTANT VARCHAR2(30) := 'ORG_ID';                           -- 組織ID
+-- Ver_1.9 E_本稼動_14790 ADD Start
+  cv_prof_cent_proc CONSTANT VARCHAR2(50) := 'XXCOK1_BL_UPLOAD_CENTER_CUST';     -- 事務センター顧客指定フォーマットパターン
+-- Ver_1.9 E_本稼動_14790 ADD End
   -- 参照表定義
   cv_lk_proc_type   CONSTANT VARCHAR2(27) := 'XXCOK1_BM_BALANCE_PROC_TYPE';      -- 残高アップロード処理区分
 -- 2012/09/20 Ver.1.8 [E_本稼動_10100] SCSK T.Osawa ADD START
@@ -213,6 +220,10 @@ AS
   gv_dept_act_code  fnd_profile_option_values.profile_option_value%TYPE := NULL; -- 業務管理部部門コード
   gv_org_code_sales fnd_profile_option_values.profile_option_value%TYPE := NULL; -- 在庫組織コード
   gv_dept_bel_code  per_all_people_f.attribute1%TYPE                    := NULL; -- 所属部門コード
+-- Ver_1.9 E_本稼動_14790 ADD Start
+  gv_prof_cent_proc fnd_profile_option_values.profile_option_value%TYPE := NULL; -- プロファイル値（事務センダー顧客指定フォーマットパターン）
+  gv_f_cend_cust    VARCHAR2(1)    := NULL;                                      -- 事務センター顧客指定フラグ
+-- Ver_1.9 E_本稼動_14790 ADD End
   -- チェック後データ退避レコード型
   TYPE g_check_data_rtype IS RECORD (
      vendor_code   po_vendors.segment1%TYPE                                      -- 仕入先コード
@@ -515,8 +526,17 @@ AS
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD START
 --      AND    xca.past_sale_base_code = gv_dept_bel_code
       AND    xca2.customer_code        = xca.past_sale_base_code  -- 拠点ＣＤ = 前月売上拠点
-      AND  ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
-      OR     xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+-- Ver_1.9 E_本稼動_14790 MOD Start
+--      AND  ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
+--      OR     xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+      AND  (
+               (    xca.past_sale_base_code   = gv_dept_bel_code  -- 所属拠点 = 前月売上拠点
+                 OR xca2.management_base_code = gv_dept_bel_code  -- 所属拠点 = 前月売上拠点の管理元拠点
+               )
+           OR
+               ( gv_f_cend_cust = cv_yes )                           -- 事務センターの顧客指定メニュー
+           )
+-- Ver_1.9 E_本稼動_14790 MOD End
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
       AND    xbb.cust_code           = iv_customer_code
@@ -602,6 +622,9 @@ AS
 -- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
 --    ELSIF ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
     ELSIF ( gv_dept_flg =  cv_act_dept ) AND
+-- Ver_1.9 E_本稼動_14790 ADD Start
+          ( gv_f_cend_cust = cv_no ) AND  -- 事務センター仕入先単位
+-- Ver_1.9 E_本稼動_14790 ADD End
           ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
       -- ロック処理
@@ -666,7 +689,11 @@ AS
     -------------------------------------------------
     -- 5.拠点残高取消ロック処理
     -------------------------------------------------      
-    ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+-- Ver_1.9 E_本稼動_14790 MOD Start
+--    ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) OR ( gv_f_cend_cust = cv_yes ) ) AND
+      -- 拠点 または 事務センター顧客指定 の場合
+-- Ver_1.9 E_本稼動_14790 MOD End
           ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
       OPEN bm_bel_cancel_cur(
          it_check_data(in_index).vendor_code   -- 仕入先コード
@@ -845,6 +872,9 @@ AS
 -- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
 --      ELSIF ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
       ELSIF ( gv_dept_flg =  cv_act_dept ) AND
+-- Ver_1.9 E_本稼動_14790 ADD Start
+            ( gv_f_cend_cust = cv_no ) AND  --事務センターの仕入先指定メニュー
+-- Ver_1.9 E_本稼動_14790 ADD End
             ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
         -- 更新処理
@@ -982,7 +1012,11 @@ AS
       -------------------------------------------------
       -- 12.拠点顧客残高取消更新処理
       -------------------------------------------------
-      ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+-- Ver_1.9 E_本稼動_14790 MOD Start
+--      ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+      -- 拠点 または 事務センタ顧客指定の残高取消 の場合
+      ELSIF ( ( gv_dept_flg =  cv_bel_dept ) OR ( gv_f_cend_cust = cv_yes ) ) AND
+-- Ver_1.9 E_本稼動_14790 MOD End
             ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
         -- 更新処理
         FORALL i IN 1 .. l_bm_bel_cancel_tab.COUNT
@@ -1313,7 +1347,11 @@ AS
     -------------------------------------------------
     -- 1.業務管理部処理区分チェック（共通）
     -------------------------------------------------
-    IF ( gv_dept_flg =  cv_act_dept ) THEN
+-- Ver_1.9 E_本稼動_14790 MOD Start
+--    IF ( gv_dept_flg =  cv_act_dept ) THEN
+    IF ( gv_dept_flg =  cv_act_dept ) AND
+       ( gv_f_cend_cust = cv_no ) THEN  --事務センタ顧客指定でない
+-- Ver_1.9 E_本稼動_14790 MOD End
       -- 業務管理部処理区分チェック
       IF ( iv_segment5 = cv_proc_type1 ) OR
          ( iv_segment5 = cv_proc_type2 ) OR
@@ -1339,6 +1377,32 @@ AS
         ov_retcode := cv_status_check;
       END IF;
     END IF;
+-- Ver_1.9 E_本稼動_14790 ADD Start
+    IF ( gv_dept_flg =  cv_act_dept ) AND
+       ( gv_f_cend_cust = cv_yes ) THEN  --事務センタ顧客指定の場合
+      -- 事務センター顧客指定時の処理区分チェック
+      IF ( iv_segment5 = cv_proc_type2 ) THEN
+        -- 処理区分を退避
+        lv_proc_type := iv_segment5;
+      ELSE
+        -- 妥当性チェックエラーメッセージ取得
+        lv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_ap_type_xxcok
+                        ,iv_name         => cv_errmsg_10544
+                        ,iv_token_name1  => cv_tkn_row_num
+                        ,iv_token_value1 => in_index
+                      );
+        -- 妥当性チェックエラーメッセージ出力
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                         in_which      => FND_FILE.OUTPUT -- 出力区分
+                        ,iv_message    => lv_out_msg      -- メッセージ
+                        ,in_new_line   => cn_zero         -- 改行
+                      );
+        -- 妥当性チェックエラー
+        ov_retcode := cv_status_check;
+      END IF;
+    END IF;
+-- Ver_1.9 E_本稼動_14790 ADD End
     -------------------------------------------------
     -- 2.拠点処理区分チェック（共通）
     -------------------------------------------------
@@ -1798,6 +1862,9 @@ AS
       END IF;
     -- 業務管理部かつ残高取消の場合
     ELSIF ( gv_dept_flg = cv_act_dept ) AND
+-- Ver_1.9 E_本稼動_14790 ADD Start
+          ( gv_f_cend_cust = cv_no  ) AND  --現行のメニューより起動（事務センター顧客指定でない）
+-- Ver_1.9 E_本稼動_14790 ADD End
           ( lv_proc_type = cv_proc_type2 ) THEN
       -------------------------------------------------
       -- 1.必須チェック（残高取消）
@@ -2350,8 +2417,12 @@ AS
         CLOSE customer_bm_chk_cur1;
       END IF;
 -- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
-    -- 拠点かつ残高取消の場合
-    ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+-- Ver_1.9 E_本稼動_14790 MOD Start
+--    -- 拠点かつ残高取消の場合
+--    ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+    -- 拠点 または 事務センタ顧客指定の残高取消 の場合
+    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) OR ( gv_f_cend_cust = cv_yes ) ) AND
+-- Ver_1.9 E_本稼動_14790 MOD End
           ( lv_proc_type = cv_proc_type2 ) THEN
       -------------------------------------------------
       -- 1.必須チェック（残高取消）
@@ -2536,8 +2607,17 @@ AS
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD START
 --          AND    xca.past_sale_base_code = gv_dept_bel_code
           AND    xca2.customer_code        = xca.past_sale_base_code  -- 拠点ＣＤ = 前月売上拠点
-          AND  ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
-          OR     xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+-- Ver_1.9 E_本稼動_14790 MOD Start
+--          AND  ( xca.past_sale_base_code   = gv_dept_bel_code         -- 所属拠点 = 前月売上拠点
+--          OR     xca2.management_base_code = gv_dept_bel_code )       -- 所属拠点 = 前月売上拠点の管理元拠点
+          AND  (
+                   (    xca.past_sale_base_code   = gv_dept_bel_code  -- 所属拠点 = 前月売上拠点
+                     OR xca2.management_base_code = gv_dept_bel_code  -- 所属拠点 = 前月売上拠点の管理元拠点
+                   )
+               OR
+                   ( gv_f_cend_cust = cv_yes )                           -- 事務センターの顧客指定メニュー
+               )
+-- Ver_1.9 E_本稼動_14790 MOD End
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
           GROUP BY xbb.supplier_code
@@ -2964,6 +3044,24 @@ AS
       RAISE get_prof_err_expt;
     END IF;
   --
+-- Ver_1.9 E_本稼動_14790 ADD Start
+    -------------------------------------------------
+    -- 7.「事務センター顧客指定フォーマットパターン」プロファイル取得
+    -------------------------------------------------
+    gv_prof_cent_proc := FND_PROFILE.VALUE( cv_prof_cent_proc );
+    IF ( gv_prof_cent_proc IS NULL ) THEN
+      lv_prof_err := cv_prof_cent_proc;
+      RAISE get_prof_err_expt;
+    END IF;
+    -------------------------------------------------
+    -- 8.事務センター顧客指定判定
+    -------------------------------------------------
+    IF ( gv_prof_cent_proc = iv_format ) THEN
+      gv_f_cend_cust := cv_yes; -- 「事務センター顧客指定である」を設定（事務センターの顧客指定用メニューから起動）
+    ELSE
+      gv_f_cend_cust := cv_no;  -- 「事務センター顧客指定でない」を設定
+    END IF;
+-- Ver_1.9 E_本稼動_14790 ADD End
   EXCEPTION
   --
     ----------------------------------------------------------
