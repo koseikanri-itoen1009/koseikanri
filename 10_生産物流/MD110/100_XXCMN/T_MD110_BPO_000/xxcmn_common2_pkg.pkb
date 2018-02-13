@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.20
+ * Version                : 1.21
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2009/03/31   1.18  野村            本番障害#1346対応
  *  2010/02/23   1.19  SCS伊藤         E_本稼動_01612対応
  *  2010/04/15   1.20  SCS北寒寺       E_本稼動_02103対応
+ *  2017/11/22   1.21  SCSK佐々木      E_本稼動_14735対応（パフォーマンス）
  *
  *****************************************************************************************/
 --
@@ -730,6 +731,9 @@ AS
 -- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
 --    SELECT  /*+ leading(oha otta ola mld) */
     SELECT
+--  2017/11/22 V1.21 Added START
+            /*+ INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.21 Added END
 -- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(CASE
 -- 2008/09/17 v1.12 UPDATE End 
