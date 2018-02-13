@@ -219,7 +219,11 @@ SELECT ilm.lot_no                            lot_no,                            
          AND    ili.loct_onhand > 0
          UNION
          -- S1)供給数  移動入庫予定
-         SELECT  mld.lot_id   lot_id
+--  2017/11/22 E_本稼動_14735 Modified START
+--         SELECT  mld.lot_id   lot_id
+         SELECT   /*+ INDEX( MLD XXINV_MLD_N07 ) */
+                  mld.lot_id   lot_id
+--  2017/11/22 E_本稼動_14735 Modified END
                 ,mld.item_id  item_id
          FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                 ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -274,7 +278,11 @@ SELECT ilm.lot_no                            lot_no,                            
          AND     itp.trans_date        >= TO_DATE(:22, 'YYYY/MM/DD')  -- 予定なのでOPEN日付のデータのみ対象。
          UNION
          -- S4)供給数  実績計上済の移動出庫実績
-         SELECT  mld.lot_id   lot_id
+--  2017/11/22 E_本稼動_14735 Modified START
+--         SELECT  mld.lot_id   lot_id
+         SELECT   /*+ INDEX( MLD XXINV_MLD_N07 ) */
+                  mld.lot_id   lot_id
+--  2017/11/22 E_本稼動_14735 Modified END
                 ,mld.item_id  item_id
          FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                 ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -297,7 +305,11 @@ SELECT ilm.lot_no                            lot_no,                            
          -- I2)実績未取在庫数  移動入庫（入庫報告有）
          -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
          -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有） -- 2010/01/05 Add 訂正の場合、出庫でも在庫が＋になる場合があるので、取得する。
-         SELECT  mld.lot_id   lot_id
+--  2017/11/22 E_本稼動_14735 Modified START
+--         SELECT  mld.lot_id   lot_id
+         SELECT   /*+ INDEX( MLD XXINV_MLD_N07 ) */
+                  mld.lot_id   lot_id
+--  2017/11/22 E_本稼動_14735 Modified END
                 ,mld.item_id  item_id
          FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                 ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -331,7 +343,11 @@ SELECT ilm.lot_no                            lot_no,                            
          UNION
          -- I5)実績未取在庫数  出荷
          -- I6)実績未取在庫数  支給
-         SELECT  mld.lot_id   lot_id
+--  2017/11/22 E_本稼動_14735 Modified START
+--         SELECT  mld.lot_id   lot_id
+         SELECT   /*+ INDEX( MLD XXINV_MLD_N07 ) */
+                  mld.lot_id   lot_id
+--  2017/11/22 E_本稼動_14735 Modified END
                 ,mld.item_id  item_id
          FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                 ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
@@ -421,7 +437,7 @@ WHERE ((NVL(lm.actual_quantity,0) > 0)
       OR (lm.stock_qty + lm.demsup_qty > 0))
    ]]></SQLQuery>
    <DesignTime>
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
