@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_get_qty_pkg(BODY)
  * Description            : 共通関数引当数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  2009/11/25   1.2   SCS北寒寺         営業障害管理表No11
  *  2009/11/27   1.3   SCS伊藤           営業障害管理表No11
  *  2010/02/23   1.4   SCS伊藤           E_本稼動_01612対応
+ *  2017/11/22   1.5   SCSK佐々木        E_本稼動_17435対応（パフォーマンス）
  *****************************************************************************************/
 --
   cv_doc_type_10 CONSTANT VARCHAR2(2) := '10';
@@ -740,10 +741,13 @@ AS
       SELECT
         ( -- S1)供給数  移動入庫予定
 -- Ver1.2 2009/11/25 START
--- Ver1.3 2009/11/27 START
---        SELECT  /*+  LEADING(mld)*/
-        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
--- Ver1.3 2009/11/27 END
+--  2017/11/22 V1.5 Modified START
+---- Ver1.3 2009/11/27 START
+----        SELECT  /*+  LEADING(mld)*/
+--        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+---- Ver1.3 2009/11/27 END
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -824,10 +828,13 @@ AS
         ) + 
         ( -- S4)供給数  実績計上済の移動出庫実績
 -- Ver1.2 2009/11/25 START
--- Ver1.3 2009/11/27 START
---        SELECT  /*+  LEADING(mld)*/
-        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
--- Ver1.3 2009/11/27 END
+--  2017/11/22 V1.5 Modified START
+---- Ver1.3 2009/11/27 START
+----        SELECT  /*+  LEADING(mld)*/
+--        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+---- Ver1.3 2009/11/27 END
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -853,10 +860,13 @@ AS
         ) - 
         ( -- D1)需要数  実績未計上の出荷依頼
 -- Ver1.2 2009/11/25 START
--- Ver1.3 2009/11/27 START
---        SELECT  /*+  LEADING(mld)*/
-        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1)*/
--- Ver1.3 2009/11/27 END
+--  2017/11/22 V1.5 Modified START
+---- Ver1.3 2009/11/27 START
+----        SELECT  /*+  LEADING(mld)*/
+--        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1)*/
+---- Ver1.3 2009/11/27 END
+        SELECT  /*+ INDEX(mil MTL_ITEM_LOCATIONS_U1) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -886,10 +896,13 @@ AS
         ) - 
         ( -- D2)需要数  実績未計上の支給指示
 -- Ver1.2 2009/11/25 START
--- Ver1.3 2009/11/27 START
---        SELECT  /*+  LEADING(mld)*/
-        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1)*/
--- Ver1.3 2009/11/27 END
+--  2017/11/22 V1.5 Modified START
+---- Ver1.3 2009/11/27 START
+----        SELECT  /*+  LEADING(mld)*/
+--        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1)*/
+---- Ver1.3 2009/11/27 END
+        SELECT  /*+  INDEX(mil MTL_ITEM_LOCATIONS_U1) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -919,10 +932,13 @@ AS
         ) - 
         ( -- D3)需要数  実績未計上の移動指示
 -- Ver1.2 2009/11/25 START
--- Ver1.3 2009/11/27 START
---        SELECT  /*+  LEADING(mld)*/
-        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
--- Ver1.3 2009/11/27 END
+--  2017/11/22 V1.5 Modified START
+---- Ver1.3 2009/11/27 START
+----        SELECT  /*+  LEADING(mld)*/
+--        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+---- Ver1.3 2009/11/27 END
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -948,10 +964,13 @@ AS
         ) - 
         ( -- D4)需要数  実績計上済の移動入庫実績
 -- Ver1.2 2009/11/25 START
--- Ver1.3 2009/11/27 START
---        SELECT  /*+  LEADING(mld)*/
-        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
--- Ver1.3 2009/11/27 END
+--  2017/11/22 V1.5 Modified START
+---- Ver1.3 2009/11/27 START
+----        SELECT  /*+  LEADING(mld)*/
+--        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) */
+---- Ver1.3 2009/11/27 END
+        SELECT  /*+ INDEX(MIL MTL_ITEM_LOCATIONS_U1) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -1038,7 +1057,10 @@ AS
         ) + 
         ( -- S1)供給数  移動入庫予定
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+--  2017/11/22 V1.5 Modified START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  LEADING(mld) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -1118,7 +1140,10 @@ AS
         ) + 
         ( -- S4)供給数  実績計上済の移動出庫実績
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+--  2017/11/22 V1.5 Modified START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  LEADING(mld) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -1145,7 +1170,10 @@ AS
         ) - 
         ( -- D1)需要数  実績未計上の出荷依頼
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+--  2017/11/22 V1.5 Modified START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  LEADING(mld) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -1176,7 +1204,10 @@ AS
         ) - 
         ( -- D2)需要数  実績未計上の支給指示
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+--  2017/11/22 V1.5 Modified START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  LEADING(mld) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -1207,7 +1238,10 @@ AS
         ) - 
         ( -- D3)需要数  実績未計上の移動指示
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+--  2017/11/22 V1.5 Modified START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  LEADING(mld) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -1234,7 +1268,10 @@ AS
         ) - 
         ( -- D4)需要数  実績計上済の移動入庫実績
 -- Ver1.2 2009/11/25 START
-        SELECT  /*+  LEADING(mld)*/
+--  2017/11/22 V1.5 Modified START
+--        SELECT  /*+  LEADING(mld)*/
+        SELECT  /*+  LEADING(mld) INDEX( MLD XXINV_MLD_N05 ) */
+--  2017/11/22 V1.5 Modified END
                 NVL(SUM(mld.actual_quantity), 0)
 --        SELECT  NVL(SUM(mld.actual_quantity), 0)
 -- Ver1.2 2009/11/25 END
@@ -2562,7 +2599,11 @@ AS
           ) + 
           ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
             -- I2)実績未取在庫数  移動入庫（入庫報告有）
-          SELECT  NVL(SUM(mld.actual_quantity), 0)
+--  2017/11/22 V1.5 Modified START
+--          SELECT  NVL(SUM(mld.actual_quantity), 0)
+          SELECT  /*+ INDEX( MLD XXINV_MLD_N05 ) */
+                  NVL(SUM(mld.actual_quantity), 0)
+--  2017/11/22 V1.5 Modified END
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
 -- Ver1.4 H.Itou Mod Start
@@ -2582,7 +2623,11 @@ AS
           ) - 
           ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
             -- I4)実績未取在庫数  移動出庫（出庫報告有）
-          SELECT  NVL(SUM(mld.actual_quantity), 0)
+--  2017/11/22 V1.5 Modified START
+--          SELECT  NVL(SUM(mld.actual_quantity), 0)
+          SELECT  /*+ INDEX( MLD XXINV_MLD_N05 ) */
+                  NVL(SUM(mld.actual_quantity), 0)
+--  2017/11/22 V1.5 Modified END
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
 -- Ver1.4 H.Itou Mod Start
@@ -2601,7 +2646,11 @@ AS
           AND     mld.record_type_code    = cv_rec_type_20
           ) - 
           ( -- I5)実績未取在庫数  出荷
-          SELECT  NVL(
+--  2017/11/22 V1.5 Modified START
+--          SELECT  NVL(
+          SELECT  /*+ INDEX( MLD XXINV_MLD_N05 ) */
+                  NVL(
+--  2017/11/22 V1.5 Modified END
                     SUM(
                       CASE otta.order_category_code
                       WHEN 'ORDER' THEN
@@ -2631,7 +2680,11 @@ AS
           AND     otta.transaction_type_id  = oha.order_type_id
           ) - 
           ( -- I6)実績未取在庫数  支給
-          SELECT  NVL(
+--  2017/11/22 V1.5 Modified START
+--          SELECT  NVL(
+          SELECT  /*+ INDEX( MLD XXINV_MLD_N05 ) */
+                  NVL(
+--  2017/11/22 V1.5 Modified END
                     SUM(
                       CASE otta.order_category_code
                       WHEN 'ORDER' THEN
@@ -2661,7 +2714,11 @@ AS
           AND     otta.transaction_type_id  = oha.order_type_id
           ) + 
           ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
-          SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+--  2017/11/22 V1.5 Modified START
+--          SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+          SELECT  /*+ INDEX( MLD XXINV_MLD_N05 ) */
+                  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+--  2017/11/22 V1.5 Modified END
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
 -- Ver1.4 H.Itou Mod Start
@@ -2681,7 +2738,11 @@ AS
           AND     mld.record_type_code    = cv_rec_type_30
           ) + 
           ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
-          SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+--  2017/11/22 V1.5 Modified START
+--          SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+          SELECT  /*+ INDEX( MLD XXINV_MLD_N05 ) */
+                  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+--  2017/11/22 V1.5 Modified END
           FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                  ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
 -- Ver1.4 H.Itou Mod Start
