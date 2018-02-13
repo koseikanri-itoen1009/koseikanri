@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMN800015C(body)
  * Description      : ロット情報をCSVファイル出力し、ワークフロー形式で連携します。
  * MD.050           : ロット情報インタフェース<T_MD050_BPO_801>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/08/19    1.0   K.Kiriu          新規作成
+ *  2018/02/06    1.1   N.Koyama         【E_本稼動_14864】対応
  *
  *****************************************************************************************/
 --
@@ -100,6 +101,9 @@ AS
   cv_msg_xxcmn_11052          CONSTANT VARCHAR2(16)  := 'APP-XXCMN-11052';         -- OPM品目マスタ
   cv_msg_xxcmn_11054          CONSTANT VARCHAR2(16)  := 'APP-XXCMN-11054';         -- OPM品目情報VIEW
   cv_msg_xxcmn_11056          CONSTANT VARCHAR2(16)  := 'APP-XXCMN-11056';         -- OPMロットマスタ
+-- Ver.1.1 E_本稼動_14864対応 ADD Start
+  cv_msg_xxcmn_11059          CONSTANT VARCHAR2(16)  := 'APP-XXCMN-11059';         -- 仕入先マスタVIEW
+-- Ver.1.1 E_本稼動_14864対応 ADD End
   --トークン
   cv_tkn_item_no              CONSTANT VARCHAR2(9)   := 'ITEM_CODE';               -- 入力パラメータ（品目コード）
   cv_tkn_item_div             CONSTANT VARCHAR2(8)   := 'ITEM_DIV';                -- 入力パラメータ（品目区分）
@@ -410,6 +414,10 @@ AS
     cn_default_lot_id   CONSTANT NUMBER       := 0;      -- デフォルトロットID
     cv_default_lot_no   CONSTANT VARCHAR2(1)  := '0';    -- デフォルトロット時のロットNo
     cv_num_of_0         CONSTANT VARCHAR2(1)  := '0';    -- 入数（入数の値がNULLの場合)
+-- Ver.1.1 E_本稼動_14864対応 ADD Start
+    cv_division_number  CONSTANT NUMBER       := 7;      -- 最大分割数
+    cv_division_byte    CONSTANT NUMBER       := 10;     -- 分割後最大桁数
+-- Ver.1.1 E_本稼動_14864対応 ADD End
 --
     -- *** ローカル変数 ***
     lr_wf_whs_rec       xxwsh_common3_pkg.wf_whs_rec;     -- ファイル情報格納レコード
@@ -424,9 +432,19 @@ AS
     lt_num_of_lot       ic_lots_mst.attribute6%TYPE;      -- ロットマスタ在庫入数
     lt_num_of_item      ic_item_mst_b.attribute11%TYPE;   -- 品目マスタケース入数
     lv_num_of_case      VARCHAR2(240);                    -- 入数（CSV設定用）
+-- Ver.1.1 E_本稼動_14864対応 ADD Start
+    lt_vandor_name      xxcmn_vendors_v.vendor_full_name%TYPE;  -- 取引先名称
+    lv_divide_len       NUMBER := 0;                      -- 項目分割時使用項目長項目
+    lv_divide_word      VARCHAR2(100);                    -- 項目分割時使用項目
+-- Ver.1.1 E_本稼動_14864対応 ADD End
 --
     -- *** ローカルテーブル型 ***
     l_ilm_block_tab     xxinv540001.tbl_ilm_block;        --結果格納用配列
+-- Ver.1.1 E_本稼動_14864対応 ADD Start
+    TYPE g_column_ttype  IS TABLE OF VARCHAR2(10) INDEX BY BINARY_INTEGER; -- 項目分割時一時退避項目
+--
+    g_column_tab        g_column_ttype;                          -- 項目分後退避配列
+-- Ver.1.1 E_本稼動_14864対応 ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -667,6 +685,70 @@ AS
             lv_num_of_case := lt_frequent_qty;  -- 品目マスタの代表入数(NULLの場合はNULL)
           END IF;
         END IF;
+-- Ver.1.1 E_本稼動_14864対応 ADD Start
+--  取引先名称取得＆編集
+        -- 初期化
+        g_column_tab.delete;
+        g_column_tab(1) := NULL;
+        g_column_tab(2) := NULL;
+        g_column_tab(3) := NULL;
+        g_column_tab(4) := NULL;
+        g_column_tab(5) := NULL;
+        g_column_tab(6) := NULL;
+        g_column_tab(7) := NULL;
+--
+        -- 受払先に値が設定されている場合
+        IF ( l_ilm_block_tab(i).ilm_attribute8 IS NOT NULL ) THEN
+--
+          -- 初期化
+          lt_vandor_name := NULL;
+--
+          --==================================
+          -- 取引先名称を取得
+          --==================================
+          BEGIN
+            SELECT xvv.vendor_full_name  vendor_name
+            INTO   lt_vandor_name
+            FROM   xxcmn_vendors_v    xvv
+            WHERE  xvv.segment1 = l_ilm_block_tab(i).ilm_attribute8
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              -- トークンの取得(テーブル名)
+              lv_tkn_msg := xxcmn_common_pkg.get_msg(
+                               iv_application  => cv_app_xxcmn
+                              ,iv_name         => cv_msg_xxcmn_11059
+                            );
+              -- メッセージ生成
+              lv_errmsg := xxcmn_common_pkg.get_msg(
+                              iv_application  => cv_app_xxcmn
+                             ,iv_name         => cv_msg_xxcmn_11050
+                             ,iv_token_name1  => cv_tkn_table
+                             ,iv_token_value1 => lv_tkn_msg
+                             ,iv_token_name2  => cv_tkn_errmsg
+                             ,iv_token_value2 => SQLERRM
+                           );
+              lv_errbuf := lv_errmsg;
+              RAISE global_api_expt;
+          END;
+-- 取引名を10バイト単位で7分割
+          lv_divide_word := lt_vandor_name;
+          << divide_loop >>
+          FOR j IN 1..cv_division_number LOOP
+--
+            IF( LTRIM(RTRIM(SUBSTRB(lv_divide_word, 1, cv_division_byte))) = SUBSTRB(lv_divide_word, 1, cv_division_byte) ) THEN
+              g_column_tab(j) := SUBSTRB(lv_divide_word, 1, cv_division_byte);
+            ELSE
+              g_column_tab(j) := SUBSTRB(lv_divide_word, 1, cv_division_byte-1);
+            END IF;
+--
+            lv_divide_len     := LENGTHB(g_column_tab(j))+1;
+            lv_divide_word    := SUBSTRB(lv_divide_word,lv_divide_len);
+--
+          END LOOP divide_loop;
+        END IF;
+--
+-- Ver.1.1 E_本稼動_14864対応 ADD End
 --
         --==================================
         -- CSV出力項目の編集
@@ -685,20 +767,34 @@ AS
                        TO_CHAR( l_ilm_block_tab(i).ilm_attribute1, cv_fmt_date )            || cv_separate_code || -- 12.情報3
                        l_ilm_block_tab(i).ilm_attribute2                                    || cv_separate_code || -- 13.情報4
                        TO_CHAR( l_ilm_block_tab(i).ilm_attribute3, cv_fmt_date )            || cv_separate_code || -- 14.情報5
-                       NULL                                                                 || cv_separate_code || -- 15.情報6
-                       NULL                                                                 || cv_separate_code || -- 16.情報7
+-- Ver.1.1 E_本稼動_14864対応 MOD Start
+--                       NULL                                                                 || cv_separate_code || -- 15.情報6
+--                       NULL                                                                 || cv_separate_code || -- 16.情報7
+                       TO_CHAR( l_ilm_block_tab(i).ilm_attribute4, cv_fmt_date )            || cv_separate_code || -- 15.情報6
+                       TO_CHAR( l_ilm_block_tab(i).ilm_attribute5, cv_fmt_date )            || cv_separate_code || -- 16.情報7
+-- Ver.1.1 E_本稼動_14864対応 MOD End
                        NULL                                                                 || cv_separate_code || -- 17.情報8
                        NULL                                                                 || cv_separate_code || -- 18.情報9
                        l_ilm_block_tab(i).ilm_attribute12                                   || cv_separate_code || -- 19.情報10
                        lt_item_um                                                           || cv_separate_code || -- 20.情報11
-                       NULL                                                                 || cv_separate_code || -- 21.情報12
-                       NULL                                                                 || cv_separate_code || -- 22.情報13
-                       NULL                                                                 || cv_separate_code || -- 23.情報14
-                       NULL                                                                 || cv_separate_code || -- 24.情報15
-                       NULL                                                                 || cv_separate_code || -- 25.情報16
-                       NULL                                                                 || cv_separate_code || -- 26.情報17
-                       NULL                                                                 || cv_separate_code || -- 27.情報18
-                       NULL                                                                 || cv_separate_code || -- 28.情報19
+-- Ver.1.1 E_本稼動_14864対応 MOD Start
+--                       NULL                                                                 || cv_separate_code || -- 21.情報12
+--                       NULL                                                                 || cv_separate_code || -- 22.情報13
+--                       NULL                                                                 || cv_separate_code || -- 23.情報14
+--                       NULL                                                                 || cv_separate_code || -- 24.情報15
+--                       NULL                                                                 || cv_separate_code || -- 25.情報16
+--                       NULL                                                                 || cv_separate_code || -- 26.情報17
+--                       NULL                                                                 || cv_separate_code || -- 27.情報18
+--                       NULL                                                                 || cv_separate_code || -- 28.情報19
+                       l_ilm_block_tab(i).ilm_attribute8                                    || cv_separate_code || -- 21.情報12
+                       g_column_tab(1)                                                      || cv_separate_code || -- 22.情報13
+                       g_column_tab(2)                                                      || cv_separate_code || -- 23.情報14
+                       g_column_tab(3)                                                      || cv_separate_code || -- 24.情報15
+                       g_column_tab(4)                                                      || cv_separate_code || -- 25.情報16
+                       g_column_tab(5)                                                      || cv_separate_code || -- 26.情報17
+                       g_column_tab(6)                                                      || cv_separate_code || -- 27.情報18
+                       g_column_tab(7)                                                      || cv_separate_code || -- 28.情報19
+-- Ver.1.1 E_本稼動_14864対応 MOD End
                        NULL                                                                 || cv_separate_code || -- 29.情報20
                        l_ilm_block_tab(i).ilm_attribute13                                   || cv_separate_code || -- 30.区分1
                        NULL                                                                 || cv_separate_code || -- 31.区分2
