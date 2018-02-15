@@ -1,0 +1,45 @@
+/*************************************************************************
+ * Copyright c 2017, SCSK Corporation. All rights reserved.
+ *
+ * Table Name      : XXCFF_IFRS_SETS
+ * Description     : IFRS台帳連携セットテーブル
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/08/31    1.0  SCSK H.Maeda  初回作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCFF.XXCFF_IFRS_SETS 
+(
+  EXEC_ID                       VARCHAR2(12)  NOT NULL,
+  EXEC_DATE                     DATE          NOT NULL,
+  CREATED_BY                    NUMBER(15)    NOT NULL,
+  CREATION_DATE                 DATE          NOT NULL,
+  LAST_UPDATED_BY               NUMBER(15)    NOT NULL,
+  LAST_UPDATE_DATE              DATE          NOT NULL,
+  LAST_UPDATE_LOGIN             NUMBER(15),
+  REQUEST_ID                    NUMBER(15),
+  PROGRAM_APPLICATION_ID        NUMBER(15),
+  PROGRAM_ID                    NUMBER(15),
+  PROGRAM_UPDATE_DATE           DATE,
+  CONSTRAINT XXCFF_IFRS_SETS_PK PRIMARY KEY ( EXEC_ID )
+  USING INDEX TABLESPACE xxidx2
+  ) ;
+--
+COMMENT ON TABLE  XXCFF.XXCFF_IFRS_SETS                            IS 'IFRS台帳連携セットテーブル';
+--
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.EXEC_ID                    IS '処理ID';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.EXEC_DATE                  IS '実行日時';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.CREATED_BY                 IS '作成者';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.CREATION_DATE              IS '作成日';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.LAST_UPDATED_BY            IS '最終更新者';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.LAST_UPDATE_DATE           IS '最終更新日';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.LAST_UPDATE_LOGIN          IS '最終更新ログイン';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.REQUEST_ID                 IS '要求ID';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.PROGRAM_APPLICATION_ID     IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.PROGRAM_ID                 IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCFF.XXCFF_IFRS_SETS.PROGRAM_UPDATE_DATE        IS 'プログラム更新日';
+--
