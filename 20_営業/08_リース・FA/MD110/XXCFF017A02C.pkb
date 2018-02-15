@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A02C (body)
  * Description      : 自販機物件CSV出力
  * MD.050           : 自販機物件CSV出力 (MD050_CFF_017A02)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/06/23    1.0   T.Kobori         main新規作成
  *  2014/08/07    1.1   Y.Shouji         E_本稼働_12263  項目追加  1.購入価格（出力ファイル）
+ *  2017/11/07    1.2   T.Otsuka         E_本稼働_14502【IFRS固定資産対応】
  *
  *****************************************************************************************/
 --
@@ -191,6 +192,15 @@ AS
        ,vohd.ib_if_date                               AS  ib_if_date              -- 設置ベース情報連携日
        ,NULL                                          AS  fa_if_date              -- FA情報連携日
        ,vohd.last_updated_by                          AS  last_updated_by         -- 最終更新者
+ -- 2017/11/07 T.Otsuka ADD START
+       ,vohd.ifrs_life_in_months                      AS ifrs_life_in_months      -- IFRS耐用年数
+       ,vohd.ifrs_cat_deprn_method                    AS ifrs_cat_deprn_method    -- IFRS償却
+       ,vohd.real_estate_acq_tax                      AS real_estate_acq_tax      -- 不動産取得税
+       ,vohd.borrowing_cost                           AS borrowing_cost           -- 借入コスト
+       ,vohd.other_cost                               AS other_cost               -- その他
+       ,vohd.ifrs_asset_account                       AS ifrs_asset_account       -- IFRS資産科目
+       ,vohd.correct_date                             AS correct_date             -- 修正年月日
+ -- 2017/11/07 T.Otsuka ADD END
     FROM
         xxcff_vd_object_headers vohd  --自販機物件管理
     WHERE vohd.machine_type           = gt_machine_type                                                  -- 機器区分
@@ -248,6 +258,15 @@ AS
        ,vohi.ib_if_date                               AS  ib_if_date              -- 設置ベース情報連携日
        ,vohi.fa_if_date                               AS  fa_if_date              -- FA情報連携日
        ,vohi.last_updated_by                          AS  last_updated_by         -- 最終更新者
+ -- 2017/11/07 T.Otsuka ADD START
+       ,vohi.ifrs_life_in_months                      AS ifrs_life_in_months      -- IFRS耐用年数
+       ,vohi.ifrs_cat_deprn_method                    AS ifrs_cat_deprn_method    -- IFRS償却
+       ,vohi.real_estate_acq_tax                      AS real_estate_acq_tax      -- 不動産取得税
+       ,vohi.borrowing_cost                           AS borrowing_cost           -- 借入コスト
+       ,vohi.other_cost                               AS other_cost               -- その他
+       ,vohi.ifrs_asset_account                       AS ifrs_asset_account       -- IFRS資産科目
+       ,vohi.correct_date                             AS correct_date             -- 修正年月日
+ -- 2017/11/07 T.Otsuka ADD END
     FROM
         xxcff_vd_object_histories vohi  --自販機物件履歴
     WHERE vohi.machine_type           = gt_machine_type                                             -- 機器区分
@@ -798,6 +817,15 @@ AS
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.ib_if_date             || cv_dqu ;   -- 設置ベース情報連携日
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.fa_if_date             || cv_dqu ;   -- FA情報連携日
       lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.last_updated_by        || cv_dqu ;   -- 従業員番号
+-- 2017/11/07 T.Otsuka ADD START
+      lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.ifrs_life_in_months    || cv_dqu ;   -- IFRS耐用年数
+      lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.ifrs_cat_deprn_method  || cv_dqu ;   -- IFRS償却
+      lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.real_estate_acq_tax    || cv_dqu ;   -- 不動産取得税
+      lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.borrowing_cost         || cv_dqu ;   -- 借入コスト
+      lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.other_cost             || cv_dqu ;   -- その他
+      lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.ifrs_asset_account     || cv_dqu ;   -- IFRS資産科目
+      lv_op_str := lv_op_str || cv_comma || cv_dqu || get_vd_object_info_rec.correct_date           || cv_dqu ;   -- 修正年月日
+-- 2017/11/07 T.Otsuka ADD END
 --
       -- ===============================
       -- 2.CSVファイル出力
