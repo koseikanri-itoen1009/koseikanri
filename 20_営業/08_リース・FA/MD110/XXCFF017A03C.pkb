@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A03C(body)
  * Description      : 自販機情報FA連携処理リース(FA)
  * MD.050           : MD050_CFF_017_A03_自販機情報FA連携処理
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ----------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2014/06/06    1.0   SCSK小路         新規作成
  *  2014/08/06    1.1   SCSK小路         E_本稼働_12263対応
  *  2017/04/19    1.2   SCSK小路         E_本稼働_14030対応
+ *  2017/11/21    1.3   SCSK大塚         E_本稼働_14502対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -253,6 +254,15 @@ AS
   TYPE g_customer_code_ttype           IS TABLE OF xxcff_vd_object_headers.customer_code%TYPE INDEX BY PLS_INTEGER;
   TYPE g_g_vd_cust_flag_ttype          IS TABLE OF xxcff_lease_class_v.vd_cust_flag%TYPE INDEX BY PLS_INTEGER;
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD Start
+  TYPE g_ifrs_life_in_months_ttype     IS TABLE OF xxcff_vd_object_headers.ifrs_life_in_months%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_ifrs_cat_deprn_method_ttype   IS TABLE OF xxcff_vd_object_headers.ifrs_cat_deprn_method%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_real_estate_acq_tax_ttype     IS TABLE OF xxcff_vd_object_headers.real_estate_acq_tax%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_borrowing_cost_ttype          IS TABLE OF xxcff_vd_object_headers.borrowing_cost%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_other_cost_ttype              IS TABLE OF xxcff_vd_object_headers.other_cost%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_ifrs_asset_account_ttype      IS TABLE OF xxcff_vd_object_headers.ifrs_asset_account%TYPE INDEX BY PLS_INTEGER;
+  TYPE g_correct_date_ttype            IS TABLE OF xxcff_vd_object_headers.correct_date%TYPE INDEX BY PLS_INTEGER;
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -293,6 +303,15 @@ AS
   g_customer_code_tab            g_customer_code_ttype;          -- 顧客コード
   g_vd_cust_flag_tab             g_g_vd_cust_flag_ttype;         -- VD顧客フラグ
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD Start
+  g_ifrs_life_in_months_tab      g_ifrs_life_in_months_ttype;    -- DFF15（IFRS耐用年数）
+  g_ifrs_cat_deprn_method_tab    g_ifrs_cat_deprn_method_ttype;  -- DFF16（IFRS償却）
+  g_real_estate_acq_tax_tab      g_real_estate_acq_tax_ttype;    -- DFF17（不動産取得税）
+  g_borrowing_cost_tab           g_borrowing_cost_ttype;         -- DFF18（借入コスト）
+  g_other_cost_tab               g_other_cost_ttype;             -- DFF19（その他）
+  g_ifrs_asset_account_tab       g_ifrs_asset_account_ttype;     -- DFF20（IFRS資産科目）
+  g_correct_date_tab             g_correct_date_ttype;           -- DFF21（修正年月日）
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD End
 --
   -- ***処理件数
   gn_vd_target_cnt         NUMBER;     -- 処理中のレコード
@@ -435,6 +454,15 @@ AS
     g_customer_code_tab.DELETE;
     g_vd_cust_flag_tab.DELETE;
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD Start
+   g_ifrs_life_in_months_tab.DELETE;
+   g_ifrs_cat_deprn_method_tab.DELETE;
+   g_real_estate_acq_tax_tab.DELETE;
+   g_borrowing_cost_tab.DELETE;
+   g_other_cost_tab.DELETE;
+   g_ifrs_asset_account_tab.DELETE;
+   g_correct_date_tab.DELETE;
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD End
 --
   EXCEPTION
 --
@@ -544,6 +572,15 @@ AS
      ,ib_if_date             -- 設置ベース情報連携日
      ,fa_if_date             -- FA情報連携日
      ,fa_if_flag             -- FA連携フラグ
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD START
+     ,ifrs_life_in_months    -- IFRS耐用年数
+     ,ifrs_cat_deprn_method  -- IFRS償却
+     ,real_estate_acq_tax    -- 不動産取得税
+     ,borrowing_cost         -- 借入コスト
+     ,other_cost             -- その他
+     ,ifrs_asset_account     -- IFRS資産科目
+     ,correct_date           -- 修正年月日
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD END
      ,created_by             -- 作成者
      ,creation_date          -- 作成日
      ,last_updated_by        -- 最終更新者
@@ -597,6 +634,15 @@ AS
      ,voh.ib_if_date              -- 設置ベース情報連携日
      ,cd_fa_if_date               -- FA情報連携日
      ,cv_yes                      -- FA連携フラグ
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD START
+     ,voh.ifrs_life_in_months    -- IFRS耐用年数
+     ,voh.ifrs_cat_deprn_method  -- IFRS償却
+     ,voh.real_estate_acq_tax    -- 不動産取得税
+     ,voh.borrowing_cost         -- 借入コスト
+     ,voh.other_cost             -- その他
+     ,voh.ifrs_asset_account     -- IFRS資産科目
+     ,voh.correct_date           -- 修正年月日
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD END
      ,cn_created_by               -- 作成者
      ,cd_creation_date            -- 作成日
      ,cn_last_updated_by          -- 最終更新者
@@ -1766,6 +1812,15 @@ AS
             ,vohe.cash_price              AS cost                    -- 取得価額
             ,vohe.cash_price              AS original_cost           -- 当初取得価額
 -- 2014/08/06 Ver.1.1 Y.Shouji MOD END
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD START
+            ,vohe.ifrs_life_in_months     AS ifrs_life_in_months     -- IFRS耐用年数
+            ,vohe.ifrs_cat_deprn_method   AS ifrs_cat_deprn_method   -- IFRS償却
+            ,vohe.real_estate_acq_tax     AS real_estate_acq_tax     -- 不動産取得税
+            ,vohe.borrowing_cost          AS borrowing_cost          -- 借入コスト
+            ,vohe.other_cost              AS other_cost              -- その他
+            ,vohe.ifrs_asset_account      AS ifrs_asset_account      -- IFRS資産科目
+            ,vohe.correct_date            AS correct_date            -- 修正年月日
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD END
       FROM
             xxcff_vd_object_headers  vohe
       WHERE
@@ -1827,6 +1882,15 @@ AS
                       ,g_cat_attribute2_tab          -- カテゴリDFF2
                       ,g_cost_tab                    -- 取得価額
                       ,g_original_cost_tab           -- 当初取得価額
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD START
+                      ,g_ifrs_life_in_months_tab     -- IFRS耐用年数
+                      ,g_ifrs_cat_deprn_method_tab   -- IFRS償却
+                      ,g_real_estate_acq_tax_tab     -- 不動産取得税
+                      ,g_borrowing_cost_tab          -- 借入コスト
+                      ,g_other_cost_tab              -- その他
+                      ,g_ifrs_asset_account_tab      -- IFRS資産科目
+                      ,g_correct_date_tab            -- 修正年月日
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD END
     ;
     -- 修正対象件数カウント
     gn_vd_modify_target_cnt := g_object_header_id_tab.COUNT;
@@ -1868,6 +1932,12 @@ AS
       -- 資産フラグを初期化する
       lv_asset_flg := cv_no;
 -- 2017/04/19 Ver.1.2 Y.Shoji MOD End
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD Stsrt
+      -- 耐用年数を初期化する
+      ln_life_years  := NULL;
+      -- 耐用月数を初期化する
+      ln_life_months := NULL;
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD End
       -- 処理中の件数取得
       gn_vd_target_cnt := ln_loop_cnt;
 --
@@ -1991,7 +2061,13 @@ AS
                 ,fb.date_placed_in_service       -- 事業供用日（修正前）
                 ,fab.asset_category_id           -- 資産カテゴリID（修正前）
                 ,fab.attribute_category_code     -- 資産カテゴリコード（修正前）
-                ,fbc.amortize_flag               -- 修正額償却フラグ
+-- 2017/11/21 Ver.1.3 T.Otsuka MOD Start
+--                ,fbc.amortize_flag               -- 修正額償却フラグ
+                ,DECODE(fth.amortization_start_date
+                       ,NULL ,cv_no
+                             ,cv_yes
+                       )                         -- 修正額償却フラグ
+-- 2017/11/21 Ver.1.3 T.Otsuka MOD End
                 ,fth.amortization_start_date     -- 償却開始日
                 ,fab.asset_number                -- 資産番号（修正後）
                 ,fab.tag_number                  -- 現品票番号
@@ -2113,12 +2189,16 @@ AS
                 fa_additions_b          fab      -- 資産詳細情報
                ,fa_asset_keywords       fak      -- 資産キー
                ,fa_books                fb       -- 資産台帳情報
-               ,fa_book_controls        fbc      -- 資産台帳
+-- 2017/11/21 Ver.1.3 T.Otsuka DEL Start
+--               ,fa_book_controls        fbc      -- 資産台帳
+-- 2017/11/21 Ver.1.3 T.Otsuka DEL End
                ,fa_transaction_headers  fth      -- 資産取引ヘッダ-
           WHERE
                 fab.asset_key_ccid           = fak.code_combination_id(+)
           AND   fab.asset_id                 = fb.asset_id
-          AND   fb.book_type_code            = fbc.book_type_code(+)
+-- 2017/11/21 Ver.1.3 T.Otsuka DEL Start
+--          AND   fb.book_type_code            = fbc.book_type_code(+)
+-- 2017/11/21 Ver.1.3 T.Otsuka DEL End
           AND   fb.transaction_header_id_in  = fth.transaction_header_id(+)
           AND   fab.tag_number               = g_object_code_tab(ln_loop_cnt)
           AND   fb.book_type_code            = gv_fixed_asset_register
@@ -2396,6 +2476,24 @@ AS
             -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
             lv_attribute2 := to_char(g_cat_attribute2_tab(ln_loop_cnt), cv_date_type);
           END IF;
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD START
+          -- IFRS関連項目の取得
+          -- 自販機物件管理テーブルの内容を常に正とするためNVLなどの処理は行わない
+          -- IFRS耐用年数
+          lv_cat_attribute15 := TO_CHAR(g_ifrs_life_in_months_tab(ln_loop_cnt));
+          -- IFRS償却
+          lv_cat_attribute16 := g_ifrs_cat_deprn_method_tab(ln_loop_cnt);
+          -- 不動産取得税
+          lv_cat_attribute17 := TO_CHAR(g_real_estate_acq_tax_tab(ln_loop_cnt));
+          -- 借入コスト
+          lv_cat_attribute18 := TO_CHAR(g_borrowing_cost_tab(ln_loop_cnt));
+          -- その他
+          lv_cat_attribute19 := TO_CHAR(g_other_cost_tab(ln_loop_cnt));
+          -- IFRS資産科目
+          lv_cat_attribute20 := g_ifrs_asset_account_tab(ln_loop_cnt);
+          -- 修正年月日
+          lv_cat_attribute21 := TO_CHAR(g_correct_date_tab(ln_loop_cnt), cv_date_type);
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD END
 --
           -- 修正OIF登録
           INSERT INTO xx01_adjustment_oif(
@@ -2527,13 +2625,13 @@ AS
             ,lv_cat_attribute12                                      -- カテゴリDFF12
             ,lv_cat_attribute13                                      -- カテゴリDFF13
             ,lv_cat_attribute14                                      -- カテゴリDFF14
-            ,lv_cat_attribute15                                      -- カテゴリDFF15
-            ,lv_cat_attribute16                                      -- カテゴリDFF16
-            ,lv_cat_attribute17                                      -- カテゴリDFF17
-            ,lv_cat_attribute18                                      -- カテゴリDFF18
-            ,lv_cat_attribute19                                      -- カテゴリDFF19
-            ,lv_cat_attribute20                                      -- カテゴリDFF20
-            ,lv_cat_attribute21                                      -- カテゴリDFF21
+            ,lv_cat_attribute15                                      -- カテゴリDFF15（IFRS耐用年数）
+            ,lv_cat_attribute16                                      -- カテゴリDFF16（IFRS償却）
+            ,lv_cat_attribute17                                      -- カテゴリDFF17（不動産取得税）
+            ,lv_cat_attribute18                                      -- カテゴリDFF18（借入コスト）
+            ,lv_cat_attribute19                                      -- カテゴリDFF19（その他）
+            ,lv_cat_attribute20                                      -- カテゴリDFF20（IFRS資産科目）
+            ,lv_cat_attribute21                                      -- カテゴリDFF21（修正年月日）
             ,lv_cat_attribute22                                      -- カテゴリDFF22
             ,lv_cat_attribute23                                      -- カテゴリDFF23
             ,lv_cat_attribute24                                      -- カテゴリDFF24
@@ -3646,6 +3744,14 @@ AS
             ,vohe.customer_code                       AS customer_code           -- 顧客コード
             ,xlcv.vd_cust_flag                        AS vd_cust_flag            -- VD顧客フラグ
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD Start
+            ,vohe.ifrs_life_in_months                 AS ifrs_life_in_months     -- DFF15（IFRS耐用年数）
+            ,vohe.ifrs_cat_deprn_method               AS ifrs_cat_deprn_method   -- DFF16（IFRS償却）
+            ,vohe.real_estate_acq_tax                 AS real_estate_acq_tax     -- DFF17（不動産取得税）
+            ,vohe.borrowing_cost                      AS borrowing_cost          -- DFF18（借入コスト）
+            ,vohe.other_cost                          AS other_cost              -- DFF19（その他）
+            ,vohe.ifrs_asset_account                  AS ifrs_asset_account      -- DFF20（IFRS資産科目）
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD End
       FROM
             xxcff_vd_object_headers  vohe                            -- 自販機物件管理
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD Start
@@ -3725,6 +3831,14 @@ AS
                       ,g_customer_code_tab           -- 顧客コード
                       ,g_vd_cust_flag_tab            -- VD顧客フラグ
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD Start
+                      ,g_ifrs_life_in_months_tab     -- DFF15（IFRS耐用年数-- 
+                      ,g_ifrs_cat_deprn_method_tab   -- DFF16（IFRS償却）-- 
+                      ,g_real_estate_acq_tax_tab     -- DFF17（不動産取得税
+                      ,g_borrowing_cost_tab          -- DFF18（借入コスト）
+                      ,g_other_cost_tab              -- DFF19（その他）
+                      ,g_ifrs_asset_account_tab      -- DFF20（IFRS資産科目
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD End
     ;
     -- 未確定対象件数カウント
     gn_vd_add_target_cnt := g_object_header_id_tab.COUNT;
@@ -4223,6 +4337,14 @@ AS
             ,asset_type                    -- 資産タイプ
             ,attribute2                    -- DFF02（取得日）
             ,attribute14                   -- DFF14（自販機物件内部ID）
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD Start
+            ,attribute15                   -- DFF15（IFRS耐用年数）
+            ,attribute16                   -- DFF16（IFRS償却）
+            ,attribute17                   -- DFF17（不動産取得税）
+            ,attribute18                   -- DFF18（借入コスト）
+            ,attribute19                   -- DFF19（その他）
+            ,attribute20                   -- DFF20（IFRS資産科目）
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD End
             ,last_update_date              -- 最終更新日
             ,last_updated_by               -- 最終更新者
             ,created_by                    -- 作成者ID
@@ -4248,6 +4370,14 @@ AS
             ,cv_asset_type                             -- 資産タイプ
             ,lv_attribute2                             -- DFF02（取得日）
             ,g_object_internal_id_tab(ln_loop_cnt)     -- DFF14（自販機物件内部ID）
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD Start
+            ,TO_CHAR(g_ifrs_life_in_months_tab(ln_loop_cnt))         -- DFF15（IFRS耐用年数-- 
+            ,g_ifrs_cat_deprn_method_tab(ln_loop_cnt)                -- DFF16（IFRS償却）-- 
+            ,TO_CHAR(g_real_estate_acq_tax_tab(ln_loop_cnt))         -- DFF17（不動産取得税
+            ,TO_CHAR(g_borrowing_cost_tab(ln_loop_cnt))              -- DFF18（借入コスト）
+            ,TO_CHAR(g_other_cost_tab(ln_loop_cnt))                  -- DFF19（その他）
+            ,g_ifrs_asset_account_tab(ln_loop_cnt)                   -- DFF20（IFRS資産科目）
+-- 2017/11/21 Ver.1.3 T.Otsuka ADD End
             ,cd_last_update_date                       -- 最終更新日
             ,cn_last_updated_by                        -- 最終更新者
             ,cn_created_by                             -- 作成者ID
