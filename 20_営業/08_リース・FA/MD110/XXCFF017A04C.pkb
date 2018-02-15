@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A04C(body)
  * Description      : 自販機物件情報アップロード
  * MD.050           : MD050_CFF_017_A04_自販機物件情報アップロード
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -15,7 +15,7 @@ AS
  *  init                         初期処理                              (A-1)
  *  get_for_validation           妥当性チェック用の値取得              (A-2)
  *  get_upload_data              ファイルアップロードIFデータ取得      (A-3)
- *  divide_item                  デリミタ文字項目分割(A-4)
+ *  divide_item                  デリミタ文字項目分割                  (A-4)
  *  check_item_value             項目値チェック                        (A-5)
  *  ins_upload_wk                自販機物件アップロードワーク作成      (A-6)
  *  get_upload_wk                自販機物件アップロードワーク          (A-7)
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/07/14    1.0  SCSK 山下         新規作成
  *  2014/08/06    1.1  SCSK 山下         E_本稼動_12263対応
+ *  2017/11/07    1.2  SCSK 大塚         E_本稼動_14502対応
  *
  *****************************************************************************************/
 --
@@ -133,6 +134,9 @@ AS
 --
   -- プロファイル
   cv_fixed_asset_register CONSTANT VARCHAR2(30) := 'XXCFF1_FIXED_ASSET_REGISTER'; -- 台帳種類_固定資産台帳
+-- 2017-11-07 T.Otsuka Add Start --
+  cv_prf_cat_dep_ifrs CONSTANT VARCHAR2(30)  := 'XXCFF1_CAT_DEPRN_IFRS';          -- IFRS償却方法
+-- 2017-11-07 T.Otsuka Add End --
 --
   -- メッセージ名
   cv_msg_name_00007   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00007';  -- ロックエラー
@@ -154,6 +158,11 @@ AS
   cv_msg_name_00231   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00231';  -- 除売却フラグ妥当性エラー（自販機物件）
   cv_msg_name_00232   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00232';  -- FAオープン期間外エラー（自販機物件）
   cv_msg_name_00234   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00234';  -- アップロードCSVファイル名取得エラー
+-- 2017-11-07 T.Otsuka Add Start --
+  cv_msg_name_00256   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00256';  -- 存在チェックエラー
+  cv_msg_name_00269   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00269';  -- 入力項目妥当性チェックエラー（自販機物件）
+  cv_msg_name_00274   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00274';  -- 入力項目妥当性チェックエラー（自販機物件：IFRS項目）
+-- 2017-11-07 T.Otsuka Add End --
   cv_msg_name_90000   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90000';  -- 対象件数メッセージ
   cv_msg_name_90001   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90001';  -- 成功件数メッセージ
   cv_msg_name_90002   CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90002';  -- エラー件数メッセージ
@@ -172,6 +181,11 @@ AS
   cv_tkn_val_50259    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50259'; --自販機物件情報変更（移動・修正・除売却）
   cv_tkn_val_50260    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50260'; --自販機物件管理
   cv_tkn_val_50229    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50229'; --自販機物件履歴
+-- 2017-11-07 T.Otsuka Add Start --
+  cv_tkn_val_50306    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50306'; -- IFRS資産科目
+  cv_tkn_val_50317    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50317'; -- IFRS償却
+  cv_tkn_val_50318    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50318'; -- XXCFF:IFRS償却方法
+-- 2017-11-07 T.Otsuka Add End --
 --
   -- トークン名
   cv_tkn_name_00007    CONSTANT VARCHAR2(100) := 'TABLE_NAME';  -- テーブル
@@ -187,6 +201,14 @@ AS
   cv_tkn_name_00194    CONSTANT VARCHAR2(100) := 'BOOK_ID';     -- 会計帳簿ID
   cv_tkn_name_00020    CONSTANT VARCHAR2(100) := 'PROF_NAME';   -- プロファイル名
   cv_tkn_name_00232    CONSTANT VARCHAR2(100) := 'COL_CLOSE_DATE';   -- カレンダ期間クローズ日
+-- 2017-11-07 T.Otsuka Add Start --
+  cv_tkn_input        CONSTANT VARCHAR2(100) := 'INPUT';                 -- 項目名
+  cv_tkn_column_data  CONSTANT VARCHAR2(100) := 'COLUMN_DATA';           -- 項目値
+  cv_tkn_line_no      CONSTANT VARCHAR2(100) := 'LINE_NO';               -- 行番号
+--
+  -- 値セット名
+  cv_ffv_dprn_method  CONSTANT VARCHAR2(100) := 'XXCFF_DPRN_METHOD'; -- 償却方法
+-- 2017-11-07 T.Otsuka Add End --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -229,6 +251,15 @@ AS
     proceeds_of_sale         xxcff_vd_object_info_upload_wk.proceeds_of_sale%TYPE,       -- 売却価格
     cost_of_removal          xxcff_vd_object_info_upload_wk.cost_of_removal%TYPE,        -- 撤去費用
     retired_flag             xxcff_vd_object_info_upload_wk.retired_flag%TYPE,           -- 除売却確定フラグ
+-- 2017-11-07 T.Otsuka Add Start --
+    ifrs_life_in_months      xxcff_vd_object_info_upload_wk.ifrs_life_in_months%TYPE,    -- IFRS耐用年数
+    ifrs_cat_deprn_method    xxcff_vd_object_info_upload_wk.ifrs_cat_deprn_method%TYPE,  -- IFRS償却
+    real_estate_acq_tax      xxcff_vd_object_info_upload_wk.real_estate_acq_tax%TYPE,    -- 不動産取得税
+    borrowing_cost           xxcff_vd_object_info_upload_wk.borrowing_cost%TYPE,         -- 借入コスト
+    other_cost               xxcff_vd_object_info_upload_wk.other_cost%TYPE,             -- その他
+    ifrs_asset_account       xxcff_vd_object_info_upload_wk.ifrs_asset_account%TYPE,     -- IFRS資産科目
+    correct_date             xxcff_vd_object_info_upload_wk.correct_date%TYPE,           -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
     xvoh_owner_company_type       xxcff_vd_object_headers.owner_company_type%TYPE,         -- 本社／工場区分
     xvoh_department_code          xxcff_vd_object_headers.department_code%TYPE,            -- 管理部門
     xvoh_moved_date               xxcff_vd_object_headers.moved_date%TYPE,                 -- 移動日
@@ -256,7 +287,17 @@ AS
     xvoh_object_status            xxcff_vd_object_headers.object_status%TYPE,              -- 物件ステータス
     xvoh_machine_type             xxcff_vd_object_headers.machine_type%TYPE,               -- 機器区分
     xvoh_customer_code            xxcff_vd_object_headers.customer_code%TYPE,              -- 顧客コード
-    xvoh_ib_if_date               xxcff_vd_object_headers.ib_if_date%TYPE                  -- 設置ベース情報連携日
+-- 2017-11-07 T.Otsuka Mod Start --
+--    xvoh_ib_if_date               xxcff_vd_object_headers.ib_if_date%TYPE                  -- 設置ベース情報連携日
+    xvoh_ib_if_date               xxcff_vd_object_headers.ib_if_date%TYPE,                 -- 設置ベース情報連携日
+    xvoh_ifrs_life_in_months      xxcff_vd_object_headers.ifrs_life_in_months%TYPE,        -- IFRS耐用年数
+    xvoh_ifrs_cat_deprn_method    xxcff_vd_object_headers.ifrs_cat_deprn_method%TYPE,      -- IFRS償却
+    xvoh_real_estate_acq_tax      xxcff_vd_object_headers.real_estate_acq_tax%TYPE,        -- 不動産取得税
+    xvoh_borrowing_cost           xxcff_vd_object_headers.borrowing_cost%TYPE,             -- 借入コスト
+    xvoh_other_cost               xxcff_vd_object_headers.other_cost%TYPE,                 -- その他
+    xvoh_ifrs_asset_account       xxcff_vd_object_headers.ifrs_asset_account%TYPE,         -- IFRS資産科目
+    xvoh_correct_date             xxcff_vd_object_headers.correct_date%TYPE                -- 修正年月日
+-- 2017-11-07 T.Otsuka Mod End --
   );
 --
   -- 自販機物件管理情報取込対象データレコード配列
@@ -295,6 +336,9 @@ AS
 --
   -- プロファイル値
   gv_fixed_asset_register  VARCHAR2(100); -- 台帳種類_固定資産台帳
+-- 2017-11-07 T.Otsuka Add Start --
+  gv_cat_dep_ifrs              VARCHAR2(100); -- IFRS償却方法
+-- 2017-11-07 T.Otsuka Add End --
 --
   -- カレンダ期間クローズ日
   g_cal_per_close_date     DATE;
@@ -302,6 +346,10 @@ AS
   -- エラーフラグ
   gb_err_flag                    BOOLEAN;
 --
+-- 2017-11-07 T.Otsuka Add Start --
+  gd_process_date              DATE;          -- 業務日付
+--
+-- 2017-11-07 T.Otsuka Add End --
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -437,6 +485,21 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2017-11-07 T.Otsuka Add Start --
+    -- XXCFF:IFRS償却方法
+    gv_cat_dep_ifrs := FND_PROFILE.VALUE(cv_prf_cat_dep_ifrs);
+    IF ( gv_cat_dep_ifrs IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff      -- XXCFF
+                                                    ,cv_msg_name_00020   -- プロファイル取得エラー
+                                                    ,cv_tkn_name_00020   -- トークン'PROF_NAME'
+                                                    ,cv_tkn_val_50318)  -- XXCFF:IFRS償却方法
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+-- 2017-11-07 T.Otsuka Add End --
     BEGIN
       -- 最新のカレンダ期間クローズ日を取得
       SELECT  MAX(calendar_period_close_date)                   -- カレンダ期間クローズ日
@@ -459,6 +522,11 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
     END;
+-- 2017-11-07 T.Otsuka Add Start --
+--    
+    -- 初期値をグローバル変数に格納
+    gd_process_date            := g_init_rec.process_date;               -- 業務日付
+-- 2017-11-07 T.Otsuka Add End --
   --==============================================================
   --メッセージ出力をする必要がある場合は処理を記述
   --==============================================================
@@ -972,6 +1040,15 @@ AS
      ,ib_if_date                -- 設置ベース情報連携日
      ,fa_if_date                -- FA情報連携日
      ,ob_last_updated_by        -- 物件管理_最終更新者
+-- 2017-11-07 T.Otsuka Add Start --
+     ,ifrs_life_in_months       -- IFRS耐用年数
+     ,ifrs_cat_deprn_method     -- IFRS償却
+     ,real_estate_acq_tax       -- 不動産取得税
+     ,borrowing_cost            -- 借入コスト
+     ,other_cost                -- その他
+     ,ifrs_asset_account        -- IFRS資産科目
+     ,correct_date              -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
      ,created_by                -- 作成者
      ,creation_date             -- 作成日
      ,last_updated_by           -- 最終更新者
@@ -1017,6 +1094,15 @@ AS
      ,g_load_data_tab(29)       -- 設置ベース情報連携日
      ,g_load_data_tab(30)       -- FA情報連携日
      ,g_load_data_tab(31)       -- 物件管理_最終更新者
+-- 2017-11-07 T.Otsuka Add Start --
+     ,g_load_data_tab(32)       -- IFRS耐用年数
+     ,g_load_data_tab(33)       -- IFRS償却
+     ,g_load_data_tab(34)       -- 不動産取得税
+     ,g_load_data_tab(35)       -- 借入コスト
+     ,g_load_data_tab(36)       -- その他
+     ,g_load_data_tab(37)       -- IFRS資産科目
+     ,g_load_data_tab(38)       -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
      ,cn_created_by             -- 作成者
      ,cd_creation_date          -- 作成日
      ,cn_last_updated_by        -- 最終更新者
@@ -1113,6 +1199,17 @@ AS
              ,xvoiu.proceeds_of_sale        AS proceeds_of_sale      -- 売却価格
              ,xvoiu.cost_of_removal         AS cost_of_removal       -- 撤去費用
              ,xvoiu.retired_flag            AS retired_flag          -- 除売却確定フラグ
+-- 2017-11-07 T.Otsuka Add Start --
+             ,xvoiu.ifrs_life_in_months     AS ifrs_life_in_months   -- IFRS耐用年数
+             ,xvoiu.ifrs_cat_deprn_method   AS ifrs_cat_deprn_method -- IFRS償却
+             ,xvoiu.real_estate_acq_tax     AS real_estate_acq_tax   -- 不動産取得税
+             ,xvoiu.borrowing_cost          AS borrowing_cost        -- 借入コスト
+             ,xvoiu.other_cost              AS other_cost            -- その他
+             ,xvoiu.ifrs_asset_account      AS ifrs_asset_account    -- IFRS資産科目
+             ,DECODE(xvoiu.object_status,
+                      cv_ob_status_101,NULL,
+                      xvoiu.correct_date)   AS correct_date          -- 修正年月日（「未確定」時はNULLとする）
+-- 2017-11-07 T.Otsuka Add End --
              ,xvoh.owner_company_type       AS xvoh_owner_company_type     -- 本社工場(物件管理)
              ,xvoh.department_code          AS xvoh_department_code        -- 管理部門(物件管理)
              ,xvoh.moved_date               AS xvoh_moved_date             -- 管理部門(物件管理)
@@ -1141,6 +1238,15 @@ AS
              ,xvoh.machine_type             AS xvoh_machine_type           -- 機器区分(物件管理)
              ,xvoh.customer_code            AS xvoh_customer_code          -- 顧客コード(物件管理)
              ,xvoh.ib_if_date               AS xvoh_ib_if_date             -- 設置ベース情報連携日(物件管理)
+-- 2017-11-07 T.Otsuka Add Start --
+             ,xvoh.ifrs_life_in_months      AS xvoh_ifrs_life_in_months    -- IFRS耐用年数(物件管理)
+             ,xvoh.ifrs_cat_deprn_method    AS xvoh_ifrs_cat_deprn_method  -- IFRS償却(物件管理)
+             ,xvoh.real_estate_acq_tax      AS xvoh_real_estate_acq_tax    -- 不動産取得税(物件管理)
+             ,xvoh.borrowing_cost           AS xvoh_borrowing_cost         -- 借入コスト(物件管理)
+             ,xvoh.other_cost               AS xvoh_other_cost             -- その他(物件管理)
+             ,xvoh.ifrs_asset_account       AS xvoh_ifrs_asset_account     -- IFRS資産科目(物件管理)
+             ,xvoh.correct_date             AS xvoh_correct_date           -- 修正年月日(物件管理)
+-- 2017-11-07 T.Otsuka Add End --
         FROM
               xxcff_vd_object_info_upload_wk  xvoiu  -- 自販機物件情報アップロードワーク
              ,xxcff_vd_object_headers         xvoh   -- 自販機物件管理
@@ -1230,8 +1336,32 @@ AS
     ln_normal_cnt  PLS_INTEGER := 0;    -- 正常カウンター
     ln_error_cnt   PLS_INTEGER := 0;    -- エラーカウンター
     ln_location_id NUMBER;              -- 事業所ID
+-- 2017-11-07 T.Otsuka Add Start --
+    lt_ifrs_cat_deprn_method     fnd_flex_values.flex_value%TYPE;           -- IFRS償却
+    lt_ifrs_asset_account        xxcff_aff_account_v.aff_account_code%TYPE; -- IFRS資産科目
+-- 2017-11-07 T.Otsuka Add End --
 --
     -- *** ローカル・カーソル ***
+-- 2017-11-07 T.Otsuka Add Start --
+    -- 値セットチェックカーソル
+    CURSOR check_flex_value_cur(
+       iv_flex_value_set_name IN VARCHAR2    -- 値セット名
+      ,iv_flex_value          IN VARCHAR2    -- 値
+    )
+    IS
+      SELECT ffv.flex_value    AS flex_value
+      FROM   fnd_flex_value_sets   ffvs    -- 値セット
+            ,fnd_flex_values       ffv     -- 値セット値
+      WHERE  ffvs.flex_value_set_id   = ffv.flex_value_set_id
+      AND    ffvs.flex_value_set_name = iv_flex_value_set_name
+      AND    ffv.flex_value           = iv_flex_value
+      AND    ffv.enabled_flag         = cv_const_y
+      AND    gd_process_date         >= NVL(ffv.start_date_active ,gd_process_date)
+      AND    gd_process_date         <= NVL(ffv.end_date_active ,gd_process_date)
+      ;
+    -- 値セットチェックカーソルレコード型
+    check_flex_value_rec  check_flex_value_cur%ROWTYPE;
+-- 2017-11-07 T.Otsuka Add End --
 --
     -- *** ローカル・レコード ***
 --
@@ -1250,6 +1380,11 @@ AS
 --
     -- エラーフラグの初期化
     gb_err_flag := FALSE;
+-- 2017-11-07 T.Otsuka Add Start --
+    -- ローカル変数の初期化
+    lt_ifrs_cat_deprn_method     := NULL;  -- IFRS償却
+    lt_ifrs_asset_account        := NULL;  -- IFRS資産科目
+-- 2017-11-07 T.Otsuka Add End --
 --
     -- ①物件存在チェック
     IF ( g_vd_object_tab(in_rec_no).xvoh_object_status IS NULL ) THEN
@@ -1368,6 +1503,15 @@ AS
 -- 2014-08-06 S.Yamashita Add Start --
              ,TO_CHAR(g_vd_object_tab(in_rec_no).cash_price)                            -- 購入価格
 -- 2014-08-06 S.Yamashita Add End --
+-- 2017-11-07 T.Otsuka Add Start --
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).ifrs_life_in_months)                   -- IFRS耐用年数
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).ifrs_cat_deprn_method)                 -- IFRS償却
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).real_estate_acq_tax)                   -- 不動産取得税
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).borrowing_cost)                        -- 借入コスト
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).other_cost)                            -- その他
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).ifrs_asset_account)                    -- IFRS資産科目
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).correct_date,cv_date_format)           -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
            ) IS NULL 
       )
       THEN
@@ -1393,6 +1537,146 @@ AS
         -- エラーフラグを更新
         gb_err_flag := TRUE;
       END IF;
+-- 2017-11-07 T.Otsuka Add Start --
+      -- オブジェクトステータスが未確定以外の場合でかつ、
+      -- 下記項目のいずれかがNULLでない場合に「修正年月日」がNULLの場合はエラー
+      IF  g_vd_object_tab(in_rec_no).xvoh_object_status <> cv_ob_status_101
+      AND ( COALESCE(
+              TO_CHAR(g_vd_object_tab(in_rec_no).ifrs_life_in_months)                   -- IFRS耐用年数
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).ifrs_cat_deprn_method)                 -- IFRS償却
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).real_estate_acq_tax)                   -- 不動産取得税
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).borrowing_cost)                        -- 借入コスト
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).other_cost)                            -- その他
+             ,TO_CHAR(g_vd_object_tab(in_rec_no).ifrs_asset_account)                    -- IFRS資産科目
+           ) IS NOT NULL 
+      AND g_vd_object_tab(in_rec_no).correct_date IS NULL )                             -- 修正年月日
+      THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff           -- XXCFF
+                                                    ,cv_msg_name_00274          -- 入力項目妥当性チェックエラー（自販機物件：IFRS項目）
+                                                   )
+                                                   || xxccp_common_pkg.get_msg(
+                                                        cv_msg_kbn_cff          -- XXCFF
+                                                       ,cv_msg_name_00159       -- 物件エラー対象
+                                                       ,cv_tkn_name_00159       -- トークン'OBJECT_CODE'
+                                                       ,g_vd_object_tab(in_rec_no).object_code  -- 物件コード
+                                                      )
+                                                    ,1
+                                                    ,5000);
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_errmsg
+        );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+         ,buff   => lv_errmsg
+        );
+        -- エラーフラグを更新
+        gb_err_flag := TRUE;
+      END IF;
+      -- 購入価格、不動産取得税、借入コスト、その他を合算し、1以上でなければエラー
+      IF ( NVL( g_vd_object_tab(in_rec_no).cash_price
+               ,g_vd_object_tab(in_rec_no).xvoh_cash_price ) +             -- 購入価格
+           NVL( g_vd_object_tab(in_rec_no).real_estate_acq_tax
+               ,g_vd_object_tab(in_rec_no).xvoh_real_estate_acq_tax ) +    -- 不動産取得税
+           NVL( g_vd_object_tab(in_rec_no).borrowing_cost
+               ,g_vd_object_tab(in_rec_no).xvoh_borrowing_cost ) +         -- 借入コスト
+           NVL( g_vd_object_tab(in_rec_no).other_cost
+               ,g_vd_object_tab(in_rec_no).xvoh_other_cost )               -- その他
+         ) < 1
+      THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff           -- XXCFF     APP-XXCFF1-00269
+                                                    ,cv_msg_name_00269          -- 入力項目妥当性チェックエラー（自販機物件）：金額合算値が1以上
+                                                   )
+                                                   || xxccp_common_pkg.get_msg(
+                                                        cv_msg_kbn_cff          -- XXCFF
+                                                       ,cv_msg_name_00159       -- 物件エラー対象
+                                                       ,cv_tkn_name_00159       -- トークン'OBJECT_CODE'
+                                                       ,g_vd_object_tab(in_rec_no).object_code  -- 物件コード
+                                                      )
+                                                    ,1
+                                                    ,5000);
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_errmsg
+        );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+         ,buff   => lv_errmsg
+        );
+        -- エラーフラグを更新
+        gb_err_flag := TRUE;
+      END IF;
+--
+      -- ===============================
+      -- IFRS償却
+      -- ===============================
+      IF ( g_vd_object_tab(in_rec_no).ifrs_cat_deprn_method IS NOT NULL ) THEN
+        << check_ifrs_cat_dep_metd_loop >>
+        FOR check_flex_value_rec IN check_flex_value_cur(
+                                       cv_ffv_dprn_method                             -- XXCFF_DPRN_METHOD
+                                      ,g_vd_object_tab(in_rec_no).ifrs_cat_deprn_method  -- IFRS償却
+                                    )
+        LOOP
+          lt_ifrs_cat_deprn_method := check_flex_value_rec.flex_value;
+        END LOOP check_ifrs_cat_dep_metd_loop;
+        -- 取得値がNULLの場合
+        IF ( lt_ifrs_cat_deprn_method IS NULL ) THEN
+          -- 存在チェックエラー
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_msg_kbn_cff                                 -- アプリケーション短縮名
+                         ,iv_name         => cv_msg_name_00256                              -- メッセージ
+                         ,iv_token_name1  => cv_tkn_line_no                                 -- トークンコード1
+                         ,iv_token_value1 => TO_CHAR(in_rec_no)                             -- トークン値1
+                         ,iv_token_name2  => cv_tkn_input                                   -- トークンコード2
+                         ,iv_token_value2 => cv_tkn_val_50317                               -- トークン値2
+                         ,iv_token_name3  => cv_tkn_column_data                             -- トークンコード3
+                         ,iv_token_value3 => g_vd_object_tab(in_rec_no).ifrs_cat_deprn_method  -- トークン値3
+                       );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_errmsg
+          );
+          -- エラーフラグを更新
+          gb_err_flag := TRUE;
+        END IF;
+      END IF;
+--
+      -- ===============================
+      -- IFRS資産科目
+      -- ===============================
+      IF ( g_vd_object_tab(in_rec_no).ifrs_asset_account IS NOT NULL ) THEN
+        BEGIN
+          SELECT xaav.aff_account_code  AS ifrs_asset_account
+          INTO   lt_ifrs_asset_account
+          FROM   xxcff_aff_account_v  xaav   -- 勘定科目ビュー
+          WHERE  xaav.aff_account_code  = g_vd_object_tab(in_rec_no).ifrs_asset_account
+          AND    xaav.enabled_flag      = cv_const_y
+          AND    gd_process_date       >= NVL(xaav.start_date_active ,gd_process_date)
+          AND    gd_process_date       <= NVL(xaav.end_date_active ,gd_process_date)
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -- 存在チェックエラー
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_msg_kbn_cff                              -- アプリケーション短縮名
+                           ,iv_name         => cv_msg_name_00256                           -- メッセージ
+                           ,iv_token_name1  => cv_tkn_line_no                              -- トークンコード1
+                           ,iv_token_value1 => TO_CHAR(in_rec_no)                          -- トークン値1
+                           ,iv_token_name2  => cv_tkn_input                                -- トークンコード2
+                           ,iv_token_value2 => cv_tkn_val_50306                            -- トークン値2
+                           ,iv_token_name3  => cv_tkn_column_data                          -- トークンコード3
+                           ,iv_token_value3 => g_vd_object_tab(in_rec_no).ifrs_asset_account  -- トークン値3
+                         );
+            FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+             ,buff   => lv_errmsg
+            );
+            -- エラーフラグを更新
+            gb_err_flag := TRUE;
+        END;
+      END IF;
+--
+-- 2017-11-07 T.Otsuka Add End --
 --
     -- 変更区分が「3（除売却）の場合」
     ELSIF ( g_vd_object_tab(in_rec_no).upload_type = cv_upload_type_3 ) THEN
@@ -1605,6 +1889,39 @@ AS
       gb_err_flag := TRUE;
       END IF;
     END IF;
+-- 2017-11-07 T.Otsuka Add Start --
+    -- (IFRS)修正年月日がカレンダ期間クローズ日以前の場合
+    IF(g_vd_object_tab(in_rec_no).upload_type = cv_upload_type_2) THEN
+      IF ((g_vd_object_tab(in_rec_no).correct_date IS NOT NULL)
+        AND (g_vd_object_tab(in_rec_no).correct_date <= g_cal_per_close_date)
+      )
+      THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff     -- XXCFF
+                                              ,cv_msg_name_00232          -- FAオープン期間外エラー（自販機物件）
+                                              ,cv_tkn_name_00232
+                                              ,TO_CHAR(g_cal_per_close_date,'YYYY/MM/DD')
+                                             )
+                                             || xxccp_common_pkg.get_msg(
+                                                  cv_msg_kbn_cff          -- XXCFF
+                                                 ,cv_msg_name_00159       -- 物件エラー対象
+                                                 ,cv_tkn_name_00159       -- トークン'OBJECT_CODE'
+                                                 ,g_vd_object_tab(in_rec_no).object_code  -- 物件コード
+                                                )
+                                              ,1
+                                              ,5000);
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_errmsg
+        );
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+         ,buff   => lv_errmsg
+        );
+      -- エラーフラグを更新
+      gb_err_flag := TRUE;
+      END IF;
+    END IF;
+-- 2017-11-07 T.Otsuka Add End --
 --
     -- ⑦除売却フラグ妥当性チェック
     -- 除売却確定フラグに「Y」、「N」以外の値が入力されている場合
@@ -1646,6 +1963,11 @@ AS
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+-- 2017-11-07 T.Otsuka Add Start --
+      IF ( check_flex_value_cur%ISOPEN ) THEN
+        CLOSE check_flex_value_cur;
+      END IF;
+-- 2017-11-07 T.Otsuka Add End --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -1708,6 +2030,15 @@ AS
     lv_nvl_proceeds_of_sale        xxcff_vd_object_info_upload_wk.proceeds_of_sale%TYPE;       -- 売却価格
     lv_nvl_cost_of_removal         xxcff_vd_object_info_upload_wk.cost_of_removal%TYPE;        -- 撤去費用
     lv_nvl_retired_flag            xxcff_vd_object_info_upload_wk.retired_flag%TYPE;           -- 撤去費用
+-- 2017-11-07 T.Otsuka Add Start --
+    lv_nvl_ifrs_life_in_months     xxcff_vd_object_info_upload_wk.ifrs_life_in_months%TYPE;    -- IFRS耐用年数
+    lv_nvl_ifrs_cat_deprn_method   xxcff_vd_object_info_upload_wk.ifrs_cat_deprn_method%TYPE;  -- IFRS償却
+    lv_nvl_real_estate_acq_tax     xxcff_vd_object_info_upload_wk.real_estate_acq_tax%TYPE;    -- 不動産取得税
+    lv_nvl_borrowing_cost          xxcff_vd_object_info_upload_wk.borrowing_cost%TYPE;         -- 借入コスト
+    lv_nvl_other_cost              xxcff_vd_object_info_upload_wk.other_cost%TYPE;             -- その他
+    lv_nvl_ifrs_asset_account      xxcff_vd_object_info_upload_wk.ifrs_asset_account%TYPE;     -- IFRS資産科目
+    lv_nvl_correct_date            xxcff_vd_object_info_upload_wk.correct_date%TYPE;           -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
 --
     -- *** ローカル・カーソル ***
     -- 自販機物件管理
@@ -1830,6 +2161,22 @@ AS
              xvoh.cash_price             = NVL( g_vd_object_tab(in_rec_no).cash_price
                                              ,g_vd_object_tab(in_rec_no).xvoh_cash_price ),             -- 購入価格
 -- 2014-08-06 S.Yamashita Add End --
+-- 2017-11-07 T.Otsuka Add Start --
+             xvoh.ifrs_life_in_months    = NVL( g_vd_object_tab(in_rec_no).ifrs_life_in_months
+                                             ,g_vd_object_tab(in_rec_no).xvoh_ifrs_life_in_months ),    -- IFRS耐用年数
+             xvoh.ifrs_cat_deprn_method  = NVL( g_vd_object_tab(in_rec_no).ifrs_cat_deprn_method
+                                             ,g_vd_object_tab(in_rec_no).xvoh_ifrs_cat_deprn_method ),  -- IFRS償却
+             xvoh.real_estate_acq_tax    = NVL( g_vd_object_tab(in_rec_no).real_estate_acq_tax
+                                             ,g_vd_object_tab(in_rec_no).xvoh_real_estate_acq_tax ),    -- 不動産取得税
+             xvoh.borrowing_cost         = NVL( g_vd_object_tab(in_rec_no).borrowing_cost
+                                             ,g_vd_object_tab(in_rec_no).xvoh_borrowing_cost ),         -- 借入コスト
+             xvoh.other_cost             = NVL( g_vd_object_tab(in_rec_no).other_cost
+                                             ,g_vd_object_tab(in_rec_no).xvoh_other_cost ),             -- その他
+             xvoh.ifrs_asset_account     = NVL( g_vd_object_tab(in_rec_no).ifrs_asset_account
+                                             ,g_vd_object_tab(in_rec_no).xvoh_ifrs_asset_account ),     -- IFRS資産科目
+             xvoh.correct_date           = NVL( g_vd_object_tab(in_rec_no).correct_date
+                                             ,g_vd_object_tab(in_rec_no).xvoh_correct_date ),           -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
              xvoh.last_updated_by        = cn_last_updated_by,                              -- 最終更新者
              xvoh.last_update_date       = cd_last_update_date,                             -- 最終更新日
              xvoh.last_update_login      = cn_last_update_login,                            -- 最終更新ログイン
@@ -1916,6 +2263,22 @@ AS
                xvohi.cash_price             = NVL( g_vd_object_tab(in_rec_no).cash_price
                                                ,g_vd_object_tab(in_rec_no).xvoh_cash_price ),             -- 購入価格
 -- 2014-08-06 S.Yamashita Add End --
+-- 2017-11-07 T.Otsuka Add Start --
+             xvohi.ifrs_life_in_months      = NVL( g_vd_object_tab(in_rec_no).ifrs_life_in_months
+                                               ,g_vd_object_tab(in_rec_no).xvoh_ifrs_life_in_months ),    -- IFRS耐用年数
+             xvohi.ifrs_cat_deprn_method    = NVL( g_vd_object_tab(in_rec_no).ifrs_cat_deprn_method
+                                               ,g_vd_object_tab(in_rec_no).xvoh_ifrs_cat_deprn_method ),  -- IFRS償却
+             xvohi.real_estate_acq_tax      = NVL( g_vd_object_tab(in_rec_no).real_estate_acq_tax
+                                               ,g_vd_object_tab(in_rec_no).xvoh_real_estate_acq_tax ),    -- 不動産取得税
+             xvohi.borrowing_cost           = NVL( g_vd_object_tab(in_rec_no).borrowing_cost
+                                               ,g_vd_object_tab(in_rec_no).xvoh_borrowing_cost ),         -- 借入コスト
+             xvohi.other_cost               = NVL( g_vd_object_tab(in_rec_no).other_cost
+                                               ,g_vd_object_tab(in_rec_no).xvoh_other_cost ),             -- その他
+             xvohi.ifrs_asset_account       = NVL( g_vd_object_tab(in_rec_no).ifrs_asset_account
+                                               ,g_vd_object_tab(in_rec_no).xvoh_ifrs_asset_account ),     -- IFRS資産科目
+             xvohi.correct_date             = NVL( g_vd_object_tab(in_rec_no).correct_date
+                                               ,g_vd_object_tab(in_rec_no).xvoh_correct_date ),           -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
 --               xvohi.month_lease_charge     = NVL( g_vd_object_tab(in_rec_no).month_lease_charge
 --                                               ,g_vd_object_tab(in_rec_no).xvoh_month_lease_charge ),     -- 月額リース料
 --               xvohi.re_lease_charge        = NVL( g_vd_object_tab(in_rec_no).re_lease_charge
@@ -1975,7 +2338,16 @@ AS
         lv_nvl_date_retired           := g_vd_object_tab(in_rec_no).xvoh_date_retired;                  -- 除・売却日
         lv_nvl_proceeds_of_sale       := g_vd_object_tab(in_rec_no).xvoh_proceeds_of_sale;              -- 売却価格
         lv_nvl_cost_of_removal        := g_vd_object_tab(in_rec_no).xvoh_cost_of_removal;               -- 撤去費用
-        lv_nvl_retired_flag           := g_vd_object_tab(in_rec_no).xvoh_retired_flag;             -- 除売却確定フラグ
+        lv_nvl_retired_flag           := g_vd_object_tab(in_rec_no).xvoh_retired_flag;                  -- 除売却確定フラグ
+-- 2017-11-07 T.Otsuka Add Start --
+        lv_nvl_ifrs_life_in_months    :=g_vd_object_tab(in_rec_no).xvoh_ifrs_life_in_months;            -- IFRS耐用年数
+        lv_nvl_ifrs_cat_deprn_method  :=g_vd_object_tab(in_rec_no).xvoh_ifrs_cat_deprn_method;          -- IFRS償却
+        lv_nvl_real_estate_acq_tax    :=g_vd_object_tab(in_rec_no).xvoh_real_estate_acq_tax;            -- 不動産取得税
+        lv_nvl_borrowing_cost         :=g_vd_object_tab(in_rec_no).xvoh_borrowing_cost;                 -- 借入コスト
+        lv_nvl_other_cost             :=g_vd_object_tab(in_rec_no).xvoh_other_cost;                     -- その他
+        lv_nvl_ifrs_asset_account     :=g_vd_object_tab(in_rec_no).xvoh_ifrs_asset_account;             -- IFRS資産科目
+        lv_nvl_correct_date           :=g_vd_object_tab(in_rec_no).xvoh_correct_date;                   -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
       -- 修正の場合
       ELSIF (  g_vd_object_tab(in_rec_no).upload_type = cv_upload_type_2 ) THEN
         -- 処理区分の設定
@@ -2010,6 +2382,22 @@ AS
         lv_nvl_proceeds_of_sale       := g_vd_object_tab(in_rec_no).xvoh_proceeds_of_sale;         -- 売却価格
         lv_nvl_cost_of_removal        := g_vd_object_tab(in_rec_no).xvoh_cost_of_removal;          -- 撤去費用
         lv_nvl_retired_flag           := g_vd_object_tab(in_rec_no).xvoh_retired_flag;             -- 除売却確定フラグ
+-- 2017-11-07 T.Otsuka Add Start --
+        lv_nvl_ifrs_life_in_months    := NVL( g_vd_object_tab(in_rec_no).ifrs_life_in_months
+                                                 ,g_vd_object_tab(in_rec_no).xvoh_ifrs_life_in_months );   -- IFRS耐用年数
+        lv_nvl_ifrs_cat_deprn_method  := NVL( g_vd_object_tab(in_rec_no).ifrs_cat_deprn_method
+                                                 ,g_vd_object_tab(in_rec_no).xvoh_ifrs_cat_deprn_method ); -- IFRS償却
+        lv_nvl_real_estate_acq_tax    := NVL( g_vd_object_tab(in_rec_no).real_estate_acq_tax
+                                                 ,g_vd_object_tab(in_rec_no).xvoh_real_estate_acq_tax );   -- 不動産取得税
+        lv_nvl_borrowing_cost         := NVL( g_vd_object_tab(in_rec_no).borrowing_cost
+                                                 ,g_vd_object_tab(in_rec_no).xvoh_borrowing_cost );        -- 借入コスト
+        lv_nvl_other_cost             := NVL( g_vd_object_tab(in_rec_no).other_cost
+                                                 ,g_vd_object_tab(in_rec_no).xvoh_other_cost );            -- その他
+        lv_nvl_ifrs_asset_account     := NVL( g_vd_object_tab(in_rec_no).ifrs_asset_account
+                                                 ,g_vd_object_tab(in_rec_no).xvoh_ifrs_asset_account );    -- IFRS資産科目
+        lv_nvl_correct_date           := NVL( g_vd_object_tab(in_rec_no).correct_date
+                                                 ,g_vd_object_tab(in_rec_no).xvoh_correct_date );          -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
       -- 除売却の場合
       ELSE
         -- 処理区分
@@ -2040,6 +2428,15 @@ AS
                                                  ,g_vd_object_tab(in_rec_no).xvoh_cost_of_removal );  -- 撤去費用
         lv_nvl_retired_flag           := NVL( g_vd_object_tab(in_rec_no).retired_flag
                                                  ,g_vd_object_tab(in_rec_no).xvoh_retired_flag );  -- 除売却確定フラグ
+-- 2017-11-07 T.Otsuka Add Start --
+        lv_nvl_ifrs_life_in_months    :=g_vd_object_tab(in_rec_no).xvoh_ifrs_life_in_months;            -- IFRS耐用年数
+        lv_nvl_ifrs_cat_deprn_method  :=g_vd_object_tab(in_rec_no).xvoh_ifrs_cat_deprn_method;          -- IFRS償却
+        lv_nvl_real_estate_acq_tax    :=g_vd_object_tab(in_rec_no).xvoh_real_estate_acq_tax;            -- 不動産取得税
+        lv_nvl_borrowing_cost         :=g_vd_object_tab(in_rec_no).xvoh_borrowing_cost;                 -- 借入コスト
+        lv_nvl_other_cost             :=g_vd_object_tab(in_rec_no).xvoh_other_cost;                     -- その他
+        lv_nvl_ifrs_asset_account     :=g_vd_object_tab(in_rec_no).xvoh_ifrs_asset_account;             -- IFRS資産科目
+        lv_nvl_correct_date           :=g_vd_object_tab(in_rec_no).xvoh_correct_date;                   -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
       END IF;
 --
       -- 自販機物件履歴登録
@@ -2065,6 +2462,15 @@ AS
 -- 2014-08-06 S.Yamashita Add Start --
            , cash_price              -- 購入価格
 -- 2014-08-06 S.Yamashita Add End --
+-- 2017-11-07 T.Otsuka Add Start --
+           , ifrs_life_in_months     -- IFRS耐用年数
+           , ifrs_cat_deprn_method   -- IFRS償却
+           , real_estate_acq_tax     -- 不動産取得税
+           , borrowing_cost          -- 借入コスト
+           , other_cost              -- その他
+           , ifrs_asset_account      -- IFRS資産科目
+           , correct_date            -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
            , assets_date             -- 取得日
            , moved_date              -- 移動日
            , installation_place      -- 設置先
@@ -2112,6 +2518,15 @@ AS
 -- 2014-08-06 S.Yamashita Add Start --
            , lv_nvl_cash_price                                       -- 購入価格
 -- 2014-08-06 S.Yamashita Add End --
+-- 2017-11-07 T.Otsuka Add Start --
+           , lv_nvl_ifrs_life_in_months                              -- IFRS耐用年数
+           , lv_nvl_ifrs_cat_deprn_method                            -- IFRS償却
+           , lv_nvl_real_estate_acq_tax                              -- 不動産取得税
+           , lv_nvl_borrowing_cost                                   -- 借入コスト
+           , lv_nvl_other_cost                                       -- その他
+           , lv_nvl_ifrs_asset_account                               -- IFRS資産科目
+           , lv_nvl_correct_date                                     -- 修正年月日
+-- 2017-11-07 T.Otsuka Add End --
            , lv_nvl_assets_date                                      -- 取得日
            , lv_nvl_moved_date                                       -- 移動日
            , lv_nvl_installation_place                               -- 設置先
