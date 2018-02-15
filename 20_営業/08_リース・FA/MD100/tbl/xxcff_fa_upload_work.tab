@@ -1,0 +1,99 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ * 
+ * TABLE Name      : XXCFF_FA_UPLOAD_WORK
+ * Description     : 固定資産アップロードワーク
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/09/20    1.0   S.Niki       E_本稼動_14502 初回作成
+ *
+ ************************************************************************/
+CREATE TABLE xxcff.xxcff_fa_upload_work (
+     file_id                        NUMBER           NOT NULL
+    ,line_no                        NUMBER           NOT NULL
+    ,process_type                   VARCHAR2(1)      NOT NULL
+    ,asset_number                   VARCHAR2(15)
+    ,description                    VARCHAR2(80)
+    ,asset_category                 VARCHAR2(30)
+    ,deprn_declaration              VARCHAR2(30)
+    ,asset_account                  VARCHAR2(5)
+    ,deprn_account                  VARCHAR2(5)
+    ,deprn_sub_account              VARCHAR2(5)
+    ,life_in_months                 NUMBER(3)
+    ,cat_deprn_method               VARCHAR2(30)
+    ,lease_class                    VARCHAR2(2)
+    ,date_placed_in_service         DATE
+    ,original_cost                  NUMBER(13)
+    ,quantity                       NUMBER(12)
+    ,company_code                   VARCHAR2(30)
+    ,department_code                VARCHAR2(30)
+    ,dclr_place                     VARCHAR2(30)
+    ,location_name                  VARCHAR2(30)
+    ,location_place                 VARCHAR2(30)
+    ,yobi1                          VARCHAR2(1)
+    ,yobi2                          VARCHAR2(1)
+    ,assets_date                    DATE
+    ,ifrs_life_in_months            NUMBER(3)
+    ,ifrs_cat_deprn_method          VARCHAR2(30)
+    ,real_estate_acq_tax            NUMBER(13) 
+    ,borrowing_cost                 NUMBER(13)
+    ,other_cost                     NUMBER(13)
+    ,ifrs_asset_account             VARCHAR2(5)
+    ,correct_date                   DATE
+    ,created_by                     NUMBER(15)       NOT NULL
+    ,creation_date                  DATE             NOT NULL
+    ,last_updated_by                NUMBER(15)       NOT NULL
+    ,last_update_date               DATE             NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+ )
+ TABLESPACE xxdata2 PCTFREE 20 PCTUSED 40 INITRANS 8 STORAGE ( INITIAL 64K )
+;
+COMMENT ON TABLE xxcff.xxcff_fa_upload_work IS '固定資産アップロードワーク';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.file_id                         IS 'ファイルID';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.line_no                         IS '行番号';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.process_type                    IS '処理区分';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.asset_number                    IS '資産番号';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.description                     IS '摘要';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.asset_category                  IS '種類';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.deprn_declaration               IS '償却申告';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.asset_account                   IS '資産勘定';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.deprn_account                   IS '償却科目';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.deprn_sub_account               IS '償却補助科目';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.life_in_months                  IS '耐用年数';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.cat_deprn_method                IS '償却方法';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.lease_class                     IS 'リース種別';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.date_placed_in_service          IS '事業供用日';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.original_cost                   IS '取得価額';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.quantity                        IS '単位数量';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.company_code                    IS '会社';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.department_code                 IS '部門';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.dclr_place                      IS '申告地';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.location_name                   IS '事業所';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.location_place                  IS '場所';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.yobi1                           IS '予備1';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.yobi2                           IS '予備2';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.assets_date                     IS '取得日';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.ifrs_life_in_months             IS 'IFRS耐用年数';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.ifrs_cat_deprn_method           IS 'IFRS償却';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.real_estate_acq_tax             IS '不動産取得税';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.borrowing_cost                  IS '借入コスト';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.other_cost                      IS 'その他';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.ifrs_asset_account              IS 'IFRS資産科目';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.correct_date                    IS '修正年月日';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.created_by                      IS '作成者';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.creation_date                   IS '作成日';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.last_updated_by                 IS '最終更新者';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.last_update_date                IS '最終更新日';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.last_update_login               IS '最終更新ログイン';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.request_id                      IS '要求ID';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.program_application_id          IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.program_id                      IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcff.xxcff_fa_upload_work.program_update_date             IS 'プログラム更新日';
