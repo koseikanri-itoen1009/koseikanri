@@ -1,0 +1,16 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ * 
+ * Synonym Name    : XXCFF_TMP_CHECK_ASSET_NUM
+ * Description     : 資産番号チェック一時表（シノニム）
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/09/29    1.0   S.Niki       E_本稼動_14502 初回作成
+ *
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM APPS.XXCFF_TMP_CHECK_ASSET_NUM FOR XXCFF.XXCFF_TMP_CHECK_ASSET_NUM
+/
