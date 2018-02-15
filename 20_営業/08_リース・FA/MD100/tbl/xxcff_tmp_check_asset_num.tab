@@ -1,0 +1,25 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ * 
+ * TABLE Name      : XXCFF_TMP_CHECK_ASSET_NUM
+ * Description     : 資産番号チェック一時表
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/09/29    1.0   S.Niki       E_本稼動_14502 初回作成
+ *
+ ************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcff.xxcff_tmp_check_asset_num(
+     asset_number            VARCHAR2(15)
+    ,line_no                 NUMBER
+)   ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE xxcff.xxcff_tmp_check_asset_num IS '資産番号チェック一時表'
+/
+COMMENT ON COLUMN xxcff.xxcff_tmp_check_asset_num.asset_number            IS '資産番号'
+/
+COMMENT ON COLUMN xxcff.xxcff_tmp_check_asset_num.line_no                 IS '行番号'
+/
