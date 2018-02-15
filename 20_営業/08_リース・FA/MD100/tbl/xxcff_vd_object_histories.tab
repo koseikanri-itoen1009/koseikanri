@@ -3,7 +3,7 @@
  * Table Name      : xxcff_object_histories
  * Description     : 自販機物件管理履歴
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------- -------------------------------------
@@ -11,7 +11,8 @@
  * ------------- ----- ------------- -------------------------------------
  *  2014/07/09    1.0  SCSK 山下翔太  初回作成
  *  2014/09/30    1.1  SCSK 山下翔太  E_本稼動_11719対応
- ************************************************************************/
+ *  2017/11/07    1.2  SCSK 大塚 亨   E_本稼動_14502対応
+************************************************************************/
 CREATE TABLE xxcff.xxcff_vd_object_histories (
      object_header_id               NUMBER(9)     NOT NULL
     ,object_code                    VARCHAR2(10)  NOT NULL
@@ -56,6 +57,15 @@ CREATE TABLE xxcff.xxcff_vd_object_histories (
 -- 2014/09/30 S.Yamashita ADD START
     ,cash_price                     NUMBER(10)
 -- 2014/09/30 S.Yamashita ADD END
+-- 2017/11/07 T.Otsuka ADD START
+   ,ifrs_life_in_months             NUMBER(3)
+   ,ifrs_cat_deprn_method           VARCHAR2(30)
+   ,real_estate_acq_tax             NUMBER(13)
+   ,borrowing_cost                  NUMBER(13)
+   ,other_cost                      NUMBER(13)
+   ,ifrs_asset_account              VARCHAR2(5)
+   ,correct_date                    DATE
+-- 2017/11/07 T.Otsuka ADD END
     ,CONSTRAINT xxcff_vd_object_histories_pk PRIMARY KEY (object_header_id,history_num)
   USING INDEX TABLESPACE xxidx2)
  TABLESPACE xxdata2 PCTFREE 20 PCTUSED 50 INITRANS 8 STORAGE ( INITIAL 1030M)
@@ -102,5 +112,14 @@ COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.program_application_id        
 COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.program_id                     IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.program_update_date            IS 'プログラム更新日';
 -- 2014/09/30 S.Yamashita ADD START
-COMMENT ON COLUMN xxcff.xxcff_vd_object_headers.cash_price                       IS '購入価格';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.cash_price                     IS '購入価格';
 -- 2014/09/30 S.Yamashita ADD END
+-- 2017/11/07 T.Otsuka ADD START
+COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.ifrs_life_in_months            IS  'IFRS耐用年数';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.ifrs_cat_deprn_method          IS  'IFRS償却';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.real_estate_acq_tax            IS  '不動産取得税';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.borrowing_cost                 IS  '借入コスト';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.other_cost                     IS  'その他';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.ifrs_asset_account             IS  'IFRS資産科目';
+COMMENT ON COLUMN xxcff.xxcff_vd_object_histories.correct_date                   IS  '修正年月日';
+-- 2017/11/07 T.Otsuka ADD END
