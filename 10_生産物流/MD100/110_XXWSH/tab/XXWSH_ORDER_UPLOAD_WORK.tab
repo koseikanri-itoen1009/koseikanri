@@ -1,0 +1,37 @@
+/*************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ * 
+ * TABLE Name      : XXWSH_ORDER_UPLOAD_WORK
+ * Description     : 出荷依頼更新アップロードワークテーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2017/11/01    1.0   K.Kiriu      初回作成(E_本稼動_14672)
+ ************************************************************************/
+CREATE TABLE xxwsh.xxwsh_order_upload_work
+(
+   line_number     NUMBER
+  ,request_no      VARCHAR2(12)
+  ,item_code       VARCHAR2(7)
+  ,conv_item_code  VARCHAR2(7)
+  ,pallet_quantity NUMBER
+  ,layer_quantity  NUMBER
+  ,case_quantity   NUMBER
+  ,request_id      NUMBER
+)
+;
+--
+COMMENT ON TABLE xxwsh.xxwsh_order_upload_work IS '出荷依頼更新アップロードワークテーブル';
+--
+COMMENT ON COLUMN xxwsh.xxwsh_order_upload_work.line_number                 IS '行No';
+COMMENT ON COLUMN xxwsh.xxwsh_order_upload_work.request_no                  IS '依頼No';
+COMMENT ON COLUMN xxwsh.xxwsh_order_upload_work.item_code                   IS '品目コード';
+COMMENT ON COLUMN xxwsh.xxwsh_order_upload_work.conv_item_code              IS '変更後品目コード';
+COMMENT ON COLUMN xxwsh.xxwsh_order_upload_work.pallet_quantity             IS 'パレット数';
+COMMENT ON COLUMN xxwsh.xxwsh_order_upload_work.layer_quantity              IS '段数';
+COMMENT ON COLUMN xxwsh.xxwsh_order_upload_work.case_quantity               IS 'ケース数';
+COMMENT ON COLUMN xxwsh.xxwsh_order_upload_work.request_id                  IS '要求ID';
