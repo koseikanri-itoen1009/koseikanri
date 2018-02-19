@@ -1,0 +1,17 @@
+/***************************************************************************************
+ * Copyright(c)SCSK Corporation, 2017. All rights reserved.
+ *
+ * Index Name  : XXWSH_OUW_N01
+ * Description : 出荷依頼更新アップロードワークテーブルインデックスN01
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2017/11/02    1.0   K.Kiriu          初回作成(E_本稼動_14672)
+ **************************************************************************************/
+ CREATE INDEX xxwsh.xxwsh_ouw_n01 ON xxwsh.xxwsh_order_upload_work ( 
+   request_id
+ ) TABLESPACE xxidx2
+/
