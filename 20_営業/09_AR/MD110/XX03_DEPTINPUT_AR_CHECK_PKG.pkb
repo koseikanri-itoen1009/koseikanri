@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.20
+ * Version                : 11.5.10.2.21
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2013/09/19   11.5.10.2.18   障害「E_本稼動_10999」対応
  *  2014/03/06   11.5.10.2.19   障害「E_本稼動_11634」対応
  *  2016/12/01   11.5.10.2.20   障害「E_本稼動_13901」対応
+ *  2018/02/07   11.5.10.2.21   障害 [E_本稼動_14663] 対応
  *
  *****************************************************************************************/
 --
@@ -2066,7 +2067,10 @@ AS
               RAISE INVALID_NUMBER;
             END IF;
             --固定値チェック
-            IF ( SUBSTRB(xx03_xrsjlv_rec.attribute7,1,2) <> 'DR' ) THEN
+--2018/02/07 Ver11.5.10.2.21 MOD START
+--            IF ( SUBSTRB(xx03_xrsjlv_rec.attribute7,1,2) <> 'DR' ) THEN
+            IF ( SUBSTRB(xx03_xrsjlv_rec.attribute7,1,2) NOT IN ('DR','SP') ) THEN
+--2018/02/07 Ver11.5.10.2.21 MOD END
               RAISE INVALID_NUMBER;
             END IF;
             --年チェック
