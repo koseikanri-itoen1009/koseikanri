@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ap_check_pkg(body)
  * Description            : 部門入力(AP)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AP)共通関数 OCSJ/BFAFIN/MD070/F409
- * Version                : 11.5.10.2.13
+ * Version                : 11.5.10.2.14
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *                              入力した税コードが一致しているかチェックする修正
  *  2013/06/10   11.5.10.2.12   [E_本稼動_10838]対応 画面表示値と登録値のチェック追加
  *  2016/11/14   11.5.10.2.13   [E_本稼動_13901]対応 稟議決裁番号の形式チェック追加
+ *  2018/02/07   11.5.10.2.14   [E_本稼動_14663]対応 稟議決裁番号の固定値チェック修正(SPで始まる番号に対応)
  *
  *****************************************************************************************/
 --
@@ -1483,7 +1484,10 @@ AS
               RAISE INVALID_NUMBER;
             END IF;
             --固定値チェック
-            IF SUBSTRB(xx03_xpsjlv_rec.attribute7,1,2) <> 'DR' THEN
+--2018/02/07 Ver11.5.10.2.14 MOD START
+--            IF SUBSTRB(xx03_xpsjlv_rec.attribute7,1,2) <> 'DR' THEN
+            IF SUBSTRB(xx03_xpsjlv_rec.attribute7,1,2) NOT IN ('DR','SP') THEN
+--2018/02/07 Ver11.5.10.2.14 MOD END
               RAISE INVALID_NUMBER;
             END IF;
             --年チェック
