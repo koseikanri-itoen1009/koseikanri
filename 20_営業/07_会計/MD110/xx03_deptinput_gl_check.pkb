@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_gl_check_pkg(body)
  * Description            : 部門入力(GL)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(GL)共通関数 OCSJ/BFAFIN/MD070/F601/01
- * Version                : 11.5.10.2.14
+ * Version                : 11.5.10.2.15
  *
  * Program List
  *  -------------------------- ---- ----- ------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2015-03-24   11.5.10.2.13   [E_本稼動_12980]消費税額許容範囲チェック用カーソルの
  *                                              会社コードを固定値：001（本社）に変更
  *  2016/11/14   11.5.10.2.14   [E_本稼動_13901]稟議決裁番号のチェックを追加
+ *  2018/02/07   11.5.10.2.15   [E_本稼動_14663]稟議決裁番号の固定値チェック修正(SPで始まる番号に対応)
  *
  *****************************************************************************************/
 --
@@ -1291,7 +1292,10 @@ AS
               RAISE INVALID_NUMBER;
             END IF;
             --固定値チェック
-            IF SUBSTRB(xx03_xjsjlv_rec.attribute9,1,2) <> 'DR' THEN
+--2018/02/07 Ver11.5.10.2.15 MOD START
+--            IF SUBSTRB(xx03_xjsjlv_rec.attribute9,1,2) <> 'DR' THEN
+            IF SUBSTRB(xx03_xjsjlv_rec.attribute9,1,2) NOT IN ('DR','SP') THEN
+--2018/02/07 Ver11.5.10.2.15 MOD END
               RAISE INVALID_NUMBER;
             END IF;
             --年チェック
