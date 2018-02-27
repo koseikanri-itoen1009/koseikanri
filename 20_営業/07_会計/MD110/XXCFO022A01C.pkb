@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,8 @@ AS
  *                                         ・仕入実績アドオン登録(A-9)の処理を削除
  *                                         ・処理済フラグ更新(A-10)の処理を削除
  *                                         ・処理済データ削除(A-11)の処理を削除
+ *  2017-12-05    1.5   S.Niki           E_本稼動_14674対応
+ *                                       ・預り金勘定(口銭、賦課金、口銭消費税の預り金)の場合、税コードに「0000」を設定。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1152,6 +1154,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cn_minus                        CONSTANT NUMBER := -1;         -- 金額算出用
+-- 2017-12-05 Ver1.5 Add Start
+    cv_tax_code_0000                CONSTANT VARCHAR2(4) := '0000'; -- 税コード：0000（対象外）
+-- 2017-12-05 Ver1.5 Add End
 --
     -- *** ローカル変数 ***
     lv_company_code_hontai          VARCHAR2(100) DEFAULT NULL;    -- (本体)会社
@@ -1702,7 +1707,10 @@ AS
           , gv_vendor_code_hdr || cv_underbar || lv_description_kosen || cv_underbar || gv_mfg_vendor_name
           -- 2015-01-26 Ver1.1 Mod End
                                                               -- 摘要（仕入先C＋摘要＋仕入先名）
-          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+-- 2017-12-05 Ver1.5 Mod Start
+--          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+          , cv_tax_code_0000                                  -- 請求書税コード
+-- 2017-12-05 Ver1.5 Mod End
           , lv_ccid_kosen                                     -- CCID
           , cn_last_updated_by                                -- 最終更新者
           , SYSDATE                                           -- 最終更新日
@@ -1766,7 +1774,10 @@ AS
           , gv_vendor_code_hdr || cv_underbar || lv_description_fukakin || cv_underbar || gv_mfg_vendor_name
           -- 2015-01-26 Ver1.1 Mod End
                                                               -- 摘要（仕入先C＋摘要＋仕入先名）
-          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+-- 2017-12-05 Ver1.5 Mod Start
+--          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+          , cv_tax_code_0000                                  -- 請求書税コード
+-- 2017-12-05 Ver1.5 Mod End
           , lv_ccid_fukakin                                   -- CCID
           , cn_last_updated_by                                -- 最終更新者
           , SYSDATE                                           -- 最終更新日
@@ -1869,7 +1880,10 @@ AS
                                                               -- 賦課金額（税込）
           , gv_vendor_code_hdr || cv_underbar || lv_desc_comm_tax_cr || cv_underbar || gv_mfg_vendor_name
                                                               -- 摘要（仕入先C＋摘要＋仕入先名）
-          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+-- 2017-12-05 Ver1.5 Mod Start
+--          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+          , cv_tax_code_0000                                  -- 請求書税コード
+-- 2017-12-05 Ver1.5 Mod End
           , lv_ccid_comm_tax_cr                               -- CCID
           , cn_last_updated_by                                -- 最終更新者
           , SYSDATE                                           -- 最終更新日
