@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.17
+ * Version          : 1.18
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -48,6 +48,7 @@ AS
  *  2016/09/23    1.16  N.Koyama         [E_本稼動_13874] 伝票入力者設定項目変更
  *  2016/10/25    1.17  N.Koyama         [E_本稼動_13874] 伝票入力者設定項目変更(再対応)
  *                                                        Ver.1.6の対応は完全戻しであり、処理部分削除の為、修正履歴なし
+ *  2017/10/24    1.18  N.Koyama         [E_本稼動_14674] VD未収金仮勘定｣の場合、消費税コードを｢0000｣とする
  *
  *****************************************************************************************/
 --
@@ -383,6 +384,12 @@ AS
   TYPE gr_select_ccid IS RECORD(
       code_combination_id       gl_code_combinations.code_combination_id%TYPE       -- CCID
   );
+-- Ver1.18 Add Start
+  -- 勘定科目（消費税コード判定）定義
+  TYPE gr_acnt_title IS RECORD(
+      exists_flag       VARCHAR2(1)
+  );
+-- Ver1.18 Add End
 --
   -- ワークテーブル型定義
   TYPE g_sales_exp_ttype  IS TABLE OF gr_sales_exp_rec     INDEX BY BINARY_INTEGER;
@@ -407,6 +414,10 @@ AS
   TYPE g_sel_ccid_ttype   IS TABLE OF gr_select_ccid       INDEX BY VARCHAR2( 200 );
   gt_sel_ccid_tbl                     g_sel_ccid_ttype;                             -- CCID
 --
+-- Ver1.18 Add Start
+  TYPE g_acnt_title_ttype IS TABLE OF gr_acnt_title       INDEX BY VARCHAR2( 80 ); --勘定科目「消費税コード：0000」設定
+  gt_acnt_title_tbl                   g_acnt_title_ttype;
+-- Ver1.18 Add End
 --****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
 --
   gt_sales_exp_wk_tbl                 g_sales_exp_ttype;                            -- 販売実績データ(作業用)
@@ -664,8 +675,24 @@ AS
     non_lookup_value_expt    EXCEPTION;                               -- LOOKUP取得エラー
 --
     -- *** ローカル・カーソル ***
+-- Ver1.18 Add Start
+    -- 勘定科目=消費税コード「0000」設定
+    CURSOR get_acnt_title_cur
+    IS
+      SELECT flvl.meaning  acnt_title
+      FROM   fnd_lookup_values           flvl
+      WHERE  flvl.lookup_type            = ct_qct_acnt_title_cd
+        AND  flvl.lookup_code            LIKE ct_qcc_code
+        AND  flvl.enabled_flag           = ct_enabled_yes
+        AND  flvl.language               = ct_lang
+        AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+                             AND         NVL( flvl.end_date_active,   gd_process_date );
+-- Ver1.18 Add End
 --
     -- *** ローカル・レコード ***
+-- Ver1.18 Add Start
+    get_acnt_title_rec  get_acnt_title_cur%ROWTYPE;
+-- Ver1.18 Add End
 --
   BEGIN
 --
@@ -1067,29 +1094,41 @@ AS
 --
 --******************************* 2009/11/17 1.11 M.Sano ADD START *******************************--
       -- 勘定科目=現金
-      BEGIN
-        SELECT flvl.meaning
-        INTO   gt_segment3_cash
-        FROM   fnd_lookup_values           flvl
-        WHERE  flvl.lookup_type            = ct_qct_acnt_title_cd
-          AND  flvl.lookup_code            LIKE ct_qcc_code
-          AND  flvl.enabled_flag           = ct_enabled_yes
-          AND  flvl.language               = ct_lang
-          AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
-                               AND         NVL( flvl.end_date_active,   gd_process_date );
+-- Ver1.18 Mod Start
+--      BEGIN
+--        SELECT flvl.meaning
+--        INTO   gt_segment3_cash
+--        FROM   fnd_lookup_values           flvl
+--        WHERE  flvl.lookup_type            = ct_qct_acnt_title_cd
+--          AND  flvl.lookup_code            LIKE ct_qcc_code
+--          AND  flvl.enabled_flag           = ct_enabled_yes
+--          AND  flvl.language               = ct_lang
+--          AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+--                               AND         NVL( flvl.end_date_active,   gd_process_date );
+----
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+      <<acnt_title_loop>>
+      FOR get_acnt_title_rec IN get_acnt_title_cur LOOP
+        -- 消費税コード「0000」を設定する勘定科目名を保持
+        gt_acnt_title_tbl(get_acnt_title_rec.acnt_title).exists_flag := 'Y';
+      END LOOP acnt_title_loop;
 --
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          -- クイックコード取得出来ない場合
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application   => cv_xxcos_short_nm
-                        , iv_name          => cv_acnt_title_err_msg
-                        , iv_token_name1   => cv_tkn_lookup_type
-                        , iv_token_value1  => ct_qct_acnt_title_cd
-                       );
-          lv_errbuf := lv_errmsg;
-          RAISE non_lookup_value_expt;
-      END;
+      IF ( gt_acnt_title_tbl.COUNT = 0 ) THEN
+-- Ver1.18 Mod End
+        -- クイックコード取得出来ない場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application   => cv_xxcos_short_nm
+                      , iv_name          => cv_acnt_title_err_msg
+                      , iv_token_name1   => cv_tkn_lookup_type
+                      , iv_token_value1  => ct_qct_acnt_title_cd
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE non_lookup_value_expt;
+-- Ver1.18 Mod Start
+--      END;
+      END IF;
+-- Ver1.18 Mod End
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
 --
 /* 2010/03/01 Ver1.13 Add Start */
@@ -1991,8 +2030,15 @@ AS
                                                               || ct_underbar
                                                               || lv_vd_nm;
                                                               -- リファレンス5（仕訳名摘要）
-      gt_gl_interface_tbl( in_gl_idx ).attribute1          := gt_sales_card_tbl ( in_card_idx ).tax_code;
-                                                              -- 属性1（消費税コード）
+-- Ver1.18 Mod Start
+--      gt_gl_interface_tbl( in_gl_idx ).attribute1          := gt_sales_card_tbl ( in_card_idx ).tax_code;
+--                                                              -- 属性1（消費税コード）
+      IF ( gt_acnt_title_tbl.EXISTS(iv_gl_segment3) ) THEN
+        gt_gl_interface_tbl( in_gl_idx ).attribute1        := ct_tax_code_null;
+      ELSE
+        gt_gl_interface_tbl( in_gl_idx ).attribute1        := gt_sales_exp_tbl( in_sale_idx ).tax_code;
+      END IF;
+-- Ver1.18 Mod End
       gt_gl_interface_tbl( in_gl_idx ).attribute3          := gt_sales_card_tbl ( in_card_idx ).dlv_invoice_number;
                                                               -- 属性3（伝票番号）
       gt_gl_interface_tbl( in_gl_idx ).attribute4          := gt_sales_card_tbl ( in_card_idx ).sales_base_code;
@@ -2021,7 +2067,10 @@ AS
 --******************************* 2009/11/17 1.11 M.Sano ADD START *******************************--
 --      gt_gl_interface_tbl( in_gl_idx ).attribute1          := gt_sales_exp_tbl( in_sale_idx ).tax_code;
 --                                                              -- 属性1（消費税コード）
-      IF ( iv_gl_segment3 = gt_segment3_cash ) THEN
+-- Ver1.18 Mod Start
+--      IF ( iv_gl_segment3 = gt_segment3_cash ) THEN
+      IF ( gt_acnt_title_tbl.EXISTS(iv_gl_segment3) ) THEN
+-- Ver1.18 Mod End
         gt_gl_interface_tbl( in_gl_idx ).attribute1        := ct_tax_code_null;
       ELSE
         gt_gl_interface_tbl( in_gl_idx ).attribute1        := gt_sales_exp_tbl( in_sale_idx ).tax_code;
