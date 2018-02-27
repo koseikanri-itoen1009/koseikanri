@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2011/03/28    1.11  S.Ochiai         [障害E_本稼動_05408,05409] 年次切替対応
  *  2017/12/29    1.12  K.Nara           [障害E_本稼動_14789] 事務センダー対応
  *  2018/01/18    1.13  K.Nara           [障害E_本稼動_14836] 事務センダー対応（本振案内書なし）
+ *  2018/02/27    1.14  N.Watanabe       [障害E_本稼動_14897] 支払案内書PT対応
  *
  *****************************************************************************************/
   --==================================================
@@ -201,7 +202,11 @@ AS
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
          , gv_prompt_fe                           AS bm_index_3
          , CASE WHEN xrbpd.org_slip_number IS NOT NULL THEN
-               (SELECT SUM( NVL(gjl.entered_cr,0) - NVL(gjl.entered_dr,0) )
+-- Ver1.14 Mod Start
+--               (SELECT SUM( NVL(gjl.entered_cr,0) - NVL(gjl.entered_dr,0) )
+               (SELECT /*+ INDEX( gjl GL_JE_LINES_N1 ) */
+                       SUM( NVL(gjl.entered_cr,0) - NVL(gjl.entered_dr,0) )
+-- Ver1.14 Mod End
                   FROM gl_sets_of_books     gsob
                       ,gl_je_sources        gjs
                       ,gl_je_categories     gjc
@@ -228,6 +233,9 @@ AS
                    AND xrbpd.payment_date_wk     BETWEEN gps.start_date AND gps.end_date
                    AND gps.set_of_books_id       = gsob.set_of_books_id
                    AND gps.period_name           = gjh.period_name
+-- Ver1.14 Add Start
+                   AND gps.period_name           = gjl.period_name
+-- Ver1.14 Add End
                    AND fa.application_short_name = cv_appl_short_name_gl
                    AND fa.application_id         = gps.application_id
                )
