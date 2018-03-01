@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -90,6 +90,7 @@ AS
  *                                         ・「問屋」「国際」の『売上区分』の必須チェックを外す
  *  2017/10/18    1.30  S.Niki           [E_本稼動_14671] 自拠点セキュリティ変更
  *  2018/01/23    1.31  H.Sasaki         [E_本稼動_14788] 変動電気代アップロード時、受注のステータスを記帳済で作成する
+ *  2018/02/22    1.32  K.Kiriu          [E_本稼動_14788] T4障害対応
  *
  *****************************************************************************************/
 --
@@ -189,7 +190,9 @@ AS
 -- ************** Ver1.28 ADD END   *************** --
 -- ************** 2018/01/23 V1.31 Added START    *************** --
   global_business_low_type_expt     EXCEPTION;                                                        --  業態小分類のチェック例外
-  global_electric_pay_expt          EXCEPTION;                                                        --  支払条件（電気代）のチェック例外
+-- Ver.1.32 Del Start
+--  global_electric_pay_expt          EXCEPTION;                                                        --  支払条件（電気代）のチェック例外
+-- Ver.1.32 Del End
 -- ************** 2018/01/23 V1.31 Added END      *************** --
   --*** 処理対象データロック例外 ***
   global_data_lock_expt             EXCEPTION;
@@ -417,8 +420,10 @@ AS
 -- ************** 2018/01/23 V1.31 Added START    *************** --
   ct_msg_chk_bus_low_type_err   CONSTANT  fnd_new_messages.message_name%TYPE
                                               := 'APP-XXCOS1-13864';                                 -- ベンダーチェックエラーメッセージ
-  ct_msg_chk_electric_pay_err   CONSTANT  fnd_new_messages.message_name%TYPE
-                                              := 'APP-XXCOS1-13865';                                 -- 支払条件（電気代）チェックエラーメッセージ
+-- Ver.1.32 Del Start
+--  ct_msg_chk_electric_pay_err   CONSTANT  fnd_new_messages.message_name%TYPE
+--                                              := 'APP-XXCOS1-13865';                                 -- 支払条件（電気代）チェックエラーメッセージ
+-- Ver.1.32 Del End
   ct_msg_get_order_a_oif        CONSTANT  fnd_new_messages.message_name%TYPE
                                               := 'APP-XXCOS1-00134';                                 -- 受注処理OIF(メッセージ文字列)
   ct_msg_get_ordup_biz_ctr      CONSTANT  fnd_new_messages.message_name%TYPE
@@ -4330,34 +4335,36 @@ AS
           RAISE global_business_low_type_expt;    --  業態小分類のチェック例外
       END;
       --
-      ------------------------------------
-      -- 支払条件（電気代）のチェック(変動電気代CSV)  事務センターの場合のみ
-      --  最新の契約が、電気代区分「変動」、支払条件（電気代）「契約先」以外はNG
-      ------------------------------------
-      BEGIN
-        SELECT  1       exists_flag
-        INTO    ln_dummy
-        FROM    xxcso_contract_managements    xcm     --  契約管理テーブル
-              , xxcso_sp_decision_headers     xsdh    --  ＳＰ専決ヘッダテーブル
-        WHERE   xcm.sp_decision_header_id           =   xsdh.sp_decision_header_id
-        AND     xcm.install_account_number          =   iv_delivery
-        AND     xcm.status                          =   cv_management_status_1            --  ステータス：1.確定済
-        AND     xcm.cooperate_flag                  =   cv_finish_cooperate               --  マスタ連携フラグ：1.連携済
-        AND     xsdh.electricity_type               =   cv_electricity_type_change        --  電気代区分：2.変動
-        AND     xsdh.electric_payment_type          =   cv_sp_electric_pay_type_1         --  支払条件（電気代）：1.契約先
-        AND     xcm.contract_management_id          =   ( --  確定済、連携済の中で最新の契約
-                                                          SELECT  MAX( sub.contract_management_id )     max_contract_management_id
-                                                          FROM    xxcso_contract_managements    sub
-                                                          WHERE   sub.install_account_number    =   xcm.install_account_number
-                                                          AND     sub.status                    =   cv_management_status_1
-                                                          AND     sub.cooperate_flag            =   cv_finish_cooperate
-                                                        )
-        ;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          lv_key_info := in_line_no;
-          RAISE global_electric_pay_expt;         --  支払条件（電気代）のチェック例外
-      END;
+-- Ver.1.32 Del Start
+--      ------------------------------------
+--      -- 支払条件（電気代）のチェック(変動電気代CSV)  事務センターの場合のみ
+--      --  最新の契約が、電気代区分「変動」、支払条件（電気代）「契約先」以外はNG
+--      ------------------------------------
+--      BEGIN
+--        SELECT  1       exists_flag
+--        INTO    ln_dummy
+--        FROM    xxcso_contract_managements    xcm     --  契約管理テーブル
+--              , xxcso_sp_decision_headers     xsdh    --  ＳＰ専決ヘッダテーブル
+--        WHERE   xcm.sp_decision_header_id           =   xsdh.sp_decision_header_id
+--        AND     xcm.install_account_number          =   iv_delivery
+--        AND     xcm.status                          =   cv_management_status_1            --  ステータス：1.確定済
+--        AND     xcm.cooperate_flag                  =   cv_finish_cooperate               --  マスタ連携フラグ：1.連携済
+--        AND     xsdh.electricity_type               =   cv_electricity_type_change        --  電気代区分：2.変動
+--        AND     xsdh.electric_payment_type          =   cv_sp_electric_pay_type_1         --  支払条件（電気代）：1.契約先
+--        AND     xcm.contract_management_id          =   ( --  確定済、連携済の中で最新の契約
+--                                                          SELECT  MAX( sub.contract_management_id )     max_contract_management_id
+--                                                          FROM    xxcso_contract_managements    sub
+--                                                          WHERE   sub.install_account_number    =   xcm.install_account_number
+--                                                          AND     sub.status                    =   cv_management_status_1
+--                                                          AND     sub.cooperate_flag            =   cv_finish_cooperate
+--                                                        )
+--        ;
+--      EXCEPTION
+--        WHEN NO_DATA_FOUND THEN
+--          lv_key_info := in_line_no;
+--          RAISE global_electric_pay_expt;         --  支払条件（電気代）のチェック例外
+--      END;
+-- Ver.1.32 Del End
     END IF;
 -- ************** 2018/01/23 V1.31 Added END      *************** --
     ------------------------------------
@@ -5260,23 +5267,25 @@ AS
                     );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_warn;
-    --  支払条件（電気代）のチェック例外
-    WHEN global_electric_pay_expt THEN
-      ov_errmsg :=  xxccp_common_pkg.get_msg(
-                        iv_application    =>  ct_xxcos_appl_short_name
-                      , iv_name           =>  ct_msg_chk_electric_pay_err
-                      , iv_token_name1    =>  cv_tkn_param1                                               --  パラメータ1(トークン)
-                      , iv_token_value1   =>  gv_temp_line_no                                             --  行番号
-                      , iv_token_name2    =>  cv_tkn_param2                                               --  パラメータ2(トークン)
-                      , iv_token_value2   =>  gv_temp_oder_no                                             --  オーダーNO
-                      , iv_token_name3    =>  cv_tkn_param3                                               --  パラメータ3(トークン)
-                      , iv_token_value3   =>  gv_temp_line                                                --  行No
-                      , iv_token_name4    =>  cv_tkn_param4                                               --  パラメータ4(トークン)
-                      , iv_token_value4   =>  iv_delivery                                                 --  納品先コード
-                    );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_warn;
+-- Ver.1.32 Del Start
+--    --  支払条件（電気代）のチェック例外
+--    WHEN global_electric_pay_expt THEN
+--      ov_errmsg :=  xxccp_common_pkg.get_msg(
+--                        iv_application    =>  ct_xxcos_appl_short_name
+--                      , iv_name           =>  ct_msg_chk_electric_pay_err
+--                      , iv_token_name1    =>  cv_tkn_param1                                               --  パラメータ1(トークン)
+--                      , iv_token_value1   =>  gv_temp_line_no                                             --  行番号
+--                      , iv_token_name2    =>  cv_tkn_param2                                               --  パラメータ2(トークン)
+--                      , iv_token_value2   =>  gv_temp_oder_no                                             --  オーダーNO
+--                      , iv_token_name3    =>  cv_tkn_param3                                               --  パラメータ3(トークン)
+--                      , iv_token_value3   =>  gv_temp_line                                                --  行No
+--                      , iv_token_name4    =>  cv_tkn_param4                                               --  パラメータ4(トークン)
+--                      , iv_token_value4   =>  iv_delivery                                                 --  納品先コード
+--                    );
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+--      ov_retcode := cv_status_warn;
 -- ************** 2018/01/23 V1.31 Added END      *************** --
+-- Ver.1.32 Del End
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
