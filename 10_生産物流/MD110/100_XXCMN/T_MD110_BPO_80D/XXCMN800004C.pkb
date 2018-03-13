@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目マスタインタフェース T_MD070_BPO_80D
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *                                       仕様不備障害#I_S_192.1.2対応
  *  2008/09/18    1.4  Oracle 山根 一浩  T_S_460,T_S_453,T_S_575,T_S_559,変更#232対応
  *  2008/10/08    1.5  Oracle 椎名 昭圭  I_S_328対応
+ *  2018/02/20    1.6  SCSK佐々木        E_本稼動_14862
  *
  *****************************************************************************************/
 --
@@ -144,6 +145,10 @@ AS
     item_class_code       xxcmn_item_categories3_v.item_class_code%TYPE,    -- 品目区分
     in_out_class_code     xxcmn_item_categories3_v.in_out_class_code%TYPE,  -- 内外区分
     obsolete_class        xxcmn_item_mst_b.obsolete_class%TYPE              -- 廃止区分
+--  2018/02/20 V1.6 Added START
+  , expiration_type       xxcmn_item_mst_b.expiration_type%TYPE             --  表示区分
+  , expiration_month      xxcmn_item_mst_b.expiration_month%TYPE            --  賞味期間（月）
+--  2018/02/20 V1.6 Added END
   );
 --
   -- 品目マスタ情報を格納するテーブル型の定義
@@ -309,6 +314,10 @@ AS
             xicv3.item_class_code,                        -- 品目区分
             xicv3.in_out_class_code,                      -- 内外区分
             ximb.obsolete_class                           -- 廃止区分
+--  2018/02/20 V1.6 Added START
+          , ximb.expiration_type      expiration_type     --  表示区分
+          , ximb.expiration_month     expiration_month    --  賞味期間（月）
+--  2018/02/20 V1.6 Added END
     BULK COLLECT INTO gt_item_mst_tbl
     FROM  xxcmn_item_categories_v   xicv,
           xxcmn_item_categories_v   xicv2,
@@ -494,8 +503,12 @@ AS
 */
                         || gt_item_mst_tbl(i).expiration_day        || cv_sep_com   -- 情報15
 --2008/09/18 Mod ↑
-                                                                    || cv_sep_com   -- 情報16
-                                                                    || cv_sep_com   -- 情報17
+--  2018/02/20 V1.6 Modified START
+--                                                                    || cv_sep_com   -- 情報16
+--                                                                    || cv_sep_com   -- 情報17
+                        || gt_item_mst_tbl(i).expiration_type       || cv_sep_com   -- 情報16
+                        || gt_item_mst_tbl(i).expiration_month      || cv_sep_com   -- 情報17
+--  2018/02/20 V1.6 Modified END
                                                                     || cv_sep_com   -- 情報18
                                                                     || cv_sep_com   -- 情報19
                                                                     || cv_sep_com   -- 情報20
