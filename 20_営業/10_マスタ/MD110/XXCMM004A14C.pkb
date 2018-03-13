@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A14C(body)
  * Description      : 各諸マスタIF出力（HHT）
  * MD.050           : 各諸マスタIF出力（HHT） MD050_CMM_004_A14
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/07/25    1.0   S.Niki           E_本稼動_14486対応 新規作成
+ *  2018/03/07    1.1   H.Sasaki         E_本稼動_14914対応
  *
  *****************************************************************************************/
 --
@@ -518,7 +519,14 @@ AS
       lv_code := SUBSTRB( RTRIM( REPLACE( var_data_rec.code, cv_asterisk ,'' ) ) ,cn_first ,cn_cd_length );
 --
       -- 名称
-      IF ( var_data_rec.name LIKE cv_percent || cv_goukei ) THEN
+--  2018/03/07 V1.1 Modified START
+--      IF ( var_data_rec.name LIKE cv_percent || cv_goukei ) THEN
+      IF  ( var_data_rec.name LIKE cv_percent || cv_goukei
+            OR
+            LENGTHB( lv_code ) = 2
+          )
+      THEN
+--  2018/03/07 V1.1 Modified END
         lv_name := SUBSTRB( RTRIM( var_data_rec.name ) ,cn_first ,cn_nm_length );
       ELSE
         lv_name := SUBSTRB( RTRIM( REPLACE( var_data_rec.name, cv_kei ,'' ) ) ,cn_first ,cn_nm_length );
