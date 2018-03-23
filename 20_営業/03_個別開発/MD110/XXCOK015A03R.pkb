@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2017/12/29    1.12  K.Nara           [障害E_本稼動_14789] 事務センダー対応
  *  2018/01/18    1.13  K.Nara           [障害E_本稼動_14836] 事務センダー対応（本振案内書なし）
  *  2018/02/27    1.14  N.Watanabe       [障害E_本稼動_14897] 支払案内書PT対応
+ *  2018/03/15    1.15  Y.Sekine         [障害E_本稼動_14900] 事務センター案件（支払案内書出力変更）
  *
  *****************************************************************************************/
   --==================================================
@@ -1097,6 +1098,219 @@ AS
                   END 
                 ) <> 0
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
+-- 2018/03/15 Ver.1.15 [障害E_本稼動_14900] SCSK Y.Sekine ADD START
+    UNION ALL
+    SELECT xbb.supplier_code                                    AS payment_code
+         , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
+         , SUBSTRB( pvsa.zip , 1, 8 )                           AS payment_zip_code
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 1 , 20 )             AS payment_addr_1
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 21, 20 )             AS payment_addr_2
+         , SUBSTR( pvsa.attribute1,  1, 20 )                    AS payment_name_1
+         , SUBSTR( pvsa.attribute1, 21, 20 )                    AS payment_name_2
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = hca2.contact_code
+                AND   ROWNUM = 1
+           )                                                    AS contact_base
+         , hca2.contact_code                                    AS contact_base_code
+         , SUBSTR( hca2.contact_name , 1 , 20 )                 AS contact_base_name
+         , SUBSTR( hca2.contact_address1 , 1 , 20 )             AS contact_addr_1
+         , SUBSTR( hca2.contact_address1 , 21, 20 )             AS contact_addr_2
+         , SUBSTRB( hca2.contact_phone_num , 1 ,15 )            AS contact_phone_no
+         , NULL                                                 AS selling_amt_sum
+         , NULL                                                 AS bm_index_1
+         , NULL                                                 AS bm_amt_1
+         , NULL                                                 AS bm_index_2
+         , NULL                                                 AS bm_amt_2
+         , SUM( NVL( xcbs.cond_bm_amt_tax,  0 )
+              + NVL( xcbs.electric_amt_tax, 0 ) )               AS payment_amt_tax
+         , MAX( xbb.closing_date )                              AS target_month
+         , MIN( xcbs.calc_target_period_from)                   AS term_from
+         , MAX( xcbs.calc_target_period_to )                    AS term_to
+         , MAX( xbb.expect_payment_date )                       AS payment_date     -- お支払日
+         , xcbs.delivery_cust_code                              AS cust_code
+         , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = hca3.base_code
+                AND   ROWNUM = 1
+           )                                                    AS selling_base
+         , hca3.base_code                                       AS selling_base_code
+         , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
+         , xcbs.calc_type                                       AS calc_type
+         , flv2.calc_type_sort                                  AS calc_type_sort
+         , flv1.container_type_code                             AS container_type_code
+         , xcbs.selling_price                                   AS selling_price
+         ,    flv2.line_name
+           || CASE xcbs.calc_type
+              WHEN '10' THEN
+                TO_CHAR( xcbs.selling_price )
+              WHEN '20' THEN
+                flv1.container_type_name
+              END                                               AS detail_name
+         , SUM( xcbs.selling_amt_tax )                          AS selling_amt
+         , SUM( xcbs.delivery_qty )                             AS selling_qty
+         , SUM( CASE xcbs.calc_type
+                WHEN '10' THEN
+                  xcbs.cond_bm_amt_tax
+                WHEN '20' THEN
+                  xcbs.cond_bm_amt_tax
+                WHEN '30' THEN
+                  xcbs.cond_bm_amt_tax
+                WHEN '40' THEN
+                  xcbs.cond_bm_amt_tax
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                END
+           )                                                    AS backmargin
+         , cn_created_by                                        AS created_by
+         , SYSDATE                                              AS creation_date
+         , cn_last_updated_by                                   AS last_updated_by
+         , SYSDATE                                              AS last_update_date
+         , cn_last_update_login                                 AS last_update_login
+         , cn_request_id                                        AS request_id
+         , cn_program_application_id                            AS program_application_id
+         , cn_program_id                                        AS program_id
+         , SYSDATE                                              AS program_update_date
+         , NULL                                                 AS bm_index_3
+         , NULL                                                 AS bm_amt_3
+         , xbb.org_slip_number                                  AS org_slip_number
+         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , xbb.balance_cancel_date                              AS balance_cancel_date
+         , hca1.start_tran_date                                 AS start_tran_date
+    FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
+       , xxcok_backmargin_balance xbb  -- 販手残高テーブル
+       , po_vendors               pv   -- 仕入先マスタ
+       , po_vendor_sites_all      pvsa -- 仕入先サイトマスタ
+       , ( SELECT hca.account_number             AS cust_code
+                , hp.party_name                  AS cust_name
+                , xca.start_tran_date            AS start_tran_date
+           FROM hz_cust_accounts            hca       -- 顧客マスタ
+              , hz_parties                  hp        -- パーティマスタ
+              , xxcmm_cust_accounts         xca       -- 顧客アドオン
+           WHERE hca.party_id        = hp.party_id
+             AND xca.customer_id     = hca.cust_account_id
+         )                        hca1
+       , ( SELECT hca.account_number             AS contact_code
+                , hp.party_name                  AS contact_name
+                , hl.address3                    AS contact_area_code
+                ,    hl.city 
+                  || hl.address1
+                  || hl.address2                 AS contact_address1
+                , hl.address_lines_phonetic      AS contact_phone_num
+           FROM hz_cust_accounts            hca       -- 顧客マスタ
+              , hz_cust_acct_sites_all      hcasa     -- 顧客所在地マスタ
+              , hz_parties                  hp        -- パーティマスタ
+              , hz_party_sites              hps       -- パーティサイトマスタ
+              , hz_locations                hl        -- 顧客事業所マスタ
+           WHERE hca.cust_account_id = hcasa.cust_account_id
+             AND hca.party_id        = hp.party_id
+             AND hcasa.party_site_id = hps.party_site_id
+             AND hps.location_id     = hl.location_id
+             AND hcasa.org_id        = gn_org_id
+         )                        hca2
+       , ( SELECT hca.account_number             AS base_code
+                , hp.party_name                  AS base_name
+                , hl.address3                    AS base_area_code
+           FROM hz_cust_accounts            hca       -- 顧客マスタ
+              , hz_cust_acct_sites_all      hcasa     -- 顧客所在地マスタ
+              , hz_parties                  hp        -- パーティマスタ
+              , hz_party_sites              hps       -- パーティサイトマスタ
+              , hz_locations                hl        -- 顧客事業所マスタ
+           WHERE hca.cust_account_id = hcasa.cust_account_id
+             AND hca.party_id        = hp.party_id
+             AND hcasa.party_site_id = hps.party_site_id
+             AND hps.location_id     = hl.location_id
+             AND hcasa.org_id        = gn_org_id
+         )                        hca3
+       , ( SELECT flv.attribute1                 AS container_type_code
+                , flv.meaning                    AS container_type_name
+           FROM fnd_lookup_values           flv       -- クイックコード
+           WHERE flv.lookup_type     = cv_lookup_type_01
+             AND flv.language        = USERENV( 'LANG' )
+         )                        flv1
+       , ( SELECT flv.lookup_code                AS calc_type
+                , flv.attribute1                 AS line_name
+                , flv.attribute2                 AS calc_type_sort
+           FROM fnd_lookup_values           flv       -- クイックコード
+           WHERE flv.lookup_type     = cv_lookup_type_02
+             AND flv.language        = USERENV( 'LANG' )
+         )                        flv2
+    WHERE xcbs.base_code               = xbb.base_code
+      AND xcbs.delivery_cust_code      = xbb.cust_code
+      AND xcbs.supplier_code           = xbb.supplier_code
+      AND xcbs.closing_date            = xbb.closing_date
+      AND xcbs.expect_payment_date     = xbb.expect_payment_date
+      AND xbb.base_code                = hca3.base_code
+      AND xcbs.delivery_cust_code      = hca1.cust_code
+      AND xcbs.supplier_code           = pv.segment1
+      AND pv.vendor_id                 = pvsa.vendor_id
+      AND ( pvsa.inactive_date         > gd_process_date OR pvsa.inactive_date IS NULL )
+      AND pvsa.attribute5              = hca2.contact_code
+      AND xcbs.container_type_code     = flv1.container_type_code(+)
+      AND xcbs.calc_type               = flv2.calc_type
+      AND pvsa.org_id                  = gn_org_id
+      AND pvsa.attribute4              = cv_bm_type_1
+      AND pvsa.attribute5              = gv_param_base_code
+      AND xbb.expect_payment_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+      AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+      AND NVL( xbb.resv_flag, 'N' )    != 'Y'
+      AND gv_belong_base_cd            = gv_dept_jimu   -- 実行ユーザの所属部門が事務センタ
+      AND xbb.publication_date         IS NULL          -- 販手残高テーブル．案内書発効日がNULL
+    GROUP BY xbb.supplier_code
+           , xbb.publication_date
+           , pvsa.zip
+           , pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pvsa.attribute1,  1, 20 )
+           , SUBSTR( pvsa.attribute1, 21, 20 )
+           , hca2.contact_area_code
+           , hca2.contact_code
+           , hca2.contact_name
+           , hca2.contact_address1
+           , hca2.contact_phone_num
+           , xcbs.delivery_cust_code
+           , hca1.cust_name
+           , hca3.base_area_code
+           , hca3.base_code
+           , hca3.base_name
+           , xcbs.calc_type
+           , flv2.calc_type_sort
+           , flv1.container_type_code
+           , xcbs.selling_price
+           ,    flv2.line_name
+             || CASE xcbs.calc_type
+                WHEN '10' THEN
+                  TO_CHAR( xcbs.selling_price )
+                WHEN '20' THEN
+                  flv1.container_type_name
+                END
+           , xbb.org_slip_number
+           , pvsa.bank_charge_bearer
+           , xbb.balance_cancel_date
+           , hca1.start_tran_date
+    HAVING   SUM( CASE xcbs.calc_type
+                  WHEN '10' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '20' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '30' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '40' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '50' THEN
+                    xcbs.electric_amt_tax
+                  END 
+                ) <> 0
+-- 2018/03/15 Ver.1.15 [障害E_本稼動_14900] SCSK Y.Sekine ADD END
     ;
     --==================================================
     -- 本振（案内無）
@@ -2714,6 +2928,224 @@ AS
                   END
                 ) <> 0
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
+-- 2018/03/15 Ver.1.15 [障害E_本稼動_14900] SCSK Y.Sekine ADD START
+    UNION ALL
+    SELECT xbb.supplier_code                                    AS payment_code
+         , TO_CHAR( gd_process_date, cv_format_date )           AS publication_date
+         , SUBSTRB( pvsa.zip , 1 , 8 )                          AS payment_zip_code
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 1 , 20 )             AS payment_addr_1
+         , SUBSTR( pvsa.address_line1
+                   || pvsa.address_line2 , 21, 20 )             AS payment_addr_2
+         , SUBSTR( pvsa.attribute1,  1 , 20 )                   AS payment_name_1
+         , SUBSTR( pvsa.attribute1, 21 , 20 )                   AS payment_name_2
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = hca1.contact_base_code
+                AND   ROWNUM = 1
+           )                                                    AS contact_base
+         , hca1.contact_base_code                               AS contact_base_code
+         , SUBSTR( hca2.contact_name , 1 , 20 )                 AS contact_base_name
+         , SUBSTR( hca2.contact_address1 , 1 , 20 )             AS contact_addr_1
+         , SUBSTR( hca2.contact_address1 , 21, 20 )             AS contact_addr_2
+         , SUBSTRB( hca2.contact_phone_num , 1 ,15 )            AS contact_phone_no
+         , NULL                                                 AS selling_amt_sum
+         , NULL                                                 AS bm_index_1
+         , NULL                                                 AS bm_amt_1
+         , NULL                                                 AS bm_index_2
+         , NULL                                                 AS bm_amt_2
+         , SUM( NVL( xcbs.cond_bm_amt_tax,  0 )
+              + NVL( xcbs.electric_amt_tax, 0 ) )               AS payment_amt_tax
+         , MAX( xbb.closing_date )                              AS target_month
+         , MIN( xcbs.calc_target_period_from)                   AS term_from
+         , MAX( xcbs.calc_target_period_to )                    AS term_to
+         , MAX( xbb.expect_payment_date )                       AS payment_date     -- お支払日
+         , xcbs.delivery_cust_code                              AS cust_code
+         , SUBSTR( hca1.cust_name , 1 , 40)                     AS cust_name
+         , (  SELECT  CASE WHEN TO_DATE( xdv.attribute6, cv_format_fxrrrrmmdd ) > gd_process_date
+                        THEN xdv.attribute7 -- 本部コード(旧)
+                        ELSE xdv.attribute9 -- 本部コード(新)
+                      END
+              FROM    xx03_departments_v  xdv -- 部門ビュー
+              WHERE   xdv.flex_value  = hca3.base_code
+                AND   ROWNUM = 1
+           )                                                    AS selling_base
+         , hca3.base_code                                       AS selling_base_code
+         , SUBSTR( hca3.base_name , 1 , 20 )                    AS selling_base_name
+         , xcbs.calc_type                                       AS calc_type
+         , flv2.calc_type_sort                                  AS calc_type_sort
+         , flv1.container_type_code                             AS container_type_code
+         , xcbs.selling_price                                   AS selling_price
+         ,    flv2.line_name
+           || CASE xcbs.calc_type
+              WHEN '10' THEN
+                TO_CHAR( xcbs.selling_price )
+              WHEN '20' THEN
+                flv1.container_type_name
+              END                                               AS detail_name
+         , SUM( xcbs.selling_amt_tax )                          AS selling_amt
+         , SUM( xcbs.delivery_qty )                             AS selling_qty
+         , SUM( CASE xcbs.calc_type
+                WHEN '10' THEN
+                  xcbs.cond_bm_amt_tax
+                WHEN '20' THEN
+                  xcbs.cond_bm_amt_tax
+                WHEN '30' THEN
+                  xcbs.cond_bm_amt_tax
+                WHEN '40' THEN
+                  xcbs.cond_bm_amt_tax
+                WHEN '50' THEN
+                  xcbs.electric_amt_tax
+                END
+           )                                                    AS backmargin
+         , cn_created_by                                        AS created_by
+         , SYSDATE                                              AS creation_date
+         , cn_last_updated_by                                   AS last_updated_by
+         , SYSDATE                                              AS last_update_date
+         , cn_last_update_login                                 AS last_update_login
+         , cn_request_id                                        AS request_id
+         , cn_program_application_id                            AS program_application_id
+         , cn_program_id                                        AS program_id
+         , SYSDATE                                              AS program_update_date
+         , NULL                                                 AS bm_index_3
+         , NULL                                                 AS bm_amt_3
+         , xbb.org_slip_number                                  AS org_slip_number
+         , pvsa.bank_charge_bearer                              AS bank_charge_bearer
+         , xbb.balance_cancel_date                              AS balance_cancel_date
+         , hca1.start_tran_date                                 AS start_tran_date
+    FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
+       , xxcok_backmargin_balance xbb  -- 販手残高テーブル
+       , po_vendors               pv   -- 仕入先マスタ
+       , po_vendor_sites_all      pvsa -- 仕入先サイトマスタ
+       , ( SELECT hca.account_number             AS cust_code
+                , hp.party_name                  AS cust_name
+                , xca.start_tran_date            AS start_tran_date
+                , xca.past_sale_base_code        AS base_code
+                , xca.sale_base_code             AS contact_base_code
+           FROM hz_cust_accounts            hca       -- 顧客マスタ
+              , hz_parties                  hp        -- パーティマスタ
+              , xxcmm_cust_accounts         xca       -- 顧客アドオン
+           WHERE hca.party_id        = hp.party_id
+             AND xca.customer_id     = hca.cust_account_id
+         )                        hca1
+       , ( SELECT hca.account_number             AS contact_code
+                , hp.party_name                  AS contact_name
+                , hl.address3                    AS contact_area_code
+                ,    hl.city
+                  || hl.address1
+                  || hl.address2                 AS contact_address1
+                , hl.address_lines_phonetic      AS contact_phone_num
+           FROM hz_cust_accounts            hca       -- 顧客マスタ
+              , hz_cust_acct_sites_all      hcasa     -- 顧客所在地マスタ
+              , hz_parties                  hp        -- パーティマスタ
+              , hz_party_sites              hps       -- パーティサイトマスタ
+              , hz_locations                hl        -- 顧客事業所マスタ
+           WHERE hca.cust_account_id = hcasa.cust_account_id
+             AND hca.party_id        = hp.party_id
+             AND hcasa.party_site_id = hps.party_site_id
+             AND hps.location_id     = hl.location_id
+             AND hcasa.org_id        = gn_org_id
+         )                        hca2
+       , ( SELECT hca.account_number             AS base_code
+                , hp.party_name                  AS base_name
+                , hl.address3                    AS base_area_code
+                ,    hl.city
+                  || hl.address1
+                  || hl.address2                 AS base_address1
+                , hl.address_lines_phonetic      AS base_phone_num
+           FROM hz_cust_accounts            hca       -- 顧客マスタ
+              , hz_cust_acct_sites_all      hcasa     -- 顧客所在地マスタ
+              , hz_parties                  hp        -- パーティマスタ
+              , hz_party_sites              hps       -- パーティサイトマスタ
+              , hz_locations                hl        -- 顧客事業所マスタ
+           WHERE hca.cust_account_id = hcasa.cust_account_id
+             AND hca.party_id        = hp.party_id
+             AND hcasa.party_site_id = hps.party_site_id
+             AND hps.location_id     = hl.location_id
+             AND hcasa.org_id        = gn_org_id
+         )                        hca3
+       , ( SELECT flv.attribute1                 AS container_type_code
+                , flv.meaning                    AS container_type_name
+           FROM fnd_lookup_values           flv       -- クイックコード
+           WHERE flv.lookup_type     = cv_lookup_type_01
+             AND flv.language        = USERENV( 'LANG' )
+         )                        flv1
+       , ( SELECT flv.lookup_code                AS calc_type
+                , flv.attribute1                 AS line_name
+                , flv.attribute2                 AS calc_type_sort
+           FROM fnd_lookup_values           flv       -- クイックコード
+           WHERE flv.lookup_type     = cv_lookup_type_02
+             AND flv.language        = USERENV( 'LANG' )
+         )                        flv2
+    WHERE xcbs.base_code               = xbb.base_code
+      AND xcbs.delivery_cust_code      = xbb.cust_code
+      AND xcbs.supplier_code           = xbb.supplier_code
+      AND xcbs.closing_date            = xbb.closing_date
+      AND xcbs.expect_payment_date     = xbb.expect_payment_date
+      AND xbb.base_code                = hca3.base_code
+      AND xcbs.delivery_cust_code      = hca1.cust_code
+      AND hca2.contact_code            = hca1.contact_base_code
+      AND xcbs.supplier_code           = pv.segment1
+      AND pv.vendor_id                 = pvsa.vendor_id
+      AND ( pvsa.inactive_date         > gd_process_date OR pvsa.inactive_date IS NULL )
+      AND xcbs.container_type_code     = flv1.container_type_code(+)
+      AND xcbs.calc_type               = flv2.calc_type
+      AND pvsa.org_id                  = gn_org_id
+      AND pvsa.attribute4              = cv_bm_type_4
+      AND hca1.base_code               = gv_param_base_code
+      AND xbb.expect_payment_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
+                                     AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
+      AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+      AND NVL( xbb.resv_flag, 'N' )    != 'Y'
+      AND gv_belong_base_cd            = gv_dept_jimu   -- 実行ユーザの所属部門が事務センタ
+      AND xbb.publication_date         IS NULL          -- 販手残高テーブル．案内書発効日がNULL
+    GROUP BY xbb.supplier_code
+           , xbb.publication_date
+           , pvsa.zip
+           , pvsa.address_line1 || pvsa.address_line2
+           , SUBSTR( pvsa.attribute1,  1, 20 )
+           , SUBSTR( pvsa.attribute1, 21, 20 )
+           , hca1.contact_base_code
+           , hca2.contact_name
+           , hca2.contact_address1
+           , hca2.contact_phone_num
+           , xcbs.delivery_cust_code
+           , hca1.cust_name
+           , hca3.base_area_code
+           , hca3.base_code
+           , hca3.base_name
+           , xcbs.calc_type
+           , flv2.calc_type_sort
+           , flv1.container_type_code
+           , xcbs.selling_price
+           ,    flv2.line_name
+             || CASE xcbs.calc_type
+                WHEN '10' THEN
+                  TO_CHAR( xcbs.selling_price )
+                WHEN '20' THEN
+                  flv1.container_type_name
+                END
+           , xbb.org_slip_number
+           , pvsa.bank_charge_bearer
+           , xbb.balance_cancel_date
+           , hca1.start_tran_date
+    HAVING   SUM( CASE xcbs.calc_type
+                  WHEN '10' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '20' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '30' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '40' THEN
+                    xcbs.cond_bm_amt_tax
+                  WHEN '50' THEN
+                    xcbs.electric_amt_tax
+                  END
+                ) <> 0
+-- 2018/03/15 Ver.1.15 [障害E_本稼動_14900] SCSK Y.Sekine ADD END
     ;
   EXCEPTION
     -- *** 共通関数OTHERS例外 ***
