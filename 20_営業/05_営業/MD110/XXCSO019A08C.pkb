@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、営業員ごとに指定日を含む月の1日～指定日まで
  *                    訪問実績の無い顧客を表示します。
  * MD.050           : MD050_CSO_019_A08_未訪問顧客一覧表
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2010-05-25    1.8   T.Maruyama       E_本稼動_02809 訪問回数取得できない場合ゼロとする
  *  2011-07-14    1.9   K.Kiriu          E_本稼動_07825 PT対応
  *  2017-01-18    1.10  Y.Shoji          E_本稼動_13985 対応
+ *  2018-03-08    1.11  Kazuhiro.Nara    E_本稼動_14884 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1171,7 +1172,12 @@ AS
     cv_accnt_sts3          CONSTANT VARCHAR2(5)   := '40'; -- 顧客ステータス（顧客）
     cv_accnt_sts4          CONSTANT VARCHAR2(5)   := '50'; -- 顧客ステータス（休止）
     cv_accnt_sts5          CONSTANT VARCHAR2(5)   := '99'; -- 顧客ステータス（対象外）
-    cv_target_div          CONSTANT VARCHAR2(5)   := '1';  -- 訪問対象
+-- Ver.1.11 [E_本稼動_14884] MOD START
+--    cv_target_div          CONSTANT VARCHAR2(5)   := '1';  -- 訪問対象
+    cv_target_posi         CONSTANT VARCHAR2(1)   := '1';  -- 訪問対象区分「1」(訪問対象・商談可)
+    cv_target_imposi       CONSTANT VARCHAR2(1)   := '2';  -- 訪問対象区分「2」(訪問対象・商談不可)
+    cv_target_vd           CONSTANT VARCHAR2(1)   := '5';  -- 訪問対象区分「5」(訪問対象・VD)
+-- Ver.1.11 [E_本稼動_14884] MOD END
     /* 2011-07-14 E_本稼動_07825 ADD START */
     cd_sysdate             CONSTANT DATE          := TRUNC(xxcso_util_common_pkg.get_online_sysdate); -- システム日付
     /* 2011-07-14 E_本稼動_07825 ADD END */
@@ -1319,7 +1325,10 @@ AS
             OR (xcav.customer_class_code = cv_accnt_type2
                AND xcav.customer_status = cv_accnt_sts5
               ))
-        AND   xcav.vist_target_div = cv_target_div
+-- Ver.1.11 [E_本稼動_14884] MOD START
+--        AND   xcav.vist_target_div = cv_target_div
+        AND   xcav.vist_target_div IN (cv_target_posi, cv_target_imposi, cv_target_vd)
+-- Ver.1.11 [E_本稼動_14884] MOD END
         AND ((iv_emp_chk_cd  =  cv_true
                AND xrv.employee_number   = iv_emp_num
               )
