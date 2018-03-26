@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_IPO_CSO_014_A10_HHT-EBSインターフェース：(OUT)訪問予定ファイル
  *                    
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2010-01-15    1.3   Kazuyo.Hosoi     E_本稼動_01179対応
  *  2012-02-29    1.4   SCSK A.Shirakawa E_本稼動_08894対応
+ *  2018-03-08    1.5   SCSK K.Nara      E_本稼動_14884対応
  *
  *****************************************************************************************/
 --
@@ -103,7 +104,12 @@ AS
   cv_monday_kbn_day      CONSTANT VARCHAR2(1)   := '2';                 -- 月日区分（日別：2）
   cv_upd_kbn_sales_month CONSTANT VARCHAR2(1)   := '6';                 -- HHT連携更新機能区分（売上計画：6）  
   cv_upd_kbn_sales_day   CONSTANT VARCHAR2(1)   := '7';                 -- HHT連携更新機能区分（売上計画日別：7）    
-  cv_houmon_kbn_taget    CONSTANT VARCHAR2(1)   := '1';                 -- 訪問対象区分（訪問対象：1）
+-- Ver.1.5 [E_本稼動_14884] MOD START
+--  cv_houmon_kbn_taget    CONSTANT VARCHAR2(1)   := '1';                 -- 訪問対象区分（訪問対象：1）
+  cv_houmon_kbn_taget_posi   CONSTANT VARCHAR2(1) := '1';               -- 訪問対象区分（訪問対象・商談可：1） 
+  cv_houmon_kbn_taget_imposi CONSTANT VARCHAR2(1) := '2';               -- 訪問対象区分（訪問対象・商談不可：2） 
+  cv_houmon_kbn_taget_vd     CONSTANT VARCHAR2(1) := '5';               -- 訪問対象区分（訪問対象・VD：5） 
+-- Ver.1.5 [E_本稼動_14884] MOD END
   cv_source_obj_type_cd  CONSTANT VARCHAR2(10)  := 'PARTY';             -- ソースオブジェクトタイプコード
   cv_delete_flg          CONSTANT VARCHAR2(10)  := 'N';                 -- 削除フラグ
 --
@@ -1830,7 +1836,10 @@ AS
       FROM   xxcso_cust_accounts_v xcav                                -- 顧客マスタビュー
             ,xxcso_account_sales_plans xsasp                           -- 顧客別売上計画テーブル
       WHERE  xcav.account_number = xsasp.account_number
-        AND  xcav.vist_target_div = cv_houmon_kbn_taget
+-- Ver.1.5 [E_本稼動_14884] MOD START
+--        AND  xcav.vist_target_div = cv_houmon_kbn_taget
+        AND  xcav.vist_target_div IN (cv_houmon_kbn_taget_posi, cv_houmon_kbn_taget_imposi, cv_houmon_kbn_taget_vd)
+-- Ver.1.5 [E_本稼動_14884] MOD END
         AND  xsasp.plan_date BETWEEN lv_gv_value_1 AND lv_gv_value_8 
         AND  xsasp.sales_plan_day_amt > 0
         AND  xsasp.month_date_div = cv_monday_kbn_day
