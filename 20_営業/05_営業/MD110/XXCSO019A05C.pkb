@@ -8,7 +8,7 @@ AS
  *                           訪問売上計画管理表を帳票に出力します。
  * MD.050                  : 営業システム構築プロジェクトアドオン：
  *                           訪問売上計画管理表
- * Version                 : 1.8
+ * Version                 : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2009-08-03    1.7   Mio.Maruyama      統合テスト障害番号0001105対応
  *  2009-08-03    1.8   Satomura.Kazuo    統合テスト障害番号0001271対応
  *                                        統合テスト障害番号0001317対応
+ *  2018-02-28    1.9   Kazuhiro.Nara     E_本稼動_14884対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2110,6 +2111,11 @@ AS
     ct_lookup_type_chu CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCMM_CUST_GYOTAI_CHU';
     ct_lookup_type_syo CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCMM_CUST_GYOTAI_SHO';
     --
+-- Ver.1.9 [E_本稼動_14884] ADD START
+    cv_visit_target_posi    CONSTANT VARCHAR2(1) := '1';   -- 顧客マスタ.訪問対象区分「1」(訪問対象・商談可)
+    cv_visit_target_imposi  CONSTANT VARCHAR2(1) := '2';   -- 顧客マスタ.訪問対象区分「2」(訪問対象・商談不可)
+    cv_visit_target_vd      CONSTANT VARCHAR2(1) := '5';   -- 顧客マスタ.訪問対象区分「5」(訪問対象・VD)
+-- Ver.1.9 [E_本稼動_14884] ADD END
     /* 2009.09.08 K.Satomura 0001271対応 END */
     -- *** ローカル変数 ***
     /* 2009.08.03 K.Satomura 0000911対応 START */
@@ -6211,7 +6217,10 @@ AS
                  ) visit_sign -- 訪問記号
                 ,(CASE
                     WHEN (xsvsr.tgt_amt > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+-- Ver.1.9 [E_本稼動_14884] MOD START
+--                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div IN (cv_visit_target_posi, cv_visit_target_imposi, cv_visit_target_vd))
+-- Ver.1.9 [E_本稼動_14884] MOD END
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date <= TO_DATE(xsvsr.sales_date, 'YYYYMMDD'))
                       /* 2009.09.08 K.Satomura 0001271対応 START */
                       --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) <> cv_true)
@@ -6220,7 +6229,10 @@ AS
                     THEN
                       ln_route_bit
                     WHEN (xsvsr.tgt_amt > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+-- Ver.1.9 [E_本稼動_14884] MOD START
+--                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div IN (cv_visit_target_posi, cv_visit_target_imposi, cv_visit_target_vd))
+-- Ver.1.9 [E_本稼動_14884] MOD END
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date IS NULL)
                       AND (lt_tmp_rep_vs_plan_tab(i).customer_status IN (cv_cust_status8, cv_cust_status9, cv_cust_status3))
                       /* 2009.09.08 K.Satomura 0001271対応 START */
@@ -6235,7 +6247,10 @@ AS
                  ) tgt_vis_i_num -- 訪問計画(一般)
                 ,(CASE
                     WHEN (xsvsr.tgt_amt > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+-- Ver.1.9 [E_本稼動_14884] MOD START
+--                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div IN (cv_visit_target_posi, cv_visit_target_imposi, cv_visit_target_vd))
+-- Ver.1.9 [E_本稼動_14884] MOD END
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date <= TO_DATE(xsvsr.sales_date,'YYYYMMDD'))
                       /* 2009.09.08 K.Satomura 0001271対応 START */
                       --AND (xxcso_route_common_pkg.iscustomervendor(lt_tmp_rep_vs_plan_tab(i).business_low_type) = cv_true)
@@ -6244,7 +6259,10 @@ AS
                     THEN
                       ln_route_bit
                     WHEN (xsvsr.tgt_amt > 0)
-                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+-- Ver.1.9 [E_本稼動_14884] MOD START
+--                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div = '1')
+                      AND (lt_tmp_rep_vs_plan_tab(i).vist_target_div IN (cv_visit_target_posi, cv_visit_target_imposi, cv_visit_target_vd))
+-- Ver.1.9 [E_本稼動_14884] MOD END
                       AND (lt_tmp_rep_vs_plan_tab(i).cnvs_date IS NULL)
                       AND (lt_tmp_rep_vs_plan_tab(i).customer_status IN (cv_cust_status8, cv_cust_status9, cv_cust_status3))
                       /* 2009.09.08 K.Satomura 0001271対応 START */
