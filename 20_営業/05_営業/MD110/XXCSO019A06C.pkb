@@ -10,7 +10,7 @@ AS
  *                    順に表示します。(ルートNoを表示します。)
  *                     日付欄の右端に1日の件数を表示します。
  * MD.050           : MD050_CSO_019_A06_訪問総合管理表
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009-05-11    1.3   Kazuo.Satomura   T1_0926対応
  *  2009-05-20    1.4   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
+ *  2018-03-08    1.5   Kazuhiro.Nara    E_本稼動_14884対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1367,7 +1368,12 @@ AS
     cv_srtng_grp_c    CONSTANT VARCHAR2(2) := 'C';   -- 抽出ルートNo頭文字分岐処理グルーピング用(C)
     cn_dflt_vst_tm    CONSTANT NUMBER      := -999;  -- 抽出ルートNo頭文字分岐処理訪問回数設定用
     cv_date_plan      CONSTANT VARCHAR2(2) := '2';   -- 顧客別売上計画テーブル.月日区分「2」日別計画
-    cv_visit_target   CONSTANT VARCHAR2(2) := '1';   -- 顧客マスタ.訪問対象区分「1」訪問対象(取引含む)
+-- Ver.1.5 [E_本稼動_14884] MOD START
+--    cv_visit_target   CONSTANT VARCHAR2(2) := '1';   -- 顧客マスタ.訪問対象区分「1」訪問対象(取引含む)
+    cv_visit_target_posi    CONSTANT VARCHAR2(1) := '1';   -- 顧客マスタ.訪問対象区分「1」(訪問対象・商談可)
+    cv_visit_target_imposi  CONSTANT VARCHAR2(1) := '2';   -- 顧客マスタ.訪問対象区分「2」(訪問対象・商談不可)
+    cv_visit_target_vd      CONSTANT VARCHAR2(1) := '5';   -- 顧客マスタ.訪問対象区分「5」(訪問対象・VD)
+-- Ver.1.5 [E_本稼動_14884] MOD END
     cv_replace_char   CONSTANT VARCHAR2(2) := '-';   -- ルートNoをNUMBER型へ変換するためのリプレイス文字
     --
     cv_cstmr_cls_cd10      CONSTANT VARCHAR(2) := '10';      -- 顧客区分:10 (顧客)
@@ -1412,7 +1418,9 @@ AS
              ,iv_srtng_grp_c      IN VARCHAR2  -- 抽出ルートNo頭文字分岐処理グルーピング用(C)
              ,in_dflt_vst_tm      IN NUMBER    -- 抽出ルートNo頭文字分岐処理訪問回数設定用
              ,iv_date_plan        IN VARCHAR2  -- 顧客別売上計画テーブル.月日区分「2」日別計画
-             ,iv_visit_target     IN VARCHAR2  -- 顧客マスタ.訪問対象区分「1」訪問対象(取引含む)
+-- Ver.1.5 [E_本稼動_14884] DEL START
+--             ,iv_visit_target     IN VARCHAR2  -- 顧客マスタ.訪問対象区分「1」訪問対象(取引含む)
+-- Ver.1.5 [E_本稼動_14884] DEL END
              ,iv_format_date_ymd1 IN VARCHAR2  -- 日付書式
              ,iv_replace_char     IN VARCHAR2  -- ルートNoをNUMBER型へ変換するためのリプレイス文字
            )
@@ -1455,7 +1463,10 @@ AS
         AND   xasp.sales_plan_day_amt > 0
         AND   xasp.account_number     = xca.account_number
         AND   xcr2.party_id           = xca.party_id
-        AND   xca.vist_target_div     = iv_visit_target
+-- Ver.1.5 [E_本稼動_14884] MOD START
+--        AND   xca.vist_target_div     = iv_visit_target
+        AND   xca.vist_target_div     IN (cv_visit_target_posi, cv_visit_target_imposi, cv_visit_target_vd)
+-- Ver.1.5 [E_本稼動_14884] MOD END
         AND   xcr2.route_number IS NOT NULL
         AND   ((xca.customer_class_code    = cv_cstmr_cls_cd10
                 AND xca.customer_status    IN (cv_cstmr_sttus25, cv_cstmr_sttus30,
@@ -1574,7 +1585,9 @@ AS
               ,iv_srtng_grp_c      => cv_srtng_grp_c      -- 抽出ルートNo頭文字分岐処理グルーピング用(C)
               ,in_dflt_vst_tm      => cn_dflt_vst_tm      -- 抽出ルートNo頭文字分岐処理訪問回数設定用
               ,iv_date_plan        => cv_date_plan        -- 顧客別売上計画テーブル.月日区分「2」日別計画
-              ,iv_visit_target     => cv_visit_target     -- 顧客マスタ.訪問対象区分「1」訪問対象(取引含む)
+-- Ver.1.5 [E_本稼動_14884] DEL START
+--              ,iv_visit_target     => cv_visit_target     -- 顧客マスタ.訪問対象区分「1」訪問対象(取引含む)
+-- Ver.1.5 [E_本稼動_14884] DEL END
               ,iv_format_date_ymd1 => cv_format_date_ymd1 -- 日付書式'YYYYMMDD'
               ,iv_replace_char     => cv_replace_char     -- ルートNoをNUMBER型へ変換するためのリプレイス文字
             );
