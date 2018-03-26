@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_014_A01_HHT-EBSインターフェース：(IN）売上計画
  *                    
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009-03-17    1.1   K.Boku           【結合障害067】upd_sales_plan_dayで、日(項目)に先頭０埋め対応
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009-12-07    1.3   T.Maruyama       E_本稼動_00028
+ *  2018-03-08    1.4   K.Nara           E_本稼動_14884
  *
  *****************************************************************************************/
 -- 
@@ -94,7 +95,12 @@ AS
   cv_monday_kbn_day      CONSTANT VARCHAR2(1)   := '2';                 -- 月日区分（日別：2）
   cv_upd_kbn_sales_month CONSTANT VARCHAR2(1)   := '6';  -- HHT連携更新機能区分（売上計画：6）  
   cv_upd_kbn_sales_day   CONSTANT VARCHAR2(1)   := '7';  -- HHT連携更新機能区分（売上計画日別：7）    
-  cv_houmon_kbn_taget    CONSTANT VARCHAR2(1)   := '1';  -- 訪問対象区分（訪問対象：1） 
+-- Ver.1.4 [E_本稼動_14884] MOD START
+--  cv_houmon_kbn_taget    CONSTANT VARCHAR2(1)   := '1';  -- 訪問対象区分（訪問対象：1） 
+  cv_houmon_kbn_taget_posi   CONSTANT VARCHAR2(1)   := '1';  -- 訪問対象区分（訪問対象・商談可：1） 
+  cv_houmon_kbn_taget_imposi CONSTANT VARCHAR2(1)   := '2';  -- 訪問対象区分（訪問対象・商談不可：2） 
+  cv_houmon_kbn_taget_vd     CONSTANT VARCHAR2(1)   := '5';  -- 訪問対象区分（訪問対象・VD：5） 
+-- Ver.1.4 [E_本稼動_14884] MOD END
 --
   -- メッセージコード
   cv_tkn_number_01       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00066';  -- データ抽出エラー
@@ -1489,9 +1495,17 @@ AS
         -- ===============================================
         -- A-7.日別売上計画データの登録または更新 
         -- ===============================================
-        -- 訪問対象区分が「1」（訪問対象）で、日別売上計画チェック結果がなしの場合、
+-- Ver.1.4 [E_本稼動_14884] MOD START
+--        -- 訪問対象区分が「1」（訪問対象）で、日別売上計画チェック結果がなしの場合、
+        -- 訪問対象区分が「1」（訪問対象・商談可）、「2」（訪問対象・商談不可）、
+        -- 「5」（訪問対象・VD）のいずれかで、日別売上計画チェック結果がなしの場合、
+-- Ver.1.4 [E_本稼動_14884] MOD END
         -- 且つ顧客別売上計画の月別データ登録または更新が正常の場合、日別データ登録＆更新
-        IF (lt_visit_target_div = cv_houmon_kbn_taget) AND (ln_sales_plan_cnt = 0) 
+-- Ver.1.4 [E_本稼動_14884] MOD START
+--        IF (lt_visit_target_div = cv_houmon_kbn_taget) AND (ln_sales_plan_cnt = 0) 
+        IF (lt_visit_target_div IN (cv_houmon_kbn_taget_posi, cv_houmon_kbn_taget_imposi, cv_houmon_kbn_taget_vd) )
+          AND (ln_sales_plan_cnt = 0) 
+-- Ver.1.4 [E_本稼動_14884] MOD END
           AND (lv_retcode = cv_status_normal) THEN
             upd_sales_plan_day(
               io_sales_plan_month_rec  => l_get_data_rec,  -- 月別売上計画ワークテーブルデータ
