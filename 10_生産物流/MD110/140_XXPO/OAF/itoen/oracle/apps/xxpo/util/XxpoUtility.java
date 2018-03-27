@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.36
+* バージョン : 1.37
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -44,6 +44,7 @@
 * 2017-06-30 1.34 桐生和幸     E_本稼動_14267対応
 * 2017-08-10 1.35 山下翔太     E_本稼動_14243対応
 * 2018-01-09 1.36 桐生和幸     E_本稼動_14243対応（メッセージ追加）
+* 2018-02-22 1.37 桐生和幸     E_本稼動_14859対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -186,38 +187,65 @@ public class XxpoUtility
 
     // PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(100);
+// 2018-02-22 K.Kiriu Add Start
+    sb.append("DECLARE "                                                        );
+    sb.append("  lt_expiration_type  xxcmn_item_mst2_v.expiration_type%TYPE; "  );
+    sb.append("  lt_expiration_day   xxcmn_item_mst2_v.expiration_day%TYPE; "   );
+    sb.append("  lt_expiration_month xxcmn_item_mst2_v.expiration_month%TYPE; " );
+// 2018-02-22 K.Kiriu Add End
     sb.append("BEGIN "                                     );
 // 2017-06-07 K.Kiriu Mod Start
 //    sb.append("   SELECT :1 + NVL(ximv.expiration_day, 0) "); // 賞味期限
 //    sb.append("   INTO   :2 "                              );
-    sb.append("   SELECT NVL2( ximv.expiration_month "                                                                                );
-    sb.append("               , CASE "                                                                                                );
-    sb.append("                   WHEN ximv.expiration_type = '10' THEN "                                                             ); //年月表示
-    sb.append("                     LAST_DAY(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0) -1)) "                                      );
-    sb.append("                   ELSE "                                                                                              ); //上・中・下旬表示
-    sb.append("                     CASE "                                                                                            );
-    sb.append("                       WHEN TO_NUMBER(TO_CHAR(:1, 'DD')) >= 21 THEN "                                                  ); //製造日が21日以降
-    sb.append("                         TO_DATE(TO_CHAR(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0)),'YYYYMM') || '20','YYYYMMDD') " );
-    sb.append("                       WHEN TO_NUMBER(TO_CHAR(:1, 'DD')) >= 11 THEN "                                                  ); //製造日が11日～20日
-    sb.append("                         TO_DATE(TO_CHAR(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0)),'YYYYMM') || '10','YYYYMMDD') " );
-    sb.append("                       ELSE "                                                                                          ); //製造日が10以前
-    sb.append("                           LAST_DAY(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0) -1)) "                                );
-    sb.append("                       END "                                                                                           );
-    sb.append("                   END "                                                                                               );
-    sb.append("               , :1 + NVL(ximv.expiration_day, 0) ) expiration "                                                       );
-    sb.append("   INTO   :2 "                              );
-// 2017-06-07 K.Kiriu Mod End
+// 2018-02-22 K.Kiriu Mod Start
+//    sb.append("   SELECT NVL2( ximv.expiration_month "                                                                                );
+//    sb.append("               , CASE "                                                                                                );
+//    sb.append("                   WHEN ximv.expiration_type = '10' THEN "                                                             ); //年月表示
+//    sb.append("                     LAST_DAY(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0) -1)) "                                      );
+//    sb.append("                   ELSE "                                                                                              ); //上・中・下旬表示
+//    sb.append("                     CASE "                                                                                            );
+//    sb.append("                       WHEN TO_NUMBER(TO_CHAR(:1, 'DD')) >= 21 THEN "                                                  ); //製造日が21日以降
+//    sb.append("                         TO_DATE(TO_CHAR(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0)),'YYYYMM') || '20','YYYYMMDD') " );
+//    sb.append("                       WHEN TO_NUMBER(TO_CHAR(:1, 'DD')) >= 11 THEN "                                                  ); //製造日が11日～20日
+//    sb.append("                         TO_DATE(TO_CHAR(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0)),'YYYYMM') || '10','YYYYMMDD') " );
+//    sb.append("                       ELSE "                                                                                          ); //製造日が10以前
+//    sb.append("                           LAST_DAY(ADD_MONTHS(:1, NVL(ximv.expiration_month, 0) -1)) "                                );
+//    sb.append("                       END "                                                                                           );
+//    sb.append("                   END "                                                                                               );
+//    sb.append("               , :1 + NVL(ximv.expiration_day, 0) ) expiration "                                                       );
+//    sb.append("   INTO   :2 "                              );
+//// 2017-06-07 K.Kiriu Mod End
+    sb.append("   SELECT expiration_type  expiration_type "  ); // 表示区分
+    sb.append("         ,expiration_day   expiration_day "   ); // 賞味期間
+    sb.append("         ,expiration_month expiration_month " ); // 賞味期間(月)
+    sb.append("   INTO   lt_expiration_type "                );
+    sb.append("         ,lt_expiration_day "                 );
+    sb.append("         ,lt_expiration_month "               );
+// 2018-02-22 K.Kiriu Mod End
 // 2009-02-06 H.Itou Add Start 本番障害#1147
 //    sb.append("   FROM   xxcmn_item_mst_v ximv "           ); // OPM品目情報V
     sb.append("   FROM   xxcmn_item_mst2_v ximv "          ); // OPM品目情報V
 // 2009-02-06 H.Itou Add End
-    sb.append("   WHERE  ximv.item_id = :3     "           ); // 品目ID
-// 2009-02-06 H.Itou Add Start 本番障害#1147
-    sb.append("   AND    ximv.start_date_active <= :4 "    ); // 適用開始日
-    sb.append("   AND    ximv.end_date_active   >= :5 "    ); // 適用終了日
-// 2009-02-06 H.Itou Add End
+// 2018-02-22 K.Kiriu Mod Start
+//    sb.append("   WHERE  ximv.item_id = :3     "           ); // 品目ID
+//// 2009-02-06 H.Itou Add Start 本番障害#1147
+//    sb.append("   AND    ximv.start_date_active <= :4 "    ); // 適用開始日
+//    sb.append("   AND    ximv.end_date_active   >= :5 "    ); // 適用終了日
+//// 2009-02-06 H.Itou Add End
+    sb.append("   WHERE  ximv.item_id            = :1 "    ); // 品目ID
+    sb.append("   AND    ximv.start_date_active <= :2 "    ); // 適用開始日
+    sb.append("   AND    ximv.end_date_active   >= :3 "    ); // 適用終了日
+// 2018-02-22 K.Kiriu Mod End
     sb.append("   ; "                                      );
 // 2009-02-06 H.Itou Add Start 本番障害#1147
+// 2018-02-22 K.Kiriu Add Start
+    sb.append("   :4 := xxcmn_common5_pkg.get_use_by_date( " ); // 賞味期限取得関数CALL
+    sb.append("            :5 "                              ); // 製造日
+    sb.append("           ,lt_expiration_type "              ); // 表示区分
+    sb.append("           ,lt_expiration_day "               ); // 賞味期間
+    sb.append("           ,lt_expiration_month "             ); // 賞味期間(月)
+    sb.append("         ); "                                 );
+// 2018-02-22 K.Kiriu Add End
     sb.append("EXCEPTION "                                 );
     sb.append("  WHEN NO_DATA_FOUND THEN "                 );
     sb.append("    NULL; "                                 );
@@ -231,22 +259,34 @@ public class XxpoUtility
     try
     {
       // パラメータ設定(INパラメータ)
-      cstmt.setDate(1, XxcmnUtility.dateValue(productedDate)); // 製造日
-      cstmt.setInt(3, XxcmnUtility.intValue(itemId));          // 品目ID
-// 2009-02-06 H.Itou Add Start 本番障害#1147
-      cstmt.setDate(4, XxcmnUtility.dateValue(productedDate)); // 製造日
+// 2018-02-22 K.Kiriu Mod Start
+//      cstmt.setDate(1, XxcmnUtility.dateValue(productedDate)); // 製造日
+//      cstmt.setInt(3, XxcmnUtility.intValue(itemId));          // 品目ID
+//// 2009-02-06 H.Itou Add Start 本番障害#1147
+//      cstmt.setDate(4, XxcmnUtility.dateValue(productedDate)); // 製造日
+//      cstmt.setDate(5, XxcmnUtility.dateValue(productedDate)); // 製造日
+//// 2009-02-06 H.Itou Add End
+      cstmt.setInt(1, XxcmnUtility.intValue(itemId));          // 品目ID
+      cstmt.setDate(2, XxcmnUtility.dateValue(productedDate)); // 製造日
+      cstmt.setDate(3, XxcmnUtility.dateValue(productedDate)); // 製造日
       cstmt.setDate(5, XxcmnUtility.dateValue(productedDate)); // 製造日
-// 2009-02-06 H.Itou Add End
+// 2018-02-22 K.Kiriu Mod End
 
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(2, Types.DATE);               // 賞味期限
+// 2018-02-22 K.Kiriu Mod Start
+//      cstmt.registerOutParameter(2, Types.DATE);               // 賞味期限
+      cstmt.registerOutParameter(4, Types.DATE);               // 賞味期限
+// 2018-02-22 K.Kiriu Mod End
 
       // PL/SQL実行
       cstmt.execute();
 
 // 2009-02-06 H.Itou Add Start 本番障害#1147
       // 賞味期限がNULLの場合(適用日内に品目データがない場合)
-      if (XxcmnUtility.isBlankOrNull(cstmt.getDate(2)))
+// 2018-02-22 K.Kiriu Mod Start
+//      if (XxcmnUtility.isBlankOrNull(cstmt.getDate(2)))
+      if (XxcmnUtility.isBlankOrNull(cstmt.getDate(4)))
+// 2018-02-22 K.Kiriu Mod End
       {
         // 品目取得失敗エラー
         MessageToken[] tokens = {new MessageToken(XxpoConstants.ITEM_VALUE, itemCode)};
@@ -256,7 +296,10 @@ public class XxpoUtility
       } else
       {
         // 戻り値取得
-        useByDate = new Date(cstmt.getDate(2));
+// 2018-02-22 K.Kiriu Mod Start
+//        useByDate = new Date(cstmt.getDate(2));
+        useByDate = new Date(cstmt.getDate(4));
+// 2018-02-22 K.Kiriu Mod End
       }
 // 2009-02-06 H.Itou Add End
 
