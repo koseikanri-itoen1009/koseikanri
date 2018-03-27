@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF015A34C(body)
  * Description      : 自販機リース料予算作成
  * MD.050           : 自販機リース料予算作成 MD050_CFF_015_A34
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -26,9 +26,10 @@ AS
  *  set_g_assets_cost_tab     固定資産の月毎の取得価格設定プロシージャ
  *  set_g_lease_budget_tab_vd 固定資産のリース料予算用情報格納配列設定用プロシージャ
  *  submain                   メイン処理プロシージャ
+ *                            新規分のリース料予算ワーク作成       (A-16)
  *                            リース料予算抽出                     (A-5)
  *                            固定資産物件のリース料予算データ抽出 (A-13)
- *  ins_lease_budget_wk       リース料予算ワーク作成               (A-14)
+ *                            固定資産物件のリース料予算ワークデータ作成 (A-14)
  *  main                      コンカレント実行ファイル登録プロシージャ
  *                            終了処理                             (A-12)
  *
@@ -41,6 +42,7 @@ AS
  *  2014/10/08    1.2   SCSK 小路恭弘    E_本稼働_11719対応 不具合対応
  *  2014/10/17    1.3   SCSK 小路恭弘    E_本稼動_11719対応 不具合対応
  *  2017/08/17    1.4   SCSK 小路恭弘    E_本稼動_14390対応
+ *  2018/03/20    1.5   SCSK 森晴加      E_本稼動_14390対応 不具合対応
  *
  *****************************************************************************************/
 --
@@ -6063,6 +6065,22 @@ AS
       END IF;
     END IF;
 --
+-- 2018/03/20 1.5 H.Mori ADD START
+    -- 新台情報の登録
+    -- データ存在チェック用
+    ln_cnt := g_lease_budget_tab.COUNT;
+    -- =======================================
+    -- 新規分のリース料予算ワーク作成 (A-16)
+    -- =======================================
+    ins_lease_budget_wk(
+      in_file_id,        -- 1.ファイルID(必須)
+      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+      lv_retcode,        -- リターン・コード             --# 固定 #
+      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2018/03/20 1.5 H.Mori ADD END
     -- 資産区分がNULLまたは、1（リース）の場合
     IF ( gv_assets_kbn IS NULL
       OR gv_assets_kbn = cv_assets_kbn_1) THEN
@@ -6082,10 +6100,13 @@ AS
       LOOP
         -- 初期化
         g_lease_budget_bulk_tab.DELETE;
-        -- 初回のみ新台情報が格納されているため初期化しない
-        IF ( ln_cnt > 0 ) THEN
-          g_lease_budget_tab.DELETE;
-        END IF;
+-- 2018/03/20 1.5 H.Mori MOD START
+--        -- 初回のみ新台情報が格納されているため初期化しない
+--        IF ( ln_cnt > 0 ) THEN
+--          g_lease_budget_tab.DELETE;
+--        END IF;
+        g_lease_budget_tab.DELETE;
+-- 2018/03/20 1.5 H.Mori MOD END
         --
         -- リース料区分が1（リース料）の場合
         IF ( gv_lease_amt_kbn = cv_lease_amt_kbn_1 ) THEN
@@ -6095,8 +6116,11 @@ AS
           FETCH get_lease_budget_deprn_cur BULK COLLECT INTO g_lease_budget_bulk_tab LIMIT gn_bulk_collect_cnt;
         END IF;
 --
-        -- 新台情報および取得データが存在しない場合、ループを抜ける
-        IF ( ( g_lease_budget_tab.COUNT = 0 ) AND ( g_lease_budget_bulk_tab.COUNT = 0 ) ) THEN
+        -- 取得データが存在しない場合、ループを抜ける
+-- 2018/03/20 1.5 H.Mori MOD START
+--        IF ( ( g_lease_budget_tab.COUNT = 0 ) AND ( g_lease_budget_bulk_tab.COUNT = 0 ) ) THEN
+        IF ( g_lease_budget_bulk_tab.COUNT = 0 ) THEN
+-- 2018/03/20 1.5 H.Mori MOD END
           EXIT lease_budget_loop;
         END IF;
         -- データ存在チェック用
@@ -9253,9 +9277,9 @@ AS
         -- 固定資産の取得データが存在しない場合は処理なし
         END IF;
 --
-        -- ===============================
-        -- リース料予算ワーク作成 (A-14)
-        -- ===============================
+        -- ===================================================
+        -- 固定資産物件のリース料予算ワークデータ作成 (A-14)
+        -- ===================================================
         ins_lease_budget_wk(
           in_file_id,        -- 1.ファイルID(必須)
           lv_errbuf,         -- エラー・メッセージ           --# 固定 #
