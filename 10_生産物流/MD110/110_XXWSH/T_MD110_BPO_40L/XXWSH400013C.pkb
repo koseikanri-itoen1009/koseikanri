@@ -6,7 +6,7 @@ AS
  * Package Name     : XXWSH400013C(body)
  * Description      : 出荷依頼更新アップロード
  * MD.050           : 出荷依頼 <MD050_BPO_401>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2018/01/23    1.0   K.Kiriu          新規作成(E_本稼動_14672)
+ *  2018/03/09    1.1   K.Kiriu          E_本稼動_14923対応
  *
  *****************************************************************************************/
 --
@@ -136,6 +137,9 @@ AS
   cv_msg_xxwsh_13241       CONSTANT VARCHAR2(20)  := 'APP-XXWSH-13241';  -- 混載合計重量オーバーエラー
   cv_msg_xxwsh_13251       CONSTANT VARCHAR2(20)  := 'APP-XXWSH-13251';  -- ファイル項目チェックエラー
   cv_msg_xxwsh_13252       CONSTANT VARCHAR2(20)  := 'APP-XXWSH-13252';  -- データ項目数マイナスエラー文言
+-- Ver1.1 Add Start
+  cv_msg_xxwsh_13253       CONSTANT VARCHAR2(20)  := 'APP-XXWSH-13253';  -- 変更後品目存在エラー
+-- Ver1.1 Add End
   -- メッセージ(XXCMN)
   cv_msg_xxcmn_10640       CONSTANT VARCHAR2(20)  := 'APP-XXCMN-10640';  -- BLOBデータ変換エラー
   cv_msg_xxcmn_10639       CONSTANT VARCHAR2(20)  := 'APP-XXCMN-10639';  -- ファイル項目チェックエラー
@@ -370,6 +374,10 @@ AS
     ,program_id                  xxwsh_order_lines_all.program_id%TYPE                  -- コンカレント・プログラムID
     ,program_update_date         xxwsh_order_lines_all.program_update_date%TYPE         -- プログラム更新日
   );
+-- Ver1.1 Add Start
+  -- 1依頼内の同一依頼品目のチェックテーブル型定義
+  TYPE g_item_exists_ttype    IS TABLE OF VARCHAR2(1) INDEX BY VARCHAR2(44);
+-- Ver1.1 Add End
   -- 項目定義テーブル型定義
   TYPE g_item_def_ttype       IS TABLE OF g_item_def_rtype       INDEX BY BINARY_INTEGER;
   -- 出荷依頼更新アップロードワークテーブル型定義
@@ -382,6 +390,10 @@ AS
   gt_upload_work_tab     g_upload_work_ttype;
   -- 更新用明細データテーブル型
   gt_ship_line_data_tab  g_ship_line_data_ttype;
+-- Ver1.1 Add Start
+  -- 1依頼内の同一依頼品目のチェックテーブル型
+  gt_item_exists_tab     g_item_exists_ttype;
+-- Ver1.1 Add Start
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -2516,6 +2528,9 @@ AS
     ln_w_mixed_sum               NUMBER;                                                  -- 積載重量合計(混載No単位)
     ln_p_mixed_sum               NUMBER;                                                  -- 合計パレット重量(混載No単位)
     ln_chk_w_mixed_sum           NUMBER;                                                  -- 積載重量合計(計算用)
+-- Ver1.1 Add Start
+    lv_item_exists_key           VARCHAR2(44);                                            -- 1依頼内の同一依頼品目チェック用キー
+-- Ver1.1 Add End
 --
     -- *** ローカル・カーソル ***
     -- 出荷依頼取得用カーソル
@@ -2537,6 +2552,9 @@ AS
              ,xola.capacity               capacity               -- 容積
              ,xola.pallet_qty             pallet_qty             -- パレット枚数
              ,xola.pallet_weight          pallet_weight          -- パレット重量
+-- Ver1.1 Add Start
+             ,xola.request_item_code      request_item_code      -- 依頼品目
+-- Ver1.1 Add End
              ,ximv.num_of_cases           num_of_cases           -- ケース入数
              ,ximv.num_of_deliver         num_of_deliver         -- 出荷入数
              ,xsmv.small_amount_class     small_amount_class     -- 小口区分
@@ -2582,8 +2600,15 @@ AS
       -- 明細件数カウント
       ln_suc_line_cnt := ln_suc_line_cnt + 1;
 --
-      -- セーブポイントの発行
-      SAVEPOINT req_unit_save;
+-- Ver1.1 Add Start
+      -- ループ初回のセーブポイント
+      IF ( i = 1 ) THEN
+-- Ver1.1 Add End
+        -- セーブポイントの発行
+        SAVEPOINT req_unit_save;
+-- Ver1.1 Add Start
+      END IF;
+-- Ver1.1 Add End
 --
       BEGIN
 --
@@ -2724,6 +2749,10 @@ AS
            lt_sum_capacity           := 0;  -- 積載容積合計
            lt_sum_pallet_weight      := 0;  -- 合計パレット重量
            lt_pallet_sum_quantity    := 0;  -- 合計パレット枚数
+-- Ver1.1 Add Start
+           lv_item_exists_key        := NULL; -- 1依頼内の同一依頼品目チェック用キー(依頼+依頼品目)
+           gt_item_exists_tab.DELETE;         -- 1依頼内の同一依頼品目チェック用テーブル初期化
+-- Ver1.1 Add End
 --
            -- 5-1.受注情報を抽出
            OPEN  get_ship_date_cur(
@@ -2734,6 +2763,26 @@ AS
 --
              FETCH get_ship_date_cur INTO l_get_ship_date_rec;
              EXIT WHEN get_ship_date_cur%NOTFOUND;
+-- Var1.1 Add Start
+             -- 5-1-1.依頼内の同一依頼品目チェック
+             lv_item_exists_key := TO_CHAR( l_get_ship_date_rec.order_header_id ) || l_get_ship_date_rec.request_item_code;
+--
+             IF ( gt_item_exists_tab.EXISTS(lv_item_exists_key) ) THEN
+               -- メッセージ編集
+               lv_errmsg  := xxccp_common_pkg.get_msg(
+                               iv_application   =>  cv_appl_name_xxwsh                       -- アプリケーション短縮名
+                              ,iv_name          =>  cv_msg_xxwsh_13253                       -- メッセージコード
+                              ,iv_token_name1   =>  cv_tkn_request_no                        -- トークンコード2
+                              ,iv_token_value1  =>  l_get_ship_date_rec.request_no           -- トークン値2
+                              ,iv_token_name2   =>  cv_tkn_item_code                         -- トークンコード3
+                              ,iv_token_value2  =>  l_get_ship_date_rec.request_item_code    -- トークン値3
+                             );
+               RAISE data_skip_expt;
+             ELSE
+               -- チェック用テーブルにダミーを設定
+               gt_item_exists_tab(lv_item_exists_key) := cv_yes;
+             END IF;
+-- Var1.1 Add End
 --
              -- 5-2.合計数量の計算
              lt_sum_quantity := lt_sum_quantity + l_get_ship_date_rec.quantity;
@@ -3206,6 +3255,10 @@ AS
           gn_normal_cnt   := gn_normal_cnt + ln_suc_line_cnt;
           -- 明細件数の初期化
           ln_suc_line_cnt := 0;
+-- Ver1.1 Add Start
+          -- 依頼単位で正常の場合のセーブポイントの発行
+          SAVEPOINT req_unit_save;
+-- Ver1.1 Add End
 --
         END IF;
 --
@@ -3228,6 +3281,13 @@ AS
           ln_suc_line_cnt := 0;
           -- 1件でもスキップデータがある場合は警告とする
           ov_retcode      := cv_status_warn;
+-- Ver1.1 Add Start
+          -- カーソルがオープンしている場合、クローズする
+          IF ( get_ship_date_cur%ISOPEN ) THEN
+            -- カーソルクローズ
+            CLOSE get_ship_date_cur;
+          END IF;
+-- Ver1.1 Add End
           -- ロールバック
           ROLLBACK TO SAVEPOINT req_unit_save;
       END;
