@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 出来高実績取込処理 T_MD070_BPO_94B
- * Version          : 1.9
+ * Version          : 1.10
  * Program List
  * ------------------------- ----------------------------------------------------------
  *  Name                      Description
@@ -40,6 +40,7 @@ AS
  *  2009/02/09    1.7   SCS    吉田 夏樹    本番#15、#1178対応
  *  2009/03/13    1.8   SCS    伊藤 ひとみ  本番#32対応
  *  2009/03/24    1.9   SCS    飯田 甫      本番障害#1317対応
+ *  2018/02/22    1.10  SCSK   佐々木宏之   賞味期限取得方法変更(E_本稼動_14859)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -357,8 +358,16 @@ AS
           ,ximv.cost_manage_code          cost_manage_code    -- 原価管理区分
           ,ximv.lot_ctl                   lot_ctl             -- ロット管理区分
           ,ximv.inventory_item_id         inventory_item_id   -- INV品目ID
-          ,xvsti.producted_date + TO_NUMBER(ximv.expiration_day)
-                                          expiration_date     -- 賞味期限
+--  2018/02/22 V1.10 Modified START
+--          ,xvsti.producted_date + TO_NUMBER(ximv.expiration_day)
+--                                          expiration_date     -- 賞味期限
+          , xxcmn_common5_pkg.get_use_by_date(
+                id_producted_date     =>  xvsti.producted_date
+              , iv_expiration_type    =>  ximv.expiration_type
+              , in_expiration_day     =>  ximv.expiration_day
+              , in_expiration_month   =>  ximv.expiration_month
+            )                             expiration_date     -- 賞味期限
+--  2018/02/22 V1.10 Modified END
           ,ximv.unit_price_calc_code      unit_price_calc_code-- 仕入単価導入日タイプ
           ,CASE -- 納入先コード(保管場所コード)
                 --   処理タイプ1:相手先在庫→相手先在庫入庫先
@@ -2014,6 +2023,10 @@ AS
     lr_po_headers_if         po_headers_interface%ROWTYPE;       -- 発注ヘッダオープンインタフェース
     lr_po_lines_if           po_lines_interface%ROWTYPE;         -- 発注明細オープンインタフェース
     lr_po_distributions_if   po_distributions_interface%ROWTYPE; -- 搬送明細オープンインタフェース
+--  2018/02/22 V1.10 Add START
+    ln_kobiki_price          NUMBER;                             -- 粉引後単価
+    ln_kobiki_amount         NUMBER;                             -- 粉引後金額
+--  2018/02/22 V1.10 Add END
 --
     -- *** ローカル・カーソル ***
 --
@@ -2035,6 +2048,10 @@ AS
     lr_po_headers_if       := NULL;
     lr_po_lines_if         := NULL;
     lr_po_distributions_if := NULL;
+--  2018/02/22 V1.10 Add START
+    ln_kobiki_price        := NULL;
+    ln_kobiki_amount       := NULL;
+--  2018/02/22 V1.10 Add END
 --
     -- ===========================
     -- 発注ヘッダ(アドオン)追加
@@ -2142,6 +2159,11 @@ AS
     -- 発注明細オープンインタフェース追加
     -- ======================================
     BEGIN
+--  2018/02/22 V1.10 Add START
+      -- 粉引後単価・粉引後金額の算出
+      ln_kobiki_price  := gt_unit_price  * (100 - 0) / 100;
+      ln_kobiki_amount := ln_kobiki_price * ( gr_main_data.producted_quantity * gr_main_data.conversion_factor );  -- 粉引後単価×(出来高数量×換算入数)
+--  2018/02/22 V1.10 Add END
       -- レコードに値をセット
       SELECT po_lines_interface_s.NEXTVAL
       INTO   lr_po_lines_if.interface_line_id                                         -- IF明細ID
@@ -2165,8 +2187,14 @@ AS
       lr_po_lines_if.line_attribute11        := gr_main_data.producted_quantity;      -- 出来高数量
       lr_po_lines_if.line_attribute13        := gv_flg_n;                             -- 数量確定フラグ
       lr_po_lines_if.line_attribute14        := gv_flg_n;                             -- 金額確定フラグ
+--  2018/02/22 V1.10 Add START
+      lr_po_lines_if.shipment_attribute2     := ln_kobiki_price;                      -- 粉引後単価
+--  2018/02/22 V1.10 Add END
       lr_po_lines_if.shipment_attribute3     := gv_kosen_kbn_n;                       -- 口銭区分
       lr_po_lines_if.shipment_attribute6     := gv_fuka_kbn_n;                        -- 賦課金区分
+--  2018/02/22 V1.10 Add START
+      lr_po_lines_if.shipment_attribute9     := ln_kobiki_amount;                     -- 粉引後金額
+--  2018/02/22 V1.10 Add END
       lr_po_lines_if.ship_to_organization_id := gt_organization_id;                   -- 在庫組織ID(入庫)
       lr_po_lines_if.creation_date           := SYSDATE;                              -- 作成日
       lr_po_lines_if.last_updated_by         := FND_GLOBAL.USER_ID;                   -- 最終更新者
