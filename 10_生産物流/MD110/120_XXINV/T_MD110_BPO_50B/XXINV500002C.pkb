@@ -6,7 +6,7 @@ AS
  * Package Name     : XXINV500002C(body)
  * Description      : 移動指示情報取込
  * MD.050           : 移動依頼 T_MD050_BPO_500
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2011/03/04    1.0   SCS Y.Kanami     新規作成
  *  2011/06/02    1.1   SCS S.Niki       E_本稼動_07482,07525対応
  *  2011/06/14    1.2   SCS S.Niki       E_本稼動_07482ユーザー指摘事項対応
+ *  2017/04/25    1.3   SCSK S.Niki      E_本稼動_14082対応
  *
  ******************************************************************************************/
 --
@@ -113,7 +114,9 @@ AS
   cv_msg_get_seq              CONSTANT  VARCHAR2(15)    := 'APP-XXCMN-10029';         -- 採番エラー
   cv_msg_user_org_id          CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10193';         -- ユーザ所属部署コード
   cv_msg_shipped_loc          CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10194';         -- 出庫倉庫
-  cv_err_msg_1                CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10061';         -- 必須チェック
+-- Ver1.3 Del Start
+--  cv_err_msg_1                CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10061';         -- 必須チェック
+-- Ver1.3 Del End
   cv_err_msg_2                CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10199';         -- 過去日エラー
   cv_err_msg_3                CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10200';         -- 同日エラー
   cv_err_msg_4                CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10210';         -- 日付逆転エラー
@@ -129,6 +132,10 @@ AS
   cv_err_msg_14               CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10205';         -- ドリンク・リーフ混載エラー
   cv_err_msg_15               CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10206';         -- 指示総数設定エラー
   cv_err_msg_16               CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10212';         -- 共通関数エラー
+-- Ver1.3 Add Start
+  cv_err_msg_17               CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10213';         -- カレンダ取得エラーメッセージ
+  cv_err_msg_18               CONSTANT  VARCHAR2(15)    := 'APP-XXINV-10214';         -- カレンダ範囲外エラーメッセージ
+-- Ver1.3 Add End
 --
   -- トークン
   cv_tkn_profile_name         CONSTANT  VARCHAR2(100)   := 'XXCMN:マスタ組織';        -- マスタ組織
@@ -139,8 +146,10 @@ AS
   cv_tkn_msg                  CONSTANT  VARCHAR2(3)     := 'MSG';
   cv_tkn_item                 CONSTANT  VARCHAR2(4)     := 'ITEM';
   cv_tkv_name                 CONSTANT  VARCHAR2(4)     := 'NAME';
-  cv_tkn_shipped_date         CONSTANT  VARCHAR2(9)     := 'SHIP_DATE';
-  cv_tkn_ship_to_date         CONSTANT  VARCHAR2(12)    := 'ARRIVAL_DATE';
+-- Ver1.3 Del Start
+--  cv_tkn_shipped_date         CONSTANT  VARCHAR2(9)     := 'SHIP_DATE';
+--  cv_tkn_ship_to_date         CONSTANT  VARCHAR2(12)    := 'ARRIVAL_DATE';
+-- Ver1.3 Del End
   cv_tkn_target_date          CONSTANT  VARCHAR2(11)    := 'TARGET_DATE';
   cv_tkn_seq_name             CONSTANT  VARCHAR2(10)    := 'SEQ_NAME';
   cv_tkn_user                 CONSTANT  VARCHAR2(4)     := 'USER';
@@ -214,6 +223,9 @@ AS
   cv_object                   CONSTANT  VARCHAR2(1)     :=  '1';  -- 対象
   cv_not_object               CONSTANT  VARCHAR2(1)     :=  '0';  -- 対象外
   cv_nodata                   CONSTANT  VARCHAR2(1)     :=  '1';  -- 対象データなし
+-- Ver1.3 Add Start
+  cn_active                   CONSTANT  NUMBER          :=  0;    -- 有効
+-- Ver1.3 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -477,6 +489,11 @@ AS
   gv_nodata_error           VARCHAR2(1);      -- 対象データ取得エラー
   gb_get_item_flg           BOOLEAN;          -- 品目取得フラグ(TRUE:取得,FALSE:未取得)
   gv_carrier_code           VARCHAR2(4);      -- 運送業者コード
+-- Ver1.3 Add Start
+  gv_dt_range_chk_sts       VARCHAR2(1);      -- 日付範囲チェックステータス
+  gd_min_cal_date           DATE;             -- カレンダ最小日付
+  gd_max_cal_date           DATE;             -- カレンダ最大日付
+-- Ver1.3 Add End
 --
   /**********************************************************************************
    * Procedure Name   : make_err_list
@@ -710,6 +727,25 @@ AS
       RAISE global_api_expt;
 --
     END IF;
+-- Ver1.3 Add Start
+    --------------------------------------
+    -- カレンダ情報取得
+    --------------------------------------
+    SELECT MIN( msd.calendar_date )   AS min_cal_date   -- 最小日付
+         , MAX( msd.calendar_date )   AS max_cal_date   -- 最大日付
+      INTO gd_min_cal_date
+         , gd_max_cal_date
+      FROM mr_shcl_dtl msd
+     WHERE msd.delete_mark  = cn_active
+    ;
+    IF ( gd_min_cal_date IS NULL ) THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg( cv_appl_short_name    -- アプリケーション短縮名
+                                           , cv_err_msg_17         -- メッセージコード
+                                           );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Ver1.3 Add End
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1209,6 +1245,60 @@ AS
       gv_err_status := cv_status_error;
 --
     END IF;
+-- Ver1.3 Add Start
+    --------------------------------------
+    -- カレンダ範囲外チェック
+    --------------------------------------
+    -- 出庫予定日
+    IF ( ( g_mov_instr_tab(gn_cnt).schedule_ship_date < gd_min_cal_date )
+      OR ( g_mov_instr_tab(gn_cnt).schedule_ship_date > gd_max_cal_date ) )
+    THEN
+--
+      gv_out_msg  := xxcmn_common_pkg.get_msg( cv_appl_short_name       -- アプリケーション短縮名
+                                             , cv_err_msg_18            -- メッセージコード
+                                             , cv_tkn_target_date       -- トークンコード1
+                                             , cv_hdr_sch_ship_date     -- トークン値1
+                                             );
+--
+      make_err_list(  iv_kind     => cv_msg_err       -- エラー種別
+                    , iv_err_info => gv_out_msg       -- エラーメッセージ
+                    , in_rec_cnt  => gn_cnt           -- エラー対象レコードカウント
+                    , ov_errbuf   => lv_errbuf        -- エラー・メッセージ
+                    , ov_retcode  => lv_retcode       -- リターン・コード
+                    , ov_errmsg   => lv_errmsg        -- ユーザー・エラー・メッセージ
+                   ); 
+      -- 共通エラーメッセージ終了ステータス
+      gv_err_status := cv_status_error;
+      -- 日付範囲チェックステータス
+      gv_dt_range_chk_sts := cv_status_error;
+--
+    END IF;
+--
+    -- 入庫予定日
+    IF ( ( g_mov_instr_tab(gn_cnt).schedule_arrival_date < gd_min_cal_date )
+      OR ( g_mov_instr_tab(gn_cnt).schedule_arrival_date > gd_max_cal_date ) )
+    THEN
+--
+      gv_out_msg  := xxcmn_common_pkg.get_msg( cv_appl_short_name       -- アプリケーション短縮名
+                                             , cv_err_msg_18            -- メッセージコード
+                                             , cv_tkn_target_date       -- トークンコード1
+                                             , cv_hdr_sch_arrival_date  -- トークン値1
+                                             );
+--
+      make_err_list(  iv_kind     => cv_msg_err       -- エラー種別
+                    , iv_err_info => gv_out_msg       -- エラーメッセージ
+                    , in_rec_cnt  => gn_cnt           -- エラー対象レコードカウント
+                    , ov_errbuf   => lv_errbuf        -- エラー・メッセージ
+                    , ov_retcode  => lv_retcode       -- リターン・コード
+                    , ov_errmsg   => lv_errmsg        -- ユーザー・エラー・メッセージ
+                   ); 
+      -- 共通エラーメッセージ終了ステータス
+      gv_err_status := cv_status_error;
+      -- 日付範囲チェックステータス
+      gv_dt_range_chk_sts := cv_status_error;
+--
+    END IF;
+-- Ver1.3 Add End
 --
     -----------------------------
     -- 出庫元、入庫先同一チェック
@@ -3782,6 +3872,10 @@ AS
 --
       -- 品目マスタチェックステータス初期化
       gv_item_mst_chk_sts := cv_status_normal;
+-- Ver1.3 Add Start
+      -- 日付範囲チェックステータス初期化
+      gv_dt_range_chk_sts := cv_status_normal;
+-- Ver1.3 Add End
 --
       -- LOOPカウントインクリメント
       gn_cnt := gn_cnt + 1;
@@ -3921,17 +4015,24 @@ AS
 --
         END IF;
 --
-        -- ==================================
-        --  稼働日チェック(B-19)
-        -- ==================================
-        chk_operating_day(
-            lv_errbuf     -- エラー・メッセージ           --# 固定 #
-          , lv_retcode    -- リターン・コード             --# 固定 #
-          , lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
+-- Ver1.3 Add Start
+        -- 日付範囲チェックステータスが正常の場合
+        IF ( gv_dt_range_chk_sts = cv_status_normal ) THEN
+-- Ver1.3 Add End
+          -- ==================================
+          --  稼働日チェック(B-19)
+          -- ==================================
+          chk_operating_day(
+              lv_errbuf     -- エラー・メッセージ           --# 固定 #
+            , lv_retcode    -- リターン・コード             --# 固定 #
+            , lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+-- Ver1.3 Add Start
         END IF;
+-- Ver1.3 Add End
 --
         -- =============================
         -- 関連データ取得処理(B-6, B-7)
