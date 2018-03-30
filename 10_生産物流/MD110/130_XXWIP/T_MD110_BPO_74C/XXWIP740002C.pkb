@@ -7,7 +7,7 @@ AS
  * Description      : 請求書
  * MD.050/070       : 請求書(T_MD050_BPO_740)
  *                    請求書(T_MD070_BPO_74C)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/25    1.0   Yusuke Tabata   新規作成
  *  2008/07/02    1.1   Satoshi Yunba   禁則文字対応
+ *  2018/03/30    1.2   Sasaki Hiroyuki E_本稼動_14942対応
  *
  *****************************************************************************************/
 --
@@ -70,6 +71,9 @@ AS
   -- 出力
   gc_tag_type_t           CONSTANT VARCHAR2(1)  := 'T' ;
   gc_tag_type_d           CONSTANT VARCHAR2(1)  := 'D' ;
+--  2018/03/30 V1.2 Added START
+  cv_prf_xxwip_740002c_bank   CONSTANT VARCHAR2(30) :=  'XXWIP_740002C_BANK';             --  XXWIP:請求書用銀行情報
+--  2018/03/30 V1.2 Added END
 --
   -- ==================================================
   -- ユーザー定義グローバル型
@@ -460,6 +464,14 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_name  := 'congestion_charge';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
     gt_xml_data_table(gl_xml_idx).tag_value := gr_dtl_data.congestion_charge;
+--  2018/03/30 V1.2 Added START
+    -- 銀行情報
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_name';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value
+      := fnd_profile.value( cv_prf_xxwip_740002c_bank );
+--  2018/03/30 V1.2 Added END
     -- 振込年月日
     gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
     gt_xml_data_table(gl_xml_idx).tag_name  := 'condition_setting_date';
