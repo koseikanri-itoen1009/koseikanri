@@ -40,6 +40,7 @@ AS
  *  2017/12/18   1.9    Y.Omuro          [E_本稼動_14486]次期HHTシステムからの受注取込
  *  2018/01/18   1.10   K.Kiriu          [E_本稼動_14486]次期HHTシステムからの受注取込（伝票区分対応）
  *  2018/01/29   1.11   N.Koyama         [E_本稼動_14486]次期HHTシステムからの受注取込（伝票番号不具合対応）
+ *  2018/04/10   1.12   N.Koyama         [E_本稼動_15001]出荷指示の改行コード対応
  *
  *****************************************************************************************/
 --
@@ -1143,7 +1144,13 @@ AS
               || cv_delimit || cv_quot || gv_edi_chain_code                   || cv_quot--チェーン店コード
 /* 2017/12/18 Ver1.9 Add Start */
               || cv_delimit || cv_quot || gv_subinventory                     || cv_quot--保管場所コード
-              || cv_delimit || cv_quot || gv_shipping_instructions            || cv_quot--備考（出荷指示）
+/* 2018/04/10 Ver1.12 Mod Start */
+--              || cv_delimit || cv_quot || gv_shipping_instructions            || cv_quot--備考（出荷指示）
+              || cv_delimit || cv_quot || SUBSTRB(REPLACE( gv_shipping_instructions
+                                                                     ,CHR(10)
+                                                                     ,' '
+                                                                   ),1,40)      || cv_quot--備考（出荷指示）
+/* 2018/04/10 Ver1.12 Mod End */
               || cv_delimit || cv_quot || cv_quot                                       --発生元区分
               || cv_delimit || cv_quot || cv_quot                                       --受注No.（HHT）
               || cv_delimit || cv_quot || cv_quot                                       --オーダーNo
@@ -1376,7 +1383,13 @@ AS
               || cv_delimit || cv_quot || gv_shop_name_alt                    || cv_quot--店名（カナ）
               || cv_delimit || cv_quot || gv_edi_chain_code                   || cv_quot--チェーン店コード
               || cv_delimit || cv_quot || gv_subinventory                     || cv_quot--保管場所コード
-              || cv_delimit || cv_quot || gv_shipping_instructions            || cv_quot--備考（出荷指示）
+/* 2018/04/10 Ver1.12 Mod Start */
+--              || cv_delimit || cv_quot || gv_shipping_instructions            || cv_quot--備考（出荷指示）
+              || cv_delimit || cv_quot || SUBSTRB(REPLACE( gv_shipping_instructions
+                                                                     ,CHR(10)
+                                                                     ,' '
+                                                                   ),1,40)      || cv_quot--備考（出荷指示）
+/* 2018/04/10 Ver1.12 Mod End */
               || cv_delimit || cv_quot || gv_order_from_code                  || cv_quot--発生元区分
               || cv_delimit || cv_quot || gv_order_number_hht                 || cv_quot--受注No.（HHT）
               || cv_delimit || cv_quot || gv_order_no                         || cv_quot--オーダーNo
