@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A10C(body)
  * Description      : HHT受注データの取込を行う
  * MD.050           : HHT受注データ取込(MD050_COS_001_A10)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/12/08    1.0   K.Kiriu          main新規作成(E_本稼動_14486)
  *  2018/01/18    1.1   K.Nara           E_本稼動_14486(追加対応：受注品目数量の単位を品目の基準単位とする)
+ *  2018/04/12    1.2   K.Kiriu          E_本稼動_15006(伝票区分の頭1桁を削除し受注OIFを作成する)
  *
  *****************************************************************************************/
 --
@@ -1209,7 +1210,10 @@ AS
       gt_order_oif_header(cn_h_cnt).context                 := gt_order_type_name_h;                   -- コンテキスト
       gt_order_oif_header(cn_h_cnt).attribute12             := l_header_data_rec.base_code;            -- 検索用拠点
       gt_order_oif_header(cn_h_cnt).attribute19             := l_header_data_rec.order_no;             -- オーダーNo
-      gt_order_oif_header(cn_h_cnt).attribute5              := l_header_data_rec.sales_invoice;        -- 伝票区分
+-- Ver.1.2 Mod Start
+--      gt_order_oif_header(cn_h_cnt).attribute5              := l_header_data_rec.sales_invoice;        -- 伝票区分
+      gt_order_oif_header(cn_h_cnt).attribute5              := SUBSTRB( l_header_data_rec.sales_invoice, 2,2 );  -- 伝票区分(頭1桁削除)
+-- Ver.1.2 Mod End
       gt_order_oif_header(cn_h_cnt).attribute20             := l_header_data_rec.sales_classification; -- 分類区分
       gt_order_oif_header(cn_h_cnt).global_attribute4       := l_header_data_rec.order_no_hht;         -- 受注No.(HHT)
       gt_order_oif_header(cn_h_cnt).global_attribute5       := cv_create_hht;                          -- 発生元区分
