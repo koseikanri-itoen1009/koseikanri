@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績データ連携
  * MD.050           : MD050_CFR_001_A02_売上実績データ連携
  * MD.070           : MD050_CFR_001_A02_売上実績データ連携
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/12/13    1.10 SCS 廣瀬 真佐人  障害対応[E_本稼動_00366]
  *  2011/04/19    1.11 SCS 西野 裕介    障害対応[E_本稼動_04976]
  *  2011/05/26    1.12 SCS 石渡 賢和    ＰＴ対応[E_本稼動_07413]
+ *  2018/04/03    1.13 SCSK佐々木宏之   個別の営業員コード表示[E_本稼動_14952]
  *
  *****************************************************************************************/
 --
@@ -124,6 +125,12 @@ AS
   cv_sd_delivery_ptn_class CONSTANT VARCHAR2(35) := 'XXCFR1_SD_DELIVERY_PTN_CLASS';
                                                                        -- XXCFR:売上実績データ納品形態区分
 --
+--  2018/04/03 V1.13 Added START
+  --  参照タイプ
+  cv_xxcfr1_disp_salesrep CONSTANT VARCHAR2(30) :=  'XXCFR1_DISP_SALESREP';   --  参照タイプ：営業員表示対象コード（売上実績連携）
+  --
+  cv_group_name_resource  CONSTANT VARCHAR2(8)  :=  'RESOURCE';               --  グループタイプ名：RESOURCE
+--  2018/04/03 V1.13 Added END
   -- ファイル出力
   cv_file_type_out   CONSTANT VARCHAR2(10) := 'OUTPUT';    -- メッセージ出力
   cv_file_type_log   CONSTANT VARCHAR2(10) := 'LOG';       -- ログ出力
@@ -673,6 +680,10 @@ AS
     ln_block_size       NUMBER;                 -- ファイルシステムのブロックサイズ
 --
     lv_sales_type       VARCHAR2(2);            -- 売上区分
+--  2018/04/03 V1.13 Added START
+    lt_salesrep_code    hz_org_profiles_ext_b.c_ext_attr1%TYPE;     --  担当営業員
+    ln_dummy            NUMBER;                                     --  存在チェック用ダミー変数
+--  2018/04/03 V1.13 Added END
 --
     -- *** ローカル・カーソル ***
 --
@@ -720,6 +731,46 @@ AS
     IF ( gn_target_cnt > 0 ) THEN
       <<out_loop>>
       FOR ln_loop_cnt IN gt_sales_data.FIRST..gt_sales_data.LAST LOOP
+--  2018/04/03 V1.13 Added START
+        BEGIN
+          --  担当営業員取得：対象判定
+          SELECT  1
+          INTO    ln_dummy
+          FROM    fnd_lookup_values   flv
+          WHERE   flv.lookup_type     =   cv_xxcfr1_disp_salesrep
+          AND     flv.language        =   USERENV( 'LANG' )
+          AND     flv.enabled_flag    =   cv_flag_yes
+          AND     gd_process_date BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                  AND     NVL( flv.end_date_active, gd_process_date )
+          AND     flv.lookup_code     =   gt_sales_data(ln_loop_cnt).item_code
+          ;
+          --  担当営業員取得
+          SELECT  hopeb.c_ext_attr1   AS  sales_rep_code
+          INTO    lt_salesrep_code
+          FROM    hz_parties                  hp        --  パーティ
+                , hz_cust_accounts            hca       --  顧客マスタ
+                , hz_organization_profiles    hop       --  組織プロファイル
+                , hz_org_profiles_ext_b       hopeb     --  組織プロファイル拡張
+                , ego_attr_groups_v           eagv      --  組織プロファイル拡張属性グループ
+          WHERE   hca.party_id                  =   hp.party_id
+          AND     hp.party_id                   =   hop.party_id
+          AND     hop.effective_end_date IS NULL
+          AND     hop.organization_profile_id   =   hopeb.organization_profile_id
+          AND     hopeb.attr_group_id           =   eagv.attr_group_id
+          AND     eagv.attr_group_name          =   cv_group_name_resource
+          AND     ( hopeb.d_ext_attr1 <= gd_process_date OR hopeb.d_ext_attr1 IS NULL )
+          AND     ( hopeb.d_ext_attr2 >= gd_process_date OR hopeb.d_ext_attr2 IS NULL )
+          AND     hca.account_number            =   gt_sales_data(ln_loop_cnt).ship_to_account_number
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            --  参照表が取得できない、担当営業員が取得できない場合、固定値を設定
+            lt_salesrep_code  :=  cv_score_member_code;
+          WHEN TOO_MANY_ROWS THEN
+            --  担当営業員が複数取得される場合、固定値を取得
+            lt_salesrep_code  :=  cv_score_member_code;
+        END;
+--  2018/04/03 V1.13 Added END
 --
         -- 出力文字列作成
         lv_csv_text := cv_enclosed || gt_sales_data(ln_loop_cnt).comp_code || cv_enclosed || cv_delimiter
@@ -734,7 +785,10 @@ AS
                     || cv_enclosed || cv_object_code || cv_enclosed || cv_delimiter
                     || cv_enclosed || cv_hc_code || cv_enclosed || cv_delimiter
                     || cv_enclosed || gt_sales_data(ln_loop_cnt).dept_code || cv_enclosed || cv_delimiter
-                    || cv_enclosed || cv_score_member_code || cv_enclosed || cv_delimiter
+--  2018/04/03 V1.13 Modified START
+--                    || cv_enclosed || cv_score_member_code || cv_enclosed || cv_delimiter
+                    || cv_enclosed || lt_salesrep_code || cv_enclosed || cv_delimiter
+--  2018/04/03 V1.13 Modified END
                     || cv_enclosed || cv_sales_card_type || cv_enclosed || cv_delimiter
                     || cv_enclosed || cv_delivery_base_code || cv_enclosed || cv_delimiter
                     || TO_CHAR ( gt_sales_data(ln_loop_cnt).rec_amount ) || cv_delimiter
