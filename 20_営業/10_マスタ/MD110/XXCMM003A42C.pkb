@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A42C(body)
  * Description      : ロケーションマスタIF出力（自販機管理）
  * MD.050           : ロケーションマスタIF出力（自販機管理） MD050_CMM_003_A42
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/02/04    1.0   K.Kiriu          新規作成
  *  2017/07/18    1.1   K.Kiriu          E_本稼動_14388対応
+ *  2018/04/03    1.2   Y.Sekine         E_本稼動_14636対応
  *
  *****************************************************************************************/
 --
@@ -138,6 +139,9 @@ AS
   cv_msg_10365         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10365';           -- 文言（起動種別）
   cv_msg_10366         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10366';           -- 担当営業員取得エラー
   cv_msg_10367         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10367';           -- 担当営業員重複エラー
+-- Ver1.2 E_本稼動_14636 Add Start
+  cv_msg_10485         CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10485';           -- 顧客事業所重複エラー
+-- Ver1.2 E_本稼動_14636 Add End
   -- 起動種別
   cv_boot_online       CONSTANT VARCHAR2(1)   := '1';                          -- 起動種別（オンラインバッチ）
   cv_boot_night        CONSTANT VARCHAR2(1)   := '2';                          -- 起動種別（夜間バッチ）
@@ -812,6 +816,9 @@ AS
 -- Ver1.1 E_本稼動_14388 Add Start
     lt_employee_num  hz_org_profiles_ext_b.c_ext_attr1%TYPE; -- 担当営業員
 -- Ver1.1 E_本稼動_14388 Add End
+-- Ver1.2 E_本稼動_14636 Add Start
+    ln_account_cnt   NUMBER;                           -- 顧客事業所件数
+-- Ver1.2 E_本稼動_14636 Add End
 --
     -- *** ローカル例外 ***
     output_skip_expt EXCEPTION;                        -- CSVファイル出力スキップ例外
@@ -917,11 +924,52 @@ AS
 -- Ver1.1 E_本稼動_14388 Add Start
       lt_employee_num := NULL;  -- 担当営業員
 -- Ver1.1 E_本稼動_14388 Add End
+-- Ver1.2 E_本稼動_14636 Add Start
+      ln_account_cnt := 0;      -- 顧客事業所件数
+-- Ver1.2 E_本稼動_14636 Add End
       -- 対象件数カウント
       gn_target_cnt   := gn_target_cnt + 1;
 --
       BEGIN
 --
+-- Ver1.2 E_本稼動_14636 Add Start
+        -- ===============================
+        -- 顧客事業所取得処理
+        -- ===============================
+        SELECT  COUNT(1) cnt                     -- 顧客事業所件数
+        INTO    ln_account_cnt
+        FROM    hz_cust_accounts           hca   -- 顧客マスタ
+               ,hz_parties                 hp    -- パーティ
+               ,xxcmm_cust_accounts        xca   -- 顧客追加情報
+               ,hz_cust_acct_sites         hcas  -- 顧客サイト
+               ,hz_party_sites             hps   -- パーティサイト
+               ,hz_locations               hl    -- 顧客事業所
+        WHERE   hca.account_number       =  get_cust_rec.account_number
+        AND     hca.party_id             = hp.party_id
+        AND     hca.cust_account_id      = xca.customer_id
+        AND     hca.cust_account_id      = hcas.cust_account_id
+        AND     hcas.party_site_id       = hps.party_site_id
+        AND     hps.location_id          = hl.location_id
+        ;
+        IF ( ln_account_cnt > 1 ) THEN
+          -- 顧客事業所が重複している場合
+          -- 顧客事業所重複エラーメッセージ生成
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name_xxcmm                        -- マスタ領域
+                         ,iv_name         => cv_msg_10485                             -- メッセージ:顧客事業所重複エラーメッセージ
+                         ,iv_token_name1  => cv_tkn_word                              -- トークン  :NG_WORD
+                         ,iv_token_value1 => get_cust_rec.account_number              -- 値        :取得した顧客コードの値
+                       );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+          -- フラグON
+          lv_warning_flag := cv_y;
+        END IF;
+-- Ver1.2 E_本稼動_14636 Add End
+
         -- ===============================
         -- 禁則文字チェック処理(A-5)
         -- ===============================
