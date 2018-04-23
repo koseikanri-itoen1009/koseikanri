@@ -283,7 +283,9 @@ SELECT
  WHERE  HAOU.date_from <= TRUNC(SYSDATE)
    AND ( HAOU.date_to IS NULL
          OR HAOU.date_to >= TRUNC(SYSDATE) )
-   AND  MIL.disable_date IS NULL
+-- [E_–{‰Ò“®_14953] SCSK Y.Sekine Del Start
+--   AND  MIL.disable_date IS NULL
+-- [E_–{‰Ò“®_14953] SCSK Y.Sekine Del End
    AND  IWM.mtl_organization_id = HAOU.organization_id
    AND  HAOU.organization_id = MIL.organization_id
 -- 2010/01/28 T.Yoshimoto Del Start –{‰Ò“®#1168
