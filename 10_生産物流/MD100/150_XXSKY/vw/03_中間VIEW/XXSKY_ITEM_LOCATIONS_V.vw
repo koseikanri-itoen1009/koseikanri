@@ -35,7 +35,9 @@ SELECT  IWM.mtl_organization_id
    AND  HAOU.organization_id = MIL.organization_id
    AND  HAOU.date_from <= TRUNC(SYSDATE)
    AND  ( HAOU.date_to IS NULL OR HAOU.date_to >= TRUNC(SYSDATE) )
-   AND  MIL.disable_date IS NULL
+-- [E_ñ{â“ìÆ_14953] SCSK Y.Sekine Del Start
+--   AND  MIL.disable_date IS NULL
+-- [E_ñ{â“ìÆ_14953] SCSK Y.Sekine Del End
 /
 COMMENT ON TABLE APPS.XXSKY_ITEM_LOCATIONS_V IS 'SKYLINKópíÜä‘VIEW OPMï€ä«èÍèäèÓïÒVIEW'
 /
