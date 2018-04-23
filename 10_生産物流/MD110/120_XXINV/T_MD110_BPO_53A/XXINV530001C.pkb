@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸結果インターフェース
  * MD.050           : 棚卸(T_MD050_BPO_530)
  * MD.070           : 結果インターフェース(T_MD070_BPO_53A)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  *  ----------------------------------------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/12/11    1.11  H.Itou           修正(本番障害#632対応：#570修正漏れ)
  *  2009/02/09    1.12  A.Shiina         修正(本番障害#1117対応：在庫クローズチェック追加)
  *  2016/06/15    1.13  Y.Shoji          E_本稼動_13563対応
+ *  2018/03/30    1.14  Y.Sekine         E_本稼動_14953対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1572,6 +1573,9 @@ AS
           INTO    lv_whse_code  --倉庫コード
           FROM  ic_whse_mst iwm -- 1.OPM倉庫マスタ
           WHERE iwm.whse_code = inv_if_rec(i).invent_whse_code
+-- [E_本稼動_14953] SCSK Y.Sekine Add Start
+            AND iwm.delete_mark = '0'
+-- [E_本稼動_14953] SCSK Y.Sekine Add End
             AND ROWNUM  = 1;
 --
         EXCEPTION
@@ -3298,6 +3302,9 @@ AS
         INTO   lv_whse_code
         FROM   ic_whse_mst icmt
         WHERE  icmt.whse_code = iv_whse_code
+-- [E_本稼動_14953] SCSK Y.Sekine Add Start
+        AND    icmt.delete_mark = '0'
+-- [E_本稼動_14953] SCSK Y.Sekine Add End
         AND    ROWNUM      = 1;
       EXCEPTION
       -- データがない場合はエラー
