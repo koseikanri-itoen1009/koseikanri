@@ -7,7 +7,7 @@ AS
  * Description      : HHT棚卸データIFプログラム
  * MD.050/070       : 棚卸Issue1.0(T_MD050_BPO_530)
  *                  : 棚卸Issue1.0(T_MD050_BPO_53B)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/12/06    1.5   T.Miyata         修正(本番障害#510対応：日付は変換して比較)
  *  2009/02/09    1.6   A.Shiina         修正(本番障害#1117対応：在庫クローズチェック追加)
  *  2009/02/09    1.7   A.Shiina         修正(本番障害#1129対応：パラメータ追加)
+ *  2018/03/30    1.8   Y.Sekine         E_本稼動_14953対応
  *
  *****************************************************************************************/
 --
@@ -2273,6 +2274,9 @@ AS
         INTO   lv_whse_code
         FROM   ic_whse_mst icmt
         WHERE  icmt.whse_code = iv_whse_code
+-- [E_本稼動_14953] SCSK Y.Sekine Add Start
+        AND    icmt.delete_mark = '0'
+-- [E_本稼動_14953] SCSK Y.Sekine Add End
         AND    ROWNUM      = 1;
       EXCEPTION
       -- データがない場合はエラー
