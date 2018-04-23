@@ -282,7 +282,9 @@ SELECT
 -- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
  WHERE  IWM.mtl_organization_id = HAOU.organization_id
    AND  HAOU.organization_id = MIL.organization_id
-   AND  MIL.disable_date IS NULL
+-- [E_本稼動_14953] SCSK Y.Sekine Del Start
+--   AND  MIL.disable_date IS NULL
+-- [E_本稼動_14953] SCSK Y.Sekine Del End
 -- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
    --AND  IWM.orgn_code = SOMT.orgn_code(+)
    --AND  SOMT.language(+) = 'JA'
