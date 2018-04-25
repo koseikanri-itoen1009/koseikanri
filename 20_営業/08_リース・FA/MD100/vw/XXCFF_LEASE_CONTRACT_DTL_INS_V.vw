@@ -114,9 +114,17 @@ SELECT XCL.CONTRACT_LINE_ID                                        AS CONTRACT_L
       ,XCL.ESTIMATED_CASH_PRICE                                    AS ESTIMATED_CASH_PRICE
       ,XCL.PRESENT_VALUE_DISCOUNT_RATE * 100                       AS PRESENT_VALUE_DISCOUNT_RATE
       ,XCL.PRESENT_VALUE                                           AS PRESENT_VALUE
-      ,ROUND(XCL.PRESENT_VALUE / XCL.ESTIMATED_CASH_PRICE * 100)   AS PRESENT_VALUE_STANDARD
+--ÅyE_ñ{â“ìÆ_14830ÅzMOD START Maeda
+      --,ROUND(XCL.PRESENT_VALUE / XCL.ESTIMATED_CASH_PRICE * 100)   AS PRESENT_VALUE_STANDARD
+      ,DECODE(LC.ATT7,'2',0,ROUND(XCL.PRESENT_VALUE / XCL.ESTIMATED_CASH_PRICE * 100))
+                                                                   AS PRESENT_VALUE_STANDARD
+--ÅyE_ñ{â“ìÆ_14830ÅzMOD END Maeda   
       ,XCL.LIFE_IN_MONTHS                                          AS LIFE_IN_MONTHS
-      ,ROUND(XCH.PAYMENT_YEARS / XCL.LIFE_IN_MONTHS * 100)         AS LIFE_IN_MONTHS_STANDARD
+--ÅyE_ñ{â“ìÆ_14830ÅzMOD START Maeda
+      --,ROUND(XCH.PAYMENT_YEARS / XCL.LIFE_IN_MONTHS * 100)         AS LIFE_IN_MONTHS_STANDARD
+      ,DECODE(LC.ATT7,'2',0,ROUND(XCH.PAYMENT_YEARS / XCL.LIFE_IN_MONTHS * 100) )
+                                                                   AS LIFE_IN_MONTHS_STANDARD
+--ÅyE_ñ{â“ìÆ_14830ÅzMOD END Maeda   
       ,XCL.LEASE_KIND                                              AS LEASE_KIND
       ,XLK.LEASE_KIND_NAME                                         AS LEASE_KIND_NAME
       ,XCL.ORIGINAL_COST                                           AS ORIGINAL_COST
@@ -145,6 +153,15 @@ FROM   XXCFF_CONTRACT_HEADERS  XCH
               ,CONTRACT_LINE_ID
         FROM  XXCFF_PAY_PLANNING
         GROUP BY CONTRACT_LINE_ID) XPP
+--ÅyE_ñ{â“ìÆ_14830ÅzADD START Maeda
+      ,(SELECT FLV.LOOKUP_CODE LEASE_CLASS
+            ,FLV.ATTRIBUTE7    ATT7  -- ÉäÅ[ÉXîªíËèàóù
+        FROM
+            FND_LOOKUP_VALUES  FLV
+        WHERE
+             FLV.LOOKUP_TYPE  = 'XXCFF1_LEASE_CLASS_CHECK'
+       AND   FLV.LANGUAGE     = 'JA') LC
+--ÅyE_ñ{â“ìÆ_14830ÅzADD END Maeda   
 --ÅyE_ñ{â“ìÆ_10871ÅzMOD START Nakano
        ,AP_TAX_CODES           ATC1
        ,AP_TAX_CODES           ATC2
@@ -160,6 +177,9 @@ FROM   XXCFF_CONTRACT_HEADERS  XCH
  AND   XCH.TAX_CODE      = ATC1.NAME(+)
  AND   XCL.TAX_CODE      = ATC2.NAME(+)
 --ÅyE_ñ{â“ìÆ_10871ÅzMOD END Nakano
+--ÅyE_ñ{â“ìÆ_14830ÅzADD START Maeda
+ AND   LC.LEASE_CLASS = XCH.LEASE_CLASS
+--ÅyE_ñ{â“ìÆ_14830ÅzADD END Maeda 
 ;
 COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.CONTRACT_LINE_ID             IS 'å_ñÒñæç◊ì‡ïîÇhÇc';
 COMMENT ON COLUMN XXCFF_LEASE_CONTRACT_DTL_INS_V.CONTRACT_HEADER_ID           IS 'å_ñÒì‡ïîÇhÇc';
