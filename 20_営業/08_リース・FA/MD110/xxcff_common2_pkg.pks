@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF_COMMON2_PKG(spec)
  * Description      : FAリース共通処理
  * MD.050           : なし
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,6 +16,7 @@ AS
  *  get_lease_key          リースキーの取得
  *  get_object_info        物件コードリース区分、リース種別チェック
  *  chk_object_term        物件コード解約チェック
+ *  get_lease_class_info   リース種別DFF情報取得
  *  <program name>         <説明> (処理番号)
  *  作成順に記述していくこと
  *
@@ -25,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/25    1.0    SCS大井          新規作成
  *  2008/12/05    1.1    SCS嶋田          追加：物件コード解約チェック
+ *  2018/03/27    1.2    SCSK大塚         追加：リース種別DFF情報取得
  *
  *****************************************************************************************/
 --
@@ -63,6 +65,16 @@ AS
     ov_retcode           OUT NOCOPY VARCHAR2,      --   リターン・コード             --# 固定 #
     ov_errmsg            OUT NOCOPY VARCHAR2       --   ユーザー・エラー・メッセージ --# 固定 #
   );
-  
+  -- リース種別DFF情報取得
+  PROCEDURE get_lease_class_info(
+    iv_lease_class  IN VARCHAR2,          -- 1.リース種別
+    ov_ret_dff4     OUT VARCHAR2,         -- DFF4のデータ格納用
+    ov_ret_dff5     OUT VARCHAR2,         -- DFF5のデータ格納用
+    ov_ret_dff6     OUT VARCHAR2,         -- DFF6のデータ格納用
+    ov_ret_dff7     OUT VARCHAR2,         -- DFF7のデータ格納用
+    ov_errbuf       OUT NOCOPY VARCHAR2,  --   エラー・メッセージ           --# 固定 #
+    ov_retcode      OUT NOCOPY VARCHAR2,  --   リターン・コード             --# 固定 #
+    ov_errmsg       OUT NOCOPY VARCHAR2   --   ユーザー・エラー・メッセージ --# 固定 #
+  );
 END XXCFF_COMMON2_PKG;
 /
