@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A10C(body)
  * Description      : 電子帳簿リース取引の情報系システム連携
  * MD.050           : MD050_CFO_019_A10_電子帳簿リース取引の情報系システム連携
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2012-11-26    1.1   K.Nakamura       [E_本稼動_10112対応]T4検証パフォーマンス障害対応
  *  2012-12-19    1.2   T.Osawa          [E_本稼動_10112対応]抽出条件変更
  *  2016-08-25    1.3   SCSK郭           [E_本稼動_13658対応]自販機耐用年数変更
+ *  2018-03-27    1.4   SCSK森           [E_本稼動_14830対応]取得条件変更
  *
  *****************************************************************************************/
 --
@@ -114,6 +115,9 @@ AS
   -- 参照タイプ
   cv_lookup_item_chk_lease    CONSTANT VARCHAR2(30) := 'XXCFO1_ELECTRIC_ITEM_CHK_LEASE';             -- 電子帳簿項目チェック（リース取引）
   cv_lookup_elec_book_date    CONSTANT VARCHAR2(30) := 'XXCFO1_ELECTRIC_BOOK_DATE';                  -- 電子帳簿処理実行日
+-- 2018/03/27 1.4 H.Mori ADD START
+  cv_lookup_lease_class_check CONSTANT VARCHAR2(30) := 'XXCFF1_LEASE_CLASS_CHECK';                   -- リース種別チェック
+-- 2018/03/27 1.4 H.mori ADD END
   -- メッセージ
   cv_msg_cff_00189            CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00189'; -- 参照タイプ取得エラーメッセージ
   cv_msg_coi_00029            CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00029'; -- ディレクトリフルパス取得エラーメッセージ
@@ -1931,6 +1935,9 @@ AS
                                               , cv_transaction_type_3 )
                AND    xft.gl_if_flag       = cv_gl_if_flag_2
              )                      xft1 -- インラインビュー
+-- 2018/03/27 1.4 H.Mori ADD START
+           , apps.fnd_lookup_values flv -- クイックコード
+-- 2018/03/27 1.4 H.Mori ADD END
       WHERE  xch.contract_header_id  = xcl.contract_header_id
       AND    xcl.object_header_id    = xoh.object_header_id
       AND    xcl.contract_line_id    = xpp.contract_line_id
@@ -1944,6 +1951,15 @@ AS
       AND    xft1.transaction_type  = cv_transaction_type_3 ))
 -- 2012-12-19 1.2 T.Osawa MOD END
       AND    xpp.period_name         = lv_period_name
+-- 2018/03/27 1.4 H.Mori ADD START
+      AND    xch.lease_class         = flv.lookup_code
+      AND    flv.lookup_type         = cv_lookup_lease_class_check                                     -- リース種別チェック
+      AND    gd_process_date         BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                     AND     NVL(flv.end_date_active, gd_process_date)
+      AND    flv.enabled_flag        = cv_flag_y
+      AND    flv.language            = ct_lang
+      AND    flv.attribute4          = cv_flag_y
+-- 2018/03/27 1.4 H.Mori ADD END
     ;
     --
     -- 対象データ取得カーソル（定期実行）
@@ -2077,6 +2093,9 @@ AS
                                               , cv_transaction_type_3 )
                AND    xft.gl_if_flag       = cv_gl_if_flag_2
              )                      xft1 -- インラインビュー
+-- 2018/03/27 1.4 H.Mori ADD START
+           , apps.fnd_lookup_values flv -- クイックコード
+-- 2018/03/27 1.4 H.Mori ADD END
       WHERE  xch.contract_header_id  = xcl.contract_header_id
       AND    xcl.object_header_id    = xoh.object_header_id
       AND    xcl.contract_line_id    = xpp.contract_line_id
@@ -2093,6 +2112,15 @@ AS
                       FROM   xxcfo_lease_wait_coop xlwc -- リース取引未連携テーブル
                       WHERE  xlwc.period_name = xpp.period_name
                       AND    xlwc.object_code = xoh.object_code )
+-- 2018/03/27 1.4 H.Mori ADD START
+      AND    xch.lease_class         = flv.lookup_code
+      AND    flv.lookup_type         = cv_lookup_lease_class_check                                     -- リース種別チェック
+      AND    gd_process_date         BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                     AND     NVL(flv.end_date_active, gd_process_date)
+      AND    flv.enabled_flag        = cv_flag_y
+      AND    flv.language            = ct_lang
+      AND    flv.attribute4          = cv_flag_y
+-- 2018/03/27 1.4 H.Mori ADD END
       UNION ALL
       SELECT /*+ LEADING(xpp xcl xch xoh fab xft1) 
                  USE_NL(xch xcl xoh xpp fab xft1) 
@@ -2218,6 +2246,9 @@ AS
                                               , cv_transaction_type_3 )
                AND    xft.gl_if_flag       = cv_gl_if_flag_2
              )                      xft1 -- インラインビュー
+-- 2018/03/27 1.4 H.Mori ADD START
+           , apps.fnd_lookup_values flv -- クイックコード
+-- 2018/03/27 1.4 H.Mori ADD END
       WHERE  xch.contract_header_id  = xcl.contract_header_id
       AND    xcl.object_header_id    = xoh.object_header_id
       AND    xcl.contract_line_id    = xpp.contract_line_id
@@ -2231,6 +2262,15 @@ AS
       AND    xft1.transaction_type  = cv_transaction_type_3 ))
 -- 2012-12-19 1.2 T.Osawa MOD END
       AND    xpp.period_name         = lv_period_name
+-- 2018/03/27 1.4 H.Mori ADD START
+      AND    xch.lease_class         = flv.lookup_code
+      AND    flv.lookup_type         = cv_lookup_lease_class_check                                     -- リース種別チェック
+      AND    gd_process_date         BETWEEN NVL(flv.start_date_active, gd_process_date)
+                                     AND     NVL(flv.end_date_active, gd_process_date)
+      AND    flv.enabled_flag        = cv_flag_y
+      AND    flv.language            = ct_lang
+      AND    flv.attribute4          = cv_flag_y
+-- 2018/03/27 1.4 H.Mori ADD END
     ;
 --
   BEGIN
