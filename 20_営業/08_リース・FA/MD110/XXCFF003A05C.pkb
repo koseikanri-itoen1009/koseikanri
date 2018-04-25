@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A05C(body)
  * Description      : 支払計画作成
  * MD.050           : MD050_CFF_003_A05_支払計画作成.doc
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  * 2012/2/6       1.4   SCSK菅原大輔    [E_本稼動_08356] 支払計画作成時の会計期間比較条件変更 
  * 2016/9/6       1.5   SCSK小路恭弘    [E_本稼動_13658] 耐用年数変更対応
  * 2016/10/26     1.6   SCSK郭          E_本稼動_13658 自販機耐用年数変更対応・フェーズ3
+ * 2018/3/27      1.7   SCSK大塚        E_本稼動_14830 IFRSリース資産対応
  *
  *****************************************************************************************/
 --
@@ -132,10 +133,23 @@ AS
   --リース月次締期間取得エラー
   cv_tk_cff_00194_01 CONSTANT VARCHAR2(15)  := 'BOOK_ID';  -- テーブル名  
 -- 2012/02/06 Ver.1.4 D.Sugahara ADD End  
+-- 2018/03/27 Ver1.7 Otsuka ADD Start
+  cv_tkn_lookup_type CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE'; -- ルックアップタイプ
+  cv_tk_cff_00094_01 CONSTANT VARCHAR2(15) := 'FUNC_NAME';   -- 共通関数
+--
+  -- 共通関数エラー
+  cv_msg_cff_00094   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00094';
+  -- 共通関数メッセージ
+  cv_msg_cff_00095   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00095';
+  cv_msg_cff_00189   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00189';  -- 参照タイプ取得エラー
+-- 2018/03/27 Ver1.7 Otsuka ADD End
 --
   -- トークン
   cv_msg_cff_50028   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50028';  -- 契約明細内部ID
   cv_msg_cff_50088   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50088';  -- リース支払計画
+-- 2018/03/27 Ver1.7 Otsuka ADD Start
+  cv_msg_cff_50323   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50323';  -- リース判定処理
+-- 2018/03/27 Ver1.7 Otsuka ADD End
 --
 -- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
   --プロファイル
@@ -155,6 +169,10 @@ AS
 -- 2016/10/26 Ver.1.6 Y.Koh ADD Start
   cd_start_date      CONSTANT DATE := TO_DATE('2016/05/01','YYYY/MM/DD');
 -- 2016/10/26 Ver.1.6 Y.Koh ADD End
+-- 2018/03/27 Ver1.7 Otsuka ADD Start
+  -- リース判定
+  cv_lease_cls_chk2   CONSTANT VARCHAR2(1)  := '2';        -- リース判定結果：2
+-- 2018/03/27 Ver1.7 Otsuka ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -1062,6 +1080,13 @@ AS
     lv_close_period_name     xxcff_lease_closed_periods.period_name%TYPE;    --リース月次締期間（締められた最終月）
     ln_set_of_book_id        gl_sets_of_books.set_of_books_id%TYPE;          --会計帳簿ID
 -- 2012/02/06 Ver.1.4 D.Sugahara ADD End
+-- 2018/03/27 Ver1.7 Otsuka ADD Start
+    lv_lease_class VARCHAR2(2);    -- リース種別
+    lv_ret_dff4    VARCHAR2(1);    -- リース判定DFF4
+    lv_ret_dff5    VARCHAR2(1);    -- リース判定DFF5
+    lv_ret_dff6    VARCHAR2(1);    -- リース判定DFF6
+    lv_ret_dff7    VARCHAR2(1);    -- リース判定DFF7
+-- 2018/03/27 Ver1.7 Otsuka ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1144,6 +1169,38 @@ AS
     END;
 --
 -- 2012/02/06 Ver.1.4 D.Sugahara ADD End
+-- 2018/03/27 Ver1.7 Otsuka ADD Start
+--
+    lv_lease_class := gn_lease_class;
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --  リース判定処理 
+    xxcff_common2_pkg.get_lease_class_info(
+        iv_lease_class  =>    lv_lease_class
+        ,ov_ret_dff4    =>    lv_ret_dff4           -- DFF4(日本基準連携)
+        ,ov_ret_dff5    =>    lv_ret_dff5           -- DFF5(IFRS連携)
+        ,ov_ret_dff6    =>    lv_ret_dff6           -- DFF6(仕訳作成)
+        ,ov_ret_dff7    =>    lv_ret_dff7           -- DFF7(リース判定処理)
+        ,ov_errbuf      =>    lv_errbuf
+        ,ov_retcode     =>    lv_retcode
+        ,ov_errmsg      =>    lv_errmsg
+     );
+    -- 共通関数エラーの場合
+    IF (lv_retcode <> cv_status_normal) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                                                     cv_msg_cff_00094,    -- メッセージ：共通関数エラー
+                                                     cv_tk_cff_00094_01,  -- 共通関数名
+                                                     cv_msg_cff_50323  )  -- ファイルID
+                                                    || cv_msg_part
+                                                    || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+   END IF;
+-- 2018/03/27 Ver1.7 Otsuka ADD End
     --初期化
     ln_cnt           := 1;
     -- 該当件数分ループする
@@ -1215,7 +1272,11 @@ AS
       END IF;
 --
       --ＦＩＮリース支払利息      
-      IF (gn_lease_type  = cv_gn_lease_type1) THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD Start
+--      IF (gn_lease_type  = cv_gn_lease_type1) THEN
+--    リース区分が’原契約'の場合および、リース判定が'2'の場合
+      IF (gn_lease_type  = cv_gn_lease_type1) OR (lv_ret_dff7 = cv_lease_cls_chk2)THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD End
         IF (ln_cnt = 1) THEN
           ln_fin_interest_due := round(gn_original_cost * ln_calc_interested_rate);
         ELSE
@@ -1224,7 +1285,10 @@ AS
       END IF;
 --
       --ＦＩＮリース債務額
-      IF (gn_lease_type  = cv_gn_lease_type1) THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD Start
+--      IF (gn_lease_type  = cv_gn_lease_type1) THEN
+      IF (gn_lease_type  = cv_gn_lease_type1) OR (lv_ret_dff7 = cv_lease_cls_chk2)THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD End
         IF (ln_cnt = 1) THEN
           ln_fin_debt := gn_first_charge - gn_first_deduction - ln_fin_interest_due;
         ELSE
@@ -1233,7 +1297,10 @@ AS
       END IF;
       --
       --ＦＩＮリース債務額_消費税
-      IF (gn_lease_type  = cv_gn_lease_type1) THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD Start
+--      IF (gn_lease_type  = cv_gn_lease_type1) THEN
+      IF (gn_lease_type  = cv_gn_lease_type1) OR (lv_ret_dff7 = cv_lease_cls_chk2)THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD End
         IF (ln_cnt = 1) THEN
           ln_fin_tax_debt := gn_first_tax_charge - gn_first_tax_deduction;
         ELSE
@@ -1242,7 +1309,10 @@ AS
       END IF;
 --
       --ＦＩＮリース債務残
-       IF (gn_lease_type  = cv_gn_lease_type1) THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD Start
+--      IF (gn_lease_type  = cv_gn_lease_type1) THEN
+      IF (gn_lease_type  = cv_gn_lease_type1) OR (lv_ret_dff7 = cv_lease_cls_chk2)THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD End
         IF (ln_cnt = 1) THEN
           ln_fin_debt_rem := gn_original_cost - ln_fin_debt;
         ELSE
@@ -1264,7 +1334,10 @@ AS
       END IF;
 --
       --ＦＩＮリース債務残_消費税
-       IF (gn_lease_type  = cv_gn_lease_type1) THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD Start
+--      IF (gn_lease_type  = cv_gn_lease_type1) THEN
+      IF (gn_lease_type  = cv_gn_lease_type1) OR (lv_ret_dff7 = cv_lease_cls_chk2)THEN
+-- 2018/03/27 Ver1.7 Otsuka MOD End
         IF (ln_cnt = 1) THEN
           ln_fin_tax_debt_rem  := gn_gross_tax_charge - gn_gross_tax_deduction - ln_fin_tax_debt;
         ELSE
