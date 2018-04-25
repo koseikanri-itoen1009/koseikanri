@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF010A16C(body)
  * Description      : リース仕訳作成
  * MD.050           : MD050_CFF_010_A16_リース仕訳作成
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  set_lease_class_aff          【内部共通処理】リース種別AFF値設定    (A-21)
  *  set_jnl_amount               【内部共通処理】金額設定               (A-22)
  *  ins_xxcff_gl_trn             【内部共通処理】リース仕訳テーブル登録 (A-23)
+ *  ins_xxcff_gl_trn2            【内部共通処理】リース仕訳登録（新規、振替、解約用）(A-27)
  *  get_release_balance_data     仕訳元データ(再リース差額)抽出         (A-25)
  *  proc_ptn_debt_balance       【仕訳パターン】再リース差額            (A-26)
  *  submain                      メイン処理プロシージャ
@@ -57,6 +58,7 @@ AS
  *  2016/09/16    1.8   SCSK小路恭弘     [E_本稼動_13658]障害対応分
  *  2016/09/23    1.9   SCSK小路恭弘     [E_本稼動_13658]自販機の耐用年数を変更する
  *  2017/03/27    1.10  SCSK小路恭弘     [E_本稼動_14030]減価償却費を拠点へ振替える
+ *  2018/03/27    1.11  SCSK前田寛隆     [E_本稼動_14830]IFRSリース資産対応
  *
  *****************************************************************************************/
 --
@@ -116,6 +118,10 @@ AS
   get_login_info_expt       EXCEPTION;
   --*** 会計帳簿名取得エラー
   get_sob_name_expt         EXCEPTION;
+-- Ver.1.11 Maeda ADD Start
+  --*** IFRS会計帳簿名取得エラー
+  get_sob_name_expt2        EXCEPTION;
+-- Ver.1.11 Maeda ADD End
 -- T1_0356 2009/04/17 ADD START --
   --*** 営業日日付取得エラー
   get_working_day_expt      EXCEPTION;
@@ -161,6 +167,9 @@ AS
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
   cv_msg_013a20_m_022 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00245'; -- リース仕訳テーブル作成（仕訳元＝再リース差額）メッセージ
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- Ver.1.11 Maeda ADD Start
+  cv_msg_013a20_m_023 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00101'; -- 取得エラー
+-- Ver.1.11 Maeda ADD End
 --
   -- ***メッセージ名(トークン)
   cv_msg_013a20_t_010 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50076'; --XXCFF:会社コード_本社
@@ -182,7 +191,10 @@ AS
   cv_msg_013a20_t_026 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50172'; --リース種別=
 -- T1_0356 2009/04/17 ADD START --
   cv_msg_013a20_t_027 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50188'; --XXCFF:オンライン終了時間
-  cv_msg_013a20_t_028 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50189'; --営業日日付
+-- Ver.1.11 Maeda MOD Start
+--  cv_msg_013a20_t_028 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50189'; --営業日日付
+  cv_msg_013a20_t_028 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50328'; --営業日日付取得
+-- Ver.1.11 Maeda MOD End
 -- T1_0356 2009/04/17 ADD END   --
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD Start
   cv_msg_013a20_t_029 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50285'; -- リース仕訳(仕訳元=再リース差額)情報
@@ -191,6 +203,11 @@ AS
   cv_msg_013a20_t_030 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50286'; -- XXCFF:部門コード_自販機部
   cv_msg_013a20_t_031 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50078'; -- XXCFF:部門コード_調整部門
 -- 2017/03/27 Ver.1.10 Y.Shoji ADD End
+-- Ver.1.11 Maeda ADD Start
+  cv_msg_013a20_t_032 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50323'; -- リース判定処理
+  cv_msg_013a20_t_033 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50287'; -- XXCFF:台帳名_FINリース台帳
+  cv_msg_013a20_t_034 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50324'; -- XXCFF:台帳名_IFRSリース台帳
+-- Ver.1.11 Maeda ADD End
 --
   -- ***トークン名
   cv_tkn_prof     CONSTANT VARCHAR2(20) := 'PROF_NAME';
@@ -203,6 +220,9 @@ AS
 -- T1_0356 2009/04/17 ADD START --
   cv_tkn_func_name CONSTANT VARCHAR2(20) := 'FUNC_NAME';
 -- T1_0356 2009/04/17 ADD END   --
+-- Ver.1.11 Maeda ADD Start
+  cv_tkn_info     CONSTANT VARCHAR2(20) := 'INFO';
+-- Ver.1.11 Maeda ADD End
 --
   -- ***プロファイル
 --
@@ -227,6 +247,12 @@ AS
   cv_dep_cd_vending       CONSTANT VARCHAR2(30) := 'XXCFF1_DEP_CD_VENDING';
   -- XXCFF:部門コード_調整部門
   cv_dep_cd_chosei        CONSTANT VARCHAR2(30) := 'XXCFF1_DEP_CD_CHOSEI';
+-- Ver.1.11 Maeda ADD Start
+  -- XXCFF:台帳名_FINリース台帳
+  cv_book_type_fin_lease  CONSTANT VARCHAR2(30) := 'XXCFF1_FIN_LEASE_BOOKS';
+  -- XXCFF:台帳名_IFRSリース台帳
+  cv_book_type_ifrs_lease CONSTANT VARCHAR2(30) := 'XXCFF1_IFRS_LEASE_BOOKS';
+-- Ver.1.11 Maeda ADD End
 --
   -- ***参照タイプ
   cv_xxcff1_lease_class_check CONSTANT VARCHAR2(30) := 'XXCFF1_LEASE_CLASS_CHECK';
@@ -318,6 +344,10 @@ AS
   cn_re_lease_times_3     CONSTANT NUMBER(1)   := 3;
 --
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- Ver.1.11 Maeda ADD Start
+  cv_ifrs_book_name       CONSTANT VARCHAR2(15) :='IFRS-SOB';
+  cv_comment              VARCHAR2(15) := 'IFRS帳簿名';
+-- Ver.1.11 Maeda ADD End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -340,6 +370,9 @@ AS
   TYPE g_payment_frequency_ttype     IS TABLE OF xxcff_pay_planning.payment_frequency%TYPE INDEX BY PLS_INTEGER;
   TYPE g_department_code_ttype       IS TABLE OF xxcff_object_headers.department_code%TYPE INDEX BY PLS_INTEGER;
   TYPE g_customer_code_ttype         IS TABLE OF xxcff_object_headers.customer_code%TYPE INDEX BY PLS_INTEGER;
+-- Ver.1.11 Maeda ADD Start
+  TYPE g_book_type_code2_ttype       IS TABLE OF fa_deprn_periods.book_type_code%TYPE INDEX BY PLS_INTEGER;
+-- Ver.1.11 Maeda ADD End
   TYPE g_temp_pay_tax_ttype          IS TABLE OF NUMBER INDEX BY PLS_INTEGER;-- 仮払消費税
   TYPE g_liab_blc_ttype              IS TABLE OF NUMBER INDEX BY PLS_INTEGER;-- リース債務残
   TYPE g_liab_tax_blc_ttype          IS TABLE OF NUMBER INDEX BY PLS_INTEGER;-- リース債務残_消費税
@@ -404,6 +437,9 @@ AS
 -- 2017/03/27 Ver.1.10 Y.Shoji ADD Start
   g_dept_tran_flg_tab                   g_dept_tran_flg_ttype;    -- 部門振替フラグ
 -- 2017/03/27 Ver.1.10 Y.Shoji ADD End
+-- Ver.1.11 Maeda ADD Start
+  g_book_type_code2_tab                 g_book_type_code2_ttype;  -- 資産台帳名
+-- Ver.1.11 Maeda ADD End
 --
   -- ***処理件数
   -- リース取引からのリース仕訳テーブル登録処理における件数
@@ -454,6 +490,12 @@ AS
   -- ***会計帳簿情報
   -- 会計帳簿名
   gt_sob_name         gl_sets_of_books.name%TYPE;
+-- Ver.1.11 Maeda ADD Start
+  gt_sob_name2        gl_sets_of_books.name%TYPE;
+  gt_sob_id           gl_sets_of_books.set_of_books_id%TYPE;
+  gt_sob_id2          gl_sets_of_books.set_of_books_id%TYPE;
+  gt_lease_class_code xxcff_lease_class_v.lease_class_code%TYPE;    -- リース種別
+-- Ver.1.11 Maeda ADD End
 --
   -- ***プロファイル値
   -- 会社コード_本社
@@ -477,6 +519,12 @@ AS
   gv_dep_cd_vending        VARCHAR2(100);
   -- 部門コード_調整部門
   gv_dep_cd_chosei         VARCHAR2(100);
+-- Ver.1.11 Maeda ADD Start
+  -- XXCFF:台帳名_FINリース台帳
+  gv_book_type_fin_lease  VARCHAR2(100);
+  -- XXCFF:台帳名_IFRSリース台帳
+  gv_book_type_ifrs_lease VARCHAR2(100);
+-- Ver.1.11 Maeda ADD End
 -- 2017/03/27 Ver.1.10 Y.Shoji ADD End
   -- ***カーソル定義
   -- リース種別毎AFF情報取得カーソル
@@ -565,6 +613,9 @@ AS
            ,NULL                                AS debt_rem_re        -- リース債務残_再リース
            ,NULL                                AS payment_frequency  -- 支払回数
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- Ver.1.11 Maeda ADD Start
+           ,xxcff_fa_trn.book_type_code         AS book_type_code     -- 資産台帳名
+-- Ver.1.11 Maeda ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -577,7 +628,10 @@ AS
     AND   ctrct_line.contract_header_id = ctrct_head.contract_header_id
     AND   xxcff_fa_trn.gl_if_flag       = cv_if_yet          -- 未送信
     AND   xlk.lease_kind_code           = cv_lease_kind_fin  -- FINリース
-    AND   xxcff_fa_trn.book_type_code   = xlk.book_type_code
+-- Ver.1.11 Maeda MOD Start
+--    AND   xxcff_fa_trn.book_type_code   = xlk.book_type_code
+    AND   xxcff_fa_trn.book_type_code   IN (xlk.book_type_code, xlk.book_type_code_ifrs)
+-- Ver.1.11 Maeda MOD End
     UNION ALL
     SELECT
             xxcff_fa_trn.fa_transaction_id      AS fa_transaction_id  -- リース取引内部ID
@@ -634,6 +688,9 @@ AS
                 pay_plan.debt_rem_re + pay_plan.debt_re
               END                                                       AS debt_rem_re  -- リース債務残_再リース
            ,pay_plan.payment_frequency          AS payment_frequency  -- 支払回数
+-- Ver.1.11 Maeda ADD Start
+           ,xxcff_fa_trn.book_type_code         AS book_type_code     -- 資産台帳名
+-- Ver.1.11 Maeda ADD End
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
@@ -653,7 +710,10 @@ AS
     AND   ctrct_line.contract_header_id =  ctrct_head.contract_header_id
     AND   xxcff_fa_trn.gl_if_flag       =  cv_if_yet          --未送信
     AND   xlk.lease_kind_code           =  cv_lease_kind_fin  -- FINリース
-    AND   xxcff_fa_trn.book_type_code   =  xlk.book_type_code
+-- Ver.1.11 Maeda MOD Start
+--    AND   xxcff_fa_trn.book_type_code   =  xlk.book_type_code
+    AND   xxcff_fa_trn.book_type_code   IN (xlk.book_type_code, xlk.book_type_code_ifrs)
+-- Ver.1.11 Maeda MOD End
 -- T1_0874 2009/05/14 ADD START --
     UNION ALL
     SELECT
@@ -687,6 +747,9 @@ AS
            ,pay_plan.debt_rem_re + pay_plan.debt_re                 AS debt_rem_re   -- リース債務残_再リース
            ,pay_plan.payment_frequency          AS payment_frequency  -- 支払回数
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- Ver.1.11 Maeda ADD Start
+           ,xxcff_fa_trn.book_type_code         AS book_type_code     -- 資産台帳名
+-- Ver.1.11 Maeda ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -702,7 +765,10 @@ AS
     AND   ctrct_line.contract_header_id =  ctrct_head.contract_header_id
     AND   xxcff_fa_trn.gl_if_flag       =  cv_if_yet          --未送信
     AND   xlk.lease_kind_code           =  cv_lease_kind_fin  -- FINリース
-    AND   xxcff_fa_trn.book_type_code   =  xlk.book_type_code
+-- Ver.1.11 Maeda MOD Start
+--    AND   xxcff_fa_trn.book_type_code   =  xlk.book_type_code
+    AND   xxcff_fa_trn.book_type_code   IN (xlk.book_type_code, xlk.book_type_code_ifrs)
+-- Ver.1.11 Maeda MOD End
 -- T1_0874 2009/05/14 ADD END   --
     ;
   g_get_les_trn_data_rec  get_les_trn_data_cur%ROWTYPE;
@@ -863,6 +929,9 @@ AS
                                         ,object_header_id    xxcff_fa_transactions.object_header_id%TYPE
                                         ,payment_frequency   xxcff_pay_planning.payment_frequency%TYPE
                                         ,period_name         xxcff_fa_transactions.period_name%TYPE
+-- Ver.1.11 Maeda ADD Start
+                                        ,book_type_code      xxcff_fa_transactions.book_type_code%TYPE
+-- Ver.1.11 Maeda ADD End
                                        );
   -- ***リース仕訳金額情報(レコード型)
   TYPE jnl_amount_rtype     IS RECORD (  temp_pay_tax    NUMBER -- 仮払消費税
@@ -1048,6 +1117,12 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- Ver.1.11 Maeda ADD Start
+    lv_ret_dff4    VARCHAR2(1);    -- リース判定DFF4
+    lv_ret_dff5    VARCHAR2(1);    -- リース判定DFF5
+    lv_ret_dff6    VARCHAR2(1);    -- リース判定DFF6
+    lv_ret_dff7    VARCHAR2(1);    -- リース判定DFF7
+-- Ver.1.11 Maeda ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1067,82 +1142,202 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- Ver.1.11 Maeda ADD Start
+    --登録先帳簿の情報取得
+    --  リース判定処理
+    xxcff_common2_pkg.get_lease_class_info(
+      iv_lease_class  =>    gt_lease_class_code   -- リース種別
+      ,ov_ret_dff4    =>    lv_ret_dff4           -- DFF4(日本基準連携)
+      ,ov_ret_dff5    =>    lv_ret_dff5           -- DFF5(IFRS連携)
+      ,ov_ret_dff6    =>    lv_ret_dff6           -- DFF6(仕訳作成)
+      ,ov_ret_dff7    =>    lv_ret_dff7           -- DFF7(リース判定処理)
+      ,ov_errbuf      =>    lv_errbuf
+      ,ov_retcode     =>    lv_retcode
+      ,ov_errmsg      =>    lv_errmsg
+    );
+    -- 共通関数エラーの場合
+    IF (lv_retcode <> cv_status_normal) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                                                     cv_msg_013a20_m_021,    -- メッセージ：共通関数エラー
+                                                     cv_tkn_func_name,  -- 共通関数名
+                                                     cv_msg_013a20_t_032  )  -- ファイルID
+                                                    || cv_msg_part
+                                                    || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+-- Ver.1.11 Maeda ADD End
+--
     --連番カウントアップ
     gn_transaction_num := gn_transaction_num + 1;
 --
-    INSERT INTO xxcff_gl_transactions(
-       gl_transaction_id       -- リース仕訳内部ID
-      ,fa_transaction_id       -- リース取引内部ID
-      ,contract_header_id      -- 契約内部ID
-      ,contract_line_id        -- 契約明細内部ID
-      ,object_header_id        -- 物件内部ID
-      ,payment_frequency       -- 支払回数
-      ,transaction_num         -- 連番
-      ,description             -- 摘要
-      ,je_category             -- 仕訳カテゴリ名
-      ,je_source               -- 仕訳ソース名
-      ,company_code            -- 会社コード
-      ,department_code         -- 管理部門コード
-      ,account_code            -- 勘定科目コード
-      ,sub_account_code        -- 補助科目コード
-      ,customer_code           -- 顧客コード
-      ,enterprise_code         -- 企業コード
-      ,reserve_1               -- 予備1
-      ,reserve_2               -- 予備2
-      ,accounted_dr            -- 借方金額
-      ,accounted_cr            -- 貸方金額
-      ,period_name             -- 会計期間
-      ,tax_code                -- 税コード
-      ,slip_number             -- 伝票番号
-      ,gl_if_date              -- GL連携日
-      ,gl_if_flag              -- GL連携フラグ
-      ,created_by              -- 作成者
-      ,creation_date           -- 作成日
-      ,last_updated_by         -- 最終更新者
-      ,last_update_date        -- 最終更新日
-      ,last_update_login       -- 最終更新ﾛｸﾞｲﾝ
-      ,request_id              -- 要求ID
-      ,program_application_id  -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-      ,program_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-      ,program_update_date     -- ﾌﾟﾛｸﾞﾗﾑ更新日
-    )
-    VALUES (
-       xxcff_gl_transactions_s1.NEXTVAL                                                -- リース仕訳内部ID
-      ,it_jnl_key_rec.fa_transaction_id                                                -- リース取引内部ID
-      ,it_jnl_key_rec.contract_header_id                                               -- 契約内部ID
-      ,it_jnl_key_rec.contract_line_id                                                 -- 契約明細内部ID
-      ,it_jnl_key_rec.object_header_id                                                 -- 物件内部ID
-      ,it_jnl_key_rec.payment_frequency                                                -- 支払回数
-      ,gn_transaction_num                                                              -- 連番
-      ,it_jnl_aff_rec.description
-         ||' '||TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY')      -- 摘要
-      ,it_jnl_aff_rec.je_category                                                      -- 仕訳カテゴリ名
-      ,it_jnl_aff_rec.je_source                                                        -- 仕訳ソース名
-      ,it_jnl_aff_rec.company                                                          -- 会社コード
-      ,it_jnl_aff_rec.department                                                       -- 管理部門コード
-      ,it_jnl_aff_rec.account                                                          -- 勘定科目コード
-      ,it_jnl_aff_rec.sub_account                                                      -- 補助科目コード
-      ,it_jnl_aff_rec.partner                                                          -- 顧客コード
-      ,it_jnl_aff_rec.business_type                                                    -- 企業コード
-      ,it_jnl_aff_rec.project                                                          -- 予備1
-      ,it_jnl_aff_rec.future                                                           -- 予備2
-      ,it_jnl_aff_rec.amount_dr                                                        -- 借方金額
-      ,it_jnl_aff_rec.amount_cr                                                        -- 貸方金額
-      ,gv_period_name                                                                  -- 会計期間
-      ,it_jnl_aff_rec.tax_code                                                         -- 税コード
-      ,gv_slip_num_lease                                                               -- 伝票番号
-      ,g_init_rec.process_date                                                         -- GL連携日
-      ,cv_if_yet                                                                       -- GL連携フラグ
-      ,cn_created_by                                                                   -- 作成者ID
-      ,cd_creation_date                                                                -- 作成日
-      ,cn_last_updated_by                                                              -- 最終更新者
-      ,cd_last_update_date                                                             -- 最終更新日
-      ,cn_last_update_login                                                            -- 最終更新ログインID
-      ,cn_request_id                                                                   -- リクエストID
-      ,cn_program_application_id                                                       -- アプリケーションID
-      ,cn_program_id                                                                   -- プログラムID
-      ,cd_program_update_date                                                          -- プログラム最終更新日
-    );
+-- Ver.1.11 Maeda ADD Start
+    -- 仕訳作成フラグが'Y'でかつ、日本基準連携が'Y'の場合
+    IF (lv_ret_dff6 = cv_flag_y) AND (lv_ret_dff4 = cv_flag_y) THEN
+-- Ver.1.11 Maeda ADD End
+      INSERT INTO xxcff_gl_transactions(
+         gl_transaction_id       -- リース仕訳内部ID
+        ,fa_transaction_id       -- リース取引内部ID
+        ,contract_header_id      -- 契約内部ID
+        ,contract_line_id        -- 契約明細内部ID
+        ,object_header_id        -- 物件内部ID
+        ,payment_frequency       -- 支払回数
+        ,transaction_num         -- 連番
+        ,description             -- 摘要
+        ,je_category             -- 仕訳カテゴリ名
+        ,je_source               -- 仕訳ソース名
+        ,company_code            -- 会社コード
+        ,department_code         -- 管理部門コード
+        ,account_code            -- 勘定科目コード
+        ,sub_account_code        -- 補助科目コード
+        ,customer_code           -- 顧客コード
+        ,enterprise_code         -- 企業コード
+        ,reserve_1               -- 予備1
+        ,reserve_2               -- 予備2
+        ,accounted_dr            -- 借方金額
+        ,accounted_cr            -- 貸方金額
+        ,period_name             -- 会計期間
+        ,tax_code                -- 税コード
+        ,slip_number             -- 伝票番号
+        ,gl_if_date              -- GL連携日
+        ,gl_if_flag              -- GL連携フラグ
+-- Ver.1.11 Maeda ADD Start
+        ,set_of_books_id         -- 帳簿ID
+-- Ver.1.11 Maeda ADD End
+        ,created_by              -- 作成者
+        ,creation_date           -- 作成日
+        ,last_updated_by         -- 最終更新者
+        ,last_update_date        -- 最終更新日
+        ,last_update_login       -- 最終更新ﾛｸﾞｲﾝ
+        ,request_id              -- 要求ID
+        ,program_application_id  -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        ,program_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        ,program_update_date     -- ﾌﾟﾛｸﾞﾗﾑ更新日
+      )
+      VALUES (
+         xxcff_gl_transactions_s1.NEXTVAL                                                -- リース仕訳内部ID
+        ,it_jnl_key_rec.fa_transaction_id                                                -- リース取引内部ID
+        ,it_jnl_key_rec.contract_header_id                                               -- 契約内部ID
+        ,it_jnl_key_rec.contract_line_id                                                 -- 契約明細内部ID
+        ,it_jnl_key_rec.object_header_id                                                 -- 物件内部ID
+        ,it_jnl_key_rec.payment_frequency                                                -- 支払回数
+        ,gn_transaction_num                                                              -- 連番
+        ,it_jnl_aff_rec.description
+           ||' '||TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY')      -- 摘要
+        ,it_jnl_aff_rec.je_category                                                      -- 仕訳カテゴリ名
+        ,it_jnl_aff_rec.je_source                                                        -- 仕訳ソース名
+        ,it_jnl_aff_rec.company                                                          -- 会社コード
+        ,it_jnl_aff_rec.department                                                       -- 管理部門コード
+        ,it_jnl_aff_rec.account                                                          -- 勘定科目コード
+        ,it_jnl_aff_rec.sub_account                                                      -- 補助科目コード
+        ,it_jnl_aff_rec.partner                                                          -- 顧客コード
+        ,it_jnl_aff_rec.business_type                                                    -- 企業コード
+        ,it_jnl_aff_rec.project                                                          -- 予備1
+        ,it_jnl_aff_rec.future                                                           -- 予備2
+        ,it_jnl_aff_rec.amount_dr                                                        -- 借方金額
+        ,it_jnl_aff_rec.amount_cr                                                        -- 貸方金額
+        ,gv_period_name                                                                  -- 会計期間
+        ,it_jnl_aff_rec.tax_code                                                         -- 税コード
+        ,gv_slip_num_lease                                                               -- 伝票番号
+        ,g_init_rec.process_date                                                         -- GL連携日
+        ,cv_if_yet                                                                       -- GL連携フラグ
+-- Ver.1.11 Maeda ADD Start
+        ,gt_sob_id                                                                       -- 会計帳簿ID
+-- Ver.1.11 Maeda ADD End
+        ,cn_created_by                                                                   -- 作成者ID
+        ,cd_creation_date                                                                -- 作成日
+        ,cn_last_updated_by                                                              -- 最終更新者
+        ,cd_last_update_date                                                             -- 最終更新日
+        ,cn_last_update_login                                                            -- 最終更新ログインID
+        ,cn_request_id                                                                   -- リクエストID
+        ,cn_program_application_id                                                       -- アプリケーションID
+        ,cn_program_id                                                                   -- プログラムID
+        ,cd_program_update_date                                                          -- プログラム最終更新日
+      );
+-- Ver.1.11 Maeda ADD Start
+    END IF;
+--
+    -- 仕訳作成フラグが'Y'でかつ、IFRS連携が'Y'の場合
+    IF (lv_ret_dff6 = cv_flag_y) AND (lv_ret_dff5 = cv_flag_y) THEN
+      INSERT INTO xxcff_gl_transactions(
+         gl_transaction_id       -- リース仕訳内部ID
+        ,fa_transaction_id       -- リース取引内部ID
+        ,contract_header_id      -- 契約内部ID
+        ,contract_line_id        -- 契約明細内部ID
+        ,object_header_id        -- 物件内部ID
+        ,payment_frequency       -- 支払回数
+        ,transaction_num         -- 連番
+        ,description             -- 摘要
+        ,je_category             -- 仕訳カテゴリ名
+        ,je_source               -- 仕訳ソース名
+        ,company_code            -- 会社コード
+        ,department_code         -- 管理部門コード
+        ,account_code            -- 勘定科目コード
+        ,sub_account_code        -- 補助科目コード
+        ,customer_code           -- 顧客コード
+        ,enterprise_code         -- 企業コード
+        ,reserve_1               -- 予備1
+        ,reserve_2               -- 予備2
+        ,accounted_dr            -- 借方金額
+        ,accounted_cr            -- 貸方金額
+        ,period_name             -- 会計期間
+        ,tax_code                -- 税コード
+        ,slip_number             -- 伝票番号
+        ,gl_if_date              -- GL連携日
+        ,gl_if_flag              -- GL連携フラグ
+        ,set_of_books_id         -- 帳簿ID(IFRS帳簿)
+        ,created_by              -- 作成者
+        ,creation_date           -- 作成日
+        ,last_updated_by         -- 最終更新者
+        ,last_update_date        -- 最終更新日
+        ,last_update_login       -- 最終更新ﾛｸﾞｲﾝ
+        ,request_id              -- 要求ID
+        ,program_application_id  -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        ,program_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        ,program_update_date     -- ﾌﾟﾛｸﾞﾗﾑ更新日
+      )
+      VALUES (
+         xxcff_gl_transactions_s1.NEXTVAL                                                -- リース仕訳内部ID
+        ,it_jnl_key_rec.fa_transaction_id                                                -- リース取引内部ID
+        ,it_jnl_key_rec.contract_header_id                                               -- 契約内部ID
+        ,it_jnl_key_rec.contract_line_id                                                 -- 契約明細内部ID
+        ,it_jnl_key_rec.object_header_id                                                 -- 物件内部ID
+        ,it_jnl_key_rec.payment_frequency                                                -- 支払回数
+        ,gn_transaction_num                                                              -- 連番
+        ,it_jnl_aff_rec.description
+           ||' '||TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY')      -- 摘要
+        ,it_jnl_aff_rec.je_category                                                      -- 仕訳カテゴリ名
+        ,it_jnl_aff_rec.je_source                                                        -- 仕訳ソース名
+        ,it_jnl_aff_rec.company                                                          -- 会社コード
+        ,it_jnl_aff_rec.department                                                       -- 管理部門コード
+        ,it_jnl_aff_rec.account                                                          -- 勘定科目コード
+        ,it_jnl_aff_rec.sub_account                                                      -- 補助科目コード
+        ,it_jnl_aff_rec.partner                                                          -- 顧客コード
+        ,it_jnl_aff_rec.business_type                                                    -- 企業コード
+        ,it_jnl_aff_rec.project                                                          -- 予備1
+        ,it_jnl_aff_rec.future                                                           -- 予備2
+        ,it_jnl_aff_rec.amount_dr                                                        -- 借方金額
+        ,it_jnl_aff_rec.amount_cr                                                        -- 貸方金額
+        ,gv_period_name                                                                  -- 会計期間
+        ,it_jnl_aff_rec.tax_code                                                         -- 税コード
+        ,gv_slip_num_lease                                                               -- 伝票番号
+        ,g_init_rec.process_date                                                         -- GL連携日
+        ,cv_if_yet                                                                       -- GL連携フラグ
+        ,gt_sob_id2                                                                      -- 会計帳簿ID
+        ,cn_created_by                                                                   -- 作成者ID
+        ,cd_creation_date                                                                -- 作成日
+        ,cn_last_updated_by                                                              -- 最終更新者
+        ,cd_last_update_date                                                             -- 最終更新日
+        ,cn_last_update_login                                                            -- 最終更新ログインID
+        ,cn_request_id                                                                   -- リクエストID
+        ,cn_program_application_id                                                       -- アプリケーションID
+        ,cn_program_id                                                                   -- プログラムID
+        ,cd_program_update_date                                                          -- プログラム最終更新日
+      );
+    END IF;
+-- Ver.1.11 Maeda ADD End
 --
   EXCEPTION
 --
@@ -1165,6 +1360,239 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END ins_xxcff_gl_trn;
+-- Ver.1.11 Maeda ADD Start
+/**********************************************************************************
+   * Procedure Name   : ins_xxcff_gl_trn2
+   * Description      : 【内部共通処理】リース仕訳テーブル登録2 (A-23の改修版  追加、振替、解約用）
+   ***********************************************************************************/
+  PROCEDURE ins_xxcff_gl_trn2(
+    it_jnl_key_rec    IN     les_jnl_key_rtype              -- リース仕訳元キー情報
+   ,it_jnl_aff_rec    IN OUT lease_journal_ptn_cur%ROWTYPE  -- リース仕訳AFF情報
+   ,ov_errbuf         OUT    VARCHAR2                       --   エラー・メッセージ           --# 固定 #
+   ,ov_retcode        OUT    VARCHAR2                       --   リターン・コード             --# 固定 #
+   ,ov_errmsg         OUT    VARCHAR2)                      --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_xxcff_gl_trn2'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --連番カウントアップ
+    gn_transaction_num := gn_transaction_num + 1;
+--
+    -- 資産台帳名がFINリース台帳の場合
+    IF (it_jnl_key_rec.book_type_code = gv_book_type_fin_lease) THEN
+      INSERT INTO xxcff_gl_transactions(
+         gl_transaction_id       -- リース仕訳内部ID
+        ,fa_transaction_id       -- リース取引内部ID
+        ,contract_header_id      -- 契約内部ID
+        ,contract_line_id        -- 契約明細内部ID
+        ,object_header_id        -- 物件内部ID
+        ,payment_frequency       -- 支払回数
+        ,transaction_num         -- 連番
+        ,description             -- 摘要
+        ,je_category             -- 仕訳カテゴリ名
+        ,je_source               -- 仕訳ソース名
+        ,company_code            -- 会社コード
+        ,department_code         -- 管理部門コード
+        ,account_code            -- 勘定科目コード
+        ,sub_account_code        -- 補助科目コード
+        ,customer_code           -- 顧客コード
+        ,enterprise_code         -- 企業コード
+        ,reserve_1               -- 予備1
+        ,reserve_2               -- 予備2
+        ,accounted_dr            -- 借方金額
+        ,accounted_cr            -- 貸方金額
+        ,period_name             -- 会計期間
+        ,tax_code                -- 税コード
+        ,slip_number             -- 伝票番号
+        ,gl_if_date              -- GL連携日
+        ,gl_if_flag              -- GL連携フラグ
+        ,set_of_books_id         -- 帳簿ID
+        ,created_by              -- 作成者
+        ,creation_date           -- 作成日
+        ,last_updated_by         -- 最終更新者
+        ,last_update_date        -- 最終更新日
+        ,last_update_login       -- 最終更新ﾛｸﾞｲﾝ
+        ,request_id              -- 要求ID
+        ,program_application_id  -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        ,program_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        ,program_update_date     -- ﾌﾟﾛｸﾞﾗﾑ更新日
+      )
+      VALUES (
+         xxcff_gl_transactions_s1.NEXTVAL                                                -- リース仕訳内部ID
+        ,it_jnl_key_rec.fa_transaction_id                                                -- リース取引内部ID
+        ,it_jnl_key_rec.contract_header_id                                               -- 契約内部ID
+        ,it_jnl_key_rec.contract_line_id                                                 -- 契約明細内部ID
+        ,it_jnl_key_rec.object_header_id                                                 -- 物件内部ID
+        ,it_jnl_key_rec.payment_frequency                                                -- 支払回数
+        ,gn_transaction_num                                                              -- 連番
+        ,it_jnl_aff_rec.description
+           ||' '||TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY')      -- 摘要
+        ,it_jnl_aff_rec.je_category                                                      -- 仕訳カテゴリ名
+        ,it_jnl_aff_rec.je_source                                                        -- 仕訳ソース名
+        ,it_jnl_aff_rec.company                                                          -- 会社コード
+        ,it_jnl_aff_rec.department                                                       -- 管理部門コード
+        ,it_jnl_aff_rec.account                                                          -- 勘定科目コード
+        ,it_jnl_aff_rec.sub_account                                                      -- 補助科目コード
+        ,it_jnl_aff_rec.partner                                                          -- 顧客コード
+        ,it_jnl_aff_rec.business_type                                                    -- 企業コード
+        ,it_jnl_aff_rec.project                                                          -- 予備1
+        ,it_jnl_aff_rec.future                                                           -- 予備2
+        ,it_jnl_aff_rec.amount_dr                                                        -- 借方金額
+        ,it_jnl_aff_rec.amount_cr                                                        -- 貸方金額
+        ,gv_period_name                                                                  -- 会計期間
+        ,it_jnl_aff_rec.tax_code                                                         -- 税コード
+        ,gv_slip_num_lease                                                               -- 伝票番号
+        ,g_init_rec.process_date                                                         -- GL連携日
+        ,cv_if_yet                                                                       -- GL連携フラグ
+        ,gt_sob_id                                                                       -- 会計帳簿ID
+        ,cn_created_by                                                                   -- 作成者ID
+        ,cd_creation_date                                                                -- 作成日
+        ,cn_last_updated_by                                                              -- 最終更新者
+        ,cd_last_update_date                                                             -- 最終更新日
+        ,cn_last_update_login                                                            -- 最終更新ログインID
+        ,cn_request_id                                                                   -- リクエストID
+        ,cn_program_application_id                                                       -- アプリケーションID
+        ,cn_program_id                                                                   -- プログラムID
+        ,cd_program_update_date                                                          -- プログラム最終更新日
+      );
+    END IF;
+--
+    -- 資産台帳名がIFRSリース台帳の場合
+    IF (it_jnl_key_rec.book_type_code = gv_book_type_ifrs_lease) THEN
+      INSERT INTO xxcff_gl_transactions(
+         gl_transaction_id       -- リース仕訳内部ID
+        ,fa_transaction_id       -- リース取引内部ID
+        ,contract_header_id      -- 契約内部ID
+        ,contract_line_id        -- 契約明細内部ID
+        ,object_header_id        -- 物件内部ID
+        ,payment_frequency       -- 支払回数
+        ,transaction_num         -- 連番
+        ,description             -- 摘要
+        ,je_category             -- 仕訳カテゴリ名
+        ,je_source               -- 仕訳ソース名
+        ,company_code            -- 会社コード
+        ,department_code         -- 管理部門コード
+        ,account_code            -- 勘定科目コード
+        ,sub_account_code        -- 補助科目コード
+        ,customer_code           -- 顧客コード
+        ,enterprise_code         -- 企業コード
+        ,reserve_1               -- 予備1
+        ,reserve_2               -- 予備2
+        ,accounted_dr            -- 借方金額
+        ,accounted_cr            -- 貸方金額
+        ,period_name             -- 会計期間
+        ,tax_code                -- 税コード
+        ,slip_number             -- 伝票番号
+        ,gl_if_date              -- GL連携日
+        ,gl_if_flag              -- GL連携フラグ
+        ,set_of_books_id         -- 帳簿ID(IFRS帳簿)
+        ,created_by              -- 作成者
+        ,creation_date           -- 作成日
+        ,last_updated_by         -- 最終更新者
+        ,last_update_date        -- 最終更新日
+        ,last_update_login       -- 最終更新ﾛｸﾞｲﾝ
+        ,request_id              -- 要求ID
+        ,program_application_id  -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        ,program_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        ,program_update_date     -- ﾌﾟﾛｸﾞﾗﾑ更新日
+      )
+      VALUES (
+         xxcff_gl_transactions_s1.NEXTVAL                                                -- リース仕訳内部ID
+        ,it_jnl_key_rec.fa_transaction_id                                                -- リース取引内部ID
+        ,it_jnl_key_rec.contract_header_id                                               -- 契約内部ID
+        ,it_jnl_key_rec.contract_line_id                                                 -- 契約明細内部ID
+        ,it_jnl_key_rec.object_header_id                                                 -- 物件内部ID
+        ,it_jnl_key_rec.payment_frequency                                                -- 支払回数
+        ,gn_transaction_num                                                              -- 連番
+        ,it_jnl_aff_rec.description
+           ||' '||TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY')      -- 摘要
+        ,it_jnl_aff_rec.je_category                                                      -- 仕訳カテゴリ名
+        ,it_jnl_aff_rec.je_source                                                        -- 仕訳ソース名
+        ,it_jnl_aff_rec.company                                                          -- 会社コード
+        ,it_jnl_aff_rec.department                                                       -- 管理部門コード
+        ,it_jnl_aff_rec.account                                                          -- 勘定科目コード
+        ,it_jnl_aff_rec.sub_account                                                      -- 補助科目コード
+        ,it_jnl_aff_rec.partner                                                          -- 顧客コード
+        ,it_jnl_aff_rec.business_type                                                    -- 企業コード
+        ,it_jnl_aff_rec.project                                                          -- 予備1
+        ,it_jnl_aff_rec.future                                                           -- 予備2
+        ,it_jnl_aff_rec.amount_dr                                                        -- 借方金額
+        ,it_jnl_aff_rec.amount_cr                                                        -- 貸方金額
+        ,gv_period_name                                                                  -- 会計期間
+        ,it_jnl_aff_rec.tax_code                                                         -- 税コード
+        ,gv_slip_num_lease                                                               -- 伝票番号
+        ,g_init_rec.process_date                                                         -- GL連携日
+        ,cv_if_yet                                                                       -- GL連携フラグ
+        ,gt_sob_id2                                                                      -- 会計帳簿ID
+        ,cn_created_by                                                                   -- 作成者ID
+        ,cd_creation_date                                                                -- 作成日
+        ,cn_last_updated_by                                                              -- 最終更新者
+        ,cd_last_update_date                                                             -- 最終更新日
+        ,cn_last_update_login                                                            -- 最終更新ログインID
+        ,cn_request_id                                                                   -- リクエストID
+        ,cn_program_application_id                                                       -- アプリケーションID
+        ,cn_program_id                                                                   -- プログラムID
+        ,cd_program_update_date                                                          -- プログラム最終更新日
+      );
+    END IF;
+  --
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_xxcff_gl_trn2;
+-- Ver.1.11 Maeda ADD End
 --
   /**********************************************************************************
    * Procedure Name   : set_jnl_amount
@@ -1777,7 +2205,10 @@ AS
     )
     SELECT
        'NEW'                                       AS status                -- ステータス
-      ,g_init_rec.set_of_books_id                  AS set_of_books_id       -- 会計帳簿ID
+-- Ver.1.11 Maeda MOD Start
+--      ,g_init_rec.set_of_books_id                  AS set_of_books_id       -- 会計帳簿ID
+      ,xxcff_gl_trn.set_of_books_id                AS set_of_books_id       -- 会計帳簿ID
+-- Ver.1.11 Maeda MOD End
       ,LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) AS accounting_date       -- 仕訳有効日付
       ,g_init_rec.currency_code                    AS currency_code         -- 通貨コード
       ,cd_creation_date                            AS date_created          -- 新規作成日付
@@ -1801,7 +2232,11 @@ AS
       ,xxcff_gl_trn.slip_number                    AS attribute3            -- 伝票番号
       ,gt_login_dept_code                          AS attribute4            -- 起票部門
       ,gt_login_user_name                          AS attribute5            -- 伝票入力者
-      ,gt_sob_name                                 AS context               -- 会計帳簿名
+-- Ver.1.11 Maeda MOD Start
+--      ,gt_sob_name                                 AS context               -- 会計帳簿名
+      ,DECODE(xxcff_gl_trn.set_of_books_id, gt_sob_id2, gt_sob_name2, gt_sob_name)
+                                                   AS context               -- 会計帳簿名
+-- Ver.1.11 Maeda MOD End
     FROM  xxcff_gl_transactions  xxcff_gl_trn
     WHERE xxcff_gl_trn.period_name = gv_period_name
     AND   xxcff_gl_trn.accounted_cr > 0
@@ -1820,6 +2255,9 @@ AS
       ,xxcff_gl_trn.period_name        -- 会計期間名
       ,xxcff_gl_trn.tax_code           -- 税区分
       ,xxcff_gl_trn.slip_number        -- 伝票番号
+-- Ver.1.11 Maeda ADD Start
+      ,xxcff_gl_trn.set_of_books_id    -- 会計帳簿ID
+-- Ver.1.11 Maeda ADD End
     ;
 --
     -- 件数設定
@@ -1924,7 +2362,10 @@ AS
     )
     SELECT
        'NEW'                                       AS status                -- ステータス
-      ,g_init_rec.set_of_books_id                  AS set_of_books_id       -- 会計帳簿ID
+-- Ver.1.11 Maeda MOD Start
+--      ,g_init_rec.set_of_books_id                  AS set_of_books_id       -- 会計帳簿ID
+      ,xxcff_gl_trn.set_of_books_id                AS set_of_books_id       -- 会計帳簿ID
+-- Ver.1.11 Maeda MOD End
       ,LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) AS accounting_date       -- 仕訳有効日付
       ,g_init_rec.currency_code                    AS currency_code         -- 通貨コード
       ,cd_creation_date                            AS date_created          -- 新規作成日付
@@ -1948,7 +2389,11 @@ AS
       ,xxcff_gl_trn.slip_number                    AS attribute3            -- 伝票番号
       ,gt_login_dept_code                          AS attribute4            -- 起票部門
       ,gt_login_user_name                          AS attribute5            -- 伝票入力者
-      ,gt_sob_name                                 AS context               -- 会計帳簿名
+-- Ver.1.11 Maeda MOD Start
+--      ,gt_sob_name                                 AS context               -- 会計帳簿名
+      ,DECODE(xxcff_gl_trn.set_of_books_id, gt_sob_id2, gt_sob_name2, gt_sob_name)
+                                                   AS context               -- 会計帳簿名
+-- Ver.1.11 Maeda MOD End
     FROM  xxcff_gl_transactions  xxcff_gl_trn
     WHERE xxcff_gl_trn.period_name = gv_period_name
     AND   xxcff_gl_trn.accounted_dr > 0
@@ -1967,6 +2412,9 @@ AS
       ,xxcff_gl_trn.period_name        -- 会計期間名
       ,xxcff_gl_trn.tax_code           -- 税区分
       ,xxcff_gl_trn.slip_number        -- 伝票番号
+-- Ver.1.11 Maeda ADD Start
+      ,xxcff_gl_trn.set_of_books_id    -- 会計帳簿ID
+-- Ver.1.11 Maeda ADD End
     ;
 --
     -- 件数設定
@@ -2084,6 +2532,9 @@ AS
         RAISE global_api_expt;
       END IF;
 --
+-- Ver.1.11 Maeda ADD Start
+      gt_lease_class_code := g_lease_class_tab(gn_balance_target_cnt); -- リース種別
+-- Ver.1.11 Maeda ADD End
       --==============================================================
       --【内部共通処理】リース仕訳テーブル登録 (A-23)
       --==============================================================
@@ -2518,6 +2969,9 @@ AS
           RAISE global_api_expt;
         END IF;
 --
+-- Ver.1.11 Maeda ADD Start
+        gt_lease_class_code := g_lease_class_tab(gn_main_loop_cnt); -- リース種別
+-- Ver.1.11 Maeda ADD End
         --==============================================================
         --【内部共通処理】リース仕訳テーブル登録 (A-23)
         --==============================================================
@@ -2723,6 +3177,9 @@ AS
           END IF;
         END IF;
 --
+-- Ver.1.11 Maeda ADD Start
+        gt_lease_class_code := g_lease_class_tab(gn_main_loop_cnt); -- リース種別
+-- Ver.1.11 Maeda ADD End
         --==============================================================
         --【内部共通処理】リース仕訳テーブル登録 (A-23)
         --==============================================================
@@ -2962,6 +3419,9 @@ AS
           g_les_jnl_aff_rec.tax_code := g_tax_code_tab(gn_main_loop_cnt);
         END IF;
 --
+-- Ver.1.11 Maeda ADD Start
+        gt_lease_class_code := g_lease_class_tab(gn_main_loop_cnt); -- リース種別
+-- Ver.1.11 Maeda ADD End
         --==============================================================
         --【内部共通処理】リース仕訳テーブル登録 (A-23)
         --==============================================================
@@ -3091,8 +3551,11 @@ AS
       --リース種類 = 0 (Fin)
       --リース区分 = 1 (原契約)
       --==============================================================
-      IF ( g_lease_kind_tab(gn_main_loop_cnt) = cv_lease_kind_fin
-      AND  g_lease_type_tab(gn_main_loop_cnt) = cv_original        ) THEN
+-- Ver.1.11 Maeda MOD Start
+--      IF ( g_lease_kind_tab(gn_main_loop_cnt) = cv_lease_kind_fin
+--      AND  g_lease_type_tab(gn_main_loop_cnt) = cv_original        ) THEN
+      IF ( g_lease_kind_tab(gn_main_loop_cnt) = cv_lease_kind_fin ) THEN
+-- Ver.1.11 Maeda MOD End
 --
         --==============================================================
         --【仕訳パターン】リース債務振替 (A-15)
@@ -3666,9 +4129,12 @@ AS
         END IF;
 --
         --==============================================================
-        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --【内部共通処理】リース仕訳登録（新規、振替、解約用）(A-27)
         --==============================================================
-        ins_xxcff_gl_trn(
+-- Ver.1.11 Maeda MOD Start
+--        ins_xxcff_gl_trn(
+        ins_xxcff_gl_trn2(
+-- Ver.1.11 Maeda MOD End
            it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
           ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
           ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
@@ -3849,9 +4315,12 @@ AS
         END IF;
 --
         --==============================================================
-        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --【内部共通処理】リース仕訳登録（新規、振替、解約用）(A-27)
         --==============================================================
-        ins_xxcff_gl_trn(
+-- Ver.1.11 Maeda MOD Start
+--        ins_xxcff_gl_trn(
+        ins_xxcff_gl_trn2(
+-- Ver.1.11 Maeda MOD End
            it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
           ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
           ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
@@ -4032,9 +4501,12 @@ AS
         END IF;
 --
         --==============================================================
-        --【内部共通処理】リース仕訳テーブル登録 (A-23)
+        --【内部共通処理】リース仕訳登録（新規、振替、解約用）(A-27)
         --==============================================================
-        ins_xxcff_gl_trn(
+-- Ver.1.11 Maeda MOD Start
+--        ins_xxcff_gl_trn(
+        ins_xxcff_gl_trn2(
+-- Ver.1.11 Maeda MOD End
            it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
           ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
           ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
@@ -4180,9 +4652,12 @@ AS
       END IF;
 --
       --==============================================================
-      --【内部共通処理】リース仕訳テーブル登録 (A-23)
+      --【内部共通処理】リース仕訳登録（新規、振替、解約用）(A-27)
       --==============================================================
-      ins_xxcff_gl_trn(
+-- Ver.1.11 Maeda MOD Start
+--      ins_xxcff_gl_trn(
+      ins_xxcff_gl_trn2(
+-- Ver.1.11 Maeda MOD End
          it_jnl_key_rec     => g_les_jnl_key_rec  -- リース仕訳元キー情報
         ,it_jnl_aff_rec     => g_les_jnl_aff_rec  -- リース仕訳AFF情報
         ,ov_errbuf          => lv_errbuf          -- エラー・メッセージ           --# 固定 # 
@@ -4280,7 +4755,9 @@ AS
       g_les_jnl_key_rec.contract_line_id   := g_contract_line_id_tab(gn_main_loop_cnt);   -- リース契約明細内部ID
       g_les_jnl_key_rec.object_header_id   := g_object_header_id_tab(gn_main_loop_cnt);   -- リース物件内部ID
       g_les_jnl_key_rec.payment_frequency  := NULL;                                       -- 支払回数
---
+-- Ver.1.11 Maeda ADD Start
+      g_les_jnl_key_rec.book_type_code     := g_book_type_code2_tab(gn_main_loop_cnt);    -- 資産台帳名
+-- Ver.1.11 Maeda ADD END
       --==============================================================
       --仕訳金額情報設定
       --==============================================================
@@ -4480,6 +4957,9 @@ AS
                      ,g_debt_rem_re_tab        -- リース債務残_再リース
                      ,g_payment_frequency_tab  -- 支払回数
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
+-- Ver.1.11 Maeda ADD Start
+                     ,g_book_type_code2_tab    -- 資産台帳名
+-- Ver.1.11 Maeda ADD End
                      ;
     --対象件数カウント
     gn_les_trn_target_cnt := g_fa_transaction_id_tab.COUNT;
@@ -4794,7 +5274,10 @@ AS
              xxcff_fa_trn.period_name    =   gv_period_name
          AND xxcff_fa_trn.gl_if_flag     IN  (cv_if_yet,cv_if_aft) -- 未送信(1),連携済(2)
          AND xlk.lease_kind_code         =   cv_lease_kind_fin     -- FINリース
-         AND xxcff_fa_trn.book_type_code =   xlk.book_type_code
+-- Ver.1.11 Maeda MOD Start
+--         AND xxcff_fa_trn.book_type_code =   xlk.book_type_code
+         AND xxcff_fa_trn.book_type_code   IN (xlk.book_type_code, xlk.book_type_code_ifrs)
+-- Ver.1.11 Maeda MOD End
          FOR UPDATE OF xxcff_fa_trn.fa_transaction_id
          NOWAIT
          ;
@@ -5064,6 +5547,10 @@ AS
      WHERE
            gloif.user_je_source_name = gv_je_src_lease
        AND gloif.period_name         = gv_period_name
+-- Ver.1.11 Maeda ADD Start
+       -- プロファイルの帳簿IDとIFRS帳簿にもマッチするかをチェックする
+       AND gloif.set_of_books_id in (gt_sob_id, gt_sob_id2)
+-- Ver.1.11 Maeda ADD End
        ;
 --
     IF ( NVL(ln_cnt_gloif,0) >= 1 ) THEN
@@ -5085,6 +5572,10 @@ AS
        AND glsouce.language            = USERENV('LANG')
        AND glsouce.user_je_source_name = gv_je_src_lease
        AND glhead.period_name  = gv_period_name
+-- Ver.1.11 Maeda ADD Start
+       -- プロファイルの帳簿IDとIFRS帳簿にもマッチするかをチェックする
+       AND glhead.set_of_books_id in (gt_sob_id, gt_sob_id2)
+-- Ver.1.11 Maeda ADD End
        ;
 --
     IF ( NVL(ln_cnt_glhead,0) >= 1 ) THEN
@@ -5173,6 +5664,9 @@ AS
     lv_book_type_code VARCHAR(100);
     -- 会計期間ステータス
     lv_closing_status VARCHAR(100);
+--  Ver.1.11 Maeda ADD Start
+    lv_closing_status_ifrs VARCHAR(100);      -- IFRS帳簿用会計期間ステータス
+--  Ver.1.11 Maeda ADD End
 --
     -- *** ローカル・カーソル ***
     CURSOR period_cur
@@ -5185,7 +5679,11 @@ AS
             ,xxcff_lease_kind_v   xlk   -- リース種類ビュー
        WHERE
              xlk.lease_kind_code IN (cv_lease_kind_fin, cv_lease_kind_lfin)
-         AND fdp.book_type_code  =  xlk.book_type_code
+-- Ver.1.11 Maeda MOD Start
+--         AND fdp.book_type_code  =  xlk.book_type_code
+         AND (fdp.book_type_code  =  xlk.book_type_code
+          OR  fdp.book_type_code  =  xlk.book_type_code_ifrs )  --DFF4にIFRS台帳名の設定があるため
+-- Ver.1.11 Maeda MOD End
          AND fdp.period_name     =  gv_period_name
            ;
 --
@@ -5267,10 +5765,46 @@ AS
         RAISE chk_gl_period_expt;
       END IF;
 --
+-- Ver.1.11 Maeda ADD Start
+    --======================================
+    -- GL会計期間チェック(IFRS帳簿用)
+    --======================================
+      -- 会計期間ステータス取得
+      SELECT
+             glperiodst.closing_status
+        INTO
+             lv_closing_status_ifrs          -- IFRS帳簿用会計期間ステータス
+        FROM
+              fa_book_controls    fbc        -- 資産台帳マスタ
+             ,gl_sets_of_books    gsob       -- 会計帳簿マスタ
+             ,gl_periods          glperiod   -- 会計カレンダ
+             ,gl_period_statuses  glperiodst -- 会計カレンダステータス
+             ,fnd_application     fndappl    -- アプリケーション
+             ,xxcff_lease_kind_v  les_kind   -- リース種類ビュー
+       WHERE
+             les_kind.lease_kind_code          = cv_lease_kind_fin -- Fin
+         AND les_kind.book_type_code_ifrs      = fbc.book_type_code
+         AND fbc.set_of_books_id               = gsob.set_of_books_id
+         AND gsob.period_set_name              = glperiod.period_set_name
+         AND glperiod.period_name              = gv_period_name
+         AND gsob.set_of_books_id              = glperiodst.set_of_books_id
+         AND glperiodst.period_name            = glperiod.period_name
+         AND glperiodst.application_id         = fndappl.application_id
+         AND fndappl.application_short_name    = 'SQLGL'
+         AND glperiodst.adjustment_period_flag = 'N'
+         ;
+--
+      -- IFRS帳簿用会計期間ステータス取得
+      IF ( lv_closing_status_ifrs NOT IN ('O','F') ) THEN
+        RAISE chk_gl_period_expt;
+      END IF;
+-- Ver.1.11 Maeda MOD End
+--
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         RAISE chk_gl_period_expt;
     END;
+
   EXCEPTION
 --
     -- *** 会計期間チェックエラーハンドラ ***
@@ -5508,6 +6042,33 @@ AS
     END IF;
 -- 2017/03/27 Ver.1.10 Y.Shoji ADD End
 --
+-- Ver.1.11 Maeda ADD Start
+    -- XXCFF:台帳名_FINリース台帳
+    gv_book_type_fin_lease := FND_PROFILE.VALUE(cv_book_type_fin_lease);
+    IF (gv_book_type_fin_lease IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_013a20_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_013a20_t_033) -- XXCFF:台帳名_FINリース台帳
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- XXCFF:台帳名_IFRSリース台帳
+    gv_book_type_ifrs_lease := FND_PROFILE.VALUE(cv_book_type_ifrs_lease);
+    IF (gv_book_type_ifrs_lease IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_013a20_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_013a20_t_034) -- XXCFF:台帳名_IFRSリース台帳
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Ver.1.11 Maeda ADD End
+--
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -5639,8 +6200,14 @@ AS
     -- 会計帳簿名称取得
     --===========================================
     BEGIN
-      SELECT  sob.name   --会計帳簿名
-      INTO    gt_sob_name
+-- Ver.1.11 Maeda MOD Start
+--      SELECT  sob.name   --会計帳簿名
+--      INTO    gt_sob_name
+      SELECT  sob.set_of_books_id --会計帳簿ID
+             ,sob.name            --会計帳簿名
+      INTO    gt_sob_id
+             ,gt_sob_name
+-- Ver.1.11 Maeda MOD End
       FROM  gl_sets_of_books sob
       WHERE sob.set_of_books_id = g_init_rec.set_of_books_id
       ;
@@ -5649,6 +6216,24 @@ AS
         RAISE get_sob_name_expt;
     END;
 --
+-- Ver.1.11 Maeda ADD Start
+    --===========================================
+    -- 会計帳簿名称取得（IFRS用）
+    --===========================================
+    BEGIN
+      SELECT  sob.set_of_books_id --会計帳簿ID
+             ,sob.name            --会計帳簿名
+      INTO    gt_sob_id2
+             ,gt_sob_name2
+      FROM  gl_sets_of_books sob
+      WHERE sob.name = cv_ifrs_book_name   --ＩＦＲＳ帳簿名(IFRS-SOB)
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE get_sob_name_expt2;
+    END;
+--
+-- Ver.1.11 Maeda ADD End
 -- T1_0356 2009/04/17 ADD START --
     --===========================================
     -- 基準日取得
@@ -5709,6 +6294,24 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
+--
+-- Ver.1.11 Maeda ADD Start
+    -- *** 会計帳簿名取得エラーハンドラ ***
+    WHEN get_sob_name_expt2 THEN
+--
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(  cv_msg_kbn_cff              -- XXCFF
+                                                     ,cv_msg_013a20_m_023         -- 取得エラー
+                                                     ,cv_tkn_table                -- トークン'TABLE_NAME'
+                                                     ,cv_msg_013a20_t_020         -- 会計帳簿名
+                                                     ,cv_tkn_info                 -- トークン'INFO'
+                                                     ,cv_comment || cv_msg_part || cv_ifrs_book_name )  -- IFRS帳簿名:cv_ifrs_book_name
+                                                     ,1
+                                                     ,5000);
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+-- Ver.1.11 Maeda ADD End
 --
 -- T1_0356 2009/04/17 ADD START --
     -- *** 営業日日付取得エラーハンドラ ***
