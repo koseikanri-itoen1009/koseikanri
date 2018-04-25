@@ -6,13 +6,13 @@ AS
  * Package Name     : XXCFF012A18C(body)
  * Description      : リース債務残高レポート
  * MD.050           : リース債務残高レポート MD050_CFF_012_A18
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
- *  init                   入力パラメータ値ログ出力処理(A-1)
+ *  init                   初期処理(A-1)
  *  chk_period_name        会計期間チェック処理(A-2)
  *  get_first_period       会計期間期首取得処理(A-3)
  *  get_contract_info      リース契約情報取得処理(A-4)
@@ -39,6 +39,7 @@ AS
  *  2009/08/28    1.5   SCS 渡辺         [統合テスト障害0001063(PT対応)]
  *  2011/12/01    1.6   SCSK白川         [E_本稼動_08123] リース解約日設定許可に伴うリース債務残高集計条件の修正
  *  2016/09/14    1.7   SCSK 郭          E_本稼動_13658（自販機耐用年数変更対応）
+ *  2018/03/27    1.8   SCSK 森          E_本稼動_14830（パラメータ追加、抽出条件変更）
  *
  *****************************************************************************************/
 --
@@ -108,12 +109,18 @@ AS
   cv_msg_del_err      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00104'; -- 削除エラー
   cv_msg_no_lines     CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00010'; -- 明細0件用メッセージ
   cv_msg_lock_err     CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00007'; -- ロックエラー
+-- 2018/03/27 1.8 H.Mori ADD START
+  cv_msg_cff_00020    CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00020'; -- プロファイル名取得エラーメッセージ
+-- 2018/03/27 1.8 H.Mori ADD END
   -- トークン名
   cv_tkn_book_type    CONSTANT VARCHAR2(50)  := 'BOOK_TYPE_CODE';   -- 資産台帳名
   cv_tkn_period_name  CONSTANT VARCHAR2(50)  := 'PERIOD_NAME';      -- 会計期間名
   cv_tkn_column_name  CONSTANT VARCHAR2(20)  := 'COLUMN_NAME';      -- カラム名
   cv_tkn_table_name   CONSTANT VARCHAR2(20)  := 'TABLE_NAME';       -- テーブル名
   cv_tkn_err_info     CONSTANT VARCHAR2(20)  := 'INFO';             -- エラー情報
+-- 2018/03/27 1.8 H.Mori ADD START
+  cv_tkn_prof_name    CONSTANT VARCHAR2(20)  := 'PROF_NAME';        -- プロファイル名
+-- 2018/03/27 1.8 H.Mori ADD END
   -- トークン値
   cv_tkv_wk_tab_name  CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50153'; -- リース債務残高レポート帳票ワークテーブル
   -- リース種類
@@ -130,6 +137,12 @@ AS
   -- 会計IFフラグステータス
   cv_if_aft           CONSTANT VARCHAR2(1)   := '2'; --連携済
 -- 0000417 2009/07/31 ADD END --
+-- 2018/03/27 1.8 H.Mori ADD START
+  -- プロファイル
+  cv_fin_name         CONSTANT VARCHAR2(50)  := 'XXCFF1_FIN_LEASE_BOOKS';            -- XXCFF:台帳名_FINリース台帳
+  cv_qfin_name        CONSTANT VARCHAR2(50)  := 'XXCFF1_OLD_LEASE_BOOKS';            -- XXCFF:台帳名_旧リース台帳
+  cv_ifrs_name        CONSTANT VARCHAR2(50)  := 'XXCFF1_IFRS_LEASE_BOOKS';           -- XXCFF:台帳名_IFRSリース台帳
+-- 2018/03/27 1.8 H.Mori ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -139,6 +152,12 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+-- 2018/03/27 1.8 H.Mori ADD START
+  -- 資産台帳名
+  gt_fin_name         fa_books.book_type_code%TYPE DEFAULT NULL;    -- XXCFF:台帳名_FINリース台帳
+  gt_qfin_name        fa_books.book_type_code%TYPE DEFAULT NULL;    -- XXCFF:台帳名_旧リース台帳
+  gt_ifrs_name        fa_books.book_type_code%TYPE DEFAULT NULL;    -- XXCFF:台帳名_IFRSリース台帳
+-- 2018/03/27 1.8 H.Mori ADD END
 --
   /**********************************************************************************
    * Procedure Name   : del_bal_in_obg_wk
@@ -555,6 +574,9 @@ AS
     iv_period_name    IN     VARCHAR2,     -- 3.会計期間名
 -- 2011/12/01 Ver.1.6 A.Shirakawa ADD End
     io_wk_tab         IN OUT g_wk_ttype,   -- 4.リース債務残高レポートワークデータ
+-- 2018/03/27 1.8 H.Mori ADD START
+    iv_book_type_code IN     VARCHAR2,     -- 5.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
     ov_errbuf         OUT    VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT    VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg         OUT    VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -585,9 +607,18 @@ AS
       SELECT 
 -- 0001063 2009/08/28 ADD START --
            /*+
-             LEADING(XCH XCL)
-             INDEX(XCH XXCFF_CONTRACT_HEADERS_N06)
-             INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+-- 2018/03/27 1.8 H.Mori MOD START
+--             LEADING(XCH XCL)
+--             INDEX(XCH XXCFF_CONTRACT_HEADERS_N06)
+--             INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+             LEADING(XCL XPP1)
+             USE_NL(XCL FAB)
+             INDEX(XCH XXCFF_CONTRACT_HEADERS_PK)
+             INDEX(XCL XXCFF_CONTRACT_LINES_N01)
+             INDEX(XPP XXCFF_PAY_PLANNING_N02)
+             INDEX(FAB XXCFF_FA_ADDITIONS_B_N04)
+             INDEX(FBK FA_BOOKS_N2)
+-- 2018/03/27 1.8 H.Mori MOD END
            */
 -- 0001063 2009/08/28 ADD END --
            xcl.lease_kind
@@ -796,11 +827,31 @@ AS
         FROM xxcff_contract_headers xch
             ,xxcff_contract_lines xcl
             ,xxcff_pay_planning xpp
-       WHERE xch.contract_header_id = xcl.contract_header_id
-         AND xpp.contract_line_id = xcl.contract_line_id
-         AND xch.lease_type = cv_lease_type1
+-- 2018/03/27 1.8 H.Mori MOD START
+--       WHERE xch.contract_header_id = xcl.contract_header_id
+--         AND xpp.contract_line_id = xcl.contract_line_id
+--         AND xch.lease_type = cv_lease_type1
+            ,fa_additions_b fab                           -- 資産詳細情報
+            ,fa_books fbk                                 -- 資産台帳情報
+       WHERE xch.contract_header_id        = xcl.contract_header_id
+         AND xpp.contract_line_id          = xcl.contract_line_id
+         AND fab.attribute10               = TO_CHAR(xcl.contract_line_id)
+         AND fbk.asset_id                  = fab.asset_id
+         AND fbk.transaction_header_id_out IS NULL
+         AND ( ( iv_book_type_code         = gt_fin_name
+             AND fbk.book_type_code        IN ( gt_fin_name ,gt_qfin_name ) )
+           OR (  iv_book_type_code         = gt_ifrs_name
+             AND fbk.book_type_code        = gt_ifrs_name ) )
+-- 2018/03/27 1.8 H.Mori MOD END
          AND EXISTS (
-               SELECT 'x' FROM xxcff_pay_planning xpp2
+-- 2018/03/27 1.8 H.Mori MOD START
+--               SELECT 'x' FROM xxcff_pay_planning xpp2
+               SELECT /*+ 
+                          INDEX(XPP2 XXCFF_PAY_PLANNING_N01)
+                       */
+                      'x' 
+               FROM xxcff_pay_planning xpp2
+-- 2018/03/27 1.8 H.Mori MOD END
                 WHERE xpp2.contract_line_id = xcl.contract_line_id
                   AND xpp2.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM'))
 -- 0000417 2009/07/17 MOD START --
@@ -813,6 +864,91 @@ AS
                   xcl.cancellation_date IS NOT NULL)
          AND xcl.contract_status > cv_contr_st_201
       GROUP BY xcl.lease_kind
+-- 2018/03/27 1.8 H.Mori ADD START
+      UNION ALL
+      SELECT 
+           /*+
+             LEADING(XCH XCL)
+             INDEX(XCH XXCFF_CONTRACT_HEADERS_N06)
+             INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+           */
+             xcl.lease_kind
+            ,SUM(CASE WHEN xpp.accounting_if_flag = cv_if_aft THEN
+                   (CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                      (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                         xpp.lease_charge
+                       ELSE 0 END)
+                    ELSE 0 END)
+                 ELSE 0 END) AS lease_charge_this_month   -- 当期支払リース料
+            ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                   xpp.lease_charge
+                 ELSE 0 END) AS lease_charge_future       -- 未経過リース料
+            ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                   (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
+                      xpp.lease_charge
+                    ELSE 0 END)
+                 ELSE 0 END) AS lease_charge_1year        -- 1年以内未経過リース料
+            ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
+                   xpp.lease_charge
+                 ELSE 0 END) AS lease_charge_over_1year   -- 1年越未経過リース料
+            ,NULL AS lease_charge_debt                    -- 未経過リース期末残高相当額
+            ,NULL AS interest_future                      -- 未経過リース支払利息額
+            ,NULL AS tax_future                           -- 未経過リース消費税額
+            ,NULL AS principal_1year                      -- 1年以内元本
+            ,NULL AS interest_1year                       -- 1年以内支払利息
+            ,NULL AS tax_1year                            -- 1年以内消費税
+            ,NULL AS principal_1to2year                   -- 1年超2年以内元本
+            ,NULL AS interest_1to2year                    -- 1年超2年以内支払利息
+            ,NULL AS tax_1to2year                         -- 1年超2年以内消費税
+            ,NULL AS principal_2to3year                   -- 2年超3年以内元本
+            ,NULL AS interest_2to3year                    -- 2年超3年以内支払利息
+            ,NULL AS tax_2to3year                         -- 2年超3年以内消費税
+            ,NULL AS principal_3to4year                   -- 3年超4年以内元本
+            ,NULL AS interest_3to4year                    -- 3年超4年以内支払利息
+            ,NULL AS tax_3to4year                         -- 3年超4年以内消費税
+            ,NULL AS principal_4to5year                   -- 4年超5年以内元本
+            ,NULL AS interest_4to5year                    -- 4年超5年以内支払利息
+            ,NULL AS tax_4to5year                         -- 4年超5年以内消費税
+            ,NULL AS principal_over_5year                 -- 5年越元本
+            ,NULL AS interest_over_5year                  -- 5年越支払利息
+            ,NULL AS tax_over_5year                       -- 5年越消費税
+            ,NULL AS interest_amount                      -- 支払利息相当額
+            ,SUM(CASE WHEN xpp.accounting_if_flag = cv_if_aft THEN
+                   (CASE WHEN xpp.period_name >= TO_CHAR(id_start_date_1st,'YYYY-MM') THEN
+                      (CASE WHEN xpp.period_name <= TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                         xpp.lease_deduction
+                       ELSE 0 END)
+                    ELSE 0 END)
+                 ELSE 0 END) AS deduction_this_month      -- 当期支払リース料（控除額）
+            ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                   xpp.lease_deduction
+                 ELSE 0 END) AS deduction_future          -- 未経過リース料（控除額）
+            ,SUM(CASE WHEN xpp.period_name > TO_CHAR(id_start_date_now,'YYYY-MM') THEN
+                   (CASE WHEN xpp.period_name <= TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
+                      xpp.lease_deduction
+                    ELSE 0 END)
+                 ELSE 0 END) AS deduction_1year           -- 1年以内未経過リース料（控除額）
+            ,SUM(CASE WHEN xpp.period_name > TO_CHAR(ADD_MONTHS(id_start_date_now,12),'YYYY-MM') THEN
+                   xpp.lease_deduction
+                 ELSE 0 END) AS deduction_over_1year      -- 1年越未経過リース料（控除額）
+        FROM xxcff_contract_headers xch
+            ,xxcff_contract_lines xcl
+            ,xxcff_pay_planning xpp
+       WHERE xch.contract_header_id         = xcl.contract_header_id
+         AND xpp.contract_line_id           = xcl.contract_line_id
+         AND xch.lease_type                 = cv_lease_type1
+         AND EXISTS (
+               SELECT 'x' FROM xxcff_pay_planning xpp2
+                WHERE xpp2.contract_line_id = xcl.contract_line_id
+                  AND xpp2.period_name      >= TO_CHAR(id_start_date_1st,'YYYY-MM'))
+         AND NOT (xpp.period_name           > TO_CHAR(xcl.cancellation_date,'YYYY-MM') AND
+                  xcl.cancellation_date     < LAST_DAY(TO_DATE(iv_period_name, 'YYYY-MM')) + 1 AND
+                  xcl.cancellation_date     IS NOT NULL)
+         AND xcl.contract_status            > cv_contr_st_201
+         AND iv_book_type_code              = gt_fin_name
+         AND xcl.lease_kind                 = cv_lease_kind_op
+      GROUP BY xcl.lease_kind
+-- 2018/03/27 1.8 H.Mori ADD END
       ;
 --
     -- *** ローカル・レコード ***
@@ -948,6 +1084,9 @@ AS
     iv_period_from     IN     VARCHAR2,   --  6.出力期間（自）
     iv_period_to       IN     VARCHAR2,   --  7.出力期間（至）
     io_wk_tab          IN OUT g_wk_ttype, --  8.リース債務残高レポートワークデータ
+-- 2018/03/27 1.8 H.Mori ADD START
+    iv_book_type_code  IN     VARCHAR2,   --  9.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
     ov_errbuf          OUT    VARCHAR2,   --   エラー・メッセージ           --# 固定 #
     ov_retcode         OUT    VARCHAR2,   --   リターン・コード             --# 固定 #
     ov_errmsg          OUT    VARCHAR2)   --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1056,15 +1195,22 @@ AS
       SELECT
 -- 0001063 2009/08/28 ADD START --
             /*+
-              LEADING(XCH XCL XLK FAB FRET FDP FDS)
-              INDEX(XCH XXCFF_CONTRACT_HEADERS_N06)
-              INDEX(XCL XXCFF_CONTRACT_LINES_U01)
-              NO_USE_MERGE(XCH XLK)
+-- 2018/03/27 1.8 H.Mori MOD START
+--              LEADING(XCH XCL XLK FAB FRET FDP FDS)
+--              INDEX(XCH XXCFF_CONTRACT_HEADERS_N06)
+--              INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+--              NO_USE_MERGE(XCH XLK)
+              LEADING(XCL FAB)
+              INDEX(XCL XXCFF_CONTRACT_LINES_N01)
+              INDEX(FBK FA_BOOKS_N2)
+              INDEX(FAB XXCFF_FA_ADDITIONS_B_N04)
+              INDEX(FDS FA_DEPRN_SUMMARY_U1)
+              INDEX(FRET FA_RETIREMENTS_N1)
               USE_NL(XCL FAB)
+-- 2018/03/27 1.8 H.Mori MOD END
             */
 -- 0001063 2009/08/28 ADD START --
              xcl.lease_kind                     -- リース種類
-
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
 -- 2011/12/01 Ver.1.6 A.Shirakawa ADD Start
                            (xcl.cancellation_date IS NULL) OR
@@ -1102,11 +1248,13 @@ AS
 -- 2011/12/01 Ver.1.6 A.Shirakawa ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN fdp.period_name = iv_period_to THEN
-                      NVL(fds.deprn_reserve,original_cost)
+-- 2018/03/27 1.8 H.Mori MOD START
+--                      NVL(fds.deprn_reserve,original_cost)
+                      NVL(fds.deprn_reserve,xcl.original_cost)
+-- 2018/03/27 1.8 H.Mori MOD END
                     ELSE 0 END)
                  ELSE 0 END) AS deprn_reserve   -- 減価償却累計額相当額
             ,SUM(NVL(fds.deprn_amount,0)) AS deprn_amount -- 減価償却相当額
-
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
 -- 2011/12/01 Ver.1.6 A.Shirakawa ADD Start
                            (xcl.cancellation_date IS NULL) OR
@@ -1131,19 +1279,37 @@ AS
        INNER JOIN xxcff_contract_lines xcl    -- リース契約明細
           ON xcl.contract_header_id = xch.contract_header_id
          AND xcl.lease_kind IN (cv_lease_kind_fin,cv_lease_kind_qfin)
-       INNER JOIN xxcff_lease_kind_v xlk      -- リース種類ビュー
-          ON xcl.lease_kind = xlk.lease_kind_code
-       INNER JOIN fa_additions_b fab           -- 資産詳細情報
+-- 2018/03/27 1.8 H.Mori MOD START
+--       INNER JOIN xxcff_lease_kind_v xlk      -- リース種類ビュー
+--          ON xcl.lease_kind = xlk.lease_kind_code
+--       INNER JOIN fa_additions_b fab           -- 資産詳細情報
 -- 0001063 2009/08/28 MOD START --
 --          ON fab.attribute10 = xcl.contract_line_id
-          ON fab.attribute10 = to_char(xcl.contract_line_id)
+--          ON fab.attribute10 = to_char(xcl.contract_line_id)
 -- 0001063 2009/08/28 MOD END --
-       LEFT JOIN fa_retirements fret  -- 除売却
-          ON fret.asset_id                  = fab.asset_id
-         AND fret.book_type_code            = xlk.book_type_code
+--       LEFT JOIN fa_retirements fret  -- 除売却
+--          ON fret.asset_id                  = fab.asset_id
+--         AND fret.book_type_code            = xlk.book_type_code
+--         AND fret.transaction_header_id_out IS NULL
+--       INNER JOIN fa_deprn_periods fdp         -- 減価償却期間
+--          ON fdp.book_type_code = xlk.book_type_code
+         AND xcl.contract_status > cv_contr_st_201
+       INNER JOIN fa_additions_b fab          -- 資産詳細情報
+          ON fab.attribute10                = TO_CHAR(xcl.contract_line_id)
+       INNER JOIN fa_books fbk                -- 資産台帳情報
+          ON fbk.asset_id                   = fab.asset_id
+         AND fbk.transaction_header_id_out  IS NULL
+         AND ( ( iv_book_type_code          = gt_fin_name
+             AND fbk.book_type_code         IN ( gt_fin_name ,gt_qfin_name ) )
+           OR (  iv_book_type_code          = gt_ifrs_name
+             AND fbk.book_type_code         = gt_ifrs_name ) )
+       LEFT JOIN fa_retirements fret          -- 除売却
+          ON fret.asset_id                  = fbk.asset_id
+         AND fret.book_type_code            = fbk.book_type_code
          AND fret.transaction_header_id_out IS NULL
-       INNER JOIN fa_deprn_periods fdp         -- 減価償却期間
-          ON fdp.book_type_code = xlk.book_type_code
+       INNER JOIN fa_deprn_periods fdp        -- 減価償却期間
+          ON fdp.book_type_code             = fbk.book_type_code
+-- 2018/03/27 1.8 H.Mori MOD END
 -- 0001063 2009/08/28 ADD START --
          AND fdp.fiscal_year = in_fiscal_year
          AND fdp.period_num >= in_period_num_1st
@@ -1154,8 +1320,10 @@ AS
          AND fds.book_type_code = fdp.book_type_code
          AND fds.period_counter = fdp.period_counter
          AND fds.deprn_source_code = 'DEPRN'
-       WHERE xch.lease_type = cv_lease_type1
-         AND xcl.contract_status > cv_contr_st_201
+-- 2018/03/27 1.8 H.Mori DEL START
+--       WHERE xch.lease_type = cv_lease_type1
+--         AND xcl.contract_status > cv_contr_st_201
+-- 2018/03/27 1.8 H.Mori DEL END
 -- 0001063 2009/08/28 DEL START --
 --         AND fdp.fiscal_year = in_fiscal_year
 --         AND fdp.period_num >= in_period_num_1st
@@ -1268,17 +1436,30 @@ AS
       END IF;
     END LOOP contract_loop;
 --
+-- 2018/03/27 1.8 H.Mori MOD START
 -- 0000417 2009/08/06 START END --
-    -- OPリース対象
-    <<contract_loop2>>
-    FOR l_rec in contract_op_cur LOOP
-      -- 取得値を格納
-      io_wk_tab(1).o_monthly_charge      := l_rec.monthly_charge;     -- 月間リース料
-      io_wk_tab(1).o_gross_charge        := l_rec.gross_charge;       -- リース料総額
-      io_wk_tab(1).o_monthly_deduction   := l_rec.monthly_deduction;  -- 月間リース料（控除額）
-      io_wk_tab(1).o_gross_deduction     := l_rec.gross_deduction;    -- リース料総額（控除額）
-    END LOOP contract_loop2;
+--    -- OPリース対象
+--    <<contract_loop2>>
+--    FOR l_rec in contract_op_cur LOOP
+--      -- 取得値を格納
+--      io_wk_tab(1).o_monthly_charge      := l_rec.monthly_charge;     -- 月間リース料
+--      io_wk_tab(1).o_gross_charge        := l_rec.gross_charge;       -- リース料総額
+--      io_wk_tab(1).o_monthly_deduction   := l_rec.monthly_deduction;  -- 月間リース料（控除額）
+--      io_wk_tab(1).o_gross_deduction     := l_rec.gross_deduction;    -- リース料総額（控除額）
+--    END LOOP contract_loop2;
 -- 0000417 2009/08/06 END END --
+    IF (iv_book_type_code = gt_fin_name) THEN
+      -- OPリース対象
+      <<contract_loop2>>
+      FOR l_rec in contract_op_cur LOOP
+        -- 取得値を格納
+        io_wk_tab(1).o_monthly_charge      := l_rec.monthly_charge;     -- 月間リース料
+        io_wk_tab(1).o_gross_charge        := l_rec.gross_charge;       -- リース料総額
+        io_wk_tab(1).o_monthly_deduction   := l_rec.monthly_deduction;  -- 月間リース料（控除額）
+        io_wk_tab(1).o_gross_deduction     := l_rec.gross_deduction;    -- リース料総額（控除額）
+      END LOOP contract_loop2;
+    END IF;
+-- 2018/03/27 1.8 H.Mori MOD END
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -1315,6 +1496,9 @@ AS
     ov_period_from    OUT VARCHAR2,     -- 2.出力期間（自）
     on_period_num_1st OUT NUMBER,       -- 3.期間番号
     od_start_date_1st OUT DATE,         -- 4.期首開始日
+-- 2018/03/27 1.8 H.Mori ADD START
+    iv_book_type_code IN  VARCHAR2,     -- 5.資産台帳
+-- 2018/03/27 1.8 H.Mori ADD END
     ov_errbuf         OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg         OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1350,9 +1534,12 @@ AS
             ,fa_calendar_types fct    -- 資産カレンダタイプ
             ,fa_fiscal_year ffy       -- 資産会計年度
             ,fa_book_controls fbc     -- 資産台帳マスタ
-            ,xxcff_lease_kind_v xlk   -- リース種類ビュー
-       WHERE fbc.book_type_code = xlk.book_type_code
-         AND xlk.lease_kind_code = cv_lease_kind_fin
+-- 2018/03/27 1.8 H.Mori MOD START
+--            ,xxcff_lease_kind_v xlk   -- リース種類ビュー
+--       WHERE fbc.book_type_code = xlk.book_type_code
+--         AND xlk.lease_kind_code = cv_lease_kind_fin
+       WHERE fbc.book_type_code = iv_book_type_code
+-- 2018/03/27 1.8 H.Mori MOD END
          AND fbc.deprn_calendar = fcp.calendar_type
          AND ffy.fiscal_year = in_fiscal_year
          AND ffy.fiscal_year_name = fct.fiscal_year_name
@@ -1420,6 +1607,9 @@ AS
     ov_period_to      OUT VARCHAR2,     -- 3.出力期間（至）
     on_period_num_now OUT NUMBER,       -- 4.期間番号
     od_start_date_now OUT DATE,         -- 5.当期開始日
+-- 2018/03/27 1.8 H.Mori ADD START
+    iv_book_type_code IN  VARCHAR2,     -- 6.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
     ov_errbuf         OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg         OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1452,12 +1642,17 @@ AS
             ,fdp.period_name AS period_to      -- 出力期間（至）
             ,fdp.period_num  AS period_num     -- 期間番号
             ,fcp.start_date  AS start_date_now -- 当期開始日
-            ,xlk.book_type_code AS book_type_code -- 資産台帳名
+-- 2018/03/27 1.8 H.Mori DEL START
+--            ,xlk.book_type_code AS book_type_code -- 資産台帳名
+-- 2018/03/27 1.8 H.Mori DEL END
         FROM fa_deprn_periods fdp     -- 減価償却期間
             ,fa_calendar_periods fcp  -- 資産カレンダ
             ,fa_book_controls fbc     -- 資産台帳マスタ
-            ,xxcff_lease_kind_v xlk   -- リース種類ビュー
-       WHERE fbc.book_type_code = xlk.book_type_code
+-- 2018/03/27 1.8 H.Mori MOD START
+--            ,xxcff_lease_kind_v xlk   -- リース種類ビュー
+--       WHERE fbc.book_type_code = xlk.book_type_code
+       WHERE fbc.book_type_code = iv_book_type_code
+-- 2018/03/27 1.8 H.Mori MOD END
          AND fdp.period_name = iv_period_name
          AND fdp.book_type_code = fbc.book_type_code
          AND fbc.deprn_calendar = fcp.calendar_type
@@ -1488,7 +1683,10 @@ AS
       IF (NVL(period_rec.deprn_run,'N') != 'Y') THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
                         cv_appl_short_name,cv_msg_close
-                       ,cv_tkn_book_type,period_rec.book_type_code
+-- 2018/03/27 1.8 H.Mori MOD START
+--                       ,cv_tkn_book_type,period_rec.book_type_code
+                       ,cv_tkn_book_type,iv_book_type_code
+-- 2018/03/27 1.8 H.Mori MOD END
                        ,cv_tkn_period_name,iv_period_name
                      );
         lv_errbuf := lv_errmsg;
@@ -1535,7 +1733,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : init
-   * Description      : 入力パラメータ値ログ出力処理(A-1)
+   * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -1589,6 +1787,62 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2018/03/27 1.8 H.Mori ADD START
+    --==================================
+    -- プロファイルの取得
+    --==================================
+    -- XXCFF:台帳名_FINリース台帳
+    gt_fin_name := FND_PROFILE.VALUE( cv_fin_name );
+    --
+    IF ( gt_fin_name IS NULL ) THEN
+      -- プロファイル取得エラーメッセージ
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( iv_application  => cv_appl_short_name   -- アプリケーション短縮名
+                                                   , iv_name         => cv_msg_cff_00020     -- メッセージコード
+                                                   , iv_token_name1  => cv_tkn_prof_name     -- トークンコード1
+                                                   , iv_token_value1 => cv_fin_name          -- トークン値1
+                                                   )
+                          , 1
+                          , 5000
+                          );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- XXCFF:台帳名_旧リース台帳
+    gt_qfin_name := FND_PROFILE.VALUE( cv_qfin_name );
+    --
+    IF ( gt_qfin_name IS NULL ) THEN
+      -- プロファイル取得エラーメッセージ
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( iv_application  => cv_appl_short_name   -- アプリケーション短縮名
+                                                   , iv_name         => cv_msg_cff_00020     -- メッセージコード
+                                                   , iv_token_name1  => cv_tkn_prof_name     -- トークンコード1
+                                                   , iv_token_value1 => cv_qfin_name         -- トークン値1
+                                                   )
+                          , 1
+                          , 5000
+                          );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+    -- XXCFF:台帳名_IFRSリース台帳
+    gt_ifrs_name := FND_PROFILE.VALUE( cv_ifrs_name );
+    --
+    IF ( gt_ifrs_name IS NULL ) THEN
+      -- プロファイル取得エラーメッセージ
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( iv_application  => cv_appl_short_name   -- アプリケーション短縮名
+                                                   , iv_name         => cv_msg_cff_00020     -- メッセージコード
+                                                   , iv_token_name1  => cv_tkn_prof_name     -- トークンコード1
+                                                   , iv_token_value1 => cv_ifrs_name         -- トークン値1
+                                                   )
+                          , 1
+                          , 5000
+                          );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+-- 2018/03/27 1.8 H.Mori ADD END
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1621,6 +1875,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_period_name       IN  VARCHAR2,     -- 1.会計期間名
+-- 2018/03/27 1.8 H.Mori ADD START
+    iv_book_type_code    IN  VARCHAR2,     -- 2.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
     ov_errbuf            OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode           OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg            OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1689,7 +1946,7 @@ AS
     --*********************************************
 --
     -- ============================================
-    -- A-1．入力パラメータ値ログ出力処理
+    -- A-1．初期処理
     -- ============================================
     init(
        lv_errbuf          -- エラー・メッセージ           --# 固定 #
@@ -1710,6 +1967,9 @@ AS
       ,lt_period_to       -- 3.出力期間（至）
       ,lt_period_num_now  -- 4.期間番号
       ,ld_start_date_now  -- 5.当期開始日
+-- 2018/03/27 1.8 H.Mori ADD START
+      ,iv_book_type_code  -- 6.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
       ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode         -- リターン・コード             --# 固定 #
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1727,6 +1987,9 @@ AS
       ,lt_period_from     -- 2.出力期間（至）
       ,lt_period_num_1st  -- 3.期間番号
       ,ld_start_date_1st  -- 4.当期開始日
+-- 2018/03/27 1.8 H.Mori ADD START
+      ,iv_book_type_code  -- 5.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
       ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode         -- リターン・コード             --# 固定 #
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1748,6 +2011,9 @@ AS
       ,lt_period_from     --  6.出力期間（自）
       ,lt_period_to       --  7.出力期間（至）
       ,l_wk_tab           --  8.リース債務残高レポートワークデータ
+-- 2018/03/27 1.8 H.Mori ADD START
+      ,iv_book_type_code  --  9.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
       ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
       ,lv_retcode         -- リターン・コード             --# 固定 #
       ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1768,6 +2034,9 @@ AS
         ,lt_period_to       --  3.会計期間名
 -- 2011/12/01 Ver.1.6 A.Shirakawa ADD Start
         ,l_wk_tab           --  4.リース債務残高レポートワークデータ
+-- 2018/03/27 1.8 H.Mori ADD START
+        ,iv_book_type_code  --  5.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
         ,lv_errbuf          -- エラー・メッセージ           --# 固定 #
         ,lv_retcode         -- リターン・コード             --# 固定 #
         ,lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1872,6 +2141,9 @@ AS
     errbuf               OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode              OUT VARCHAR2,      --   リターン・コード    --# 固定 #
     iv_period_name       IN  VARCHAR2       -- 1.会計期間名
+-- 2018/03/27 1.8 H.Mori ADD START
+   ,iv_book_type_code    IN  VARCHAR2       -- 2.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
   )
 --
 --
@@ -1925,6 +2197,9 @@ AS
     -- ===============================================
     submain(
        iv_period_name  -- 1.会計期間名
+-- 2018/03/27 1.8 H.Mori ADD START
+      ,iv_book_type_code  -- 2.資産台帳名
+-- 2018/03/27 1.8 H.Mori ADD END
       ,lv_errbuf       --   エラー・メッセージ           --# 固定 #
       ,lv_retcode      --   リターン・コード             --# 固定 #
       ,lv_errmsg       --   ユーザー・エラー・メッセージ --# 固定 #
