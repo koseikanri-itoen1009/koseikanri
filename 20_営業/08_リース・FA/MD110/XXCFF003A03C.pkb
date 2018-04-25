@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF003A03C(body)
  * Description      : リース種類判定
  * MD.050           : MD050_CFF_003_A03_リース種類判定
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------- ---- ----- --------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008-12-04    1.0   SCS 増子 秀幸    新規作成
  *  2016-08-10    1.1   SCSK 仁木 重人   [E_本稼動_13658]自販機耐用年数変更対応
  *  2016-10-26    1.2   SCSK郭           E_本稼動_13658 自販機耐用年数変更対応・フェーズ3
+ *  2018-03-27    1.3   SCSK 大塚 亨     E_本稼動_14830 IFRSリース資産対応
  *
  *****************************************************************************************/
 --
@@ -99,9 +100,17 @@ AS
   cv_msg_cff_00088   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00088';  -- 計算エラー
   cv_msg_cff_00089   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00089';  -- 割引率取得エラー
   cv_msg_cff_00109   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00109';  -- 割引率未設定エラー
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+  cv_msg_cff_00282   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00282';  -- 見積現金購入価額エラー
+  cv_msg_cff_00283   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00283';  -- 法定耐用年数エラー
+  cv_msg_cff_00094   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00094';  -- 共通関数エラー
+-- 2018/03/27 Ver1.3 Otsuka ADD End
 --
   -- トークン
   cv_tk_cff_00005_01 CONSTANT VARCHAR2(15) := 'INPUT';    -- 未入力項目名
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+  cv_tk_cff_00094_01 CONSTANT VARCHAR2(15) := 'FUNC_NAME';   -- 共通関数
+-- 2018/03/27 Ver1.3 Otsuka ADD End
 --
   -- トークン値
   cv_msg_cff_50032   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50032';  -- 法定耐用年数
@@ -113,6 +122,9 @@ AS
 -- Ver.1.1 ADD Start
   cv_msg_cff_50041   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50041';  -- リース種別
 -- Ver.1.1 ADD End
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+  cv_msg_cff_50323   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50323';  -- リース判定処理
+-- 2018/03/27 Ver1.3 Otsuka ADD End
 --
   -- リース区分
   cv_lease_type_1    CONSTANT VARCHAR2(1)  := '1';        -- 1:原契約
@@ -130,6 +142,11 @@ AS
 -- Ver.1.1 ADD Start
   -- リース種別
   cv_lease_class_11  CONSTANT VARCHAR2(2)  := '11';       -- 11:自動販売機
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+  -- リース判定
+  cv_lease_cls_chk1   CONSTANT VARCHAR2(1)  := '1';        -- リース判定結果：1
+  cv_lease_cls_chk2   CONSTANT VARCHAR2(1)  := '2';        -- リース判定結果：2
+-- 2018/03/27 Ver1.3 Otsuka ADD End
   -- 再リース分支払回数
   cn_first_freq      CONSTANT NUMBER       := 61;         -- 再リース１回目
   cn_second_freq     CONSTANT NUMBER       := 73;         -- 再リース２回目
@@ -145,6 +162,9 @@ AS
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+    gv_ret_dff7    VARCHAR2(1);    -- リース判定DFF7
+-- 2018/03/27 Ver1.3 Otsuka ADD End
 --
   /**********************************************************************************
    * Procedure Name   : check_in_param
@@ -186,6 +206,13 @@ AS
 --
     -- *** ローカル変数 ***
 --
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+    lv_lease_class VARCHAR2(2);    -- リース種別
+    lv_ret_dff4    VARCHAR2(1);    -- リース判定DFF4
+    lv_ret_dff5    VARCHAR2(1);    -- リース判定DFF5
+    lv_ret_dff6    VARCHAR2(1);    -- リース判定DFF6
+    lv_ret_dff7    VARCHAR2(1);    -- リース判定DFF7
+-- 2018/03/27 Ver1.3 Otsuka ADD End
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -199,6 +226,53 @@ AS
 --###########################  固定部 END   ############################
 --
     -- 入力項目チェック
+-- 2018/03/27 Ver1.3 Otsuka MOD Start
+    -- 8.リース種別
+    IF (iv_lease_class IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+                     iv_name         => cv_msg_cff_00005,    -- メッセージコード
+                     iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
+                     iv_token_value1 => cv_msg_cff_50041     -- トークン値1
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    ELSIF (iv_lease_class IS NOT NULL) THEN
+      lv_lease_class := iv_lease_class;
+      -- ***************************************
+      -- ***        実処理の記述             ***
+      -- ***       共通関数の呼び出し        ***
+      -- ***************************************
+      --  リース判定処理
+      xxcff_common2_pkg.get_lease_class_info(
+          iv_lease_class  =>    lv_lease_class
+          ,ov_ret_dff4    =>    lv_ret_dff4           -- DFF4(日本基準連携)
+          ,ov_ret_dff5    =>    lv_ret_dff5           -- DFF5(IFRS連携)
+          ,ov_ret_dff6    =>    lv_ret_dff6           -- DFF6(仕訳作成)
+          ,ov_ret_dff7    =>    lv_ret_dff7           -- DFF7(リース判定処理)
+          ,ov_errbuf      =>    lv_errbuf
+          ,ov_retcode     =>    lv_retcode
+          ,ov_errmsg      =>    lv_errmsg
+       );
+      -- 共通関数エラーの場合
+      IF (lv_retcode <> cv_status_normal) THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                                                       cv_msg_cff_00094,    -- メッセージ：共通関数エラー
+                                                       cv_tk_cff_00094_01,  -- 共通関数名
+                                                       cv_msg_cff_50323  )  -- ファイルID
+                                                      || cv_msg_part
+                                                      || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                                      ,1
+                                                      ,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      -- グローバル変数に、リース種別のDFF情報をセットする
+      ELSE
+        gv_ret_dff7 := lv_ret_dff7;           -- DFF7(リース判定処理)
+      END IF;
+    END IF;
+--
+-- 2018/03/27 Ver1.3 Otsuka MOD End
     -- 1.リース区分
     IF ( (in_lease_type IS NULL)
       OR (in_lease_type NOT IN(cv_lease_type_1, cv_lease_type_2) ) )
@@ -248,27 +322,89 @@ AS
     END IF;
 --
     -- 5.見積現金購入価額
-    IF ( (in_estimated_cash_price IS NULL) OR (in_estimated_cash_price <= 0) ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
-                     iv_name         => cv_msg_cff_00005,    -- メッセージコード
-                     iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
-                     iv_token_value1 => cv_msg_cff_50110     -- トークン値1
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_process_expt;
+-- 2018/03/27 Ver1.3 Otsuka MOD Start
+--    IF ( (in_estimated_cash_price IS NULL) OR (in_estimated_cash_price <= 0) ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+--                     iv_name         => cv_msg_cff_00005,    -- メッセージコード
+--                     iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
+--                     iv_token_value1 => cv_msg_cff_50110     -- トークン値1
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+    -- リース判定処理が'1'の場合、見積現金購入価額はNullとマイナス値を許可しない
+    IF (gv_ret_dff7 = cv_lease_cls_chk1) THEN
+      IF ( (in_estimated_cash_price IS NULL) OR (in_estimated_cash_price <= 0) ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+                       iv_name         => cv_msg_cff_00005,    -- メッセージコード
+                       iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
+                       iv_token_value1 => cv_msg_cff_50110     -- トークン値1
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+    -- リース判定=2の場合は、未入力および0入力を許可する
+    ELSIF (gv_ret_dff7 = cv_lease_cls_chk2) THEN
+--      「0」は画面から入力の可能性があるため変更
+--      IF (in_estimated_cash_price <= 0) THEN
+      IF (NVL(in_estimated_cash_price, 0) < 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+                       iv_name         => cv_msg_cff_00282    -- メッセージコード
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+    -- リース区分が'2'（再リース)でかつ、リース判定処理が'1'の場合、見積現金購入価額はNullとマイナス値を許可しない
+    ELSIF (in_lease_type = cv_lease_type_2) AND (gv_ret_dff7 = cv_lease_cls_chk1) THEN
+      --A-2の処理でトラップされるため、何も行わない。
+      NULL;
+-- 2018/03/27 Ver1.3 Otsuka MOD End
     END IF;
 --
     -- 6.法定耐用年数
-    IF ( (in_life_in_months IS NULL) OR (in_life_in_months <= 0) ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
-                     iv_name         => cv_msg_cff_00005,    -- メッセージコード
-                     iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
-                     iv_token_value1 => cv_msg_cff_50032     -- トークン値1
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_process_expt;
+-- 2018/03/27 Ver1.3 Otsuka MOD Start
+--    IF ( (in_life_in_months IS NULL) OR (in_life_in_months <= 0) ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+--                     iv_name         => cv_msg_cff_00005,    -- メッセージコード
+--                     iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
+--                     iv_token_value1 => cv_msg_cff_50032     -- トークン値1
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
+    -- リース判定処理が'1'の場合、法定耐用年数はNullとマイナス値を許可しない
+    IF (gv_ret_dff7 = cv_lease_cls_chk1) THEN
+      IF ( (in_life_in_months IS NULL) OR (in_life_in_months <= 0) ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+                       iv_name         => cv_msg_cff_00005,    -- メッセージコード
+                       iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
+                       iv_token_value1 => cv_msg_cff_50032     -- トークン値1
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+    -- リース判定=2の場合は、未入力および0入力を許可する
+    ELSIF (gv_ret_dff7 = cv_lease_cls_chk2) THEN
+--      「0」は画面から入力の可能性があるため変更
+--      IF (in_life_in_months <= 0) THEN
+      IF (NVL(in_life_in_months, 0) < 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+                       iv_name         => cv_msg_cff_00283    -- メッセージコード
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+    -- リース区分が'2'（再リース)でかつ、リース判定処理が'1'の場合、法定耐用年数はNullとマイナス値を許可しない
+    ELSIF (in_lease_type = cv_lease_type_2) AND (gv_ret_dff7 = cv_lease_cls_chk1) THEN
+      --A-2の処理でトラップされるため、何も行わない。
+      NULL;
+-- 2018/03/27 Ver1.3 Otsuka MOD End
     END IF;
 --
     -- 7.契約年月
@@ -282,19 +418,22 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
--- Ver.1.1 ADD Start
-    -- 8.リース種別
-    IF (iv_lease_class IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
-                     iv_name         => cv_msg_cff_00005,    -- メッセージコード
-                     iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
-                     iv_token_value1 => cv_msg_cff_50041     -- トークン値1
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_process_expt;
-    END IF;
+-- 2018/03/27 Ver1.3 Otsuka DEL Start
+-- 入力項目チェックの先頭に移動（リース判定処理呼出のため）
+---- Ver.1.1 ADD Start
+--    -- 8.リース種別
+--    IF (iv_lease_class IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_app_kbn_cff,      -- アプリケーション短縮名
+--                     iv_name         => cv_msg_cff_00005,    -- メッセージコード
+--                     iv_token_name1  => cv_tk_cff_00005_01,  -- トークンコード1
+--                     iv_token_value1 => cv_msg_cff_50041     -- トークン値1
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_process_expt;
+--    END IF;
 -- Ver.1.1 ADD End
+-- 2018/03/27 Ver1.3 Otsuka DEL End
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -353,8 +492,12 @@ AS
     lv_lease_kind := NULL;
 --
     -- リース区分判定
-    -- リース区分が'2'(再リース)の場合、リース種類に「Op」を設定
-    IF (in_lease_type = cv_lease_type_2) THEN
+-- 2018/03/27 Ver1.3 Otsuka MOD Start
+--    -- リース区分が'2'(再リース)の場合、リース種類に「Op」を設定
+--    IF (in_lease_type = cv_lease_type_2) THEN
+    -- リース区分が'2'（再リース)でかつ、リース判定処理が'1'の場合、リース種類に「Op」を設定
+    IF (in_lease_type = cv_lease_type_2) AND (gv_ret_dff7 = cv_lease_cls_chk1) THEN
+-- 2018/03/27 Ver1.3 Otsuka MOD End
       lv_lease_kind := cv_lease_kind_1;
     END IF;
 --
@@ -885,9 +1028,23 @@ AS
 --
   BEGIN
 --
+-- 2018/03/27 Ver1.3 Otsuka MOD Start
+--    -- 現在価値が見積現金購入価額の90%以上である場合、または
+--    -- 支払回数(リース期間)が法定耐用年数の75%以上である場合、リース種類に「Fin」を設定
+--    IF ( (in_present_value >= in_estimated_cash_price * 0.9)
+--      OR (in_payment_frequency >= in_life_in_months * 12 * 0.75) )
+--    THEN
+--      lv_lease_kind := cv_lease_kind_0;
+--    -- それ以外の場合、リース種類に「Op」を設定
+--    ELSE
+--      lv_lease_kind := cv_lease_kind_1;
+--    END IF;
+    -- リース判定処理が='2'の場合、リース種類に「Fin」を設定します。
+    IF (gv_ret_dff7 = cv_lease_cls_chk2) THEN
+      lv_lease_kind := cv_lease_kind_0;
     -- 現在価値が見積現金購入価額の90%以上である場合、または
     -- 支払回数(リース期間)が法定耐用年数の75%以上である場合、リース種類に「Fin」を設定
-    IF ( (in_present_value >= in_estimated_cash_price * 0.9)
+    ELSIF ( (in_present_value >= in_estimated_cash_price * 0.9)
       OR (in_payment_frequency >= in_life_in_months * 12 * 0.75) )
     THEN
       lv_lease_kind := cv_lease_kind_0;
@@ -895,6 +1052,7 @@ AS
     ELSE
       lv_lease_kind := cv_lease_kind_1;
     END IF;
+-- 2018/03/27 Ver1.3 Otsuka MOD End
 --
     RETURN lv_lease_kind;
 --
@@ -937,12 +1095,26 @@ AS
 --
   BEGIN
 --
-    -- 現在価値と見積現金購入価額を比較し、低い方を取得価額に設定
-    IF (in_present_value <= in_estimated_cash_price) THEN
-      ln_original_cost := in_present_value;
-    ELSE
-      ln_original_cost := in_estimated_cash_price;
-    END IF;
+-- 2018/03/27 Ver1.3 Otsuka MOD Start
+--    -- 現在価値と見積現金購入価額を比較し、低い方を取得価額に設定
+--    IF (in_present_value <= in_estimated_cash_price) THEN
+--      ln_original_cost := in_present_value;
+--    ELSE
+--      ln_original_cost := in_estimated_cash_price;
+--    END IF;
+   -- リース判定処理='1'の場合
+   IF (gv_ret_dff7 = cv_lease_cls_chk1) then
+      -- 現在価値と見積現金購入価額を比較し、低い方を取得価額に設定
+      IF (in_present_value <= in_estimated_cash_price) THEN
+        ln_original_cost := in_present_value;
+      ELSE
+        ln_original_cost := in_estimated_cash_price;
+      END IF;
+   -- リース判定処理='2'の場合
+   ELSE
+     ln_original_cost := in_present_value;
+   END IF;
+-- 2018/03/27 Ver1.3 Otsuka MOD End
 --
     RETURN ln_original_cost;
 --
@@ -1317,23 +1489,44 @@ AS
     -- =====================================================
     --  計算利子率算定処理 (A-7)
     -- =====================================================
-    calc_interested_rate(
-      in_payment_frequency,     -- 支払回数
-      in_first_charge,          -- 初回月額リース料
-      in_second_charge,         -- ２回目以降月額リース料
-      ln_original_cost,         -- 取得価額
--- 2016/10/26 Ver.1.2 Y.Koh ADD Start
-      id_contract_ym,           -- 契約年月
--- 2016/10/26 Ver.1.2 Y.Koh ADD End
--- Ver.1.1 ADD Start
-      iv_lease_class,           -- リース種別
--- Ver.1.1 ADD End
-      ln_calc_interested_rate,  -- 計算利子率
-      lv_errbuf,                -- エラー・メッセージ           --# 固定 #
-      lv_retcode,               -- リターン・コード             --# 固定 #
-      lv_errmsg);               -- ユーザー・エラー・メッセージ --# 固定 #
-    IF (lv_retcode = cv_status_error) THEN
-      RAISE global_process_expt;
+-- 2018/03/27 Ver1.3 Otsuka MOD Start
+--    calc_interested_rate(
+--      in_payment_frequency,     -- 支払回数
+--      in_first_charge,          -- 初回月額リース料
+--      in_second_charge,         -- ２回目以降月額リース料
+--      ln_original_cost,         -- 取得価額
+---- 2016/10/26 Ver.1.2 Y.Koh ADD Start
+--      id_contract_ym,           -- 契約年月
+---- 2016/10/26 Ver.1.2 Y.Koh ADD End
+---- Ver.1.1 ADD Start
+--      iv_lease_class,           -- リース種別
+---- Ver.1.1 ADD End
+--      ln_calc_interested_rate,  -- 計算利子率
+--      lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+--      lv_retcode,               -- リターン・コード             --# 固定 #
+--      lv_errmsg);               -- ユーザー・エラー・メッセージ --# 固定 #
+--    IF (lv_retcode = cv_status_error) THEN
+--      RAISE global_process_expt;
+--    END IF;
+    -- リース判定処理='2'の場合
+    IF (gv_ret_dff7 = cv_lease_cls_chk2) THEN
+      on_calc_interested_rate := ln_present_value_discount_rate;
+    ELSE
+      calc_interested_rate(
+        in_payment_frequency,     -- 支払回数
+        in_first_charge,          -- 初回月額リース料
+        in_second_charge,         -- ２回目以降月額リース料
+        ln_original_cost,         -- 取得価額
+        id_contract_ym,           -- 契約年月
+        iv_lease_class,           -- リース種別
+        ln_calc_interested_rate,  -- 計算利子率
+        lv_errbuf,                -- エラー・メッセージ           --# 固定 #
+        lv_retcode,               -- リターン・コード             --# 固定 #
+        lv_errmsg);               -- ユーザー・エラー・メッセージ --# 固定 #
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+-- 2018/03/27 Ver1.3 Otsuka MOD End
     END IF;
 -- Ver.1.1 ADD Start
     -- =====================================================
@@ -1365,7 +1558,13 @@ AS
     on_present_value_discount_rate := ln_present_value_discount_rate;
     on_present_value               := ln_present_value;
     on_original_cost               := ln_original_cost;
-    on_calc_interested_rate        := ln_calc_interested_rate;
+-- 2018/03/27 Ver1.3 Otsuka MOD Start
+--    on_calc_interested_rate        := ln_calc_interested_rate;
+    -- リース判定処理='1'の場合
+    IF (gv_ret_dff7 = cv_lease_cls_chk1) THEN
+      on_calc_interested_rate        := ln_calc_interested_rate;
+    END IF;
+-- 2018/03/27 Ver1.3 Otsuka MOD End
 -- Ver.1.1 ADD Start
     on_original_cost_type1         := ln_original_cost_type1;          -- リース負債額_原契約
     on_original_cost_type2         := ln_original_cost_type2;          -- リース負債額_再リース
