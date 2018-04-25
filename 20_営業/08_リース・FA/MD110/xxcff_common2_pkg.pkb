@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF_COMMON2_PKG(body)
  * Description      : FAリース共通処理
  * MD.050           : なし
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,6 +17,7 @@ AS
  *  get_lease_key          リースキーの取得
  *  get_object_info        物件コードリース区分、リース種別チェック
  *  chk_object_term        物件コード解約チェック
+ *  get_lease_class_info   リース種別DFF情報取得
  *  <program name>         <説明> (処理番号)
  *  作成順に記述していくこと
  *
@@ -27,6 +28,7 @@ AS
  *  2008/11/25    1.0    SCS大井          新規作成
  *  2008/12/05    1.1    SCS嶋田          追加：物件コード解約チェック
  *  2009/02/18    1.2    SCS礒崎          支払照合済チェックの検索条件を変更
+ *  2018/03/27    1.3    SCSK大塚         「リース種別DFF情報取得」機能追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -89,15 +91,24 @@ AS
   -- ===============================
   cv_pkg_name      CONSTANT VARCHAR2(100) := 'XXCFF_COMMON2_PKG'; -- パッケージ名
   cv_appl_name     CONSTANT VARCHAR2(100) := 'XXCFF'; -- アプリケーション名
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+  cd_od_sysdate    CONSTANT DATE          := SYSDATE; -- システム日付
+-- 2018/03/27 Ver1.3 Otsuka ADD End
 --
   --エラーメッセージ名
   cv_msg_name1     CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00157'; -- パラメータ必須エラー
   cv_msg_name6     CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00161'; -- 解約チェックエラー
   cv_msg_name7     CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00162'; -- 解約申請チェックエラー
   cv_msg_name2     CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00186'; -- 会計期間取得エラー
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+  cv_msg_name8     CONSTANT VARCHAR2(100) := 'APP-XXCFF1-00189';  -- 参照タイプ取得エラー
+-- 2018/03/27 Ver1.3 Otsuka ADD End
 --
   --トークン名
   cv_tkn_name1     CONSTANT VARCHAR2(100) := 'INPUT';
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+  cv_tkn_name2     CONSTANT VARCHAR2(100) := 'LOOKUP_TYPE';    -- ルックアップタイプ
+-- 2018/03/27 Ver1.3 Otsuka ADD End
 --
   --トークン値
   cv_tkn_val2      CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50016'; -- 物件内部ID
@@ -603,6 +614,134 @@ AS
 --
   END chk_object_term;
 --
+-- 2018/03/27 Ver1.3 Otsuka ADD Start
+  /**********************************************************************************
+   * Procedure Name   : get_lease_class_info
+   * Description      : リース種別DFF情報取得
+   ***********************************************************************************/
+  PROCEDURE get_lease_class_info(
+    iv_lease_class IN  VARCHAR2,              -- リース種別
+    ov_ret_dff4    OUT VARCHAR2,              -- DFF4のデータ格納用
+    ov_ret_dff5    OUT VARCHAR2,              -- DFF5のデータ格納用
+    ov_ret_dff6    OUT VARCHAR2,              -- DFF6のデータ格納用
+    ov_ret_dff7    OUT VARCHAR2,              -- DFF7のデータ格納用
+    ov_errbuf      OUT NOCOPY VARCHAR2,       -- エラー・メッセージ           --# 固定 #
+    ov_retcode     OUT NOCOPY VARCHAR2,       -- リターン・コード             --# 固定 #
+    ov_errmsg      OUT NOCOPY VARCHAR2        -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name          CONSTANT VARCHAR2(100) := 'get_lease_class_info';     -- プログラム名
+    cv_lease_class_check CONSTANT VARCHAR2(24)  := 'XXCFF1_LEASE_CLASS_CHECK';
+    cv_lang_ja           CONSTANT VARCHAR2(2)   := USERENV('LANG');
+    cv_yes               CONSTANT VARCHAR2(1)   := 'Y';
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_lease_cls_DFF4 VARCHAR2(1);    -- 日本基準連携
+    lv_lease_cls_DFF5 VARCHAR2(1);    -- IFRS連携
+    lv_lease_cls_DFF6 VARCHAR2(1);    -- 仕訳作成
+    lv_lease_cls_DFF7 VARCHAR2(1);    -- リース判定処理結果
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --初期化
+    lv_lease_cls_DFF4 := NULL;
+    lv_lease_cls_DFF5 := NULL;
+    lv_lease_cls_DFF6 := NULL;
+    lv_lease_cls_DFF7 := NULL;
+--
+    -- 参照タイプ：リース種別チェックから、各DFFを取得
+    SELECT
+            flv.attribute4 Att4, -- 日本基準連携
+            flv.attribute5 Att5, -- IFRS連携
+            flv.attribute6 Att6, -- 仕訳作成
+            flv.attribute7 Att7  -- リース判定処理
+    INTO
+            lv_lease_cls_DFF4,   -- 日本基準連携
+            lv_lease_cls_DFF5,   -- IFRS連携
+            lv_lease_cls_DFF6,   -- 仕訳作成
+            lv_lease_cls_DFF7    -- リース判定処理
+    FROM
+            fnd_lookup_values  flv
+    WHERE
+            flv.lookup_type  = cv_lease_class_check
+      AND   flv.lookup_code  = iv_lease_class
+      AND   flv.language     = cv_lang_ja
+      AND   flv.enabled_flag = cv_yes
+      AND   TRUNC(cd_od_sysdate) BETWEEN TRUNC(NVL(flv.start_date_active, cd_od_sysdate)) 
+                                 AND     TRUNC(NVL(flv.end_date_active,   cd_od_sysdate));
+    -- 取得内容をOUTパラメータに設定
+    IF (lv_lease_cls_DFF4 IS NOT NULL) THEN
+      ov_ret_dff4 := lv_lease_cls_DFF4;
+    ELSE
+      RAISE global_api_expt;
+    END IF;
+    IF (lv_lease_cls_DFF5 IS NOT NULL) THEN
+      ov_ret_dff5 := lv_lease_cls_DFF5;
+    ELSE
+      RAISE global_api_expt;
+    END IF;
+    IF (lv_lease_cls_DFF6 IS NOT NULL) THEN
+      ov_ret_dff6 := lv_lease_cls_DFF6;
+    ELSE
+      RAISE global_api_expt;
+    END IF;
+    IF (lv_lease_cls_DFF7 IS NOT NULL) THEN
+      ov_ret_dff7 := lv_lease_cls_DFF7;
+    ELSE
+      RAISE global_api_expt;
+    END IF;
+--
+    EXCEPTION
+--
+    WHEN NO_DATA_FOUND THEN                      --*** 参照タイプが取得できなければ異常 ***
+      lv_errmsg  := xxccp_common_pkg.get_msg(cv_appl_name
+                                            ,cv_msg_name8
+                                            ,cv_tkn_name2
+                                            ,cv_lease_class_check);
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--###############################  固定例外処理部 START   ###################################
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--###################################  固定部 END   #########################################
+--
+  END get_lease_class_info;
+-- 2018/03/27 Ver1.3 Otsuka ADD End
 --###########################  固定部 END   #######################################################
 --
 END XXCFF_COMMON2_PKG;
