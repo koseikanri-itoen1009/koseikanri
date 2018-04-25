@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A07C(body)
  * Description      : リース契約・物件アップロード
  * MD.050           : MD050_CFF_003_A07_リース契約・物件アップロード.doc
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *                                        端数差額を初回の月額控除額で調整する。
  *  2013/07/05    1.8   SCSK中野徹也    【E_本稼動_10871】(消費税増税対応)
  *  2016/08/15    1.9   SCSK仁木 重人   【E_本稼動_13658】自販機耐用年数変更対応
+ *  2018/03/27    1.10  SCSK大塚 亨     【E_本稼動_14830】IFRSリース資産対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -204,7 +205,7 @@ AS
 -- Ver.1.9 DEL End
   -- 契約明細件数エラー
   cv_msg_cff_00150   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00150';
-  -- 数値論理エラー(0以下)
+  -- 数値論理エラー(0未満)
   cv_msg_cff_00117   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00117';
 -- Ver.1.9 DEL Start
 --  -- 日付論理エラー
@@ -242,6 +243,10 @@ AS
 --  -- コンカレント入力パラメータメッセージ
 --  cv_msg_cff_90009   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-90009';
 -- Ver.1.9 DEL End
+-- 2018/03/27 Ver1.10 Otsuka ADD Start
+  cv_msg_cff_00282   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00282';   -- 見積現金購入価額エラー
+  cv_msg_cff_00283   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00283';   -- 法定耐用年数エラー
+-- 2018/03/27 Ver1.10 Otsuka ADD End
 --
   -- メッセージトークン
   cv_tk_cff_00005_01 CONSTANT VARCHAR2(15)  := 'INPUT';       -- カラム論理名
@@ -335,6 +340,12 @@ AS
 -- Ver.1.9 DEL End
   cv_msg_cff_50130   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50130';  -- 初期処理
   cv_msg_cff_50131   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50131';  -- BLOBデータ変換用関数
+--
+-- 2018/03/27 Ver1.10 Otsuka ADD Start
+  -- リース判定
+  cv_lease_cls_chk1  CONSTANT VARCHAR2(1)  := '1';        -- リース判定結果：1
+  cv_msg_cff_50323   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50323';  -- リース判定処理
+-- 2018/03/27 Ver1.10 Otsuka ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2593,7 +2604,7 @@ AS
 --ADD 2010/01/07 START
 --
       -- 13.見積現金購入金額
-      --(必須、文字数チェック)
+      --(文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(22)   -- 項目名称
        ,gr_lord_data_tab(22)   -- 項目値
@@ -2619,7 +2630,12 @@ AS
          ,buff   => lv_errmsg
         );  
       ELSE
-        IF (TO_NUMBER(gr_lord_data_tab(22)) < 0) THEN
+-- 2018/03/27 Ver1.10 Otsuka MOD Start
+--      ここではリース判別結果を利用しないため、一旦NVLで回避
+--      マイナス値のみを対象とする
+--        IF (TO_NUMBER(gr_lord_data_tab(22)) < 0) THEN
+        IF (NVL(TO_NUMBER(gr_lord_data_tab(22)),0) < 0) THEN
+-- 2018/03/27 Ver1.10 Otsuka MOD End
           IF (lv_err_flag = cv_const_n) THEN
             FND_FILE.PUT_LINE(
               which  => FND_FILE.OUTPUT
@@ -2631,7 +2647,7 @@ AS
             which  => FND_FILE.OUTPUT
            ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
+                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0未満）
                         cv_tk_cff_00005_01,  -- カラム名
                         cv_msg_cff_50064     -- 見積現金購入金額
                       ),1,5000)
@@ -2642,7 +2658,7 @@ AS
       END IF;      
 --
       -- 14.法定耐用年数
-      --(必須、文字数チェック)
+      --(文字数チェック)
       xxccp_common_pkg2.upload_item_check(
         gr_lord_name_tab(23)   -- 項目名称
        ,gr_lord_data_tab(23)   -- 項目値
@@ -2668,7 +2684,12 @@ AS
          ,buff   => lv_errmsg
         );  
       ELSE
-        IF (TO_NUMBER(gr_lord_data_tab(23)) < 0) THEN
+-- 2018/03/27 Ver1.10 Otsuka MOD Start
+--      ここではリース判別結果を利用しないため、一旦NVLで回避
+--      マイナス値のみを対象とする
+--        IF (TO_NUMBER(gr_lord_data_tab(23)) < 0) THEN
+        IF (NVL(TO_NUMBER(gr_lord_data_tab(23)),0) < 0) THEN
+-- 2018/03/27 Ver1.10 Otsuka MOD End
           IF (lv_err_flag = cv_const_n) THEN
             FND_FILE.PUT_LINE(
               which  => FND_FILE.OUTPUT
@@ -2681,7 +2702,7 @@ AS
             which  => FND_FILE.OUTPUT
            ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
                         cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0以下）
+                        cv_msg_cff_00117,    -- メッセージ：数値論理エラー(0未満）
                         cv_tk_cff_00005_01,  -- カラム名
                         cv_msg_cff_50032     -- 法定耐用年数
                       ),1,5000)
@@ -4610,6 +4631,12 @@ AS
     lv_category_code     xxcff_contract_lines.asset_category%TYPE;
     lv_live_month        VARCHAR2(2);
     ln_category_id       NUMBER(15);
+-- 2018/03/27 Ver1.10 Otsuka ADD Start
+    lv_ret_dff4    VARCHAR2(1);    -- リース判定DFF4
+    lv_ret_dff5    VARCHAR2(1);    -- リース判定DFF5
+    lv_ret_dff6    VARCHAR2(1);    -- リース判定DFF6
+    lv_ret_dff7    VARCHAR2(1);    -- リース判定DFF7
+-- 2018/03/27 Ver1.10 Otsuka ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -4628,6 +4655,10 @@ AS
             ,xclw.second_tax_charge    AS second_tax_charge
             ,xclw.first_deduction      AS first_deduction
             ,xclw.first_tax_deduction  AS first_tax_deduction
+-- 2018/03/27 Ver1.10 Otsuka ADD Start
+            ,xclw.estimated_cash_price AS estimated_cash_price
+            ,xclw.life_in_months       AS life_in_months
+-- 2018/03/27 Ver1.10 Otsuka ADD End
       FROM  xxcff_cont_lines_work  xclw
       WHERE xclw.file_id             = in_file_id;
     -- *** ローカル・レコード ***
@@ -4865,6 +4896,97 @@ AS
         gn_error_cnt := gn_error_cnt + 1;
       END IF;
 -- 
+-- 2018/03/27 Ver1.10 Otsuka ADD Start
+      -- ***************************************************
+      -- 8. 見積現金購入価額
+      -- ***************************************************
+      -- ***************************************
+      -- ***        実処理の記述             ***
+      -- ***       共通関数の呼び出し        ***
+      -- ***************************************
+      --  リース判定処理
+      xxcff_common2_pkg.get_lease_class_info(
+        iv_lease_class  =>    lv_lease_class
+        ,ov_ret_dff4    =>    lv_ret_dff4           -- DFF4(日本基準連携)
+        ,ov_ret_dff5    =>    lv_ret_dff5           -- DFF5(IFRS連携)
+        ,ov_ret_dff6    =>    lv_ret_dff6           -- DFF6(仕訳作成)
+        ,ov_ret_dff7    =>    lv_ret_dff7           -- DFF7(リース判定処理)
+        ,ov_errbuf      =>    lv_errbuf
+        ,ov_retcode     =>    lv_retcode
+        ,ov_errmsg      =>    lv_errmsg
+      );
+      -- 共通関数エラーの場合
+      IF (lv_retcode <> cv_status_normal) THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                                                       cv_msg_cff_00094,    -- メッセージ：共通関数エラー
+                                                       cv_tk_cff_00094_01,  -- 共通関数名
+                                                       cv_msg_cff_50323  )  -- ファイルID
+                                                      || cv_msg_part
+                                                      || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                                      ,1
+                                                      ,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+      -- リース判別結果が「1」の場合
+      IF (lv_ret_dff7 = cv_lease_cls_chk1) THEN
+        -- 未入力および0の場合エラー
+        IF ((xclw_data_rec.estimated_cash_price IS NULL) OR 
+            (xclw_data_rec.estimated_cash_price = 0)) THEN
+          IF (lv_err_flag = cv_const_n) THEN
+            FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+             ,buff   => lv_err_info
+            );
+            lv_err_flag := cv_const_y;
+          END IF;
+          -- エラー内容の出力
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                        cv_msg_cff_00282     -- メッセージ：見積現金購入価額エラー
+                      ),1,5000)
+          );
+        END IF;
+      -- リース判別結果が「2」の場合、未入力データを0に置き換える
+      ELSE
+        IF (xclw_data_rec.estimated_cash_price IS NULL) THEN
+          xclw_data_rec.estimated_cash_price := NVL(TO_NUMBER(xclw_data_rec.estimated_cash_price),0);
+        END IF;
+      END IF;
+      -- ***************************************************
+      -- 9. 法定耐用年数
+      -- ***************************************************
+      -- リース判別結果が「1」の場合
+      IF (lv_ret_dff7 = cv_lease_cls_chk1) THEN
+        -- 未入力および0の場合エラー
+        IF ((xclw_data_rec.life_in_months IS NULL) OR
+            (xclw_data_rec.life_in_months = 0)) THEN
+          IF (lv_err_flag = cv_const_n) THEN
+            FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+             ,buff   => lv_err_info
+            );
+            lv_err_flag := cv_const_y;
+          END IF;
+          -- エラー内容の出力
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                        cv_msg_cff_00283     -- メッセージ：法定耐用年数エラー
+                      ),1,5000)
+          );
+        END IF;
+      -- リース判別結果が「2」の場合、未入力データを0に置き換える
+      ELSE
+        IF (xclw_data_rec.life_in_months IS NULL) THEN
+          xclw_data_rec.life_in_months := NVL(xclw_data_rec.life_in_months,0);
+        END IF;
+      END IF;
+-- 2018/03/27 Ver1.10 Otsuka ADD End
+--
     END LOOP;
 --
     CLOSE xclw_data_cur;
@@ -5666,8 +5788,14 @@ AS
             --ADD 2010/01/07 STAR
             ,NULL                            AS second_deduction
             --ADD 2010/01/07 END
-            ,xclw.estimated_cash_price       AS estimated_cash_price
-            ,xclw.life_in_months             AS life_in_months
+-- 2018/03/27 Ver1.10 Otsuka MOD Start
+--            ,xclw.estimated_cash_price       AS estimated_cash_price
+--            ,xclw.life_in_months             AS life_in_months
+            ,NVL(TO_NUMBER(xclw.estimated_cash_price),0)
+                                             AS estimated_cash_price
+            ,NVL(TO_NUMBER(xclw.life_in_months),0)
+                                             AS life_in_months
+-- 2018/03/27 Ver1.10 Otsuka MOD End
             ,xclw.lease_kind                 AS lease_kind
             ,xclw.asset_category             AS asset_category
             ,xclw.first_installation_address AS first_installation_address
