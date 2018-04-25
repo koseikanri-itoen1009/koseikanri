@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF011A17C(body)
  * Description      : リース会計基準開示データ出力
  * MD.050           : リース会計基準開示データ出力 MD050_CFF_011_A17
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,6 +18,8 @@ AS
  *  get_contract_info      リース契約情報取得処理(A-4)
  *  get_pay_planning       リース支払計画情報取得処理(A-5)
  *  out_csv_data           CSVデータ出力処理(A-6)
+ *  get_asset_info         リース資産情報取得処理(A-8)
+ *  get_lease_obl_info     リース債務情報取得処理(A-9)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -35,6 +37,7 @@ AS
  *                                         ・リース契約情報取得カーソルをリース種類で分割
  *  2009/08/28    1.5   SCS 渡辺         [統合テスト障害0001061(PT対応)]
  *  2016/09/14    1.6   SCSK 郭          E_本稼動_13658（自販機耐用年数変更対応）
+ *  2018/03/27    1.7   SCSK 小路        E_本稼動_14830（IFRSリース資産対応）
  *
  *****************************************************************************************/
 --
@@ -101,9 +104,17 @@ AS
   -- メッセージ
   cv_msg_close        CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00038'; -- 会計期間仮クローズチェックエラー
   cv_msg_no_data      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00062'; -- 対象データ無し
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+  cv_msg_req_chk      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00108'; -- 必須チェックエラー
+  -- トークン値
+  cv_tkv_com_or_cla   CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50327'; -- リース会社、リース種別
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
   -- トークン
   cv_tkn_book_type    CONSTANT VARCHAR2(50)  := 'BOOK_TYPE_CODE';   -- 資産台帳名
   cv_tkn_period_name  CONSTANT VARCHAR2(50)  := 'PERIOD_NAME';      -- 会計期間名
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+  cv_tkn_input_dta    CONSTANT VARCHAR2(50)  := 'INPUT';            -- パラメータ
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
   -- リース種類
   cv_lease_kind_fin   CONSTANT VARCHAR2(1)   := '0';  -- Finリース
   cv_lease_kind_op    CONSTANT VARCHAR2(1)   := '1';  -- Opリース
@@ -111,6 +122,9 @@ AS
   -- 資産台帳区分
   cv_book_class_1     CONSTANT VARCHAR2(1)   := '1';  -- 会計用
   cv_book_class_2     CONSTANT VARCHAR2(1)   := '2';  -- 法人税用
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD START
+  cv_book_class_3     CONSTANT VARCHAR2(1)   := '3';  -- IFRS用
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
   -- 契約ステータス
   cv_contr_st_201     CONSTANT VARCHAR2(3)   := '201'; -- 登録済み
 -- 0000417 2009/07/31 ADD START --
@@ -119,12 +133,25 @@ AS
   -- 会計IFフラグステータス
   cv_if_aft           CONSTANT VARCHAR2(1)   := '2'; --連携済
 -- 0000417 2009/07/31 ADD END --
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD START
+  cv_format_yyyy_mm   CONSTANT VARCHAR2(7)   := 'YYYY-MM';   --日付形式:YYYY-MM
+  cv_format_mm        CONSTANT VARCHAR2(2)   := 'MM';        --日付形式:MM
+  cv_source_code_dep  CONSTANT VARCHAR2(5)   := 'DEPRN';     --減価償却
+  cv_lease_type_1     CONSTANT VARCHAR2(1)   := '1';         --原契約
+  cv_lease_type_2     CONSTANT VARCHAR2(1)   := '2';         --再リース
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
   TYPE g_csv_rtype IS RECORD (
-     contract_header_id      xxcff_contract_headers.contract_header_id%TYPE
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--     contract_header_id      xxcff_contract_headers.contract_header_id%TYPE
+     contract_line_id        xxcff_contract_lines.contract_line_id%TYPE   -- リース契約明細ID
+    ,object_code             xxcff_object_headers.object_code%TYPE        -- 物件コード
+    ,lease_type              xxcff_contract_headers.lease_type%TYPE       -- リース区分
+    ,cancellation_date       xxcff_contract_lines.cancellation_date%TYPE  -- 解約月
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
     ,lease_company           xxcff_contract_headers.lease_company%TYPE -- リース会社コード
     ,lease_company_name      VARCHAR2(240) -- リース会社名
     ,period_from             VARCHAR2(10) -- 出力期間（自）
@@ -141,7 +168,9 @@ AS
     ,lease_charge_future     NUMBER(15) -- 未経過リース料
     ,lease_charge_1year      NUMBER(15) -- 1年以内未経過リース料
     ,lease_charge_over_1year NUMBER(15) -- 1年越未経過リース料
-    ,original_cost           NUMBER(15) -- 取得価額相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--    ,original_cost           NUMBER(15) -- 取得価額相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
     ,lease_charge_debt       NUMBER(15) -- 未経過リース期末残高相当額
     ,interest_future         NUMBER(15) -- 未経過リース支払利息額
     ,tax_future              NUMBER(15) -- 未経過リース消費税額
@@ -166,8 +195,10 @@ AS
     ,principal_over_5year    NUMBER(15) -- 5年越元本
     ,interest_over_5year     NUMBER(15) -- 5年越支払利息
     ,tax_over_5year          NUMBER(15) -- 5年越消費税
-    ,deprn_reserve           NUMBER(15) -- 減価償却累計額相当額 
-    ,bal_amount              NUMBER(15) -- 期末残高相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--    ,deprn_reserve           NUMBER(15) -- 減価償却累計額相当額 
+--    ,bal_amount              NUMBER(15) -- 期末残高相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
     ,interest_amount         NUMBER(15) -- 支払利息相当額
     ,deprn_amount            NUMBER(15) -- 減価償却相当額
     ,monthly_deduction       NUMBER(15) -- 月間リース料（控除額）
@@ -176,12 +207,572 @@ AS
     ,deduction_future        NUMBER(15) -- 未経過リース料（控除額）
     ,deduction_1year         NUMBER(15) -- 1年以内未経過リース料（控除額）
     ,deduction_over_1year    NUMBER(15) -- 1年越未経過リース料（控除額）
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+     -- リース資産情報
+    ,asset_number              fa_additions_b.asset_number%TYPE        -- 資産番号
+    ,original_cost             fa_books.original_cost%TYPE             -- 当初取得価額
+    ,cost                      fa_books.cost%TYPE                      -- 取得価額
+    ,salvage_value             fa_books.salvage_value%TYPE             -- 残存価額
+    ,adjusted_recoverable_cost fa_books.adjusted_recoverable_cost%TYPE -- 償却対象額
+    ,kisyu_boka                NUMBER(15)                              -- 期首帳簿価額
+    ,year_add_amount_new       NUMBER(15)                              -- 期中増加額(新規契約)
+    ,year_add_amount_old       NUMBER(15)                              -- 期中増加額(既存契約)
+    ,add_amount_new            NUMBER(15)                              -- 当月増加額(新規契約)
+    ,add_amount_old            NUMBER(15)                              -- 当月増加額(既存契約)
+    ,year_dec_amount           NUMBER(15)                              -- 期中減少額（償却終了）
+    ,year_del_amount           NUMBER(15)                              -- 期中減少額（解約）
+    ,dec_amount                NUMBER(15)                              -- 当月減少額（償却終了）
+    ,delete_amount             NUMBER(15)                              -- 当月減少額（解約）
+    ,deprn_reserve             NUMBER(15)                              -- 期末純帳簿価額
+    ,month_deprn               NUMBER(15)                              -- 当月償却累計額
+    ,ytd_deprn                 fa_deprn_summary.ytd_deprn%TYPE         -- 年償却累計額
+    ,total_amount              fa_deprn_summary.deprn_reserve%TYPE     -- 償却累計額
+    ,disc_seg                  fa_additions_b.attribute12%TYPE         -- 開示セグメント
+    ,area                      fa_additions_b.attribute13%TYPE         -- 面積
+     -- リース債務情報
+    ,lease_original_cost       xxcff_contract_lines.original_cost%TYPE -- 取得価額
+    ,kisyu_bal_amount          NUMBER(15)                              -- 期首残高
+    ,lease_year_add_amount_new NUMBER(15)                              -- 期中増加額（新規契約）
+    ,lease_year_add_amount_old NUMBER(15)                              -- 期中増加額（既存契約）
+    ,lease_add_amount_new      NUMBER(15)                              -- 当月増加額（新規契約）
+    ,lease_add_amount_old      NUMBER(15)                              -- 当月増加額（既存契約）
+    ,lease_year_dec_amount     NUMBER(15)                              -- 期中減少額（債務返済）
+    ,lease_year_del_amount     NUMBER(15)                              -- 期中減少額（解約）
+    ,lease_dec_amount          NUMBER(15)                              -- 当月減少額（債務返済）
+    ,lease_delete_amount       NUMBER(15)                              -- 当月減少額（解約）
+    ,kimatsu_bal_amount        NUMBER(15)                              -- 期末残高
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
   );
 --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
 --
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+  /**********************************************************************************
+   * Procedure Name   : get_lease_obl_info
+   * Description      : リース債務情報取得処理(A-9)
+   ***********************************************************************************/
+  PROCEDURE get_lease_obl_info(
+    io_csv_rec        IN OUT g_csv_rtype,  -- 1.CSV出力レコード
+    ov_errbuf         OUT    VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode        OUT    VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg         OUT    VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_lease_obl_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_del_period_name     VARCHAR2(7);       -- 債務返済月
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 1.期首残高の取得
+    BEGIN
+      SELECT xpp.fin_debt
+           + xpp.fin_debt_rem
+           + NVL(xpp.debt_re ,0)
+           + NVL(xpp.debt_rem_re ,0)       AS kisyu_bal_amount -- 期首残高
+      INTO   io_csv_rec.kisyu_bal_amount
+      FROM   xxcff_pay_planning xpp
+      WHERE  xpp.contract_line_id  =  io_csv_rec.contract_line_id
+      AND    xpp.period_name       =  io_csv_rec.period_from
+      AND    XPP.payment_frequency <> 1                           -- 支払回数1回目ではない
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        io_csv_rec.kisyu_bal_amount := 0;
+    END;
+--
+    -- 期中増加額の取得
+    IF (  io_csv_rec.lease_start_date >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm)
+      AND io_csv_rec.lease_start_date <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)) ) THEN
+      -- 2.原契約の場合、新規契約
+      IF ( io_csv_rec.lease_type = cv_lease_type_1) THEN
+        io_csv_rec.lease_year_add_amount_new := io_csv_rec.lease_original_cost;
+        io_csv_rec.lease_year_add_amount_old := 0;
+      -- 3.再リースの場合、既存契約
+      ELSIF ( io_csv_rec.lease_type = cv_lease_type_2) THEN
+        io_csv_rec.lease_year_add_amount_new := 0;
+        io_csv_rec.lease_year_add_amount_old := io_csv_rec.lease_original_cost;
+      END IF;
+    ELSE
+      io_csv_rec.lease_year_add_amount_new := 0;
+      io_csv_rec.lease_year_add_amount_old := 0;
+    END IF;
+--
+    -- 当月増加額の取得
+    IF (  io_csv_rec.lease_start_date >= TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)
+      AND io_csv_rec.lease_start_date <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)) ) THEN
+      -- 4.原契約の場合、新規契約
+      IF ( io_csv_rec.lease_type = cv_lease_type_1) THEN
+        io_csv_rec.lease_add_amount_new := io_csv_rec.lease_original_cost;
+        io_csv_rec.lease_add_amount_old := 0;
+      -- 5.再リースの場合、既存契約
+      ELSIF ( io_csv_rec.lease_type = cv_lease_type_2) THEN
+        io_csv_rec.lease_add_amount_new := 0;
+        io_csv_rec.lease_add_amount_old := io_csv_rec.lease_original_cost;
+      END IF;
+    ELSE
+      io_csv_rec.lease_add_amount_new := 0;
+      io_csv_rec.lease_add_amount_old := 0;
+    END IF;
+--
+    -- 6.債務返済月の取得
+    BEGIN
+      SELECT MAX(xpp.period_name) AS del_period_name
+      INTO   lv_del_period_name
+      FROM   xxcff_pay_planning xpp
+      WHERE  xpp.contract_line_id = io_csv_rec.contract_line_id
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_del_period_name := NULL;
+    END;
+--
+    -- 7.期中減少額（債務返済）の取得
+    IF (  TO_DATE(lv_del_period_name ,cv_format_yyyy_mm) >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm)
+      AND TO_DATE(lv_del_period_name ,cv_format_yyyy_mm) <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)) ) THEN
+      io_csv_rec.lease_year_dec_amount := io_csv_rec.kisyu_bal_amount;
+    ELSE
+      io_csv_rec.lease_year_dec_amount := 0;
+    END IF;
+--
+    -- 8.期中減少額(解約)の取得
+    IF (  io_csv_rec.cancellation_date >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm)
+      AND io_csv_rec.cancellation_date <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)) ) THEN
+      io_csv_rec.lease_year_del_amount := io_csv_rec.kisyu_bal_amount;
+      -- 解約と債務返済が同月の場合、債務返済は0とする
+      io_csv_rec.lease_year_dec_amount := 0;
+    ELSE
+      io_csv_rec.lease_year_del_amount := 0;
+    END IF;
+--
+    -- 9.当月減少額（債務返済）の取得
+    IF (  lv_del_period_name = io_csv_rec.period_to
+      AND io_csv_rec.lease_year_del_amount = 0     ) THEN
+      io_csv_rec.lease_dec_amount := io_csv_rec.kisyu_bal_amount;
+    ELSE
+      io_csv_rec.lease_dec_amount := 0;
+    END IF;
+--
+    -- 10.当月減少額（解約）の取得
+    IF (  io_csv_rec.cancellation_date >= TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)
+      AND io_csv_rec.cancellation_date <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)) ) THEN
+--
+      BEGIN
+        SELECT xpp.fin_debt_rem + NVL(xpp.debt_rem_re ,0) AS lease_year_del_amount
+        INTO   io_csv_rec.lease_delete_amount
+        FROM   xxcff_pay_planning xpp
+        WHERE  xpp.contract_line_id = io_csv_rec.contract_line_id
+        AND    xpp.period_name      = TO_CHAR(io_csv_rec.cancellation_date ,cv_format_yyyy_mm)
+        ;
+        -- 解約と債務返済が同月の場合、債務返済は0とする
+        io_csv_rec.lease_dec_amount := 0;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          io_csv_rec.lease_delete_amount := 0;
+      END;
+--
+    ELSE
+      io_csv_rec.lease_delete_amount := 0;
+    END IF;
+--
+    -- 11.期末残高の取得
+    -- -- 期中減少額（解約）が存在しない場合
+    IF (io_csv_rec.lease_year_del_amount = 0) THEN
+      BEGIN
+        SELECT xpp.fin_debt_rem  + NVL(xpp.debt_rem_re ,0) AS kimatsu_bal_amount -- 期末残高
+        INTO   io_csv_rec.kimatsu_bal_amount
+        FROM   xxcff_pay_planning xpp
+        WHERE  xpp.contract_line_id  = io_csv_rec.contract_line_id
+        AND    xpp.period_name       = io_csv_rec.period_to
+        AND    xpp.payment_frequency = (SELECT MAX(xpp2.payment_frequency)
+                                        FROM   xxcff_pay_planning xpp2
+                                        WHERE  xpp2.contract_line_id  = io_csv_rec.contract_line_id
+                                        AND    xpp2.period_name       = io_csv_rec.period_to)
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          io_csv_rec.kimatsu_bal_amount := 0;
+      END;
+    ELSE
+      io_csv_rec.kimatsu_bal_amount := 0;
+    END IF;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_lease_obl_info;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_asset_info
+   * Description      : リース資産情報取得処理(A-8)
+   ***********************************************************************************/
+  PROCEDURE get_asset_info(
+    iv_book_type_code IN     VARCHAR2,     -- 1.資産台帳名
+    io_csv_rec        IN OUT g_csv_rtype,  -- 2.CSV出力レコード
+    ov_errbuf         OUT    VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode        OUT    VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg         OUT    VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_asset_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    CURSOR asset_cur
+    IS
+      SELECT
+             /*+
+               LEADING(main)
+             */
+             main.asset_number               AS asset_number               -- 資産番号
+            ,main.original_cost              AS original_cost              -- 当初取得価額
+            ,main.cost                       AS cost                       -- 取得価額
+            ,main.salvage_value              AS salvage_value              -- 残存価額
+            ,main.adjusted_recoverable_cost  AS adjusted_recoverable_cost  -- 償却対象額
+            --過去年度の資産を次年度以降に資産追加した場合、
+            --過去年度の減価償却サマリからは期首簿価が取れないため、
+            --期末純帳簿価額＋年償却累計額で算出
+            ,CASE
+               WHEN (NVL(kisyu.kisyu_boka, 0)    = 0
+                 AND main.date_placed_in_service < TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm) ) THEN
+                 main.ytd_deprn + main.deprn_reserve
+               ELSE
+                 NVL(kisyu.kisyu_boka, 0)
+             END                             AS kisyu_boka                -- 期首帳簿価額
+            ,CASE
+               WHEN (io_csv_rec.lease_type       =  cv_lease_type_1
+                 AND main.date_placed_in_service <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm))
+                 AND main.date_placed_in_service >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm) ) THEN
+                 main.cost
+               ELSE
+                 0
+             END                             AS year_add_amount_new       -- 期中増加額(新規契約)
+            ,CASE
+               WHEN (io_csv_rec.lease_type       =  cv_lease_type_2
+                 AND main.date_placed_in_service <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm))
+                 AND main.date_placed_in_service >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm) ) THEN
+                 main.cost
+               ELSE
+                 0
+             END                             AS year_add_amount_old       -- 期中増加額(既存契約)
+            ,CASE
+               WHEN (io_csv_rec.lease_type                            = cv_lease_type_1
+                 AND TRUNC(main.date_placed_in_service ,cv_format_mm) = TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm) ) THEN
+                 main.cost
+               ELSE
+                 0
+             END                             AS add_amount_new            -- 当月増加額(新規契約)
+            ,CASE
+               WHEN (io_csv_rec.lease_type                            = cv_lease_type_2
+                 AND TRUNC(main.date_placed_in_service ,cv_format_mm) = TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm) ) THEN
+                 main.cost
+               ELSE
+                 0
+             END                             AS add_amount_old            -- 当月増加額(既存契約)
+            ,CASE
+               WHEN (main.deprn_reserve = 0
+                 AND main.nbv_retired   = 0) THEN
+                 CASE
+                   WHEN (NVL(kisyu.kisyu_boka, 0)    = 0
+                     AND main.date_placed_in_service < TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm) ) THEN
+                     main.ytd_deprn
+                   ELSE
+                     NVL(kisyu.kisyu_boka, 0)
+                 END
+               ELSE
+                 0
+             END                             AS year_dec_amount           -- 期中減少額（償却終了）
+            ,CASE
+               WHEN (main.date_retired <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm))
+                 AND main.date_retired >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm) ) THEN
+                 main.nbv_retired     -- 除売却帳簿価額
+               ELSE
+                 0
+             END                             AS year_del_amount           -- 期中減少額（解約）
+            ,CASE
+               WHEN (main.deprn_reserve = 0
+                 AND main.nbv_retired   = 0) THEN
+                 CASE
+                   WHEN (main.period_name = io_csv_rec.period_to) THEN
+                     CASE
+                       WHEN (NVL(kisyu.kisyu_boka, 0)    = 0
+                         AND main.date_placed_in_service < TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm) ) THEN
+                         main.ytd_deprn
+                       ELSE
+                         NVL(kisyu.kisyu_boka, 0)
+                     END
+                   ELSE
+                     0
+                   END
+               ELSE
+                 0
+             END                             AS dec_amount                -- 当月減少額（償却終了）
+            ,CASE
+               WHEN (TRUNC(main.date_retired ,cv_format_mm) = TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm) ) THEN
+                 main.nbv_retired      -- 除売却帳簿価額
+               ELSE
+                 0
+             END                             AS delete_amount             -- 当月減少額（解約）
+            ,main.deprn_reserve              AS deprn_reserve             -- 期末純帳簿価額
+            ,CASE
+               WHEN (main.period_name = io_csv_rec.period_to) THEN
+                 main.month_deprn
+               ELSE
+                 0
+             END                             AS month_deprn               -- 当月償却累計額
+            ,main.ytd_deprn                  AS ytd_deprn                 -- 年償却累計額
+            ,main.total_amount               AS total_amount              -- 償却累計額
+            ,main.disc_seg                   AS disc_seg                  -- 開示セグメント
+            ,main.area                       AS area                      -- 面積
+      FROM   (SELECT /*+ LEADING(fdsp)
+                         INDEX(fb FA_BOOKS_N1)
+                         INDEX(fdp FA_DEPRN_PERIODS_U3)
+                     */
+                     fdsp_max.asset_id                   AS asset_id                     -- 資産ID
+                    ,fdsp_max.book_type_code             AS book_type_code               -- 資産台帳
+                    ,fdsp_max.asset_number               AS asset_number                 -- 資産番号
+                    ,fb.original_cost                    AS original_cost                -- 当初取得価額
+                    ,fb.cost                             AS cost                         -- 取得価額
+                    ,fb.salvage_value                    AS salvage_value                -- 残存価額
+                    ,fb.adjusted_recoverable_cost        AS adjusted_recoverable_cost    -- 償却対象額
+                    ,fb.date_placed_in_service           AS date_placed_in_service       -- 事業供用日
+                    ,CASE
+                       WHEN (fb.cost                = 0
+                         OR  fdsp_max.deprn_reserve = 0) THEN
+                         0
+                       ELSE
+                         fb.cost - fdsp_max.deprn_reserve
+                     END                                 AS deprn_reserve                -- 純帳簿価額
+                    ,fdsp_max.period_name                AS period_name                  -- 会計期間
+                    ,ret.date_retired                    AS date_retired                 -- 除売却日
+                    ,NVL(ret.nbv_retired ,0)             AS nbv_retired                  -- 除売却帳簿価額
+                    ,fdsp_max.deprn_amount               AS month_deprn                  -- 当月償却累計額
+                    ,fdsp_max.ytd_deprn                  AS ytd_deprn                    -- 年償却累計額
+                    ,fdsp_max.deprn_reserve              AS total_amount                 -- 償却累計額
+                    ,fdsp_max.disc_seg                   AS disc_seg                     -- 開示セグメント
+                    ,fdsp_max.area                       AS area                         -- 面積
+              FROM   fa_books                                     fb       -- 資産台帳情報
+                    ,fa_retirements                               ret      -- 除売却情報
+                    ,(SELECT fdp.period_counter             AS period_counter
+                            ,fdp.book_type_code             AS book_type_code
+                      FROM   fa_deprn_periods fdp     -- 減価償却期間
+                      WHERE  fdp.period_num     = 1
+                      AND    fdp.period_name    = io_csv_rec.period_from
+                      AND    fdp.book_type_code = iv_book_type_code
+                     )                                            fdp1     -- 減価償却期間 年始
+                    ,(SELECT /*+
+                                LEADING(fab)
+                              */
+                             fds.asset_id                   AS asset_id                   -- 資産ID
+                            ,fab.asset_number               AS asset_number               -- 資産番号
+                            ,fds.book_type_code             AS book_type_code             -- 台帳
+                            ,fdp.period_name                AS period_name                -- 期間名
+                            ,fdp.period_close_date          AS period_close_date          -- 期間クローズ日
+                            ,fds.deprn_reserve              AS deprn_reserve              -- 減価償却累計額相当額
+                            ,fds.deprn_amount               AS deprn_amount               -- 償却額
+                            ,fds.ytd_deprn                  AS ytd_deprn                  -- 年償却累計額
+                            ,fab.attribute12                AS disc_seg                   -- 開示セグメント
+                            ,fab.attribute13                AS area                       -- 面積
+                      FROM   fa_additions_b    fab     -- 資産詳細情報
+                            ,fa_deprn_summary  fds     -- 減価償却サマリ
+                            ,fa_deprn_periods  fdp     -- 減価償却期間
+                            ,(SELECT /*+
+                                        LEADING(fab)
+                                      */
+                                     MAX(fdp.period_counter) period_counter
+                              FROM   fa_additions_b    fab     -- 資産詳細情報
+                                    ,fa_deprn_summary  fds     -- 減価償却サマリ
+                                    ,fa_deprn_periods  fdp     -- 減価償却期間
+                              WHERE  fab.attribute10       = TO_CHAR(io_csv_rec.contract_line_id)
+                              AND    fab.asset_id          = fds.asset_id
+                              AND    fds.book_type_code    = iv_book_type_code
+                              AND    fds.book_type_code    = fdp.book_type_code
+                              AND    fds.period_counter    = fdp.period_counter
+                              AND    fds.deprn_source_code = cv_source_code_dep
+                              AND    fdp.period_name       <= io_csv_rec.period_to
+                             )                 fdp_max -- 対象月以前の減価償却期間最大の月
+                      WHERE  fab.attribute10                    = TO_CHAR(io_csv_rec.contract_line_id)
+                      AND    fab.asset_id                       = fds.asset_id
+                      AND    fds.book_type_code                 = iv_book_type_code
+                      AND    fds.book_type_code                 = fdp.book_type_code
+                      AND    fds.period_counter                 = fdp.period_counter
+                      AND    fds.deprn_source_code              = cv_source_code_dep
+                      AND    fdp.period_counter                 = fdp_max.period_counter
+                     ) fdsp_max                                            -- 対象月以前の最大の月の減価償却情報
+              WHERE  NVL(fb.date_ineffective ,fdsp_max.period_close_date) >= fdsp_max.period_close_date
+              AND    fb.date_effective                                    <  fdsp_max.period_close_date
+              AND    fb.book_type_code                                    =  fdsp_max.book_type_code
+              AND    fb.asset_id                                          =  fdsp_max.asset_id
+              AND    NVL(fb.period_counter_fully_retired,9999999)         >= fdp1.period_counter               -- 当年度以降の除売却データ
+              AND    fb.book_type_code                                    =  fdp1.book_type_code
+              AND    fb.asset_id                                          =  ret.asset_id (+)
+              AND    fb.book_type_code                                    =  ret.book_type_code (+)
+              AND    fb.transaction_header_id_in                          =  ret.transaction_header_id_in (+)
+             ) main                                 -- 償却
+            ,(SELECT /*+
+                         LEADING(fab)
+                     */
+                     fab.asset_id                  AS asset_id         -- 資産id
+                    ,fb.book_type_code             AS book_type_code   -- 台帳
+                    ,(fb.cost - fds.deprn_reserve) AS kisyu_boka       -- 期首簿価
+              FROM   fa_additions_b    fab     -- 資産詳細情報
+                    ,fa_books          fb      -- 資産台帳情報
+                    ,fa_deprn_summary  fds     -- 減価償却サマリ
+                    ,fa_deprn_periods  fdp     -- 減価償却期間
+              WHERE  fab.attribute10                   = TO_CHAR(io_csv_rec.contract_line_id)
+              AND    fab.asset_id                      = fb.asset_id
+              AND    fb.book_type_code                 = iv_book_type_code
+              AND    fb.date_effective                 <= fdp.period_close_date
+              AND    NVL(fb.date_ineffective ,SYSDATE) >= fdp.period_close_date
+              AND    fb.book_type_code                 = fds.book_type_code
+              AND    fb.asset_id                       = fds.asset_id
+              AND    fds.book_type_code                = fdp.book_type_code
+              AND    fds.period_counter                = fdp.period_counter
+              AND    fds.deprn_source_code             = cv_source_code_dep
+              AND    fdp.period_num                    = 12
+              AND    fdp.fiscal_year + 1               = TO_NUMBER(SUBSTR(io_csv_rec.period_from ,1 ,4))
+             ) kisyu                                -- 期首
+      WHERE  main.asset_id           = kisyu.asset_id(+)
+      AND    main.book_type_code     = kisyu.book_type_code(+)
+      ;
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    <<asset_loop>>
+    FOR l_rec IN asset_cur LOOP
+      io_csv_rec.asset_number              := l_rec.asset_number;              -- 資産番号
+      io_csv_rec.original_cost             := l_rec.original_cost;             -- 当初取得価額
+      io_csv_rec.cost                      := l_rec.cost;                      -- 取得価額
+      io_csv_rec.salvage_value             := l_rec.salvage_value;             -- 残存価額
+      io_csv_rec.adjusted_recoverable_cost := l_rec.adjusted_recoverable_cost; -- 償却対象額
+      io_csv_rec.kisyu_boka                := l_rec.kisyu_boka;                -- 期首帳簿価額
+      io_csv_rec.year_add_amount_new       := l_rec.year_add_amount_new;       -- 期中増加額(新規契約)
+      io_csv_rec.year_add_amount_old       := l_rec.year_add_amount_old;       -- 期中増加額(既存契約)
+      io_csv_rec.add_amount_new            := l_rec.add_amount_new;            -- 当月増加額(新規契約)
+      io_csv_rec.add_amount_old            := l_rec.add_amount_old;            -- 当月増加額(既存契約)
+      io_csv_rec.year_dec_amount           := l_rec.year_dec_amount;           -- 期中減少額（償却終了）
+      io_csv_rec.year_del_amount           := l_rec.year_del_amount;           -- 期中減少額（解約）
+      io_csv_rec.dec_amount                := l_rec.dec_amount;                -- 当月減少額（償却終了）
+      io_csv_rec.delete_amount             := l_rec.delete_amount;             -- 当月減少額（解約）
+      io_csv_rec.deprn_reserve             := l_rec.deprn_reserve;             -- 期末純帳簿価額
+      io_csv_rec.month_deprn               := l_rec.month_deprn;               -- 当月償却累計額
+      io_csv_rec.ytd_deprn                 := l_rec.ytd_deprn;                 -- 年償却累計額
+      io_csv_rec.total_amount              := l_rec.total_amount;              -- 償却累計額
+      io_csv_rec.disc_seg                  := l_rec.disc_seg;                  -- 開示セグメント
+      io_csv_rec.area                      := l_rec.area;                      -- 面積
+    END LOOP asset_loop;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_asset_info;
+--
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
   /**********************************************************************************
    * Procedure Name   : out_csv_data
    * Description      : CSVデータ出力処理(A-6)
@@ -267,7 +858,9 @@ AS
     END IF;
     -- OPリースの場合不要情報NULL
     IF iv_lease_kind = cv_lease_kind_op THEN
-      io_csv_rec.original_cost          := NULL;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--      io_csv_rec.original_cost          := NULL;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
       io_csv_rec.lease_charge_debt      := NULL;
       io_csv_rec.interest_future        := NULL;
       io_csv_rec.tax_future             := NULL;
@@ -292,64 +885,114 @@ AS
       io_csv_rec.principal_over_5year   := NULL;
       io_csv_rec.interest_over_5year    := NULL;
       io_csv_rec.tax_over_5year         := NULL;
-      io_csv_rec.deprn_reserve          := NULL;
-      io_csv_rec.bal_amount             := NULL;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--      io_csv_rec.deprn_reserve          := NULL;
+--      io_csv_rec.bal_amount             := NULL;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
       io_csv_rec.interest_amount        := NULL;
-      io_csv_rec.deprn_amount           := NULL;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--      io_csv_rec.deprn_amount           := NULL;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
     END IF;
     -- CSVデータ編集
     lv_csv_row := 
-      cv_double_quat || io_csv_rec.lease_company         || cv_double_quat || cv_sep_part ||
-      cv_double_quat || io_csv_rec.lease_company_name    || cv_double_quat || cv_sep_part ||
-      cv_double_quat || io_csv_rec.period_from           || cv_double_quat || cv_sep_part ||
-      cv_double_quat || io_csv_rec.period_to             || cv_double_quat || cv_sep_part ||
-      cv_double_quat || io_csv_rec.contract_number       || cv_double_quat || cv_sep_part ||
-      cv_double_quat || io_csv_rec.lease_class_name      || cv_double_quat || cv_sep_part ||
-      cv_double_quat || io_csv_rec.lease_type_name       || cv_double_quat || cv_sep_part ||
-      cv_double_quat || TO_CHAR(io_csv_rec.lease_start_date,'YYYY/MM/DD') || cv_double_quat || cv_sep_part ||
-      cv_double_quat || TO_CHAR(io_csv_rec.lease_end_date,'YYYY/MM/DD') || cv_double_quat || cv_sep_part ||
-      TO_CHAR(io_csv_rec.payment_frequency)      || cv_sep_part ||
-      TO_CHAR(io_csv_rec.monthly_charge)         || cv_sep_part ||
-      TO_CHAR(io_csv_rec.gross_charge)           || cv_sep_part ||
-      TO_CHAR(io_csv_rec.lease_charge_this_month)|| cv_sep_part ||
-      TO_CHAR(io_csv_rec.lease_charge_future)    || cv_sep_part ||
-      TO_CHAR(io_csv_rec.lease_charge_1year)     || cv_sep_part ||
-      TO_CHAR(io_csv_rec.lease_charge_over_1year)|| cv_sep_part ||
-      TO_CHAR(io_csv_rec.original_cost)          || cv_sep_part ||
-      TO_CHAR(io_csv_rec.lease_charge_debt)      || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_future)        || cv_sep_part ||
-      TO_CHAR(io_csv_rec.tax_future)             || cv_sep_part ||
-      TO_CHAR(io_csv_rec.principal_1year)        || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_1year)         || cv_sep_part ||
-      TO_CHAR(io_csv_rec.tax_1year)              || cv_sep_part ||
-      TO_CHAR(io_csv_rec.principal_over_1year)   || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_over_1year)    || cv_sep_part ||
-      TO_CHAR(io_csv_rec.tax_over_1year)         || cv_sep_part ||
-      TO_CHAR(io_csv_rec.principal_1to2year)     || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_1to2year)      || cv_sep_part ||
-      TO_CHAR(io_csv_rec.tax_1to2year)           || cv_sep_part ||
-      TO_CHAR(io_csv_rec.principal_2to3year)     || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_2to3year)      || cv_sep_part ||
-      TO_CHAR(io_csv_rec.tax_2to3year)           || cv_sep_part ||
-      TO_CHAR(io_csv_rec.principal_3to4year)     || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_3to4year)      || cv_sep_part ||
-      TO_CHAR(io_csv_rec.tax_3to4year)           || cv_sep_part ||
-      TO_CHAR(io_csv_rec.principal_4to5year)     || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_4to5year)      || cv_sep_part ||
-      TO_CHAR(io_csv_rec.tax_4to5year)           || cv_sep_part ||
-      TO_CHAR(io_csv_rec.principal_over_5year)   || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_over_5year)    || cv_sep_part ||
-      TO_CHAR(io_csv_rec.tax_over_5year)         || cv_sep_part ||
-      TO_CHAR(io_csv_rec.deprn_reserve)          || cv_sep_part ||
-      TO_CHAR(io_csv_rec.bal_amount)             || cv_sep_part ||
-      TO_CHAR(io_csv_rec.interest_amount)        || cv_sep_part ||
-      TO_CHAR(io_csv_rec.deprn_amount)           || cv_sep_part ||
-      TO_CHAR(io_csv_rec.monthly_deduction)      || cv_sep_part ||
-      TO_CHAR(io_csv_rec.gross_deduction)        || cv_sep_part ||
-      TO_CHAR(io_csv_rec.deduction_this_month)   || cv_sep_part ||
-      TO_CHAR(io_csv_rec.deduction_future)       || cv_sep_part ||
-      TO_CHAR(io_csv_rec.deduction_1year)        || cv_sep_part ||
-      TO_CHAR(io_csv_rec.deduction_over_1year)   ;
+      cv_double_quat || io_csv_rec.lease_company         || cv_double_quat || cv_sep_part ||                   -- リース会社コード
+      cv_double_quat || io_csv_rec.lease_company_name    || cv_double_quat || cv_sep_part ||                   -- リース会社名
+      cv_double_quat || io_csv_rec.period_from           || cv_double_quat || cv_sep_part ||                   -- 出力期間（自）
+      cv_double_quat || io_csv_rec.period_to             || cv_double_quat || cv_sep_part ||                   -- 出力期間（至）
+      cv_double_quat || io_csv_rec.contract_number       || cv_double_quat || cv_sep_part ||                   -- 契約No
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+      cv_double_quat || io_csv_rec.object_code           || cv_double_quat || cv_sep_part ||                   -- 物件コード
+      cv_double_quat || io_csv_rec.asset_number          || cv_double_quat || cv_sep_part ||                   -- 資産番号
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
+      cv_double_quat || io_csv_rec.lease_class_name      || cv_double_quat || cv_sep_part ||                   -- 分類
+      cv_double_quat || io_csv_rec.lease_type_name       || cv_double_quat || cv_sep_part ||                   -- リース区分
+      cv_double_quat || TO_CHAR(io_csv_rec.lease_start_date,'YYYY/MM/DD') || cv_double_quat || cv_sep_part ||  -- リース開始日
+      cv_double_quat || TO_CHAR(io_csv_rec.lease_end_date,'YYYY/MM/DD') || cv_double_quat || cv_sep_part ||    -- リース終了日
+      TO_CHAR(io_csv_rec.payment_frequency)      || cv_sep_part ||                                             -- 月数
+      TO_CHAR(io_csv_rec.monthly_charge)         || cv_sep_part ||                                             -- 月間リース料
+      TO_CHAR(io_csv_rec.gross_charge)           || cv_sep_part ||                                             -- リース料総額
+      TO_CHAR(io_csv_rec.lease_charge_this_month)|| cv_sep_part ||                                             -- 当期支払リース料
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+      -- リース資産
+      TO_CHAR(io_csv_rec.original_cost)                  || cv_sep_part ||                                     -- 当初取得価額
+      TO_CHAR(io_csv_rec.cost)                           || cv_sep_part ||                                     -- 取得価額
+      TO_CHAR(io_csv_rec.salvage_value)                  || cv_sep_part ||                                     -- 残存価額
+      TO_CHAR(io_csv_rec.adjusted_recoverable_cost)      || cv_sep_part ||                                     -- 償却対象額
+      TO_CHAR(io_csv_rec.kisyu_boka)                     || cv_sep_part ||                                     -- 期首帳簿価額
+      TO_CHAR(io_csv_rec.year_add_amount_new)            || cv_sep_part ||                                     -- 期中増加額(新規契約)
+      TO_CHAR(io_csv_rec.year_add_amount_old)            || cv_sep_part ||                                     -- 期中増加額(既存契約)
+      TO_CHAR(io_csv_rec.add_amount_new)                 || cv_sep_part ||                                     -- 当月増加額(新規契約)
+      TO_CHAR(io_csv_rec.add_amount_old)                 || cv_sep_part ||                                     -- 当月増加額(既存契約)
+      TO_CHAR(io_csv_rec.year_dec_amount)                || cv_sep_part ||                                     -- 期中減少額(償却終了)
+      TO_CHAR(io_csv_rec.year_del_amount)                || cv_sep_part ||                                     -- 期中減少額(解約)
+      TO_CHAR(io_csv_rec.dec_amount)                     || cv_sep_part ||                                     -- 当月減少額(償却終了)
+      TO_CHAR(io_csv_rec.delete_amount)                  || cv_sep_part ||                                     -- 当月減少額(解約)
+      TO_CHAR(io_csv_rec.deprn_reserve)                  || cv_sep_part ||                                     -- 期末純帳簿価額
+      TO_CHAR(io_csv_rec.month_deprn)                    || cv_sep_part ||                                     -- 当月償却累計額
+      TO_CHAR(io_csv_rec.ytd_deprn)                      || cv_sep_part ||                                     -- 年償却累計額
+      TO_CHAR(io_csv_rec.total_amount)                   || cv_sep_part ||                                     -- 償却累計額
+      -- リース債務
+      TO_CHAR(io_csv_rec.kisyu_bal_amount)               || cv_sep_part ||                                     -- 期首残高
+      TO_CHAR(io_csv_rec.lease_year_add_amount_new)      || cv_sep_part ||                                     -- 期中増加額(新規契約)
+      TO_CHAR(io_csv_rec.lease_year_add_amount_old)      || cv_sep_part ||                                     -- 期中増加額(既存契約)
+      TO_CHAR(io_csv_rec.lease_add_amount_new)           || cv_sep_part ||                                     -- 当月増加額(新規契約)
+      TO_CHAR(io_csv_rec.lease_add_amount_old)           || cv_sep_part ||                                     -- 当月増加額(既存契約)
+      TO_CHAR(io_csv_rec.lease_year_dec_amount)          || cv_sep_part ||                                     -- 期中減少額(債務返済)
+      TO_CHAR(io_csv_rec.lease_year_del_amount)          || cv_sep_part ||                                     -- 期中減少額(解約)
+      TO_CHAR(io_csv_rec.lease_dec_amount)               || cv_sep_part ||                                     -- 当月減少額(債務返済)
+      TO_CHAR(io_csv_rec.lease_delete_amount)            || cv_sep_part ||                                     -- 当月減少額(解約)
+      TO_CHAR(io_csv_rec.kimatsu_bal_amount)             || cv_sep_part ||                                     -- 期末残高
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
+      TO_CHAR(io_csv_rec.lease_charge_future)    || cv_sep_part ||                                             -- 未経過リース料
+      TO_CHAR(io_csv_rec.lease_charge_1year)     || cv_sep_part ||                                             -- 1年以内未経過リース料
+      TO_CHAR(io_csv_rec.lease_charge_over_1year)|| cv_sep_part ||                                             -- 1年超未経過リース料
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--      TO_CHAR(io_csv_rec.original_cost)          || cv_sep_part ||
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
+      TO_CHAR(io_csv_rec.lease_charge_debt)      || cv_sep_part ||                                             -- 未経過リース期末残高相当額
+      TO_CHAR(io_csv_rec.interest_future)        || cv_sep_part ||                                             -- 未経過リース支払利息額
+      TO_CHAR(io_csv_rec.tax_future)             || cv_sep_part ||                                             -- 未経過リース消費税額
+      TO_CHAR(io_csv_rec.principal_1year)        || cv_sep_part ||                                             -- 1年以内元本額
+      TO_CHAR(io_csv_rec.interest_1year)         || cv_sep_part ||                                             -- 1年以内支払利息
+      TO_CHAR(io_csv_rec.tax_1year)              || cv_sep_part ||                                             -- 1年以内消費税
+      TO_CHAR(io_csv_rec.principal_over_1year)   || cv_sep_part ||                                             -- 1年超元本額
+      TO_CHAR(io_csv_rec.interest_over_1year)    || cv_sep_part ||                                             -- 1年超支払利息
+      TO_CHAR(io_csv_rec.tax_over_1year)         || cv_sep_part ||                                             -- 1年超消費税額
+      TO_CHAR(io_csv_rec.principal_1to2year)     || cv_sep_part ||                                             -- 1年超2年以内元本額
+      TO_CHAR(io_csv_rec.interest_1to2year)      || cv_sep_part ||                                             -- 1年超2年以内支払利息
+      TO_CHAR(io_csv_rec.tax_1to2year)           || cv_sep_part ||                                             -- 1年超2年以内消費税額
+      TO_CHAR(io_csv_rec.principal_2to3year)     || cv_sep_part ||                                             -- 2年超3年以内元本額
+      TO_CHAR(io_csv_rec.interest_2to3year)      || cv_sep_part ||                                             -- 2年超3年以内支払利息
+      TO_CHAR(io_csv_rec.tax_2to3year)           || cv_sep_part ||                                             -- 2年超3年以内消費税額
+      TO_CHAR(io_csv_rec.principal_3to4year)     || cv_sep_part ||                                             -- 3年超4年以内元本額
+      TO_CHAR(io_csv_rec.interest_3to4year)      || cv_sep_part ||                                             -- 3年超4年以内支払利息
+      TO_CHAR(io_csv_rec.tax_3to4year)           || cv_sep_part ||                                             -- 3年超4年以内消費税額
+      TO_CHAR(io_csv_rec.principal_4to5year)     || cv_sep_part ||                                             -- 4年超5年以内元本額
+      TO_CHAR(io_csv_rec.interest_4to5year)      || cv_sep_part ||                                             -- 4年超5年以内支払利息
+      TO_CHAR(io_csv_rec.tax_4to5year)           || cv_sep_part ||                                             -- 4年超5年以内消費税額
+      TO_CHAR(io_csv_rec.principal_over_5year)   || cv_sep_part ||                                             -- 5年超元本額
+      TO_CHAR(io_csv_rec.interest_over_5year)    || cv_sep_part ||                                             -- 5年超支払利息
+      TO_CHAR(io_csv_rec.tax_over_5year)         || cv_sep_part ||                                             -- 5年超消費税額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--      TO_CHAR(io_csv_rec.deprn_reserve)          || cv_sep_part ||
+--      TO_CHAR(io_csv_rec.bal_amount)             || cv_sep_part ||
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
+      TO_CHAR(io_csv_rec.interest_amount)        || cv_sep_part ||                                             -- 支払利息相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--      TO_CHAR(io_csv_rec.deprn_amount)           || cv_sep_part ||
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
+      TO_CHAR(io_csv_rec.monthly_deduction)      || cv_sep_part ||                                             -- 月間リース料（控除額）
+      TO_CHAR(io_csv_rec.gross_deduction)        || cv_sep_part ||                                             -- リース料総額（控除額）
+      TO_CHAR(io_csv_rec.deduction_this_month)   || cv_sep_part ||                                             -- 当期支払リース料（控除額）
+      TO_CHAR(io_csv_rec.deduction_future)       || cv_sep_part ||                                             -- 未経過リース料（控除額）
+      TO_CHAR(io_csv_rec.deduction_1year)        || cv_sep_part ||                                             -- 1年以内未経過リース料（控除額）
+-- 2018/03/27 Ver.1.7 Y.Shoji MODL Start
+--      TO_CHAR(io_csv_rec.deduction_over_1year)   ;
+      TO_CHAR(io_csv_rec.deduction_over_1year)   || cv_sep_part ||                                             -- 1年超未経過リース料（控除額）
+      cv_double_quat || io_csv_rec.disc_seg      || cv_double_quat || cv_sep_part ||                           -- 開示セグメント
+      cv_double_quat || io_csv_rec.area          || cv_double_quat ;                                           -- 面積
+-- 2018/03/27 Ver.1.7 Y.Shoji MODL End
     -- OUTファイルに出力
     FND_FILE.PUT_LINE(
       which  => FND_FILE.OUTPUT
@@ -416,7 +1059,10 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR planning_cur
     IS
-      SELECT xpp.contract_header_id
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--      SELECT xpp.contract_header_id
+      SELECT xpp.contract_line_id
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
 -- 0000417 2009/07/17 ADD START --
           ,SUM(CASE WHEN xpp.accounting_if_flag = cv_if_aft THEN
 -- 0000417 2009/07/17 ADD END --
@@ -637,13 +1283,19 @@ AS
         FROM xxcff_contract_lines xcl
             ,xxcff_pay_planning xpp
        WHERE xcl.contract_line_id = xpp.contract_line_id
-         AND xcl.contract_header_id = io_csv_rec.contract_header_id
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--         AND xcl.contract_header_id = io_csv_rec.contract_header_id
+         AND xcl.contract_line_id = io_csv_rec.contract_line_id
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
 -- 0000417 2009/07/17 MOD START --
 --         AND NOT (xpp.period_name >= TO_CHAR(xcl.cancellation_date,'YYYY-MM') AND
          AND NOT (xpp.period_name > TO_CHAR(xcl.cancellation_date,'YYYY-MM') AND
 -- 0000417 2009/07/17 MOD END --
                   xcl.cancellation_date IS NOT NULL)
-      GROUP BY xpp.contract_header_id
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--      GROUP BY xpp.contract_header_id
+      GROUP BY xpp.contract_line_id
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
       ;
 --
     -- *** ローカル・レコード ***
@@ -739,6 +1391,9 @@ AS
     in_period_num_now  IN  NUMBER,    --  8.当期期間番号
     iv_period_from     IN  VARCHAR2,  --  9.出力期間（自）
     iv_period_to       IN  VARCHAR2,  -- 10.出力期間（至）
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+    iv_lease_class     IN  VARCHAR2,  -- 11.リース種別
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
     ov_errbuf          OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode         OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg          OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -876,19 +1531,30 @@ AS
       SELECT
 -- 0001061 2009/08/28 ADD START --
              /*+
-               INDEX(XCH XXCFF_CONTRACT_HEADERS_N04)
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--               INDEX(XCH XXCFF_CONTRACT_HEADERS_N04)
+               LEADING(XCL)
+               USE_NL(XCL XOH)
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
                USE_NL(XCH XLCV)
                USE_NL(XCH XLSV)
                USE_NL(XCH XLTV)
                USE_NL(XCH XCL)
                USE_NL(XCL FAB)
-               INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--               INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+               INDEX(XCL XXCFF_CONTRACT_LINES_N01)
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
                INDEX(FDP FA_DEPRN_PERIODS_U2)
                INDEX(FDS FA_DEPRN_SUMMARY_U1)
                INDEX(FRET FA_RETIREMENTS_N1)
              */
 -- 0001061 2009/08/28 ADD END --
-             xch.contract_header_id             -- 契約内部ID
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--             xch.contract_header_id             -- 契約内部ID
+             xcl.contract_line_id contract_line_id  -- 契約明細ID
+            ,xoh.object_code      object_code       -- 物件コード
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
             ,xch.lease_company                  -- リース会社コード
             ,(SELECT xlcv.lease_company_name
                 FROM xxcff_lease_company_v xlcv
@@ -907,48 +1573,73 @@ AS
             ,xch.lease_end_date                 -- リース終了日
             ,xch.payment_frequency              -- 月数
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+                           fret.date_retired  >= id_start_date_1st OR
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.second_charge
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_charge  -- 月間リース料
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+                           fret.date_retired  >= id_start_date_1st OR
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.gross_charge
                     ELSE 0 END)
                  ELSE 0 END) AS gross_charge    -- リース料総額
-            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
-                           fret.status <> cv_processed   THEN
-                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
-                      xcl.original_cost
-                    ELSE 0 END)
-                 ELSE 0 END) AS original_cost   -- 取得価額総額
-            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
-                           fret.status <> cv_processed   THEN
-                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
-                      NVL(fds.deprn_reserve,original_cost)
-                    ELSE 0 END)
-                 ELSE 0 END) AS deprn_reserve   -- 減価償却累計額相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+--                           fret.status <> cv_processed   THEN
+--                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
+--                      xcl.original_cost
+--                    ELSE 0 END)
+--                 ELSE 0 END) AS original_cost   -- 取得価額総額
+--            ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+--                           fret.status <> cv_processed   THEN
+--                   (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
+--                      NVL(fds.deprn_reserve,original_cost)
+--                    ELSE 0 END)
+--                 ELSE 0 END) AS deprn_reserve   -- 減価償却累計額相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
             ,SUM(fds.deprn_amount) AS deprn_amount -- 減価償却相当額
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+                           fret.date_retired  >= id_start_date_1st OR
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                       xcl.second_deduction
                     ELSE 0 END)
                  ELSE 0 END) AS monthly_deduction -- 月間リース料（控除額）
             ,SUM(CASE WHEN fret.retirement_id IS NULL OR
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+                           fret.date_retired  >= id_start_date_1st OR
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
                            fret.status <> cv_processed   THEN
                    (CASE WHEN NVL(fdp.period_name,iv_period_to) = iv_period_to THEN
                    xcl.gross_deduction
                     ELSE 0 END)
                  ELSE 0 END) AS gross_deduction -- リース料総額（控除額）
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+            ,xoh.cancellation_date cancellation_date   -- 解約日
+            ,xch.lease_type        lease_type          -- リース区分
+            ,xcl.original_cost     lease_original_cost -- 取得価額
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
         FROM xxcff_contract_headers xch       -- リース契約
        INNER JOIN xxcff_contract_lines xcl    -- リース契約明細
           ON xcl.contract_header_id = xch.contract_header_id
 -- 0001061 2009/08/28 ADD START --
          AND xcl.lease_kind         = iv_lease_kind
          AND xcl.contract_status    > cv_contr_st_201
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+       INNER JOIN xxcff_object_headers xoh    -- リース物件
+          ON xcl.object_header_id   = xoh.object_header_id
+         AND (xoh.cancellation_date IS NULL
+           OR xoh.cancellation_date >= id_start_date_1st)
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
 -- 0001061 2009/08/28 ADD END --
        INNER JOIN fa_additions_b fab           -- 資産詳細情報
           ON fab.attribute10 = to_char(xcl.contract_line_id)
@@ -969,7 +1660,10 @@ AS
          AND fds.period_counter = fdp.period_counter
          AND fds.deprn_source_code = 'DEPRN'
        WHERE xch.lease_company = NVL(iv_lease_company,xch.lease_company)
-         AND xch.lease_type = cv_lease_type1
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--         AND xch.lease_type = cv_lease_type1
+         AND xch.lease_class   = NVL(iv_lease_class ,xch.lease_class)
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
 -- 0001061 2009/08/28 DEL START --
 --         AND xcl.lease_kind = iv_lease_kind
 --         AND xcl.contract_status > cv_contr_st_201
@@ -984,16 +1678,41 @@ AS
               ,xch.lease_start_date
               ,xch.lease_end_date
               ,xch.payment_frequency
-              ,xch.contract_header_id
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--              ,xch.contract_header_id
+              ,xcl.contract_line_id
+              ,xoh.object_code
+              ,xch.lease_type
+              ,xcl.original_cost
+              ,xoh.cancellation_date
+              ,fab.attribute12
+              ,fab.attribute13
+-- 2018/03/27 Ver.1.7 Y.Shoji MID End
       ORDER BY xch.lease_company
               ,xch.contract_number
               ,xch.lease_start_date
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+              ,xoh.object_code
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
       ;
 --
     --OPリース対象取得カーソル
     CURSOR contract_op_cur
     IS
-      SELECT xch.contract_header_id             -- 契約内部ID
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--      SELECT xch.contract_header_id             -- 契約内部ID
+      SELECT /*+
+                 LEADING(XCL)
+                 USE_NL(XCL XCH)
+                 USE_NL(XCL XOH)
+                 USE_NL(XCL XPP)
+                 INDEX(XCL XXCFF_CONTRACT_LINES_N01)
+                 INDEX(XCH XXCFF_CONTRACT_HEADERS)
+                 INDEX(XOH XXCFF_OBJECT_HEADERS)
+              */
+             xcl.contract_line_id               -- 契約明細ID
+            ,xoh.object_code                    -- 物件コード
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
             ,xch.lease_company                  -- リース会社コード
             ,(SELECT xlcv.lease_company_name
                 FROM xxcff_lease_company_v xlcv
@@ -1019,8 +1738,10 @@ AS
                            xcl.expiration_date IS NULL   THEN
                    xcl.gross_charge
                  ELSE 0 END) AS gross_charge    -- リース料総額
-            ,NULL AS original_cost   -- 取得価額総額
-            ,NULL AS deprn_reserve   -- 減価償却累計額相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--            ,NULL AS original_cost   -- 取得価額総額
+--            ,NULL AS deprn_reserve   -- 減価償却累計額相当額
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
             ,NULL AS deprn_amount    -- 減価償却相当額
             ,SUM(CASE WHEN xcl.cancellation_date IS NULL AND
                            xcl.expiration_date IS NULL   THEN
@@ -1030,11 +1751,23 @@ AS
                            xcl.expiration_date IS NULL   THEN
                    xcl.gross_deduction
                  ELSE 0 END) AS gross_deduction -- リース料総額（控除額）
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+            ,xcl.cancellation_date cancellation_date   -- 解約日
+            ,xch.lease_type        lease_type          -- リース区分
+            ,xcl.original_cost     lease_original_cost -- 取得価額
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
         FROM xxcff_contract_headers xch       -- リース契約
        INNER JOIN xxcff_contract_lines xcl    -- リース契約明細
           ON xcl.contract_header_id = xch.contract_header_id
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+       INNER JOIN xxcff_object_headers xoh    -- リース物件
+          ON xcl.object_header_id  = xoh.object_header_id
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
        WHERE xch.lease_company = NVL(iv_lease_company,xch.lease_company)
          AND xch.lease_type = cv_lease_type1
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+         AND xch.lease_class   = NVL(iv_lease_class ,xch.lease_class)
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
          AND xcl.lease_kind = iv_lease_kind
          AND EXISTS (
              SELECT 'x' FROM xxcff_pay_planning xpp
@@ -1049,10 +1782,20 @@ AS
               ,xch.lease_start_date
               ,xch.lease_end_date
               ,xch.payment_frequency
-              ,xch.contract_header_id
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--              ,xch.contract_header_id
+              ,xcl.contract_line_id
+              ,xoh.object_code
+              ,xch.lease_type
+              ,xcl.original_cost
+              ,xcl.cancellation_date
+-- 2018/03/27 Ver.1.7 Y.Shoji MID End
       ORDER BY xch.lease_company
               ,xch.contract_number
               ,xch.lease_start_date
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+              ,xoh.object_code
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
       ;
     contract_rec contract_cur%ROWTYPE;
 -- 0000417 2009/08/05 ADD END --
@@ -1090,7 +1833,14 @@ AS
           -- 初期化
           l_csv_rec := NULL;
           -- 取得値を格納
-          l_csv_rec.contract_header_id  := contract_rec.contract_header_id;
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--          l_csv_rec.contract_header_id  := contract_rec.contract_header_id;
+          l_csv_rec.contract_line_id    := contract_rec.contract_line_id;
+          l_csv_rec.object_code         := contract_rec.object_code;
+          l_csv_rec.lease_type          := contract_rec.lease_type;
+          l_csv_rec.lease_original_cost := contract_rec.lease_original_cost;
+          l_csv_rec.cancellation_date   := contract_rec.cancellation_date;
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
           l_csv_rec.lease_company       := contract_rec.lease_company;
           l_csv_rec.lease_company_name  := contract_rec.lease_company_name;
           l_csv_rec.period_from         := iv_period_from;
@@ -1103,12 +1853,16 @@ AS
           l_csv_rec.payment_frequency   := contract_rec.payment_frequency;
           l_csv_rec.monthly_charge      := contract_rec.monthly_charge;
           l_csv_rec.gross_charge        := contract_rec.gross_charge;
-          l_csv_rec.original_cost       := contract_rec.original_cost;
-          l_csv_rec.deprn_reserve       := contract_rec.deprn_reserve;
-          l_csv_rec.deprn_amount        := contract_rec.deprn_amount;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--          l_csv_rec.original_cost       := contract_rec.original_cost;
+--          l_csv_rec.deprn_reserve       := contract_rec.deprn_reserve;
+--          l_csv_rec.deprn_amount        := contract_rec.deprn_amount;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
           l_csv_rec.monthly_deduction   := contract_rec.monthly_deduction;
           l_csv_rec.gross_deduction     := contract_rec.gross_deduction;
-          l_csv_rec.bal_amount          := contract_rec.original_cost - contract_rec.deprn_reserve;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--          l_csv_rec.bal_amount          := contract_rec.original_cost - contract_rec.deprn_reserve;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
           -- ============================================
           -- A-5．リース支払計画情報取得処理
           -- ============================================
@@ -1122,6 +1876,31 @@ AS
           IF (lv_retcode != cv_status_normal) THEN
             RAISE global_process_expt;
           END IF;
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+          -- ============================================
+          -- A-8．リース資産情報取得処理
+          -- ============================================
+          get_asset_info(
+             iv_book_type_code
+            ,l_csv_rec
+            ,lv_errbuf
+            ,lv_retcode
+            ,lv_errmsg);
+          IF (lv_retcode != cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- ============================================
+          -- A-9．リース債務情報取得処理
+          -- ============================================
+          get_lease_obl_info(
+             l_csv_rec
+            ,lv_errbuf
+            ,lv_retcode
+            ,lv_errmsg);
+          IF (lv_retcode != cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
           -- ============================================
           -- A-6．CSVデータ出力処理
           -- ============================================
@@ -1161,7 +1940,12 @@ AS
           -- 初期化
           l_csv_rec := NULL;
           -- 取得値を格納
-          l_csv_rec.contract_header_id  := contract_rec.contract_header_id;
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--          l_csv_rec.contract_header_id  := contract_rec.contract_header_id;
+          l_csv_rec.contract_line_id    := contract_rec.contract_line_id;
+          l_csv_rec.object_code         := contract_rec.object_code;
+          l_csv_rec.cancellation_date   := contract_rec.cancellation_date;
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
           l_csv_rec.lease_company       := contract_rec.lease_company;
           l_csv_rec.lease_company_name  := contract_rec.lease_company_name;
           l_csv_rec.period_from         := iv_period_from;
@@ -1174,12 +1958,16 @@ AS
           l_csv_rec.payment_frequency   := contract_rec.payment_frequency;
           l_csv_rec.monthly_charge      := contract_rec.monthly_charge;
           l_csv_rec.gross_charge        := contract_rec.gross_charge;
-          l_csv_rec.original_cost       := contract_rec.original_cost;
-          l_csv_rec.deprn_reserve       := contract_rec.deprn_reserve;
-          l_csv_rec.deprn_amount        := contract_rec.deprn_amount;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--          l_csv_rec.original_cost       := contract_rec.original_cost;
+--          l_csv_rec.deprn_reserve       := contract_rec.deprn_reserve;
+--          l_csv_rec.deprn_amount        := contract_rec.deprn_amount;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
           l_csv_rec.monthly_deduction   := contract_rec.monthly_deduction;
           l_csv_rec.gross_deduction     := contract_rec.gross_deduction;
-          l_csv_rec.bal_amount          := contract_rec.original_cost - contract_rec.deprn_reserve;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL Start
+--          l_csv_rec.bal_amount          := contract_rec.original_cost - contract_rec.deprn_reserve;
+-- 2018/03/27 Ver.1.7 Y.Shoji DEL End
           -- ============================================
           -- A-5．リース支払計画情報取得処理
           -- ============================================
@@ -1275,9 +2063,12 @@ AS
   PROCEDURE get_first_period(
     iv_lease_kind     IN  VARCHAR2,     -- 1.リース種類
     in_fiscal_year    IN  NUMBER,       -- 2.会計年度
-    ov_period_from    OUT VARCHAR2,     -- 3.出力期間（自）
-    on_period_num_1st OUT NUMBER,       -- 4.期間番号
-    od_start_date_1st OUT DATE,         -- 5.期首開始日
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+    iv_book_type_code IN  VARCHAR2,     -- 3.資産台帳名
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
+    ov_period_from    OUT VARCHAR2,     -- 4.出力期間（自）
+    on_period_num_1st OUT NUMBER,       -- 5.期間番号
+    od_start_date_1st OUT DATE,         -- 6.期首開始日
     ov_errbuf         OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg         OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1313,9 +2104,12 @@ AS
             ,fa_calendar_types fct    -- 資産カレンダタイプ
             ,fa_fiscal_year ffy       -- 資産会計年度
             ,fa_book_controls fbc     -- 資産台帳マスタ
-            ,xxcff_lease_kind_v xlk   -- リース種類ビュー
-       WHERE fbc.book_type_code = xlk.book_type_code
-         AND xlk.lease_kind_code = iv_lease_kind
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--            ,xxcff_lease_kind_v xlk   -- リース種類ビュー
+--       WHERE fbc.book_type_code = xlk.book_type_code
+--         AND xlk.lease_kind_code = iv_lease_kind
+       WHERE fbc.book_type_code = iv_book_type_code
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD END
          AND fbc.deprn_calendar = fcp.calendar_type
          AND ffy.fiscal_year = in_fiscal_year
          AND ffy.fiscal_year_name = fct.fiscal_year_name
@@ -1449,6 +2243,9 @@ AS
     SELECT (CASE iv_book_class
             WHEN cv_book_class_1 THEN xlk.book_type_code
             WHEN cv_book_class_2 THEN xlk.book_type_code_tax
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+            WHEN cv_book_class_3 THEN xlk.book_type_code_ifrs
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD END
             ELSE NULL END)
       INTO lt_book_type_code
       FROM xxcff_lease_kind_v xlk
@@ -1596,6 +2393,9 @@ AS
     iv_lease_kind    IN    VARCHAR2,        -- 2.リース種類
     iv_book_class    IN    VARCHAR2,        -- 3.資産台帳区分
     iv_lease_company IN    VARCHAR2,        -- 4.リース会社コード
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+    iv_lease_class   IN    VARCHAR2,        -- 5.リース種別
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
     ov_errbuf        OUT   VARCHAR2,        --   エラー・メッセージ           --# 固定 #
     ov_retcode       OUT   VARCHAR2,        --   リターン・コード             --# 固定 #
     ov_errmsg        OUT   VARCHAR2)        --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1676,6 +2476,21 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+    -- リース会社とリース種別がNULLの場合
+    IF (  iv_lease_company IS NULL
+      AND iv_lease_class   IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                                              cv_appl_short_name
+                                             ,cv_msg_req_chk       -- 必須チェックエラー
+                                             ,cv_tkn_input_dta
+                                             ,cv_tkv_com_or_cla    -- リース会社、リース種別
+                                           );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
     -- ============================================
     -- A-2．会計期間チェック処理
     -- ============================================
@@ -1703,9 +2518,12 @@ AS
     get_first_period(
        iv_lease_kind          -- 1.リース種類
       ,lt_fiscal_year         -- 2.会計年度
-      ,lt_period_from         -- 3.出力期間（自）
-      ,lt_period_num_1st      -- 4.期間番号
-      ,ld_start_date_1st      -- 5.期首開始日
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+      ,lt_book_type_code      -- 3.資産台帳名
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
+      ,lt_period_from         -- 4.出力期間（自）
+      ,lt_period_num_1st      -- 5.期間番号
+      ,ld_start_date_1st      -- 6.期首開始日
       ,lv_errbuf              --   エラー・メッセージ           --# 固定 #
       ,lv_retcode             --   リターン・コード             --# 固定 #
       ,lv_errmsg              --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1729,6 +2547,9 @@ AS
       ,lt_period_num_now    --  8.当期期間番号
       ,lt_period_from       --  9.出力期間（自）
       ,lt_period_to         -- 10.出力期間（至）
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+      ,iv_lease_class       -- 11.リース種別
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
       ,lv_errbuf            --   エラー・メッセージ           --# 固定 #
       ,lv_retcode           --   リターン・コード             --# 固定 #
       ,lv_errmsg            --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1782,7 +2603,11 @@ AS
     iv_period_name   IN    VARCHAR2,        -- 1.会計期間名
     iv_lease_kind    IN    VARCHAR2,        -- 2.リース種類
     iv_book_class    IN    VARCHAR2,        -- 3.資産台帳区分
-    iv_lease_company IN    VARCHAR2         -- 4.リース会社コード
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD Start
+--    iv_lease_company IN    VARCHAR2         -- 4.リース会社コード
+    iv_lease_company IN    VARCHAR2,        -- 4.リース会社コード
+    iv_lease_class   IN    VARCHAR2         -- 5.リース種別
+-- 2018/03/27 Ver.1.7 Y.Shoji MOD End
   )
 --
 --
@@ -1839,6 +2664,9 @@ AS
       ,iv_lease_kind    -- 2.リース種類
       ,iv_book_class    -- 3.資産台帳区分
       ,iv_lease_company -- 4.リース会社コード
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD Start
+      ,iv_lease_class   -- 5.リース種別
+-- 2018/03/27 Ver.1.7 Y.Shoji ADD End
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
