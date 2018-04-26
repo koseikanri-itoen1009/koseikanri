@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.21
+ * Version          : 2.22
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2011/01/12    2.19  K.Kiriu          [E_本稼動_02458]PT対応
  *  2011/03/30    2.20  Y.Nishino        [E_本稼動_04976]情報系への連携項目追加
  *  2014/04/14    2.21  K.Nakamura       [E_本稼働_09071]消化締め後のAR入力対応
+ *  2018/04/26    2.22  K.Kiriu          [E_本稼働_15061]会計帳簿不具合対応
  *
  *****************************************************************************************/
 --
@@ -653,6 +654,9 @@ AS
          AND    rctlgda.set_of_books_id      = TO_NUMBER(gt_book_id)
          AND    rctla.line_type              = cv_line_type_line             -- 明細タイプ
          AND    gcc.chart_of_accounts_id     = gsob.chart_of_accounts_id     -- アカウントID
+-- Ver2.22 Add Start
+         AND    gsob.set_of_books_id         = TO_NUMBER(gt_book_id)
+-- Ver2.22 Add End
          AND    rctlgda.customer_trx_line_id = rctla.customer_trx_line_id
 -- 2010/02/02 Ver.2.15 Mod Start
          AND    rctlgda.gl_date       BETWEEN  id_gl_date_from
