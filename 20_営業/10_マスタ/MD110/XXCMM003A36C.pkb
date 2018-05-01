@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A36C(body)
  * Description      : 各諸マスタ連携IFデータ作成
  * MD.050           : MD050_CMM_003_A36_各諸マスタ連携IFデータ作成
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/06/30    1.6   Yutaka.Kuboshima    統合テスト障害0000328の対応
  *  2009/07/13    1.7   Yutaka.Kuboshima    統合テスト障害0000655,0000656の対応
  *  2009/09/30    1.8   Yutaka.Kuboshima    統合テスト障害0001350の対応
+ *  2018/04/27    1.9   Haruka.Mori         E_本稼動_15041の対応
  *
  *****************************************************************************************/
 --
@@ -82,6 +83,9 @@ AS
 -- 2009/04/02 Ver1.2 add start by Yutaka.Kuboshima
   gd_process_date  DATE;
 -- 2009/04/02 Ver1.2 add end by Yutaka.Kuboshima
+-- 2018/04/27 Ver1.9 add start by Haruka.Mori
+  gn_bks_id        NUMBER;
+-- 2018/04/27 Ver1.9 add end by Haruka.Mori
 --
 --##########################  固定共通例外宣言部 START  ###########################
 --
@@ -169,6 +173,10 @@ AS
     cv_out_file_file CONSTANT VARCHAR2(30) := 'XXCMM1_003A36_OUT_FILE_FIL';   --XXCMM:各諸マスタ連携IFデータ作成用CSVファイル名
     cv_invalid_path  CONSTANT VARCHAR2(25) := 'CSV出力ディレクトリ';          --プロファイル取得失敗（ディレクトリ）
     cv_invalid_name  CONSTANT VARCHAR2(20) := 'CSV出力ファイル名';            --プロファイル取得失敗（ファイル名）
+-- 2018/04/27 Ver1.9 add start by Haruka.Mori
+    cv_prf_bks_id    CONSTANT VARCHAR2(50) := 'GL_SET_OF_BKS_ID';             --GL会計帳簿ID
+    cv_invalid_id    CONSTANT VARCHAR2(20) := 'GL会計帳簿ID';                 --プロファイル取得失敗（GL会計帳簿ID）
+-- 2018/04/27 Ver1.9 add end by Haruka.Mori
 --
     -- *** ローカル変数 ***
     lv_file_chk     BOOLEAN;
@@ -209,6 +217,19 @@ AS
       RAISE init_err_expt;
     END IF;
 --
+-- 2018/04/27 Ver1.9 add start by Haruka.Mori
+    --帳簿IDをプロファイルより取得。失敗時はエラー
+    gn_bks_id := TO_NUMBER( FND_PROFILE.VALUE( cv_prf_bks_id ) );
+    IF ( gn_bks_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                            cv_profile_err_msg,
+                                            cv_ng_profile,
+                                            cv_invalid_id);
+      lv_errbuf := lv_errmsg;
+      RAISE init_err_expt;
+    END IF;
+--
+-- 2018/04/27 Ver1.9 end by Haruka.Mori
     --ファイル存在チェック
     UTL_FILE.FGETATTR(gv_out_file_dir, gv_out_file_file, lv_file_chk, ln_file_size, ln_block_size);
     IF lv_file_chk THEN
@@ -351,7 +372,7 @@ AS
     if_file_handler  IN  UTL_FILE.FILE_TYPE,  --   ファイルハンドラ
     ov_errbuf        OUT VARCHAR2,            --   エラー・メッセージ                  --# 固定 #
     ov_retcode       OUT VARCHAR2,            --   リターン・コード                    --# 固定 #
-    ov_errmsg        OUT VARCHAR2)            --   ユーザー・エラー・メッセージ        --# 固定 #      
+    ov_errmsg        OUT VARCHAR2)            --   ユーザー・エラー・メッセージ        --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -653,7 +674,7 @@ AS
                                               'CUSTOMER CLASS');
 -- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
         ov_retcode := cv_status_warn;
-                                              
+
         --警告メッセージ出力
         FND_FILE.PUT_LINE(which  => FND_FILE.LOG ,buff   => lv_errmsg);
         --警告カウントアップ
@@ -830,7 +851,7 @@ AS
                                      lookup_type AS lv_ref_type
                                     ,lookup_code AS lv_ref_code
 -- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
---                                    ,meaning     AS lv_ref_name                                 
+--                                    ,meaning     AS lv_ref_name
                                     ,description AS lv_ref_name
 -- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                                     ,NULL        AS lv_pt_ref_type
@@ -7634,7 +7655,7 @@ AS
                             SELECT  
                                     'PO_VENDORS'  AS lv_ref_type 
 -- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
---                                   ,vendor_id     AS lv_ref_code  
+--                                   ,vendor_id     AS lv_ref_code
                                    ,segment1      AS lv_ref_code  
 -- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                                    ,vendor_name   AS lv_ref_name
@@ -7721,6 +7742,9 @@ AS
 -- 2009/04/02 Ver1.2 add start by Yutaka.Kuboshima
                         AND    gd_process_date BETWEEN start_date AND NVL(end_date, TO_DATE(cv_max_date, cv_date_format))
 -- 2009/04/02 Ver1.2 add end by Yutaka.Kuboshima
+-- 2018/04/27 Ver1.9 add start by Haruka.Mori
+                        AND    set_of_books_id = gn_bks_id   --帳簿ID
+-- 2018/04/27 Ver1.9 add end by Haruka.Mori
                         ORDER BY tax_code;
 
       tax_rec tax_cur%ROWTYPE;
