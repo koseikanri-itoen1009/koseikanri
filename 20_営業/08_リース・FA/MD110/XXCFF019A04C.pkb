@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF019A04C(body)
  * Description      : IFRS台帳修正
  * MD.050           : MD050_CFF_019_A04_IFRS台帳修正
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ----------------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/11/30    1.0   SCSK小路         新規作成
+ *  2018/04/27    1.1   SCSK森           E_本稼動_15041対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -406,7 +407,10 @@ AS
              ,fat_fixed.description               AS description_fixed             -- 摘要（固定資産台帳）
              ,fat_ifrs.description                AS description_ifrs              -- 摘要（IFRS台帳）
              ,fab_ifrs.current_units              AS current_units                 -- 単位
-             ,fb_fixed.cost                       AS cost_fixed                    -- 取得価額（固定資産台帳）
+-- 2018/04/27 1.1 MOD H.Mori START
+--             ,fb_fixed.cost                       AS cost_fixed                    -- 取得価額（固定資産台帳）
+             ,DECODE(fb_fixed.cost,0,fb_ifrs.cost,fb_fixed.cost) AS cost_fixed     -- 取得価額（固定資産台帳）
+-- 2018/04/27 1.1 MOD H.Mori END
              ,fb_ifrs.cost                        AS cost_ifrs                     -- 取得価額（IFRS台帳）
              ,fb_ifrs.original_cost               AS original_cost                 -- 当初取得価額
              ,fab_ifrs.tag_number                 AS tag_number                    -- 現品票番号
