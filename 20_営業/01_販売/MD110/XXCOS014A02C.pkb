@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2010/06/11    1.17  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *  2010/10/15    1.18  K.Kiriu          [E_本稼動_04783] 地区コード、地区名(漢字)、地区コード(カナ)出力変更対応
  *  2011/10/06    1.19  A.Shirakawa      [E_本稼動_07906] EDIの流通BMS対応
+ *  2018/03/07    1.20  H.Sasaki         [E_本稼動_14882] 削除明細を表示する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3748,7 +3749,9 @@ AS
                       AND     ooha.header_id                = oola.header_id
                       AND     ooha.org_id                   = oola.org_id                --MO:営業単位
                       AND     oola.orig_sys_line_ref        = xel.order_connection_line_number
-                      AND     oola.flow_status_code        != cv_cancel                  --ステータス(キャンセル以外)
+--  2018/03/07 V1.20 Deleted SART
+--                      AND     oola.flow_status_code        != cv_cancel                  --ステータス(キャンセル以外)
+--  2018/03/07 V1.20 Deleted END
                       AND     oola.line_type_id             = ottt_l.transaction_type_id
 /* 2009/09/08 Ver1.12 Mod Start */
 --                      AND     ottt_l.language               = userenv('LANG')
