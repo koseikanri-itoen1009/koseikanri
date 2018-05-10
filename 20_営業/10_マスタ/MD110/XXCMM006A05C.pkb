@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM006A05C(body)
  * Description      : 締め情報ファイルIF出力(情報系)
  * MD.050           : 締め情報ファイルIF出力(情報系) MD050_CMM_006_A05
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/05/26    1.2   SCS H.Yoshiawa   GLの連携モジュール名を修正（障害：T1_1200）
  *  2009/09/04    1.3   SCS Y.Kuboshima  障害0001130の対応
  *                                       在庫組織をS01 -> Z99 に変更
+ *  2018/05/10    1.4   SCSK H.Mori      E_本稼動_15085の対応
  *
  *****************************************************************************************/
 --
@@ -77,6 +78,9 @@ AS
 -- 2009/09/04 Ver1.3 add start by Y.Kuboshima
   cv_org_code               CONSTANT VARCHAR2(30)  := 'XXCOI1_ORGANIZATION_CODE';   -- 在庫組織コード
 -- 2009/09/04 Ver1.3 add end by Y.Kuboshima
+-- 2018/05/10 Ver1.4 add start by H.Mori
+  cv_prf_bks_id             CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';           --GL会計帳簿ID
+-- 2018/05/10 Ver1.4 add end by H.Mori
   -- トークン
   cv_tkn_profile            CONSTANT VARCHAR2(10)  := 'NG_PROFILE';                 -- プロファイル名
   cv_tkn_filepath_nm        CONSTANT VARCHAR2(20)  := 'CSVファイル出力先';
@@ -89,6 +93,9 @@ AS
 -- 2009/09/04 Ver1.3 add start by Y.Kuboshima
   cv_tkn_org_code           CONSTANT VARCHAR2(30)  := '在庫組織コード';             -- 在庫組織コード
 -- 2009/09/04 Ver1.3 add end by Y.Kuboshima
+-- 2018/05/10 Ver1.4 add start by H.Mori
+  cv_tkn_invalid_id         CONSTANT VARCHAR2(20)  := 'GL会計帳簿ID';               --プロファイル取得失敗（GL会計帳簿ID）
+-- 2018/05/10 Ver1.4 add end by H.Mori
   -- メッセージ区分
   cv_msg_kbn_cmm            CONSTANT VARCHAR2(5)   := 'XXCMM';
   cv_msg_kbn_ccp            CONSTANT VARCHAR2(5)   := 'XXCCP';
@@ -156,6 +163,9 @@ AS
 -- 2009/09/04 Ver1.3 add start by Y.Kuboshima
   gv_org_code               VARCHAR2(100);        -- 在庫組織コード
 -- 2009/09/04 Ver1.3 add end by Y.Kuboshima
+-- 2018/05/10 Ver1.4 add start by H.Mori
+  gn_bks_id                 NUMBER;
+-- 2018/05/10 Ver1.4 add end by H.Mori
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -198,6 +208,9 @@ AS
     AND      fapp.application_short_name = cv_AR
     AND      adjustment_period_flag = cv_adj_period_flg_n
     AND      gpsv.period_type = gv_period_type
+-- 2018/05/10 Ver1.4 add start by H.Mori
+    AND      gpsv.set_of_books_id = gn_bks_id   --帳簿ID
+-- 2018/05/10 Ver1.4 add end by H.Mori
     UNION ALL
 --期間モジュール【SQLGL】
     SELECT   SUBSTRB(gpsv.period_name,1,7)              AS period_name,              --期間名称
@@ -218,6 +231,9 @@ AS
     AND      gpsv.period_year <= gn_next_year
     AND      fapp.application_short_name = cv_SQLGL
     AND      gpsv.period_type = gv_period_type
+-- 2018/05/10 Ver1.4 add start by H.Mori
+    AND      gpsv.set_of_books_id = gn_bks_id   --帳簿ID
+-- 2018/05/10 Ver1.4 add end by H.Mori
    UNION ALL
 --期間モジュール【INV】
     SELECT   SUBSTRB(oapv.period_name,1,7)              AS period_name,              --期間名称
@@ -380,6 +396,20 @@ AS
       RAISE global_api_expt;
     END IF;
 -- 2009/09/04 Ver1.3 add end by Y.Kuboshima
+-- 2018/05/10 Ver1.4 add start by H.Mori
+    -- GL会計帳簿IDの取得
+    gn_bks_id := fnd_profile.value(cv_prf_bks_id);
+    IF (gn_bks_id IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_kbn_cmm       -- 'XXCMM'
+                      ,iv_name         => cv_msg_00002         -- プロファイル取得エラー
+                      ,iv_token_name1  => cv_tkn_profile       -- トークン(NG_PROFILE)
+                      ,iv_token_value1 => cv_tkn_invalid_id    -- プロファイル名(GL会計帳簿ID)
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2018/05/10 Ver1.4 add end by H.Mori
     --
     -- =========================================================
     --  固定出力(I/Fファイル名部)
