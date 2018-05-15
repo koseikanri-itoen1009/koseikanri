@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * SYNONYM Name    : xxcso_tmp_rtn_rsrc_work
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2018/03/27    1.0   K.Kiriu      èââÒçÏê¨(E_ñ{â“ìÆ_14722)
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM apps.xxcso_tmp_rtn_rsrc_work FOR xxcso.xxcso_tmp_rtn_rsrc_work;
