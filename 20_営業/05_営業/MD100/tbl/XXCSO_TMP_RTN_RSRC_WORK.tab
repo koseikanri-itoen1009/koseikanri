@@ -1,0 +1,31 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_tmp_rtn_rsrc_work
+ * Description     : ルートNo／営業員アップロード中間テーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2018/05/02    1.0   K.Kiriu      初回作成(E_本稼動_14722)
+ ************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcso.xxcso_tmp_rtn_rsrc_work
+(
+   file_id                 NUMBER       NOT NULL
+  ,line_no                 NUMBER(15)   NOT NULL
+  ,account_number          VARCHAR2(9)
+  ,new_route_no            VARCHAR2(7)
+  ,new_employee_number     VARCHAR2(5)
+  ,reflect_method          VARCHAR2(1)
+);
+--
+COMMENT ON TABLE xxcso.xxcso_tmp_rtn_rsrc_work IS 'ルートNo／営業員アップロード中間テーブル';
+--
+COMMENT ON COLUMN xxcso.xxcso_tmp_rtn_rsrc_work.file_id                 IS 'ファイルID';
+COMMENT ON COLUMN xxcso.xxcso_tmp_rtn_rsrc_work.line_no                 IS '行番号';
+COMMENT ON COLUMN xxcso.xxcso_tmp_rtn_rsrc_work.account_number          IS '顧客コード';
+COMMENT ON COLUMN xxcso.xxcso_tmp_rtn_rsrc_work.new_route_no            IS '新ルートNo';
+COMMENT ON COLUMN xxcso.xxcso_tmp_rtn_rsrc_work.new_employee_number     IS '新担当';
+COMMENT ON COLUMN xxcso.xxcso_tmp_rtn_rsrc_work.reflect_method          IS '反映方法';
