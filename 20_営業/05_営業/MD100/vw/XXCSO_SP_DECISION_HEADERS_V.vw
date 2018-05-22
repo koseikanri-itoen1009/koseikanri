@@ -3,7 +3,7 @@
  * VIEW Name       : xxcso_sp_decision_headers_v
  * Description     : 画面用：SP専決登録画面用ビュー
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2015/01/30    1.1  K.Kiriu       [E_本稼動_12565]SP・契約書画面改修対応 
+ *  2018/05/16    1.2  Y.Shoji       [E_本稼動_14989]SP項目追加対応 
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_sp_decision_headers_v
 (
@@ -111,6 +112,16 @@ CREATE OR REPLACE VIEW apps.xxcso_sp_decision_headers_v
 ,INTRO_CHG_TRANS_NAME
 ,INTRO_CHG_TRANS_NAME_ALT
 -- 2015/01/30 E_本稼動_12565 Add End
+-- 2018/05/16 E_本稼動_14989 Add Start
+,CONSTRUCTION_START_YEAR
+,CONSTRUCTION_START_MONTH
+,CONSTRUCTION_END_YEAR
+,CONSTRUCTION_END_MONTH
+,INSTALLATION_START_YEAR
+,INSTALLATION_START_MONTH
+,INSTALLATION_END_YEAR
+,INSTALLATION_END_MONTH
+-- 2018/05/16 E_本稼動_14989 Add End
 )
 AS
 SELECT
@@ -211,6 +222,16 @@ SELECT
 ,INTRO_CHG_TRANS_NAME
 ,INTRO_CHG_TRANS_NAME_ALT
 -- 2015/01/30 E_本稼動_12565 Add End
+-- 2018/05/16 E_本稼動_14989 Add Start
+,TO_CHAR(CONSTRUCTION_START_YEAR, 'FM9999999999999999990')
+,TO_CHAR(CONSTRUCTION_START_MONTH, 'FM999G999G999G999G990')
+,TO_CHAR(CONSTRUCTION_END_YEAR, 'FM9999999999999999990')
+,TO_CHAR(CONSTRUCTION_END_MONTH, 'FM999G999G999G999G990')
+,TO_CHAR(INSTALLATION_START_YEAR, 'FM9999999999999999990')
+,TO_CHAR(INSTALLATION_START_MONTH, 'FM999G999G999G999G990')
+,TO_CHAR(INSTALLATION_END_YEAR, 'FM9999999999999999990')
+,TO_CHAR(INSTALLATION_END_MONTH, 'FM999G999G999G999G990')
+-- 2018/05/16 E_本稼動_14989 Add End
 FROM XXCSO_SP_DECISION_HEADERS
 WITH READ ONLY
 ;
