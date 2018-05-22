@@ -142,6 +142,16 @@ SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID,
       ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_TRANS_NAME
       ,XxcsoSpDecisionHeadersVEO.INTRO_CHG_TRANS_NAME_ALT
 -- 2014-12-15 [E_–{‰Ò“®_12565] Add End
+-- 2018-05-16 [E_–{‰Ò“®_14989] Add Start
+      ,XxcsoSpDecisionHeadersVEO.CONSTRUCTION_START_YEAR
+      ,XxcsoSpDecisionHeadersVEO.CONSTRUCTION_START_MONTH
+      ,XxcsoSpDecisionHeadersVEO.CONSTRUCTION_END_YEAR
+      ,XxcsoSpDecisionHeadersVEO.CONSTRUCTION_END_MONTH
+      ,XxcsoSpDecisionHeadersVEO.INSTALLATION_START_YEAR
+      ,XxcsoSpDecisionHeadersVEO.INSTALLATION_START_MONTH
+      ,XxcsoSpDecisionHeadersVEO.INSTALLATION_END_YEAR
+      ,XxcsoSpDecisionHeadersVEO.INSTALLATION_END_MONTH
+-- 2018-05-16 [E_–{‰Ò“®_14989] Add End
 FROM XXCSO_SP_DECISION_HEADERS_V XxcsoSpDecisionHeadersVEO
 WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
    ]]></SQLQuery>
@@ -855,6 +865,54 @@ WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
       EntityAttrName="IntroChgTransNameAlt"
       EntityUsage="XxcsoSpDecisionHeadersVEO"
       AliasName="IntroChgTransNameAlt" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConstructionStartYear"
+      EntityAttrName="ConstructionStartYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ConstructionStartYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConstructionStartMonth"
+      EntityAttrName="ConstructionStartMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ConstructionStartMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConstructionEndYear"
+      EntityAttrName="ConstructionEndYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ConstructionEndYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConstructionEndMonth"
+      EntityAttrName="ConstructionEndMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="ConstructionEndMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallationStartYear"
+      EntityAttrName="InstallationStartYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallationStartYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallationStartMonth"
+      EntityAttrName="InstallationStartMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallationStartMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallationEndYear"
+      EntityAttrName="InstallationEndYear"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallationEndYear" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InstallationEndMonth"
+      EntityAttrName="InstallationEndMonth"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="InstallationEndMonth" >
    </ViewAttribute>
    <ViewLinkAccessor
       Name="XxcsoSpDecisionAllCcLineFullVO"
