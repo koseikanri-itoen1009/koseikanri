@@ -9,7 +9,8 @@
 
 修正履歴
 2008/12/22  小川浩        新規作成
-2016/01/07  山下翔太      E_本稼動_13456対応-->
+2016/01/07  山下翔太      E_本稼動_13456対応
+2018/05/16  小路恭弘      E_本稼動_14989対応-->
 <package version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <attributeSet docName="PageLayoutRN" windowTitle="SP専決入力／更新／承認" title="SP専決入力／更新／承認"/>
    <attributeSet docName="ConfirmButton" prompt="確認"/>
@@ -333,4 +334,16 @@
    <attributeSet docName="DayLabel" prompt="日"/>
    <attributeSet docName="TransNameAltLabel" prompt="契約先以外カナ(半角)"/>
    <attributeSet docName="TransNameLabel" prompt="契約先以外名(全角)"/>
+   <attributeSet docName="ConstructionStartYearStartLabel" prompt="工期"/>
+   <attributeSet docName="ConstructionStartYear" shortDesc="工期開始（年）"/>
+   <attributeSet docName="ConstructionStartMonth" shortDesc="工期開始（月）"/>
+   <attributeSet docName="ConstructionEndYear" shortDesc="工期終了（年）"/>
+   <attributeSet docName="ConstructionEndMonth" shortDesc="工期終了（月）"/>
+   <attributeSet docName="ConstructionStartEndSeparete" prompt="－"/>
+   <attributeSet docName="InstallationStartYearStartLabel" prompt="設置見込み期間"/>
+   <attributeSet docName="InstallationStartYear" shortDesc="設置見込み期間開始（年）"/>
+   <attributeSet docName="InstallationStartMonth" shortDesc="設置見込み期間開始（月）"/>
+   <attributeSet docName="InstallationEndYear" shortDesc="設置見込み期間終了（年）"/>
+   <attributeSet docName="InstallationEndMonth" shortDesc="設置見込み期間終了（月）"/>
+   <attributeSet docName="InstallationStartEndSeparete" prompt="－"/>
 </package>
