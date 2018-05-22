@@ -3,10 +3,10 @@ AS
 /*****************************************************************************************
  * Copyright(c)SCSK Corporation, 2011. All rights reserved.
  *
- * Package Name     : XXCSO020A07C (spec)
+ * Package Name     : XXCSO020A07C (body)
  * Description      : SP専決書情報CSV出力
  * MD.050           : SP専決書情報CSV出力 (MD050_CSO_020A07)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2015/02/23    1.0   S.Yamashita      新規作成
+ *  2018/05/16    1.1   K.Kiriu          E_本稼動_14989対応
  *
  *****************************************************************************************/
 --
@@ -277,6 +278,16 @@ AS
     ,xsdh.contract_start_month                               AS contract_start_month          -- 契約期間開始（月）
     ,xsdh.contract_end_year                                  AS contract_end_year             -- 契約期間終了（年）
     ,xsdh.contract_end_month                                 AS contract_end_month            -- 契約期間終了（月）
+-- Ver1.1 Add Start
+    ,xsdh.construction_start_year                            AS construction_start_year       -- 工期開始（年）
+    ,xsdh.construction_start_month                           AS construction_start_month      -- 工期開始（月）
+    ,xsdh.construction_end_year                              AS construction_end_year         -- 工期終了（年）
+    ,xsdh.construction_end_month                             AS construction_end_month        -- 工期終了（月）
+    ,xsdh.installation_start_year                            AS installation_start_year       -- 設置見込み期間開始（年）
+    ,xsdh.installation_start_month                           AS installation_start_month      -- 設置見込み期間開始（月）
+    ,xsdh.installation_end_year                              AS installation_end_year         -- 設置見込み期間終了（年）
+    ,xsdh.installation_end_month                             AS installation_end_month        -- 設置見込み期間終了（月）
+-- Ver1.1 Add End
     ,xsdh.bidding_item                                       AS bidding_item                  -- 入札案件
     ,xsdh.cancell_before_maturity                            AS cancell_before_maturity       -- 中途解約条項
     ,xsdh.ad_assets_type                                     AS ad_assets_type                -- 行政財産使用料
@@ -946,6 +957,10 @@ AS
     lv_condition_business_type        VARCHAR2(100); -- 取引条件区分
     lv_all_container_type             VARCHAR2(100); -- 全容器区分
     lv_contract_period                VARCHAR2(100); -- 契約期間
+-- Ver1.1 Add Start
+    lv_construction_period            VARCHAR2(100); -- 工期
+    lv_installation_period            VARCHAR2(100); -- 設置見込み期間
+-- Ver1.1 Add End
     lv_bidding_item                   VARCHAR2(100); -- 入札案件
     lv_cancell_before_maturity        VARCHAR2(100); -- 中途解約条項
     lv_ad_assets_type                 VARCHAR2(100); -- 行政財産使用料
@@ -1105,6 +1120,10 @@ AS
       lv_condition_business_type      := NULL; -- 取引条件区分
       lv_all_container_type           := NULL; -- 全容器区分
       lv_contract_period              := NULL; -- 契約期間
+-- Ver1.1 Add Start
+      lv_construction_period          := NULL; -- 工期
+      lv_installation_period          := NULL; -- 設置見込み期間
+-- Ver1.1 Add End
       lv_bidding_item                 := NULL; -- 入札案件
       lv_cancell_before_maturity      := NULL; -- 中途解約条項
       lv_ad_assets_type               := NULL; -- 行政財産使用料
@@ -2352,6 +2371,34 @@ AS
              || lv_month;
       END IF;
 --
+-- Ver1.1 Add Start
+      -- 工期
+      if ( get_sp_rec.construction_start_year IS NOT NULL ) THEN
+        lv_construction_period
+          := TO_CHAR( get_sp_rec.construction_start_year )
+                 || lv_year
+                 || TO_CHAR( get_sp_rec.construction_start_month )
+                 || lv_month || cv_prt_line
+                 || TO_CHAR( get_sp_rec.construction_end_year )
+                 || lv_year
+                 || TO_CHAR( get_sp_rec.construction_end_month )
+                 || lv_month;
+      END IF;
+--
+      -- 設置見込み期間
+      if ( get_sp_rec.installation_start_year IS NOT NULL ) THEN
+        lv_installation_period
+          := TO_CHAR( get_sp_rec.installation_start_year )
+                 || lv_year
+                 || TO_CHAR( get_sp_rec.installation_start_month )
+                 || lv_month || cv_prt_line
+                 || TO_CHAR( get_sp_rec.installation_end_year )
+                 || lv_year
+                 || TO_CHAR( get_sp_rec.installation_end_month )
+                 || lv_month;
+      END IF;
+--
+-- Ver1.1 Add End
       -- 入札案件
       IF ( get_sp_rec.bidding_item IS NOT NULL ) THEN
         lv_bidding_item
@@ -2746,6 +2793,10 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.contract_year_date           || cv_dqu ;  -- 契約年数
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.contract_year_month          || cv_dqu ;  -- 契約月数
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_contract_period                      || cv_dqu ;  -- 契約期間
+-- Ver1.1 Add Start
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_construction_period                  || cv_dqu ;  -- 工期
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_installation_period                  || cv_dqu ;  -- 設置見込み期間
+-- Ver1.1 Add End
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bidding_item                         || cv_dqu ;  -- 入札案件
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_cancell_before_maturity              || cv_dqu ;  -- 中途解約条項
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_ad_assets_type                       || cv_dqu ;  -- 行政財産使用料
