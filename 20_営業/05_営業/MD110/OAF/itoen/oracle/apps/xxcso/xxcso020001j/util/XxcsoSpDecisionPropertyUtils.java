@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2014-01-31 1.8  SCSK桐生和幸  [E_本稼動_11397]売価1円対応
 * 2014-12-15 1.9  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.10 SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
+* 2018-05-16 1.11 SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -463,6 +464,16 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setContractStartMonthViewRender(       Boolean.FALSE );
     initRow.setContractEndYearViewRender(          Boolean.FALSE );
     initRow.setContractEndMonthViewRender(         Boolean.FALSE );
+// 2018-05-16 [E_本稼動_14989] Add Start
+    initRow.setConstructionStartYearViewRender(    Boolean.FALSE );
+    initRow.setConstructionStartMonthViewRender(   Boolean.FALSE );
+    initRow.setConstructionEndYearViewRender(      Boolean.FALSE );
+    initRow.setConstructionEndMonthViewRender(     Boolean.FALSE );
+    initRow.setInstallationStartYearViewRender(    Boolean.FALSE );
+    initRow.setInstallationStartMonthViewRender(   Boolean.FALSE );
+    initRow.setInstallationEndYearViewRender(      Boolean.FALSE );
+    initRow.setInstallationEndMonthViewRender(     Boolean.FALSE );
+// 2018-05-16 [E_本稼動_14989] Add End
     initRow.setBiddingItemViewRender(              Boolean.FALSE );
     initRow.setCancellBeforeMaturityViewRender(    Boolean.FALSE );
     initRow.setAdAssetsTypeViewRender(             Boolean.FALSE );
@@ -890,6 +901,16 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setContractStartMonthRender(           Boolean.FALSE );
     initRow.setContractEndYearRender(              Boolean.FALSE );
     initRow.setContractEndMonthRender(             Boolean.FALSE );
+// 2018-05-16 [E_本稼動_14989] Add Start
+    initRow.setConstructionStartYearRender(        Boolean.FALSE );
+    initRow.setConstructionStartMonthRender(       Boolean.FALSE );
+    initRow.setConstructionEndYearRender(          Boolean.FALSE );
+    initRow.setConstructionEndMonthRender(         Boolean.FALSE );
+    initRow.setInstallationStartYearRender(        Boolean.FALSE );
+    initRow.setInstallationStartMonthRender(       Boolean.FALSE );
+    initRow.setInstallationEndYearRender(          Boolean.FALSE );
+    initRow.setInstallationEndMonthRender(         Boolean.FALSE );
+// 2018-05-16 [E_本稼動_14989] Add End
     initRow.setBiddingItemRender(                  Boolean.FALSE );
     initRow.setCancellBeforeMaturityRender(        Boolean.FALSE );
     initRow.setAdAssetsTypeRender(                 Boolean.FALSE );
