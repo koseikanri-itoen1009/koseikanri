@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -20,6 +20,7 @@
 * 2014-03-13 1.10 SCSK桐生和幸 [E_本稼動_11670]税率変更警告メッセージ出力対応
 * 2014-12-15 1.11 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.12 SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
+* 2018-05-16 1.13 SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -627,4 +628,26 @@ public class XxcsoSpDecisionConstants
   public static final String
      TOKEN_VALUE_CONTRACT_END_CHK         = "契約終了期間の検証";
 // 2014-12-15 [E_本稼動_12565] Add End
+// 2018-05-16 [E_本稼動_14989] Add Start
+  public static final String
+    TOKEN_VALUE_CONSTRUCTION_PERIOD       = "工期";
+  public static final String
+    TOKEN_VALUE_CONSTRUCTION_START_YEAR   = "工期開始（年）";
+  public static final String
+    TOKEN_VALUE_CONSTRUCTION_START_MONTH  = "工期開始（月）";
+  public static final String
+    TOKEN_VALUE_CONSTRUCTION_END_YEAR     = "工期終了（年）";
+  public static final String
+    TOKEN_VALUE_CONSTRUCTION_END_MONTHR   = "工期終了（月）";
+  public static final String
+    TOKEN_VALUE_INSTALLATION_PERIOD       = "設置見込み期間";
+  public static final String
+    TOKEN_VALUE_INSTALLATION_START_YEAR   = "設置見込み期間開始（年）";
+  public static final String
+    TOKEN_VALUE_INSTALLATION_START_MONTH  = "設置見込み期間開始（月）";
+  public static final String
+    TOKEN_VALUE_INSTALLATION_END_YEAR     = "設置見込み期間終了（年）";
+  public static final String
+    TOKEN_VALUE_INSTALLATION_END_MONTH    = "設置見込み期間終了（月）";
+// 2018-05-16 [E_本稼動_14989] Add End
 }
