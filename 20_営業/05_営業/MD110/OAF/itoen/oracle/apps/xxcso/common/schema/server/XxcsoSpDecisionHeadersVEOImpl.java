@@ -1,7 +1,7 @@
 /*============================================================================
 * ÉtÉ@ÉCÉãñº : XxcsoSpDecisionHeadersVEOImpl
 * äTóvê‡ñæ   : SPêÍåàÉwÉbÉ_ÉGÉìÉeÉBÉeÉBÉNÉâÉX
-* ÉoÅ[ÉWÉáÉì : 1.2
+* ÉoÅ[ÉWÉáÉì : 1.3
 *============================================================================
 * èCê≥óöó
 * ì˙ït       Ver. íSìñé“       èCê≥ì‡óe
@@ -9,6 +9,7 @@
 * 2008-12-19 1.0  SCSè¨êÏç_     êVãKçÏê¨
 * 2009-04-02 1.1  SCSñˆïΩíºêl   [STè·äQT1-0229]SPêÍåàÉwÉbÉ_IDçÃî‘ï˚éÆèCê≥
 * 2014-12-15 1.2  SCSKãÀê∂òaçK  [E_ñ{â“ìÆ_12565]SPÅEå_ñÒèëâÊñ â¸èCëŒâû
+* 2018-05-16 1.3  SCSKè¨òHã±çO  [E_ñ{â“ìÆ_14989]ÇrÇoçÄñ⁄í«â¡ëŒâû
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -132,10 +133,37 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
   protected static final int INTROCHGTRANSDATE = 92;
   protected static final int INTROCHGTRANSNAME = 93;
   protected static final int INTROCHGTRANSNAMEALT = 94;
-  protected static final int XXCSOSPDECISIONATTACHESEO = 95;
-  protected static final int XXCSOSPDECISIONCUSTSVEO = 96;
-  protected static final int XXCSOSPDECISIONLINESVEO = 97;
-  protected static final int XXCSOSPDECISIONSENDSEO = 98;
+  protected static final int CONSTRUCTIONSTARTYEAR = 95;
+  protected static final int CONSTRUCTIONSTARTMONTH = 96;
+  protected static final int CONSTRUCTIONENDYEAR = 97;
+  protected static final int CONSTRUCTIONENDMONTH = 98;
+  protected static final int INSTALLATIONSTARTYEAR = 99;
+  protected static final int INSTALLATIONSTARTMONTH = 100;
+  protected static final int INSTALLATIONENDYEAR = 101;
+  protected static final int INSTALLATIONENDMONTH = 102;
+  protected static final int XXCSOSPDECISIONATTACHESEO = 103;
+  protected static final int XXCSOSPDECISIONCUSTSVEO = 104;
+  protected static final int XXCSOSPDECISIONLINESVEO = 105;
+  protected static final int XXCSOSPDECISIONSENDSEO = 106;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -234,6 +262,25 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
     }
     return mDefinitionObject;
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2105,6 +2152,22 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
         return getIntroChgTransName();
       case INTROCHGTRANSNAMEALT:
         return getIntroChgTransNameAlt();
+      case CONSTRUCTIONSTARTYEAR:
+        return getConstructionStartYear();
+      case CONSTRUCTIONSTARTMONTH:
+        return getConstructionStartMonth();
+      case CONSTRUCTIONENDYEAR:
+        return getConstructionEndYear();
+      case CONSTRUCTIONENDMONTH:
+        return getConstructionEndMonth();
+      case INSTALLATIONSTARTYEAR:
+        return getInstallationStartYear();
+      case INSTALLATIONSTARTMONTH:
+        return getInstallationStartMonth();
+      case INSTALLATIONENDYEAR:
+        return getInstallationEndYear();
+      case INSTALLATIONENDMONTH:
+        return getInstallationEndMonth();
       case XXCSOSPDECISIONATTACHESEO:
         return getXxcsoSpDecisionAttachesEO();
       case XXCSOSPDECISIONCUSTSVEO:
@@ -2407,6 +2470,30 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
         return;
       case INTROCHGTRANSNAMEALT:
         setIntroChgTransNameAlt((String)value);
+        return;
+      case CONSTRUCTIONSTARTYEAR:
+        setConstructionStartYear((String)value);
+        return;
+      case CONSTRUCTIONSTARTMONTH:
+        setConstructionStartMonth((String)value);
+        return;
+      case CONSTRUCTIONENDYEAR:
+        setConstructionEndYear((String)value);
+        return;
+      case CONSTRUCTIONENDMONTH:
+        setConstructionEndMonth((String)value);
+        return;
+      case INSTALLATIONSTARTYEAR:
+        setInstallationStartYear((String)value);
+        return;
+      case INSTALLATIONSTARTMONTH:
+        setInstallationStartMonth((String)value);
+        return;
+      case INSTALLATIONENDYEAR:
+        setInstallationEndYear((String)value);
+        return;
+      case INSTALLATIONENDMONTH:
+        setInstallationEndMonth((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -3185,6 +3272,195 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
     setAttributeInternal(ELECTRICPAYMENTCHANGETYPE, value);
   }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /**
+   * 
+   * Gets the attribute value for ConstructionStartYear, using the alias name ConstructionStartYear
+   */
+  public String getConstructionStartYear()
+  {
+    return (String)getAttributeInternal(CONSTRUCTIONSTARTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for ConstructionStartYear
+   */
+  public void setConstructionStartYear(String value)
+  {
+    setAttributeInternal(CONSTRUCTIONSTARTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for ConstructionStartMonth, using the alias name ConstructionStartMonth
+   */
+  public String getConstructionStartMonth()
+  {
+    return (String)getAttributeInternal(CONSTRUCTIONSTARTMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for ConstructionStartMonth
+   */
+  public void setConstructionStartMonth(String value)
+  {
+    setAttributeInternal(CONSTRUCTIONSTARTMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for ConstructionEndYear, using the alias name ConstructionEndYear
+   */
+  public String getConstructionEndYear()
+  {
+    return (String)getAttributeInternal(CONSTRUCTIONENDYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for ConstructionEndYear
+   */
+  public void setConstructionEndYear(String value)
+  {
+    setAttributeInternal(CONSTRUCTIONENDYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for ConstructionEndMonth, using the alias name ConstructionEndMonth
+   */
+  public String getConstructionEndMonth()
+  {
+    return (String)getAttributeInternal(CONSTRUCTIONENDMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for ConstructionEndMonth
+   */
+  public void setConstructionEndMonth(String value)
+  {
+    setAttributeInternal(CONSTRUCTIONENDMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for InstallationStartYear, using the alias name InstallationStartYear
+   */
+  public String getInstallationStartYear()
+  {
+    return (String)getAttributeInternal(INSTALLATIONSTARTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for InstallationStartYear
+   */
+  public void setInstallationStartYear(String value)
+  {
+    setAttributeInternal(INSTALLATIONSTARTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for InstallationStartMonth, using the alias name InstallationStartMonth
+   */
+  public String getInstallationStartMonth()
+  {
+    return (String)getAttributeInternal(INSTALLATIONSTARTMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for InstallationStartMonth
+   */
+  public void setInstallationStartMonth(String value)
+  {
+    setAttributeInternal(INSTALLATIONSTARTMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for InstallationEndYear, using the alias name InstallationEndYear
+   */
+  public String getInstallationEndYear()
+  {
+    return (String)getAttributeInternal(INSTALLATIONENDYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for InstallationEndYear
+   */
+  public void setInstallationEndYear(String value)
+  {
+    setAttributeInternal(INSTALLATIONENDYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for InstallationEndMonth, using the alias name InstallationEndMonth
+   */
+  public String getInstallationEndMonth()
+  {
+    return (String)getAttributeInternal(INSTALLATIONENDMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for InstallationEndMonth
+   */
+  public void setInstallationEndMonth(String value)
+  {
+    setAttributeInternal(INSTALLATIONENDMONTH, value);
+  }
+
   /**
    * 
    * Creates a Key object based on given key constituents
@@ -3193,6 +3469,20 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
   {
     return new Key(new Object[] {spDecisionHeaderId});
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
