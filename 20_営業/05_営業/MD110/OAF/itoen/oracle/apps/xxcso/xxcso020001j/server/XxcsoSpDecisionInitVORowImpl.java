@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionInitVORowImpl
 * 概要説明   : SP専決初期化用ビュー行クラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2011-04-25 1.1  SCS桐生和幸   [E_本稼動_07224]SP専決参照権限変更対応
 * 2014-12-30 1.2  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.3  SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
+* 2018-05-16 1.4  SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -362,6 +363,22 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   protected static final int INTROCHGPERPIECELABELRENDER = 332;
   protected static final int INTROCHGPERSALESPRICEENDLABELRENDER = 333;
   protected static final int INTROCHGPERPIECEENDLABELRENDER = 334;
+  protected static final int CONSTRUCTIONSTARTYEARRENDER = 335;
+  protected static final int CONSTRUCTIONSTARTYEARVIEWRENDER = 336;
+  protected static final int CONSTRUCTIONSTARTMONTHRENDER = 337;
+  protected static final int CONSTRUCTIONSTARTMONTHVIEWRENDER = 338;
+  protected static final int CONSTRUCTIONENDYEARRENDER = 339;
+  protected static final int CONSTRUCTIONENDYEARVIEWRENDER = 340;
+  protected static final int CONSTRUCTIONENDMONTHRENDER = 341;
+  protected static final int CONSTRUCTIONENDMONTHVIEWRENDER = 342;
+  protected static final int INSTALLATIONSTARTYEARRENDER = 343;
+  protected static final int INSTALLATIONSTARTYEARVIEWRENDER = 344;
+  protected static final int INSTALLATIONSTARTMONTHRENDER = 345;
+  protected static final int INSTALLATIONSTARTMONTHVIEWRENDER = 346;
+  protected static final int INSTALLATIONENDYEARRENDER = 347;
+  protected static final int INSTALLATIONENDYEARVIEWRENDER = 348;
+  protected static final int INSTALLATIONENDMONTHRENDER = 349;
+  protected static final int INSTALLATIONENDMONTHVIEWRENDER = 350;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -1135,6 +1152,38 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return getIntroChgPerSalesPriceEndLabelRender();
       case INTROCHGPERPIECEENDLABELRENDER:
         return getIntroChgPerPieceEndLabelRender();
+      case CONSTRUCTIONSTARTYEARRENDER:
+        return getConstructionStartYearRender();
+      case CONSTRUCTIONSTARTYEARVIEWRENDER:
+        return getConstructionStartYearViewRender();
+      case CONSTRUCTIONSTARTMONTHRENDER:
+        return getConstructionStartMonthRender();
+      case CONSTRUCTIONSTARTMONTHVIEWRENDER:
+        return getConstructionStartMonthViewRender();
+      case CONSTRUCTIONENDYEARRENDER:
+        return getConstructionEndYearRender();
+      case CONSTRUCTIONENDYEARVIEWRENDER:
+        return getConstructionEndYearViewRender();
+      case CONSTRUCTIONENDMONTHRENDER:
+        return getConstructionEndMonthRender();
+      case CONSTRUCTIONENDMONTHVIEWRENDER:
+        return getConstructionEndMonthViewRender();
+      case INSTALLATIONSTARTYEARRENDER:
+        return getInstallationStartYearRender();
+      case INSTALLATIONSTARTYEARVIEWRENDER:
+        return getInstallationStartYearViewRender();
+      case INSTALLATIONSTARTMONTHRENDER:
+        return getInstallationStartMonthRender();
+      case INSTALLATIONSTARTMONTHVIEWRENDER:
+        return getInstallationStartMonthViewRender();
+      case INSTALLATIONENDYEARRENDER:
+        return getInstallationEndYearRender();
+      case INSTALLATIONENDYEARVIEWRENDER:
+        return getInstallationEndYearViewRender();
+      case INSTALLATIONENDMONTHRENDER:
+        return getInstallationEndMonthRender();
+      case INSTALLATIONENDMONTHVIEWRENDER:
+        return getInstallationEndMonthViewRender();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -2149,6 +2198,54 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return;
       case INTROCHGPERPIECEENDLABELRENDER:
         setIntroChgPerPieceEndLabelRender((Boolean)value);
+        return;
+      case CONSTRUCTIONSTARTYEARRENDER:
+        setConstructionStartYearRender((Boolean)value);
+        return;
+      case CONSTRUCTIONSTARTYEARVIEWRENDER:
+        setConstructionStartYearViewRender((Boolean)value);
+        return;
+      case CONSTRUCTIONSTARTMONTHRENDER:
+        setConstructionStartMonthRender((Boolean)value);
+        return;
+      case CONSTRUCTIONSTARTMONTHVIEWRENDER:
+        setConstructionStartMonthViewRender((Boolean)value);
+        return;
+      case CONSTRUCTIONENDYEARRENDER:
+        setConstructionEndYearRender((Boolean)value);
+        return;
+      case CONSTRUCTIONENDYEARVIEWRENDER:
+        setConstructionEndYearViewRender((Boolean)value);
+        return;
+      case CONSTRUCTIONENDMONTHRENDER:
+        setConstructionEndMonthRender((Boolean)value);
+        return;
+      case CONSTRUCTIONENDMONTHVIEWRENDER:
+        setConstructionEndMonthViewRender((Boolean)value);
+        return;
+      case INSTALLATIONSTARTYEARRENDER:
+        setInstallationStartYearRender((Boolean)value);
+        return;
+      case INSTALLATIONSTARTYEARVIEWRENDER:
+        setInstallationStartYearViewRender((Boolean)value);
+        return;
+      case INSTALLATIONSTARTMONTHRENDER:
+        setInstallationStartMonthRender((Boolean)value);
+        return;
+      case INSTALLATIONSTARTMONTHVIEWRENDER:
+        setInstallationStartMonthViewRender((Boolean)value);
+        return;
+      case INSTALLATIONENDYEARRENDER:
+        setInstallationEndYearRender((Boolean)value);
+        return;
+      case INSTALLATIONENDYEARVIEWRENDER:
+        setInstallationEndYearViewRender((Boolean)value);
+        return;
+      case INSTALLATIONENDMONTHRENDER:
+        setInstallationEndMonthRender((Boolean)value);
+        return;
+      case INSTALLATIONENDMONTHVIEWRENDER:
+        setInstallationEndMonthViewRender((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -8188,64 +8285,292 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
     setAttributeInternal(INSTALLSUPPPAYMENTYEARENDLABEL2RENDER, value);
   }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionStartYearRender
+   */
+  public Boolean getConstructionStartYearRender()
+  {
+    return (Boolean)getAttributeInternal(CONSTRUCTIONSTARTYEARRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionStartYearRender
+   */
+  public void setConstructionStartYearRender(Boolean value)
+  {
+    setAttributeInternal(CONSTRUCTIONSTARTYEARRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionStartYearViewRender
+   */
+  public Boolean getConstructionStartYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONSTRUCTIONSTARTYEARVIEWRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionStartYearViewRender
+   */
+  public void setConstructionStartYearViewRender(Boolean value)
+  {
+    setAttributeInternal(CONSTRUCTIONSTARTYEARVIEWRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionStartMonthRender
+   */
+  public Boolean getConstructionStartMonthRender()
+  {
+    return (Boolean)getAttributeInternal(CONSTRUCTIONSTARTMONTHRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionStartMonthRender
+   */
+  public void setConstructionStartMonthRender(Boolean value)
+  {
+    setAttributeInternal(CONSTRUCTIONSTARTMONTHRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionStartMonthViewRender
+   */
+  public Boolean getConstructionStartMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONSTRUCTIONSTARTMONTHVIEWRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionStartMonthViewRender
+   */
+  public void setConstructionStartMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(CONSTRUCTIONSTARTMONTHVIEWRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionEndYearRender
+   */
+  public Boolean getConstructionEndYearRender()
+  {
+    return (Boolean)getAttributeInternal(CONSTRUCTIONENDYEARRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionEndYearRender
+   */
+  public void setConstructionEndYearRender(Boolean value)
+  {
+    setAttributeInternal(CONSTRUCTIONENDYEARRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionEndYearViewRender
+   */
+  public Boolean getConstructionEndYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONSTRUCTIONENDYEARVIEWRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionEndYearViewRender
+   */
+  public void setConstructionEndYearViewRender(Boolean value)
+  {
+    setAttributeInternal(CONSTRUCTIONENDYEARVIEWRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionEndMonthRender
+   */
+  public Boolean getConstructionEndMonthRender()
+  {
+    return (Boolean)getAttributeInternal(CONSTRUCTIONENDMONTHRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionEndMonthRender
+   */
+  public void setConstructionEndMonthRender(Boolean value)
+  {
+    setAttributeInternal(CONSTRUCTIONENDMONTHRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionEndMonthViewRender
+   */
+  public Boolean getConstructionEndMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(CONSTRUCTIONENDMONTHVIEWRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionEndMonthViewRender
+   */
+  public void setConstructionEndMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(CONSTRUCTIONENDMONTHVIEWRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationStartYearRender
+   */
+  public Boolean getInstallationStartYearRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLATIONSTARTYEARRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationStartYearRender
+   */
+  public void setInstallationStartYearRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLATIONSTARTYEARRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationStartYearViewRender
+   */
+  public Boolean getInstallationStartYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLATIONSTARTYEARVIEWRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationStartYearViewRender
+   */
+  public void setInstallationStartYearViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLATIONSTARTYEARVIEWRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationStartMonthRender
+   */
+  public Boolean getInstallationStartMonthRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLATIONSTARTMONTHRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationStartMonthRender
+   */
+  public void setInstallationStartMonthRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLATIONSTARTMONTHRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationStartMonthViewRender
+   */
+  public Boolean getInstallationStartMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLATIONSTARTMONTHVIEWRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationStartMonthViewRender
+   */
+  public void setInstallationStartMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLATIONSTARTMONTHVIEWRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationEndYearRender
+   */
+  public Boolean getInstallationEndYearRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLATIONENDYEARRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationEndYearRender
+   */
+  public void setInstallationEndYearRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLATIONENDYEARRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationEndYearViewRender
+   */
+  public Boolean getInstallationEndYearViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLATIONENDYEARVIEWRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationEndYearViewRender
+   */
+  public void setInstallationEndYearViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLATIONENDYEARVIEWRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationEndMonthRender
+   */
+  public Boolean getInstallationEndMonthRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLATIONENDMONTHRENDER);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationEndMonthRender
+   */
+  public void setInstallationEndMonthRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLATIONENDMONTHRENDER, value);
+  }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationEndMonthViewRender
+   */
+  public Boolean getInstallationEndMonthViewRender()
+  {
+    return (Boolean)getAttributeInternal(INSTALLATIONENDMONTHVIEWRENDER);
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationEndMonthViewRender
+   */
+  public void setInstallationEndMonthViewRender(Boolean value)
+  {
+    setAttributeInternal(INSTALLATIONENDMONTHVIEWRENDER, value);
+  }
 
 }
