@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.20
+* バージョン : 1.21
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -28,6 +28,7 @@
 * 2014-01-31 1.18 SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 * 2014-12-15 1.19 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.20 SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
+* 2018-05-16 1.21 SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1195,6 +1196,7 @@ public class XxcsoSpDecisionValidateUtils
    * @param txn         OADBTransactionインスタンス
    * @param headerVo    SP専決ヘッダ登録／更新用ビューインスタンス
    * @param submitFlag  提出用フラグ
+   * @param installVo   設置先登録／更新用ビューインスタンス
    * @return List       エラーリスト
    *****************************************************************************
    */
@@ -1202,6 +1204,9 @@ public class XxcsoSpDecisionValidateUtils
     OADBTransaction                     txn
    ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
    ,boolean                             submitFlag
+// 2018-05-16 [E_本稼動_14989] Add Start
+   ,XxcsoSpDecisionInstCustFullVOImpl   installVo
+// 2018-05-16 [E_本稼動_14989] Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -1575,7 +1580,416 @@ public class XxcsoSpDecisionValidateUtils
         }
       }
     }
+// 2018-05-16 [E_本稼動_14989] Add Start
 
+    XxcsoSpDecisionInstCustFullVORowImpl installRow
+      = (XxcsoSpDecisionInstCustFullVORowImpl)installVo.first();
+
+    //工期、設置見込み期間必須フラグ取得
+    boolean requiredCheckFlag = getRequiredCheckFlag(
+                                 txn
+                                ,installRow.getBusinessType()
+                                ,installRow.getBusinessConditionType()
+                                );
+
+    /////////////////////////////////////
+    // その他条件：工期開始（年)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_START_YEAR;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getConstructionStartYear()
+         ,token1
+         ,0
+         ,4
+         ,true
+         ,true
+         ,requiredCheckFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：工期開始（月)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_START_MONTH;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getConstructionStartMonth()
+         ,token1
+         ,0
+         ,2
+         ,true
+         ,true
+         ,requiredCheckFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：工期終了（年)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_END_YEAR;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getConstructionEndYear()
+         ,token1
+         ,0
+         ,4
+         ,true
+         ,true
+         ,requiredCheckFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：工期終了（月)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_END_MONTHR;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getConstructionEndMonth()
+         ,token1
+         ,0
+         ,2
+         ,true
+         ,true
+         ,requiredCheckFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：工期の整合性
+    /////////////////////////////////////
+    if ( ( submitFlag ) && ( errorList.size() == 0 ) )
+    {
+      // 工期開始（年）が西暦であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_START_YEAR;
+
+      if ( ! isYear( headerRow.getConstructionStartYear() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00720
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 工期開始（月）が12以下であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_START_MONTH;
+
+      if ( ! isMonth( headerRow.getConstructionStartMonth() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00719
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 工期終了（年）が西暦であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_END_YEAR;
+
+      if ( ! isYear( headerRow.getConstructionEndYear() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00720
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 工期終了（月）が12以下であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_END_MONTHR;
+
+      if ( ! isMonth( headerRow.getConstructionEndMonth() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00719
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      if ( errorList.size() == 0 )
+      {
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_PERIOD;
+
+        // 工期開始、終了の整合性チェック
+        // 開始(年)が未入力で、開始(月)、終了(年)、終了(月)のいずれかが入力
+        if ( ( headerRow.getConstructionStartYear()    == null
+            && ( headerRow.getConstructionStartMonth() != null
+              || headerRow.getConstructionEndYear()    != null
+              || headerRow.getConstructionEndMonth()   != null ) )
+          //または、開始(年)が入力で、開始(月)、終了(年)、終了(月)のいずれかが未入力
+          || ( headerRow.getConstructionStartYear()    != null
+            && ( headerRow.getConstructionStartMonth() == null
+              || headerRow.getConstructionEndYear()    == null
+              || headerRow.getConstructionEndMonth()   == null ) ) )
+        {
+          errorList.add(
+              XxcsoMessage.createErrorMessage(
+               XxcsoConstants.APP_XXCSO1_00878
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }
+      }
+
+      if ( errorList.size() == 0 )
+      {
+        if ( headerRow.getConstructionStartYear() != null )
+        {
+          int constructionStartYear  = Integer.valueOf( headerRow.getConstructionStartYear() ).intValue();
+          int constructionStartMonth = Integer.valueOf( headerRow.getConstructionStartMonth() ).intValue();
+          int constructionEndYear    = Integer.valueOf( headerRow.getConstructionEndYear() ).intValue();
+          int constructionEndMonth   = Integer.valueOf( headerRow.getConstructionEndMonth() ).intValue();
+
+          // 工期開始、終了の整合性チェック
+          if ( constructionStartYear > constructionEndYear
+            || ( constructionStartYear  == constructionEndYear
+              && constructionStartMonth >  constructionEndMonth ) )
+          {
+            errorList.add(
+                XxcsoMessage.createErrorMessage(
+                 XxcsoConstants.APP_XXCSO1_00883
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }
+        }
+      }
+    }
+
+    /////////////////////////////////////
+    // その他条件：設置見込み期間開始（年)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_START_YEAR;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getInstallationStartYear()
+         ,token1
+         ,0
+         ,4
+         ,true
+         ,true
+         ,requiredCheckFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：設置見込み期間開始（月)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_START_MONTH;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getInstallationStartMonth()
+         ,token1
+         ,0
+         ,2
+         ,true
+         ,true
+         ,requiredCheckFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：設置見込み期間終了（年)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_END_YEAR;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getInstallationEndYear()
+         ,token1
+         ,0
+         ,4
+         ,true
+         ,true
+         ,requiredCheckFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：設置見込み期間終了（月)
+    /////////////////////////////////////
+    token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+            + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+            + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_END_MONTH;
+    errorList
+      = utils.checkStringToNumber(
+          errorList
+         ,headerRow.getInstallationEndMonth()
+         ,token1
+         ,0
+         ,2
+         ,true
+         ,true
+         ,requiredCheckFlag
+         ,0
+        );
+
+    /////////////////////////////////////
+    // その他条件：設置見込み期間の整合性
+    /////////////////////////////////////
+    if ( ( submitFlag ) && ( errorList.size() == 0 ) )
+    {
+      // 設置見込み期間開始（年）が西暦であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_START_YEAR;
+
+      if ( ! isYear( headerRow.getInstallationStartYear() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00720
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 設置見込み期間開始（月）が12以下であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_START_MONTH;
+
+      if ( ! isMonth( headerRow.getInstallationStartMonth() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00719
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 設置見込み期間終了（年）が西暦であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_END_YEAR;
+
+      if ( ! isYear( headerRow.getInstallationEndYear() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00720
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      // 設置見込み期間終了（月）が12以下であるかチェック
+      token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+              + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+              + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_END_MONTH;
+
+      if ( ! isMonth( headerRow.getInstallationEndMonth() ) )
+      {
+        errorList.add(
+            XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00719
+             ,XxcsoConstants.TOKEN_COLUMN
+             ,token1
+            )
+        );
+      }
+
+      if ( errorList.size() == 0 )
+      {
+        token1 = XxcsoSpDecisionConstants.TOKEN_VALUE_OTHER_COND_REGION
+                + XxcsoConstants.TOKEN_VALUE_DELIMITER1
+                + XxcsoSpDecisionConstants.TOKEN_VALUE_INSTALLATION_PERIOD;
+        // 設置見込み期間開始、設置見込み期間の整合性チェック
+        // 開始(年)が未入力で、開始(月)、終了(年)、終了(月)のいずれかが入力
+        if ( ( headerRow.getInstallationStartYear()    == null
+            && ( headerRow.getInstallationStartMonth() != null
+              || headerRow.getInstallationEndYear()    != null
+              || headerRow.getInstallationEndMonth()   != null ) )
+          //または、開始(年)が入力で、開始(月)、終了(年)、終了(月)のいずれかが未入力
+          || (   headerRow.getInstallationStartYear()  != null
+            && ( headerRow.getInstallationStartMonth() == null
+              || headerRow.getInstallationEndYear()    == null
+              || headerRow.getInstallationEndMonth()   == null ) ) )
+        {
+          errorList.add(
+              XxcsoMessage.createErrorMessage(
+               XxcsoConstants.APP_XXCSO1_00878
+               ,XxcsoConstants.TOKEN_COLUMN
+               ,token1
+              )
+          );
+        }
+      }
+
+      if ( errorList.size() == 0 )
+      {
+        if ( headerRow.getInstallationStartYear() != null )
+        {
+          int installationStartYear  = Integer.valueOf( headerRow.getInstallationStartYear() ).intValue();
+          int installationStartMonth = Integer.valueOf( headerRow.getInstallationStartMonth() ).intValue();
+          int installationEndYear    = Integer.valueOf( headerRow.getInstallationEndYear() ).intValue();
+          int installationEndMonth   = Integer.valueOf( headerRow.getInstallationEndMonth() ).intValue();
+
+          // 設置見込み期間開始、終了の整合性チェック
+          if ( installationStartYear > installationEndYear
+            || ( installationStartYear  == installationEndYear
+              && installationStartMonth >  installationEndMonth ) )
+          {
+            errorList.add(
+                XxcsoMessage.createErrorMessage(
+                 XxcsoConstants.APP_XXCSO1_00883
+                 ,XxcsoConstants.TOKEN_COLUMN
+                 ,token1
+                )
+            );
+          }
+        }
+      }
+    }
+
+// 2018-05-16 [E_本稼動_14989] Add End
     String adAssetsType = headerRow.getAdAssetsType();
 
     if ( XxcsoSpDecisionConstants.CHECK_YES.equals(adAssetsType) )
@@ -7081,4 +7495,98 @@ public class XxcsoSpDecisionValidateUtils
     return returnValue;
   }
 // 2014-12-15 [E_本稼動_12565] Add End
+// 2018-05-16 [E_本稼動_14989] Add Start
+
+  /*****************************************************************************
+   * 工期、設置見込み期間必須フラグ取得
+   * @param  txn            OADBTransactionインスタンス
+   * @param  businessType   業種
+   * @param  bizCondType    業態（小分類）
+   * @return boolean        フラグ
+   *****************************************************************************
+   */
+  private static boolean getRequiredCheckFlag(
+     OADBTransaction   txn
+    ,String            businessType
+    ,String            bizCondType
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    OracleCallableStatement stmt = null;
+    boolean returnValue = false;
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+ 
+      sql.append("BEGIN");
+      sql.append("  xxcso_020001j_pkg.get_required_check_flag(");
+      sql.append("    iv_business_type => :1" );
+      sql.append("   ,iv_biz_cond_type => :2" );
+      sql.append("   ,on_check_count   => :3" );
+      sql.append("   ,ov_errbuf        => :4" );
+      sql.append("   ,ov_retcode       => :5" );
+      sql.append("   ,ov_errmsg        => :6");
+      sql.append("  );");
+      sql.append("END;");
+
+      XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.setString(1, businessType);
+      stmt.setString(2, bizCondType);
+      stmt.registerOutParameter(3, OracleTypes.NUMBER);
+      stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+      stmt.registerOutParameter(6, OracleTypes.VARCHAR);
+
+      stmt.execute();
+
+      NUMBER checkCount   = stmt.getNUMBER(3);
+      String errBuf       = stmt.getString(4);
+      String retCode      = stmt.getString(5);
+      String errMsg       = stmt.getString(6);
+
+      int checkValue      = checkCount.intValue();
+
+      if ( checkValue == 2 )
+      {
+        returnValue = true;
+      }
+
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_PERIOD
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return returnValue;
+  }
+
+// 2018-05-16 [E_本稼動_14989] Add End
 }
