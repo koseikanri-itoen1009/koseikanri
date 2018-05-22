@@ -1165,6 +1165,102 @@
          <Attr Name="_DisplaySize" Value="320" />
       </DesignTime>
    </Attribute>
+   <Attribute
+      Name="ConstructionStartYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONSTRUCTION_START_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ConstructionStartMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONSTRUCTION_START_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ConstructionEndYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONSTRUCTION_END_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="ConstructionEndMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="CONSTRUCTION_END_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallationStartYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALLATION_START_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallationStartMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALLATION_START_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallationEndYear"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALLATION_END_YEAR"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
+   <Attribute
+      Name="InstallationEndMonth"
+      Precision="20"
+      Type="java.lang.String"
+      ColumnName="INSTALLATION_END_MONTH"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_SP_DECISION_HEADERS_V" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="20" />
+      </DesignTime>
+   </Attribute>
    <AccessorAttribute
       Name="XxcsoSpDecisionAttachesEO"
       Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoSpDecHeaderAttachAO"
