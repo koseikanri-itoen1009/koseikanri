@@ -1,13 +1,14 @@
 /*============================================================================
 * ÉtÉ@ÉCÉãñº : XxcsoSpDecisionHeaderFullVORowImpl
 * äTóvê‡ñæ   : SPêÍåàÉwÉbÉ_ìoò^Å^çXêVópÉrÉÖÅ[çsÉNÉâÉX
-* ÉoÅ[ÉWÉáÉì : 1.1
+* ÉoÅ[ÉWÉáÉì : 1.2
 *============================================================================
 * èCê≥óöó
 * ì˙ït       Ver. íSìñé“       èCê≥ì‡óe
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCSè¨êÏç_     êVãKçÏê¨
 * 2014-12-30 1.1  SCSKãÀê∂òaçK  [E_ñ{â“ìÆ_12565]SPÅEå_ñÒèëâÊñ â¸èCëŒâû
+* 2018-05-16 1.2  SCSKè¨òHã±çO  [E_ñ{â“ìÆ_14989]ÇrÇoçÄñ⁄í«â¡ëŒâû
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -126,16 +127,24 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   protected static final int INTROCHGTRANSDATE = 97;
   protected static final int INTROCHGTRANSNAME = 98;
   protected static final int INTROCHGTRANSNAMEALT = 99;
-  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 100;
-  protected static final int XXCSOSPDECISIONATTACHFULLVO = 101;
-  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 102;
-  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 103;
-  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 104;
-  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 105;
-  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 106;
-  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 107;
-  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 108;
-  protected static final int XXCSOSPDECISIONSENDFULLVO = 109;
+  protected static final int CONSTRUCTIONSTARTYEAR = 100;
+  protected static final int CONSTRUCTIONSTARTMONTH = 101;
+  protected static final int CONSTRUCTIONENDYEAR = 102;
+  protected static final int CONSTRUCTIONENDMONTH = 103;
+  protected static final int INSTALLATIONSTARTYEAR = 104;
+  protected static final int INSTALLATIONSTARTMONTH = 105;
+  protected static final int INSTALLATIONENDYEAR = 106;
+  protected static final int INSTALLATIONENDMONTH = 107;
+  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 108;
+  protected static final int XXCSOSPDECISIONATTACHFULLVO = 109;
+  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 110;
+  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 111;
+  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 112;
+  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 113;
+  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 114;
+  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 115;
+  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 116;
+  protected static final int XXCSOSPDECISIONSENDFULLVO = 117;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -1352,6 +1361,22 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return getIntroChgTransName();
       case INTROCHGTRANSNAMEALT:
         return getIntroChgTransNameAlt();
+      case CONSTRUCTIONSTARTYEAR:
+        return getConstructionStartYear();
+      case CONSTRUCTIONSTARTMONTH:
+        return getConstructionStartMonth();
+      case CONSTRUCTIONENDYEAR:
+        return getConstructionEndYear();
+      case CONSTRUCTIONENDMONTH:
+        return getConstructionEndMonth();
+      case INSTALLATIONSTARTYEAR:
+        return getInstallationStartYear();
+      case INSTALLATIONSTARTMONTH:
+        return getInstallationStartMonth();
+      case INSTALLATIONENDYEAR:
+        return getInstallationEndYear();
+      case INSTALLATIONENDMONTH:
+        return getInstallationEndMonth();
       case XXCSOSPDECISIONALLCCLINEFULLVO:
         return getXxcsoSpDecisionAllCcLineFullVO();
       case XXCSOSPDECISIONATTACHFULLVO:
@@ -1681,6 +1706,30 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return;
       case INTROCHGTRANSNAMEALT:
         setIntroChgTransNameAlt((String)value);
+        return;
+      case CONSTRUCTIONSTARTYEAR:
+        setConstructionStartYear((String)value);
+        return;
+      case CONSTRUCTIONSTARTMONTH:
+        setConstructionStartMonth((String)value);
+        return;
+      case CONSTRUCTIONENDYEAR:
+        setConstructionEndYear((String)value);
+        return;
+      case CONSTRUCTIONENDMONTH:
+        setConstructionEndMonth((String)value);
+        return;
+      case INSTALLATIONSTARTYEAR:
+        setInstallationStartYear((String)value);
+        return;
+      case INSTALLATIONSTARTMONTH:
+        setInstallationStartMonth((String)value);
+        return;
+      case INSTALLATIONENDYEAR:
+        setInstallationEndYear((String)value);
+        return;
+      case INSTALLATIONENDMONTH:
+        setInstallationEndMonth((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -2498,14 +2547,6 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
     setAttributeInternal(INTROCHGPERSALESPRICE, value);
   }
 
-
-
-
-
-
-
-
-
   /**
    * 
    * Gets the attribute value for the calculated attribute IntroChgTransName
@@ -2613,6 +2654,174 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(INTROCHGTRANSDATE, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionStartYear
+   */
+  public String getConstructionStartYear()
+  {
+    return (String)getAttributeInternal(CONSTRUCTIONSTARTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionStartYear
+   */
+  public void setConstructionStartYear(String value)
+  {
+    setAttributeInternal(CONSTRUCTIONSTARTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionStartMonth
+   */
+  public String getConstructionStartMonth()
+  {
+    return (String)getAttributeInternal(CONSTRUCTIONSTARTMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionStartMonth
+   */
+  public void setConstructionStartMonth(String value)
+  {
+    setAttributeInternal(CONSTRUCTIONSTARTMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionEndYear
+   */
+  public String getConstructionEndYear()
+  {
+    return (String)getAttributeInternal(CONSTRUCTIONENDYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionEndYear
+   */
+  public void setConstructionEndYear(String value)
+  {
+    setAttributeInternal(CONSTRUCTIONENDYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ConstructionEndMonth
+   */
+  public String getConstructionEndMonth()
+  {
+    return (String)getAttributeInternal(CONSTRUCTIONENDMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ConstructionEndMonth
+   */
+  public void setConstructionEndMonth(String value)
+  {
+    setAttributeInternal(CONSTRUCTIONENDMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationStartYear
+   */
+  public String getInstallationStartYear()
+  {
+    return (String)getAttributeInternal(INSTALLATIONSTARTYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationStartYear
+   */
+  public void setInstallationStartYear(String value)
+  {
+    setAttributeInternal(INSTALLATIONSTARTYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationStartMonth
+   */
+  public String getInstallationStartMonth()
+  {
+    return (String)getAttributeInternal(INSTALLATIONSTARTMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationStartMonth
+   */
+  public void setInstallationStartMonth(String value)
+  {
+    setAttributeInternal(INSTALLATIONSTARTMONTH, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationEndYear
+   */
+  public String getInstallationEndYear()
+  {
+    return (String)getAttributeInternal(INSTALLATIONENDYEAR);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationEndYear
+   */
+  public void setInstallationEndYear(String value)
+  {
+    setAttributeInternal(INSTALLATIONENDYEAR, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InstallationEndMonth
+   */
+  public String getInstallationEndMonth()
+  {
+    return (String)getAttributeInternal(INSTALLATIONENDMONTH);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InstallationEndMonth
+   */
+  public void setInstallationEndMonth(String value)
+  {
+    setAttributeInternal(INSTALLATIONENDMONTH, value);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
