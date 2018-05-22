@@ -1,7 +1,7 @@
 /*============================================================================
 * ƒtƒ@ƒCƒ‹–¼ : XxcsoSpDecisionRegistAMImpl
 * ŠT—và–¾   : SPêŒˆ“o˜^‰æ–ÊƒAƒvƒŠƒP[ƒVƒ‡ƒ“Eƒ‚ƒWƒ…[ƒ‹ƒNƒ‰ƒX
-* ƒo[ƒWƒ‡ƒ“ : 1.16
+* ƒo[ƒWƒ‡ƒ“ : 1.17
 *============================================================================
 * C³—š—ð
 * “ú•t       Ver. ’S“–ŽÒ       C³“à—e
@@ -23,6 +23,7 @@
 * 2014-01-31 1.14 SCSK‹Ë¶˜aK  [E_–{‰Ò“®_11397]”„‰¿1‰~‘Î‰ž
 * 2014-12-15 1.15 SCSK‹Ë¶˜aK  [E_–{‰Ò“®_12565]SPEŒ_–ñ‘‰æ–Ê‰üC‘Î‰ž
 * 2016-01-08 1.16 SCSKŽR‰ºãÄ‘¾  [E_–{‰Ò“®_13456]Ž©”Ì‹@ŠÇ—ƒVƒXƒeƒ€‘ã‘Ö‘Î‰ž
+* 2018-05-16 1.17 SCSK¬˜H‹±O  [E_–{‰Ò“®_14989]‚r‚o€–Ú’Ç‰Á
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -2218,6 +2219,9 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           txn
          ,headerVo
          ,false
+// 2018-05-16 [E_–{‰Ò“®_14989] Add Start
+         ,installVo
+// 2018-05-16 [E_–{‰Ò“®_14989] Add End
         );
 
     if ( errorList.size() > 0 )
@@ -3918,6 +3922,9 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           txn
          ,headerVo
          ,submitFlag
+// 2018-05-16 [E_–{‰Ò“®_14989] Add Start
+         ,installVo
+// 2018-05-16 [E_–{‰Ò“®_14989] Add End
         )
       );
 
