@@ -23,7 +23,8 @@ HISTORY
 2009/03/23  N.Yanagitaira  assignment No.112 corrective action
 2009/03/23  N.Yanagitaira  assignment No.115 corrective action
 2009/05/15  N.Yanagitaira  T1_0230
-2016/01/07  S.Yamashita    E_13456-->
+2016/01/07  S.Yamashita    E_13456
+2018/05/16  Y.Shoji        E_14989-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso020001j.webui.XxcsoSpDecisionRegistCO" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -959,6 +960,90 @@ HISTORY
                                                             <oa:messageTextInput id="ContractEndMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ContractEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ContractEndMonth" rendered="${oa.XxcsoSpDecisionInitVO1.ContractEndMonthRender}"/>
                                                             <oa:spacer id="ContractEndMonthSpacer" width="10"/>
                                                             <oa:staticStyledText id="ContractEndMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
+                                                         </ui:contents>
+                                                      </oa:rowLayout>
+                                                   </ui:contents>
+                                                </oa:flowLayout>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                    <oa:rowLayout id="OtherConditionRlRN09">
+                                       <ui:contents>
+                                          <oa:cellFormat id="OtherConditionCfRN0901" hAlign="end">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ConstructionStartYearStartLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionStartYearStartLabel" required="no"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="OtherConditionCfRN0902">
+                                             <ui:contents>
+                                                <oa:flowLayout id="ConstructionStartYearStarFlRN">
+                                                   <ui:contents>
+                                                      <oa:rowLayout id="ConstructionStartYearStarRlRN">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ConstructionStartYearView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConstructionStartYear" rendered="${oa.XxcsoSpDecisionInitVO1.ConstructionStartYearViewRender}" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionStartYear" styleClass="OraDataText"/>
+                                                            <oa:messageTextInput id="ConstructionStartYear" maximumLength="4" columns="5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionStartYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConstructionStartYear" rendered="${oa.XxcsoSpDecisionInitVO1.ConstructionStartYearRender}"/>
+                                                            <oa:spacer id="ConstructionStartYearSpacer" width="10"/>
+                                                            <oa:staticStyledText id="ConstructionStartYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2"/>
+                                                            <oa:spacer id="ConstructionStartYearEndLabelSpacer" width="10"/>
+                                                            <oa:messageStyledText id="ConstructionStartMonthView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionStartMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConstructionStartMonth" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.ConstructionStartMonthViewRender}"/>
+                                                            <oa:messageTextInput id="ConstructionStartMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionStartMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConstructionStartMonth" rendered="${oa.XxcsoSpDecisionInitVO1.ConstructionStartYearRender}"/>
+                                                            <oa:spacer id="ConstructionStartMonthSpacer" width="10"/>
+                                                            <oa:staticStyledText id="ConstructionStartMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
+                                                            <oa:spacer id="ConstructionStartMonthEndSpacer" width="10"/>
+                                                            <oa:staticStyledText id="ConstructionStartEndSepareteLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionStartEndSeparete"/>
+                                                            <oa:spacer id="ConstructionStartEndSepareteLabelSpacer" width="10"/>
+                                                            <oa:messageStyledText id="ConstructionEndYearView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionEndYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConstructionEndYear" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.ConstructionEndYearViewRender}"/>
+                                                            <oa:messageTextInput id="ConstructionEndYear" maximumLength="4" columns="5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionEndYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConstructionEndYear" rendered="${oa.XxcsoSpDecisionInitVO1.ConstructionEndYearRender}"/>
+                                                            <oa:spacer id="ConstructionEndYearSpacer" width="10"/>
+                                                            <oa:staticStyledText id="ConstructionEndYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2"/>
+                                                            <oa:spacer id="ConstructionEndYearEndLabelSpacer" width="10"/>
+                                                            <oa:messageStyledText id="ConstructionEndMonthView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConstructionEndMonth" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.ConstructionEndMonthViewRender}"/>
+                                                            <oa:messageTextInput id="ConstructionEndMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConstructionEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConstructionEndMonth" rendered="${oa.XxcsoSpDecisionInitVO1.ConstructionEndMonthRender}"/>
+                                                            <oa:spacer id="ConstructionEndMonthSpacer" width="10"/>
+                                                            <oa:staticStyledText id="ConstructionEndMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
+                                                         </ui:contents>
+                                                      </oa:rowLayout>
+                                                   </ui:contents>
+                                                </oa:flowLayout>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                    <oa:rowLayout id="OtherConditionRlRN10">
+                                       <ui:contents>
+                                          <oa:cellFormat id="OtherConditionCfRN1001" hAlign="end">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="InstallationStartYearStartLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationStartYearStartLabel" required="no"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="OtherConditionCfRN1002">
+                                             <ui:contents>
+                                                <oa:flowLayout id="InstallationStartYearStarFlRN">
+                                                   <ui:contents>
+                                                      <oa:rowLayout id="InstallationStartYearStarRlRN">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="InstallationStartYearView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallationStartYear" rendered="${oa.XxcsoSpDecisionInitVO1.InstallationStartYearViewRender}" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationStartYear" styleClass="OraDataText"/>
+                                                            <oa:messageTextInput id="InstallationStartYear" maximumLength="4" columns="5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationStartYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallationStartYear" rendered="${oa.XxcsoSpDecisionInitVO1.InstallationStartYearRender}"/>
+                                                            <oa:spacer id="InstallationStartYearSpacer" width="10"/>
+                                                            <oa:staticStyledText id="InstallationStartYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2"/>
+                                                            <oa:spacer id="InstallationStartYearEndLabelSpacer" width="10"/>
+                                                            <oa:messageStyledText id="InstallationStartMonthView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationStartMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallationStartMonth" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallationStartMonthViewRender}"/>
+                                                            <oa:messageTextInput id="InstallationStartMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationStartMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallationStartMonth" rendered="${oa.XxcsoSpDecisionInitVO1.InstallationStartYearRender}"/>
+                                                            <oa:spacer id="InstallationStartMonthSpacer" width="10"/>
+                                                            <oa:staticStyledText id="InstallationStartMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
+                                                            <oa:spacer id="InstallationStartMonthEndSpacer" width="10"/>
+                                                            <oa:staticStyledText id="InstallationStartEndSepareteLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationStartEndSeparete"/>
+                                                            <oa:spacer id="InstallationStartEndSepareteLabelSpacer" width="10"/>
+                                                            <oa:messageStyledText id="InstallationEndYearView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationEndYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallationEndYear" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallationEndYearViewRender}"/>
+                                                            <oa:messageTextInput id="InstallationEndYear" maximumLength="4" columns="5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationEndYear" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallationEndYear" rendered="${oa.XxcsoSpDecisionInitVO1.InstallationEndYearRender}"/>
+                                                            <oa:spacer id="InstallationEndYearSpacer" width="10"/>
+                                                            <oa:staticStyledText id="InstallationEndYearEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/YearEndLabel2"/>
+                                                            <oa:spacer id="InstallationEndYearEndLabelSpacer" width="10"/>
+                                                            <oa:messageStyledText id="InstallationEndMonthView" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallationEndMonth" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallationEndMonthViewRender}"/>
+                                                            <oa:messageTextInput id="InstallationEndMonth" maximumLength="2" columns="3" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallationEndMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="InstallationEndMonth" rendered="${oa.XxcsoSpDecisionInitVO1.InstallationEndMonthRender}"/>
+                                                            <oa:spacer id="InstallationEndMonthSpacer" width="10"/>
+                                                            <oa:staticStyledText id="InstallationEndMonthEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/MonthEndLabel1"/>
                                                          </ui:contents>
                                                       </oa:rowLayout>
                                                    </ui:contents>
