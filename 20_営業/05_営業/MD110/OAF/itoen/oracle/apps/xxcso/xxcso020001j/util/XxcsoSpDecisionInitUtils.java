@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決初期化用ユーティリティクラス
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2014-01-31 1.4  SCSK桐生和幸 [E_本稼動_11397]売価1円対応
 * 2014-12-15 1.5  SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.6  SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
+* 2018-05-16 1.7  SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -462,6 +463,16 @@ public class XxcsoSpDecisionInitUtils
     headerRow.setContractStartMonth(    headerRow2.getContractStartMonth()    );
     headerRow.setContractEndYear(       headerRow2.getContractEndYear()       );
     headerRow.setContractEndMonth(      headerRow2.getContractEndMonth()      );
+// 2018-05-16 [E_本稼動_14989] Add Start
+    headerRow.setConstructionStartYear(  headerRow2.getConstructionStartYear() );
+    headerRow.setConstructionStartMonth( headerRow2.getConstructionStartMonth());
+    headerRow.setConstructionEndYear(    headerRow2.getConstructionEndYear()   );
+    headerRow.setConstructionEndMonth(   headerRow2.getConstructionEndMonth()  );
+    headerRow.setInstallationStartYear(  headerRow2.getInstallationStartYear() );
+    headerRow.setInstallationStartMonth( headerRow2.getInstallationStartMonth());
+    headerRow.setInstallationEndYear(    headerRow2.getInstallationEndYear()   );
+    headerRow.setInstallationEndMonth(   headerRow2.getInstallationEndMonth()  );
+// 2018-05-16 [E_本稼動_14989] Add End
     headerRow.setBiddingItem(           headerRow2.getBiddingItem()           );
     headerRow.setCancellBeforeMaturity( headerRow2.getCancellBeforeMaturity() );
     headerRow.setAdAssetsType(          headerRow2.getAdAssetsType()          );
