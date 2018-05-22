@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_sp_decision_headers
  * Description     : ＳＰ専決ヘッダテーブル
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.4
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,8 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
  *  2012/04/02    1.2  S.Niki        E_本稼動_09220対応(PT対応)
+ *  2014/12/15    1.3  K.Kiriu       E_本稼動_12565対応(SP・契約書画面改修対応)
+ *  2018/05/16    1.4  Y.Shoji       E_本稼動_14989対応(SP項目追加)
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_sp_decision_headers
 (
@@ -61,6 +63,58 @@ CREATE TABLE xxcso.xxcso_sp_decision_headers
   operating_profit                NUMBER(9,2),
   operating_profit_rate           NUMBER(9,2),
   break_even_point                NUMBER(9,2),
+  /* 2014/12/15 K.Kiriu E_本稼動_12565対応 ADD START */
+  contract_year_month             NUMBER(2,0),
+  contract_start_year             NUMBER(4,0),
+  contract_start_month            NUMBER(2,0),
+  contract_end_year               NUMBER(4,0),
+  contract_end_month              NUMBER(2,0),
+  /* 2018/05/16 Y.Shoji E_本稼動_14989対応 ADD START */
+  construction_start_year         NUMBER(4,0),
+  construction_start_month        NUMBER(2,0),
+  construction_end_year           NUMBER(4,0),
+  construction_end_month          NUMBER(2,0),
+  installation_start_year         NUMBER(4,0),
+  installation_start_month        NUMBER(2,0),
+  installation_end_year           NUMBER(4,0),
+  installation_end_month          NUMBER(2,0),
+  /* 2018/05/16 Y.Shoji E_本稼動_14989対応 ADD END */
+  bidding_item                    VARCHAR2(1),
+  cancell_before_maturity         VARCHAR2(1),
+  ad_assets_type                  VARCHAR2(1),
+  ad_assets_amt                   NUMBER(8,0),
+  ad_assets_this_time             NUMBER(8,0),
+  ad_assets_payment_year          NUMBER(2,0)
+  ad_assets_payment_date          DATE,
+  tax_type                        VARCHAR2(1),
+  install_supp_type               VARCHAR2(1),
+  install_supp_payment_type       VARCHAR2(1),
+  install_supp_amt                NUMBER(8,0),
+  install_supp_this_time          NUMBER(8,0),
+  install_supp_payment_year       NUMBER(2,0),
+  install_supp_payment_date       DATE,
+  electric_payment_type           VARCHAR2(1),
+  electric_payment_change_type    VARCHAR2(1),
+  electric_payment_cycle          VARCHAR2(1),
+  electric_closing_date           VARCHAR2(2),
+  electric_trans_month            VARCHAR2(2),
+  electric_trans_date             VARCHAR2(2),
+  electric_trans_name             VARCHAR2(360),
+  electric_trans_name_alt         VARCHAR2(320),
+  intro_chg_type                  VARCHAR2(1),
+  intro_chg_payment_type          VARCHAR2(1),
+  intro_chg_amt                   NUMBER(8,0),
+  intro_chg_this_time             NUMBER(8,0),
+  intro_chg_payment_year          NUMBER(2,0),
+  intro_chg_payment_date          DATE,
+  intro_chg_per_sales_price       NUMBER(5,2),
+  intro_chg_per_piece             NUMBER(8,0),
+  intro_chg_closing_date          VARCHAR2(2),
+  intro_chg_trans_month           VARCHAR2(2),
+  intro_chg_trans_date            VARCHAR2(2),
+  intro_chg_trans_name            VARCHAR2(360),
+  intro_chg_trans_name_alt        VARCHAR2(320),
+  /* 2014/12/15 K.Kiriu E_本稼動_12565対応 ADD END */
   /* 2012/04/02 S.Niki E_本稼動_09220対応 ADD START */
   wf_key                          VARCHAR2(240),
   /* 2012/04/02 S.Niki E_本稼動_09220対応 ADD END */
@@ -127,6 +181,58 @@ COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.total_cost                    
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.operating_profit                       IS '営業利益';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.operating_profit_rate                  IS '営業利益率';
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.break_even_point                       IS '損益分岐点';
+/* 2014/12/15 K.Kiriu E_本稼動_12565対応 ADD START */
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.contract_year_month                    IS '契約月数';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.contract_start_year                    IS '契約期間開始（年）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.contract_start_month                   IS '契約期間開始（月）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.contract_end_year                      IS '契約期間終了（年）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.contract_end_month                     IS '契約期間終了（月）';
+/* 2018/05/16 Y.Shoji E_本稼動_14989対応 ADD START */
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.construction_start_year                IS '工期開始（年）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.construction_start_month               IS '工期開始（月）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.construction_end_year                  IS '工期終了（年）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.construction_end_month                 IS '工期終了（月）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.installation_start_year                IS '設置見込み期間開始（年）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.installation_start_month               IS '設置見込み期間開始（月）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.installation_end_year                  IS '設置見込み期間終了（年）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.installation_end_month                 IS '設置見込み期間終了（月）';
+/* 2018/05/16 Y.Shoji E_本稼動_14989対応 ADD END */
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.bidding_item                           IS '入札案件';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.cancell_before_maturity                IS '中途解約条項';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.ad_assets_type                         IS '支払区分（行政財産使用料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.ad_assets_amt                          IS '総額（行政財産使用料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.ad_assets_this_time                    IS '今回支払（行政財産使用料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.ad_assets_payment_year                 IS '支払年数（行政財産使用料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.ad_assets_payment_date                 IS '支払期日（行政財産使用料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.tax_type                               IS '税区分';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_supp_type                      IS '支払区分（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_supp_payment_type              IS '支払条件（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_supp_amt                       IS '総額（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_supp_this_time                 IS '今回支払（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_supp_payment_year              IS '支払年数（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.install_supp_payment_date              IS '支払期日（設置協賛金）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electric_payment_type                  IS '支払条件（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electric_payment_change_type           IS '支払条件（変動電気代）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electric_payment_cycle                 IS '支払サイクル（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electric_closing_date                  IS '締日（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electric_trans_month                   IS '振込月（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electric_trans_date                    IS '振込日（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electric_trans_name                    IS '契約先以外名（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.electric_trans_name_alt                IS '契約先以外名カナ（電気代）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_type                         IS '支払区分（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_payment_type                 IS '支払条件（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_amt                          IS '総額（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_this_time                    IS '今回支払（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_payment_year                 IS '支払年数（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_payment_date                 IS '支払期日（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_per_sales_price              IS '販売金額当り紹介手数料率';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_per_piece                    IS '1本当り紹介手数料額';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_closing_date                 IS '締日（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_trans_month                  IS '振込月（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_trans_date                   IS '振込日（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_trans_name                   IS '契約先以外名（紹介手数料）';
+COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.intro_chg_trans_name_alt               IS '契約先以外名カナ（紹介手数料）';
+/* 2014/12/15 K.Kiriu E_本稼動_12565対応 ADD END */
 /* 2012/04/02 S.Niki E_本稼動_09220対応 ADD START */
 COMMENT ON COLUMN xxcso.xxcso_sp_decision_headers.wf_key                                 IS 'ワークフローキー';
 /* 2012/04/02 S.Niki E_本稼動_09220対応 ADD END */
