@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  chk_cust_site_uses        P    -     顧客使用目的チェック
  *  chk_validate_db           P    -     ＤＢ更新判定チェック
  *  get_contract_end_period   F    V     契約終了期間取得
+ *  get_required_check_flag   F    N     工期、設置見込み期間必須フラグ取得
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -61,6 +62,7 @@ AS
  *  2010/01/15    1.13  D.Abe            [E_本稼動_00950]ＤＢ更新判定チェック対応
  *  2010/03/01    1.14  D.Abe            [E_本稼動_01678]現金支払対応
  *  2014/12/15    1.15  K.Kiriu          [E_本稼動_12565]SP・契約書画面改修対応
+ *  2018/05/16    1.16  Y.Shoji          [E_本稼動_14989]ＳＰ項目追加
 *****************************************************************************************/
 --
   -- ===============================
@@ -3111,5 +3113,96 @@ AS
 --#####################################  固定部 END   ##########################################
   END get_contract_end_period;
 -- 20141215_K.Kiriu E_本稼動_12565 Add END
+-- 20180516_Y.Shoji E_本稼動_14989 Add START
+  /**********************************************************************************
+   * Function Name    : get_required_check_flag
+   * Description      : 工期、設置見込み期間必須フラグ取得
+   ***********************************************************************************/
+  PROCEDURE get_required_check_flag(
+    iv_business_type              IN  VARCHAR2
+   ,iv_biz_cond_type              IN  VARCHAR2
+   ,on_check_count                OUT NUMBER
+   ,ov_errbuf                     OUT VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+   ,ov_errmsg                     OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'get_required_check_flag';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ln_check_count               NUMBER;
+--
+  BEGIN
+--
+    --初期化
+    ov_retcode             := xxcso_common_pkg.gv_status_normal;
+    ov_errbuf              := NULL;
+    ov_errmsg              := NULL;
+    on_check_count         := 0;
+--
+    BEGIN
+      SELECT  COUNT(0) check_count
+      INTO    ln_check_count
+      FROM    fnd_lookup_values_vl  flvv1  -- 業態分類（小分類）
+             ,fnd_lookup_values_vl  flvv2  -- 業態分類（中分類）
+      WHERE   flvv1.lookup_code     = iv_biz_cond_type
+      AND     flvv1.lookup_type     = 'XXCMM_CUST_GYOTAI_SHO'
+      AND     flvv1.enabled_flag    = 'Y'
+      AND     NVL(flvv1.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                    <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND     NVL(flvv1.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                    >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND     flvv1.attribute1      = flvv2.lookup_code
+      AND     flvv2.lookup_type     = 'XXCMM_CUST_GYOTAI_CHU'
+      AND     flvv2.attribute2      = 'Y'
+      AND     flvv2.enabled_flag    = 'Y'
+      AND     NVL(flvv2.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                    <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND     NVL(flvv2.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                    >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      ;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ln_check_count := 0;
+    END;
+--
+    on_check_count := ln_check_count;
+--
+    BEGIN
+      SELECT  COUNT(0) check_count
+      INTO    ln_check_count
+      FROM    fnd_lookup_values_vl  flvv  -- 業種区分
+      WHERE   flvv.lookup_code     = iv_business_type
+      AND     flvv.lookup_type     = 'XXCMM_CUST_GYOTAI_KBN'
+      AND     flvv.enabled_flag    = 'Y'
+      AND     flvv.attribute1      = 'Y'
+      AND     NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                   <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      AND     NVL(flvv.end_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+                                   >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      ;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ln_check_count := 0;
+    END;
+--
+      on_check_count := on_check_count + ln_check_count;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END get_required_check_flag;
+-- 20180516_Y.Shoji E_本稼動_14989 Add END
 END xxcso_020001j_pkg;
 /
