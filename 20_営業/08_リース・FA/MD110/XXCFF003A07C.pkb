@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A07C(body)
  * Description      : リース契約・物件アップロード
  * MD.050           : MD050_CFF_003_A07_リース契約・物件アップロード.doc
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2013/07/05    1.8   SCSK中野徹也    【E_本稼動_10871】(消費税増税対応)
  *  2016/08/15    1.9   SCSK仁木 重人   【E_本稼動_13658】自販機耐用年数変更対応
  *  2018/03/27    1.10  SCSK大塚 亨     【E_本稼動_14830】IFRSリース資産対応
+ *  2018/05/25    1.11  SCSK森 晴加     【E_本稼動_15112】IFRS障害対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -197,8 +198,10 @@ AS
   cv_msg_cff_00122   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00122';
   -- 耐用年数エラー
   cv_msg_cff_00149   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00149';
-  -- 控除額エラー
-  cv_msg_cff_00034   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00034';
+-- 2018/05/25 Ver1.11 Mori DEL Start
+--  -- 控除額エラー
+--  cv_msg_cff_00034   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00034';
+-- 2018/05/25 Ver1.11 Mori DEL End
 -- Ver.1.9 DEL Start
 --  -- 再リース回数不一致エラー
 --  cv_msg_cff_00148   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00148';
@@ -4868,34 +4871,36 @@ AS
       --END IF;
       --DEL 2010/01/07 START
 --
-      -- ***************************************************
-      -- 7. 月額消費税額控除額
-      -- ***************************************************
-      IF ((xclw_data_rec.first_tax_charge  <= xclw_data_rec.first_tax_deduction) OR
-          (xclw_data_rec.second_tax_charge <= xclw_data_rec.first_tax_deduction)) THEN
-        IF (lv_err_flag = cv_const_n) THEN
-          FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-           ,buff   => lv_err_info
-          );
-          lv_err_flag := cv_const_y;
-        END IF;
-        -- エラー内容の出力
-        FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-         ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
-                      cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                      cv_msg_cff_00034     -- メッセージ：控除額エラー
-                    ),1,5000)
-       );
-      END IF;
-      --エラー存在時
-      IF (lv_err_flag = cv_const_y) THEN
-        ov_err_flag   := cv_const_y;
-        -- 処理件数のカウント
-        gn_error_cnt := gn_error_cnt + 1;
-      END IF;
+-- 2018/05/25 Ver1.11 Mori DEL Start
+--      -- ***************************************************
+--      -- 7. 月額消費税額控除額
+--      -- ***************************************************
+--      IF ((xclw_data_rec.first_tax_charge  <= xclw_data_rec.first_tax_deduction) OR
+--          (xclw_data_rec.second_tax_charge <= xclw_data_rec.first_tax_deduction)) THEN
+--        IF (lv_err_flag = cv_const_n) THEN
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--          ,buff   => lv_err_info
+--          );
+--          lv_err_flag := cv_const_y;
+--        END IF;
+--        -- エラー内容の出力
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                      cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                      cv_msg_cff_00034     -- メッセージ：控除額エラー
+--                    ),1,5000)
+--       );
+--      END IF;
+--      --エラー存在時
+--      IF (lv_err_flag = cv_const_y) THEN
+--        ov_err_flag   := cv_const_y;
+--        -- 処理件数のカウント
+--        gn_error_cnt := gn_error_cnt + 1;
+--      END IF;
 -- 
+-- 2018/05/25 Ver1.11 Mori DEL End
 -- 2018/03/27 Ver1.10 Otsuka ADD Start
       -- ***************************************************
       -- 8. 見積現金購入価額
