@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009-08-19    1.15  Kazuo.Satomura   統合テスト障害対応(0001051)
  *  2010-01-13    1.16  Kazuyo.Hosoi     E_本稼動_00443対応
  *  2016-01-18    1.17  K.Kiriu          E_本稼動_13456対応
+ *  2018-05-22    1.18  Y.Shoji          E_本稼動_15102対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -130,6 +131,12 @@ AS
 --  cv_tkn_number_20    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00104';  -- 発注番号なし警告メッセージ
 --  cv_tkn_number_21    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00105';  -- 発注番号抽出エラーメッセージ
   /* 2016.01.18 K.Kiriu E_本稼動_13456対応 DEL END   */
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+  cv_tkn_number_22    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00709';  -- 抽出エラーメッセージ(キー付き)
+  cv_tkn_number_23    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00706';  -- 顧客移行情報テーブル(固定)
+  cv_tkn_number_24    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00696';  -- 物件コード(固定)
+  cv_tkn_number_25    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00707';  -- 顧客コード(固定)
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
   -- トークンコード
   cv_tkn_entry            CONSTANT VARCHAR2(20) := 'ENTRY';
   cv_tkn_value            CONSTANT VARCHAR2(20) := 'VALUE';
@@ -144,6 +151,10 @@ AS
   cv_tkn_process          CONSTANT VARCHAR2(20) := 'PROCESS';
   cv_tkn_bukken           CONSTANT VARCHAR2(20) := 'BUKKEN';
   cv_tkn_table            CONSTANT VARCHAR2(20) := 'TABLE';
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+  cv_tkn_key              CONSTANT VARCHAR2(20)  := 'KEY';
+  cv_tkn_key_value        CONSTANT VARCHAR2(20)  := 'KEY_VALUE';
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
 --
   -- メッセージ用固定文字列
   cv_tkn_msg_pro_div      CONSTANT VARCHAR2(200) := '処理区分';
@@ -379,6 +390,9 @@ AS
 --        ,xca.account_number            new_customer_code        -- 新_顧客コード
 --        ,xca.customer_class_code       new_customer_class_code  -- 新_顧客区分コード
           ,xca.sale_base_code            new_department_code      -- 新_拠点コード
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+          ,xca.past_sale_base_code       past_sale_base_code      -- 前月売上拠点コード
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
           /* 2010.01.13 K.Hosoi E_本稼動_00443対応 START */
           --,xca.established_site_name     new_installation_place   -- 新_設置先名
           ,hp.party_name                 new_installation_place   -- 新_設置先名
@@ -2889,8 +2903,17 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+    cv_base_split_flag       CONSTANT VARCHAR2(1)   := '1';
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
     -- *** ローカル変数 ***
     lv_change_flg            VARCHAR2(1);  -- 変更チェックフラグ
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+    lv_exists_flg            VARCHAR2(1);    -- 顧客移行存在フラグ
+    lv_msg_tkn_1             VARCHAR2(100);  --メッセージトークン取得用1
+    lv_msg_tkn_2             VARCHAR2(100);  --メッセージトークン取得用2
+    lv_msg_tkn_4             VARCHAR2(100);  --メッセージトークン取得用4
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
     -- *** ローカル・レコード ***
     -- *** ローカル・カーソル ***
     -- *** ローカル例外 ***
@@ -2984,6 +3007,9 @@ AS
         lv_change_flg := NULL;
         lv_retcode    := cv_status_normal;
         /* 2009.04.07 K.Satomura T1_0378対応 END */
+        /* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+        lv_exists_flg := cv_no;
+        /* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
         BEGIN
           FETCH get_xxcso_ib_info_h_cur INTO g_get_xxcso_ib_info_h_rec;
         EXCEPTION
@@ -3008,6 +3034,57 @@ AS
         --gn_target_cnt := get_xxcso_ib_info_h_cur%ROWCOUNT;
 /* 2009.07.17 H.Ogawa 0000781対応 START */
 --
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+        -- ========================================
+        -- A-13.顧客移行チェック処理
+        -- ========================================
+        BEGIN
+          SELECT cv_yes exists_flg
+          INTO   lv_exists_flg
+          FROM   xxcok_cust_shift_info xcsi  -- 顧客移行情報テーブル
+          WHERE  xcsi.cust_code        = g_get_xxcso_ib_info_h_rec.new_customer_code    -- 対象顧客
+          AND    xcsi.cust_shift_date  = gd_process_date + 1                            -- 業務日付の翌日が移行日となっている
+          AND    xcsi.base_split_flag  = cv_base_split_flag                             -- 予約売上拠点コード反映済
+          AND    xcsi.new_base_code    = g_get_xxcso_ib_info_h_rec.new_department_code  -- 売上拠点が物件に紐付く顧客の売上拠点と同一
+          ;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            lv_exists_flg := cv_no;
+          WHEN OTHERS THEN
+            -- トークン取得
+            lv_msg_tkn_1 :=  xxccp_common_pkg.get_msg(
+                               iv_application  => cv_app_name             -- アプリケーション短縮名
+                              ,iv_name         => cv_tkn_number_23        -- 顧客移行情報テーブル(固定)
+                             );
+            lv_msg_tkn_2 :=  xxccp_common_pkg.get_msg(
+                               iv_application  => cv_app_name             -- アプリケーション短縮名
+                              ,iv_name         => cv_tkn_number_24        -- 物件コード(固定)
+                             );
+            lv_msg_tkn_4 :=  xxccp_common_pkg.get_msg(
+                               iv_application  => cv_app_name             -- アプリケーション短縮名
+                              ,iv_name         => cv_tkn_number_25        -- 顧客コード(固定)
+                             );
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name                 -- アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_22            -- 抽出エラーメッセージ(キー付き)
+                          ,iv_token_name1  => cv_tkn_task_name
+                          ,iv_token_value1 => lv_msg_tkn_1
+                          ,iv_token_name2  => cv_tkn_key
+                          ,iv_token_value2 => lv_msg_tkn_2
+                          ,iv_token_name3  => cv_tkn_key_value
+                          ,iv_token_value3 => g_get_xxcso_ib_info_h_rec.object_code         -- 物件コード
+                          ,iv_token_name4  => cv_tkn_item
+                          ,iv_token_value4 => lv_msg_tkn_4
+                          ,iv_token_name5  => cv_tkn_base_value
+                          ,iv_token_value5 => g_get_xxcso_ib_info_h_rec.new_customer_code   -- 顧客コード
+                          ,iv_token_name6  => cv_tkn_err_msg
+                          ,iv_token_value6 => SQLERRM
+                         );
+            lv_errbuf := lv_errmsg;
+            RAISE g_sql_err_expt;
+        END;
+--
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
         /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
         -- 顧客関連情報を退避
         gv_department_code      := g_get_xxcso_ib_info_h_rec.new_department_code;
@@ -3222,14 +3299,24 @@ AS
                 --THEN
                 /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
                 /* 2009.05.26 D.Abe T1_1042対応 END */
-                  -- ========================================
-                  -- A-8.物件関連変更履歴テーブルロック
-                  -- ========================================
-                  xxcso_ib_info_h_lock(
-                     ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                    ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                    ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-                  );
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+                  -- 翌日に顧客移行が発生していない場合のみロック
+                  IF ( lv_exists_flg = cv_no ) THEN
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
+                    -- ========================================
+                    -- A-8.物件関連変更履歴テーブルロック
+                    -- ========================================
+                    xxcso_ib_info_h_lock(
+                       ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                      ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                      ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+                    );
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+                  ELSE
+                    gv_department_code      := g_get_xxcso_ib_info_h_rec.past_sale_base_code; -- 前月売上拠点
+                    lv_retcode := cv_status_normal;
+                  END IF;
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
 --
                   IF (lv_retcode = cv_status_error) THEN
                     RAISE global_process_expt;
@@ -3299,14 +3386,23 @@ AS
                   --THEN
                   /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
                   /* 2009.05.26 D.Abe T1_1042対応 END */
-                    -- ========================================
-                    -- A-11.物件関連情報変更履歴テーブル更新処理
-                    -- ========================================
-                    update_xxcso_ib_info_h(
-                       ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                      ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                      ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-                    );
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+                    -- 翌日に顧客移行が発生している場合、翌日再度連携する為履歴テーブルを更新しない
+                    IF ( lv_exists_flg = cv_no ) THEN
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
+                      -- ========================================
+                      -- A-11.物件関連情報変更履歴テーブル更新処理
+                      -- ========================================
+                      update_xxcso_ib_info_h(
+                         ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                        ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                        ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+                      );
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD START */
+                    ELSE
+                      lv_retcode := cv_status_normal;
+                    END IF;
+/* 2018.05.22 Y.Shoji E_本稼動_15102対応 ADD END */
 --
                     IF (lv_retcode = cv_status_error) THEN
                       RAISE global_process_expt;
