@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A04C(body)
  * Description      : リース契約アップロード
  * MD.050           : MD050_CFF_003_A04_リース契約アップロード.doc
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2013/07/04    1.6   SCSK中野徹也    【E_本稼動_10871】(消費税増税対応)
  *  2016/08/10    1.7   SCSK仁木 重人   【E_本稼動_13658】自販機耐用年数変更対応
  *  2018/03/27    1.8   SCSK大塚 亨     【E_本稼動_14830】IFRSリース資産対応
+ *  2018/05/25    1.9   SCSK森 晴加     【E_本稼動_15112】IFRS障害対応
   *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3978,8 +3979,12 @@ AS
       -- ***************************************************
       -- 7. 月額消費税額控除額
       -- ***************************************************
-      IF ((xclw_data_rec.first_tax_charge  <= xclw_data_rec.first_tax_deduction) OR
-          (xclw_data_rec.second_tax_charge <= xclw_data_rec.first_tax_deduction)) THEN
+-- 2018/05/25 Ver1.9 Mori MOD Start
+--      IF ((xclw_data_rec.first_tax_charge  <= xclw_data_rec.first_tax_deduction) OR
+--          (xclw_data_rec.second_tax_charge <= xclw_data_rec.first_tax_deduction)) THEN
+      IF ((xclw_data_rec.first_tax_charge  < xclw_data_rec.first_tax_deduction) OR
+          (xclw_data_rec.second_tax_charge < xclw_data_rec.first_tax_deduction)) THEN
+-- 2018/05/25 Ver1.9 Mori MOD End
         IF (lv_err_flag = cv_const_n) THEN
           FND_FILE.PUT_LINE(
             which  => FND_FILE.OUTPUT
