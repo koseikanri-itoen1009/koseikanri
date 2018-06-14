@@ -1,0 +1,151 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_rep_cust_route_mng
+ * Description     : ŒÚ‹q‘‡ŠÇ—•\’ •[ƒ[ƒNƒe[ƒuƒ‹
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2018/06/14    1.0  K.Kiriu       ‰‰ñì¬(E_–{‰Ò“®_14971)
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_rep_cust_route_mng
+(
+  line_num                        NUMBER,
+  output_date                     DATE,
+  target_mm                       VARCHAR2(2),
+  employee_number                 VARCHAR2(5),
+  employee_name                   VARCHAR2(40),
+  account_number_mon              VARCHAR2(9),
+  gyotai_mon                      VARCHAR2(80),
+  customer_name_mon               VARCHAR2(360),
+  sales_amount_mon                NUMBER(12),
+  account_number_tue              VARCHAR2(9),
+  gyotai_tue                      VARCHAR2(80),
+  customer_name_tue               VARCHAR2(360),
+  sales_amount_tue                NUMBER(12),
+  account_number_wed              VARCHAR2(9),
+  gyotai_wed                      VARCHAR2(80),
+  customer_name_wed               VARCHAR2(360),
+  sales_amount_wed                NUMBER(12),
+  account_number_thu              VARCHAR2(9),
+  gyotai_thu                      VARCHAR2(80),
+  customer_name_thu               VARCHAR2(360),
+  sales_amount_thu                NUMBER(12),
+  account_number_fri              VARCHAR2(9),
+  gyotai_fri                      VARCHAR2(80),
+  customer_name_fri               VARCHAR2(360),
+  sales_amount_fri                NUMBER(12),
+  account_number_sat              VARCHAR2(9),
+  gyotai_sat                      VARCHAR2(80),
+  customer_name_sat               VARCHAR2(360),
+  sales_amount_sat                NUMBER(12),
+  account_number_sun              VARCHAR2(9),
+  gyotai_sun                      VARCHAR2(80),
+  customer_name_sun               VARCHAR2(360),
+  sales_amount_sun                NUMBER(12),
+  total_count_s                   NUMBER(10),
+  total_count_a                   NUMBER(10),
+  total_count_b                   NUMBER(10),
+  total_count_c                   NUMBER(10),
+  total_count_d                   NUMBER(10),
+  total_count_e                   NUMBER(10),
+  total_count                     NUMBER(10),
+  total_amount_mon                NUMBER(12),
+  total_count_mon                 NUMBER(10),
+  total_amount_tue                NUMBER(12),
+  total_count_tue                 NUMBER(10),
+  total_amount_wed                NUMBER(12),
+  total_count_wed                 NUMBER(10),
+  total_amount_thu                NUMBER(12),
+  total_count_thu                 NUMBER(10),
+  total_amount_fri                NUMBER(12),
+  total_count_fri                 NUMBER(10),
+  total_amount_sat                NUMBER(12),
+  total_count_sat                 NUMBER(10),
+  total_amount_sun                NUMBER(12),
+  total_count_sun                 NUMBER(10),
+  total_amount_week               NUMBER(12),
+  total_count_week                NUMBER(10),
+  created_by                      NUMBER(15)        NOT NULL,
+  creation_date                   DATE              NOT NULL,
+  last_updated_by                 NUMBER(15)        NOT NULL,
+  last_update_date                DATE              NOT NULL,
+  last_update_login               NUMBER(15),
+  request_id                      NUMBER(15)        NOT NULL,
+  program_application_id          NUMBER(15),
+  program_id                      NUMBER(15),
+  program_update_date             DATE
+)
+PCTFREE 10 PCTUSED 60 INITRANS 1 STORAGE ( INITIAL 2M)
+;
+--
+COMMENT ON TABLE xxcso.xxcso_rep_cust_route_mng IS 'ŒÚ‹q‘‡ŠÇ—•\’ •[ƒ[ƒNƒe[ƒuƒ‹';
+--
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.line_num                            IS 's”Ô†';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.output_date                         IS 'o—Í“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.target_mm                           IS '‘ÎÛŒ';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.employee_number                     IS '‰c‹ÆˆõƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.employee_name                       IS '‰c‹Æˆõ–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.account_number_mon                  IS 'Œ—j“ú-ŒÚ‹qƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.gyotai_mon                          IS 'Œ—j“ú-‹Æ‘Ô';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.customer_name_mon                   IS 'Œ—j“ú-ŒÚ‹q–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.sales_amount_mon                    IS 'Œ—j“ú-”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.account_number_tue                  IS '‰Î—j“ú-ŒÚ‹qƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.gyotai_tue                          IS '‰Î—j“ú-‹Æ‘Ô';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.customer_name_tue                   IS '‰Î—j“ú-ŒÚ‹q–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.sales_amount_tue                    IS '‰Î—j“ú-”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.account_number_wed                  IS '…—j“ú-ŒÚ‹qƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.gyotai_wed                          IS '…—j“ú-‹Æ‘Ô';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.customer_name_wed                   IS '…—j“ú-ŒÚ‹q–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.sales_amount_wed                    IS '…—j“ú-”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.account_number_thu                  IS '–Ø—j“ú-ŒÚ‹qƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.gyotai_thu                          IS '–Ø—j“ú-‹Æ‘Ô';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.customer_name_thu                   IS '–Ø—j“ú-ŒÚ‹q–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.sales_amount_thu                    IS '–Ø—j“ú-”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.account_number_fri                  IS '‹à—j“ú-ŒÚ‹qƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.gyotai_fri                          IS '‹à—j“ú-‹Æ‘Ô';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.customer_name_fri                   IS '‹à—j“ú-ŒÚ‹q–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.sales_amount_fri                    IS '‹à—j“ú-”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.account_number_sat                  IS '“y—j“ú-ŒÚ‹qƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.gyotai_sat                          IS '“y—j“ú-‹Æ‘Ô';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.customer_name_sat                   IS '“y—j“ú-ŒÚ‹q–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.sales_amount_sat                    IS '“y—j“ú-”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.account_number_sun                  IS '“ú—j“ú-ŒÚ‹qƒR[ƒh';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.gyotai_sun                          IS '“ú—j“ú-‹Æ‘Ô';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.customer_name_sun                   IS '“ú—j“ú-ŒÚ‹q–¼';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.sales_amount_sun                    IS '“ú—j“ú-”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_s                       IS '‰„‚×–K–âŒ¬”_S•ª—Ş';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_a                       IS '‰„‚×–K–âŒ¬”_A•ª—Ş';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_b                       IS '‰„‚×–K–âŒ¬”_B•ª—Ş';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_c                       IS '‰„‚×–K–âŒ¬”_C•ª—Ş';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_d                       IS '‰„‚×–K–âŒ¬”_D•ª—Ş';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_e                       IS '‰„‚×–K–âŒ¬”_E•ª—Ş';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count                         IS '‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_amount_mon                    IS 'Œ—j“ú-‘”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_mon                     IS 'Œ—j“ú-‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_amount_tue                    IS '‰Î—j“ú-‘”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_tue                     IS '‰Î—j“ú-‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_amount_wed                    IS '…—j“ú-‘”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_wed                     IS '…—j“ú-‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_amount_thu                    IS '–Ø—j“ú-‘”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_thu                     IS '–Ø—j“ú-‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_amount_fri                    IS '‹à—j“ú-‘”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_fri                     IS '‹à—j“ú-‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_amount_sat                    IS '“y—j“ú-‘”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_sat                     IS '“y—j“ú-‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_amount_sun                    IS '“ú—j“ú-‘”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_sun                     IS '“ú—j“ú-‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_amount_week                   IS 'TŒv-‘”„ã';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.total_count_week                    IS 'TŒv-‘Œ¬”';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.created_by                          IS 'ì¬Ò';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.creation_date                       IS 'ì¬“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.last_updated_by                     IS 'ÅIXVÒ';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.last_update_date                    IS 'ÅIXV“ú';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.last_update_login                   IS 'ÅIXVƒƒOƒCƒ“';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.request_id                          IS '—v‹ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.program_application_id              IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€EƒAƒvƒŠƒP[ƒVƒ‡ƒ“ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.program_id                          IS 'ƒRƒ“ƒJƒŒƒ“ƒgEƒvƒƒOƒ‰ƒ€ID';
+COMMENT ON COLUMN xxcso.xxcso_rep_cust_route_mng.program_update_date                 IS 'ƒvƒƒOƒ‰ƒ€XV“ú';
