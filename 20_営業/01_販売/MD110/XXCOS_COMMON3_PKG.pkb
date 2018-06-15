@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_COMMON3_PKG(body)
  * Description      : 共通関数パッケージ3(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2018/04/18    1.0   H.Sasaki         新規作成
+ *  2018/06/11    1.1   H.Sasaki         販売単価が初期化されないよう対応[E_本稼動_14886]
  *
  *****************************************************************************************/
 --
@@ -96,6 +97,9 @@ AS
   PROCEDURE process_order(
       iv_upd_status_booked    IN  VARCHAR2                                              --  ステータス更新フラグ（記帳）
     , iv_upd_request_date     IN  VARCHAR2                                              --  着日更新フラグ
+--  2018/06/12 V1.1 Added START
+    , iv_upd_item_code        IN  VARCHAR2                                              --  品目更新フラグ
+--  2018/06/12 V1.1 Added END
     , it_header_id            IN  oe_order_headers_all.header_id%TYPE                   --  ヘッダID
     , it_line_id              IN  oe_order_lines_all.line_id%TYPE                       --  明細ID                          #必須#
     , it_inventory_item_id    IN  oe_order_lines_all.inventory_item_id%TYPE             --  品目ID                          #必須#
@@ -136,6 +140,11 @@ AS
     lr_header_rec                       oe_order_pub.header_rec_type;   --  oe_order_pub用変数
     lt_line_tbl                         oe_order_pub.line_tbl_type;     --  oe_order_pub用変数
     lt_action_request_tbl               oe_order_pub.request_tbl_type;  --  oe_order_pub用変数
+--  2018/06/12 V1.1 Added START
+    lt_line_adj_tbl                     oe_order_pub.line_adj_tbl_type; --  oe_order_pub用変数
+    lt_unit_selling_price               oe_order_lines_all.unit_selling_price%TYPE;       --  販売単価
+    lt_calculate_price_flag             oe_order_lines_all.calculate_price_flag%TYPE;     --  価格計算フラグ
+--  2018/06/12 V1.1 Added END
     --  APIのOUT用変数（戻り値の受けにのみ使用）
     lt_out_header_rec                   oe_order_pub.header_rec_type;
     lt_out_header_val_rec               oe_order_pub.header_val_rec_type;
@@ -315,6 +324,52 @@ AS
         lt_line_tbl(1).request_date :=  it_request_date;                      --  明細着日
       END IF;
       --
+--  2018/06/12 V1.1 Added START
+      --  単価自動更新制御
+      IF ( iv_upd_item_code = 'Y' ) THEN
+        --  品目更新を行う場合で、受注の価格計算フラグがNの場合、制御を実施
+        BEGIN
+          SELECT  oola.unit_selling_price
+                , oola.calculate_price_flag
+          INTO    lt_unit_selling_price           --  販売単価
+                , lt_calculate_price_flag         --  価格計算フラグ
+          FROM    oe_order_lines_all      oola
+          WHERE   oola.line_id    =   it_line_id
+          ;
+        END;
+        IF ( lt_calculate_price_flag = 'N' ) THEN
+          --  価格計算フラグがNの場合実施
+          --  ORDER LINE
+          lt_line_tbl(1).calculate_price_flag     :=  'Y';
+          --  PRICE ADJUSTMENT
+          lt_line_adj_tbl(1)                      :=  OE_ORDER_PUB.G_MISS_LINE_ADJ_REC;
+          lt_line_adj_tbl(1).operation            :=  OE_GLOBALS.G_OPR_CREATE;
+          lt_line_adj_tbl(1).automatic_flag       :=  'N';
+          lt_line_adj_tbl(1).line_index           :=  1;
+          lt_line_adj_tbl(1).arithmetic_operator  :=  'NEWPRICE';
+          lt_line_adj_tbl(1).applied_flag         :=  'Y';
+          lt_line_adj_tbl(1).modifier_level_code  :=  'LINE';
+          lt_line_adj_tbl(1).updated_flag         :=  'Y';
+          lt_line_adj_tbl(1).operand              :=  lt_unit_selling_price;
+          --
+          BEGIN
+            --  手動モディファイア
+            SELECT  qmv.list_header_id
+                  , qmv.list_line_id
+                  , qmv.list_line_type_code
+            INTO    lt_line_adj_tbl(1).list_header_id               --  リストヘッダID
+                  , lt_line_adj_tbl(1).list_line_id                 --  リスト明細ID
+                  , lt_line_adj_tbl(1).list_line_type_code          --  リスト明細タイプ
+            FROM    qp_modifier_summary_v     qmv
+                  , qp_secu_list_headers_vl   qhv
+            WHERE   qmv.list_header_id  =   qhv.list_header_id
+            AND     qhv.name            =   'XXOM_MOD1'
+            ;
+          END;
+          --
+        END IF;
+      END IF;
+--  2018/06/12 V1.1 Added END
       --  更新処理実行
       oe_order_pub.process_order(
           p_api_version_number            =>  1.0
@@ -323,6 +378,9 @@ AS
         , x_msg_data                      =>  lv_msg_data
         , p_header_rec                    =>  lr_header_rec                   --  ヘッダ情報
         , p_line_tbl                      =>  lt_line_tbl                     --  明細情報
+--  2018/06/12 V1.1 Added START
+        , p_line_adj_tbl                  =>  lt_line_adj_tbl
+--  2018/06/12 V1.1 Added END
         , x_header_rec                    =>  lt_out_header_rec
         , x_header_val_rec                =>  lt_out_header_val_rec
         , x_header_adj_tbl                =>  lt_out_header_adj_tbl
