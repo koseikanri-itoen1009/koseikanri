@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common5_pkg(body)
  * Description            : 共通関数5
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数5.xls
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2018/02/22    1.0   H.Sasaki        新規作成(E_本稼動_14859)
+ *  2018/06/18    1.1   H.Sasaki        不具合対応(E_本稼動_15154)
  *
  *****************************************************************************************/
 --
@@ -156,8 +157,12 @@ AS
 --
     IF ( iv_expiration_type = cv_type_10 ) THEN
       --  表示区分：年月表示
-      --  製造日より、「賞味期間(月)」ヶ月後の月末日を賞味期限とする
-      ld_use_by_date  :=  TRUNC( LAST_DAY( ADD_MONTHS( id_producted_date, in_expiration_month ) ) );
+--  V1.1 2018/06/18 Modified START
+--      --  製造日より、「賞味期間(月)」ヶ月後の月末日を賞味期限とする
+--      ld_use_by_date  :=  TRUNC( LAST_DAY( ADD_MONTHS( id_producted_date, in_expiration_month ) ) );
+      --  製造日を含め、製造日から「賞味期間(月)」ヶ月後の月末日を賞味期限とする
+      ld_use_by_date  :=  TRUNC( LAST_DAY( ADD_MONTHS( id_producted_date, in_expiration_month - 1 ) ) );
+--  V1.1 2018/06/18 Modified END
     ELSIF ( iv_expiration_type = cv_type_20 ) THEN
       -- 表示区分：上・中・下旬表示
       IF( TO_CHAR( id_producted_date, cv_format_dd ) >= cv_date_late ) THEN
