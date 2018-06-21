@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2010/01/06    1.20  N.Maeda          [E_本稼動_00552] 取引先名称のスペース削除
  *  2010/02/19    1.21  S.Karikomi       [E_本稼動_01440] 端数処理対応
  *  2010/06/11    1.22  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
+ *  2017/12/05    1.23  K.Kiriu          [E_本稼動_14775] 品目マスタ取得条件不正対応
  *
  *****************************************************************************************/
 --
@@ -3366,9 +3367,14 @@ AS
 --       AND   xlvv.lookup_code(+)            = oola.attribute5                                                 --売上区分
        --OPM品目マスタ抽出条件
        AND   opm.item_no                    = oola.ordered_item                                               --品名コード
-       AND   oola.request_date                                                                                --要求日
-         BETWEEN NVL( opm.start_date_active, oola.request_date )                                              --適用開始日
-         AND     NVL( opm.end_date_active, oola.request_date )                                                --適用終了日
+-- Ver.1.23 Mod Start
+--       AND   oola.request_date                                                                                --要求日
+--         BETWEEN NVL( opm.start_date_active, oola.request_date )                                              --適用開始日
+--         AND     NVL( opm.end_date_active, oola.request_date )                                                --適用終了日
+       AND   TRUNC(oola.request_date)                                                                                --要求日
+         BETWEEN NVL( opm.start_date_active, TRUNC(oola.request_date) )                                              --適用開始日
+         AND     NVL( opm.end_date_active, TRUNC(oola.request_date) )                                                --適用終了日
+-- Ver.1.23 Mod End
        --DISC品目アドオン抽出条件
        AND   disc.inventory_item_id         = oola.inventory_item_id                                          --品目ID
        --売上区分マスタ
