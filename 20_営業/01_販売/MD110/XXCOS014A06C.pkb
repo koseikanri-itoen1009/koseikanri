@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2012/01/06    1.23  K.Kiriu          [E_本稼動_08891] 顧客品目二重出力障害対応
  *  2013/07/26    1.24  R.Watanabe       [E_本稼動_10904] 消費税率の取得基準日についての対応
  *  2014/04/01    1.25  K.Kiriu          [E_本稼動_11726] 消費税率取得の障害対応
+ *  2017/12/05    1.26  K.Kiriu          [E_本稼動_14775] 品目マスタ取得条件不正対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -4069,9 +4070,14 @@ AS
               AND    iimb.item_no               = msib.segment1
               --OPM品目マスタアドオン抽出条件
               AND    ximb.item_id               = iimb.item_id                                                        --品目ID
-              AND    ooha.request_date
+-- Ver.1.26 Mod Start
+--              AND    ooha.request_date
+--                BETWEEN ximb.start_date_active
+--                AND     NVL( ximb.end_date_active, ooha.request_date)                                                 --適用日が納品日の範囲内
+              AND    TRUNC(ooha.request_date)
                 BETWEEN ximb.start_date_active
-                AND     NVL( ximb.end_date_active, ooha.request_date)                                                 --適用日が納品日の範囲内
+                AND     NVL( ximb.end_date_active, TRUNC(ooha.request_date))                                                 --適用日が納品日の範囲内
+-- Ver.1.26 Mod End
 --******************************************* 2010/04/22 1.19 M.Sano  MOD  END  *************************************
 --******************************************* 2009/08/27 1.13 N.Maeda DEL START *************************************
 --              --本社商品区分ビュー抽出条件
@@ -4950,9 +4956,14 @@ AS
               AND   hp.party_id(+)                  = ooha.party_id
               --OPM品目情報インラインビュー抽出条件
               AND   opm.item_no(+)                  = oola.ordered_item
-              AND   oola.request_date
-                BETWEEN NVL(opm.start_date_active, oola.request_date)
-                AND     NVL(opm.end_date_active, oola.request_date)
+-- Ver.1.26 Mod Start
+--              AND   oola.request_date
+--                BETWEEN NVL(opm.start_date_active, oola.request_date)
+--                AND     NVL(opm.end_date_active, oola.request_date)
+              AND   TRUNC(oola.request_date)
+                BETWEEN NVL(opm.start_date_active, TRUNC(oola.request_date))
+                AND     NVL(opm.end_date_active, TRUNC(oola.request_date))
+-- Ver.1.26 Mod End
 -- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
               --DISC品目情報抽出条件
               AND msib.inventory_item_id(+) = oola.inventory_item_id
