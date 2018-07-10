@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2010/02/19    1.21  S.Karikomi       [E_本稼動_01440] 端数処理対応
  *  2010/06/11    1.22  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *  2017/12/05    1.23  K.Kiriu          [E_本稼動_14775] 品目マスタ取得条件不正対応
+ *  2018/07/03    1.24  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *
  *****************************************************************************************/
 --
@@ -245,6 +246,16 @@ AS
   cv_datatime_fmt                 CONSTANT VARCHAR2(21) := 'YYYY/MM/DD HH24:MI:SS';               --日時書式
 /* 2009/09/15 Ver1.15 Mod End   */
 --
+-- Ver1.24 Add Start
+  -- ＥＤＩ手書伝票伝送区分
+  cv_hw_slip_div_1       CONSTANT VARCHAR2(1)  := '1';                                   --対象（クイック受注）
+  cv_hw_slip_div_2       CONSTANT VARCHAR2(1)  := '2';                                   --対象外
+  cv_hw_slip_div_3       CONSTANT VARCHAR2(1)  := '3';                                   --対象（HHT）
+  cv_hw_slip_div_4       CONSTANT VARCHAR2(1)  := '4';                                   --対象（全て）
+  -- 発生元区分
+  cv_occurrence_div      CONSTANT VARCHAR2(1)  := '1';                                   --HHT
+-- Ver1.24 Add End
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -309,6 +320,9 @@ AS
     chain_name               hz_parties.party_name%TYPE                          --EDIチェーン店名
    ,chain_name_kana          hz_parties.organization_name_phonetic%TYPE          --EDIチェーン店名カナ
    ,chain_edi_item_code_div  xxcmm_cust_accounts.edi_item_code_div%TYPE          --EDI連携品目コード区分
+-- Ver1.24 Add Start
+   ,handwritten_slip_div     xxcmm_cust_accounts.handwritten_slip_div%type       --EDI手書伝票伝送区分
+-- Ver1.24 Add End
   );
   --顧客情報レコード
   TYPE g_cust_rtype IS RECORD (
@@ -3092,6 +3106,9 @@ AS
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD START *******************************************************
                    ,xca.delivery_base_code                                      delivery_base_code            --納品拠点コード
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD START *******************************************************
+-- Ver1.24 Add Start
+                   ,ooha.global_attribute5                                      origin_div                    --発生元区分
+-- Ver1.24 Add End
              FROM   oe_order_headers_all                                        ooha                          --* 受注ヘッダ情報テーブル *--
                    ,hz_cust_accounts                                            hca                           --* 顧客マスタ *--
                    ,xxcmm_cust_accounts                                         xca                           --* 顧客マスタアドオン *--
@@ -3176,6 +3193,9 @@ AS
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD START *******************************************************
                    ,xca.delivery_base_code                                      delivery_base_code            --納品拠点コード
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD START *******************************************************
+-- Ver1.24 Add Start
+                   ,ooha.global_attribute5                                      origin_div                    --発生元区分
+-- Ver1.24 Add End
              FROM   oe_order_headers_all                                        ooha                          --* 受注ヘッダ情報テーブル *--
                    ,hz_cust_accounts                                            hca                           --* 顧客マスタ *--
                    ,xxcmm_cust_accounts                                         xca                           --* 顧客マスタアドオン *--
@@ -3325,6 +3345,17 @@ AS
 /* 2009/08/12 Ver1.14 Mod End   */
        AND   ottt_h.description             = i_msg_rec.header_type                                           --種類
        AND   ivoh.order_type_id             = ottt_h.transaction_type_id                                      --トランザクションID
+-- Ver1.24 Add Start
+       AND   ( 
+               ( i_chain_rec.handwritten_slip_div = cv_hw_slip_div_1 AND ivoh.origin_div IS NULL )              --対象(クイック受注)
+               OR
+               ( i_chain_rec.handwritten_slip_div = cv_hw_slip_div_2 )                                          --対象外(チェーン店で対象外・顧客で指定)
+               OR
+               ( i_chain_rec.handwritten_slip_div = cv_hw_slip_div_3  AND ivoh.origin_div = cv_occurrence_div ) --対象(HHT)
+               OR
+               ( i_chain_rec.handwritten_slip_div = cv_hw_slip_div_4 )                                          --対象全て
+             )
+-- Ver1.24 Add End
        --受注タイプ（明細）抽出条件
 /* 2009/08/12 Ver1.14 Mod Start */
 --       AND   ottt_l.language                = userenv( 'LANG' )                                               --言語
@@ -3571,9 +3602,15 @@ AS
       SELECT hp.party_name                                                      chain_name                    --チェーン店名称
             ,hp.organization_name_phonetic                                      chain_name_kana               --チェーン店名称(カナ)
             ,xca.edi_item_code_div                                              edi_item_code_diy             --EDI連携品目コード区分
+-- Ver1.24 Add Start
+            ,NVL( xca.handwritten_slip_div, cv_hw_slip_div_2 )                  handwritten_slip_div          --EDI手書伝票伝送区分
+-- Ver1.24 Add End
       INTO   l_chain_rec.chain_name           
             ,l_chain_rec.chain_name_kana
             ,l_chain_rec.chain_edi_item_code_div
+-- Ver1.24 Add Start
+            ,l_chain_rec.handwritten_slip_div
+-- Ver1.24 Add End
       FROM   xxcmm_cust_accounts                                                xca                           --顧客マスタアドオン
             ,hz_cust_accounts                                                   hca                           --顧客マスタ
             ,hz_parties                                                         hp                            --パーティマスタ
@@ -3588,6 +3625,9 @@ AS
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         l_chain_rec.chain_name := g_msg_rec.customer_notfound;
+-- Ver1.24 Add Start
+        l_chain_rec.handwritten_slip_div := cv_hw_slip_div_2;  -- 顧客指定の場合、対象外を設定
+-- Ver1.24 Add End
     END;
 --
     --==============================================================
