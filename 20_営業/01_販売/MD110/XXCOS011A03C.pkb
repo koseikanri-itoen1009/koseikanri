@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2011/12/15    1.26  T.Yoshimoto      [E_本稼動_02817]パラメータ(解除拠点コード)追加対応
  *                                       [E_本稼動_07554]受注明細の単位項目へのNVL対応
  *  2012/08/24    1.27  K.Onotsuka       [E_本稼動_09938]品目エラーメッセージのパラメータ追加対応
+ *  2018/07/03    1.28  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *
  *****************************************************************************************/
 --
@@ -348,6 +349,10 @@ AS
   cv_1                  CONSTANT VARCHAR2(1)   := '1';                 -- 固定値:1(VARCHAR2)
   cn_1                  CONSTANT NUMBER        := 1;                   -- 固定値:1(NUMBER)
   cv_2                  CONSTANT VARCHAR2(1)   := '2';                 -- 固定値:2
+-- Ver1.28 Add Start
+  cv_3                  CONSTANT VARCHAR2(1)   := '3';                 -- 固定値:3
+  cv_4                  CONSTANT VARCHAR2(1)   := '4';                 -- 固定値:4
+-- Ver1.28 Add End
   cv_y                  CONSTANT VARCHAR2(1)   := 'Y';                 -- 固定値:Y
   cv_n                  CONSTANT VARCHAR2(1)   := 'N';                 -- 固定値:N
   cv_w                  CONSTANT VARCHAR2(1)   := 'W';                 -- 固定値:W
@@ -1336,7 +1341,26 @@ AS
     AND (( xca2.handwritten_slip_div      = cv_2                              -- ﾁｪｰﾝ店ﾏｽﾀ.手書伝票伝送区分='2'(手書送信対象外)
     AND    xeh.medium_class               = cv_medium_class_edi )             -- EDIﾍｯﾀﾞ情報.媒体区分='00'(EDI)
 --  OR     xca2.handwritten_slip_div      = cv_y )                            -- ﾁｪｰﾝ店ﾏｽﾀ.手書伝票伝送区分='Y'(手書送信対象)
-    OR     xca2.handwritten_slip_div      = cv_1 )                            -- ﾁｪｰﾝ店ﾏｽﾀ.手書伝票伝送区分='1'(手書送信対象)
+-- Ver1.28 Mod Start
+--    OR     xca2.handwritten_slip_div      = cv_1 )                            -- ﾁｪｰﾝ店ﾏｽﾀ.手書伝票伝送区分='1'(手書送信対象)
+          OR
+          (
+            (
+              ( xca2.handwritten_slip_div   = cv_1 )                           -- ﾁｪｰﾝ店ﾏｽﾀ.手書送信対象='1' (クイック受注のみ)
+              AND
+              ( xeh.medium_class = cv_medium_class_edi OR ooha.global_attribute5 IS NULL ) --EDIとクイック受注
+            )
+            OR
+            (
+              ( xca2.handwritten_slip_div   = cv_3 )                           -- ﾁｪｰﾝ店ﾏｽﾀ.手書送信対象='3' (HHTより連携された受注のみ)
+              AND
+              ( xeh.medium_class = cv_medium_class_edi OR ooha.global_attribute5 = cv_1 )  -- EDIとHHT
+            )
+            OR
+            ( xca2.handwritten_slip_div   = cv_4 )                             -- ﾁｪｰﾝ店ﾏｽﾀ.手書送信対象='4' (両方)とEDI
+          )
+        )
+-- Ver1.28 Mod End
 /* 2009/02/20 Ver1.1 Mod  End  */
     AND    hca2.cust_account_id           = xca2.customer_id                  -- ﾁｪｰﾝ店ﾏｽﾀ.顧客ID=ﾁｪｰﾝ店追加情報.顧客ID
     AND    hca1.account_number            = xca3.delivery_base_code           -- 拠点ﾏｽﾀ.顧客ｺｰﾄﾞ=顧客ﾏｽﾀ.納品拠点ｺｰﾄﾞ
