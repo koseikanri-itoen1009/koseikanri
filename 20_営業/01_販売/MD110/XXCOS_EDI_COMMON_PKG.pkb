@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_edi_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_嫟捠娭悢
- * Version                : 1.11
+ * Version                : 1.12
  *
  * Program List
  *  ----------------------------- ---- ----- -----------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2010/04/15   1.9   S.Karikomi       [E_杮壱摦_02296]懳墳
  *  2010/07/13   1.10  S.Niki           [E_杮壱摦_02637]懳墳
  *  2012/08/24   1.11  K.Onotsuka       [E_杮壱摦_09938]懳墳
+ *  2018/07/03   1.12  K.Kiriu          [E_杮壱摦_15116]懳墳
  *****************************************************************************************/
   -- ===============================
   -- 僌儘乕僶儖曄悢
@@ -88,6 +89,11 @@ AS
 /* 2010/04/15 Ver1.9 Add Start */
     cv_hw_slip_div_yes      CONSTANT VARCHAR2(1)  := '1';       -- EDI庤彂揱昜揱憲嬫暘:揱憲偁傝
 /* 2010/04/15 Ver1.9 Add End   */
+/* 2018/07/03 Ver1.12 Add Start */
+    cv_hw_slip_div_yes3     CONSTANT VARCHAR2(1)  := '3';       -- EDI庤彂揱昜揱憲嬫暘:揱憲偁傝(HHT)
+    cv_hw_slip_div_yes4     CONSTANT VARCHAR2(1)  := '4';       -- EDI庤彂揱昜揱憲嬫暘:揱憲偁傝(慡偰)
+    cv_create_hht           CONSTANT VARCHAR2(1)  := '1';       -- 敪惗尦嬫暘乮HHT乯
+/* 2018/07/03 Ver1.12 Add End  */
     cv_cstm_class_customer  CONSTANT VARCHAR2(2)  := '10';      -- 屭媞嬫暘:屭媞
     cv_cstm_class_chain     CONSTANT VARCHAR2(2)  := '18';      -- 屭媞嬫暘:僠僃乕儞揦
     cv_flow_status_entry    CONSTANT VARCHAR2(6)  := 'BOOKED';  -- 僗僥乕僞僗:婰挔嵪傒
@@ -418,7 +424,26 @@ AS
      AND   hca3.customer_class_code    =  cv_cstm_class_base       -- 屭媞儅僗僞(嫆揰).屭媞嬫暘='1'(嫆揰)
 /* 2010/04/15 Ver1.9 Add Start */
      /* EDI庤彂揱昜揱憲嬫暘 */ 
-     AND   xca2.handwritten_slip_div   =  cv_hw_slip_div_yes       -- 屭媞捛壛(联拜).EDI庤彂揱昜揱憲嬫暘亖'1'(揱憲偁傝)
+/* 2018/07/03 Ver1.12 Mod Start */
+--     AND   xca2.handwritten_slip_div   =  cv_hw_slip_div_yes       -- 屭媞捛壛(联拜).EDI庤彂揱昜揱憲嬫暘亖'1'(揱憲偁傝)
+     AND   (
+             (
+               ( xca2.handwritten_slip_div = cv_hw_slip_div_yes )   -- 屭媞捛壛(联拜).EDI庤彂揱昜揱憲嬫暘亖'1'(揱憲偁傝乮僋僀僢僋庴拲乯)
+               AND
+               ( ooha.global_attribute5 IS NULL )                   -- 敪惗尦嬫暘丗NULL=僋僀僢僋庴拲
+             )
+             OR
+             (
+               ( xca2.handwritten_slip_div = cv_hw_slip_div_yes3 )  -- 屭媞捛壛(联拜).EDI庤彂揱昜揱憲嬫暘亖'3'(揱憲偁傝乮HHT乯)
+               AND
+               ( ooha.global_attribute5 = cv_create_hht )           -- 敪惗尦嬫暘丗1=HHT
+             )
+             OR
+             (
+               ( xca2.handwritten_slip_div = cv_hw_slip_div_yes4 )    -- 屭媞捛壛(联拜).EDI庤彂揱昜揱憲嬫暘亖'4'(揱憲偁傝乮慡偰乯)
+             )
+           )
+/* 2018/07/03 Ver1.12 Mod End   */
 /* 2010/04/15 Ver1.9 Add End   */
      /* 庴拲僿僢僟拪弌忦審 */
 /* 2009/08/11 Ver1.7 Add Start */
