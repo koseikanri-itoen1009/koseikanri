@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2013/07/26    1.24  R.Watanabe       [E_本稼動_10904] 消費税率の取得基準日についての対応
  *  2014/04/01    1.25  K.Kiriu          [E_本稼動_11726] 消費税率取得の障害対応
  *  2017/12/05    1.26  K.Kiriu          [E_本稼動_14775] 品目マスタ取得条件不正対応
+ *  2018/07/03    1.27  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -247,6 +248,13 @@ AS
 -- 2009/02/20 T.Nakamura Ver.1.7 add start
   cv_handwritten_slip_div_tg      CONSTANT VARCHAR2(1)   := '1';                                    --手書伝票伝送区分:伝送対象
 -- 2009/02/20 T.Nakamura Ver.1.7 add end
+-- Ver1.27 Add Start
+  -- ＥＤＩ手書伝票伝送区分
+  cv_handwritten_slip_div_tg3     CONSTANT VARCHAR2(1)  := '3';                                     --対象（HHT）
+  cv_handwritten_slip_div_tg4     CONSTANT VARCHAR2(1)  := '4';                                     --対象（全て）
+  -- 発生元区分
+  cv_occurrence_div               CONSTANT VARCHAR2(1)  := '1';                                     --HHT
+-- Ver1.27 Add End
 -- ************************** 2009/07/06 N.Maeda 1.11 MOD START ******************************* --
   cv_global_attribute3_target     CONSTANT oe_order_headers_all.global_attribute3%TYPE := '02';
 -- ************************** 2009/07/06 N.Maeda 1.11 MOD  END  ******************************* --
@@ -4767,9 +4775,18 @@ AS
                     AND     oos.enabled_flag        = cv_enabled_flag
                     AND     ooha.order_source_id    = oos.order_source_id
                     AND     ooha.flow_status_code   = cv_booked
--- 2009/02/16 T.Nakamura Ver.1.3 add start
-                    AND     i_chain_rec.handwritten_slip_div = cv_handwritten_slip_div_tg
--- 2009/02/16 T.Nakamura Ver.1.3 add end
+-- Ver1.27 Mod Start
+---- 2009/02/16 T.Nakamura Ver.1.3 add start
+--                    AND     i_chain_rec.handwritten_slip_div = cv_handwritten_slip_div_tg
+---- 2009/02/16 T.Nakamura Ver.1.3 add end
+                    AND     (
+                              ( i_chain_rec.handwritten_slip_div = cv_handwritten_slip_div_tg  AND ooha.global_attribute5 IS NULL )
+                              OR
+                              ( i_chain_rec.handwritten_slip_div = cv_handwritten_slip_div_tg3 AND ooha.global_attribute5 = cv_occurrence_div )
+                              OR
+                              ( i_chain_rec.handwritten_slip_div = cv_handwritten_slip_div_tg4 )
+                            )
+-- Ver1.27 Mod End
 -- ******************** 2010/03/24 1.17 M.Hirose INS START ************************* --
                     AND     ooha.request_date      >= TO_DATE(i_input_rec.shop_delivery_date_from,cv_date_fmt)      -- 納品日From
                     AND     ooha.request_date       < TO_DATE(i_input_rec.shop_delivery_date_to  ,cv_date_fmt) + 1  -- 納品日To
