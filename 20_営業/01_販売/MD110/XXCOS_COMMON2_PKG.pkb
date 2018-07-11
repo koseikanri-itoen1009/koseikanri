@@ -3,10 +3,10 @@ AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name           : xxcos_common2_pkg(spec)
+ * Package Name           : xxcos_common2_pkg(Body)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.11
+ * Version                : 1.12
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -25,6 +25,9 @@ AS
  *  get_salesrep_id                 P           担当営業員取得関数
  *  get_reason_code                 F           事由コード取得関数
  *  get_reason_data                 P           事由コードマスタデータ取得関数
+ * 2018/07/04 Ver1.12 Add Start
+ *  chk_customer_items              F           顧客品目チェック
+ * 2018/07/04 Ver1.12 Add End
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -44,6 +47,7 @@ AS
  *  2011/04/26    1.10 K.kiriu          [E_本稼動_07182]納品予定データ作成処理遅延対応
  *                                      [E_本稼動_07218]納品予定プルーフリスト作成処理遅延対応
  *  2011/09/07    1.11 K.kiriu          [E_本稼動_07906]流通ＢＭＳ対応
+ *  2018/07/04    1.12 N.Koyama         [E_本稼動_15141]顧客品目コード全角・禁則文字チェック追加
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2164,6 +2168,81 @@ AS
 --
   END get_reason_data;
 /* 2011/04/26 Ver1.10 Add End   */
+/* 2018/07/04 Ver1.12 Add Start   */
+--
+  /************************************************************************
+   * Function Name   : chk_customer_items
+   * Description     : 顧客品目チェック
+   ************************************************************************/
+  FUNCTION chk_customer_items(
+     iv_customer_item_number         IN VARCHAR2        -- 顧客品目
+  ) RETURN  VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name       CONSTANT VARCHAR2(100) := 'chk_customer_items';        -- プログラム名
+    cv_check_lookup   CONSTANT VARCHAR2(100) := 'XXCOS1_CHK_CUSTOMER_ITEMS'; -- 禁則文字登録参照タイプ
+    cd_sysdate        CONSTANT DATE          := TRUNC(SYSDATE);
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_error_flag VARCHAR2(1);
+--
+    -- *** ローカル・カーソル ***
+    CURSOR chk_prohibition_cur
+    IS
+      SELECT  flvv.description description
+        FROM  fnd_lookup_values_vl flvv
+       WHERE  flvv.lookup_type        = cv_check_lookup
+         AND  flvv.enabled_flag       = gv_char_y
+         AND  flvv.start_date_active <= cd_sysdate
+         AND  flvv.end_date_active   >= cd_sysdate
+      ;
+--
+    chk_prohibition_rec chk_prohibition_cur%ROWTYPE;
+--
+  BEGIN
+--
+    lv_error_flag := 'N';
+--
+    -- 顧客品目の半角文字チェック
+    IF NOT NVL(xxccp_common_pkg.chk_alphabet_number(iv_customer_item_number) ,TRUE) THEN
+      RETURN cv_status_error;
+    END IF;
+--
+    -- 禁則文字のチェック
+    OPEN chk_prohibition_cur;
+    LOOP
+      FETCH chk_prohibition_cur INTO chk_prohibition_rec;
+      EXIT WHEN chk_prohibition_cur%NOTFOUND;
+      IF ( LENGTHB(iv_customer_item_number) <> LENGTHB(REPLACE(iv_customer_item_number, chk_prohibition_rec.description))) THEN
+        lv_error_flag := 'Y';
+        EXIT;
+      END IF;
+    END LOOP;
+    CLOSE chk_prohibition_cur;
+--
+    IF ( lv_error_flag = 'Y' ) THEN
+      RETURN cv_status_error;
+    END IF;
+--
+    RETURN cv_status_normal;
+--
+  END chk_customer_items;
+/* 2018/07/04 Ver1.12 Add End   */
 --
 END XXCOS_COMMON2_PKG;
 /
