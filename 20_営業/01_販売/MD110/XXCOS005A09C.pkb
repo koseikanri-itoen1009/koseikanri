@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A09C (body)
  * Description      : CSVファイルのデータアップロード
  * MD.050           : CSVファイルのデータアップロード MD050_COS_005_A09
- * Version          : 2.0
+ * Version          : 2.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                       [E_本稼動_00740]子品目コードを設定時はエラーにするように修正。
  *                                                       品目ステータスが20,30,40以外の品目はエラーにするように修正。
  *  2010/02/12    2.0   T.Nakano         [E_本稼動_01155]単位不正エラー追加修正
+ *  2018/07/04    2.1   N.Koyama         [E_本稼動_15141]顧客品目コードの全角・禁則文字チェック対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -319,6 +320,10 @@ AS
                                           := 'APP-XXCOS1-12884'; --在庫組織コード
   ct_msg_get_hon_uom             CONSTANT fnd_new_messages.message_name%TYPE
                                           := 'APP-XXCOS1-11323'; --・XXCOS:本単位コード(メッセージ文字列)
+--*********** 2.1 N.Koyama ADD Start ********** --
+  ct_msg_customer_item_err       CONSTANT fnd_new_messages.message_name%TYPE
+                                          := 'APP-XXCOS1-11332'; --顧客品目コード全角・禁則文字エラー
+--*********** 2.1 N.Koyama ADD End ********** --
 --****************************** 2009/07/01 1.7 T.Tominaga ADD START ******************************
   ct_msg_get_interval            CONSTANT fnd_new_messages.message_name%TYPE
                                           := 'APP-XXCOS1-11325'; --XXCOS:待機間隔
@@ -1548,6 +1553,30 @@ AS
         buff  => lv_errmsg
       );
       lv_status := cv_status_warn;
+--*********** 2.1 N.Koyama ADD Start ********** --
+    ELSE
+      --顧客品目全角・禁則文字チェック
+      IF( xxcos_common2_pkg.chk_customer_items(g_cust_item_work_tab(in_cnt)(cn_cust_item_code)) = cv_status_error ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application   => ct_xxcos_appl_short_name,
+                       iv_name          => ct_msg_customer_item_err,                                --顧客品目コード全角・禁則文字エラー
+                       iv_token_name1   => cv_tkn_line_no,                                          --行NO(トークン)
+                       iv_token_value1  => TO_CHAR( in_cnt, cv_format ),                            --行NO
+                       iv_token_name2   => cv_tkn_cust_code,                                        --顧客コード(トークン)
+                       iv_token_value2  => g_cust_item_work_tab(in_cnt)(cn_cust_code),              --顧客コード
+                       iv_token_name3   => cv_tkn_cust_item_code,                                   --顧客品目コード(トークン)
+                       iv_token_value3  => g_cust_item_work_tab(in_cnt)(cn_cust_item_code),         --顧客品目コード
+                       iv_token_name4   => cv_tkn_item_code,                                        --品目コード(トークン)
+                       iv_token_value4  => g_cust_item_work_tab(in_cnt)(cn_item_code)               --品目コード
+                     );
+        --LOG書き出し
+        FND_FILE.PUT_LINE(
+          which => FND_FILE.OUTPUT,
+          buff  => lv_errmsg
+        );
+        lv_status := cv_status_warn;
+      END IF;
+--*********** 2.1 N.Koyama ADD End ********** --
     END IF;
     --
 --
