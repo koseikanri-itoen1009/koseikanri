@@ -6,9 +6,9 @@ AS
  *
  * Package Name     : xxwip230001c(body)
  * Description      : 生産帳票機能（生産依頼書兼生産指図書）
- * MD.050/070       : 生産帳票機能（生産依頼書兼生産指図書）Issue1.1  (T_MD050_BPO_230)
+ * MD.050/070       : 生産帳票機能（生産依頼書兼生産指図書）Issue2.1  (T_MD050_BPO_230)
  *                    生産帳票機能（生産依頼書兼生産指図書）          (T_MD070_BPO_23A)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/02/02    1.9   Daisuke  Nihei      本番障害#1111対応
  *  2009/02/04    1.10  Yasuhisa Yamamoto   本番障害#4対応 ランク３出力対応
  *  2014/10/27    1.11  Naoki    Miyamoto   本番障害#12524改善対応　生産指図書の明細に本数、端数を追加
+ *  2018/07/11    1.12  H.Sasaki            E_本稼動_15158 製造日を賞味期限に変更（データ抽出部のみ変更し、PG内の変数名などはそのままとする）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -113,6 +114,9 @@ AS
   gv_hasuu_ari                  CONSTANT VARCHAR2(2)  := '○';              --総数/入数に端数がある
   gv_hasuu_nashi                CONSTANT VARCHAR2(2)  := '　';              --総数/入数に端数がない
 -- 2014/10/27 v1.11 N.Miyamoto ADD END
+--  V1.12 2018/07/11 Added START
+  gv_conc_type_3                CONSTANT VARCHAR2(1)  :=  '3';              --  コンカレント区分.3：生産指図書（伊藤園用）
+--  V1.12 2018/07/11 Added END
 --
   gv_err_input_date_from        CONSTANT VARCHAR2(20) := '入力日時（FROM）';                       -- 入力日時（FROM）
   gv_err_input_date_to          CONSTANT VARCHAR2(20) := '入力日時（TO）';                         -- 入力日時（TO）
@@ -152,6 +156,9 @@ AS
      ,id_input_date_from  gme_batch_header.last_update_date%TYPE           -- 入力日時(FROM)
      ,id_input_date_to    gme_batch_header.last_update_date%TYPE           -- 入力日時(TO)
 -- 2008/10/28 v1.7 D.Nihei MOD END
+--  V1.12 2018/07/11 Added START
+     ,iv_concurrent_type  VARCHAR2(1)                                   -- コンカレント区分
+--  V1.12 2018/07/11 Added END
     ) ;
 --
   -- ヘッダーデータ格納用レコード変数
@@ -975,7 +982,10 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_souko';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_souko ;
-        -- 製造日
+--  V1.12 2018/07/11 Modified START
+--        -- 製造日
+        -- 製造日 or 賞味期限
+--  V1.12 2018/07/11 Modified END
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_make_day';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
@@ -1101,7 +1111,10 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_souko';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_souko;
-        -- 製造日
+--  V1.12 2018/07/11 Modified START
+--        -- 製造日
+        -- 製造日 or 賞味期限
+--  V1.12 2018/07/11 Modified END
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_make_day';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
@@ -1560,6 +1573,9 @@ AS
     (
       iv_utikomi_kbn         IN  VARCHAR2                             -- 打込区分
      ,iv_batch_id            IN  VARCHAR2                             -- バッチID
+--  V1.12 2018/07/11 Added START
+     ,iv_concurrent_type     IN  VARCHAR2                             --  コンカレント区分
+--  V1.12 2018/07/11 Added END
      ,ot_data_rec            OUT NOCOPY tab_tonyu_utikomi_type_dtl    -- 取得レコード
      ,ov_errbuf              OUT VARCHAR2                             -- エラー・メッセージ           --# 固定 #
      ,ov_retcode             OUT VARCHAR2                             -- リターン・コード             --# 固定 #
@@ -1589,6 +1605,9 @@ AS
       (
         iv_utikomi_kbn           VARCHAR
        ,iv_batch_id              gme_batch_header.batch_id%TYPE
+--  V1.12 2018/07/11 Added START
+       ,iv_concurrent_type       VARCHAR2
+--  V1.12 2018/07/11 Added START
       )
     IS
       SELECT ximv.item_no             AS item_no            -- 品目コード
@@ -1604,7 +1623,13 @@ AS
 -- 2008/10/28 v1.7 D.Nihei MOD START 統合障害#499
 --            ,gmd.attribute11          AS attribute11        -- 製造日
 --            ,gmd.attribute6           AS attribute6         -- 在庫入数
-            ,ilm.attribute1           AS attribute1         -- 製造日
+--  V1.12 2018/07/11 Modified START
+--            ,ilm.attribute1           AS attribute1         -- 製造日
+            , CASE WHEN iv_concurrent_type = gv_conc_type_3
+                THEN  ilm.attribute3                  --  賞味期限（コンカレント：生産指図書（伊藤園用）の場合）
+                ELSE  ilm.attribute1                  --  製造日（上記以外）
+              END                       AS  attribute_date
+--  V1.12 2018/07/11 Modified END
 -- 2014/10/27 v1.11 N.Miyamoto MOD START
 --            ,ilm.attribute6           AS attribute6         -- 在庫入数
             ,NVL(ilm.attribute6, ximv.num_of_cases)
@@ -1687,6 +1712,9 @@ AS
       (
         iv_utikomi_kbn                 -- 打込区分
        ,iv_batch_id                    -- バッチID
+--  V1.12 2018/07/11 Added START
+       ,iv_concurrent_type             -- コンカレント区分
+--  V1.12 2018/07/11 Added END
       ) ;
     -- バルクフェッチ
     FETCH cur_tonyu_utikomi_data BULK COLLECT INTO ot_data_rec ;
@@ -2175,6 +2203,9 @@ AS
      ,iv_hinmoku_cd         IN     VARCHAR2         -- 09 : 品目コード
      ,iv_input_date_from    IN     VARCHAR2         -- 10 : 入力日時(FROM)
      ,iv_input_date_to      IN     VARCHAR2         -- 11 : 入力日時(TO)
+--  V1.12 2018/07/11 Added START
+     ,iv_concurrent_type    IN     VARCHAR2         -- 12 : コンカレント区分
+--  V1.12 2018/07/11 Added END
      ,ov_errbuf            OUT     VARCHAR2         -- エラー・メッセージ           --# 固定 #
      ,ov_retcode           OUT     VARCHAR2         -- リターン・コード            --# 固定 #
      ,ov_errmsg            OUT     VARCHAR2         -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -2258,6 +2289,9 @@ AS
     lr_param_rec.iv_hinmoku_cd       := iv_hinmoku_cd;                               -- 09 : 品目コード
     lr_param_rec.id_input_date_from  := ld_input_date_from;                          -- 10 : 入力日時(FROM)
     lr_param_rec.id_input_date_to    := ld_input_date_to;                            -- 11 : 入力日時(TO)
+--  V1.12 2018/07/11 Added START
+    lr_param_rec.iv_concurrent_type  := iv_concurrent_type;                          -- 12 : コンカレント区分
+--  V1.12 2018/07/11 Added END
 --
     -- =====================================================
     -- ヘッダー情報取得処理
@@ -2284,6 +2318,9 @@ AS
         (
           iv_utikomi_kbn         =>   NULL                         -- 打込区分
          ,iv_batch_id            =>   lt_head_data(i).l_batch_id   -- バッチID
+--  V1.12 2018/07/11 Added START
+         ,iv_concurrent_type     =>   lr_param_rec.iv_concurrent_type   --  コンカレント区分
+--  V1.12 2018/07/11 Added END
          ,ot_data_rec            =>   lt_tonyu_data                -- 取得レコード群
          ,ov_errbuf              =>   lv_errbuf                    -- エラー・メッセージ           --# 固定 #
          ,ov_retcode             =>   lv_retcode                   -- リターン・コード             --# 固定 #
@@ -2301,6 +2338,9 @@ AS
         (
           iv_utikomi_kbn         =>   gv_utikomi_kbn_utikomi       -- 打込区分
          ,iv_batch_id            =>   lt_head_data(i).l_batch_id   -- バッチID
+--  V1.12 2018/07/11 Added START
+         ,iv_concurrent_type     =>   lr_param_rec.iv_concurrent_type   --  コンカレント区分
+--  V1.12 2018/07/11 Added END
          ,ot_data_rec            =>   lt_utikomi_data              -- 02.取得レコード群
          ,ov_errbuf              =>   lv_errbuf                    -- エラー・メッセージ           --# 固定 #
          ,ov_retcode             =>   lv_retcode                   -- リターン・コード             --# 固定 #
@@ -2446,6 +2486,9 @@ AS
      ,iv_hinmoku_cd         IN     VARCHAR2         -- 09 : 品目コード
      ,iv_input_date_from    IN     VARCHAR2         -- 10 : 入力日時(FROM)
      ,iv_input_date_to      IN     VARCHAR2         -- 11 : 入力日時(TO)
+--  V1.12 2018/07/11 Added START
+     ,iv_concurrent_type    IN     VARCHAR2         -- 12 : コンカレント区分
+--  V1.12 2018/07/11 Added END
     )
 --
 --###########################  固定部 START   ###########################
@@ -2483,6 +2526,9 @@ AS
        ,iv_hinmoku_cd         => iv_hinmoku_cd        -- 09 : 品目コード
        ,iv_input_date_from    => iv_input_date_from   -- 10 : 入力日時(FROM)
        ,iv_input_date_to      => iv_input_date_to     -- 11 : 入力日時(TO)
+--  V1.12 2018/07/11 Added START
+       ,iv_concurrent_type    => iv_concurrent_type   -- 12 : コンカレント区分
+--  V1.12 2018/07/11 Added END
        ,ov_errbuf             => lv_errbuf            -- エラー・メッセージ           --# 固定 #
        ,ov_retcode            => lv_retcode           -- リターン・コード             --# 固定 #
        ,ov_errmsg             => lv_errmsg            -- ユーザー・エラー・メッセージ --# 固定 #
