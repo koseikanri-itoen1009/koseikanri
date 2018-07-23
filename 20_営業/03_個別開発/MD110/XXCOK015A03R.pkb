@@ -7,12 +7,13 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  * -------------------- ------------------------------------------------------------
+ *  delete_xbsrw         出力対象ワーク削除(A-10)
  *  delete_xrbpd         ワークテーブルデータ削除(A-7)
  *  start_svf            SVF起動(A-6)
  *  update_xrbpd         支払案内書（明細）帳票ワークテーブル更新(A-5)
@@ -45,6 +46,7 @@ AS
  *  2018/01/18    1.13  K.Nara           [障害E_本稼動_14836] 事務センダー対応（本振案内書なし）
  *  2018/02/27    1.14  N.Watanabe       [障害E_本稼動_14897] 支払案内書PT対応
  *  2018/03/15    1.15  Y.Sekine         [障害E_本稼動_14900] 事務センター案件（支払案内書出力変更）
+ *  2018/07/17    1.16  K.Nara           [障害E_本稼動_15005] 事務センター案件（支払案内書、販売報告書一括出力）
  *
  *****************************************************************************************/
   --==================================================
@@ -82,6 +84,10 @@ AS
   cv_msg_cok_00087                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-00087';
   cv_msg_cok_00040                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-00040';
   cv_msg_cok_10309                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-10309';
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  cv_msg_cok_10545                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-10545';
+  cv_msg_cok_10546                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-10546';
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   -- トークン
   cv_tkn_errmsg                    CONSTANT VARCHAR2(30)    := 'ERRMSG';
   cv_tkn_profile                   CONSTANT VARCHAR2(30)    := 'PROFILE';
@@ -89,6 +95,10 @@ AS
   cv_tkn_base_code                 CONSTANT VARCHAR2(30)    := 'BASE_CODE';
   cv_tkn_target_ym                 CONSTANT VARCHAR2(30)    := 'TARGET_YM';
   cv_tkn_vendor_code               CONSTANT VARCHAR2(30)    := 'VENDOR_CODE';
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  cv_tkn_request_id                CONSTANT VARCHAR2(30)    := 'REQUEST_ID';
+  cv_tkn_output_num                CONSTANT VARCHAR2(30)    := 'OUTPUT_NUM';
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   -- セパレータ
   cv_msg_part                      CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                      CONSTANT VARCHAR2(3)     := '.';
@@ -125,6 +135,9 @@ AS
   cv_extension                     CONSTANT VARCHAR2(10)    := '.pdf';               -- 出力ファイル名拡張子(PDF出力)
   cv_frm_file                      CONSTANT VARCHAR2(20)    := 'XXCOK015A03S.xml';   -- フォーム様式ファイル名
   cv_vrq_file                      CONSTANT VARCHAR2(20)    := 'XXCOK015A03S.vrq';   -- クエリー様式ファイル名
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  cv_excl_code                     CONSTANT VARCHAR2(10)    := 'EXCL1';              -- SVF専用マネージャコード
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   -- 書式フォーマット
   cv_format_fxrrrrmm               CONSTANT VARCHAR2(50)    := 'FXRRRR/MM';
   cv_format_fxrrrrmmdd             CONSTANT VARCHAR2(50)    := 'FXRRRRMMDD';
@@ -142,6 +155,11 @@ AS
   -- 銀行手数料負担者
   cv_bank_charge_bearer            CONSTANT VARCHAR2(1)     := 'I';                  -- 当方
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  ct_rep_id_bm                     CONSTANT xxcok_bm_sales_rep_work.output_rep%TYPE := 1;   -- 支払案内書
+  ct_output_num_init               CONSTANT xxcok_bm_sales_rep_work.output_num%TYPE := -1;  -- カレント出力番号初期値
+  cv_slash                         CONSTANT VARCHAR2(1)     := '/';
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -153,6 +171,13 @@ AS
   gv_param_base_code               VARCHAR2(4)   DEFAULT NULL;  -- 問合せ先
   gv_param_target_ym               VARCHAR2(7)   DEFAULT NULL;  -- 案内書発行年月
   gv_param_vendor_code             VARCHAR2(9)   DEFAULT NULL;  -- 支払先
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  gn_param_request_id              NUMBER        DEFAULT NULL;  -- 要求ID
+  gn_param_output_num              NUMBER        DEFAULT NULL;  -- 出力番号（対象取得検索時のみ使用）
+  -- アップロード値
+  gt_upload_cust_code              xxcok_bm_sales_rep_work.customer_code%TYPE  DEFAULT NULL;  -- 顧客
+  gt_upload_output_num             xxcok_bm_sales_rep_work.output_num%TYPE     DEFAULT NULL;  -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   -- 初期処理取得値
   gd_process_date                  DATE          DEFAULT NULL;   -- 業務処理日付
   gn_org_id                        NUMBER        DEFAULT NULL;   -- 営業単位ID
@@ -260,8 +285,14 @@ AS
          , xrbpd.payment_date_wk
          , xrbpd.bank_charge_bearer
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , xrbpd.output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_rep_bm_pg_detail    xrbpd
     WHERE xrbpd.request_id = cn_request_id
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xrbpd.output_num = gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     GROUP BY xrbpd.payment_code
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
             ,xrbpd.contact_base_code
@@ -272,12 +303,33 @@ AS
             ,xrbpd.bank_charge_bearer
             ,xrbpd.balance_cancel_date
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+            ,xrbpd.output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     ;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  --アップロード出力対象取得
+  CURSOR g_upload_cur IS
+    SELECT xbsrw.output_num                    AS output_num
+          ,xbsrw.target_ym                     AS target_ym
+          ,xbsrw.vendor_code                   AS vendor_code
+          ,xbsrw.customer_code                 AS customer_code
+    FROM  xxcok_bm_sales_rep_work    xbsrw
+    WHERE xbsrw.request_id = gn_param_request_id
+    AND   xbsrw.output_num = NVL(gn_param_output_num, xbsrw.output_num)
+    AND   xbsrw.output_rep = ct_rep_id_bm
+    ORDER BY xbsrw.output_num
+    ;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   --==================================================
   -- グローバルコレクション型変数
   --==================================================
   TYPE g_summary_ttype             IS TABLE OF g_summary_cur%ROWTYPE INDEX BY BINARY_INTEGER;
   g_summary_tab                    g_summary_ttype;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  TYPE g_upload_ttype             IS TABLE OF g_upload_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  g_upload_tab                    g_upload_ttype;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   --==================================================
   -- 共通例外
   --==================================================
@@ -293,6 +345,81 @@ AS
   --*** エラー終了 ***
   error_proc_expt                  EXCEPTION;
 --
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  /**********************************************************************************
+   * Procedure Name   : delete_xbsrw
+   * Description      : 出力対象ワーク削除(A-10)
+   ***********************************************************************************/
+  PROCEDURE delete_xbsrw(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'delete_xbsrw';     -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    --==================================================
+    -- ローカルカーソル
+    --==================================================
+    CURSOR lock_xbsrw_cur
+    IS
+      SELECT 'X'
+      FROM xxcok_bm_sales_rep_work    xbsrw
+      WHERE xbsrw.request_id = gn_param_request_id
+      AND   xbsrw.output_num = NVL(gn_param_output_num, xbsrw.output_num)
+      AND   xbsrw.output_rep = ct_rep_id_bm
+      FOR UPDATE OF xbsrw.output_num NOWAIT
+    ;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- ロック取得
+    --==================================================
+    OPEN  lock_xbsrw_cur;
+    CLOSE lock_xbsrw_cur;
+    --==================================================
+    -- ワークテーブルデータ削除
+    --==================================================
+    DELETE
+    FROM xxcok_bm_sales_rep_work    xbsrw
+    WHERE xbsrw.request_id = gn_param_request_id
+    AND   xbsrw.output_num = NVL(gn_param_output_num, xbsrw.output_num)
+    AND   xbsrw.output_rep = ct_rep_id_bm
+    ;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_retcode := lv_end_retcode;
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END delete_xbsrw;
+--
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   /**********************************************************************************
    * Procedure Name   : delete_xrbpd
    * Description      : ワークテーブルデータ削除(A-7)
@@ -413,7 +540,10 @@ AS
     --==================================================
     -- SVFコンカレント起動
     --==================================================
-    xxccp_svfcommon_pkg.submit_svf_request(
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--    xxccp_svfcommon_pkg.submit_svf_request(
+    xxccp_svfcommon_excl_pkg.submit_svf_request(
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
       ov_errbuf                => lv_errbuf                 -- エラーバッファ
     , ov_retcode               => lv_retcode                -- リターンコード
     , ov_errmsg                => lv_errmsg                 -- エラーメッセージ
@@ -430,6 +560,9 @@ AS
     , iv_printer_name          => NULL                      -- プリンタ名
     , iv_request_id            => TO_CHAR( cn_request_id )  -- 要求ID
     , iv_nodata_msg            => NULL                      -- データなしメッセージ
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    , iv_excl_code             => cv_excl_code              -- SVF専用マネージャコード
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     );
     IF( lv_retcode <> cv_status_normal ) THEN
       lv_outmsg  := xxccp_common_pkg.get_msg(
@@ -589,6 +722,9 @@ AS
                                      ELSE NULL END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
       WHERE xrbpd.request_id       = cn_request_id
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+        AND xrbpd.output_num       = gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
         AND xrbpd.payment_code     = g_summary_tab(i).payment_code
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai ADD START
         AND xrbpd.contact_base_code = g_summary_tab(i).contact_base_code
@@ -775,6 +911,9 @@ AS
     , start_tran_date                  -- 初回取引日
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    , output_num                       -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -914,6 +1053,9 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
          , hca1.start_tran_date                                 AS start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , gt_upload_output_num                                 AS output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1005,7 +1147,10 @@ AS
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_1
-      AND pvsa.attribute5              = gv_param_base_code
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--      AND pvsa.attribute5              = gv_param_base_code
+      AND pvsa.attribute5              = NVL( gv_param_base_code, pvsa.attribute5 )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
 -- 2010/03/02 Ver.1.8 [障害E_本稼動_01299] SCS S.Moriyama REPAIR START
 ---- 2009/05/11 Ver.1.3 [障害T1_0866] SCS K.Yamaguchi REPAIR START
 ----      AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
@@ -1026,6 +1171,9 @@ AS
                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
 -- 2010/03/02 Ver.1.8 [障害E_本稼動_01299] SCS S.Moriyama REPAIR END
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xbb.cust_code                = NVL( gt_upload_cust_code, xbb.cust_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
@@ -1083,6 +1231,9 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
            , hca1.start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           , gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -1186,6 +1337,9 @@ AS
          , pvsa.bank_charge_bearer                              AS bank_charge_bearer
          , xbb.balance_cancel_date                              AS balance_cancel_date
          , hca1.start_tran_date                                 AS start_tran_date
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , gt_upload_output_num                                 AS output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1259,10 +1413,16 @@ AS
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_1
-      AND pvsa.attribute5              = gv_param_base_code
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--      AND pvsa.attribute5              = gv_param_base_code
+      AND pvsa.attribute5              = NVL( gv_param_base_code, pvsa.attribute5 )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
       AND xbb.expect_payment_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xbb.cust_code                = NVL( gt_upload_cust_code, xbb.cust_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
       AND gv_belong_base_cd            = gv_dept_jimu   -- 実行ユーザの所属部門が事務センタ
       AND xbb.publication_date         IS NULL          -- 販手残高テーブル．案内書発効日がNULL
@@ -1297,6 +1457,9 @@ AS
            , pvsa.bank_charge_bearer
            , xbb.balance_cancel_date
            , hca1.start_tran_date
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           , gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -1371,6 +1534,9 @@ AS
     , start_tran_date                  -- 初回取引日
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    , output_num                       -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -1510,6 +1676,9 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
          , hca1.start_tran_date                                 AS start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , gt_upload_output_num                                 AS output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1601,7 +1770,10 @@ AS
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_2
-      AND pvsa.attribute5              = gv_param_base_code
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--      AND pvsa.attribute5              = gv_param_base_code
+      AND pvsa.attribute5              = NVL( gv_param_base_code, pvsa.attribute5 )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
 -- 2010/03/02 Ver.1.8 [障害E_本稼動_01299] SCS S.Moriyama REPAIR START
 --      AND xbb.fb_interface_date  BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
 --                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
@@ -1609,6 +1781,9 @@ AS
                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
 -- 2010/03/02 Ver.1.8 [障害E_本稼動_01299] SCS S.Moriyama REPAIR END
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xbb.cust_code                = NVL( gt_upload_cust_code, xbb.cust_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/05/11 Ver.1.3 [障害T1_0866] SCS K.Yamaguchi REPAIR START
 --      AND xbb.edi_interface_status     = '1'
       AND xbb.fb_interface_status      = '1'
@@ -1670,6 +1845,9 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
            , hca1.start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           , gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -1773,6 +1951,9 @@ AS
          , pvsa.bank_charge_bearer                              AS bank_charge_bearer
          , xbb.balance_cancel_date                              AS balance_cancel_date
          , hca1.start_tran_date                                 AS start_tran_date
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , gt_upload_output_num                                 AS output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -1846,11 +2027,17 @@ AS
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_2
-      AND pvsa.attribute5              = gv_param_base_code
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--      AND pvsa.attribute5              = gv_param_base_code
+      AND pvsa.attribute5              = NVL( gv_param_base_code, pvsa.attribute5 )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
       AND gv_belong_base_cd            = gv_dept_jimu  --実行ユーザの所属部門が事務センタ
       AND xbb.expect_payment_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )  --支払予定日
                                         AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xbb.cust_code                = NVL( gt_upload_cust_code, xbb.cust_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
       AND xbb.fb_interface_status      = '0'           --FB未連携
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
     GROUP BY xbb.supplier_code
@@ -1884,6 +2071,9 @@ AS
            , pvsa.bank_charge_bearer
            , xbb.balance_cancel_date
            , hca1.start_tran_date
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           , gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -1958,6 +2148,9 @@ AS
     , start_tran_date                  -- 初回取引日
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    , output_num                       -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -2112,6 +2305,9 @@ AS
          , hca1.start_tran_date                                 AS start_tran_date 
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , gt_upload_output_num                                 AS output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -2217,7 +2413,10 @@ AS
       AND pvsa.attribute4              = cv_bm_type_3
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
 --      AND xbb.base_code                = gv_param_base_code
-      AND hca1.base_code                = gv_param_base_code
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--      AND hca1.base_code                = gv_param_base_code
+      AND hca1.base_code               = NVL( gv_param_base_code, hca1.base_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
 -- 2010/03/02 Ver.1.8 [障害E_本稼動_01299] SCS S.Moriyama REPAIR START
 --      AND xbb.balance_cancel_date BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
@@ -2226,6 +2425,9 @@ AS
                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
 -- 2010/03/02 Ver.1.8 [障害E_本稼動_01299] SCS S.Moriyama REPAIR END
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xbb.cust_code                = NVL( gt_upload_cust_code, xbb.cust_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
       AND xbb.expect_payment_amt_tax   = 0
       AND xbb.payment_amt_tax          > 0
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
@@ -2293,6 +2495,9 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
            , hca1.start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           , gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -2396,6 +2601,9 @@ AS
          , cv_bank_charge_bearer                                AS bank_charge_bearer  --振込手数料を出力しないために当方とする
          , xbb.balance_cancel_date                              AS balance_cancel_date
          , hca1.start_tran_date                                 AS start_tran_date 
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , gt_upload_output_num                                 AS output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -2475,11 +2683,17 @@ AS
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_3
-      AND hca1.base_code               = gv_param_base_code
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--      AND hca1.base_code               = gv_param_base_code
+      AND hca1.base_code               = NVL( gv_param_base_code, hca1.base_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
       AND gv_belong_base_cd            = gv_dept_jimu  --実行ユーザが事務センタ
       AND xbb.expect_payment_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )  --支払予定日が対象内
                                         AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xbb.cust_code                = NVL( gt_upload_cust_code, xbb.cust_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
       AND xbb.expect_payment_amt_tax   > 0  --未消込である
       AND xbb.payment_amt_tax          = 0  --未消込である
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
@@ -2513,6 +2727,9 @@ AS
            , pvsa.bank_charge_bearer
            , xbb.balance_cancel_date
            , hca1.start_tran_date
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           , gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -2587,6 +2804,9 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
     , start_tran_date                  -- 初回取引日
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    , output_num                       -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     )
     SELECT xbb.supplier_code                                    AS payment_code
 -- Start 2009/05/25 Ver_1.4 T1_1168 M.Hiruta
@@ -2738,6 +2958,9 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
          , hca1.start_tran_date                                 AS start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , gt_upload_output_num                                 AS output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -2843,11 +3066,17 @@ AS
       AND pvsa.attribute4              = cv_bm_type_4
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD START
 --      AND xbb.base_code                = gv_param_base_code
-      AND hca1.base_code               = gv_param_base_code
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--      AND hca1.base_code               = gv_param_base_code
+      AND hca1.base_code               = NVL( gv_param_base_code, hca1.base_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
 -- 2011/02/03 Ver.1.11 [障害E_本稼動_05409] SCS S.Ochiai UPD END
       AND xbb.publication_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xbb.cust_code                = NVL( gt_upload_cust_code, xbb.cust_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD END
@@ -2913,6 +3142,9 @@ AS
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD START
            , hca1.start_tran_date
 -- 2011/01/05 Ver.1.10 [障害E_本稼動_01950] SCS S.Niki ADD END
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           , gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- 2009/12/15 Ver.1.7 [障害E_本稼動_00477] SCS K.Nakamura ADD START
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
@@ -3016,6 +3248,9 @@ AS
          , pvsa.bank_charge_bearer                              AS bank_charge_bearer
          , xbb.balance_cancel_date                              AS balance_cancel_date
          , hca1.start_tran_date                                 AS start_tran_date
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+         , gt_upload_output_num                                 AS output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     FROM xxcok_cond_bm_support    xcbs -- 条件別販手販協テーブル
        , xxcok_backmargin_balance xbb  -- 販手残高テーブル
        , po_vendors               pv   -- 仕入先マスタ
@@ -3095,10 +3330,16 @@ AS
       AND xcbs.calc_type               = flv2.calc_type
       AND pvsa.org_id                  = gn_org_id
       AND pvsa.attribute4              = cv_bm_type_4
-      AND hca1.base_code               = gv_param_base_code
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--      AND hca1.base_code               = gv_param_base_code
+      AND hca1.base_code               = NVL( gv_param_base_code, hca1.base_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
       AND xbb.expect_payment_date   BETWEEN TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm )
                                      AND LAST_DAY( TO_DATE( gv_param_target_ym, cv_format_fxrrrrmm ) )
       AND xbb.supplier_code            = NVL( gv_param_vendor_code, xbb.supplier_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND xbb.cust_code                = NVL( gt_upload_cust_code, xbb.cust_code )
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
       AND NVL( xbb.resv_flag, 'N' )    != 'Y'
       AND gv_belong_base_cd            = gv_dept_jimu   -- 実行ユーザの所属部門が事務センタ
       AND xbb.publication_date         IS NULL          -- 販手残高テーブル．案内書発効日がNULL
@@ -3132,6 +3373,9 @@ AS
            , pvsa.bank_charge_bearer
            , xbb.balance_cancel_date
            , hca1.start_tran_date
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           , gt_upload_output_num
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     HAVING   SUM( CASE xcbs.calc_type
                   WHEN '10' THEN
                     xcbs.cond_bm_amt_tax
@@ -3169,6 +3413,10 @@ AS
   , iv_base_code                   IN  VARCHAR2        -- 問合せ先
   , iv_target_ym                   IN  VARCHAR2        -- 案内書発行年月
   , iv_vendor_code                 IN  VARCHAR2        -- 支払先
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  , in_request_id                  IN  NUMBER          -- 要求ID
+  , in_output_num                  IN  NUMBER          -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   )
   IS
     --==================================================
@@ -3228,8 +3476,37 @@ AS
     lb_retcode := xxcok_common_pkg.put_message_f(
                     in_which                => FND_FILE.LOG
                   , iv_message              => lv_outmsg
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--                  , in_new_line             => 1
+                  , in_new_line             => 0
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
+                  );
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    -- 要求ID
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application          => cv_appl_short_name_cok
+                  , iv_name                 => cv_msg_cok_10545
+                  , iv_token_name1          => cv_tkn_request_id
+                  , iv_token_value1         => TO_CHAR(in_request_id)
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                => FND_FILE.LOG
+                  , iv_message              => lv_outmsg
+                  , in_new_line             => 0
+                  );
+    -- 出力番号
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application          => cv_appl_short_name_cok
+                  , iv_name                 => cv_msg_cok_10546
+                  , iv_token_name1          => cv_tkn_output_num
+                  , iv_token_value1         => TO_CHAR(in_output_num)
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                => FND_FILE.LOG
+                  , iv_message              => lv_outmsg
                   , in_new_line             => 1
                   );
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     --==================================================
     -- 業務処理日付取得
     --==================================================
@@ -3527,6 +3804,11 @@ AS
     gv_param_base_code   := iv_base_code;
     gv_param_target_ym   := iv_target_ym;
     gv_param_vendor_code := iv_vendor_code;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    gn_param_request_id  := in_request_id;
+    gn_param_output_num  := in_output_num;
+    gt_upload_output_num := ct_output_num_init;    --カレント出力番号初期化
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -3561,6 +3843,10 @@ AS
   , iv_base_code                   IN  VARCHAR2        -- 問合せ先
   , iv_target_ym                   IN  VARCHAR2        -- 案内書発行年月
   , iv_vendor_code                 IN  VARCHAR2        -- 支払先
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  , in_request_id                  IN  NUMBER          -- 要求ID
+  , in_output_num                  IN  NUMBER          -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   )
   IS
     --==================================================
@@ -3592,21 +3878,105 @@ AS
     , iv_base_code            => iv_base_code          -- 問合せ先
     , iv_target_ym            => iv_target_ym          -- 案内書発行年月
     , iv_vendor_code          => iv_vendor_code        -- 支払先
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    , in_request_id           => in_request_id         -- 要求ID
+    , in_output_num           => in_output_num         -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     );
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
-    --==================================================
-    -- データ取得(A-2)・ワークテーブルデータ登録(A-3)
-    --==================================================
-    insert_xrbpd(
-      ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-    , ov_retcode              => lv_retcode               -- リターン・コード
-    , ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--    --==================================================
+--    -- データ取得(A-2)・ワークテーブルデータ登録(A-3)
+--    --==================================================
+--    insert_xrbpd(
+--      ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+--    , ov_retcode              => lv_retcode               -- リターン・コード
+--    , ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+--    );
+--    IF( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    END IF;
+    IF in_request_id IS NOT NULL THEN
+      --アップロード起動の場合
+      --==================================================
+      -- 出力対象ワーク取得(A-8)
+      --==================================================
+      OPEN  g_upload_cur;
+      FETCH g_upload_cur BULK COLLECT INTO g_upload_tab;
+      CLOSE g_upload_cur;
+      --==================================================
+      -- アップロード出力対象件数分ループ
+      --==================================================
+      << g_upload_tab_loop >>
+      FOR i IN 1 .. g_upload_tab.COUNT LOOP
+        --出力番号が変わった場合
+        IF gt_upload_output_num <> g_upload_tab(i).output_num
+        AND gt_upload_output_num <> ct_output_num_init THEN
+          --==================================================
+          -- ワークテーブル支払先毎集約データ取得(A-4)
+          --==================================================
+          get_xrbpd(
+            ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+          , ov_retcode              => lv_retcode               -- リターン・コード
+          , ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --==================================================
+          -- 支払案内書（明細）帳票ワークテーブル更新(A-5)
+          --==================================================
+          update_xrbpd(
+            ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+          , ov_retcode              => lv_retcode               -- リターン・コード
+          , ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+        END IF;
+        --==================================================
+        -- 検索条件、登録値更新(A-9)
+        --==================================================
+        gv_param_base_code   := NULL;
+        gv_param_target_ym   := SUBSTRB(TO_CHAR(g_upload_tab(i).target_ym), 1, 4) || cv_slash || SUBSTRB(TO_CHAR(g_upload_tab(i).target_ym), 5, 2);
+        gv_param_vendor_code := g_upload_tab(i).vendor_code;
+        gt_upload_cust_code  := g_upload_tab(i).customer_code;
+        gt_upload_output_num := g_upload_tab(i).output_num;
+        --==================================================
+        -- データ取得(A-2)・ワークテーブルデータ登録(A-3)
+        --==================================================
+        insert_xrbpd(
+          ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+        , ov_retcode              => lv_retcode               -- リターン・コード
+        , ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      END LOOP;
+      --
+    ELSE
+      --画面起動の場合
+      --検索値設定
+      gt_upload_cust_code := NULL;
+      --==================================================
+      -- データ取得(A-2)・ワークテーブルデータ登録(A-3)
+      --==================================================
+      insert_xrbpd(
+        ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+      , ov_retcode              => lv_retcode               -- リターン・コード
+      , ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
     END IF;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara MOD END
     --==================================================
     -- ワークテーブル支払先毎集約データ取得(A-4)
     --==================================================
@@ -3655,6 +4025,21 @@ AS
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    IF in_request_id IS NOT NULL THEN
+      --==================================================
+      -- 出力対象ワーク削除(A-10)
+      --==================================================
+      delete_xbsrw(
+        ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+      , ov_retcode              => lv_retcode               -- リターン・コード
+      , ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -3688,6 +4073,10 @@ AS
   , iv_base_code                   IN  VARCHAR2        -- 問合せ先
   , iv_target_ym                   IN  VARCHAR2        -- 案内書発行年月
   , iv_vendor_code                 IN  VARCHAR2        -- 支払先
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  , in_request_id                  IN  NUMBER          -- 要求ID
+  , in_output_num                  IN  NUMBER          -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
   )
   IS
     --==================================================
@@ -3727,6 +4116,10 @@ AS
     , iv_base_code            => iv_base_code          -- 問合せ先
     , iv_target_ym            => iv_target_ym          -- 案内書発行年月
     , iv_vendor_code          => iv_vendor_code        -- 支払先
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    , in_request_id           => in_request_id         -- 要求ID
+    , in_output_num           => in_output_num         -- 出力番号
+-- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD END
     );
     --==================================================
     -- エラー出力
