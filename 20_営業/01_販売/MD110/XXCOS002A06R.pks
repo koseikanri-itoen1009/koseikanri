@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(spec)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -21,6 +21,8 @@ AS
  * 2012/02/16    1.0   K.Kiriu          main新規作成
  * 2013/11/12    1.2   T.Ishiwata       E_本稼働_11134対応
  *                                        入力パラメータに「納品日FROM」と「納品日TO」を追加する
+ * 2018/07/06    1.3   K.Nara           E_本稼働_15005対応
+ *                                        事務センター案件（支払案内書、販売報告書一括出力）
  *
  *****************************************************************************************/
 --
@@ -49,6 +51,10 @@ AS
     ,iv_vendor_code_01   IN  VARCHAR2  -- 15.仕入先コード1(仕入先指定時のみ)
     ,iv_vendor_code_02   IN  VARCHAR2  -- 16.仕入先コード2(仕入先指定時のみ)
     ,iv_vendor_code_03   IN  VARCHAR2  -- 17.仕入先コード3(仕入先指定時のみ)
+-- Ver.1.3 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    ,in_request_id       IN  NUMBER    -- 18.要求ID(アップロード時のみ)
+    ,in_output_num       IN  NUMBER    -- 19.出力番号(アップロード時のみ)
+-- Ver.1.3 [障害E_本稼動_15005] SCSK K.Nara ADD END
   );
 END XXCOS002A06R;
 /
