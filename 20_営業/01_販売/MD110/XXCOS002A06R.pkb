@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A06R(body)
  * Description      : 自販機販売報告書
  * MD.050           : 自販機販売報告書 <MD050_COS_002_A06>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,6 +19,8 @@ AS
  *  ins_rep_work_data      帳票ワークテーブル作成処理(A-5)
  *  execute_svf            SVF起動処理(A-6)
  *  del_rep_work_data      帳票ワークテーブル削除処理(A-7)
+ *  del_target_work_data   出力対象ワーク削除処理(A-11)
+ *  del_dup_tmp_cust       顧客情報一時表重複削除(A-9)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -35,6 +37,8 @@ AS
  *                                        事務センター対応により問合せ拠点指定を追加
  * 2018/01/05    1.4   H.Maeda          E_本稼働_14793対応
  *                                        自販機販売報告書の仕入先指定時の顧客抽出条件を追加
+ * 2018/07/17    1.5   K.Nara           E_本稼働_15005対応
+ *                                        事務センター案件（支払案内書、販売報告書一括出力）
  *
  *****************************************************************************************/
 --
@@ -108,6 +112,9 @@ AS
   cv_vrq_name              CONSTANT VARCHAR2(16)  := 'XXCOS002A06S.vrq';          -- クエリー名
   cv_extension_pdf         CONSTANT VARCHAR2(4)   := '.pdf';                      -- 拡張子(PDF)
   cv_output_mode_pdf       CONSTANT VARCHAR2(1)   := '1';                         -- 出力区分
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  cv_excl_code             CONSTANT VARCHAR2(10)  := 'EXCL1';                     -- SVF専用マネージャコード
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
 --
   --条件等で使用
   cv_bus_low_type_24       CONSTANT VARCHAR2(2)   := '24';                        -- 業態小分類(フルVD消化)
@@ -115,6 +122,9 @@ AS
   cv_1                     CONSTANT VARCHAR2(1)   := '1';                         -- VARCHAR型汎用固定値1
   cv_2                     CONSTANT VARCHAR2(1)   := '2';                         -- VARCHAR型汎用固定値2
   cv_3                     CONSTANT VARCHAR2(1)   := '3';                         -- VARCHAR型汎用固定値3
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  cv_4                     CONSTANT VARCHAR2(1)   := '4';                         -- VARCHAR型汎用固定値4
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
 -- Ver.1.3 Add Start
   cv_10                    CONSTANT VARCHAR2(2)   := '10';                        -- VARCHAR型汎用固定値10
 -- Ver.1.3 Add End
@@ -153,6 +163,9 @@ AS
 -- Ver.1.3 Add Start
   cv_msg_param_base        CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14367';          -- メッセージ出力(問合せ拠点)
 -- Ver.1.3 Add End
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  cv_msg_param_upload      CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14368';          -- メッセージ出力(アップロード)
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
   --メッセージトークン用
   cv_msg_tkn_org           CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00047';          -- MO:営業単位
   cv_msg_tkn_organization  CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00048';          -- XXCOI:在庫組織コード
@@ -162,6 +175,9 @@ AS
   cv_msg_tkn_tmp_table     CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14357';          -- 自販機販売報告書顧客情報一時表
   cv_msg_tkn_rep_table     CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14358';          -- 自販機販売報告書帳票ワークテーブル
   cv_msg_tkn_emp_table     CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14360';          -- 担当営業
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  cv_msg_tkn_target_table  CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14369';          -- 支払案内書、販売報告書出力対象ワーク
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
   cv_msg_tkn_svf_api       CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-00041';          -- SVF起動API
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD START
   cv_msg_date_from         CONSTANT VARCHAR2(16)  := 'APP-XXCOS1-14365';          -- 納品日FROM
@@ -201,6 +217,10 @@ AS
   cv_tkn_date_from         CONSTANT VARCHAR2(15)  := 'DATE_FROM';                 -- 文字列「納品日FROM」
   cv_tkn_date_to           CONSTANT VARCHAR2(15)  := 'DATE_TO';                   -- 文字列「納品日TO」
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  cv_tkn_request_id        CONSTANT VARCHAR2(15)  := 'REQUEST_ID';                -- 要求ID
+  cv_tkn_output_num        CONSTANT VARCHAR2(15)  := 'OUTPUT_NUM';                -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
 --
   --プロファイル
   cv_prf_org               CONSTANT VARCHAR2(6)   := 'ORG_ID';                    -- MO:営業単位
@@ -211,6 +231,11 @@ AS
 --
   --LANGUAGE
   ct_lang                  CONSTANT mtl_category_sets_tl.language%TYPE := USERENV( 'LANG' );
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  --アップロード指定関連
+  ct_rep_id_sales          CONSTANT xxcok_bm_sales_rep_work.output_rep%TYPE := 2;   -- 販売報告書
+  ct_output_num_init       CONSTANT xxcok_bm_sales_rep_work.output_num%TYPE := -1;  -- カレント出力番号初期値
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
   --業務日付
   gd_proc_date             CONSTANT DATE := TRUNC( xxccp_common_pkg2.get_process_date );
 --
@@ -227,6 +252,10 @@ AS
     ,dlv_date_to       DATE                                    -- 納品日TO
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
     ,sales_base_code   xxcmm_cust_accounts.sale_base_code%TYPE -- 売上拠点コード
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    ,request_id        NUMBER                                  -- 要求ID
+    ,output_num        NUMBER                                  -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
   );
 --
   -- ===============================
@@ -251,6 +280,24 @@ AS
   g_sales_tab      g_sales_ttype;
   g_sales_tab_work g_sales_ttype;
 --
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  --==================================================
+  -- ユーザー定義グローバルカーソル
+  --==================================================
+  --アップロード出力対象取得
+  CURSOR g_upload_cur IS
+    SELECT xbsrw.output_num                    AS output_num
+          ,xbsrw.target_ym                     AS target_ym
+          ,xbsrw.vendor_code                   AS vendor_code
+          ,xbsrw.customer_code                 AS customer_code
+    FROM  xxcok_bm_sales_rep_work    xbsrw
+    WHERE xbsrw.request_id = g_input_rec.request_id
+    AND   xbsrw.output_num = NVL(g_input_rec.output_num, xbsrw.output_num)
+    AND   xbsrw.output_rep = ct_rep_id_sales
+    ORDER BY xbsrw.output_num
+    ;
+--
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -259,6 +306,13 @@ AS
   gt_apprication_id    fnd_application.application_id%TYPE;       --アプリケーションID
   gt_category_set_id   mtl_category_sets_tl.category_set_id%TYPE; --カテゴリセットID
   gn_warn              NUMBER;                                    --処理警告終了用
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  TYPE g_upload_ttype     IS TABLE OF g_upload_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  g_upload_tab            g_upload_ttype;
+  gt_upload_output_num    xxcok_bm_sales_rep_work.output_num%TYPE    DEFAULT NULL;  -- 出力番号
+  gt_upload_cust_code     xxcok_bm_sales_rep_work.customer_code%TYPE DEFAULT NULL;  -- 顧客
+  gt_upload_vendor_code   xxcok_bm_sales_rep_work.vendor_code%TYPE   DEFAULT NULL;  -- 支払先
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -439,6 +493,28 @@ AS
         ,buff   => lv_param_msg
       );
 -- Ver.1.3 Add End
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    --実行区分が4（アップロード指定で実行時）の場合
+    ELSIF ( g_input_rec.execute_type = cv_4 ) THEN
+      --メッセージ編集
+      lv_param_msg := xxccp_common_pkg.get_msg(
+                         iv_application   => cv_application                -- アプリケーション
+                        ,iv_name          => cv_msg_param_upload           -- メッセージコード
+                        ,iv_token_name1   => cv_tkn_manager_flag           -- トークンコード１
+                        ,iv_token_value1  => g_input_rec.manager_flag      -- 管理者フラグ
+                        ,iv_token_name2   => cv_tkn_proc_type              -- トークンコード２
+                        ,iv_token_value2  => lv_proc_type_name             -- 実行区分
+                        ,iv_token_name3   => cv_tkn_request_id                -- トークンコード３
+                        ,iv_token_value3  => TO_CHAR(g_input_rec.request_id)  -- 要求ID
+                        ,iv_token_name4   => cv_tkn_output_num                -- トークンコード４
+                        ,iv_token_value4  => TO_CHAR(g_input_rec.output_num)  -- 出力番号
+                      );
+      --ログへ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_param_msg
+      );
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
     END IF;
 --
     --ログ空行
@@ -705,6 +781,9 @@ AS
       --リターンコードにエラーを設定
       ov_retcode := cv_status_warn;
     END IF;
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    IF g_input_rec.request_id IS NULL THEN
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
     --=========================================
     -- 期間パラメータの入力チェック
     --=========================================
@@ -793,6 +872,9 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
     END IF;
 --
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    END IF;
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -932,6 +1014,9 @@ AS
             ,vendor_address2      -- 住所２（送付先）
             ,date_from            -- 対象期間開始日
             ,date_to              -- 対象期間終了日
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+            ,output_num           -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
           )
           SELECT /*+
                    USE_NL(hca xca hp)
@@ -1063,6 +1148,9 @@ AS
                      g_input_rec.dlv_date_to
                  END                        date_to             -- 対象期間終了日
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD END
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+                ,gt_upload_output_num           -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
           FROM   hz_cust_accounts           hca       -- 顧客マスタ(顧客)
                 ,xxcmm_cust_accounts        xca       -- 顧客追加情報(顧客)
                 ,hz_parties                 hp        -- パーティマスタ(顧客)
@@ -1169,6 +1257,9 @@ AS
             ,vendor_address2      -- 住所２（送付先）
             ,date_from            -- 対象期間開始日
             ,date_to              -- 対象期間終了日
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+            ,output_num           -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
           )
           SELECT /*+
                    USE_NL(hca xca hp)
@@ -1265,6 +1356,9 @@ AS
                      g_input_rec.dlv_date_to
                  END                        date_to             -- 対象期間終了日
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 MOD END
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+                ,gt_upload_output_num           -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
           FROM   hz_cust_accounts           hca       -- 顧客マスタ(顧客)
                 ,xxcmm_cust_accounts        xca       -- 顧客追加情報(顧客)
                 ,hz_parties                 hp        -- パーティマスタ(顧客)
@@ -1371,6 +1465,9 @@ AS
           ,vendor_address2      -- 住所２（送付先）
           ,date_from            -- 対象期間開始日
           ,date_to              -- 対象期間終了日
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+          ,output_num           -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
         )
         SELECT /*+
                  LEADING(pvs)
@@ -1435,6 +1532,9 @@ AS
                    -- 入力パラメータ「納品日TO」
                    g_input_rec.dlv_date_to
                END                        date_to             -- 対象期間終了日
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+              ,gt_upload_output_num           -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
         FROM   hz_cust_accounts           hca       -- 顧客マスタ(顧客)
               ,xxcmm_cust_accounts        xca       -- 顧客追加情報(顧客)
               ,hz_parties                 hp        -- パーティマスタ(顧客)
@@ -1479,6 +1579,349 @@ AS
           RAISE insert_expt;
       END;
 -- Ver.1.3 Add End
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    -- =======================================
+    -- 実行区分が4（アップロード指定で実行）の場合
+    -- =======================================
+    ELSIF ( g_input_rec.execute_type = cv_4 ) THEN
+--
+      IF gt_upload_cust_code IS NOT NULL THEN
+        --顧客指定の場合（仕入先＋顧客指定含む。その場合は顧客指定扱い）
+        BEGIN
+          -----------------------------------------
+          -- 自販機販売報告書顧客情報一時表作成
+          -----------------------------------------
+          INSERT INTO xxcos_tmp_vd_cust_info (
+             customer_code        -- 顧客コード
+            ,customer_name        -- 顧客名称
+            ,party_id             -- パーティID
+            ,sales_base_name      -- 売上拠点名称
+            ,sales_base_city      -- 都道府県市区（売上拠点
+            ,sales_base_address1  -- 住所１（売上拠点）
+            ,sales_base_address2  -- 住所２（売上拠点）
+            ,sales_base_tel       -- 電話番号（売上拠点）
+            ,vendor_code          -- 仕入先コード
+            ,vendor_name          -- 仕入先名称（送付先）
+            ,vendor_zip           -- 郵便番号（送付先）
+            ,vendor_address1      -- 住所１（送付先）
+            ,vendor_address2      -- 住所２（送付先）
+            ,date_from            -- 対象期間開始日
+            ,date_to              -- 対象期間終了日
+            ,output_num           -- 出力番号
+          )
+          SELECT /*+
+                   USE_NL(hca xca hp)
+                   USE_NL(xac hcab hpb)
+                 */
+                 hca.account_number         customer_code       -- 顧客コード
+                ,hp.party_name              customer_name       -- 顧客名称
+                ,hp.party_id                party_id            -- パーティID
+                ,hpb.party_name             sales_base_name     -- 売上拠点名称
+                ,hlb.state || hlb.city      sales_base_city     -- 都道府県市区(売上拠点)
+                ,hlb.address1               sales_base_address1 -- 住所１(売上拠点)
+                ,hlb.address2               sales_base_address2 -- 住所２(売上拠点)
+                ,hlb.address_lines_phonetic sales_base_tel      -- 電話番号(売上拠点)
+                ,pv.segment1                vendor_code         -- 仕入先コード
+                ,CASE
+                  -- 仕入先がある場合
+                  WHEN ( pv.segment1 IS NOT NULL ) THEN
+                    pvs.attribute1
+                  -- 仕入先がなく、業態小分類が25の場合
+                  WHEN ( pv.segment1 IS NULL AND xca.business_low_type = cv_bus_low_type_25 ) THEN
+                    SUBSTRB( hp.party_name, 1, 240 )
+                  ELSE
+                    NULL
+                 END                        vendor_name         -- 仕入先名称
+                ,CASE
+                  -- 仕入先がある場合
+                  WHEN ( pv.segment1 IS NOT NULL ) THEN
+                    pvs.zip
+                  -- 仕入先がなく、業態小分類が25の場合
+                  WHEN ( pv.segment1 IS NULL AND xca.business_low_type = cv_bus_low_type_25 ) THEN
+                    hl.postal_code
+                  ELSE
+                    NULL
+                 END                        zip                 -- 郵便番号
+                ,CASE
+                  -- 仕入先がある場合
+                  WHEN ( pv.segment1 IS NOT NULL ) THEN
+                    pvs.address_line1
+                  -- 仕入先がなく、業態小分類が25の場合
+                  WHEN ( pv.segment1 IS NULL AND xca.business_low_type = cv_bus_low_type_25 ) THEN
+                    SUBSTRB( hl.state || hl.city || hl.address1 , 1, 240 )
+                  ELSE
+                    NULL
+                 END                        address_line1       -- 住所１
+                ,CASE
+                  -- 仕入先がある場合
+                  WHEN ( pv.segment1 IS NOT NULL ) THEN
+                    pvs.address_line2
+                  -- 仕入先がなく、業態小分類が25の場合
+                  WHEN ( pv.segment1 IS NULL AND xca.business_low_type = cv_bus_low_type_25 ) THEN
+                    hl.address2
+                  ELSE
+                    NULL
+                 END                        address_line2       -- 住所２
+                ,CASE
+                   -- 入力パラメータ「年月」で検索
+                   WHEN g_input_rec.dlv_date_from IS NULL THEN
+                     --
+                     CASE
+                       -- 末締の場合(NULL=販売手数料なしの場合も)
+                       WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                         -- 指定月の1日
+                         ld_first_date
+                       -- 2月の28日,29日締考慮
+                       WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
+                         TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
+                                  || xcm.close_day_code, cv_date_yyyymmdd) + 1
+                       -- 末締以外
+                       ELSE
+                         -- 前月締日+1日
+                         ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+                     END
+                   -- 入力パラメータ「納品日FROM/TO」で検索
+                   ELSE
+                     -- 入力パラメータ「納品日FROM」
+                     g_input_rec.dlv_date_from 
+                 END                        date_from           -- 対象期間開始日
+                ,CASE
+                   -- 入力パラメータ「年月」で検索
+                   WHEN g_input_rec.dlv_date_to IS NULL THEN
+                     CASE
+                       -- 末締の場合(NULL=販売手数料なしの場合も)
+                       WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                         -- 指定月の最終日
+                         ld_last_date
+                       --2月の28日,29日締考慮
+                       WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
+                         -- 指定月の最終日(2月28 or 29)
+                         ld_last_date
+                       -- 末締以外
+                       ELSE
+                         --指定月の締日
+                         TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+                     END
+                   -- 入力パラメータ「納品日FROM/TO」で検索
+                   ELSE
+                     -- 入力パラメータ「納品日TO」
+                     g_input_rec.dlv_date_to
+                 END                        date_to             -- 対象期間終了日
+                ,gt_upload_output_num           -- 出力番号
+          FROM   hz_cust_accounts           hca       -- 顧客マスタ(顧客)
+                ,xxcmm_cust_accounts        xca       -- 顧客追加情報(顧客)
+                ,hz_parties                 hp        -- パーティマスタ(顧客)
+                ,hz_cust_acct_sites_all     hcasa     -- 顧客所在地マスタ(顧客)
+                ,hz_party_sites             hps       -- パーティサイトマスタ(顧客)
+                ,hz_locations               hl        -- 顧客事業所マスタ(顧客)
+                ,xxcso_contract_managements xcm       -- 契約管理
+                ,hz_cust_accounts           hcab      -- 顧客マスタ(売上拠点)
+                ,hz_parties                 hpb       -- パーティマスタ(売上拠点)
+                ,hz_cust_acct_sites_all     hcasab    -- 顧客所在地マスタ(売上拠点)
+                ,hz_party_sites             hpsb      -- パーティサイトマスタ(売上拠点)
+                ,hz_locations               hlb       -- 顧客事業所マスタ(売上拠点)
+                ,po_vendors                 pv        -- 仕入先マスタ(送付先)
+                ,po_vendor_sites_all        pvs       -- 仕入先サイト(送付先)
+          WHERE  hca.account_number            = gt_upload_cust_code      --指定された顧客
+          AND    hca.cust_account_id           = xca.customer_id
+          AND    hca.party_id                  = hp.party_id
+          AND    hca.cust_account_id           = hcasa.cust_account_id
+          AND    hcasa.party_site_id           = hps.party_site_id
+          AND    hcasa.org_id                  = gn_org_id
+          AND    hps.location_id               = hl.location_id
+          AND    hca.cust_account_id           = xcm.install_account_id
+          AND    xcm.contract_management_id    = (
+                   SELECT /*+
+                            INDEX( xcms xxcso_contract_managements_n06 )
+                          */
+                          MAX(xcms.contract_management_id) contract_management_id
+                   FROM   xxcso_contract_managements xcms
+                   WHERE  xcms.install_account_id     = hca.cust_account_id
+                   AND    xcms.status                 = cv_1
+                   AND    xcms.cooperate_flag         = cv_1
+                 )                                   --確定済・マスタ連携済の最新契約
+          AND    xca.sale_base_code            = hcab.account_number
+          AND    hcab.party_id                 = hpb.party_id
+          AND    hcab.cust_account_id          = hcasab.cust_account_id
+          AND    hcasab.party_site_id          = hpsb.party_site_id
+          AND    hcasab.org_id                 = gn_org_id
+          AND    hpsb.location_id              = hlb.location_id
+          AND    xca.contractor_supplier_code  = pv.segment1(+)
+          AND    pv.vendor_id                  = pvs.vendor_id(+)
+          AND    pv.segment1                   = pvs.vendor_site_code(+)
+          AND    pvs.org_id(+)                 = gn_org_id
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_sqlerrm := SUBSTRB( SQLERRM, 1, 5000 );  --SQLERRM格納
+            RAISE insert_expt;
+        END;
+--
+      ELSIF gt_upload_cust_code IS NULL
+        AND gt_upload_vendor_code IS NOT NULL THEN
+        --仕入先指定の場合
+        BEGIN
+          -----------------------------------------
+          -- 自販機販売報告書顧客情報一時表作成
+          -----------------------------------------
+          INSERT INTO xxcos_tmp_vd_cust_info (
+             customer_code        -- 顧客コード
+            ,customer_name        -- 顧客名称
+            ,party_id             -- パーティID
+            ,sales_base_name      -- 売上拠点名称
+            ,sales_base_city      -- 都道府県市区（売上拠点
+            ,sales_base_address1  -- 住所１（売上拠点）
+            ,sales_base_address2  -- 住所２（売上拠点）
+            ,sales_base_tel       -- 電話番号（売上拠点）
+            ,vendor_code          -- 仕入先コード
+            ,vendor_name          -- 仕入先名称（送付先）
+            ,vendor_zip           -- 郵便番号（送付先）
+            ,vendor_address1      -- 住所１（送付先）
+            ,vendor_address2      -- 住所２（送付先）
+            ,date_from            -- 対象期間開始日
+            ,date_to              -- 対象期間終了日
+            ,output_num           -- 出力番号
+          )
+          SELECT /*+
+                   USE_NL(hca xca hp)
+                   USE_NL(xac hcab hpb)
+                 */
+                 hca.account_number         customer_code       -- 顧客コード
+                ,hp.party_name              customer_name       -- 顧客名称
+                ,hp.party_id                party_id            -- パーティID
+                ,hpb.party_name             sales_base_name     -- 売上拠点名称
+                ,hlb.state || hlb.city      sales_base_city     -- 都道府県市区(売上拠点)
+                ,hlb.address1               sales_base_address1 -- 住所１(売上拠点)
+                ,hlb.address2               sales_base_address2 -- 住所２(売上拠点)
+                ,hlb.address_lines_phonetic sales_base_tel      -- 電話番号(売上拠点)
+                ,pv.segment1                vendor_code         -- 仕入先コード
+                ,pvs.attribute1             vendor_name         -- 仕入先名称
+                ,pvs.zip                    vendor_zip          -- 郵便番号
+                ,pvs.address_line1          address_line1       -- 住所１
+                ,pvs.address_line2          address_line2       -- 住所２
+                ,CASE
+                   -- 入力パラメータ「年月」で検索
+                   WHEN g_input_rec.dlv_date_from IS NULL THEN
+                     --
+                     CASE
+                       -- 末締の場合
+                       WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                         -- 指定月の1日
+                         ld_first_date
+                       -- 2月の28日,29日締考慮
+                       WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ),cv_date_dd ) ) THEN
+                         TO_DATE(    TO_CHAR( ADD_MONTHS( ld_first_date, -1 ), cv_date_yyyymm )
+                                  || xcm.close_day_code, cv_date_yyyymmdd) + 1
+                       -- 末締以外
+                       ELSE
+                         -- 前月締日+1日
+                         ADD_MONTHS(TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd ),-1 ) + 1
+                     END
+                   -- 入力パラメータ「納品日FROM/TO」で検索
+                   ELSE
+                     -- 入力パラメータ「納品日FROM」
+                     g_input_rec.dlv_date_from 
+                 END                        date_from           -- 対象期間開始日
+                ,CASE
+                   -- 入力パラメータ「年月」で検索
+                   WHEN g_input_rec.dlv_date_to IS NULL THEN
+                     --
+                     CASE
+                       -- 末締の場合
+                       WHEN NVL( xcm.close_day_code, cv_30 ) = cv_30 THEN
+                         -- 指定月の最終日
+                         ld_last_date
+                       --2月の28日,29日締考慮
+                       WHEN TO_NUMBER( xcm.close_day_code ) >= TO_NUMBER( TO_CHAR( LAST_DAY( ld_first_date ), cv_date_dd ) ) THEN
+                         -- 指定月の最終日(2月28 or 29)
+                         ld_last_date
+                       -- 末締以外
+                       ELSE
+                         --指定月の締日
+                         TO_DATE( g_input_rec.target_date || cv_slash || xcm.close_day_code, cv_date_yyyymmdd )
+                     END
+                   -- 入力パラメータ「納品日FROM/TO」で検索
+                   ELSE
+                     -- 入力パラメータ「納品日TO」
+                     g_input_rec.dlv_date_to
+                 END                        date_to             -- 対象期間終了日
+                ,gt_upload_output_num           -- 出力番号
+          FROM   hz_cust_accounts           hca       -- 顧客マスタ(顧客)
+                ,xxcmm_cust_accounts        xca       -- 顧客追加情報(顧客)
+                ,hz_parties                 hp        -- パーティマスタ(顧客)
+                ,xxcso_contract_managements xcm       -- 契約管理
+                ,hz_cust_accounts           hcab      -- 顧客マスタ(売上拠点)
+                ,hz_parties                 hpb       -- パーティマスタ(売上拠点)
+                ,hz_cust_acct_sites_all     hcasab    -- 顧客所在地マスタ(売上拠点)
+                ,hz_party_sites             hpsb      -- パーティサイトマスタ(売上拠点)
+                ,hz_locations               hlb       -- 顧客事業所マスタ(売上拠点)
+                ,po_vendors                 pv        -- 仕入先マスタ(送付先)
+                ,po_vendor_sites_all        pvs       -- 仕入先サイト(送付先)
+          WHERE  pv.segment1                   = gt_upload_vendor_code      --指定された仕入先
+          AND    hca.account_number            = xca.customer_code
+          AND    hca.party_id                  = hp.party_id
+          AND    hca.cust_account_id           = xcm.install_account_id
+          AND    xcm.contract_management_id    = (
+                   SELECT /*+
+                            INDEX( xcms xxcso_contract_managements_n06 )
+                          */
+                          MAX(xcms.contract_management_id) contract_management_id
+                   FROM   xxcso_contract_managements xcms
+                   WHERE  xcms.install_account_id     = hca.cust_account_id
+                   AND    xcms.status                 = cv_1
+                   AND    xcms.cooperate_flag         = cv_1
+                 )                                   --確定済・マスタ連携済の最新契約
+          AND    xca.sale_base_code            = hcab.account_number
+          AND    hcab.party_id                 = hpb.party_id
+          AND    hcab.cust_account_id          = hcasab.cust_account_id
+          AND    hcasab.party_site_id          = hpsb.party_site_id
+          AND    hcasab.org_id                 = gn_org_id
+          AND    hpsb.location_id              = hlb.location_id
+          AND    xca.contractor_supplier_code  = pv.segment1
+          AND    pv.vendor_id                  = pvs.vendor_id
+          AND    pv.segment1                   = pvs.vendor_site_code
+          AND    pvs.org_id                    = gn_org_id
+          AND    (
+                   (
+                        ( g_input_rec.manager_flag = cv_n )
+                    AND ( pvs.attribute5     NOT IN ( SELECT xlbiv1.base_code base_code
+                                                      FROM   xxcos_login_base_info_v xlbiv1
+                                                    )
+                        )
+                    AND (
+                          xca.sale_base_code  IN    ( SELECT xlbiv2.base_code base_code
+                                                      FROM   xxcos_login_base_info_v xlbiv2
+                                                    )
+                          OR
+                          ( xca.intro_chain_code2 IN  ( SELECT xlbiv2.base_code base_code
+                                                        FROM   xxcos_login_base_info_v xlbiv2
+                                                      )
+                          )
+                        )
+                   )                                                -- 問合せ担当拠点で無い場合、自拠点分のみ
+                   OR
+                   (
+                        ( g_input_rec.manager_flag = cv_n )
+                    AND 
+                        (
+                          pvs.attribute5      IN    ( SELECT xlbiv3.base_code base_code
+                                                      FROM   xxcos_login_base_info_v xlbiv3
+                                                    )
+                        )
+                   )                                                -- 問合せ担当拠点の場合、配下の全て
+                   OR
+                   (
+                      g_input_rec.manager_flag = cv_y
+                   )                                                -- 管理者の場合全て
+                 )
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_sqlerrm := SUBSTRB( SQLERRM, 1, 5000 ); --SQLERRM格納
+            RAISE insert_expt;
+        END;
+      END IF;
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
     END IF;
 --
     --処理終了時刻をログへ出力
@@ -1577,6 +2020,9 @@ AS
     lv_output_flag    VARCHAR2(1);                                     -- 出力対象フラグ
     lt_cust_code      hz_cust_accounts.account_number%TYPE;            -- 顧客ブレーク用
     lt_party_id       hz_parties.party_id%TYPE;                        -- 顧客ブレーク時の担当営業取得用
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    ld_date_from      DATE;                                            -- 対象年月ブレーク用
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
     ln_work_ind       BINARY_INTEGER;                                  -- 一時格納データ用の索引
     ln_create_ind     BINARY_INTEGER;                                  -- 作成データ用の索引
     lt_dlv_date       xxcos_sales_exp_headers.delivery_date%TYPE;      -- 顧客別期間最大納品日取得用
@@ -1616,6 +2062,9 @@ AS
             ,xtvci.party_id                       party_id                -- パーティID(担当営業取得条件)
             ,MAX(xseh.delivery_date )             delivery_date           -- 納品日
             ,iimb.item_no                         item_no                 -- 品目コード(メッセージ出力用)
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+            ,xtvci.output_num                     output_num              -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
       FROM   xxcos_tmp_vd_cust_info      xtvci --自販機販売報告書顧客情報一時表
             ,xxcos_sales_exp_headers     xseh  --販売実績ヘッダ
             ,xxcos_sales_exp_lines       xsel  --販売実績明細
@@ -1627,6 +2076,9 @@ AS
       WHERE xtvci.customer_code                        = xseh.ship_to_customer_code
       AND   xseh.delivery_date                        >= xtvci.date_from                             -- 顧客毎の締日の範囲
       AND   xseh.delivery_date                        <= xtvci.date_to                               -- 顧客毎の締日の範囲
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      AND   xtvci.output_num                           = gt_upload_output_num
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
       AND   xseh.cust_gyotai_sho                      IN ( cv_bus_low_type_24, cv_bus_low_type_25 )  -- 業態小分類
       AND   xseh.sales_exp_header_id                   = xsel.sales_exp_header_id
       AND   NOT EXISTS (
@@ -1670,11 +2122,17 @@ AS
             ,ximb.item_short_name          --略称
             ,xsel.dlv_unit_price           --納品単価
             ,xtvci.party_id                --パーティID
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+            ,xtvci.output_num              --出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
       HAVING
             ( SUM( xsel.dlv_qty ) <> 0 OR SUM( xsel.sale_amount ) <> 0 )  --サマリ数量かサマリ金額が0以外
       ORDER BY
             xtvci.vendor_code    --仕入先コード
            ,xtvci.customer_code  --顧客コード
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           ,xtvci.date_from      --対象期間開始日
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
            ,mcb.segment1         --政策群コード
            ,iimb.item_no         --品目コード
       ;
@@ -1724,6 +2182,9 @@ AS
       IF ( lt_party_id IS NULL ) THEN
         lt_cust_code := l_vd_sales_tab(i).customer_code;
         lt_party_id  := l_vd_sales_tab(i).party_id;
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+        ld_date_from := l_vd_sales_tab(i).date_from;
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
       END IF;
       -----------------------------
       -- 納品単価の小数点チェック
@@ -1789,6 +2250,9 @@ AS
         g_sales_tab_work(ln_work_ind).sales_price             :=  l_vd_sales_tab(i).dlv_unit_price;        -- 売価
         g_sales_tab_work(ln_work_ind).sales_qty               :=  l_vd_sales_tab(i).sum_dlv_qty;           -- 販売本数
         g_sales_tab_work(ln_work_ind).sales_amount            :=  l_vd_sales_tab(i).sum_sale_amount;       -- 販売金額
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+        g_sales_tab_work(ln_work_ind).output_num              :=  l_vd_sales_tab(i).output_num;            -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
         g_sales_tab_work(ln_work_ind).created_by              :=  cn_created_by;                           -- WHOカラム
         g_sales_tab_work(ln_work_ind).creation_date           :=  cd_creation_date;                        -- WHOカラム
         g_sales_tab_work(ln_work_ind).last_updated_by         :=  cn_last_updated_by;                      -- WHOカラム
@@ -1805,6 +2269,10 @@ AS
       IF (
            ( lt_cust_code <> l_vd_sales_tab(i).customer_code )
            OR
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+           ( ld_date_from <> l_vd_sales_tab(i).date_from )
+           OR
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
            (
                  ( i = gn_target_cnt )
              AND ( g_sales_tab_work.COUNT <> 0 )
@@ -1873,6 +2341,9 @@ AS
           g_sales_tab(ln_create_ind).sales_price             :=  g_sales_tab_work(i2).sales_price;             -- 売価
           g_sales_tab(ln_create_ind).sales_qty               :=  g_sales_tab_work(i2).sales_qty;               -- 販売本数
           g_sales_tab(ln_create_ind).sales_amount            :=  g_sales_tab_work(i2).sales_amount;            -- 販売金額
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+          g_sales_tab(ln_create_ind).output_num              :=  g_sales_tab_work(i2).output_num;              -- 出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
           g_sales_tab(ln_create_ind).created_by              :=  g_sales_tab_work(i2).created_by;              -- WHOカラム
           g_sales_tab(ln_create_ind).creation_date           :=  g_sales_tab_work(i2).creation_date;           -- WHOカラム
           g_sales_tab(ln_create_ind).last_updated_by         :=  g_sales_tab_work(i2).last_updated_by;         -- WHOカラム
@@ -1887,6 +2358,9 @@ AS
 --
         -- ブレーク用変数に値を設定
         lt_cust_code := l_vd_sales_tab(i).customer_code;
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+        ld_date_from := l_vd_sales_tab(i).date_from;
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
         -- 顧客取得用にパーティID保持
         lt_party_id  := l_vd_sales_tab(i).party_id;
         -- 最大納品日取得の変数を初期化
@@ -2139,7 +2613,10 @@ AS
     --==================================
     -- SVF起動
     --==================================
-    xxccp_svfcommon_pkg.submit_svf_request(
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+--    xxccp_svfcommon_pkg.submit_svf_request(
+    xxccp_svfcommon_excl_pkg.submit_svf_request(
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
        ov_retcode         => lv_retcode                -- リターンコード
       ,ov_errbuf          => lv_errbuf                 -- エラーメッセージ
       ,ov_errmsg          => lv_errmsg                 -- ユーザー・エラーメッセージ
@@ -2156,6 +2633,9 @@ AS
       ,iv_printer_name    => NULL                      -- プリンタ名
       ,iv_request_id      => TO_CHAR( cn_request_id )  -- 要求ID
       ,iv_nodata_msg      => lv_nodata_msg             -- データなしメッセージ
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      ,iv_excl_code       => cv_excl_code              -- SVF専用マネージャコード
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
       ,iv_svf_param1      => NULL                      -- svf可変パラメータ1
       ,iv_svf_param2      => NULL                      -- svf可変パラメータ2
       ,iv_svf_param3      => NULL                      -- svf可変パラメータ3
@@ -2216,6 +2696,301 @@ AS
   END execute_svf;
 --
 --
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  /**********************************************************************************
+   * Procedure Name   : del_target_work_data
+   * Description      : 出力対象ワーク削除処理(A-11)
+   ***********************************************************************************/
+  PROCEDURE del_target_work_data(
+     ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ                  --# 固定 #
+    ,ov_retcode    OUT VARCHAR2     --   リターン・コード                    --# 固定 #
+    ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ        --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_target_work_data'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_sqlerrm  VARCHAR2(5000); -- SQLERRM格納用
+    lv_msg_tnk  VARCHAR2(100);  -- メッセージトークン用
+    lv_msg_code VARCHAR2(16);   -- メッセージ切り替え用
+    lv_tkn_code VARCHAR2(10);   -- トークン切り替え用
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    -- 出力対象ワーク削除用カーソル
+    CURSOR del_target_table_cur
+    IS
+      SELECT 'X'
+      FROM xxcok_bm_sales_rep_work    xbsrw
+      WHERE xbsrw.request_id = g_input_rec.request_id
+      AND   xbsrw.output_num = NVL(g_input_rec.output_num, xbsrw.output_num)
+      AND   xbsrw.output_rep = ct_rep_id_sales
+      FOR UPDATE OF xbsrw.output_num NOWAIT
+      ;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       処理部の呼び出し          ***
+    -- ***************************************
+--
+    BEGIN
+      --=========================================
+      -- 出力対象ワークロック
+      --=========================================
+      -- オープン
+      OPEN del_target_table_cur;
+      -- クローズ
+      CLOSE del_target_table_cur;
+    EXCEPTION
+      WHEN lock_expt THEN
+        lv_sqlerrm   := SUBSTRB( SQLERRM, 1, 5000 );  -- SQLERRM格納
+        lv_msg_code  := cv_msg_lock_err;              -- メッセージコード(ロックエラー)
+        lv_tkn_code  := cv_tkn_table;                 -- トークン(TABLE)
+        RAISE delete_proc_expt;
+    END;
+--
+    BEGIN
+      --=========================================
+      -- 出力対象ワーク削除
+      --=========================================
+      DELETE
+      FROM xxcok_bm_sales_rep_work    xbsrw
+      WHERE xbsrw.request_id = g_input_rec.request_id
+      AND   xbsrw.output_num = NVL(g_input_rec.output_num, xbsrw.output_num)
+      AND   xbsrw.output_rep = ct_rep_id_sales
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_sqlerrm   := SUBSTRB( SQLERRM, 1, 5000 );  -- SQLERRM格納
+        lv_msg_code  := cv_msg_delete_err;            -- メッセージコード(削除エラー)
+        lv_tkn_code  := cv_tkn_table_name;            -- トークン(TABLE_NAME)
+        RAISE delete_proc_expt;
+   END;
+--
+   --SVFがエラーとなったとき、ROLLBACKされるのでここでコミット
+   COMMIT;
+--
+  EXCEPTION
+    --*** 削除処理汎用例外 ***
+    WHEN delete_proc_expt THEN
+      -- テーブル名取得
+      lv_msg_tnk := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_tkn_target_table   -- 支払案内書、販売報告書出力対象ワーク
+                    );
+      -- メッセージ取得
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => lv_msg_code            -- メッセージコード(ロックor削除)
+                      ,iv_token_name1  => lv_tkn_code            -- トークン
+                      ,iv_token_value1 => lv_msg_tnk             -- テーブル名
+                      ,iv_token_name2  => cv_tkn_key_data
+                      ,iv_token_value2 => lv_sqlerrm             -- SQLERRM
+                    );
+      ov_errmsg := lv_errmsg;
+      ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END del_target_work_data;
+--
+  /**********************************************************************************
+   * Procedure Name   : del_dup_tmp_cust
+   * Description      : 顧客情報一時表重複削除(A-9)
+   ***********************************************************************************/
+  PROCEDURE del_dup_tmp_cust(
+     ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ                  --# 固定 #
+    ,ov_retcode    OUT VARCHAR2     --   リターン・コード                    --# 固定 #
+    ,ov_errmsg     OUT VARCHAR2     --   ユーザー・エラー・メッセージ        --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_dup_tmp_cust'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_sqlerrm  VARCHAR2(5000); -- SQLERRM格納用
+    lv_msg_tnk  VARCHAR2(100);  -- メッセージトークン用
+    lv_msg_code VARCHAR2(16);   -- メッセージ切り替え用
+    lv_tkn_code VARCHAR2(10);   -- トークン切り替え用
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    -- 顧客情報一時表重複削除用カーソル
+    CURSOR del_dup_tmp_cust_cur
+    IS
+      SELECT 'X'
+      FROM xxcos_tmp_vd_cust_info xtvcia
+      WHERE xtvcia.output_num = gt_upload_output_num
+      AND xtvcia.rowid > (
+        SELECT MIN( xtvcib.rowid )
+        FROM  xxcos_tmp_vd_cust_info xtvcib
+        WHERE xtvcib.customer_code = xtvcia.customer_code
+        AND   xtvcib.date_from     = xtvcia.date_from
+        AND   xtvcib.output_num    = xtvcia.output_num
+      )
+      FOR UPDATE OF xtvcia.output_num NOWAIT;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       処理部の呼び出し          ***
+    -- ***************************************
+--
+    BEGIN
+      --=========================================
+      -- 出力対象ワークロック
+      --=========================================
+      -- オープン
+      OPEN del_dup_tmp_cust_cur;
+      -- クローズ
+      CLOSE del_dup_tmp_cust_cur;
+    EXCEPTION
+      WHEN lock_expt THEN
+        lv_sqlerrm   := SUBSTRB( SQLERRM, 1, 5000 );  -- SQLERRM格納
+        lv_msg_code  := cv_msg_lock_err;              -- メッセージコード(ロックエラー)
+        lv_tkn_code  := cv_tkn_table;                 -- トークン(TABLE)
+        RAISE delete_proc_expt;
+    END;
+--
+    BEGIN
+      -- ===============================
+      -- 顧客情報一時表重複削除
+      -- ===============================
+      --同一出力番号内の顧客＋対象期間開始日（対象年月の代替）の重複行を削除
+      DELETE FROM xxcos_tmp_vd_cust_info xtvcia
+      WHERE xtvcia.output_num = gt_upload_output_num
+      AND xtvcia.rowid > (
+        SELECT MIN( xtvcib.rowid )
+        FROM  xxcos_tmp_vd_cust_info xtvcib
+        WHERE xtvcib.customer_code = xtvcia.customer_code
+        AND   xtvcib.date_from     = xtvcia.date_from
+        AND   xtvcib.output_num    = xtvcia.output_num
+      );
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_sqlerrm   := SUBSTRB( SQLERRM, 1, 5000 );  -- SQLERRM格納
+        lv_msg_code  := cv_msg_delete_err;            -- メッセージコード(削除エラー)
+        lv_tkn_code  := cv_tkn_table_name;            -- トークン(TABLE_NAME)
+        RAISE delete_proc_expt;
+   END;
+--
+  EXCEPTION
+    --*** 削除処理汎用例外 ***
+    WHEN delete_proc_expt THEN
+      -- テーブル名取得
+      lv_msg_tnk := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_tkn_tmp_table   -- 自販機販売報告書顧客情報一時表
+                    );
+      -- メッセージ取得
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => lv_msg_code            -- メッセージコード(ロックor削除)
+                      ,iv_token_name1  => lv_tkn_code            -- トークン
+                      ,iv_token_value1 => lv_msg_tnk             -- テーブル名
+                      ,iv_token_name2  => cv_tkn_key_data
+                      ,iv_token_value2 => lv_sqlerrm             -- SQLERRM
+                    );
+      ov_errmsg := lv_errmsg;
+      ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END del_dup_tmp_cust;
+--
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
   /**********************************************************************************
    * Procedure Name   : del_rep_work_data
    * Description      : 帳票ワークテーブル削除処理(A-7)
@@ -2382,6 +3157,10 @@ AS
     ,iv_vendor_code_01   IN  VARCHAR2  -- 15.仕入先コード1(仕入先指定時のみ)
     ,iv_vendor_code_02   IN  VARCHAR2  -- 16.仕入先コード2(仕入先指定時のみ)
     ,iv_vendor_code_03   IN  VARCHAR2  -- 17.仕入先コード3(仕入先指定時のみ)
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    ,in_request_id       IN  NUMBER    -- 18.要求ID(アップロード時のみ)
+    ,in_output_num       IN  NUMBER    -- 19.出力番号(アップロード時のみ)
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
     ,ov_errbuf           OUT VARCHAR2  --    エラー・メッセージ           --# 固定 #
     ,ov_retcode          OUT VARCHAR2  --    リターン・コード             --# 固定 #
     ,ov_errmsg           OUT VARCHAR2  --    ユーザー・エラー・メッセージ --# 固定 #
@@ -2443,6 +3222,11 @@ AS
     g_input_rec.dlv_date_from    := fnd_date.string_to_date( iv_dlv_date_from, cv_date_yyyymmdd );    -- 納品日FROM
     g_input_rec.dlv_date_to      := fnd_date.string_to_date( iv_dlv_date_to  , cv_date_yyyymmdd );    --    納品日TO
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    g_input_rec.request_id       := in_request_id;       -- 要求ID
+    g_input_rec.output_num       := in_output_num;       -- 出力番号
+    gt_upload_output_num         := ct_output_num_init;  -- カレント出力番号初期化
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
 --
     --実行区分が1(顧客指定で実行）の場合
     IF ( g_input_rec.execute_type = cv_1 ) THEN
@@ -2498,6 +3282,121 @@ AS
 -- 2013/11/12 Ver.1.2 T.Ishiwata E_本稼動_11134 ADD END
     END IF;
 --
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    IF g_input_rec.request_id IS NOT NULL THEN
+      --アップロード起動の場合
+      --==================================================
+      -- 出力対象ワーク取得(A-8)
+      --==================================================
+      OPEN  g_upload_cur;
+      FETCH g_upload_cur BULK COLLECT INTO g_upload_tab;
+      CLOSE g_upload_cur;
+      --==================================================
+      -- アップロード出力対象件数分ループ
+      --==================================================
+      << g_upload_tab_loop >>
+      FOR i IN 1 .. g_upload_tab.COUNT LOOP
+        --出力番号が変わった場合
+        IF gt_upload_output_num <> g_upload_tab(i).output_num
+        AND gt_upload_output_num <> ct_output_num_init THEN
+--
+          -- ===============================
+          -- 顧客情報一時表重複削除(A-9)
+          -- ===============================
+          del_dup_tmp_cust(
+            lv_errbuf         -- エラー・メッセージ           --# 固定 #
+           ,lv_retcode        -- リターン・コード             --# 固定 #
+           ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+          -- ===============================
+          -- 販売情報取得処理(A-4)
+          -- ===============================
+          get_sales_exp_data(
+            lv_errbuf         -- エラー・メッセージ           --# 固定 #
+           ,lv_retcode        -- リターン・コード             --# 固定 #
+           ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+          -- ===============================
+          -- 帳票用ワークテーブル作成(A-5)
+          -- ===============================
+          ins_rep_work_data(
+            lv_errbuf         -- エラー・メッセージ           --# 固定 #
+           ,lv_retcode        -- リターン・コード             --# 固定 #
+           ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+--
+        END IF;
+        --==================================================
+        -- 検索条件、登録値更新(A-10)
+        --==================================================
+        gt_upload_vendor_code   := g_upload_tab(i).vendor_code;
+        gt_upload_cust_code     := g_upload_tab(i).customer_code;
+        g_input_rec.target_date := SUBSTRB(TO_CHAR(g_upload_tab(i).target_ym), 1, 4) || cv_slash || SUBSTRB(TO_CHAR(g_upload_tab(i).target_ym), 5, 2);
+        gt_upload_output_num    := g_upload_tab(i).output_num;
+        -- ===============================
+        -- 顧客情報取得処理(A-3)
+        -- ===============================
+        get_cust_info_data(
+          lv_errbuf         -- エラー・メッセージ           --# 固定 #
+         ,lv_retcode        -- リターン・コード             --# 固定 #
+         ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+      END LOOP;
+--
+      -- ===============================
+      -- 顧客情報一時表重複削除(A-9)
+      -- ===============================
+      del_dup_tmp_cust(
+        lv_errbuf         -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode        -- リターン・コード             --# 固定 #
+       ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- ===============================
+      -- 販売情報取得処理(A-4)
+      -- ===============================
+      get_sales_exp_data(
+        lv_errbuf         -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode        -- リターン・コード             --# 固定 #
+       ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+      -- ===============================
+      -- 帳票用ワークテーブル作成(A-5)
+      -- ===============================
+      ins_rep_work_data(
+        lv_errbuf         -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode        -- リターン・コード             --# 固定 #
+       ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+    ELSE
+      --画面起動の場合
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
     -- ===============================
     -- 顧客情報取得処理(A-3)
     -- ===============================
@@ -2536,6 +3435,11 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+--
+    END IF;
+--
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
     -- ===============================
     -- SVF起動処理(A-6)
     -- ===============================
@@ -2565,6 +3469,22 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    -- ===============================
+    -- 出力対象ワーク削除(A-11)
+    -- ===============================
+    IF g_input_rec.request_id IS NOT NULL THEN
+      del_target_work_data(
+        lv_errbuf         -- エラー・メッセージ           --# 固定 #
+       ,lv_retcode        -- リターン・コード             --# 固定 #
+       ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode = cv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+--
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
     -- SVF実行結果確認
     IF ( lv_retcode_svf = cv_status_error ) THEN
       lv_errbuf     := lv_errbuf_svf;
@@ -2633,6 +3553,10 @@ AS
     ,iv_vendor_code_01   IN  VARCHAR2  -- 15.仕入先コード1(仕入先指定時のみ)
     ,iv_vendor_code_02   IN  VARCHAR2  -- 16.仕入先コード2(仕入先指定時のみ)
     ,iv_vendor_code_03   IN  VARCHAR2  -- 17.仕入先コード3(仕入先指定時のみ)
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+    ,in_request_id       IN  NUMBER    -- 18.要求ID(アップロード時のみ)
+    ,in_output_num       IN  NUMBER    -- 19.出力番号(アップロード時のみ)
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
   )
 --
 --
@@ -2707,6 +3631,10 @@ AS
       ,iv_vendor_code_01   --仕入先コード1
       ,iv_vendor_code_02   --仕入先コード2
       ,iv_vendor_code_03   --仕入先コード3
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD START
+      ,in_request_id       --要求ID
+      ,in_output_num       --出力番号
+-- Ver.1.5 [障害E_本稼動_15005] SCSK K.Nara ADD END
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
