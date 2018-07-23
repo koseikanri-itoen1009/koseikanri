@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_TMP_VD_CUST_INFO
  * Description : 自販機販売報告書顧客情報一時表
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  * 2012/02/09    1.0   K.Kiriu          [E_本稼動_08359]新規作成
+ * 2018/07/06    1.1   K.Nara           [E_本稼動_15005]出力番号追加
  *
  **************************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE XXCOS.XXCOS_TMP_VD_CUST_INFO
@@ -29,6 +30,9 @@ CREATE GLOBAL TEMPORARY TABLE XXCOS.XXCOS_TMP_VD_CUST_INFO
   ,VENDOR_ADDRESS2      VARCHAR2(240)    --住所２（送付先）
   ,DATE_FROM            DATE             --対象期間開始日
   ,DATE_TO              DATE             --対象期間終了日
+-- Ver.1.1 [障害E_本稼動_15005] SCSK K.Nara ADD START
+  ,OUTPUT_NUM           NUMBER           --出力番号
+-- Ver.1.1 [障害E_本稼動_15005] SCSK K.Nara ADD END
 )
 ON COMMIT DELETE ROWS
 /
@@ -49,3 +53,6 @@ COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.VENDOR_ADDRESS1          IS '住所
 COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.VENDOR_ADDRESS2          IS '住所２（送付先）';
 COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.DATE_FROM                IS '対象期間開始日';
 COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.DATE_TO                  IS '対象期間終了日';
+-- Ver.1.1 [障害E_本稼動_15005] SCSK K.Nara ADD START
+COMMENT ON COLUMN XXCOS.XXCOS_TMP_VD_CUST_INFO.OUTPUT_NUM               IS '出力番号';
+-- Ver.1.1 [障害E_本稼動_15005] SCSK K.Nara ADD END
