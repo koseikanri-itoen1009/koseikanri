@@ -1,0 +1,61 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2018. All rights reserved.
+ *
+ * Table Name  : XXCOK_BM_SALES_REP_WORK
+ * Description : 支払案内書、販売報告書出力対象ワーク
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2018/05/09    1.0   SCSK K.Nara      新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_BM_SALES_REP_WORK (
+     OUTPUT_NUM                     NUMBER        NOT NULL
+    ,OUTPUT_REP                     NUMBER(1)     NOT NULL
+    ,TARGET_YM                      NUMBER(6)     NOT NULL
+    ,VENDOR_CODE                    VARCHAR2(9)
+    ,CUSTOMER_CODE                  VARCHAR2(9)
+    ,CREATED_BY                     NUMBER(15)    NOT NULL
+    ,CREATION_DATE                  DATE          NOT NULL
+    ,LAST_UPDATED_BY                NUMBER(15)    NOT NULL
+    ,LAST_UPDATE_DATE               DATE          NOT NULL
+    ,LAST_UPDATE_LOGIN              NUMBER(15)
+    ,REQUEST_ID                     NUMBER(15)
+    ,PROGRAM_APPLICATION_ID         NUMBER(15)
+    ,PROGRAM_ID                     NUMBER(15)
+    ,PROGRAM_UPDATE_DATE            DATE
+)
+/
+COMMENT ON TABLE XXCOK.XXCOK_BM_SALES_REP_WORK IS '支払案内書、販売報告書出力対象ワーク'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.OUTPUT_NUM                             IS '出力番号'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.OUTPUT_REP                             IS '出力帳票'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.TARGET_YM                              IS '対象年月'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.VENDOR_CODE                            IS '仕入先コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.CUSTOMER_CODE                          IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.CREATED_BY                             IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.CREATION_DATE                          IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.LAST_UPDATED_BY                        IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.LAST_UPDATE_DATE                       IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.LAST_UPDATE_LOGIN                      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.REQUEST_ID                             IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.PROGRAM_APPLICATION_ID                 IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.PROGRAM_ID                             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_SALES_REP_WORK.PROGRAM_UPDATE_DATE                    IS 'プログラム更新日'
+/
