@@ -6,7 +6,7 @@
    ComponentClass="oracle.apps.fnd.framework.server.OAApplicationModuleImpl"
    LoadComponentsLazily="true" >
    <DesignTime>
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_deployType" Value="0" />
    </DesignTime>
    <ViewUsage
@@ -100,5 +100,9 @@
    <ViewUsage
       Name="ShipWhseCode2VO1"
       ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ShipWhseCode2VO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ShipWhseCode13VO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.lov.server.ShipWhseCode13VO" >
    </ViewUsage>
 </AppModule>
