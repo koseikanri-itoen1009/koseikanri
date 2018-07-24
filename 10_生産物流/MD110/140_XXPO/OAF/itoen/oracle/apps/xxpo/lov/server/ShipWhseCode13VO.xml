@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="ShipWhseCode13VO"
+   OrderBy="SHIP_WHSE_CODE"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xilv.inventory_location_id ship_whse_id    -- 出庫倉庫ID(保管棚ID)
+      ,xilv.segment1              ship_whse_code  -- 出庫倉庫コード(保管倉庫コード)
+      ,xilv.description           ship_whse_name  -- 出庫倉庫名(略称)
+      ,xilv.drink_calender        drink_calender  -- ドリンク基準カレンダ
+      ,xilv.leaf_calender         leaf_calender   -- リーフ基準カレンダ
+      ,xilv.frequent_mover        frequent_mover  -- 代表運送会社
+FROM   xxcmn_item_locations_v xilv
+WHERE  EXISTS ( SELECT 1
+                FROM   xxpo_security_supply_v         xssv
+                      ,xxcmn_lookup_values_v          xlvvs
+                WHERE  xlvvs.attribute3   = xssv.security_class
+                AND    xssv.user_id       = FND_GLOBAL.USER_ID
+                AND    xlvvs.lookup_type  = 'XXPO_START_UP_TYPE'
+                AND    xlvvs.lookup_code  = 13
+                AND    xssv.segment1      = xilv.segment1
+              )
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.01" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="ShipWhseId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="SHIP_WHSE_ID"
+      Expression="SHIP_WHSE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipWhseCode"
+      IsPersistent="false"
+      Precision="40"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_WHSE_CODE"
+      Expression="SHIP_WHSE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="40" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ShipWhseName"
+      IsPersistent="false"
+      Precision="50"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SHIP_WHSE_NAME"
+      Expression="SHIP_WHSE_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="50" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DrinkCalender"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DRINK_CALENDER"
+      Expression="DRINK_CALENDER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LeafCalender"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LEAF_CALENDER"
+      Expression="LEAF_CALENDER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FrequentMover"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FREQUENT_MOVER"
+      Expression="FREQUENT_MOVER"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="ShipWhseId" />
+   </AttrArray>
+</ViewObject>
