@@ -3,17 +3,21 @@
  *
  * Index Name  : XXCOI_LOT_RESERVE_INFO_N06
  * Description : ロット別引当情報テーブル インデックスN06
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2018/06/05    1.0   H.Sasaki         新規作成
+ *  2018/07/23    1.1   H.Sasaki         E_本稼動_14886 パフォーマンス対応
  **************************************************************************************/
  CREATE INDEX xxcoi.xxcoi_lot_reserve_info_n06 ON xxcoi.xxcoi_lot_reserve_info ( 
-    order_number
-  , header_id
+-- V1.1 2018/07/23 Modified START
+--    order_number
+--  , header_id
+    header_id
+-- V1.1 2018/07/23 Modified END
   , line_id
  ) TABLESPACE xxidx2
 /
