@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionInstMakeHeaderCO
 * 概要説明   : 支給指示作成ヘッダコントローラ
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-07 1.0  二瓶大輔     新規作成
 * 2008-06-09 1.1  二瓶大輔     変更要求#42対応
 * 2008-08-13 1.2  二瓶大輔     ST不具合#249対応
+* 2018-07-19 1.3  小路恭弘     E_本稼動_15135対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.webui;
@@ -30,10 +31,13 @@ import oracle.apps.fnd.framework.webui.OAPageContext;
 import oracle.apps.fnd.framework.webui.OAWebBeanConstants;
 import oracle.apps.fnd.framework.webui.TransactionUnitHelper;
 import oracle.apps.fnd.framework.webui.beans.OAWebBean;
+// 2018-07-19 [E_本稼動_15135] Add Start
+import oracle.apps.fnd.framework.webui.beans.message.OAMessageLovInputBean;
+// 2018-07-19 [E_本稼動_15135] Add End
 /***************************************************************************
  * 支給指示作成ヘッダ画面のコントローラクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
@@ -62,12 +66,18 @@ public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
       // 元依頼No取得
       String baseReqNo = pageContext.getParameter(XxpoConstants.URL_PARAM_BASE_REQ_NO);
       
+// 2018-07-19 [E_本稼動_15135] Add Start
+      // 起動タイプ取得
+      String exeType = pageContext.getParameter(XxpoConstants.URL_PARAM_EXE_TYPE);
+// 2018-07-19 [E_本稼動_15135] Add End
       if (!XxcmnUtility.isBlankOrNull(baseReqNo)) 
       {
         // AMの取得
         OAApplicationModule am = pageContext.getApplicationModule(webBean);
-        // 起動タイプ取得
-        String exeType = pageContext.getParameter(XxpoConstants.URL_PARAM_EXE_TYPE);
+// 2018-07-19 [E_本稼動_15135] Del Start
+//        // 起動タイプ取得
+//        String exeType = pageContext.getParameter(XxpoConstants.URL_PARAM_EXE_TYPE);
+// 2018-07-19 [E_本稼動_15135] Del End
         // 引数設定
         Serializable param[] = { exeType, baseReqNo };
         am.invokeMethod("initializeCopy", param);
@@ -77,8 +87,10 @@ public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
       {
         // AMの取得
         OAApplicationModule am = pageContext.getApplicationModule(webBean);
-        // 起動タイプ取得
-        String exeType = pageContext.getParameter(XxpoConstants.URL_PARAM_EXE_TYPE);
+// 2018-07-19 [E_本稼動_15135] Del Start
+//        // 起動タイプ取得
+//        String exeType = pageContext.getParameter(XxpoConstants.URL_PARAM_EXE_TYPE);
+// 2018-07-19 [E_本稼動_15135] Del End
         // 依頼No取得
         String reqNo   = pageContext.getParameter(XxpoConstants.URL_PARAM_REQ_NO);
         // 引数設定
@@ -86,6 +98,15 @@ public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
         // 初期化処理実行
         am.invokeMethod("initializeHdr", param);
       }
+// 2018-07-19 [E_本稼動_15135] Add Start
+      // 起動タイプによって値リストを変更(出庫倉庫)
+      // 東洋埠頭の場合
+      if (XxpoConstants.EXE_TYPE_13.equals(exeType))
+      {
+        OAMessageLovInputBean shipWhseCodeTextInputBean = (OAMessageLovInputBean)webBean.findChildRecursive("ShipWhseCode");
+        shipWhseCodeTextInputBean.setLovRegion(pageContext, "/itoen/oracle/apps/xxpo/lov/webui/ShipWhseCode13LovRN");
+      }
+// 2018-07-19 [E_本稼動_15135] Add End
     } else
     {
       // 【共通処理】トランザクションチェック
