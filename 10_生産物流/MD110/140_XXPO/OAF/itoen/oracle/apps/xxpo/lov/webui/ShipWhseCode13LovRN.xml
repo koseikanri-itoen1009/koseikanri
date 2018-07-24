@@ -1,0 +1,17 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<!--*[Enter Javadoc like developer documentation, delete this line once you fill the included template.] [Put a one line description of the region here.] [Put a brief description of the usage of the region here.] @param [Parameter_name] [Put parameter use here.] @param [Parameter_name] [Put parameter use here.] @see [Put any additional links apart from controller class and BC4J objects directly referenced by this region]-->
+<oa:listOfValues version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" amDefName="itoen.oracle.apps.xxpo.lov.server.LovAM">
+   <ui:contents>
+      <oa:table name="ShipWhseCode13LovRN" id="ShipWhseCodeRN" text="出庫倉庫" shortDesc="出庫倉庫">
+         <ui:contents>
+            <oa:messageStyledText id="ShipWhseCode" queryable="true" viewName="ShipWhseCode13VO1" viewAttr="ShipWhseCode" destination="" prompt="出庫倉庫" shortDesc="出庫倉庫" maximumLength="40"/>
+            <oa:formValue id="ShipWhseName" viewName="ShipWhseCode13VO1" viewAttr="ShipWhseName" prompt="出庫倉庫名"/>
+            <oa:formValue id="ShipWhseId" viewName="ShipWhseCode13VO1" viewAttr="ShipWhseId"/>
+            <oa:formValue id="DrinkCalender" viewName="ShipWhseCode13VO1" viewAttr="DrinkCalender"/>
+            <oa:formValue id="LeafCalender" viewName="ShipWhseCode13VO1" viewAttr="LeafCalender"/>
+            <oa:formValue id="FrequentMover" viewName="ShipWhseCode13VO1" viewAttr="FrequentMover"/>
+         </ui:contents>
+      </oa:table>
+   </ui:contents>
+</oa:listOfValues>
