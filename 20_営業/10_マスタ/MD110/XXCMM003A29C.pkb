@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2017/05/18    1.15  仁木 重人        障害E_本稼動_14246対応 請求書印刷単位のチェック追加
  *  2017/06/14    1.16  仁木 重人        障害E_本稼動_14271対応 自販機フォロー委託２次開発
  *  2017/10/18    1.17  大室 慶治        障害E_本稼動_14667対応 MC顧客の中止
+ *  2018/07/19    1.18  桐生 和幸        障害E_本稼動_15194対応 通過在庫型区分のチェック追加
  *
  *****************************************************************************************/
 --
@@ -159,6 +160,9 @@ AS
   cv_flex_value_err_msg       CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00352';                --値セット存在チェックエラー時メッセージ
   cv_set_item_err_msg         CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00353';                --項目設定チェックエラー時メッセージ
 -- 2009/10/23 Ver1.2 add end by Yutaka.Kuboshima
+-- Ver1.18 add start
+  cv_chain_tsukazaiko_err_msg CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00400';                --チェーン店コード、通過在庫型区分相関エラー時メッセージ
+-- Ver1.18 add end
 --
 -- 2010/01/04 Ver1.3 E_本稼動_00778 add start by Yutaka.Kuboshima
   cv_profile_err_msg          CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00002';                --プロファイル取得エラー
@@ -7136,6 +7140,89 @@ AS
           END IF;
         END IF;
 --
+-- Ver1.18 add start
+        --上記以外のチェックの為、顧客追加情報のチェーン店コード、顧客追加情報の通過在庫型区分（EDI）を取得しなおす
+        lv_chain_store_db                        := NULL;
+        lv_tsukagatazaiko_div_db                 := NULL;
+        check_db_customer_rec.chain_store_code   := NULL;
+        check_db_customer_rec.tsukagatazaiko_div := NULL;
+--
+        << check_db_edi_loop >>
+        FOR check_db_customer_rec IN check_db_customer_cur( lv_customer_code )
+        LOOP
+          lv_chain_store_db         := check_db_customer_rec.chain_store_code;
+          lv_tsukagatazaiko_div_db  := check_db_customer_rec.tsukagatazaiko_div;
+        END LOOP check_db_edi_loop;
+--
+        --通過在庫型区分（EDI）が'-'
+        --かつ、チェーン店コード(EDI)がNULL、もしくは、'-'でない場合
+        IF ( lv_tsukagatazaiko_div = cv_null_bar )
+          AND ( NVL( lv_edi_chain_code, cv_null_bar ) <> cv_null_bar )
+        THEN
+          --エラー対象
+          lv_tsukagatazaiko_flag := cv_yes;
+        END IF;
+--
+        --顧客追加情報のチェーン店コード(EDI)ありの場合
+        IF ( lv_chain_store_db IS NOT NULL ) THEN
+--
+          --通過在庫型区分（EDI）が'-'
+          --かつ、チェーン店コード(EDI)がNULLの場合
+          IF ( lv_tsukagatazaiko_div = cv_null_bar )
+            AND ( lv_edi_chain_code IS NULL )
+          THEN
+            --エラー対象
+            lv_tsukagatazaiko_flag := cv_yes;
+          END IF;
+--
+          --顧客追加情報の通過在庫型区分（EDI）がない場合
+          IF ( lv_tsukagatazaiko_div_db IS NULL ) THEN
+            --チェーン店コード(EDI)がNULL、もしくは'-'以外
+            --かつ、通過在庫型区分（EDI）がNULLの場合
+            IF ( NVL( lv_edi_chain_code, cv_null_bar ) <> cv_null_bar )
+              AND ( lv_tsukagatazaiko_div IS NULL )
+            THEN
+              --エラー対象
+              lv_tsukagatazaiko_flag := cv_yes;
+            END IF;
+            --チェーン店コード(EDI)がNULL
+            --かつ、通過在庫型区分（EDI）がNULLの場合
+            IF ( lv_edi_chain_code IS NULL )
+              AND ( lv_tsukagatazaiko_div IS NULL )
+            THEN
+              --エラー対象
+              lv_tsukagatazaiko_flag := cv_yes;
+            END IF;
+          END IF;
+--
+        --顧客追加情報のチェーン店コード(EDI)なしの場合
+        ELSE
+--
+          --顧客追加情報の通過在庫型区分（EDI）があり場合
+          IF ( lv_tsukagatazaiko_div_db IS NOT NULL ) THEN
+            --チェーン店コード(EDI)がNULL、もしくは、'-'
+            --かつ、通過在庫型区分（EDI）がNULLの場合
+            IF ( NVL( lv_edi_chain_code, cv_null_bar ) = cv_null_bar )
+              AND ( lv_tsukagatazaiko_div IS NULL )
+            THEN
+              --エラー対象
+              lv_tsukagatazaiko_flag := cv_yes;
+            END IF;
+          --顧客追加情報の通過在庫型区分（EDI）がなしの場合
+          ELSE
+            --チェーン店コード(EDI)がNULL、もしくは、'-'以外
+            --かつ、通過在庫型区分（EDI）がNULLの場合、
+            IF ( NVL( lv_edi_chain_code, cv_null_bar ) <> cv_null_bar )
+              AND ( lv_tsukagatazaiko_div IS NULL )
+            THEN
+              --エラー対象
+              lv_tsukagatazaiko_flag := cv_yes;
+            END IF;
+          END IF;
+--
+        END IF;
+-- Ver1.18 add end
+--
         --上記でエラー対象となった場合、項目設定チェックエラー
         IF (lv_tsukagatazaiko_flag = cv_yes) THEN
           --エラーメッセージの設定
@@ -7144,15 +7231,9 @@ AS
           --通過在庫型区分（EDI）存在チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
-                          ,iv_name         => cv_set_item_err_msg
-                          ,iv_token_name1  => cv_col_name
-                          ,iv_token_value1 => cv_tsukagatazaiko_div
-                          ,iv_token_name2  => cv_cond_col_name
-                          ,iv_token_value2 => cv_edi_chain
-                          ,iv_token_name3  => cv_cond_col_val
-                          ,iv_token_value3 => 'NULL'
-                          ,iv_token_name4  => cv_cust_code
-                          ,iv_token_value4 => lv_customer_code
+                          ,iv_name         => cv_chain_tsukazaiko_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
                          );
           FND_FILE.PUT_LINE(
              which  => FND_FILE.LOG
