@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -88,6 +88,7 @@ AS
  *  2011/02/04    1.21  T.Ishiwata       [E_本稼動_06475] 最上位担当営業員設定時、EDIワークに残さない対応
  *  2011/07/25    1.22  K.Kubo           [E_本稼動_07906] 流通BMS対応
  *  2012/08/02    1.23  T.Osawa          [E_本稼動_09864] 受注エラーリストのカナ店舗名称表示
+ *  2018/07/19    1.24  K.kiriu          [E_本稼動_15194] 通過在庫型区分のチェック変更
  *
  *****************************************************************************************/
 --
@@ -3443,6 +3444,12 @@ AS
       AND     uses.site_use_code             = cv_cust_site_use_code            -- 顧客使用目的：SHIP_TO(出荷先)
       AND     uses.org_id                    = gn_org_unit_id;                  -- 営業単位
 --
+-- Ver1.24 add Start
+      --通過在庫型区分がNULLの場合、エラーとする
+      IF ( ot_cust_info_rec.tsukagatazaiko_div IS NULL ) THEN
+          RAISE NO_DATA_FOUND;
+      END IF;
+-- Ver1.24 add End
     EXCEPTION
       -- データが存在しない場合
       WHEN NO_DATA_FOUND THEN
