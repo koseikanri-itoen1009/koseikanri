@@ -1,0 +1,9 @@
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.sale_wholesale_date_total  IS '純売上ドラッグストア日計';
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.sale_wholesale_total       IS '純売上ドラッグストア累計';
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.rtn_wholesale_date_total   IS '返品ドラッグストア日計';
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.rtn_wholesale_total        IS '返品ドラッグストア累計';
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.discount_whol_date_total   IS '値引ドラッグストア日計';
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.discount_whol_total        IS '値引ドラッグストア累計';
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.sup_sam_whol_date_total    IS '協賛見本ドラッグストア日計';
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.sup_sam_whol_total         IS '協賛見本ドラッグストア累計';
+COMMENT ON COLUMN xxcos.xxcos_rep_bus_perf.keep_shop_wholesale        IS '持軒数ドラッグストア';
