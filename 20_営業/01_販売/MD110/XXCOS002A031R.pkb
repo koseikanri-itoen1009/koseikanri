@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(body)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2011/04/04    1.12  H.Sasaki         [E_本稼動_02252]退職者データの出力制御
  *  2015/03/16    1.13  K.Nakamura       [E_本稼動_12906]在庫確定文字の追加
  *  2016/04/15    1.14  K.Kiriu          [E_本稼動_13586]営業成績表に前年の売上と粗利率を追加
+ *  2018/07/25    1.15  K.Kiriu          [E_本稼動_15105]業態大分類の変更対応
  *
  *****************************************************************************************/
 --
@@ -349,12 +350,18 @@ AS
   ct_biz_shop                   CONSTANT  xxcos_rep_bus_sales_sum.cust_gyotai_sho%TYPE := '01';
   --  ＣＶＳ
   ct_biz_cvs                    CONSTANT  xxcos_rep_bus_sales_sum.cust_gyotai_sho%TYPE := '02';
-  --  問屋
-  ct_biz_wholesale              CONSTANT  xxcos_rep_bus_sales_sum.cust_gyotai_sho%TYPE := '03';
+-- Ver1.15 Del Start
+--  --  問屋
+--  ct_biz_wholesale              CONSTANT  xxcos_rep_bus_sales_sum.cust_gyotai_sho%TYPE := '03';
+-- Ver1.15 Del End
   --  その他
   ct_biz_others                 CONSTANT  xxcos_rep_bus_sales_sum.cust_gyotai_sho%TYPE := '04';
   --  ＶＤ
   ct_biz_vd                     CONSTANT  xxcos_rep_bus_sales_sum.cust_gyotai_sho%TYPE := '05';
+-- Ver1.15 Add Start
+  -- ドラッグストア
+  ct_biz_drugstore              CONSTANT  xxcos_rep_bus_sales_sum.cust_gyotai_sho%TYPE := '06';
+-- Ver1.15 Add End
 --
   --＠納品形態区分
   --  営業車
@@ -1248,15 +1255,15 @@ AS
             , 0                                     AS  sup_sam_cvs_date_total          --  協賛見本CVS日計
             , 0                                     AS  sup_sam_cvs_total               --  協賛見本CVS累計
             , 0                                     AS  keep_shop_cvs                   --  持軒数CVS
-            , 0                                     AS  sale_wholesale_date_total       --  純売上問屋日計
-            , 0                                     AS  sale_wholesale_total            --  純売上問屋累計
-            , 0                                     AS  rtn_wholesale_date_total        --  返品問屋日計
-            , 0                                     AS  rtn_wholesale_total             --  返品問屋累計
-            , 0                                     AS  discount_whol_date_total        --  値引問屋日計
-            , 0                                     AS  discount_whol_total             --  値引問屋累計
-            , 0                                     AS  sup_sam_whol_date_total         --  協賛見本問屋日計
-            , 0                                     AS  sup_sam_whol_total              --  協賛見本問屋累計
-            , 0                                     AS  keep_shop_wholesale             --  持軒数問屋
+            , 0                                     AS  sale_wholesale_date_total       --  純売上ドラッグストア日計
+            , 0                                     AS  sale_wholesale_total            --  純売上ドラッグストア累計
+            , 0                                     AS  rtn_wholesale_date_total        --  返品ドラッグストア日計
+            , 0                                     AS  rtn_wholesale_total             --  返品ドラッグストア累計
+            , 0                                     AS  discount_whol_date_total        --  値引ドラッグストア日計
+            , 0                                     AS  discount_whol_total             --  値引ドラッグストア累計
+            , 0                                     AS  sup_sam_whol_date_total         --  協賛見本ドラッグストア日計
+            , 0                                     AS  sup_sam_whol_total              --  協賛見本ドラッグストア累計
+            , 0                                     AS  keep_shop_wholesale             --  持軒数ドラッグストア
             , 0                                     AS  sale_others_date_total          --  純売上その他日計
             , 0                                     AS  sale_others_total               --  純売上その他累計
             , 0                                     AS  rtn_others_date_total           --  返品その他日計
@@ -1738,48 +1745,72 @@ AS
                             THEN  rbss.sup_sam_cost
                             ELSE  0
                           END)                                                      AS  sup_sam_cvs_total,
-              -- wholesale store
+              -- wholesale store -> drug stoer
                       SUM(CASE
-                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+                            WHEN  xbco.d_lookup_code          = ct_biz_drugstore
+-- Ver1.15 Mod End
                             AND   rbss.dlv_date               = gd_common_base_date
                             THEN  rbss.sale_amount
                             ELSE  0
                           END)                                                      AS  sale_wholesale_date_total,
                       SUM(CASE
-                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+                            WHEN  xbco.d_lookup_code          = ct_biz_drugstore
+-- Ver1.15 Mod End
                             THEN  rbss.sale_amount
                             ELSE  0
                           END)                                                      AS  sale_wholesale_total,
                       SUM(CASE
-                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+                            WHEN  xbco.d_lookup_code          = ct_biz_drugstore
+-- Ver1.15 Mod End
                             AND   rbss.dlv_date               = gd_common_base_date
                             THEN  rbss.rtn_amount
                             ELSE  0
                           END)                                                      AS  rtn_wholesale_date_total,
                       SUM(CASE
-                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+                            WHEN  xbco.d_lookup_code          = ct_biz_drugstore
+-- Ver1.15 Mod End
                             THEN  rbss.rtn_amount
                             ELSE  0
                           END)                                                      AS  rtn_wholesale_total,
                       SUM(CASE
-                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+                            WHEN  xbco.d_lookup_code          = ct_biz_drugstore
+-- Ver1.15 Mod End
                             AND   rbss.dlv_date               = gd_common_base_date
                             THEN  rbss.discount_amount
                             ELSE  0
                           END)                                                      AS  discount_whol_date_total,
                       SUM(CASE
-                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+                            WHEN  xbco.d_lookup_code          = ct_biz_drugstore
+-- Ver1.15 Mod End
                             THEN  rbss.discount_amount
                             ELSE  0
                           END)                                                      AS  discount_whol_total,
                       SUM(CASE
-                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+                            WHEN  xbco.d_lookup_code          = ct_biz_drugstore
+-- Ver1.15 Mod End
                             AND   rbss.dlv_date               = gd_common_base_date
                             THEN  rbss.sup_sam_cost
                             ELSE  0
                           END)                                                      AS  sup_sam_whol_date_total,
                       SUM(CASE
-                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+-- Ver1.15 Add Start
+--                            WHEN  xbco.d_lookup_code          = ct_biz_wholesale
+                            WHEN  xbco.d_lookup_code          = ct_biz_drugstore
+-- Ver1.15 Add End
                             THEN  rbss.sup_sam_cost
                             ELSE  0
                           END)                                                      AS  sup_sam_whol_total,
@@ -2506,7 +2537,10 @@ AS
                           END)                                                      AS  keep_shop_cvs,
                       SUM(CASE
                             WHEN  rbcs.counter_class          = ct_counter_cls_cuntomer
-                            AND   rbcs.business_low_type      = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            AND   rbcs.business_low_type      = ct_biz_wholesale
+                            AND   rbcs.business_low_type      = ct_biz_drugstore
+-- Ver1.15 Mod End
                             THEN  rbcs.counter
                             ELSE  0
                           END)                                                      AS  keep_shop_wholesale,
@@ -3763,7 +3797,10 @@ AS
                             ELSE  0
                           END)                                                      AS  keep_shop_cvs,
                       SUM(CASE
-                            WHEN  rbcs.business_low_type      = ct_biz_wholesale
+-- Ver1.15 Mod Start
+--                            WHEN  rbcs.business_low_type      = ct_biz_wholesale
+                            WHEN  rbcs.business_low_type      = ct_biz_drugstore
+-- Ver1.15 Mod End
                             THEN  rbcs.counter
                             ELSE  0
                           END)                                                      AS  keep_shop_wholesale,
