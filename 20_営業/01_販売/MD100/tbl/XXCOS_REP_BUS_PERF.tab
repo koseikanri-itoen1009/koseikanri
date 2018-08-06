@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_BUS_PERF
  * Description : 営業成績表帳票ワークテーブル
- * Version     : 1.5
+ * Version     : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -16,6 +16,7 @@
  *                                       COUNT_NEW_POINT(NUMBER(6,2)→NUMBER(13,2))
  *  2015/03/16    1.4   SCSK K.Nakamura  [E_本稼動_12906]対応
  *  2016/04/15    1.5   SCSK K.Kiriu     [E_本稼動_13586]対応
+ *  2018/07/25    1.6   SCSK K.Kiriu     [E_本稼動_15105]対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_BUS_PERF
@@ -54,15 +55,15 @@ CREATE TABLE XXCOS.XXCOS_REP_BUS_PERF
     SUP_SAM_CVS_DATE_TOTAL          NUMBER,                     --協賛見本CVS日計
     SUP_SAM_CVS_TOTAL               NUMBER,                     --協賛見本CVS累計
     KEEP_SHOP_CVS                   NUMBER,                     --持軒数CVS
-    SALE_WHOLESALE_DATE_TOTAL       NUMBER,                     --純売上問屋日計
-    SALE_WHOLESALE_TOTAL            NUMBER,                     --純売上問屋累計
-    RTN_WHOLESALE_DATE_TOTAL        NUMBER,                     --返品問屋日計
-    RTN_WHOLESALE_TOTAL             NUMBER,                     --返品問屋累計
-    DISCOUNT_WHOL_DATE_TOTAL        NUMBER,                     --値引問屋日計
-    DISCOUNT_WHOL_TOTAL             NUMBER,                     --値引問屋累計
-    SUP_SAM_WHOL_DATE_TOTAL         NUMBER,                     --協賛見本問屋日計
-    SUP_SAM_WHOL_TOTAL              NUMBER,                     --協賛見本問屋累計
-    KEEP_SHOP_WHOLESALE             NUMBER,                     --持軒数問屋
+    SALE_WHOLESALE_DATE_TOTAL       NUMBER,                     --純売上ドラッグストア日計
+    SALE_WHOLESALE_TOTAL            NUMBER,                     --純売上ドラッグストア累計
+    RTN_WHOLESALE_DATE_TOTAL        NUMBER,                     --返品ドラッグストア日計
+    RTN_WHOLESALE_TOTAL             NUMBER,                     --返品ドラッグストア累計
+    DISCOUNT_WHOL_DATE_TOTAL        NUMBER,                     --値引ドラッグストア日計
+    DISCOUNT_WHOL_TOTAL             NUMBER,                     --値引ドラッグストア累計
+    SUP_SAM_WHOL_DATE_TOTAL         NUMBER,                     --協賛見本ドラッグストア日計
+    SUP_SAM_WHOL_TOTAL              NUMBER,                     --協賛見本ドラッグストア累計
+    KEEP_SHOP_WHOLESALE             NUMBER,                     --持軒数ドラッグストア
     SALE_OTHERS_DATE_TOTAL          NUMBER,                     --純売上その他日計
     SALE_OTHERS_TOTAL               NUMBER,                     --純売上その他累計
     RTN_OTHERS_DATE_TOTAL           NUMBER,                     --返品その他日計
@@ -178,15 +179,26 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.DISCOUNT_CVS_TOTAL            IS'値引
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUP_SAM_CVS_DATE_TOTAL        IS'協賛見本CVS日計';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUP_SAM_CVS_TOTAL             IS'協賛見本CVS累計';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.KEEP_SHOP_CVS                 IS'持軒数CVS';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SALE_WHOLESALE_DATE_TOTAL     IS'純売上問屋日計';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SALE_WHOLESALE_TOTAL          IS'純売上問屋累計';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.RTN_WHOLESALE_DATE_TOTAL      IS'返品問屋日計';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.RTN_WHOLESALE_TOTAL           IS'返品問屋累計';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.DISCOUNT_WHOL_DATE_TOTAL      IS'値引問屋日計';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.DISCOUNT_WHOL_TOTAL           IS'値引問屋累計';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUP_SAM_WHOL_DATE_TOTAL       IS'協賛見本問屋日計';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUP_SAM_WHOL_TOTAL            IS'協賛見本問屋累計';
-COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.KEEP_SHOP_WHOLESALE           IS'持軒数問屋';
+--Ver1.6 Mod Start
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SALE_WHOLESALE_DATE_TOTAL     IS'純売上問屋日計';
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SALE_WHOLESALE_TOTAL          IS'純売上問屋累計';
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.RTN_WHOLESALE_DATE_TOTAL      IS'返品問屋日計';
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.RTN_WHOLESALE_TOTAL           IS'返品問屋累計';
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.DISCOUNT_WHOL_DATE_TOTAL      IS'値引問屋日計';
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.DISCOUNT_WHOL_TOTAL           IS'値引問屋累計';
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUP_SAM_WHOL_DATE_TOTAL       IS'協賛見本問屋日計';
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUP_SAM_WHOL_TOTAL            IS'協賛見本問屋累計';
+--COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.KEEP_SHOP_WHOLESALE           IS'持軒数問屋';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SALE_WHOLESALE_DATE_TOTAL     IS '純売上ドラッグストア日計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SALE_WHOLESALE_TOTAL          IS '純売上ドラッグストア累計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.RTN_WHOLESALE_DATE_TOTAL      IS '返品ドラッグストア日計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.RTN_WHOLESALE_TOTAL           IS '返品ドラッグストア累計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.DISCOUNT_WHOL_DATE_TOTAL      IS '値引ドラッグストア日計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.DISCOUNT_WHOL_TOTAL           IS '値引ドラッグストア累計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUP_SAM_WHOL_DATE_TOTAL       IS '協賛見本ドラッグストア日計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SUP_SAM_WHOL_TOTAL            IS '協賛見本ドラッグストア累計';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.KEEP_SHOP_WHOLESALE           IS '持軒数ドラッグストア';
+--Ver1.6 Mod End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SALE_OTHERS_DATE_TOTAL        IS'純売上その他日計';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.SALE_OTHERS_TOTAL             IS'純売上その他累計';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_BUS_PERF.RTN_OTHERS_DATE_TOTAL         IS'返品その他日計';
