@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A07C (body)
  * Description      : 受注一覧ファイル出力
  * MD.050           : 受注一覧ファイル出力 MD050_COS_009_A07
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2010/08/03    1.1   K.Kiriu          [E_本稼動_04125]出力項目の変更
  *  2011/02/04    1.2   OuKou            [E_本稼動_04871]出力項目の追加
  *  2012/09/28    1.3   M.Takasaki       [E_本稼動_10114]パフォーマンス改善
+ *  2018/08/02    1.4   N.Koyama         [E_本稼動_15195]受注一覧ファイル出力（EDI用）新規にチェーン店コードで抽出できるようにする
  *
  *****************************************************************************************/
 --
@@ -483,6 +484,12 @@ AS
       ( icp_output_type = cv_output_type_new
         --ファイル出力日 IS NULL
         AND oola.global_attribute6 IS NULL
+-- Ver1.4 add start
+        --顧客マスタ.チェーン店コード＝パラメータ.チェーン店コード
+        AND (  icp_chain_code IS NULL
+            OR xca.chain_store_code = icp_chain_code
+            )
+-- Ver1.4 add End
       )
       OR
       --再出力の場合
@@ -614,7 +621,11 @@ AS
         iv_token_name2        =>  cv_tkn_nm_base_code,
         iv_token_value2       =>  iv_delivery_base_code,
         iv_token_name3        =>  cv_tkn_nm_rep_out_type,
-        iv_token_value3       =>  iv_output_type
+        iv_token_value3       =>  iv_output_type,
+-- Ver1.4 add Start
+        iv_token_name4        =>  cv_tkn_nm_chain_code,
+        iv_token_value4       =>  iv_chain_code
+-- Ver1.4 add End
       );
     ELSE  --EDI（再出力）
       lv_para_msg             :=  xxccp_common_pkg.get_msg(
