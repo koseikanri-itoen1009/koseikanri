@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *                                   FB作成トレーラレコードの出力(A-13)
  *                                   FB作成エンドレコードの出力(A-15)
  *  upd_carried_forward_data         翌月繰り越しデータの更新(A-17)
+ *  dmy_acct_chk                     FB作成対象外ダミー口座判定(A-10)
  *  submain                          メイン処理プロシージャ
  *  main                             コンカレント実行ファイル登録プロシージャ
  *
@@ -60,6 +61,7 @@ AS
  *                                                           顧客コード1、顧客コード2については10byte前0埋めを行うように修正
  *  2010/09/30    1.10  S.Arizumi        [E_本稼動_01144対応]当月保留分を翌月のイセトー経由の支払案内書に含む修正
  *                                                           金額確定ステータスが確定済のレコードのみ対象とするように修正
+ *  2018/08/07    1.11  K.Nara           [E_本稼動_15203対応]本振用FBデータ作成で振込先がダミー口座は作成対象外とする
  *
  *****************************************************************************************/
 --
@@ -119,6 +121,9 @@ AS
   cv_msg_cok_00053            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00053';    -- 販手残高テーブル更新ロックエラー
   cv_msg_cok_00054            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00054';    -- 販手残高テーブル更新エラー
 -- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR END
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+  cv_msg_cok_10561            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10561';    -- FBデータのダミー口座警告
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
   cv_msg_ccp_90000            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90000';    -- 抽出件数メッセージ
   cv_msg_ccp_90002            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90002';    -- エラー件数メッセージ
   cv_msg_ccp_90001            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90001';    -- ファイル出力件数メッセージ
@@ -139,6 +144,12 @@ AS
   cv_token_payment_amt        CONSTANT VARCHAR2(15)  := 'PAYMENT_AMT';         -- 支払金額
   cv_token_bank_charge_bearer CONSTANT VARCHAR2(20)  := 'BANK_CHARGE_BEARER';  -- 銀行手数料負担者
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+  cv_token_bank_number       CONSTANT VARCHAR2(15)  := 'BANK_NUMBER';          -- 銀行番号
+  cv_token_bank_num          CONSTANT VARCHAR2(15)  := 'BANK_NUM';             -- 銀行支店番号
+  cv_token_account_type      CONSTANT VARCHAR2(15)  := 'ACCOUNT_TYPE';         -- 預金種別
+  cv_token_account_num       CONSTANT VARCHAR2(20)  := 'ACCOUNT_NUM';          -- 銀行口座番号
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
   -- 値セット
   cv_value_cok_fb_proc_type   CONSTANT VARCHAR2(30)  := 'XXCOK1_FB_PROC_TYPE'; -- 値セット名
   -- 定数
@@ -162,6 +173,9 @@ AS
   cv_lookup_type_bank         CONSTANT VARCHAR2(50)  := 'XXCOK1_BM_BANK_ACCOUNT'; -- 参照タイプ：当社銀行口座情報
   cv_lookup_code_bank         CONSTANT VARCHAR2(10)  := 'VDBM_FB';                -- 参照コード：VDBM振込元口座
 -- End   2009/08/03 Ver.1.6 0000843 M.Hiruta ADD
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+  cv_lookup_type_fb_not       CONSTANT VARCHAR2(50)  := 'XXCOK1_FB_NOT_TARGET';   -- 参照タイプ：FB作成対象外ダミー口座
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
   --
   --===============================
   -- グローバル変数
@@ -326,6 +340,24 @@ AS
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE START
 --  fb_line_rec  fb_line_cur%ROWTYPE;
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi DELETE END
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+  -- FB作成対象外ダミー口座取得カーソル
+  CURSOR dmy_acct_cur
+  IS
+  SELECT flv.attribute1  AS  bank_number         --銀行番号
+        ,flv.attribute2  AS  bank_num            --支店番号
+        ,flv.attribute3  AS  bank_account_type   --口座種別
+        ,flv.attribute4  AS  bank_account_num    --口座番号
+  FROM   fnd_lookup_values flv
+  WHERE  flv.lookup_type  = cv_lookup_type_fb_not
+  AND    flv.enabled_flag = cv_yes
+  AND    gd_pay_date BETWEEN NVL(flv.start_date_active, gd_pay_date)
+                         AND NVL(flv.end_date_active, gd_pay_date)
+  AND    flv.language     = USERENV('LANG')
+  ;
+  TYPE g_dmy_acct_ttype IS TABLE OF dmy_acct_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+  g_dmy_acct_tab       g_dmy_acct_ttype;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
   --================================
   -- グローバル・TABLE型
   --================================
@@ -581,6 +613,14 @@ AS
                       );
       RAISE values_err_expt;
     END;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+    --=========================================================
+    --FB作成対象外ダミー口座を取得する
+    --=========================================================
+    OPEN dmy_acct_cur;
+    FETCH dmy_acct_cur BULK COLLECT INTO g_dmy_acct_tab;
+    CLOSE dmy_acct_cur;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
 --
   EXCEPTION
     WHEN no_process_date_expt THEN
@@ -2243,6 +2283,91 @@ AS
                     );
   END upd_carried_forward_data;
 -- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+--
+  /**********************************************************************************
+   * Procedure Name   : dmy_acct_chk
+   * Description      : ダミー口座チェック
+   **********************************************************************************/
+  PROCEDURE dmy_acct_chk(
+     ov_errbuf            OUT VARCHAR2     -- エラー・メッセージ
+    ,ov_retcode           OUT VARCHAR2     -- リターン・コード
+    ,ov_errmsg            OUT VARCHAR2     -- ユーザー・エラー・メッセージ
+    ,iv_base_code         IN  VARCHAR2     -- 問合せ担当拠点
+    ,iv_supplier_code     IN  VARCHAR2     -- 支払先コード
+    ,it_bank_number       IN  ap_bank_branches.bank_number%TYPE            -- 銀行番号
+    ,it_bank_num          IN  ap_bank_branches.bank_num%TYPE               -- 銀行支店番号
+    ,it_bank_account_type IN  ap_bank_accounts_all.bank_account_type%TYPE  -- 預金種別
+    ,it_bank_account_num  IN  ap_bank_accounts_all.bank_account_num%TYPE   -- 銀行口座番号
+  )
+  IS
+    --===============================
+    -- ローカル定数
+    --===============================
+    cv_prg_name       CONSTANT VARCHAR2(100) := 'dmy_acct_chk';  -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf                  VARCHAR2(5000) DEFAULT NULL;                        -- エラー・メッセージ
+    lv_retcode                 VARCHAR2(1)    DEFAULT NULL;                        -- リターン・コード
+    lv_errmsg                  VARCHAR2(5000) DEFAULT NULL;                        -- ユーザー・エラー・メッセージ
+    lv_out_msg                 VARCHAR2(2000) DEFAULT NULL;                        -- メッセージ
+    lb_retcode                 BOOLEAN        DEFAULT NULL;                        -- メッセージ・リターン・コード
+    --===============================
+    -- ローカル例外
+    --===============================
+    dmy_acct_expt              EXCEPTION; -- スキップ処理
+    --
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    ov_retcode := cv_status_normal;
+    --==================================================
+    -- ダミー口座チェック
+    --==================================================
+    << dmy_acct_loop >>
+    FOR i IN 1..g_dmy_acct_tab.COUNT LOOP
+      IF    ( NVL(it_bank_number, cv_space)       = NVL(g_dmy_acct_tab(i).bank_number, cv_space) )
+        AND ( NVL(it_bank_num, cv_space)          = NVL(g_dmy_acct_tab(i).bank_num, cv_space) )
+        AND ( NVL(it_bank_account_type, cv_space) = NVL(g_dmy_acct_tab(i).bank_account_type, cv_space) )
+        AND ( NVL(it_bank_account_num, cv_space)  = NVL(g_dmy_acct_tab(i).bank_account_num, cv_space) )
+      THEN
+        RAISE dmy_acct_expt;
+      END IF;
+    END LOOP dmy_acct_loop;
+  EXCEPTION
+    WHEN dmy_acct_expt THEN
+      -- FB作成対象外ダミー口座警告メッセージ出力
+      lv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appli_xxcok
+                    , iv_name         => cv_msg_cok_10561
+                    , iv_token_name1  => cv_token_conn_loc
+                    , iv_token_value1 => iv_base_code          -- 問合せ担当拠点
+                    , iv_token_name2  => cv_token_vendor_code
+                    , iv_token_value2 => iv_supplier_code      -- 支払先コード
+                    , iv_token_name3  => cv_token_bank_number
+                    , iv_token_value3 => it_bank_number        -- 銀行番号
+                    , iv_token_name4  => cv_token_bank_num
+                    , iv_token_value4 => it_bank_num           -- 銀行支店番号
+                    , iv_token_name5  => cv_token_account_type
+                    , iv_token_value5 => it_bank_account_type  -- 預金種別
+                    , iv_token_name6  => cv_token_account_num
+                    , iv_token_value6 => it_bank_account_num   -- 銀行口座番号
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.LOG       -- 出力区分
+                     ,iv_message  => lv_out_msg         -- メッセージ
+                     ,in_new_line => 0                  -- 改行
+                    );
+      -- 警告ステータスの設定
+      ov_retcode := cv_status_warn;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+  END dmy_acct_chk;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -2292,6 +2417,9 @@ AS
     -- ローカル例外
     --===============================
     skip_expt                      EXCEPTION; -- スキップ処理
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+    dmy_acct_skip_expt             EXCEPTION; -- ダミー口座スキップ処理
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
 --
   BEGIN
     --==================================================
@@ -2378,6 +2506,27 @@ AS
         -- 明細作成
         --==================================================
         BEGIN
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+          --==================================================
+          -- FB作成対象外ダミー口座判定
+          --==================================================
+          dmy_acct_chk(
+            ov_errbuf            => lv_errbuf                      -- エラー・メッセージ
+          , ov_retcode           => lv_retcode                     -- リターン・コード
+          , ov_errmsg            => lv_errmsg                      -- ユーザー・エラー・メッセージ
+          , iv_base_code         => bac_fb_line_rec.base_code      -- 拠点コード
+          , iv_supplier_code     => bac_fb_line_rec.segment1       -- 仕入先コード
+          , it_bank_number       => bac_fb_line_rec.bank_number        -- 銀行番号
+          , it_bank_num          => bac_fb_line_rec.bank_num           -- 銀行支店番号
+          , it_bank_account_type => bac_fb_line_rec.bank_account_type  -- 預金種別
+          , it_bank_account_num  => bac_fb_line_rec.bank_account_num   -- 銀行口座番号
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          ELSIF( lv_retcode = cv_status_warn ) THEN
+            RAISE dmy_acct_skip_expt;
+          END IF;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
           --==================================================
           -- A-7.FB作成明細データの格納（振込口座事前チェック用FB作成処理）
           --==================================================
@@ -2408,6 +2557,11 @@ AS
         EXCEPTION
           WHEN skip_expt THEN
             gn_skip_cnt := gn_skip_cnt + 1;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+          WHEN dmy_acct_skip_expt THEN
+            gn_skip_cnt := gn_skip_cnt + 1;
+            ov_retcode  := cv_status_warn;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
         END;
       END LOOP bac_fb_line_loop;
     --==================================================
@@ -2421,6 +2575,27 @@ AS
         -- 明細作成
         --==================================================
         BEGIN
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+          --==================================================
+          -- FB作成対象外ダミー口座判定
+          --==================================================
+          dmy_acct_chk(
+            ov_errbuf            => lv_errbuf                      -- エラー・メッセージ
+          , ov_retcode           => lv_retcode                     -- リターン・コード
+          , ov_errmsg            => lv_errmsg                      -- ユーザー・エラー・メッセージ
+          , iv_base_code         => fb_line_rec.base_code          -- 拠点コード
+          , iv_supplier_code     => fb_line_rec.supplier_code      -- 仕入先コード
+          , it_bank_number       => fb_line_rec.bank_number        -- 銀行番号
+          , it_bank_num          => fb_line_rec.bank_num           -- 銀行支店番号
+          , it_bank_account_type => fb_line_rec.bank_account_type  -- 預金種別
+          , it_bank_account_num  => fb_line_rec.bank_account_num   -- 銀行口座番号
+          );
+          IF( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          ELSIF( lv_retcode = cv_status_warn ) THEN
+            RAISE dmy_acct_skip_expt;
+          END IF;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
           --==================================================
           -- A-8.FB作成明細データ付加情報の取得（本振用FBデータ作成処理）
           --==================================================
@@ -2518,6 +2693,11 @@ AS
                           );
             -- スキップ件数のカウントアップ
             gn_skip_cnt := gn_skip_cnt + 1;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD START
+          WHEN dmy_acct_skip_expt THEN
+            gn_skip_cnt := gn_skip_cnt + 1;
+            ov_retcode  := cv_status_warn;
+-- Ver.1.11 [障害E_本稼動_15203] SCSK K.Nara ADD END
         END;
       END LOOP fb_loop;
     END IF;
