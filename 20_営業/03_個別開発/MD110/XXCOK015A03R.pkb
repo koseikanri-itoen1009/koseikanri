@@ -47,6 +47,7 @@ AS
  *  2018/02/27    1.14  N.Watanabe       [障害E_本稼動_14897] 支払案内書PT対応
  *  2018/03/15    1.15  Y.Sekine         [障害E_本稼動_14900] 事務センター案件（支払案内書出力変更）
  *  2018/07/17    1.16  K.Nara           [障害E_本稼動_15005] 事務センター案件（支払案内書、販売報告書一括出力）
+ *  2018/08/07    1.17  K.Nara           [障害E_本稼動_15202] 出力対象無し警告終了対応
  *
  *****************************************************************************************/
   --==================================================
@@ -76,6 +77,9 @@ AS
   cv_msg_ccp_90001                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90001';        -- 成功件数
   cv_msg_ccp_90002                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90002';        -- エラー件数
   cv_msg_ccp_90004                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90004';        -- 正常終了
+-- Ver.1.17 [障害E_本稼動_15202] SCSK K.Nara ADD START
+  cv_msg_ccp_90005                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90005';        -- 警告終了
+-- Ver.1.17 [障害E_本稼動_15202] SCSK K.Nara ADD END
   cv_msg_ccp_90006                 CONSTANT VARCHAR2(50)    := 'APP-XXCCP1-90006';        -- エラー終了全ロールバック
   cv_msg_cok_00003                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-00003';
   cv_msg_cok_00028                 CONSTANT VARCHAR2(20)    := 'APP-XXCOK1-00028';
@@ -4043,7 +4047,14 @@ AS
     --==================================================
     -- 出力パラメータ設定
     --==================================================
-    ov_retcode := lv_end_retcode;
+-- Ver.1.17 [障害E_本稼動_15202] SCSK K.Nara MOD START
+--    ov_retcode := lv_end_retcode;
+    IF gn_target_cnt = 0 THEN
+      ov_retcode := cv_status_warn;
+    ELSE
+      ov_retcode := lv_end_retcode;
+    END IF;
+-- Ver.1.17 [障害E_本稼動_15202] SCSK K.Nara MOD END
     ov_errbuf  := NULL;
     ov_errmsg  := NULL;
 --
@@ -4191,6 +4202,10 @@ AS
     --==================================================
     IF( lv_retcode = cv_status_normal ) THEN
       lv_message_code := cv_msg_ccp_90004;
+-- Ver.1.17 [障害E_本稼動_15202] SCSK K.Nara ADD START
+    ELSIF( lv_retcode = cv_status_warn ) THEN
+      lv_message_code := cv_msg_ccp_90005;
+-- Ver.1.17 [障害E_本稼動_15202] SCSK K.Nara ADD END
     ELSE
       lv_message_code := cv_msg_ccp_90006;
     END IF;
