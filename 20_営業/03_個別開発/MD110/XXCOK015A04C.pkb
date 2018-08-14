@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A04C(body)
  * Description      : アップロードファイルから支払案内書、販売報告書を出力
  * MD.050           : 支払案内書・販売報告書一括出力 MD050_COK_015_A04
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -27,6 +27,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2018/07/18    1.0   K.Nara           新規作成
+ *  2018/08/07    1.1   K.Nara           E_本稼動_15005 支払案内書と販売報告書の販売期間を合わせる対応
+ *                                       （支払案内書（印刷）の案内書発行年月をアップロード値＋1ヶ月とする）
  *
  *****************************************************************************************/
 --
@@ -647,7 +649,12 @@ AS
       ) VALUES (
           gt_check_data(ln_line_cnt).output_num     --出力番号
         , DECODE(gt_check_data(ln_line_cnt).output_rep, cn_both_rep, cn_bm_rep, gt_check_data(ln_line_cnt).output_rep)     --出力帳票
-        , gt_check_data(ln_line_cnt).target_ym      --対象年月
+-- Ver.1.1 [障害E_本稼動_15005] SCSK K.Nara MOD START
+--        , gt_check_data(ln_line_cnt).target_ym      --対象年月
+        , DECODE(gt_check_data(ln_line_cnt).output_rep, cn_sales_rep, gt_check_data(ln_line_cnt).target_ym
+                                                                    , TO_NUMBER(TO_CHAR(ADD_MONTHS(TO_DATE(TO_CHAR(gt_check_data(ln_line_cnt).target_ym), cv_yyyymm), cn_one), cv_yyyymm))
+                )  --対象年月
+-- Ver.1.1 [障害E_本稼動_15005] SCSK K.Nara MOD END
         , gt_check_data(ln_line_cnt).vendor_code    --仕入先コード
         , gt_check_data(ln_line_cnt).customer_code  --顧客コード
         , cn_created_by                             --作成者
