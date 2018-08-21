@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A01C(body)
  * Description      : HHT向け納品予定データ作成
  * MD.050           : HHT向け納品予定データ作成 MD050_COS_003_A01
- * Version          : 1.11
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2018/01/18   1.10   K.Kiriu          [E_本稼動_14486]次期HHTシステムからの受注取込（伝票区分対応）
  *  2018/01/29   1.11   N.Koyama         [E_本稼動_14486]次期HHTシステムからの受注取込（伝票番号不具合対応）
  *  2018/04/10   1.12   N.Koyama         [E_本稼動_15001]出荷指示の改行コード対応
+ *  2018/08/10   1.13   N.Koyama         [E_本稼動_15244]顧客品目コード桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -1511,6 +1512,10 @@ AS
     cn_max_val_selling_price      NUMBER := 9999999;        -- 売単価最大値
     cn_max_len_invoice_number     NUMBER := 9;              -- 伝票番号最大桁数
     cn_cut_len_invoice_number     NUMBER := -9;             -- 伝票番号切り出し桁数（後ろ9桁）
+/*  Ver1.13 Add Start */
+    cn_max_len_cust_item_num  NUMBER := 13;           -- 顧客品目コード最大桁数
+    cn_cut_len_cust_item_num  NUMBER := -13;          -- 顧客品目コード最切り出し桁数（後ろ13桁）
+/*  Ver1.13 Add End */
 --
     -- *** ローカル変数 ***
     lv_sign                VARCHAR2(1);
@@ -1621,7 +1626,9 @@ AS
 --          gv_customer_item_number := NULL;
 --          gv_customer_item_desc   := NULL;
 --      END;
-      gv_customer_item_number := main_rec.product_code2;
+/*  Ver1.13 Del Start */
+--      gv_customer_item_number := main_rec.product_code2;
+/*  Ver1.13 Del End */
       gv_customer_item_desc   := main_rec.product_name_alt;
 --****************************** 2009/05/01 1.3 T.Kitajima MOD  END  ******************************--
 --
@@ -1667,13 +1674,15 @@ AS
           RAISE global_data_check_expt;
         END IF;
 --
+/*  Ver1.13 Del Start */
         -- 顧客品目：顧客品目コード
-        IF ( LENGTHB(gv_customer_item_number) > cn_max_len_customer_item_num ) THEN
-          lv_message_code := cv_msg_overflow;
-          lv_item_name    := gv_msg_customer_item_number;
-          lv_item_value   := gv_customer_item_number;
-          RAISE global_data_check_expt;
-        END IF;
+--        IF ( LENGTHB(gv_customer_item_number) > cn_max_len_customer_item_num ) THEN
+--          lv_message_code := cv_msg_overflow;
+--          lv_item_name    := gv_msg_customer_item_number;
+--          lv_item_value   := gv_customer_item_number;
+--          RAISE global_data_check_expt;
+--        END IF;
+/*  Ver1.13 Del End */
 --
         -- 顧客品目：顧客品目摘要
         IF ( LENGTHB(gv_customer_item_desc) > cn_max_len_customer_item_desc ) THEN
@@ -1824,6 +1833,16 @@ AS
         -- 伝票番号が9桁以下の場合は、そのまま出力
         lv_invoice_number := main_rec.invoice_number;
       END IF;
+/*  Ver1.13 Add Start */
+      -- 顧客品目コードの編集
+      IF ( LENGTHB(main_rec.product_code2) > cn_max_len_cust_item_num ) THEN
+        -- 伝票番号が13桁超の場合は、末尾13桁分を出力
+        gv_customer_item_number := SUBSTRB( main_rec.product_code2, cn_cut_len_cust_item_num );
+      ELSE
+        -- 伝票番号が13桁以下の場合は、そのまま出力
+        gv_customer_item_number := main_rec.product_code2;
+      END IF;
+/*  Ver1.13 Add End */
 --
       -- 設定カウンタをインクリメント
       gn_set_cnt := gn_set_cnt + 1;
