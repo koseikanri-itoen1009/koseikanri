@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2010-08-26    1.9   K.Kiriu           E_本番_04153対応（PT対応)
  *  2013-05-13    1.10  K.Kiriu           E_本番_10735対応(営業員別月別ノルマ実績)
  *  2013-06-18    1.11  T.Ishiwata        E_本番_10837対応(メール配信機能対応)
+ *  2018-08-30    1.12  N.Koyama          E_本番_15200対応(職務に関係なく計画のある従業員の情報を全て連携)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -113,11 +114,13 @@ AS
   -- ===============================
   cv_pkg_name            CONSTANT VARCHAR2(100) := 'XXCSO014A06C';   -- パッケージ名
   cv_app_name            CONSTANT VARCHAR2(5)   := 'XXCSO';          -- アプリケーション短縮名
-  cv_duty_cd             CONSTANT VARCHAR2(30)  := '010';            -- 職務コード010(固定)
-  cv_duty_cd_vl          CONSTANT VARCHAR2(30)  := 'ルートセールス';   -- 職務コード010(固定)
-  /* 2009.10.19 K.Kubo T4_00046対応 START */
-  cv_duty_cd_050         CONSTANT VARCHAR2(30)  := '050';                -- 職務コード050(固定)
-  cv_duty_cd_050_vl      CONSTANT VARCHAR2(30)  := '専門店、百貨店販売'; -- 職務コード050(固定)
+  /* 1.12 Del Start */
+--  cv_duty_cd             CONSTANT VARCHAR2(30)  := '010';            -- 職務コード010(固定)
+--  cv_duty_cd_vl          CONSTANT VARCHAR2(30)  := 'ルートセールス';   -- 職務コード010(固定)
+--  /* 2009.10.19 K.Kubo T4_00046対応 START */
+--  cv_duty_cd_050         CONSTANT VARCHAR2(30)  := '050';                -- 職務コード050(固定)
+--  cv_duty_cd_050_vl      CONSTANT VARCHAR2(30)  := '専門店、百貨店販売'; -- 職務コード050(固定)
+  /* 1.12 Del End */
   /* 2009.10.19 K.Kubo T4_00046対応 END */
   cv_object_cd           CONSTANT VARCHAR2(30)  := 'PARTY';          -- ソースコード(固定)
   cv_delete_flag         CONSTANT VARCHAR2(1)   := 'N';              -- タスク削除フラグ
@@ -137,7 +140,10 @@ AS
   cv_tkn_number_03    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00015';  -- CSVファイルオープンエラー
   cv_tkn_number_04    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00018';  -- CSVファイルクローズエラー
   cv_tkn_number_05    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00123';  -- CSVファイル残存エラー
-  cv_tkn_number_06    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00141';  -- データ抽出エラー
+  /* 1.12 Mod Start */
+--  cv_tkn_number_06    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00141';  -- データ抽出エラー
+  cv_tkn_number_06    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00887';  -- データ抽出エラー
+  /* 1.12 Mod End */
   cv_tkn_number_07    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00144';  -- CSVファイル出力エラー
   cv_tkn_number_08    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00152';  -- インタファースファイル名
   cv_tkn_number_09    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00224';  -- CSVファイル出力0件エラー
@@ -237,7 +243,9 @@ AS
   gd_process_date_next   DATE;                -- 業務処理日翌日
   /* 2009.10.19 K.Kubo T4_00046対応 START */
   gv_duty_cd             VARCHAR2(30);        -- 職務コード
-  gv_duty_cd_vl          VARCHAR2(30);        -- 職務コード名
+  /* 1.12 Del Start */
+--  gv_duty_cd_vl          VARCHAR2(30);        -- 職務コード名
+  /* 1.12 Del End */
   /* 2009.10.19 K.Kubo T4_00046対応 END */
   /* 2013.05.13 K.Kiriu E_本稼動_10735対応 ADD START */
   gv_err_tkn_val_01      VARCHAR2(100);       -- 売上目標ワークテーブル
@@ -890,19 +898,31 @@ AS
                        ,iv_token_value1 => cv_table_name_xseh || '、' || cv_table_name_xrcv  -- エラー発生のテーブル名
                        ,iv_token_name2  => cv_tkn_errmsg                        --トークンコード2
                        ,iv_token_value2 => SQLERRM                              --トークン値2
-                       ,iv_token_name3  => cv_tkn_duty_cd                       -- トークンコード3
-                       /* 2009.10.19 K.Kubo T4_00046対応 START */
-                       --,iv_token_value3 => cv_duty_cd                           -- 職務コード
-                       ,iv_token_value3 => gv_duty_cd                           -- 職務コード
+  /* 1.12 Del Start */
+--                       ,iv_token_name3  => cv_tkn_duty_cd                       -- トークンコード3
+--                       /* 2009.10.19 K.Kubo T4_00046対応 START */
+--                       --,iv_token_value3 => cv_duty_cd                           -- 職務コード
+--                       ,iv_token_value3 => gv_duty_cd                           -- 職務コード
+  /* 1.12 Del End */
+  /* 1.12 Mod Start */
                        /* 2009.10.19 K.Kubo T4_00046対応 END */
-                       ,iv_token_name4  => cv_tkn_ymd                           -- トークンコード4
-                       ,iv_token_value4 => TO_CHAR(gd_process_date,'YYYYMMDD')  -- 業務処理日
-                       ,iv_token_name5  => cv_tkn_loc_cd                        -- トークンコード5
-                       ,iv_token_value5 => io_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
-                       ,iv_token_name6  => cv_tkn_sales_cd                      -- トークンコード6
-                       ,iv_token_value6 => io_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
-                       ,iv_token_name7  => cv_tkn_sales_nm                      -- トークンコード7
-                       ,iv_token_value7 => io_prsncd_data_rec.full_name         -- 営業員名称
+--                       ,iv_token_name4  => cv_tkn_ymd                           -- トークンコード4
+--                       ,iv_token_value4 => TO_CHAR(gd_process_date,'YYYYMMDD')  -- 業務処理日
+--                       ,iv_token_name5  => cv_tkn_loc_cd                        -- トークンコード5
+--                       ,iv_token_value5 => io_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
+--                       ,iv_token_name6  => cv_tkn_sales_cd                      -- トークンコード6
+--                       ,iv_token_value6 => io_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
+--                       ,iv_token_name7  => cv_tkn_sales_nm                      -- トークンコード7
+--                       ,iv_token_value7 => io_prsncd_data_rec.full_name         -- 営業員名称
+                       ,iv_token_name3  => cv_tkn_ymd                           -- トークンコード4
+                       ,iv_token_value3 => TO_CHAR(gd_process_date,'YYYYMMDD')  -- 業務処理日
+                       ,iv_token_name4  => cv_tkn_loc_cd                        -- トークンコード5
+                       ,iv_token_value4 => io_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
+                       ,iv_token_name5  => cv_tkn_sales_cd                      -- トークンコード6
+                       ,iv_token_value5 => io_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
+                       ,iv_token_name6  => cv_tkn_sales_nm                      -- トークンコード7
+                       ,iv_token_value6 => io_prsncd_data_rec.full_name         -- 営業員名称
+  /* 1.12 Mod End */
                       );
         lv_errbuf  := lv_errmsg||SQLERRM;
         RAISE error_expt;
@@ -938,19 +958,31 @@ AS
                        ,iv_token_value1 => cv_table_name_jtb                    -- エラー発生のテーブル名
                        ,iv_token_name2  => cv_tkn_errmsg                        --トークンコード2
                        ,iv_token_value2 => SQLERRM                              --トークン値2
-                       ,iv_token_name3  => cv_tkn_duty_cd                       -- トークンコード3
-                       /* 2009.10.19 K.Kubo T4_00046対応 START */
-                       --,iv_token_value3 => cv_duty_cd                           -- 職務コード
-                       ,iv_token_value3 => gv_duty_cd                           -- 職務コード
-                       /* 2009.10.19 K.Kubo T4_00046対応 END */
-                       ,iv_token_name4  => cv_tkn_ymd                           -- トークンコード4
-                       ,iv_token_value4 => TO_CHAR(gd_process_date,'YYYYMMDD')  -- 業務処理日
-                       ,iv_token_name5  => cv_tkn_loc_cd                        -- トークンコード5
-                       ,iv_token_value5 => io_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
-                       ,iv_token_name6  => cv_tkn_sales_cd                      -- トークンコード6
-                       ,iv_token_value6 => io_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
-                       ,iv_token_name7  => cv_tkn_sales_nm                      -- トークンコード7
-                       ,iv_token_value7 => io_prsncd_data_rec.full_name         -- 営業員名称
+  /* 1.12 Del Start */
+--                       ,iv_token_name3  => cv_tkn_duty_cd                       -- トークンコード3
+--                       /* 2009.10.19 K.Kubo T4_00046対応 START */
+--                       --,iv_token_value3 => cv_duty_cd                           -- 職務コード
+--                       ,iv_token_value3 => gv_duty_cd                           -- 職務コード
+--                       /* 2009.10.19 K.Kubo T4_00046対応 END */
+  /* 1.12 Del End */
+  /* 1.12 Mod Start */
+--                       ,iv_token_name4  => cv_tkn_ymd                           -- トークンコード4
+--                       ,iv_token_value4 => TO_CHAR(gd_process_date,'YYYYMMDD')  -- 業務処理日
+--                       ,iv_token_name5  => cv_tkn_loc_cd                        -- トークンコード5
+--                       ,iv_token_value5 => io_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
+--                       ,iv_token_name6  => cv_tkn_sales_cd                      -- トークンコード6
+--                       ,iv_token_value6 => io_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
+--                       ,iv_token_name7  => cv_tkn_sales_nm                      -- トークンコード7
+--                       ,iv_token_value7 => io_prsncd_data_rec.full_name         -- 営業員名称
+                       ,iv_token_name3  => cv_tkn_ymd                           -- トークンコード4
+                       ,iv_token_value3 => TO_CHAR(gd_process_date,'YYYYMMDD')  -- 業務処理日
+                       ,iv_token_name4  => cv_tkn_loc_cd                        -- トークンコード5
+                       ,iv_token_value4 => io_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
+                       ,iv_token_name5  => cv_tkn_sales_cd                      -- トークンコード6
+                       ,iv_token_value5 => io_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
+                       ,iv_token_name6  => cv_tkn_sales_nm                      -- トークンコード7
+                       ,iv_token_value6 => io_prsncd_data_rec.full_name         -- 営業員名称
+  /* 1.12 Mod End */
                       );
         lv_errbuf  := lv_errmsg||SQLERRM;
         RAISE error_expt;
@@ -1025,6 +1057,10 @@ AS
 -- INパラメータ.出力するテータをワークテーブルデータ格納
     -- *** ローカル・例外 ***
     warning_expt      EXCEPTION;            -- NOFOUND警告例外
+  /* 1.12 Add Start */
+    lv_ret1                 VARCHAR2(1);    -- 当月営業員別月別計画テータ存在チェックステータス
+    lv_ret2                 VARCHAR2(1);    -- 翌月営業員別月別計画テータ存在チェックステータス
+  /* 1.12 Add End */
 -- 
   BEGIN
 --##################  固定ステータス初期化部 START   ###################
@@ -1040,6 +1076,10 @@ AS
     -- 業務処理日当月の年度取得
     lt_year            := TO_CHAR(xxcso_util_common_pkg.get_business_year(lv_year_month));
     lt_year_next       := TO_CHAR(xxcso_util_common_pkg.get_business_year(lv_year_month_next));
+  /* 1.12 Add Start */
+    lv_ret1            := 0; --初期化
+    lv_ret2            := 0; --初期化
+  /* 1.12 Add End */
 --  
     -- 当月営業員別月別計画テータを抽出する
     BEGIN
@@ -1086,6 +1126,9 @@ AS
         ,buff   => cv_debug_msg12 || CHR(10) ||
                    ''
         );
+  /* 1.12 Add Start */
+        lv_ret1 := '3';
+  /* 1.12 Add End */
 --
       WHEN OTHERS THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1094,21 +1137,33 @@ AS
                          ,iv_token_name1  => cv_tkn_tbl                            -- トークン値1
                          ,iv_token_value1 => cv_table_name_xdmp || '、' || cv_table_name_xspmp 
                            -- エラー発生のテーブル名
-                         ,iv_token_name2  => cv_tkn_duty_cd                        -- トークンコード2
-                         /* 2009.10.19 K.Kubo T4_00046対応 START */
-                         --,iv_token_value2 => cv_duty_cd || cv_duty_cd_vl           -- 職務コード 
-                         ,iv_token_value2 => gv_duty_cd || gv_duty_cd_vl           -- 職務コード 
+  /* 1.12 Mod Start */
+--                         ,iv_token_name2  => cv_tkn_duty_cd                        -- トークンコード2
+--                         /* 2009.10.19 K.Kubo T4_00046対応 START */
+--                         --,iv_token_value2 => cv_duty_cd || cv_duty_cd_vl           -- 職務コード 
+--                         ,iv_token_value2 => gv_duty_cd || gv_duty_cd_vl           -- 職務コード 
                          /* 2009.10.19 K.Kubo T4_00046対応 END */
-                         ,iv_token_name3  => cv_tkn_ymd                            -- トークンコード3
-                         ,iv_token_value3 => TO_CHAR(gd_process_date,'YYYYMMDD' )  -- 業務処理日
-                         ,iv_token_name4  => cv_tkn_sales_cd                       -- トークンコード4
-                         ,iv_token_value4 => io_prsncd_data_rec.base_code          -- A-4で抽出した拠点コード
-                         ,iv_token_name5  => cv_tkn_sales_cd                       -- トークンコード5
-                         ,iv_token_value5 => io_prsncd_data_rec.employee_number    -- A-4で抽出した営業員コード
-                         ,iv_token_name6  => cv_tkn_sales_nm                       -- トークンコード6
-                         ,iv_token_value6 => io_prsncd_data_rec.full_name          -- 営業員名称
-                         ,iv_token_name7  => cv_tkn_errmsg                         -- トークンコード7
-                         ,iv_token_value7 => SQLERRM                               -- SQLエラーメッセージ
+--                         ,iv_token_name3  => cv_tkn_ymd                            -- トークンコード3
+--                         ,iv_token_value3 => TO_CHAR(gd_process_date,'YYYYMMDD' )  -- 業務処理日
+--                         ,iv_token_name4  => cv_tkn_sales_cd                       -- トークンコード4
+--                         ,iv_token_value4 => io_prsncd_data_rec.base_code          -- A-4で抽出した拠点コード
+--                         ,iv_token_name5  => cv_tkn_sales_cd                       -- トークンコード5
+--                         ,iv_token_value5 => io_prsncd_data_rec.employee_number    -- A-4で抽出した営業員コード
+--                         ,iv_token_name6  => cv_tkn_sales_nm                       -- トークンコード6
+--                         ,iv_token_value6 => io_prsncd_data_rec.full_name          -- 営業員名称
+--                         ,iv_token_name7  => cv_tkn_errmsg                         -- トークンコード7
+--                         ,iv_token_value7 => SQLERRM                               -- SQLエラーメッセージ
+                         ,iv_token_name2  => cv_tkn_errmsg                        --トークンコード2
+                         ,iv_token_value2 => SQLERRM                              --トークン値2
+                         ,iv_token_name3  => cv_tkn_ymd                           -- トークンコード4
+                         ,iv_token_value3 => TO_CHAR(gd_process_date,'YYYYMMDD')  -- 業務処理日
+                         ,iv_token_name4  => cv_tkn_loc_cd                        -- トークンコード5
+                         ,iv_token_value4 => io_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
+                         ,iv_token_name5  => cv_tkn_sales_cd                      -- トークンコード6
+                         ,iv_token_value5 => io_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
+                         ,iv_token_name6  => cv_tkn_sales_nm                      -- トークンコード7
+                         ,iv_token_value6 => io_prsncd_data_rec.full_name         -- 営業員名称
+  /* 1.12 Mod End */
                       );
         lv_errbuf  := lv_errmsg||SQLERRM;
         RAISE warning_expt;
@@ -1159,6 +1214,9 @@ AS
          ,buff   => cv_debug_msg13 || CHR(10) ||
                    ''
         );
+  /* 1.12 Add Start */
+        lv_ret2 := '3';
+  /* 1.12 Add End */
 --
       WHEN OTHERS THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1167,26 +1225,44 @@ AS
                          ,iv_token_name1  => cv_tkn_tbl                     -- トークン値1
                          ,iv_token_value1 => cv_table_name_xdmp || '、' || cv_table_name_xspmp 
                            -- エラー発生のテーブル名
-                         ,iv_token_name2  => cv_tkn_duty_cd                 -- トークンコード2
-                         /* 2009.10.19 K.Kubo T4_00046対応 START */
-                         --,iv_token_value2 => cv_duty_cd || cv_duty_cd_vl    -- 職務コード                       
-                         ,iv_token_value2 => gv_duty_cd || gv_duty_cd_vl    -- 職務コード                       
+  /* 1.12 Mod Start */
+--                         ,iv_token_name2  => cv_tkn_duty_cd                        -- トークンコード2
+--                         /* 2009.10.19 K.Kubo T4_00046対応 START */
+--                         --,iv_token_value2 => cv_duty_cd || cv_duty_cd_vl           -- 職務コード 
+--                         ,iv_token_value2 => gv_duty_cd || gv_duty_cd_vl           -- 職務コード 
                          /* 2009.10.19 K.Kubo T4_00046対応 END */
-                         ,iv_token_name3  => cv_tkn_ymd                     -- トークンコード3
-                         ,iv_token_value3 => TO_CHAR(gd_process_date,'YYYYMMDD')   -- 業務処理日
-                         ,iv_token_name4  => cv_tkn_sales_cd                -- トークンコード4
-                         ,iv_token_value4 => io_prsncd_data_rec.base_code   -- A-4で抽出した拠点コード
-                         ,iv_token_name5  => cv_tkn_sales_cd                -- トークンコード5
-                         ,iv_token_value5 => io_prsncd_data_rec.employee_number    -- A-4で抽出した営業員コード
-                         ,iv_token_name6  => cv_tkn_sales_nm                -- トークンコード6
-                         ,iv_token_value6 => io_prsncd_data_rec.full_name   -- 営業員名称
-                         ,iv_token_name7  => cv_tkn_errmsg                  -- トークンコード7
-                         ,iv_token_value7 => SQLERRM                        -- SQLエラーメッセージ
+--                         ,iv_token_name3  => cv_tkn_ymd                            -- トークンコード3
+--                         ,iv_token_value3 => TO_CHAR(gd_process_date,'YYYYMMDD' )  -- 業務処理日
+--                         ,iv_token_name4  => cv_tkn_sales_cd                       -- トークンコード4
+--                         ,iv_token_value4 => io_prsncd_data_rec.base_code          -- A-4で抽出した拠点コード
+--                         ,iv_token_name5  => cv_tkn_sales_cd                       -- トークンコード5
+--                         ,iv_token_value5 => io_prsncd_data_rec.employee_number    -- A-4で抽出した営業員コード
+--                         ,iv_token_name6  => cv_tkn_sales_nm                       -- トークンコード6
+--                         ,iv_token_value6 => io_prsncd_data_rec.full_name          -- 営業員名称
+--                         ,iv_token_name7  => cv_tkn_errmsg                         -- トークンコード7
+--                         ,iv_token_value7 => SQLERRM                               -- SQLエラーメッセージ
+                         ,iv_token_name2  => cv_tkn_errmsg                        --トークンコード2
+                         ,iv_token_value2 => SQLERRM                              --トークン値2
+                         ,iv_token_name3  => cv_tkn_ymd                           -- トークンコード4
+                         ,iv_token_value3 => TO_CHAR(gd_process_date,'YYYYMMDD')  -- 業務処理日
+                         ,iv_token_name4  => cv_tkn_loc_cd                        -- トークンコード5
+                         ,iv_token_value4 => io_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
+                         ,iv_token_name5  => cv_tkn_sales_cd                      -- トークンコード6
+                         ,iv_token_value5 => io_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
+                         ,iv_token_name6  => cv_tkn_sales_nm                      -- トークンコード7
+                         ,iv_token_value6 => io_prsncd_data_rec.full_name         -- 営業員名称
+  /* 1.12 Mod End */
                       );
         lv_errbuf  := lv_errmsg||SQLERRM;
         RAISE warning_expt;
       END;
 --
+  /* 1.12 Add Start */
+     -- 当月・翌月の計画が両方とも取得できない場合はCSVを作成しない
+     IF ( lv_ret1 = '3' AND lv_ret2 = '3' ) THEN
+       ov_retcode := '3';
+     END IF;
+  /* 1.12 Add End */
   EXCEPTION
     WHEN warning_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -1297,21 +1373,35 @@ AS
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                          --アプリケーション短縮名
                        ,iv_name         => cv_tkn_number_07                     --メッセージコード
-                       ,iv_token_name1  => cv_tkn_duty_cd                       -- トークンコード1
-                       /* 2009.10.19 K.Kubo T4_00046対応 START */
-                       --,iv_token_value1 => cv_duty_cd                           -- 職務コード
-                       ,iv_token_value1 => gv_duty_cd                           -- 職務コード
-                       /* 2009.10.19 K.Kubo T4_00046対応 END */
-                       ,iv_token_name2  => cv_tkn_ymd                           -- トークンコード2
-                       ,iv_token_value2 => TO_CHAR(gd_process_date,'YYYYMMDD' ) -- 業務処理日
-                       ,iv_token_name3  => cv_tkn_loc_cd                      -- トークンコード3
-                       ,iv_token_value3 => ir_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
-                       ,iv_token_name4  => cv_tkn_sales_cd                      -- トークンコード4
-                       ,iv_token_value4 => ir_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
-                       ,iv_token_name5  => cv_tkn_sales_nm                      -- トークンコード5
-                       ,iv_token_value5 => ir_prsncd_data_rec.full_name         -- 営業員名称
-                       ,iv_token_name6  => cv_tkn_errmsg                        -- トークンコード6
-                       ,iv_token_value6 => SQLERRM                              -- SQLエラーメッセージ
+  /* 1.12 Del Start */
+--                       ,iv_token_name1  => cv_tkn_duty_cd                       -- トークンコード1
+--                       /* 2009.10.19 K.Kubo T4_00046対応 START */
+--                       --,iv_token_value1 => cv_duty_cd                           -- 職務コード
+--                       ,iv_token_value1 => gv_duty_cd                           -- 職務コード
+  /* 1.12 Del End */
+  /* 1.12 Mod Start */
+--                       /* 2009.10.19 K.Kubo T4_00046対応 END */
+--                       ,iv_token_name2  => cv_tkn_ymd                           -- トークンコード2
+--                       ,iv_token_value2 => TO_CHAR(gd_process_date,'YYYYMMDD' ) -- 業務処理日
+--                       ,iv_token_name3  => cv_tkn_loc_cd                      -- トークンコード3
+--                       ,iv_token_value3 => ir_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
+--                       ,iv_token_name4  => cv_tkn_sales_cd                      -- トークンコード4
+--                       ,iv_token_value4 => ir_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
+--                       ,iv_token_name5  => cv_tkn_sales_nm                      -- トークンコード5
+--                       ,iv_token_value5 => ir_prsncd_data_rec.full_name         -- 営業員名称
+--                       ,iv_token_name6  => cv_tkn_errmsg                        -- トークンコード6
+--                       ,iv_token_value6 => SQLERRM                              -- SQLエラーメッセージ
+                       ,iv_token_name1  => cv_tkn_ymd                           -- トークンコード1
+                       ,iv_token_value1 => TO_CHAR(gd_process_date,'YYYYMMDD' ) -- 業務処理日
+                       ,iv_token_name2  => cv_tkn_loc_cd                      -- トークンコード2
+                       ,iv_token_value2 => ir_prsncd_data_rec.base_code         -- A-4で抽出した拠点コード
+                       ,iv_token_name3  => cv_tkn_sales_cd                      -- トークンコード3
+                       ,iv_token_value3 => ir_prsncd_data_rec.employee_number   -- A-4で抽出した営業員コード
+                       ,iv_token_name4  => cv_tkn_sales_nm                      -- トークンコード4
+                       ,iv_token_value4 => ir_prsncd_data_rec.full_name         -- 営業員名称
+                       ,iv_token_name5  => cv_tkn_errmsg                        -- トークンコード5
+                       ,iv_token_value5 => SQLERRM                              -- SQLエラーメッセージ
+  /* 1.12 Mod End */
                      );
         lv_errbuf := lv_errmsg || SQLERRM;
         RAISE file_put_line_expt;
@@ -2046,17 +2136,25 @@ AS
              ,xrv.resource_id resource_id            -- リソースID
              ,xrv.full_name full_name                -- 営業員名称 
              /* 2009.10.19 K.Kubo T4_00046対応 START */
-             ,(CASE WHEN  (xrv.issue_date          <= lv_process_date_next
-                         AND TRIM(xrv.duty_code_new) IN (cv_duty_cd, cv_duty_cd_050))
-                    THEN
-                      TRIM(xrv.duty_code_new)
-                    WHEN  (lv_process_date_next    <  xrv.issue_date
-                         AND TRIM(xrv.duty_code_old) IN (cv_duty_cd, cv_duty_cd_050))
-                    THEN
-                      TRIM(xrv.duty_code_old)
-                    ELSE
-                      NULL
-                    END
+  /* 1.12 Mod Start */
+--             ,(CASE WHEN  (xrv.issue_date          <= lv_process_date_next
+--                         AND TRIM(xrv.duty_code_new) IN (cv_duty_cd, cv_duty_cd_050))
+--                    THEN
+--                      TRIM(xrv.duty_code_new)
+--                    WHEN  (lv_process_date_next    <  xrv.issue_date
+--                         AND TRIM(xrv.duty_code_old) IN (cv_duty_cd, cv_duty_cd_050))
+--                    THEN
+--                      TRIM(xrv.duty_code_old)
+--                    ELSE
+--                      NULL
+--                    END
+             ,( CASE WHEN ( xrv.issue_date <= lv_process_date_next )
+                     THEN
+                       TRIM(xrv.duty_code_new)
+                     ELSE
+                       TRIM(xrv.duty_code_old)
+                     END
+  /* 1.12 Mod End */
               ) duty_code                            -- 業務コード
              /* 2009.10.19 K.Kubo T4_00046対応 END */
              /* 2010.08.26 K.Kiriu E_本番_04153対応 START */
@@ -2123,23 +2221,26 @@ AS
                      jtb.owner_id
              ) jtb_cnt
              /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
-      WHERE  (
-                (xrv.issue_date          <= lv_process_date_next
-               AND TRIM(xrv.duty_code_new) IN (cv_duty_cd, cv_duty_cd_050))  -- 職務 010：ルートセールスと050：専門百貨店販売
-             OR (lv_process_date_next    <  xrv.issue_date
-               AND TRIM(xrv.duty_code_old) IN (cv_duty_cd, cv_duty_cd_050))  -- 職務 010：ルートセールスと050：専門百貨店販売
-             )
-      /* 2009.10.19 K.Kubo T4_00046対応 END */
-      /* 2009.06.03 K.Satomura T1_1304対応 START */
-      --  AND gd_process_date_next BETWEEN TRUNC(xrv.start_date)
-      --        AND TRUNC(NVL(xrv.end_date, gd_process_date_next)) 
-      --  AND gd_process_date_next BETWEEN TRUNC(xrv.employee_start_date)
-      --        AND TRUNC(NVL(xrv.employee_end_date,gd_process_date_next))
-      --  AND gd_process_date_next BETWEEN TRUNC(xrv.assign_start_date)
-      --        AND TRUNC(NVL(xrv.assign_end_date,gd_process_date_next))
-      --  AND gd_process_date_next BETWEEN TRUNC(xrv.resource_start_date) 
-      --        AND TRUNC(NVL(xrv.resource_end_date, gd_process_date_next));
-      AND    ppf.person_id = xrv.person_id
+  /* 1.12 Mod Start */
+--      WHERE  (
+--                (xrv.issue_date          <= lv_process_date_next
+--               AND TRIM(xrv.duty_code_new) IN (cv_duty_cd, cv_duty_cd_050))  -- 職務 010：ルートセールスと050：専門百貨店販売
+--             OR (lv_process_date_next    <  xrv.issue_date
+--               AND TRIM(xrv.duty_code_old) IN (cv_duty_cd, cv_duty_cd_050))  -- 職務 010：ルートセールスと050：専門百貨店販売
+--             )
+--      /* 2009.10.19 K.Kubo T4_00046対応 END */
+--      /* 2009.06.03 K.Satomura T1_1304対応 START */
+--      --  AND gd_process_date_next BETWEEN TRUNC(xrv.start_date)
+--      --        AND TRUNC(NVL(xrv.end_date, gd_process_date_next)) 
+--      --  AND gd_process_date_next BETWEEN TRUNC(xrv.employee_start_date)
+--      --        AND TRUNC(NVL(xrv.employee_end_date,gd_process_date_next))
+--      --  AND gd_process_date_next BETWEEN TRUNC(xrv.assign_start_date)
+--      --        AND TRUNC(NVL(xrv.assign_end_date,gd_process_date_next))
+--      --  AND gd_process_date_next BETWEEN TRUNC(xrv.resource_start_date) 
+--      --        AND TRUNC(NVL(xrv.resource_end_date, gd_process_date_next));
+--      AND    ppf.person_id = xrv.person_id
+      WHERE  ppf.person_id = xrv.person_id
+  /* 1.12 Mod End */
       -- ユーザー：従業員最新レコードに紐づく
       AND    ppf.max_effective_start_date BETWEEN TRUNC(xrv.start_date)
       AND    TRUNC(NVL(xrv.end_date, ppf.max_effective_start_date)) -- NVLをMAX開始日
@@ -2447,8 +2548,10 @@ AS
       BEGIN
         FETCH xrv_v_cur INTO l_xrv_v_cur_rec;
 --
-        --処理対象件数格納
-        gn_target_cnt := xrv_v_cur%ROWCOUNT;
+  /* 1.12 Del Start */
+--        --処理対象件数格納
+--        gn_target_cnt := xrv_v_cur%ROWCOUNT;
+  /* 1.12 Del End */
 --
         
         EXIT WHEN xrv_v_cur%NOTFOUND
@@ -2465,16 +2568,18 @@ AS
         l_prsncd_data_rec.pure_amount_sum   := l_xrv_v_cur_rec.pure_amount_sum;
         l_prsncd_data_rec.prsn_total_cnt    := l_xrv_v_cur_rec.prsn_total_cnt;
         /* 2010.08.26 K.Kiriu E_本番_04153対応 END */
-        --職務コード
-        gv_duty_cd                          := l_xrv_v_cur_rec.duty_code;
-        --職務コード名
-        IF (gv_duty_cd = cv_duty_cd ) THEN
-          gv_duty_cd_vl                     := cv_duty_cd_vl;      -- ルートセールス
-        ELSIF (gv_duty_cd = cv_duty_cd_050 ) THEN
-          gv_duty_cd_vl                     := cv_duty_cd_050_vl;  -- 専門店、百貨店販売
-        ELSE
-          gv_duty_cd_vl                     := NULL;
-        END IF;
+  /* 1.12 Del Start */
+--        --職務コード
+--        gv_duty_cd                          := l_xrv_v_cur_rec.duty_code;
+--        --職務コード名
+--        IF (gv_duty_cd = cv_duty_cd ) THEN
+--          gv_duty_cd_vl                     := cv_duty_cd_vl;      -- ルートセールス
+--        ELSIF (gv_duty_cd = cv_duty_cd_050 ) THEN
+--          gv_duty_cd_vl                     := cv_duty_cd_050_vl;  -- 専門店、百貨店販売
+--        ELSE
+--          gv_duty_cd_vl                     := NULL;
+--        END IF;
+  /* 1.12 Del End */
         /* 2009.10.19 K.Kubo T4_00046対応 END */
         -- 抽出した項目をカンマ区切りで文字連結してログに出力する用
         lv_err_rec_info := l_prsncd_data_rec.employee_number||','
@@ -2543,22 +2648,32 @@ AS
         ELSIF (lv_retcode = cv_status_warn) THEN
           RAISE error_skip_data_expt;
         END IF;
-        -- =====================================================
-        -- A-7.CSVファイル出力 
-        -- =================================================
-        create_csv_rec(
-           ir_prsncd_data_rec => l_prsncd_data_rec   -- 営業員管理(ファイル)情報ワークテーブルデータ
-          ,ov_errbuf          => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-          ,ov_retcode         => lv_retcode          -- リターン・コード              --# 固定 #
-          ,ov_errmsg          => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-        );
-        IF (lv_retcode = cv_status_error) THEN
-          RAISE global_process_expt;
-        ELSIF (lv_retcode = cv_status_warn) THEN
-          RAISE error_skip_data_expt;
-        END IF;
+  /* 1.12 Add Start */
+        -- 当月の計画が取得できない場合は出力しない（対象外のデータ）
+        IF ( lv_retcode <> '3' ) THEN
 --
-        gn_normal_cnt   := gn_normal_cnt + 1;    -- 正常対象件数
+          --処理対象件数格納
+          gn_target_cnt := gn_target_cnt + 1;
+  /* 1.12 Add End */
+          -- =====================================================
+          -- A-7.CSVファイル出力 
+          -- =================================================
+          create_csv_rec(
+             ir_prsncd_data_rec => l_prsncd_data_rec   -- 営業員管理(ファイル)情報ワークテーブルデータ
+            ,ov_errbuf          => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+            ,ov_retcode         => lv_retcode          -- リターン・コード              --# 固定 #
+            ,ov_errmsg          => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+          );
+          IF (lv_retcode = cv_status_error) THEN
+            RAISE global_process_expt;
+          ELSIF (lv_retcode = cv_status_warn) THEN
+            RAISE error_skip_data_expt;
+          END IF;
+--
+          gn_normal_cnt   := gn_normal_cnt + 1;    -- 正常対象件数
+  /* 1.12 Add Start */
+        END IF;
+  /* 1.12 Add End */
 --
       EXCEPTION
         WHEN error_skip_data_expt THEN
