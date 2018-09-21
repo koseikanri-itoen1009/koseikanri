@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF013A19C(body)
  * Description      : リース契約月次更新
  * MD.050           : MD050_CFF_013_A19_リース契約月次更新
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -15,6 +15,7 @@ AS
  * ---------------------------- ------------------------------------------------------------
  *  init                         初期処理                                  (A-1)
  *  chk_period_name              会計期間チェック                          (A-2)
+ *  get_profile_values           プロファイル値取得                        (A-10)
  *  get_ctrcted_les_info         契約(再リース契約)済みリース契約情報抽出  (A-3)
  *  update_cted_ct_status        契約ステータス更新                        (A-4)
  *  get_object_ctrct_info        （再リース要否）物件契約情報抽出          (A-5)
@@ -37,6 +38,7 @@ AS
  *                                       ス回数'を追加
  *  2009/08/28    1.4   SCS 渡辺         [統合テスト障害0001058(PT対応)]
  *  2013/07/24    1.5   SCSK 中野        [E_本稼動_10871]消費税増税対応
+ *  2018/09/07    1.6   SCSK 小路        [E_本稼動_14830]IFRS追加対応
  *
  *****************************************************************************************/
 --
@@ -118,6 +120,9 @@ AS
   cv_msg_name5     CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00131'; --契約済みリース契約更新件数メッセージ
   cv_msg_name6     CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00133'; --再リース要物件のステータス更新件数メッセージ
   cv_msg_name7     CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00135'; --照合不可更新件数メッセージ
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+  cv_msg_name8     CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00020'; --プロファイル取得エラー
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
 --
   -- ***メッセージ名(トークン)
   cv_tkn_val1      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50132'; --契約(再リース契約)済みリース契約情報
@@ -126,6 +131,9 @@ AS
   cv_tkn_val4      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50088'; --リース支払計画
   cv_tkn_val5      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-00062'; --対象データがありませんでした。(トークン使用)
   cv_tkn_val6      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50014'; --リース物件テーブル
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+  cv_tkn_val7      CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50324'; -- XXCFF:台帳名_IFRSリース台帳
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
 --
   -- ***トークン名
   -- プロファイル名
@@ -133,6 +141,9 @@ AS
   cv_tkn_name2     CONSTANT VARCHAR2(100) := 'PERIOD_NAME';    --会計期間名
   cv_tkn_name3     CONSTANT VARCHAR2(100) := 'GET_DATA';       --取得データ
   cv_tkn_name4     CONSTANT VARCHAR2(100) := 'TABLE_NAME';     --テーブル
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+  cv_tkn_name5     CONSTANT VARCHAR2(100) := 'PROF_NAME';      --プロファイル名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
 --
   -- ***プロファイル名称
 --
@@ -169,6 +180,20 @@ AS
 --
   -- ***照合済みフラグ
   cv_paymtch_flag_unadmin  CONSTANT VARCHAR2(1) := '0'; --未照合
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+--
+  -- ***プロファイル
+  cv_ifrs_lease_books         CONSTANT VARCHAR2(35) := 'XXCFF1_IFRS_LEASE_BOOKS';  -- 台帳名_IFRSリース台帳
+--
+  -- ***参照タイプ
+  cv_xxcff1_lease_class_check CONSTANT VARCHAR2(30) := 'XXCFF1_LEASE_CLASS_CHECK'; -- リース種別チェック
+--
+  -- ***言語
+  ct_language               CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');
+--
+  -- ***フラグ判定用
+  cv_flg_y                    CONSTANT VARCHAR2(1)  := 'Y';
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -290,6 +315,15 @@ AS
   --パラメータ会計期間
   gv_period_name                 VARCHAR2(100);
 --
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+  -- ***プロファイル値
+  -- 台帳名_IFRSリース台帳
+  gv_ifrs_lease_books      VARCHAR2(100);
+--
+  -- リース判定処理
+  gv_lease_class_att7      VARCHAR2(1);
+--
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
   -- ***バルクフェッチ用定義
 --
   --会計期間チェック用定義
@@ -477,6 +511,9 @@ AS
    ***********************************************************************************/
   PROCEDURE chk_period_name(
     iv_period_name  IN   VARCHAR2,     -- 1.会計期間名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+    iv_book_type_code IN VARCHAR2,     -- 2.台帳名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
     ov_errbuf       OUT  VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode      OUT  VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg       OUT  VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -508,11 +545,17 @@ AS
               fdp.period_close_date   AS period_close_dt  --期間クローズ日
              ,fdp.book_type_code      AS book_type_code   --資産台帳名
         FROM
-              xxcff_lease_kind_v  xlk  --リース種類ビュー
-             ,fa_deprn_periods    fdp  --減価償却期間
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD Start
+--              xxcff_lease_kind_v  xlk  --リース種類ビュー
+--             ,fa_deprn_periods    fdp  --減価償却期間
+              fa_deprn_periods    fdp  --減価償却期間
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD End
        WHERE
-              xlk.lease_kind_code IN ( cv_les_kind_fin, cv_les_kind_old_fin )
-         AND  xlk.book_type_code  = fdp.book_type_code
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD Start
+--              xlk.lease_kind_code IN ( cv_les_kind_fin, cv_les_kind_old_fin )
+--         AND  xlk.book_type_code  = fdp.book_type_code
+              fdp.book_type_code  = iv_book_type_code
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD End
          AND  fdp.period_name     = iv_period_name
       ;
 --
@@ -601,6 +644,104 @@ AS
 --
   END chk_period_name;
 --
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+  /**********************************************************************************
+   * Procedure Name   : get_profile_values
+   * Description      : プロファイル値取得(A-10)
+   ***********************************************************************************/
+  PROCEDURE get_profile_values(
+    iv_book_type_code IN  VARCHAR2,     --   1.台帳名
+    ov_errbuf         OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode        OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg         OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_profile_values'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- リース判定処理
+    cv_lease_class_att7_1      CONSTANT VARCHAR2(1)  := '1'; -- 1:FINリース
+    cv_lease_class_att7_2      CONSTANT VARCHAR2(1)  := '2'; -- 2:IFRSリース
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- XXCFF:台帳名_IFRSリース台帳
+    gv_ifrs_lease_books := FND_PROFILE.VALUE(cv_ifrs_lease_books);
+    IF (gv_ifrs_lease_books IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_name8         -- プロファイル取得エラー
+                                                    ,cv_tkn_name5         -- トークン'PROF_NAME'
+                                                    ,cv_tkn_val7)         -- XXCFF:台帳名_IFRSリース台帳
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --IFRSリース台帳の場合
+    IF ( iv_book_type_code = gv_ifrs_lease_books ) THEN
+      -- リース判定処理=2
+      gv_lease_class_att7 := cv_lease_class_att7_2;
+    --IFRSリース台帳以外の場合
+    ELSE
+      -- リース判定処理=1
+      gv_lease_class_att7 := cv_lease_class_att7_1;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_profile_values;
+--
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
   /**********************************************************************************
    * Procedure Name   : get_ctrcted_les_info
    * Description      : 契約(再リース契約)済みリース契約情報抽出処理(A-3)
@@ -639,6 +780,9 @@ AS
 -- 0001058 2009/08/28 ADD START --
             /*+
               LEADING(XCL)
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+              USE_NL(XCL XOH XCH)
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
               INDEX(XCL XXCFF_CONTRACT_LINES_N01)
               INDEX(XCH XXCFF_CONTRACT_HEADERS_PK)
               INDEX(XOH XXCFF_OBJECT_HEADERS_PK)
@@ -688,12 +832,24 @@ AS
               xxcff_contract_lines    xcl --リース契約明細
              ,xxcff_object_headers    xoh --リース物件
              ,xxcff_contract_headers  xch --リース契約
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+             ,fnd_lookup_values       flv -- 参照表
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
        WHERE
               xcl.object_header_id   = xoh.object_header_id           --物件内部ID
          AND  xcl.contract_header_id = xch.contract_header_id         --契約内部ID
          AND  xcl.contract_status    = cv_ctrct_st_reg                --契約ステータス:登録済み
          AND  TO_CHAR(xch.first_payment_date, 'YYYYMM') <= 
                 TO_CHAR(TO_DATE(gv_period_name, 'YYYY-MM'), 'YYYYMM') --初回支払日
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+         AND  xch.lease_class        = flv.lookup_code
+         AND  flv.lookup_type        = cv_xxcff1_lease_class_check   -- リース種別チェック
+         AND  flv.attribute7         = gv_lease_class_att7           -- リース判定処理
+         AND  flv.language           = ct_language
+         AND  flv.enabled_flag       = cv_flg_y
+         AND  TO_DATE(gv_period_name,'YYYY-MM') BETWEEN NVL(flv.start_date_active, TO_DATE(gv_period_name,'YYYY-MM'))
+                                                AND     NVL(flv.end_date_active  , TO_DATE(gv_period_name,'YYYY-MM'))
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
          FOR UPDATE OF xcl.contract_header_id NOWAIT    
     ;
 --
@@ -1104,6 +1260,9 @@ AS
               xxcff_contract_lines    xcl --リース契約明細
              ,xxcff_object_headers    xoh --リース物件
              ,xxcff_contract_headers  xch --リース契約
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+             ,fnd_lookup_values       flv -- 参照表
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
        WHERE
               xcl.object_header_id   = xoh.object_header_id           --物件内部ID
          AND  xcl.contract_header_id = xch.contract_header_id         --契約内部ID
@@ -1116,6 +1275,15 @@ AS
          AND  xoh.object_status                                       --物件ステータス
                 IN (cv_object_st_ctrcted, cv_object_st_reles_ctrcted, cv_object_st_mid_term_appl)
          AND  xoh.re_lease_times     = xch.re_lease_times             --再リース回数
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+         AND  xch.lease_class        = flv.lookup_code
+         AND  flv.lookup_type        = cv_xxcff1_lease_class_check   -- リース種別チェック
+         AND  flv.attribute7         = gv_lease_class_att7           -- リース判定処理
+         AND  flv.language           = ct_language
+         AND  flv.enabled_flag       = cv_flg_y
+         AND  TO_DATE(gv_period_name,'YYYY-MM') BETWEEN NVL(flv.start_date_active, TO_DATE(gv_period_name,'YYYY-MM'))
+                                                AND     NVL(flv.end_date_active  , TO_DATE(gv_period_name,'YYYY-MM'))
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
          FOR UPDATE OF xcl.contract_header_id, xoh.object_code NOWAIT
     ;
 --
@@ -1691,13 +1859,35 @@ AS
     CURSOR lock_pay_plan_cur
     IS
     SELECT
-            xpp.contract_line_id
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD Start
+--            xpp.contract_line_id
+             /*+
+              LEADING(XPP)
+              USE_NL(XPP XCH)
+              INDEX(XCH XXCFF_CONTRACT_HEADERS_PK)
+             */
+            xpp.contract_line_id  contract_line_id
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD End
       FROM
             xxcff_pay_planning  xpp  --リース支払計画
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+           ,xxcff_contract_headers  xch --リース契約
+           ,fnd_lookup_values       flv -- 参照表
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
      WHERE
             xpp.period_name        = gv_period_name
        AND  xpp.payment_match_flag = cv_paymtch_flag_unadmin
        AND  xpp.accounting_if_flag = cv_acct_if_flag_unsent  --会計IFフラグ
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+       AND  xpp.contract_header_id = xch.contract_header_id  --契約内部ID
+       AND  xch.lease_class        = flv.lookup_code
+       AND  flv.lookup_type        = cv_xxcff1_lease_class_check   -- リース種別チェック
+       AND  flv.attribute7         = gv_lease_class_att7           -- リース判定処理
+       AND  flv.language           = ct_language
+       AND  flv.enabled_flag       = cv_flg_y
+       AND  TO_DATE(gv_period_name,'YYYY-MM') BETWEEN NVL(flv.start_date_active, TO_DATE(gv_period_name,'YYYY-MM'))
+                                              AND     NVL(flv.end_date_active  , TO_DATE(gv_period_name,'YYYY-MM'))
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
        FOR UPDATE NOWAIT
     ;
 --
@@ -1726,22 +1916,43 @@ AS
     CLOSE lock_pay_plan_cur;
 --
     --2.リース支払計画の会計IFフラグを更新
-    UPDATE
-            xxcff_pay_planning
-       SET
-            accounting_if_flag     = cv_acct_if_flag_dis_pymh
-           ,last_updated_by        = cn_last_updated_by         --最終更新者
-           ,last_update_date       = cd_last_update_date        --最終更新日
-           ,last_update_login      = cn_last_update_login       --最終更新ログイン
-           ,request_id             = cn_request_id              --要求ID
-           ,program_application_id = cn_program_application_id  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-           ,program_id             = cn_program_id             -- コンカレントプログラムID
-           ,program_update_date    = cd_program_update_date    -- プログラム更新日
-     WHERE
-            period_name            = gv_period_name
-       AND  payment_match_flag     = cv_paymtch_flag_unadmin
-       AND  accounting_if_flag     = cv_acct_if_flag_unsent  --会計IFフラグ
-    ;
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD Start
+--    UPDATE
+--            xxcff_pay_planning
+--       SET
+--            accounting_if_flag     = cv_acct_if_flag_dis_pymh
+--           ,last_updated_by        = cn_last_updated_by         --最終更新者
+--           ,last_update_date       = cd_last_update_date        --最終更新日
+--           ,last_update_login      = cn_last_update_login       --最終更新ログイン
+--           ,request_id             = cn_request_id              --要求ID
+--           ,program_application_id = cn_program_application_id  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--           ,program_id             = cn_program_id             -- コンカレントプログラムID
+--           ,program_update_date    = cd_program_update_date    -- プログラム更新日
+--     WHERE
+--            period_name            = gv_period_name
+--       AND  payment_match_flag     = cv_paymtch_flag_unadmin
+--       AND  accounting_if_flag     = cv_acct_if_flag_unsent  --会計IFフラグ
+--    ;
+    <<update_loop>>
+    FORALL ln_loop_cnt IN 1 .. g_contract_line_id_tab.COUNT
+      UPDATE
+              xxcff_pay_planning
+         SET
+              accounting_if_flag     = cv_acct_if_flag_dis_pymh
+             ,last_updated_by        = cn_last_updated_by         --最終更新者
+             ,last_update_date       = cd_last_update_date        --最終更新日
+             ,last_update_login      = cn_last_update_login       --最終更新ログイン
+             ,request_id             = cn_request_id              --要求ID
+             ,program_application_id = cn_program_application_id  --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+             ,program_id             = cn_program_id             -- コンカレントプログラムID
+             ,program_update_date    = cd_program_update_date    -- プログラム更新日
+       WHERE
+              period_name            = gv_period_name
+         AND  payment_match_flag     = cv_paymtch_flag_unadmin
+         AND  accounting_if_flag     = cv_acct_if_flag_unsent  --会計IFフラグ
+         AND  contract_line_id       = g_contract_line_id_tab(ln_loop_cnt)
+      ;
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD End
 --
     gn_acct_flag_normal_cnt := gn_acct_flag_target_cnt;
 --
@@ -1784,6 +1995,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_period_name  IN   VARCHAR2,     -- 1.会計期間名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+    iv_book_type_code IN   VARCHAR2,   -- 2.台帳名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
     ov_errbuf       OUT  VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode      OUT  VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg       OUT  VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1859,6 +2073,9 @@ AS
 --
     chk_period_name(
        iv_period_name    -- 1.会計期間名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+      ,iv_book_type_code -- 2.台帳名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
       ,lv_errbuf         -- エラー・メッセージ           --# 固定 #
       ,lv_retcode        -- リターン・コード             --# 固定 #
       ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1867,6 +2084,22 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+    -- ============================================
+    -- A-10．プロファイル値取得
+    -- ============================================
+--
+    get_profile_values(
+       iv_book_type_code -- 1.台帳名
+      ,lv_errbuf         -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode        -- リターン・コード             --# 固定 #
+      ,lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
     -- ============================================
     -- A-3．契約(再リース契約)済みリース契約情報抽出
     -- ============================================
@@ -1979,7 +2212,11 @@ AS
   PROCEDURE main(
     errbuf           OUT   VARCHAR2,        --   エラーメッセージ #固定#
     retcode          OUT   VARCHAR2,        --   エラーコード     #固定#
-    iv_period_name   IN    VARCHAR2         -- 1.会計期間名
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD Start
+--    iv_period_name   IN    VARCHAR2         -- 1.会計期間名
+    iv_period_name    IN   VARCHAR2,        -- 1.会計期間名
+    iv_book_type_code IN   VARCHAR2         -- 2.台帳名
+-- 2018/09/07 Ver.1.6 Y.Shoji MOD End
   )
 --
 --###########################  固定部 START   ###########################
@@ -2032,7 +2269,10 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       iv_period_name  -- 1.会計期間名
+       iv_period_name     -- 1.会計期間名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD Start
+      ,iv_book_type_code  -- 2.台帳名
+-- 2018/09/07 Ver.1.6 Y.Shoji ADD End
       ,lv_errbuf       -- エラー・メッセージ           --# 固定 #
       ,lv_retcode      -- リターン・コード             --# 固定 #
       ,lv_errmsg       -- ユーザー・エラー・メッセージ --# 固定 #
