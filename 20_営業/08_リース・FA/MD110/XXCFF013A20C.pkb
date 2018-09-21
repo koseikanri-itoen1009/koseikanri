@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2016/08/03    1.9   SCSK郭           [E_本稼動_13658]自販機耐用年数変更対応
  *  2017/03/29    1.10  SCSK小路         [E_本稼動_14030]減価償却費を拠点へ振替える
  *  2018/03/29    1.11  SCSK大塚         [E_本稼動_14830]IFRSリース資産対応
+ *  2018/09/07    1.12  SCSK小路         [E_本稼動_14830]IFRSリース追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -152,12 +153,14 @@ AS
   cv_msg_013a20_m_018 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00165'; --取得対象データ無し
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
   cv_msg_013a20_m_019 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00284'; --頻度指定チェックエラー
-  cv_msg_013a20_m_021 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00285'; --成功件数メッセージ（FINリース台帳追加）
-  cv_msg_013a20_m_022 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00286'; --成功件数メッセージ（IFRSリース台帳追加）
-  cv_msg_013a20_m_023 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00287'; --成功件数メッセージ（FINリース台帳振替）
-  cv_msg_013a20_m_024 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00288'; --成功件数メッセージ（IFRSリース台帳振替）
-  cv_msg_013a20_m_025 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00289'; --成功件数メッセージ（FINリース台帳解約）
-  cv_msg_013a20_m_026 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00290'; --成功件数メッセージ（IFRSリース台帳解約）
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--  cv_msg_013a20_m_021 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00285'; --成功件数メッセージ（FINリース台帳追加）
+--  cv_msg_013a20_m_022 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00286'; --成功件数メッセージ（IFRSリース台帳追加）
+--  cv_msg_013a20_m_023 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00287'; --成功件数メッセージ（FINリース台帳振替）
+--  cv_msg_013a20_m_024 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00288'; --成功件数メッセージ（IFRSリース台帳振替）
+--  cv_msg_013a20_m_025 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00289'; --成功件数メッセージ（FINリース台帳解約）
+--  cv_msg_013a20_m_026 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-00290'; --成功件数メッセージ（IFRSリース台帳解約）
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
 --
   -- ***メッセージ名(トークン)
@@ -190,6 +193,9 @@ AS
   cv_msg_013a20_t_035 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50287'; -- XXCFF:台帳名_FINリース台帳
   cv_msg_013a20_t_036 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50324'; -- XXCFF:台帳名_IFRSリース台帳
 -- 2018/03/29 Ver1.11 Otsuka ADD End
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+  cv_msg_013a20_t_037 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50329'; -- XXCFF:IFRS帳簿ID
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
 --
   -- ***トークン名
   -- プロファイル名
@@ -241,6 +247,10 @@ AS
   -- 台帳名_IFRSリース台帳
   cv_ifrs_lease_books     CONSTANT VARCHAR2(35) := 'XXCFF1_IFRS_LEASE_BOOKS';
 -- 2018/03/29 Ver1.11 Otsuka ADD End
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+  -- XXCFF:IFRS帳簿ID
+  cv_set_of_books_id_ifrs CONSTANT VARCHAR2(35) := 'XXCFF1_IFRS_SET_OF_BKS_ID';
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
 --
   -- ***ファイル出力
 --
@@ -326,6 +336,9 @@ AS
 -- 2017/03/29 Ver.1.10 Y.Shoji ADD End
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
   -- リース判定
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+  cv_lease_cls_chk1      CONSTANT VARCHAR2(1) := '1';
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
   cv_lease_cls_chk2      CONSTANT VARCHAR2(1) := '2';  -- リース判定結果
   -- 頻度
   cv_payment_type0       CONSTANT VARCHAR2(1) := '0';  -- 頻度：「月」
@@ -376,9 +389,11 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
   TYPE g_lease_type_ttype            IS TABLE OF xxcff_contract_headers.lease_type%TYPE INDEX BY PLS_INTEGER;
   TYPE g_payment_type_ttype          IS TABLE OF xxcff_contract_headers.payment_type%TYPE INDEX BY PLS_INTEGER;
-  TYPE g_fin_coop_ttype              IS TABLE OF fnd_lookup_values.attribute4%TYPE INDEX BY PLS_INTEGER;
-  TYPE g_ifrs_coop_ttype             IS TABLE OF fnd_lookup_values.attribute5%TYPE INDEX BY PLS_INTEGER;
-  TYPE g_lease_cls_chk_ttype         IS TABLE OF fnd_lookup_values.attribute7%TYPE INDEX BY PLS_INTEGER;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--  TYPE g_fin_coop_ttype              IS TABLE OF fnd_lookup_values.attribute4%TYPE INDEX BY PLS_INTEGER;
+--  TYPE g_ifrs_coop_ttype             IS TABLE OF fnd_lookup_values.attribute5%TYPE INDEX BY PLS_INTEGER;
+--  TYPE g_lease_cls_chk_ttype         IS TABLE OF fnd_lookup_values.attribute7%TYPE INDEX BY PLS_INTEGER;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
   TYPE g_fully_retired_ttype         IS TABLE OF fa_books.period_counter_fully_retired%TYPE INDEX BY PLS_INTEGER;
 -- 2018/03/29 Ver1.11 Otsuka ADD End
 --
@@ -427,32 +442,40 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
   g_lease_type_tab                      g_lease_type_ttype;
   g_payment_type_tab                    g_payment_type_ttype;
-  g_fin_coop_tab                        g_fin_coop_ttype;
-  g_ifrs_coop_tab                       g_ifrs_coop_ttype;
-  g_lease_cls_chk_tab                   g_lease_cls_chk_ttype;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--  g_fin_coop_tab                        g_fin_coop_ttype;
+--  g_ifrs_coop_tab                       g_ifrs_coop_ttype;
+--  g_lease_cls_chk_tab                   g_lease_cls_chk_ttype;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
   g_fully_retired_tab                   g_fully_retired_ttype;
 -- 2018/03/29 Ver1.11 Otsuka ADD End
 --
   -- ***処理件数
   -- リース取引(追加)登録処理における件数
   gn_les_add_target_cnt    NUMBER;     -- 対象件数
-  gn_les_add_normal_cnt    NUMBER;     -- 正常件数(FIN)
+  gn_les_add_normal_cnt    NUMBER;     -- 正常件数
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-  gn_les_add_ifrs_cnt      NUMBER;     -- 正常件数(IFRS)
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--  gn_les_add_ifrs_cnt      NUMBER;     -- 正常件数(IFRS)
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
   gn_les_add_error_cnt     NUMBER;     -- エラー件数
   -- リース取引(振替)登録処理における件数
   gn_les_trnsf_target_cnt  NUMBER;     -- 対象件数
-  gn_les_trnsf_normal_cnt  NUMBER;     -- 正常件数(FIN)
+  gn_les_trnsf_normal_cnt  NUMBER;     -- 正常件数
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-  gn_les_trnsf_ifrs_cnt    NUMBER;     -- 正常件数(IFRS)
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--  gn_les_trnsf_ifrs_cnt    NUMBER;     -- 正常件数(IFRS)
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
   gn_les_trnsf_error_cnt   NUMBER;     -- エラー件数
   -- リース取引(解約)登録処理における件数
   gn_les_retire_target_cnt NUMBER;     -- 対象件数
-  gn_les_retire_normal_cnt NUMBER;     -- 正常件数(FIN)
+  gn_les_retire_normal_cnt NUMBER;     -- 正常件数
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-  gn_les_retire_ifrs_cnt   NUMBER;     -- 正常件数(IFRS)
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--  gn_les_retire_ifrs_cnt   NUMBER;     -- 正常件数(IFRS)
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
   gn_les_retire_error_cnt  NUMBER;     -- エラー件数
   -- FAOIF登録処理における件数
@@ -470,6 +493,10 @@ AS
 --
   -- パラメータ会計期間名
   gv_period_name VARCHAR2(100);
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+  -- パラメータ台帳名
+  gv_book_type_code VARCHAR2(100);
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
   -- 資産カテゴリCCID
   gt_category_id  fa_categories.category_id%TYPE;
   -- 事業所CCID
@@ -512,6 +539,14 @@ AS
   -- 台帳名_IFRSリース台帳
   gv_ifrs_lease_books      VARCHAR2(100);
 -- 2018/03/29 Ver1.11 Otsuka ADD End
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+  -- XXCFF:IFRS帳簿ID
+  gn_set_of_books_id_ifrs  NUMBER;
+  -- リース判定処理
+  gv_lease_class_att7      VARCHAR2(1);
+  -- リース種類
+  gv_lease_kind            VARCHAR2(1);
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
 --
   -- セグメント値配列(EBS標準関数fnd_flex_ext用)
   g_segments_tab  fnd_flex_ext.segmentarray;
@@ -603,9 +638,11 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
     g_lease_type_tab.DELETE;
     g_payment_type_tab.DELETE;
-    g_fin_coop_tab.DELETE;
-    g_ifrs_coop_tab.DELETE;
-    g_lease_cls_chk_tab.DELETE;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--    g_fin_coop_tab.DELETE;
+--    g_ifrs_coop_tab.DELETE;
+--    g_lease_cls_chk_tab.DELETE;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
     g_fully_retired_tab.DELETE;
 -- 2018/03/29 Ver1.11 Otsuka ADD End
 --
@@ -774,6 +811,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+    lt_set_of_books_id xxcff_lease_closed_periods.set_of_books_id%TYPE;  -- 帳簿ID
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -793,6 +833,16 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+    -- IFRSリース台帳の場合
+    IF (gv_book_type_code = gv_ifrs_lease_books) THEN
+      lt_set_of_books_id := gn_set_of_books_id_ifrs;
+    -- IFRSリース台帳以外の場合
+    ELSE
+      lt_set_of_books_id := g_init_rec.set_of_books_id;
+    END IF;
+--
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
     UPDATE xxcff_lease_closed_periods
     SET
            period_name            = gv_period_name            -- 会計期間
@@ -804,7 +854,10 @@ AS
           ,program_id             = cn_program_id             -- コンカレントプログラムID
           ,program_update_date    = cd_program_update_date    -- プログラム更新日
     WHERE
-           set_of_books_id        = g_init_rec.set_of_books_id
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--           set_of_books_id        = g_init_rec.set_of_books_id
+           set_of_books_id        = lt_set_of_books_id
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
     ;
 --
     -- メイン処理前にリース月次締め期間の更新を確定
@@ -1016,6 +1069,9 @@ AS
           xxcff_fa_trn.period_name      = gv_period_name
       AND xxcff_fa_trn.fa_if_flag       = cv_if_yet
       AND xxcff_fa_trn.transaction_type = 3 -- 解約
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+      AND xxcff_fa_trn.book_type_code   = gv_book_type_code
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
     ;
 --
     -- 解約OIF登録件数カウント
@@ -1023,63 +1079,126 @@ AS
 --
 -- T1_0893 2009/05/19 ADD START --
 -- リース資産台帳の場合はリース法人税のデータも作成する。
-    INSERT INTO xx01_retire_oif(
-      retire_oif_id                   -- RETIRE_OIF_ID
-     ,book_type_code                  -- 台帳名
-     ,asset_number                    -- 資産番号
-     ,created_by                      -- 作成者
-     ,creation_date                   -- 作成日
-     ,last_updated_by                 -- 最終更新者
-     ,last_update_date                -- 最終更新日
-     ,last_update_login               -- 最終更新ﾛｸﾞｲﾝ
-     ,request_id                      -- ﾘｸｴｽﾄID
-     ,program_application_id          -- ｱﾌﾟﾘｹｰｼｮﾝID
-     ,program_id                      -- ﾌﾟﾛｸﾞﾗﾑID
-     ,program_update_date             -- ﾌﾟﾛｸﾞﾗﾑ最終更新日
-     ,date_retired                    -- 除･売却日
-     ,posting_flag                    -- 転記ﾁｪｯｸﾌﾗｸﾞ
-     ,status                          -- ｽﾃｰﾀｽ
-     ,cost_retired                    -- 除･売却取得価格
-     ,proceeds_of_sale                -- 売却価額
-     ,cost_of_removal                 -- 撤去費用
-     ,retirement_prorate_convention   -- 除･売却年度償却
-    )
-    SELECT
-      xx01_retire_oif_s.NEXTVAL           -- ID
-     ,xlkv.book_type_code_tax             -- 台帳
-     ,xxcff_fa_trn.asset_number           -- 資産番号
-     ,cn_created_by                       -- 作成者ID
-     ,cd_creation_date                    -- 作成日
-     ,cn_last_updated_by                  -- 最終更新者
-     ,cd_last_update_date                 -- 最終更新日
-     ,cn_last_update_login                -- 最終更新ログインID
-     ,cn_request_id                       -- リクエストID
-     ,cn_program_application_id           -- アプリケーションID
-     ,cn_program_id                       -- プログラムID
-     ,cd_program_update_date              -- プログラム最終更新日
-     ,xxcff_fa_trn.retirement_date        -- 除･売却日
-     ,'Y'                                 -- 転記チェックフラグ
-     ,'PENDING'                           -- ステータス
-     ,xxcff_fa_trn.cost_retired           -- 除･売却取得価格
-     ,0                                   -- 売却価額
-     ,0                                   -- 撤去費用
-     ,xxcff_fa_trn.ret_prorate_convention -- 除･売却年度償却
-    FROM
-          xxcff_fa_transactions  xxcff_fa_trn
-         ,xxcff_contract_lines   xxcff_co_line
-         ,xxcff_lease_kind_v     xlkv
-    WHERE
-          xxcff_fa_trn.period_name        = gv_period_name
-      AND xxcff_fa_trn.fa_if_flag         = cv_if_yet
-      AND xxcff_fa_trn.transaction_type   = 3                     -- 解約
-      AND xxcff_fa_trn.contract_header_id = xxcff_co_line.contract_header_id
-      AND xxcff_fa_trn.contract_line_id   = xxcff_co_line.contract_line_id
-      AND xxcff_co_line.lease_kind        = xlkv.lease_kind_code  -- finリース 
-      AND xlkv.lease_kind_code            = cv_lease_kind_fin     -- finリース
-    ;
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--    INSERT INTO xx01_retire_oif(
+--      retire_oif_id                   -- RETIRE_OIF_ID
+--     ,book_type_code                  -- 台帳名
+--     ,asset_number                    -- 資産番号
+--     ,created_by                      -- 作成者
+--     ,creation_date                   -- 作成日
+--     ,last_updated_by                 -- 最終更新者
+--     ,last_update_date                -- 最終更新日
+--     ,last_update_login               -- 最終更新ﾛｸﾞｲﾝ
+--     ,request_id                      -- ﾘｸｴｽﾄID
+--     ,program_application_id          -- ｱﾌﾟﾘｹｰｼｮﾝID
+--     ,program_id                      -- ﾌﾟﾛｸﾞﾗﾑID
+--     ,program_update_date             -- ﾌﾟﾛｸﾞﾗﾑ最終更新日
+--     ,date_retired                    -- 除･売却日
+--     ,posting_flag                    -- 転記ﾁｪｯｸﾌﾗｸﾞ
+--     ,status                          -- ｽﾃｰﾀｽ
+--     ,cost_retired                    -- 除･売却取得価格
+--     ,proceeds_of_sale                -- 売却価額
+--     ,cost_of_removal                 -- 撤去費用
+--     ,retirement_prorate_convention   -- 除･売却年度償却
+--    )
+--    SELECT
+--      xx01_retire_oif_s.NEXTVAL           -- ID
+--     ,xlkv.book_type_code_tax             -- 台帳
+--     ,xxcff_fa_trn.asset_number           -- 資産番号
+--     ,cn_created_by                       -- 作成者ID
+--     ,cd_creation_date                    -- 作成日
+--     ,cn_last_updated_by                  -- 最終更新者
+--     ,cd_last_update_date                 -- 最終更新日
+--     ,cn_last_update_login                -- 最終更新ログインID
+--     ,cn_request_id                       -- リクエストID
+--     ,cn_program_application_id           -- アプリケーションID
+--     ,cn_program_id                       -- プログラムID
+--     ,cd_program_update_date              -- プログラム最終更新日
+--     ,xxcff_fa_trn.retirement_date        -- 除･売却日
+--     ,'Y'                                 -- 転記チェックフラグ
+--     ,'PENDING'                           -- ステータス
+--     ,xxcff_fa_trn.cost_retired           -- 除･売却取得価格
+--     ,0                                   -- 売却価額
+--     ,0                                   -- 撤去費用
+--     ,xxcff_fa_trn.ret_prorate_convention -- 除･売却年度償却
+--    FROM
+--          xxcff_fa_transactions  xxcff_fa_trn
+--         ,xxcff_contract_lines   xxcff_co_line
+--         ,xxcff_lease_kind_v     xlkv
+--    WHERE
+--          xxcff_fa_trn.period_name        = gv_period_name
+--      AND xxcff_fa_trn.fa_if_flag         = cv_if_yet
+--      AND xxcff_fa_trn.transaction_type   = 3                     -- 解約
+--      AND xxcff_fa_trn.contract_header_id = xxcff_co_line.contract_header_id
+--      AND xxcff_fa_trn.contract_line_id   = xxcff_co_line.contract_line_id
+--      AND xxcff_co_line.lease_kind        = xlkv.lease_kind_code  -- finリース 
+--      AND xlkv.lease_kind_code            = cv_lease_kind_fin     -- finリース
+--    ;
 --
-    -- 解約OIF登録件数カウント
-    gn_retire_oif_ins_cnt := gn_retire_oif_ins_cnt + SQL%ROWCOUNT;
+--    -- 解約OIF登録件数カウント
+--    gn_retire_oif_ins_cnt := gn_retire_oif_ins_cnt + SQL%ROWCOUNT;
+    IF ( gv_book_type_code = gv_fin_lease_books ) THEN
+      INSERT INTO xx01_retire_oif(
+        retire_oif_id                   -- RETIRE_OIF_ID
+       ,book_type_code                  -- 台帳名
+       ,asset_number                    -- 資産番号
+       ,created_by                      -- 作成者
+       ,creation_date                   -- 作成日
+       ,last_updated_by                 -- 最終更新者
+       ,last_update_date                -- 最終更新日
+       ,last_update_login               -- 最終更新ﾛｸﾞｲﾝ
+       ,request_id                      -- ﾘｸｴｽﾄID
+       ,program_application_id          -- ｱﾌﾟﾘｹｰｼｮﾝID
+       ,program_id                      -- ﾌﾟﾛｸﾞﾗﾑID
+       ,program_update_date             -- ﾌﾟﾛｸﾞﾗﾑ最終更新日
+       ,date_retired                    -- 除･売却日
+       ,posting_flag                    -- 転記ﾁｪｯｸﾌﾗｸﾞ
+       ,status                          -- ｽﾃｰﾀｽ
+       ,cost_retired                    -- 除･売却取得価格
+       ,proceeds_of_sale                -- 売却価額
+       ,cost_of_removal                 -- 撤去費用
+       ,retirement_prorate_convention   -- 除･売却年度償却
+      )
+      SELECT
+        xx01_retire_oif_s.NEXTVAL           -- ID
+       ,xlkv.book_type_code_tax             -- 台帳
+       ,xxcff_fa_trn.asset_number           -- 資産番号
+       ,cn_created_by                       -- 作成者ID
+       ,cd_creation_date                    -- 作成日
+       ,cn_last_updated_by                  -- 最終更新者
+       ,cd_last_update_date                 -- 最終更新日
+       ,cn_last_update_login                -- 最終更新ログインID
+       ,cn_request_id                       -- リクエストID
+       ,cn_program_application_id           -- アプリケーションID
+       ,cn_program_id                       -- プログラムID
+       ,cd_program_update_date              -- プログラム最終更新日
+       ,xxcff_fa_trn.retirement_date        -- 除･売却日
+       ,'Y'                                 -- 転記チェックフラグ
+       ,'PENDING'                           -- ステータス
+       ,xxcff_fa_trn.cost_retired           -- 除･売却取得価格
+       ,0                                   -- 売却価額
+       ,0                                   -- 撤去費用
+       ,xxcff_fa_trn.ret_prorate_convention -- 除･売却年度償却
+      FROM
+            xxcff_fa_transactions  xxcff_fa_trn
+           ,xxcff_contract_lines   xxcff_co_line
+           ,xxcff_lease_kind_v     xlkv
+      WHERE
+            xxcff_fa_trn.period_name        = gv_period_name
+        AND xxcff_fa_trn.fa_if_flag         = cv_if_yet
+        AND xxcff_fa_trn.transaction_type   = 3                     -- 解約
+        AND xxcff_fa_trn.book_type_code     = gv_book_type_code     -- FINリース台帳
+        AND xxcff_fa_trn.contract_header_id = xxcff_co_line.contract_header_id
+        AND xxcff_fa_trn.contract_line_id   = xxcff_co_line.contract_line_id
+        AND xxcff_co_line.lease_kind        = xlkv.lease_kind_code  -- finリース 
+        AND xlkv.lease_kind_code            = cv_lease_kind_fin     -- finリース
+      ;
+--
+      -- 解約OIF登録件数カウント
+      gn_retire_oif_ins_cnt := gn_retire_oif_ins_cnt + SQL%ROWCOUNT;
+--
+    END IF;
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 --
 -- T1_0893 2009/05/19 ADD END   --
   EXCEPTION
@@ -1221,6 +1340,9 @@ AS
 --      AND xxcff_fa_trn.transaction_type = 2              -- 振替
       AND xxcff_fa_trn.transaction_type IN (cv_transaction_type_2 ,cv_transaction_type_4)              -- 振替、修正
 -- 2017/03/29 Ver.1.10 Y.Shoji MOD End
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+      AND xxcff_fa_trn.book_type_code   = gv_book_type_code
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
     ;
 --
     -- 振替OIF登録件数カウント
@@ -1350,6 +1472,9 @@ AS
           xxcff_fa_trn.period_name      = gv_period_name
       AND xxcff_fa_trn.fa_if_flag       = cv_if_yet
       AND xxcff_fa_trn.transaction_type = 1         -- 追加
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+      AND xxcff_fa_trn.book_type_code   = gv_book_type_code
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
     ;
 --
     -- 追加OIF登録件数カウント
@@ -1420,6 +1545,9 @@ AS
       WHERE
             xxcff_fa_trn.period_name      = gv_period_name
         AND xxcff_fa_trn.fa_if_flag       = cv_if_yet
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+        AND xxcff_fa_trn.book_type_code   = gv_book_type_code
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
         FOR UPDATE OF xxcff_fa_trn.fa_transaction_id
         NOWAIT
       ;
@@ -1730,14 +1858,18 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka MOD Start
 --        -- 成功件数カウント
 --        gn_les_retire_normal_cnt := SQL%ROWCOUNT;
-        -- FINリース台帳の場合
-        IF (g_book_type_code_tab(ln_loop_cnt) = gv_fin_lease_books) THEN
-          -- 成功件数カウント
-          gn_les_retire_normal_cnt := gn_les_retire_normal_cnt + 1;
-        -- IFRSリース台帳の場合
-        ELSE
-          gn_les_retire_ifrs_cnt := gn_les_retire_ifrs_cnt + 1;
-        END IF;
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--        -- FINリース台帳の場合
+--        IF (g_book_type_code_tab(ln_loop_cnt) = gv_fin_lease_books) THEN
+--          -- 成功件数カウント
+--          gn_les_retire_normal_cnt := gn_les_retire_normal_cnt + 1;
+--        -- IFRSリース台帳の場合
+--        ELSE
+--          gn_les_retire_ifrs_cnt := gn_les_retire_ifrs_cnt + 1;
+--        END IF;
+        -- 成功件数カウント
+        gn_les_retire_normal_cnt := gn_les_retire_normal_cnt + 1;
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 --
       END LOOP;
 -- 2018/03/29 Ver1.11 Otsuka MOD End
@@ -1833,7 +1965,9 @@ AS
             xxcff_contract_histories  ctrct_hist    -- リース契約明細履歴
            ,xxcff_contract_headers    ctrct_head    -- リース契約
            ,xxcff_object_headers      obj_head      -- リース物件
-           ,xxcff_lease_kind_v        les_kind      -- リース種類ビュー
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--           ,xxcff_lease_kind_v        les_kind      -- リース種類ビュー
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
            ,fa_additions_b            faadds        -- 資産詳細情報
            ,xxcff_pay_planning        pay_plan      -- リース支払計画
 -- 2018/03/23 Ver.1.11 Otsuka ADD Start
@@ -1888,8 +2022,11 @@ AS
         AND faadds.attribute10              = TO_CHAR(ctrct_hist.contract_line_id)
         AND faadds.asset_id                 = fb.asset_id
         AND fb.date_ineffective             IS NULL                                    -- 最新
-        AND fb.book_type_code               IN (les_kind.book_type_code ,les_kind.book_type_code_ifrs)
-        AND ctrct_hist.lease_kind           = les_kind.lease_kind_code
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--        AND fb.book_type_code               IN (les_kind.book_type_code ,les_kind.book_type_code_ifrs)
+--        AND ctrct_hist.lease_kind           = les_kind.lease_kind_code
+        AND fb.book_type_code               = gv_book_type_code
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
         AND ( ( ctrct_head.lease_type       = cv_original                              -- 原契約
             AND ctrct_hist.lease_kind       IN (cv_lease_kind_fin,cv_lease_kind_lfin)) -- Fin,旧Fin
           OR  ( ctrct_head.lease_type       = cv_re_lease                              -- 再リース
@@ -2506,14 +2643,18 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka MOD Start
 --      --成功件数カウント
 --      gn_les_trnsf_normal_cnt := gn_les_trnsf_normal_cnt + 1;
-      -- FINリース台帳の場合
-      IF (g_book_type_code_tab(in_loop_cnt) = gv_fin_lease_books) THEN
-        -- 成功件数カウント
-        gn_les_trnsf_normal_cnt := gn_les_trnsf_normal_cnt + 1;
-      -- IFRSリース台帳の場合
-      ELSE
-        gn_les_trnsf_ifrs_cnt := gn_les_trnsf_ifrs_cnt + 1;
-      END IF;
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--      -- FINリース台帳の場合
+--      IF (g_book_type_code_tab(in_loop_cnt) = gv_fin_lease_books) THEN
+--        -- 成功件数カウント
+--        gn_les_trnsf_normal_cnt := gn_les_trnsf_normal_cnt + 1;
+--      -- IFRSリース台帳の場合
+--      ELSE
+--        gn_les_trnsf_ifrs_cnt := gn_les_trnsf_ifrs_cnt + 1;
+--      END IF;
+      --成功件数カウント
+      gn_les_trnsf_normal_cnt := gn_les_trnsf_normal_cnt + 1;
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 -- 2018/03/29 Ver1.11 Otsuka MOD End
 -- 2017/03/29 Ver.1.10 Y.Shoji MOD End
 --
@@ -3164,7 +3305,9 @@ AS
            ,fa_distribution_history   fadist_hist   -- 資産割当履歴情報
            ,gl_code_combinations      gcc           -- GL組合せ
            ,xxcff_lease_class_v       les_class     -- リース種別ビュー
-           ,xxcff_lease_kind_v        les_kind      -- リース種類ビュー
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--           ,xxcff_lease_kind_v        les_kind      -- リース種類ビュー
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
            ,fnd_lookup_values         flv           -- 参照表
            ,fa_books                  fb            -- 資産台帳情報
@@ -3240,6 +3383,9 @@ AS
                            AND flv.attribute7            =  cv_lease_cls_chk2))                    -- リース判定結果：2
                        AND  ctrct_head.lease_class       =  flv.lookup_code
                        AND  flv.lookup_type              =  cv_xxcff1_lease_class_check
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+                       AND   flv.attribute7              =  gv_lease_class_att7
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
                        AND  flv.language                 =  USERENV('LANG')
                        AND  flv.enabled_flag             =  cv_flg_y
                        AND  LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
@@ -3248,7 +3394,15 @@ AS
                      UNION ALL
 -- 2016/08/03 Ver.1.9 Y.Koh MOD Start
 --                     SELECT
-                     SELECT /*+ INDEX(ctrct_hist XXCFF_CONTRACT_HISTORIES_N02) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--                     SELECT /*+ INDEX(ctrct_hist XXCFF_CONTRACT_HISTORIES_N02) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
+                     SELECT
+                           /*+
+                              LEADING(ctrct_hist)
+                              INDEX(ctrct_hist XXCFF_CONTRACT_HISTORIES_N02)
+                              INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK)
+                            */
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 -- 2016/08/03 Ver.1.9 Y.Koh MOD End
                              ctrct_hist.object_header_id   AS object_header_id
 -- 2017/03/29 Ver.1.10 Y.Shoji DEL Start
@@ -3279,6 +3433,9 @@ AS
                            AND flv.attribute7              =  cv_lease_cls_chk2))                   -- リース判定結果：2
                        AND   ctrct_head.lease_class        =  flv.lookup_code
                        AND   flv.lookup_type               =  cv_xxcff1_lease_class_check
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+                       AND   flv.attribute7                =  gv_lease_class_att7
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
                        AND   flv.language                  =  USERENV('LANG')
                        AND   flv.enabled_flag              =  cv_flg_y
                        AND   LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
@@ -3329,7 +3486,9 @@ AS
 --        AND LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
 --                                                        AND     NVL(flv.end_date_active  , LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
 -- 2017/03/29 Ver.1.10 Y.Shoji MOD End
-        AND ctrct_line.lease_kind           =  les_kind.lease_kind_code
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--        AND ctrct_line.lease_kind           =  les_kind.lease_kind_code
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
         AND ctrct_head.lease_class          =  les_class.lease_class_code
         AND ( ctrct_line.lease_kind         IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
         AND   ctrct_head.lease_type         =  cv_original                            -- 原契約
@@ -3337,13 +3496,19 @@ AS
         AND  flv.attribute7                 =  cv_lease_cls_chk2 ))                   -- リース判定結果：2
         AND obj_head.lease_class            =  flv.lookup_code
         AND flv.lookup_type                 =  cv_xxcff1_lease_class_check
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+        AND flv.attribute7                  =  gv_lease_class_att7
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
         AND flv.language                    =  USERENV('LANG')
         AND flv.enabled_flag                =  cv_flg_y
         AND LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
                                                         AND     NVL(flv.end_date_active  , LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))) 
         AND faadds.attribute10              =  TO_CHAR(ctrct_line.contract_line_id)
         AND faadds.asset_id                 =  fb.asset_id
-        AND fb.book_type_code               IN (les_kind.book_type_code, les_kind.book_type_code_ifrs)
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--        AND fb.book_type_code               IN (les_kind.book_type_code, les_kind.book_type_code_ifrs)
+        AND fb.book_type_code               = gv_book_type_code
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
         AND fb.date_ineffective             IS NULL
         AND fb.asset_id                     =  fadist_hist.asset_id
         AND fb.book_type_code               =  fadist_hist.book_type_code
@@ -3613,14 +3778,16 @@ AS
 --
     -- *** ローカル変数 ***
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-    lt_deprn_method          fa_category_book_defaults.deprn_method%TYPE;     -- 償却方法
-    lt_life_in_months        fa_category_book_defaults.life_in_months%TYPE;   -- 計算月
-    -- メッセージ用文字列(契約明細内部ID)
-    lv_str_ctrt_line_id VARCHAR2(50);
-    -- メッセージ用文字列(資産カテゴリCCID)
-    lv_str_cat_ccid     VARCHAR2(50);
-    -- エラーキー情報
-    lv_error_key        VARCHAR2(5000);
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--    lt_deprn_method          fa_category_book_defaults.deprn_method%TYPE;     -- 償却方法
+--    lt_life_in_months        fa_category_book_defaults.life_in_months%TYPE;   -- 計算月
+--    -- メッセージ用文字列(契約明細内部ID)
+--    lv_str_ctrt_line_id VARCHAR2(50);
+--    -- メッセージ用文字列(資産カテゴリCCID)
+--    lv_str_cat_ccid     VARCHAR2(50);
+--    -- エラーキー情報
+--    lv_error_key        VARCHAR2(5000);
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
     -- *** ローカル・カーソル ***
 --
@@ -3716,251 +3883,328 @@ AS
 ----
 --       --成功件数カウント
 --       gn_les_add_normal_cnt := SQL%ROWCOUNT;
-      <<inert_loop>>
-      FOR ln_loop_cnt IN 1 .. g_contract_line_id_tab.COUNT LOOP
-        -- 日本基準連携の場合
-        IF (g_fin_coop_tab(ln_loop_cnt) = cv_flg_y) THEN
-          BEGIN
-            SELECT
-               cat_deflt.deprn_method   AS deprn_method     -- 償却方法
-              ,cat_deflt.life_in_months AS life_in_months   -- 計算月数
-            INTO
-               lt_deprn_method                     -- 償却方法
-              ,lt_life_in_months                   -- 計算月数
-            FROM
-              fa_categories_b            cat       -- 資産カテゴリマスタ
-             ,fa_category_book_defaults  cat_deflt -- 資産カテゴリ償却基準
-            WHERE
-                 cat.category_id           = g_category_ccid_tab(ln_loop_cnt)
-            AND  cat.category_id           = cat_deflt.category_id
-            AND  cat_deflt.book_type_code  = gv_fin_lease_books
-            AND  cat_deflt.start_dpis     <= g_contract_date_tab(ln_loop_cnt)
-            AND  NVL(cat_deflt.end_dpis,
-                    g_contract_date_tab(ln_loop_cnt))  >= g_contract_date_tab(ln_loop_cnt)
-            ;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              --メッセージ用文字列取得
-              lv_str_ctrt_line_id := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
-                                                                      ,cv_msg_013a20_t_027) -- トークン(契約明細内部ID)
-                                                                      ,1
-                                                                      ,5000);
-              lv_str_cat_ccid := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
-                                                                  ,cv_msg_013a20_t_028) -- トークン(資産カテゴリCCID)
-                                                                  ,1
-                                                                  ,5000);
-              --エラーキー情報作成(文字列結合)
-              lv_error_key :=         lv_str_ctrt_line_id ||'='|| g_contract_line_id_tab(ln_loop_cnt)
-                        ||','|| lv_str_cat_ccid     ||'='|| g_category_ccid_tab(ln_loop_cnt);
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--      <<inert_loop>>
+--      FOR ln_loop_cnt IN 1 .. g_contract_line_id_tab.COUNT LOOP
+--        -- 日本基準連携の場合
+--        IF (g_fin_coop_tab(ln_loop_cnt) = cv_flg_y) THEN
+--          BEGIN
+--            SELECT
+--               cat_deflt.deprn_method   AS deprn_method     -- 償却方法
+--              ,cat_deflt.life_in_months AS life_in_months   -- 計算月数
+--            INTO
+--               lt_deprn_method                     -- 償却方法
+--              ,lt_life_in_months                   -- 計算月数
+--            FROM
+--              fa_categories_b            cat       -- 資産カテゴリマスタ
+--             ,fa_category_book_defaults  cat_deflt -- 資産カテゴリ償却基準
+--            WHERE
+--                 cat.category_id           = g_category_ccid_tab(ln_loop_cnt)
+--            AND  cat.category_id           = cat_deflt.category_id
+--            AND  cat_deflt.book_type_code  = gv_fin_lease_books
+--            AND  cat_deflt.start_dpis     <= g_contract_date_tab(ln_loop_cnt)
+--            AND  NVL(cat_deflt.end_dpis,
+--                    g_contract_date_tab(ln_loop_cnt))  >= g_contract_date_tab(ln_loop_cnt)
+--            ;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              --メッセージ用文字列取得
+--              lv_str_ctrt_line_id := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+--                                                                      ,cv_msg_013a20_t_027) -- トークン(契約明細内部ID)
+--                                                                      ,1
+--                                                                      ,5000);
+--              lv_str_cat_ccid := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+--                                                                  ,cv_msg_013a20_t_028) -- トークン(資産カテゴリCCID)
+--                                                                  ,1
+--                                                                  ,5000);
+--              --エラーキー情報作成(文字列結合)
+--              lv_error_key :=         lv_str_ctrt_line_id ||'='|| g_contract_line_id_tab(ln_loop_cnt)
+--                        ||','|| lv_str_cat_ccid     ||'='|| g_category_ccid_tab(ln_loop_cnt);
+----
+--              lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+--                                                            ,cv_msg_013a20_m_013  -- 償却方法取得エラー
+--                                                            ,cv_tkn_table         -- トークン'TABLE_NAME'
+--                                                            ,cv_msg_013a20_t_026  -- 償却方法
+--                                                            ,cv_tkn_info          -- トークン'INFO'
+--                                                            ,lv_error_key)        -- エラーキー情報
+--                                                            ,1
+--                                                            ,5000);
+--              lv_errbuf := lv_errmsg;
+--              RAISE global_api_expt;
+--          END;
+----
+--          INSERT INTO xxcff_fa_transactions (
+--             fa_transaction_id                 -- リース取引内部ID
+--            ,contract_header_id                -- 契約内部ID
+--            ,contract_line_id                  -- 契約明細内部ID
+--            ,object_header_id                  -- 物件内部ID
+--            ,period_name                       -- 会計期間
+--            ,transaction_type                  -- 取引タイプ
+--            ,book_type_code                    -- 資産台帳名
+--            ,description                       -- 摘要
+--            ,category_id                       -- 資産カテゴリCCID
+--            ,asset_category                    -- 資産種類
+--            ,asset_account                     -- 資産勘定
+--            ,deprn_account                     -- 償却科目
+--            ,lease_class                       -- リース種別
+--            ,dprn_code_combination_id          -- 減価償却費勘定CCID
+--            ,location_id                       -- 事業所CCID
+--            ,department_code                   -- 管理部門コード
+--            ,owner_company                     -- 本社工場区分
+--            ,date_placed_in_service            -- 事業供用日
+--            ,original_cost                     -- 取得価額
+--            ,quantity                          -- 数量
+--            ,deprn_method                      -- 償却方法
+--            ,payment_frequency                 -- 計算月数(支払回数)
+--            ,fa_if_flag                        -- FA連携フラグ
+--            ,gl_if_flag                        -- GL連携フラグ
+--            ,created_by                        -- 作成者
+--            ,creation_date                     -- 作成日
+--            ,last_updated_by                   -- 最終更新者
+--            ,last_update_date                  -- 最終更新日
+--            ,last_update_login                 -- 最終更新ﾛｸﾞｲﾝ
+--            ,request_id                        -- 要求ID
+--            ,program_application_id            -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--            ,program_id                        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--            ,program_update_date               -- ﾌﾟﾛｸﾞﾗﾑ更新日
+--          )
+--          VALUES (
+--             xxcff_fa_transactions_s1.NEXTVAL       -- リース取引内部ID
+--            ,g_contract_header_id_tab(ln_loop_cnt)  -- 契約内部ID
+--            ,g_contract_line_id_tab(ln_loop_cnt)    -- 契約明細内部ID
+--            ,g_object_header_id_tab(ln_loop_cnt)    -- 物件内部ID
+--            ,gv_period_name                         -- 会計期間
+--            ,1                                      -- 取引タイプ(追加)
+--            ,gv_fin_lease_books                     -- FINリース台帳
+--            ,g_comments_tab(ln_loop_cnt)            -- 摘要
+--            ,g_category_ccid_tab(ln_loop_cnt)       -- 資産カテゴリCCID
+--            ,g_asset_category_tab(ln_loop_cnt)      -- 資産種類
+--            ,g_les_asset_acct_tab(ln_loop_cnt)      -- 資産勘定
+--            ,g_deprn_acct_tab(ln_loop_cnt)          -- 償却科目
+--            ,g_lease_class_tab(ln_loop_cnt)         -- リース種別
+--            ,g_deprn_ccid_tab(ln_loop_cnt)          -- 減価償却費勘定CCID
+--            ,g_location_ccid_tab(ln_loop_cnt)       -- 事業所CCID
+--            ,g_department_code_tab(ln_loop_cnt)     -- 管理部門コード
+--            ,g_owner_company_tab(ln_loop_cnt)       -- 本社工場区分
+--            ,g_contract_date_tab(ln_loop_cnt)       -- 事業供用日
+--            ,g_original_cost_tab(ln_loop_cnt)       -- 取得価額
+--            ,g_quantity_tab(ln_loop_cnt)            -- 数量
+--            ,lt_deprn_method                        -- 償却方法
+--            ,lt_life_in_months                      -- 計算月数
+--            ,cv_if_yet                              -- FA連携フラグ
+--            ,cv_if_yet                              -- GL連携フラグ
+--            ,cn_created_by                          -- 作成者
+--            ,cd_creation_date                       -- 作成日
+--            ,cn_last_updated_by                     -- 最終更新者
+--            ,cd_last_update_date                    -- 最終更新日
+--            ,cn_last_update_login                   -- 最終更新ﾛｸﾞｲﾝ
+--            ,cn_request_id                          -- 要求ID
+--            ,cn_program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--            ,cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--            ,cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
+--          );
+--            --成功件数カウント
+--            gn_les_add_normal_cnt := gn_les_add_normal_cnt + 1;
+--        END IF;
+----
+--        -- IFRS連携の場合
+--        IF (g_ifrs_coop_tab(ln_loop_cnt) = cv_flg_y) THEN
+--          BEGIN
+--            SELECT
+--               cat_deflt.deprn_method   AS deprn_method     -- 償却方法
+--              ,cat_deflt.life_in_months AS life_in_months   -- 計算月数
+--            INTO
+--               lt_deprn_method                     -- 償却方法
+--              ,lt_life_in_months                   -- 計算月数
+--            FROM
+--              fa_categories_b            cat       -- 資産カテゴリマスタ
+--             ,fa_category_book_defaults  cat_deflt -- 資産カテゴリ償却基準
+--            WHERE
+--                 cat.category_id           = g_category_ccid_tab(ln_loop_cnt)
+--            AND  cat.category_id           = cat_deflt.category_id
+--            AND  cat_deflt.book_type_code  = gv_ifrs_lease_books
+--            AND  cat_deflt.start_dpis     <= g_contract_date_tab(ln_loop_cnt)
+--            AND  NVL(cat_deflt.end_dpis,
+--                    g_contract_date_tab(ln_loop_cnt))  >= g_contract_date_tab(ln_loop_cnt)
+--            ;
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              --メッセージ用文字列取得
+--              lv_str_ctrt_line_id := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+--                                                                ,cv_msg_013a20_t_027) -- トークン(契約明細内部ID)
+--                                                                ,1
+--                                                                ,5000);
+--              lv_str_cat_ccid := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+--                                                            ,cv_msg_013a20_t_028) -- トークン(資産カテゴリCCID)
+--                                                            ,1
+--                                                            ,5000);
+--              --エラーキー情報作成(文字列結合)
+--              lv_error_key :=         lv_str_ctrt_line_id ||'='|| g_contract_line_id_tab(ln_loop_cnt)
+--                        ||','|| lv_str_cat_ccid     ||'='|| g_category_ccid_tab(ln_loop_cnt);
+----
+--              lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+--                                                      ,cv_msg_013a20_m_013  -- 償却方法取得エラー
+--                                                      ,cv_tkn_table         -- トークン'TABLE_NAME'
+--                                                      ,cv_msg_013a20_t_026  -- 償却方法
+--                                                      ,cv_tkn_info          -- トークン'INFO'
+--                                                      ,lv_error_key)        -- エラーキー情報
+--                                                      ,1
+--                                                      ,5000);
+--              lv_errbuf := lv_errmsg;
+--              RAISE global_api_expt;
+--          END;
+----
+--          INSERT INTO xxcff_fa_transactions (
+--             fa_transaction_id                 -- リース取引内部ID
+--            ,contract_header_id                -- 契約内部ID
+--            ,contract_line_id                  -- 契約明細内部ID
+--            ,object_header_id                  -- 物件内部ID
+--            ,period_name                       -- 会計期間
+--            ,transaction_type                  -- 取引タイプ
+--            ,book_type_code                    -- 資産台帳名
+--            ,description                       -- 摘要
+--            ,category_id                       -- 資産カテゴリCCID
+--            ,asset_category                    -- 資産種類
+--            ,asset_account                     -- 資産勘定
+--            ,deprn_account                     -- 償却科目
+--            ,lease_class                       -- リース種別
+--            ,dprn_code_combination_id          -- 減価償却費勘定CCID
+--            ,location_id                       -- 事業所CCID
+--            ,department_code                   -- 管理部門コード
+--            ,owner_company                     -- 本社工場区分
+--            ,date_placed_in_service            -- 事業供用日
+--            ,original_cost                     -- 取得価額
+--            ,quantity                          -- 数量
+--            ,deprn_method                      -- 償却方法
+--            ,payment_frequency                 -- 計算月数(支払回数)
+--            ,fa_if_flag                        -- FA連携フラグ
+--            ,gl_if_flag                        -- GL連携フラグ
+--            ,created_by                        -- 作成者
+--            ,creation_date                     -- 作成日
+--            ,last_updated_by                   -- 最終更新者
+--            ,last_update_date                  -- 最終更新日
+--            ,last_update_login                 -- 最終更新ﾛｸﾞｲﾝ
+--            ,request_id                        -- 要求ID
+--            ,program_application_id            -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--            ,program_id                        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--            ,program_update_date               -- ﾌﾟﾛｸﾞﾗﾑ更新日
+--          )
+--          VALUES (
+--             xxcff_fa_transactions_s1.NEXTVAL       -- リース取引内部ID
+--            ,g_contract_header_id_tab(ln_loop_cnt)  -- 契約内部ID
+--            ,g_contract_line_id_tab(ln_loop_cnt)    -- 契約明細内部ID
+--            ,g_object_header_id_tab(ln_loop_cnt)    -- 物件内部ID
+--            ,gv_period_name                         -- 会計期間
+--            ,1                                      -- 取引タイプ(追加)
+--            ,gv_ifrs_lease_books                    -- IFRSリース台帳
+--            ,g_comments_tab(ln_loop_cnt)            -- 摘要
+--            ,g_category_ccid_tab(ln_loop_cnt)       -- 資産カテゴリCCID
+--            ,g_asset_category_tab(ln_loop_cnt)      -- 資産種類
+--            ,g_les_asset_acct_tab(ln_loop_cnt)      -- 資産勘定
+--            ,g_deprn_acct_tab(ln_loop_cnt)          -- 償却科目
+--            ,g_lease_class_tab(ln_loop_cnt)         -- リース種別
+--            ,g_deprn_ccid_tab(ln_loop_cnt)          -- 減価償却費勘定CCID
+--            ,g_location_ccid_tab(ln_loop_cnt)       -- 事業所CCID
+--            ,g_department_code_tab(ln_loop_cnt)     -- 管理部門コード
+--            ,g_owner_company_tab(ln_loop_cnt)       -- 本社工場区分
+--            ,g_contract_date_tab(ln_loop_cnt)       -- 事業供用日
+--            ,g_original_cost_tab(ln_loop_cnt)       -- 取得価額
+--            ,g_quantity_tab(ln_loop_cnt)            -- 数量
+--            ,lt_deprn_method                        -- 償却方法
+--            ,lt_life_in_months                      -- 計算月数
+--            ,cv_if_yet                              -- FA連携フラグ
+--            ,cv_if_yet                              -- GL連携フラグ
+--            ,cn_created_by                          -- 作成者
+--            ,cd_creation_date                       -- 作成日
+--            ,cn_last_updated_by                     -- 最終更新者
+--            ,cd_last_update_date                    -- 最終更新日
+--            ,cn_last_update_login                   -- 最終更新ﾛｸﾞｲﾝ
+--            ,cn_request_id                          -- 要求ID
+--            ,cn_program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--            ,cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--            ,cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
+--          );
+--          --成功件数カウント
+--          gn_les_add_ifrs_cnt := gn_les_add_ifrs_cnt + 1;
+--        END IF;
+--      END LOOP;
+---- 2018/03/29 Ver1.11 Otsuka MOD End
+      FORALL ln_loop_cnt IN 1 .. g_contract_line_id_tab.COUNT
+        INSERT INTO xxcff_fa_transactions (
+           fa_transaction_id                 -- リース取引内部ID
+          ,contract_header_id                -- 契約内部ID
+          ,contract_line_id                  -- 契約明細内部ID
+          ,object_header_id                  -- 物件内部ID
+          ,period_name                       -- 会計期間
+          ,transaction_type                  -- 取引タイプ
+          ,book_type_code                    -- 資産台帳名
+          ,description                       -- 摘要
+          ,category_id                       -- 資産カテゴリCCID
+          ,asset_category                    -- 資産種類
+          ,asset_account                     -- 資産勘定
+          ,deprn_account                     -- 償却科目
+          ,lease_class                       -- リース種別
+          ,dprn_code_combination_id          -- 減価償却費勘定CCID
+          ,location_id                       -- 事業所CCID
+          ,department_code                   -- 管理部門コード
+          ,owner_company                     -- 本社工場区分
+          ,date_placed_in_service            -- 事業供用日
+          ,original_cost                     -- 取得価額
+          ,quantity                          -- 数量
+          ,deprn_method                      -- 償却方法
+          ,payment_frequency                 -- 計算月数(支払回数)
+          ,fa_if_flag                        -- FA連携フラグ
+          ,gl_if_flag                        -- GL連携フラグ
+          ,created_by                        -- 作成者
+          ,creation_date                     -- 作成日
+          ,last_updated_by                   -- 最終更新者
+          ,last_update_date                  -- 最終更新日
+          ,last_update_login                 -- 最終更新ﾛｸﾞｲﾝ
+          ,request_id                        -- 要求ID
+          ,program_application_id            -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+          ,program_id                        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+          ,program_update_date               -- ﾌﾟﾛｸﾞﾗﾑ更新日
+        )
+        VALUES (
+           xxcff_fa_transactions_s1.NEXTVAL       -- リース取引内部ID
+          ,g_contract_header_id_tab(ln_loop_cnt)  -- 契約内部ID
+          ,g_contract_line_id_tab(ln_loop_cnt)    -- 契約明細内部ID
+          ,g_object_header_id_tab(ln_loop_cnt)    -- 物件内部ID
+          ,gv_period_name                         -- 会計期間
+          ,1                                      -- 取引タイプ(追加)
+          ,gv_book_type_code                      -- 資産台帳名
+          ,g_comments_tab(ln_loop_cnt)            -- 摘要
+          ,g_category_ccid_tab(ln_loop_cnt)       -- 資産カテゴリCCID
+          ,g_asset_category_tab(ln_loop_cnt)      -- 資産種類
+          ,g_les_asset_acct_tab(ln_loop_cnt)      -- 資産勘定
+          ,g_deprn_acct_tab(ln_loop_cnt)          -- 償却科目
+          ,g_lease_class_tab(ln_loop_cnt)         -- リース種別
+          ,g_deprn_ccid_tab(ln_loop_cnt)          -- 減価償却費勘定CCID
+          ,g_location_ccid_tab(ln_loop_cnt)       -- 事業所CCID
+          ,g_department_code_tab(ln_loop_cnt)     -- 管理部門コード
+          ,g_owner_company_tab(ln_loop_cnt)       -- 本社工場区分
+          ,g_contract_date_tab(ln_loop_cnt)       -- 事業供用日
+          ,g_original_cost_tab(ln_loop_cnt)       -- 取得価額
+          ,g_quantity_tab(ln_loop_cnt)            -- 数量
+          ,g_deprn_method_tab(ln_loop_cnt)        -- 償却方法
+          ,g_payment_frequency_tab(ln_loop_cnt)   -- 計算月数(支払回数)
+          ,cv_if_yet                              -- FA連携フラグ
+          ,cv_if_yet                              -- GL連携フラグ
+          ,cn_created_by                          -- 作成者
+          ,cd_creation_date                       -- 作成日
+          ,cn_last_updated_by                     -- 最終更新者
+          ,cd_last_update_date                    -- 最終更新日
+          ,cn_last_update_login                   -- 最終更新ﾛｸﾞｲﾝ
+          ,cn_request_id                          -- 要求ID
+          ,cn_program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+          ,cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+          ,cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
+        );
 --
-              lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
-                                                            ,cv_msg_013a20_m_013  -- 償却方法取得エラー
-                                                            ,cv_tkn_table         -- トークン'TABLE_NAME'
-                                                            ,cv_msg_013a20_t_026  -- 償却方法
-                                                            ,cv_tkn_info          -- トークン'INFO'
-                                                            ,lv_error_key)        -- エラーキー情報
-                                                            ,1
-                                                            ,5000);
-              lv_errbuf := lv_errmsg;
-              RAISE global_api_expt;
-          END;
+       --成功件数カウント
+       gn_les_add_normal_cnt := SQL%ROWCOUNT;
 --
-          INSERT INTO xxcff_fa_transactions (
-             fa_transaction_id                 -- リース取引内部ID
-            ,contract_header_id                -- 契約内部ID
-            ,contract_line_id                  -- 契約明細内部ID
-            ,object_header_id                  -- 物件内部ID
-            ,period_name                       -- 会計期間
-            ,transaction_type                  -- 取引タイプ
-            ,book_type_code                    -- 資産台帳名
-            ,description                       -- 摘要
-            ,category_id                       -- 資産カテゴリCCID
-            ,asset_category                    -- 資産種類
-            ,asset_account                     -- 資産勘定
-            ,deprn_account                     -- 償却科目
-            ,lease_class                       -- リース種別
-            ,dprn_code_combination_id          -- 減価償却費勘定CCID
-            ,location_id                       -- 事業所CCID
-            ,department_code                   -- 管理部門コード
-            ,owner_company                     -- 本社工場区分
-            ,date_placed_in_service            -- 事業供用日
-            ,original_cost                     -- 取得価額
-            ,quantity                          -- 数量
-            ,deprn_method                      -- 償却方法
-            ,payment_frequency                 -- 計算月数(支払回数)
-            ,fa_if_flag                        -- FA連携フラグ
-            ,gl_if_flag                        -- GL連携フラグ
-            ,created_by                        -- 作成者
-            ,creation_date                     -- 作成日
-            ,last_updated_by                   -- 最終更新者
-            ,last_update_date                  -- 最終更新日
-            ,last_update_login                 -- 最終更新ﾛｸﾞｲﾝ
-            ,request_id                        -- 要求ID
-            ,program_application_id            -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-            ,program_id                        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-            ,program_update_date               -- ﾌﾟﾛｸﾞﾗﾑ更新日
-          )
-          VALUES (
-             xxcff_fa_transactions_s1.NEXTVAL       -- リース取引内部ID
-            ,g_contract_header_id_tab(ln_loop_cnt)  -- 契約内部ID
-            ,g_contract_line_id_tab(ln_loop_cnt)    -- 契約明細内部ID
-            ,g_object_header_id_tab(ln_loop_cnt)    -- 物件内部ID
-            ,gv_period_name                         -- 会計期間
-            ,1                                      -- 取引タイプ(追加)
-            ,gv_fin_lease_books                     -- FINリース台帳
-            ,g_comments_tab(ln_loop_cnt)            -- 摘要
-            ,g_category_ccid_tab(ln_loop_cnt)       -- 資産カテゴリCCID
-            ,g_asset_category_tab(ln_loop_cnt)      -- 資産種類
-            ,g_les_asset_acct_tab(ln_loop_cnt)      -- 資産勘定
-            ,g_deprn_acct_tab(ln_loop_cnt)          -- 償却科目
-            ,g_lease_class_tab(ln_loop_cnt)         -- リース種別
-            ,g_deprn_ccid_tab(ln_loop_cnt)          -- 減価償却費勘定CCID
-            ,g_location_ccid_tab(ln_loop_cnt)       -- 事業所CCID
-            ,g_department_code_tab(ln_loop_cnt)     -- 管理部門コード
-            ,g_owner_company_tab(ln_loop_cnt)       -- 本社工場区分
-            ,g_contract_date_tab(ln_loop_cnt)       -- 事業供用日
-            ,g_original_cost_tab(ln_loop_cnt)       -- 取得価額
-            ,g_quantity_tab(ln_loop_cnt)            -- 数量
-            ,lt_deprn_method                        -- 償却方法
-            ,lt_life_in_months                      -- 計算月数
-            ,cv_if_yet                              -- FA連携フラグ
-            ,cv_if_yet                              -- GL連携フラグ
-            ,cn_created_by                          -- 作成者
-            ,cd_creation_date                       -- 作成日
-            ,cn_last_updated_by                     -- 最終更新者
-            ,cd_last_update_date                    -- 最終更新日
-            ,cn_last_update_login                   -- 最終更新ﾛｸﾞｲﾝ
-            ,cn_request_id                          -- 要求ID
-            ,cn_program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-            ,cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-            ,cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
-          );
-            --成功件数カウント
-            gn_les_add_normal_cnt := gn_les_add_normal_cnt + 1;
-        END IF;
---
-        -- IFRS連携の場合
-        IF (g_ifrs_coop_tab(ln_loop_cnt) = cv_flg_y) THEN
-          BEGIN
-            SELECT
-               cat_deflt.deprn_method   AS deprn_method     -- 償却方法
-              ,cat_deflt.life_in_months AS life_in_months   -- 計算月数
-            INTO
-               lt_deprn_method                     -- 償却方法
-              ,lt_life_in_months                   -- 計算月数
-            FROM
-              fa_categories_b            cat       -- 資産カテゴリマスタ
-             ,fa_category_book_defaults  cat_deflt -- 資産カテゴリ償却基準
-            WHERE
-                 cat.category_id           = g_category_ccid_tab(ln_loop_cnt)
-            AND  cat.category_id           = cat_deflt.category_id
-            AND  cat_deflt.book_type_code  = gv_ifrs_lease_books
-            AND  cat_deflt.start_dpis     <= g_contract_date_tab(ln_loop_cnt)
-            AND  NVL(cat_deflt.end_dpis,
-                    g_contract_date_tab(ln_loop_cnt))  >= g_contract_date_tab(ln_loop_cnt)
-            ;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              --メッセージ用文字列取得
-              lv_str_ctrt_line_id := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
-                                                                ,cv_msg_013a20_t_027) -- トークン(契約明細内部ID)
-                                                                ,1
-                                                                ,5000);
-              lv_str_cat_ccid := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
-                                                            ,cv_msg_013a20_t_028) -- トークン(資産カテゴリCCID)
-                                                            ,1
-                                                            ,5000);
-              --エラーキー情報作成(文字列結合)
-              lv_error_key :=         lv_str_ctrt_line_id ||'='|| g_contract_line_id_tab(ln_loop_cnt)
-                        ||','|| lv_str_cat_ccid     ||'='|| g_category_ccid_tab(ln_loop_cnt);
---
-              lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
-                                                      ,cv_msg_013a20_m_013  -- 償却方法取得エラー
-                                                      ,cv_tkn_table         -- トークン'TABLE_NAME'
-                                                      ,cv_msg_013a20_t_026  -- 償却方法
-                                                      ,cv_tkn_info          -- トークン'INFO'
-                                                      ,lv_error_key)        -- エラーキー情報
-                                                      ,1
-                                                      ,5000);
-              lv_errbuf := lv_errmsg;
-              RAISE global_api_expt;
-          END;
---
-          INSERT INTO xxcff_fa_transactions (
-             fa_transaction_id                 -- リース取引内部ID
-            ,contract_header_id                -- 契約内部ID
-            ,contract_line_id                  -- 契約明細内部ID
-            ,object_header_id                  -- 物件内部ID
-            ,period_name                       -- 会計期間
-            ,transaction_type                  -- 取引タイプ
-            ,book_type_code                    -- 資産台帳名
-            ,description                       -- 摘要
-            ,category_id                       -- 資産カテゴリCCID
-            ,asset_category                    -- 資産種類
-            ,asset_account                     -- 資産勘定
-            ,deprn_account                     -- 償却科目
-            ,lease_class                       -- リース種別
-            ,dprn_code_combination_id          -- 減価償却費勘定CCID
-            ,location_id                       -- 事業所CCID
-            ,department_code                   -- 管理部門コード
-            ,owner_company                     -- 本社工場区分
-            ,date_placed_in_service            -- 事業供用日
-            ,original_cost                     -- 取得価額
-            ,quantity                          -- 数量
-            ,deprn_method                      -- 償却方法
-            ,payment_frequency                 -- 計算月数(支払回数)
-            ,fa_if_flag                        -- FA連携フラグ
-            ,gl_if_flag                        -- GL連携フラグ
-            ,created_by                        -- 作成者
-            ,creation_date                     -- 作成日
-            ,last_updated_by                   -- 最終更新者
-            ,last_update_date                  -- 最終更新日
-            ,last_update_login                 -- 最終更新ﾛｸﾞｲﾝ
-            ,request_id                        -- 要求ID
-            ,program_application_id            -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-            ,program_id                        -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-            ,program_update_date               -- ﾌﾟﾛｸﾞﾗﾑ更新日
-          )
-          VALUES (
-             xxcff_fa_transactions_s1.NEXTVAL       -- リース取引内部ID
-            ,g_contract_header_id_tab(ln_loop_cnt)  -- 契約内部ID
-            ,g_contract_line_id_tab(ln_loop_cnt)    -- 契約明細内部ID
-            ,g_object_header_id_tab(ln_loop_cnt)    -- 物件内部ID
-            ,gv_period_name                         -- 会計期間
-            ,1                                      -- 取引タイプ(追加)
-            ,gv_ifrs_lease_books                    -- IFRSリース台帳
-            ,g_comments_tab(ln_loop_cnt)            -- 摘要
-            ,g_category_ccid_tab(ln_loop_cnt)       -- 資産カテゴリCCID
-            ,g_asset_category_tab(ln_loop_cnt)      -- 資産種類
-            ,g_les_asset_acct_tab(ln_loop_cnt)      -- 資産勘定
-            ,g_deprn_acct_tab(ln_loop_cnt)          -- 償却科目
-            ,g_lease_class_tab(ln_loop_cnt)         -- リース種別
-            ,g_deprn_ccid_tab(ln_loop_cnt)          -- 減価償却費勘定CCID
-            ,g_location_ccid_tab(ln_loop_cnt)       -- 事業所CCID
-            ,g_department_code_tab(ln_loop_cnt)     -- 管理部門コード
-            ,g_owner_company_tab(ln_loop_cnt)       -- 本社工場区分
-            ,g_contract_date_tab(ln_loop_cnt)       -- 事業供用日
-            ,g_original_cost_tab(ln_loop_cnt)       -- 取得価額
-            ,g_quantity_tab(ln_loop_cnt)            -- 数量
-            ,lt_deprn_method                        -- 償却方法
-            ,lt_life_in_months                      -- 計算月数
-            ,cv_if_yet                              -- FA連携フラグ
-            ,cv_if_yet                              -- GL連携フラグ
-            ,cn_created_by                          -- 作成者
-            ,cd_creation_date                       -- 作成日
-            ,cn_last_updated_by                     -- 最終更新者
-            ,cd_last_update_date                    -- 最終更新日
-            ,cn_last_update_login                   -- 最終更新ﾛｸﾞｲﾝ
-            ,cn_request_id                          -- 要求ID
-            ,cn_program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-            ,cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-            ,cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
-          );
-          --成功件数カウント
-          gn_les_add_ifrs_cnt := gn_les_add_ifrs_cnt + 1;
-        END IF;
-      END LOOP;
--- 2018/03/29 Ver1.11 Otsuka MOD End
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
     END IF;
 --
   EXCEPTION
@@ -3992,7 +4236,9 @@ AS
   PROCEDURE get_deprn_method(
      it_contract_line_id   IN  xxcff_contract_histories.contract_line_id%TYPE  -- 1.契約明細ID
     ,it_category_ccid      IN  fa_categories.category_id%TYPE                  -- 2.資産カテゴリCCID
-    ,it_lease_kind         IN  xxcff_contract_histories.lease_kind%TYPE        -- 3.リース種類
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--    ,it_lease_kind         IN  xxcff_contract_histories.lease_kind%TYPE        -- 3.リース種類
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
     ,it_contract_date      IN  xxcff_contract_headers.contract_date%TYPE       -- 4.リース契約日
     ,ot_deprn_method       OUT fa_category_book_defaults.deprn_method%TYPE     -- 5.償却方法
 -- T1_0759 2009/04/23 ADD START --
@@ -4027,8 +4273,10 @@ AS
     lv_str_cat_ccid     VARCHAR2(50);
     -- エラーキー情報
     lv_error_key        VARCHAR2(5000);
-    -- 資産台帳名
-    lt_book_type_code xxcff_lease_kind_v.book_type_code%TYPE;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--    -- 資産台帳名
+--    lt_book_type_code xxcff_lease_kind_v.book_type_code%TYPE;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 --
     -- *** ローカル・カーソル ***
 --
@@ -4051,26 +4299,34 @@ AS
     BEGIN
       SELECT
              cat_deflt.deprn_method   AS deprn_method     -- 償却方法
-            ,les_kind.book_type_code  AS book_type_code   -- 資産台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--            ,les_kind.book_type_code  AS book_type_code   -- 資産台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- T1_0759 2009/04/23 ADD START --
             ,cat_deflt.life_in_months AS life_in_months   -- 計算月数
 -- T1_0759 2009/04/23 ADD END   --
       INTO
              ot_deprn_method                     -- 償却方法
-            ,lt_book_type_code                   -- 資産台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--            ,lt_book_type_code                   -- 資産台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- T1_0759 2009/04/23 ADD START --
             ,ot_life_in_months                   -- 計算月数
 -- T1_0759 2009/04/23 ADD END   --
-
       FROM
              fa_categories_b            cat       -- 資産カテゴリマスタ
             ,fa_category_book_defaults  cat_deflt -- 資産カテゴリ償却基準
-            ,xxcff_lease_kind_v         les_kind  -- リース種類ビュー
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--            ,xxcff_lease_kind_v         les_kind  -- リース種類ビュー
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
       WHERE
              cat.category_id           = it_category_ccid
         AND  cat.category_id           = cat_deflt.category_id
-        AND  cat_deflt.book_type_code  = les_kind.book_type_code
-        AND  les_kind.lease_kind_code  = it_lease_kind
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--        AND  cat_deflt.book_type_code  = les_kind.book_type_code
+--        AND  les_kind.lease_kind_code  = it_lease_kind
+        AND  cat_deflt.book_type_code  = gv_book_type_code
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
         AND  cat_deflt.start_dpis     <= it_contract_date
         AND  NVL(cat_deflt.end_dpis,
                    it_contract_date)  >= it_contract_date
@@ -4163,6 +4419,9 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
     lv_lease_class VARCHAR2(2);    -- リース種別
 -- 2018/03/29 Ver1.11 Otsuka ADD End
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+    lt_life_in_months   fa_category_book_defaults.life_in_months%TYPE;
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -4195,25 +4454,34 @@ AS
 --      ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
 -- 2018/03/29 Ver1.11 Otsuka MOD Start
 --      IF (g_lease_class_tab(ln_loop_cnt) = cv_lease_class_vd) THEN
-      --リース区分が’再リース’でかつ、リース判別結果が'2'である場合は、頻度を確認し、
-      -- 「年」指定の場合はエラーとする。
-      IF  ( g_lease_type_tab(ln_loop_cnt) = cv_re_lease
-        AND g_lease_cls_chk_tab(ln_loop_cnt) = cv_lease_cls_chk2 ) THEN
-        --「月」指定の場合
-        IF (g_payment_type_tab(ln_loop_cnt) = cv_payment_type0 ) THEN
-          ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
-        --「年」指定の場合エラー
-        ELSE
-          lv_lease_class := g_lease_class_tab(ln_loop_cnt);
-          RAISE payment_type_expt;
-        END IF;
-      -- 原契約で自販機の場合
-      ELSIF (g_lease_class_tab(ln_loop_cnt) = cv_lease_class_vd) THEN
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--      --リース区分が’再リース’でかつ、リース判別結果が'2'である場合は、頻度を確認し、
+--      -- 「年」指定の場合はエラーとする。
+--      IF  ( g_lease_type_tab(ln_loop_cnt) = cv_re_lease
+--        AND g_lease_cls_chk_tab(ln_loop_cnt) = cv_lease_cls_chk2 ) THEN
+--        AND gv_lease_class_att7 = cv_lease_cls_chk2 ) THEN
+--        --「月」指定の場合
+--        IF (g_payment_type_tab(ln_loop_cnt) = cv_payment_type0 ) THEN
+--          ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
+--        --「年」指定の場合エラー
+--        ELSE
+--          lv_lease_class := g_lease_class_tab(ln_loop_cnt);
+--          RAISE payment_type_expt;
+--        END IF;
+--      -- 原契約で自販機の場合
+--      ELSIF (g_lease_class_tab(ln_loop_cnt) = cv_lease_class_vd) THEN
+      -- 自販機の場合
+      IF (g_lease_class_tab(ln_loop_cnt) = cv_lease_class_vd) THEN
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 -- 2018/03/29 Ver1.11 Otsuka MOD End
         ln_lease_period := 8;
-      -- 原契約で自販機以外の場合
+      -- 自販機以外の場合
       ELSE
-        ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--        ln_lease_period := g_payment_frequency_tab(ln_loop_cnt)  / cv_months;
+        -- 支払回数を年数で取得、割り切れない場合切り上げ
+        ln_lease_period := CEIL(g_payment_frequency_tab(ln_loop_cnt)  / cv_months);
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
       END IF;
 -- 2016/08/03 Ver.1.9 Y.Koh MOD End
 -- T1_0759 2009/04/23 ADD END   --
@@ -4348,6 +4616,26 @@ AS
 --        RAISE global_api_expt;
 --      END IF;
 -- 2018/03/29 Ver1.11 Otsuka DEL End
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+      get_deprn_method(
+         it_contract_line_id  => g_contract_line_id_tab(ln_loop_cnt)  -- 契約明細内部ID
+        ,it_category_ccid     => g_category_ccid_tab(ln_loop_cnt)     -- 資産カテゴリCCID
+        ,it_contract_date     => g_contract_date_tab(ln_loop_cnt)     -- リース契約日
+        ,ot_deprn_method      => g_deprn_method_tab(ln_loop_cnt)      -- 償却方法
+        ,ot_life_in_months    => lt_life_in_months                    -- 計算月数
+        ,ov_errbuf            => lv_errbuf                           -- エラー・メッセージ           --# 固定 # 
+        ,ov_retcode           => lv_retcode                          -- リターン・コード             --# 固定 #
+        ,ov_errmsg            => lv_errmsg                           -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+      IF (lv_retcode <> ov_retcode) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+    -- IFRS台帳以外の場合
+    IF ( gv_book_type_code <> gv_ifrs_lease_books ) THEN
+      g_payment_frequency_tab(ln_loop_cnt) := lt_life_in_months;
+    END IF;
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
 --
     END LOOP les_trn_add_loop;
 --
@@ -4472,7 +4760,9 @@ AS
             ,ctrct_hist.history_num        AS history_num         -- 変更履歴No
             ,ctrct_head.lease_class        AS lease_class         -- リース種別
             ,ctrct_hist.lease_kind         AS lease_kind          -- リース種類
-            ,les_kind.book_type_code       AS book_type_code      -- 資産台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--            ,les_kind.book_type_code       AS book_type_code      -- 資産台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
             ,ctrct_hist.asset_category     AS asset_category      -- 資産種類
             ,ctrct_head.comments           AS comments            -- 件名
             ,ctrct_head.payment_years      AS payment_years       -- 年数(リース期間)
@@ -4501,16 +4791,20 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
             ,ctrct_head.lease_type         AS lease_type          -- リースタイプ
             ,ctrct_head.payment_type       AS payment_type        -- 頻度(0:「月」、1:「年」）
-            ,flv.attribute4                AS fin_coop            -- 日本基準連携
-            ,flv.attribute5                AS ifrs_coop           -- IFRS連携
-            ,flv.attribute7                AS lease_cls_chk       -- リース判別結果
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--            ,flv.attribute4                AS fin_coop            -- 日本基準連携
+--            ,flv.attribute5                AS ifrs_coop           -- IFRS連携
+--            ,flv.attribute7                AS lease_cls_chk       -- リース判別結果
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
       FROM
             xxcff_contract_histories  ctrct_hist
            ,xxcff_contract_headers    ctrct_head
            ,xxcff_object_headers      obj_head
            ,xxcff_lease_class_v       les_class
-           ,xxcff_lease_kind_v        les_kind
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--           ,xxcff_lease_kind_v        les_kind
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
            ,fnd_lookup_values         flv           -- 参照表
 -- 2017/03/29 Ver.1.10 Y.Shoji ADD End
@@ -4536,13 +4830,21 @@ AS
         AND ctrct_head.first_payment_date <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
         AND obj_head.lease_class          =  flv.lookup_code
         AND flv.lookup_type               =  cv_xxcff1_lease_class_check
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+        AND flv.attribute7                = gv_lease_class_att7                       -- リース判定処理
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Emd
         AND flv.language                  =  USERENV('LANG')
         AND flv.enabled_flag              =  cv_flg_y
         AND LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
                                                         AND     NVL(flv.end_date_active  , LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
-        AND ctrct_hist.lease_kind         =  les_kind.lease_kind_code
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--        AND ctrct_hist.lease_kind         =  les_kind.lease_kind_code
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
         AND (  (ctrct_hist.contract_status  =  cv_ctrt_ctrt                               -- 契約
-            AND ctrct_hist.lease_kind       IN (cv_lease_kind_fin, cv_lease_kind_lfin)) -- Fin,旧Fin
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--            AND ctrct_hist.lease_kind       IN (cv_lease_kind_fin, cv_lease_kind_lfin)) -- Fin,旧Fin
+            AND ctrct_hist.lease_kind       = gv_lease_kind)                            -- リース種類
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
           OR  ( ctrct_hist.contract_status  =  cv_ctrt_re_lease                         -- 再リース
             AND flv.attribute7              =  cv_lease_cls_chk2 ))                     -- リース判定結果：'2'
 -- 2018/03/29 Ver1.11 Otsuka MOD End
@@ -4583,7 +4885,9 @@ AS
                       ,g_history_num_tab        -- 変更履歴No
                       ,g_lease_class_tab        -- リース種別
                       ,g_lease_kind_tab         -- リース種類
-                      ,g_book_type_code_tab     -- 資産台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--                      ,g_book_type_code_tab     -- 資産台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
                       ,g_asset_category_tab     -- 資産種類
                       ,g_comments_tab           -- 件名
                       ,g_payment_years_tab      -- 年数(リース期間)
@@ -4609,9 +4913,11 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
                       ,g_lease_type_tab         -- リース区分
                       ,g_payment_type_tab       -- 頻度(0:「月」、1:「年」）
-                      ,g_fin_coop_tab           -- 日本基準連携
-                      ,g_ifrs_coop_tab          -- IFRS連携
-                      ,g_lease_cls_chk_tab      -- リース判別結果
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--                      ,g_fin_coop_tab           -- 日本基準連携
+--                      ,g_ifrs_coop_tab          -- IFRS連携
+--                      ,g_lease_cls_chk_tab      -- リース判別結果
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
 
     ;
@@ -4727,14 +5033,18 @@ AS
             ,fdp.book_type_code   AS book_type_code -- 資産台帳名
         FROM
              fa_deprn_periods     fdp   -- 減価償却期間
-            ,xxcff_lease_kind_v   xlk   -- リース種類ビュー
-       WHERE
-             xlk.lease_kind_code IN (cv_lease_kind_fin, cv_lease_kind_lfin)
--- 2018/03/29 Ver1.11 Otsuka MOD Start
---         AND fdp.book_type_code  =  xlk.book_type_code
-         AND (fdp.book_type_code  =  xlk.book_type_code
-          OR  fdp.book_type_code  =  xlk.book_type_code_ifrs )
--- 2018/03/29 Ver1.11 Otsuka MOD Start
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--            ,xxcff_lease_kind_v   xlk   -- リース種類ビュー
+--       WHERE
+--             xlk.lease_kind_code IN (cv_lease_kind_fin, cv_lease_kind_lfin)
+---- 2018/03/29 Ver1.11 Otsuka MOD Start
+----         AND fdp.book_type_code  =  xlk.book_type_code
+--         AND (fdp.book_type_code  =  xlk.book_type_code
+--          OR  fdp.book_type_code  =  xlk.book_type_code_ifrs )
+---- 2018/03/29 Ver1.11 Otsuka MOD Start
+         WHERE
+             fdp.book_type_code  =  gv_book_type_code
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
          AND fdp.period_name     =  gv_period_name
            ;
 --
@@ -5103,6 +5413,40 @@ AS
     END IF;
 --
 -- 2018/03/29 Ver1.11 Otsuka ADD End
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+    -- XXCFF:IFRS帳簿ID
+    gn_set_of_books_id_ifrs := TO_NUMBER(FND_PROFILE.VALUE(cv_set_of_books_id_ifrs));
+    IF (gn_set_of_books_id_ifrs IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_013a20_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_013a20_t_037) -- XXCFF:IFRS帳簿ID
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- IFRSリース台帳の場合
+    IF ( gv_book_type_code = gv_ifrs_lease_books ) THEN
+      -- リース判定処理=2
+      gv_lease_class_att7 := cv_lease_cls_chk2;
+      -- リース種類=Finリース
+      gv_lease_kind := cv_lease_kind_fin;
+    -- FINリース台帳の場合
+    ELSIF ( gv_book_type_code = gv_fin_lease_books ) THEN
+      -- リース判定処理=1
+      gv_lease_class_att7 := cv_lease_cls_chk1;
+      -- リース種類=Finリース
+      gv_lease_kind := cv_lease_kind_fin;
+    -- 上記以外の場合
+    ELSE
+      -- リース判定処理=1
+      gv_lease_class_att7 := cv_lease_cls_chk1;
+      -- リース種類=Opリース
+      gv_lease_kind := cv_lease_kind_lfin;
+    END IF;
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
 --
   EXCEPTION
 --
@@ -5235,6 +5579,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_period_name  IN  VARCHAR2,     -- 1.会計期間名
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+    iv_book_type_code IN VARCHAR2,    -- 2.台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
     ov_errbuf       OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode      OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg       OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -5295,9 +5642,11 @@ AS
     gn_trnsf_oif_ins_cnt     := 0;
     gn_retire_oif_ins_cnt    := 0;
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-    gn_les_add_ifrs_cnt      := 0;
-    gn_les_trnsf_ifrs_cnt    := 0;
-    gn_les_retire_ifrs_cnt   := 0;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--    gn_les_add_ifrs_cnt      := 0;
+--    gn_les_trnsf_ifrs_cnt    := 0;
+--    gn_les_retire_ifrs_cnt   := 0;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
 --
     --*********************************************
@@ -5307,6 +5656,10 @@ AS
 --
     -- INパラメータ(会計期間名)をグローバル変数に設定
     gv_period_name := iv_period_name;
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+    -- INパラメータ(台帳名)をグローバル変数に設定
+    gv_book_type_code := iv_book_type_code;
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
 --
     -- ===============================
     -- 初期処理 (A-1)
@@ -5534,7 +5887,11 @@ AS
   PROCEDURE main(
     errbuf         OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode        OUT VARCHAR2,      --   リターン・コード    --# 固定 #
-    iv_period_name IN  VARCHAR2       -- 1.会計期間名
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--    iv_period_name IN  VARCHAR2       -- 1.会計期間名
+    iv_period_name    IN  VARCHAR2,   -- 1.会計期間名
+    iv_book_type_code IN  VARCHAR2    -- 2.台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
   )
 --
 --
@@ -5586,7 +5943,10 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       iv_period_name -- 会計期間名
+       iv_period_name    -- 1.会計期間名
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+      ,iv_book_type_code -- 2.台帳名
+-- 2018/09/07 Ver.1.12 Y.Shoji ADD End
       ,lv_errbuf      -- エラー・メッセージ           --# 固定 #
       ,lv_retcode     -- リターン・コード             --# 固定 #
       ,lv_errmsg      -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5618,9 +5978,11 @@ AS
       gn_les_trnsf_normal_cnt  := 0;
       gn_les_retire_normal_cnt := 0;
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-      gn_les_add_ifrs_cnt      := 0;
-      gn_les_trnsf_ifrs_cnt    := 0;
-      gn_les_retire_ifrs_cnt   := 0;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--      gn_les_add_ifrs_cnt      := 0;
+--      gn_les_trnsf_ifrs_cnt    := 0;
+--      gn_les_retire_ifrs_cnt   := 0;
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
       gn_add_oif_ins_cnt       := 0;
       gn_trnsf_oif_ins_cnt     := 0;
@@ -5656,13 +6018,17 @@ AS
       ,buff   => gv_out_msg
     );
     --
-    --成功件数出力(FIN)
+    --成功件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
 -- 2018/03/29 Ver1.11 Otsuka MOD Start
 --                     iv_application  => cv_appl_short_name
 --                    ,iv_name         => cv_success_rec_msg
-                     iv_application  => cv_msg_kbn_cff
-                    ,iv_name         => cv_msg_013a20_m_021
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--                     iv_application  => cv_msg_kbn_cff
+--                    ,iv_name         => cv_msg_013a20_m_021
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_success_rec_msg
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 -- 2018/03/29 Ver1.11 Otsuka MOD End
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_les_add_normal_cnt)
@@ -5672,18 +6038,20 @@ AS
       ,buff   => gv_out_msg
     );
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-    --
-    --成功件数出力(IFRS)
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_msg_kbn_cff
-                    ,iv_name         => cv_msg_013a20_m_022
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_les_add_ifrs_cnt)
-                   );
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--    --
+--    --成功件数出力(IFRS)
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_msg_kbn_cff
+--                    ,iv_name         => cv_msg_013a20_m_022
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_les_add_ifrs_cnt)
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => gv_out_msg
+--    );
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
     --
     --エラー件数出力
@@ -5732,8 +6100,12 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka MOD Start
 --                     iv_application  => cv_appl_short_name
 --                    ,iv_name         => cv_success_rec_msg
-                     iv_application  => cv_msg_kbn_cff
-                    ,iv_name         => cv_msg_013a20_m_023
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--                     iv_application  => cv_msg_kbn_cff
+--                    ,iv_name         => cv_msg_013a20_m_023
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_success_rec_msg
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 -- 2018/03/29 Ver1.11 Otsuka MOD End
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_les_trnsf_normal_cnt)
@@ -5743,18 +6115,20 @@ AS
       ,buff   => gv_out_msg
     );
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-    --
-    --成功件数出力(IFRS)
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_msg_kbn_cff
-                    ,iv_name         => cv_msg_013a20_m_024
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_les_trnsf_ifrs_cnt)
-                   );
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--    --
+--    --成功件数出力(IFRS)
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_msg_kbn_cff
+--                    ,iv_name         => cv_msg_013a20_m_024
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_les_trnsf_ifrs_cnt)
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => gv_out_msg
+--    );
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
     --
     --エラー件数出力
@@ -5802,8 +6176,12 @@ AS
 -- 2018/03/29 Ver1.11 Otsuka MOD Start
 --                     iv_application  => cv_appl_short_name
 --                    ,iv_name         => cv_success_rec_msg
-                     iv_application  => cv_msg_kbn_cff
-                    ,iv_name         => cv_msg_013a20_m_025
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD Start
+--                     iv_application  => cv_msg_kbn_cff
+--                    ,iv_name         => cv_msg_013a20_m_025
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_success_rec_msg
+-- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 -- 2018/03/29 Ver1.11 Otsuka MOD End
                     ,iv_token_name1  => cv_cnt_token
                     ,iv_token_value1 => TO_CHAR(gn_les_retire_normal_cnt)
@@ -5813,18 +6191,20 @@ AS
       ,buff   => gv_out_msg
     );
 -- 2018/03/29 Ver1.11 Otsuka ADD Start
-    --
-    --成功件数出力(IFRS)
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_msg_kbn_cff
-                    ,iv_name         => cv_msg_013a20_m_026
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_les_retire_ifrs_cnt)
-                   );
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL Start
+--    --
+--    --成功件数出力(IFRS)
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_msg_kbn_cff
+--                    ,iv_name         => cv_msg_013a20_m_026
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_les_retire_ifrs_cnt)
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => gv_out_msg
+--    );
+-- 2018/09/07 Ver.1.12 Y.Shoji DEL End
 -- 2018/03/29 Ver1.11 Otsuka ADD End
     --
     --エラー件数出力
