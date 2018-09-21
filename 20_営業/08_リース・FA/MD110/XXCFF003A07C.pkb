@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A07C(body)
  * Description      : リース契約・物件アップロード
  * MD.050           : MD050_CFF_003_A07_リース契約・物件アップロード.doc
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2016/08/15    1.9   SCSK仁木 重人   【E_本稼動_13658】自販機耐用年数変更対応
  *  2018/03/27    1.10  SCSK大塚 亨     【E_本稼動_14830】IFRSリース資産対応
  *  2018/05/25    1.11  SCSK森 晴加     【E_本稼動_15112】IFRS障害対応
+ *  2018/09/10    1.12  SCSK佐々木宏之  【E_本稼動_14830】追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4024,7 +4025,12 @@ AS
     ld_last_end_date     xxcff_contract_headers.lease_end_date%TYPE;
     lv_tax_code          xxcff_contract_headers.tax_code%TYPE;
     lv_vdsh_flag         VARCHAR2(1);      -- 自販機shフラグ    
-
+-- V1.12 2018/09/10 Added START
+    lv_ret_dff4    fnd_lookup_values.attribute4%TYPE;   --  リース判定DFF4
+    lv_ret_dff5    fnd_lookup_values.attribute5%TYPE;   --  リース判定DFF5
+    lv_ret_dff6    fnd_lookup_values.attribute6%TYPE;   --  リース判定DFF6
+    lv_ret_dff7    fnd_lookup_values.attribute7%TYPE;   --  リース判定DFF7
+-- V1.12 2018/09/10 Added END
     lv_first_date        DATE;
     lv_second_date       DATE;
 --
@@ -4333,29 +4339,81 @@ AS
         END IF;
       END IF;
       -- 2.入力値チェック
+-- V1.12 2018/09/10 Modified START
+--      IF (xchw_data_rec.lease_type = cv_lease_type_1) THEN
+--        IF (MOD(xchw_data_rec.payment_frequency,cn_month) <> 0) THEN
+--          IF (lv_err_flag = cv_const_n) THEN
+--            FND_FILE.PUT_LINE(
+--              which  => FND_FILE.OUTPUT
+--             ,buff   => lv_err_info
+--            );
+--          END IF;
+--          lv_err_flag := cv_const_y;
+--          -- エラー内容の出力
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+--                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                        cv_msg_cff_00014,    -- メッセージ：支払回数入力値エラー
+--                        cv_tk_cff_00013_01,  -- カラム論理名
+--                        cv_msg_cff_50047,    -- 支払回数
+--                        cv_tk_cff_00013_02,  -- 境界値エラーの範囲(MIN)
+--                        cn_month
+--                     ),1,5000)
+--          );
+--        END IF;
+--      END IF;
+      --  リース判定処理
+      xxcff_common2_pkg.get_lease_class_info(
+        iv_lease_class  =>    lv_lease_class
+        ,ov_ret_dff4    =>    lv_ret_dff4           -- DFF4(日本基準連携)
+        ,ov_ret_dff5    =>    lv_ret_dff5           -- DFF5(IFRS連携)
+        ,ov_ret_dff6    =>    lv_ret_dff6           -- DFF6(仕訳作成)
+        ,ov_ret_dff7    =>    lv_ret_dff7           -- DFF7(リース判定処理)
+        ,ov_errbuf      =>    lv_errbuf
+        ,ov_retcode     =>    lv_retcode
+        ,ov_errmsg      =>    lv_errmsg
+      );
+      -- 共通関数エラーの場合
+      IF (lv_retcode <> cv_status_normal) THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                                                       cv_msg_cff_00094,    -- メッセージ：共通関数エラー
+                                                       cv_tk_cff_00094_01,  -- 共通関数名
+                                                       cv_msg_cff_50323  )  -- ファイルID
+                                                      || cv_msg_part
+                                                      || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                                      ,1
+                                                      ,5000);
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+      --  原契約で、リース判定処理1の場合、支払回数は12の倍数でなければならない
       IF (xchw_data_rec.lease_type = cv_lease_type_1) THEN
-        IF (MOD(xchw_data_rec.payment_frequency,cn_month) <> 0) THEN
-          IF (lv_err_flag = cv_const_n) THEN
+        IF ( lv_ret_dff7 = cv_lease_cls_chk1 ) THEN
+          IF (MOD(xchw_data_rec.payment_frequency,cn_month) <> 0) THEN
+            IF (lv_err_flag = cv_const_n) THEN
+              FND_FILE.PUT_LINE(
+                which  => FND_FILE.OUTPUT
+               ,buff   => lv_err_info
+              );
+            END IF;
+            lv_err_flag := cv_const_y;
+            -- エラー内容の出力
             FND_FILE.PUT_LINE(
               which  => FND_FILE.OUTPUT
-             ,buff   => lv_err_info
+             ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
+                          cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                          cv_msg_cff_00014,    -- メッセージ：支払回数入力値エラー
+                          cv_tk_cff_00013_01,  -- カラム論理名
+                          cv_msg_cff_50047,    -- 支払回数
+                          cv_tk_cff_00013_02,  -- 境界値エラーの範囲(MIN)
+                          cn_month
+                       ),1,5000)
             );
           END IF;
-          lv_err_flag := cv_const_y;
-          -- エラー内容の出力
-          FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-           ,buff   => SUBSTRB(xxccp_common_pkg.get_msg(
-                        cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                        cv_msg_cff_00014,    -- メッセージ：支払回数入力値エラー
-                        cv_tk_cff_00013_01,  -- カラム論理名
-                        cv_msg_cff_50047,    -- 支払回数
-                        cv_tk_cff_00013_02,  -- 境界値エラーの範囲(MIN)
-                        cn_month
-                     ),1,5000)
-          );
         END IF;
       END IF;
+-- V1.12 2018/09/10 Modified END
 --
       -- ***************************************************
       -- 7. リース契約日
@@ -4782,7 +4840,15 @@ AS
       -- ***************************************************
       IF (lv_lease_type = cv_lease_type_1) THEN
         -- 耐用年数を算出する。
-        lv_live_month :=  round(ln_payment_frequency / cn_month);
+-- V1.12 2018/09/10 Modified START
+--        lv_live_month :=  round(ln_payment_frequency / cn_month);
+        --  12で割り切れない場合は切上げ
+        IF ( ( ln_payment_frequency / cn_month ) <> TRUNC( ln_payment_frequency / cn_month ) ) THEN
+          lv_live_month :=  TO_CHAR( TRUNC( ln_payment_frequency / cn_month ) + 1 );
+        ELSE
+          lv_live_month :=  TO_CHAR( ln_payment_frequency / cn_month );
+        END IF;
+-- V1.12 2018/09/10 Modified END
         -- 耐用年数チェック
         xxcff_common1_pkg.chk_life(
           iv_category           => xclw_data_rec.asset_category --   1.資産種類
@@ -4815,7 +4881,15 @@ AS
       -- ***************************************************
       IF (lv_lease_type = cv_lease_type_1) THEN
         -- 耐用年数を算出する。
-        lv_live_month :=  round(ln_payment_frequency / cn_month);
+-- V1.12 2018/09/10 Modified START
+--        lv_live_month :=  round(ln_payment_frequency / cn_month);
+        --  12で割り切れない場合は切上げ
+        IF ( ( ln_payment_frequency / cn_month ) <> TRUNC( ln_payment_frequency / cn_month ) ) THEN
+          lv_live_month :=  TO_CHAR( TRUNC( ln_payment_frequency / cn_month ) + 1 );
+        ELSE
+          lv_live_month :=  TO_CHAR( ln_payment_frequency / cn_month );
+        END IF;
+-- V1.12 2018/09/10 Modified END
         -- 資産カテゴリチェック
         xxcff_common1_pkg.chk_fa_category(
           iv_segment1    => xclw_data_rec.asset_category    -- 種類
@@ -4991,6 +5065,14 @@ AS
         END IF;
       END IF;
 -- 2018/03/27 Ver1.10 Otsuka ADD End
+--  V1.12 2018/09/10 Added START
+      --  エラー存在時
+      IF ( lv_err_flag = cv_const_y ) THEN
+        -- エラーフラグ設定、エラー件数カウント
+        ov_err_flag   :=  cv_const_y;
+        gn_error_cnt  :=  gn_error_cnt + 1;
+      END IF;
+--  V1.12 2018/09/10 Added END
 --
     END LOOP;
 --
