@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF004A30C(body)
  * Description      : リース物件一部修正・移動・解約アップロード
  * MD.050           : MD050_CFF_004_A30_リース物件一部修正・移動・解約アップロード
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *                                        支払照合済チェックの呼出をコメントアウト
  *  2011/12/26    1.8  SCSK白川         [E_本稼動_08123] アップロードシートに解約日を追加
  *  2016/09/06    1.9  SCSK小路         [E_本稼動_13658] 耐用年数変更対応
+ *  2018/09/10    1.10 SCSK佐々木       [E_本稼動_14830] 追加対応
  *
  *****************************************************************************************/
 --
@@ -175,6 +176,10 @@ AS
   cv_file_type_out   CONSTANT VARCHAR2(10) := 'OUTPUT';      --出力(ユーザメッセージ用出力先)
   cv_file_type_log   CONSTANT VARCHAR2(10) := 'LOG';         --ログ(システム管理者用出力先)
 --
+-- V1.10 2018/09/10 Added START
+  cv_set_of_bks_id        CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID';            --  XXCFF: リース契約情報ファイル名称
+  cv_ifrs_set_of_bks_id   CONSTANT VARCHAR2(30) := 'XXCFF1_IFRS_SET_OF_BKS_ID';   --  XXCFF:IFRS帳簿ID
+-- V1.10 2018/09/10 Added END
   -- ***アプリケーション短縮名
   cv_msg_kbn_cff   CONSTANT VARCHAR2(5) := 'XXCFF'; --アドオン：会計・リース・FA領域
   cv_msg_kbn_ccp   CONSTANT VARCHAR2(5) := 'XXCCP'; --共通のメッセージ
@@ -225,6 +230,9 @@ AS
   cv_tkn_val17     CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50175'; --ファイルアップロードI/Fテーブル
   cv_tkn_val18     CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50176'; --リース物件一部修正・移動・解約
   cv_tkn_val19     CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50185'; --物件コード解約チェック
+-- V1.10 2018/09/10 Added START
+  cv_tkn_val20     CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50323';  --  リース判定処理
+-- V1.10 2018/09/10 Added END
 --
   -- ***トークン名
   -- プロファイル名
@@ -3392,6 +3400,14 @@ AS
 --
     -- *** ローカル変数 ***
     lv_warn_msg                VARCHAR2(5000); --警告メッセージ
+-- V1.10 2018/09/10 Modified START
+    lv_ret_dff4           VARCHAR2(1);    --  リース判定DFF4
+    lv_ret_dff5           VARCHAR2(1);    --  リース判定DFF5
+    lv_ret_dff6           VARCHAR2(1);    --  リース判定DFF6
+    lv_ret_dff7           VARCHAR2(1);    --  リース判定DFF7
+    ln_set_of_book_id     NUMBER;         --  会計帳簿ID
+    ld_period_date_from   DATE;           --  会計期間
+-- V1.10 2018/09/10 Modified END
 --
     -- *** ローカル・カーソル ***
 --
@@ -3460,28 +3476,133 @@ AS
       gb_err_flag := TRUE;
     END IF;
 --
-    IF ( ( g_cancellation_date_xmw_tab(in_loop_cnt_3) < gd_period_date_from )
-     OR  ( g_cancellation_date_xmw_tab(in_loop_cnt_3) > g_init_rec.process_date ) )
+-- V1.10 2018/09/10 Modified START
+--    IF ( ( g_cancellation_date_xmw_tab(in_loop_cnt_3) < gd_period_date_from )
+--     OR  ( g_cancellation_date_xmw_tab(in_loop_cnt_3) > g_init_rec.process_date ) )
+--    THEN
+--      --解約日エラー
+--      lv_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                      -- XXCFF
+--                                                      ,cv_msg_name16                       -- 解約日エラー
+--                                                     )
+--                                                     || xxccp_common_pkg.get_msg(
+--                                                          cv_msg_kbn_cff                   --XXCFF
+--                                                         ,cv_msg_name12                    --物件エラー対象
+--                                                         ,cv_tkn_name4                     --トークン'OBJECT_CODE'
+--                                                         ,g_object_code_tab(in_loop_cnt_3) -- 物件コード
+--                                                        )
+--                                                     ,1
+--                                                     ,5000);
+--      FND_FILE.PUT_LINE(
+--         which  => FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
+--        ,buff   => lv_warn_msg
+--      );
+--      --エラーフラグをTRUEにする
+--      gb_err_flag := TRUE;
+--    END IF;
+    IF  ( g_cancellation_class_tab(in_loop_cnt_3) IN( cv_cancel_class_1, cv_cancel_class_2 )
+          AND
+          g_cancellation_date_xmw_tab(in_loop_cnt_3) IS NOT NULL
+        )
     THEN
-      --解約日エラー
-      lv_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff                      -- XXCFF
-                                                      ,cv_msg_name16                       -- 解約日エラー
-                                                     )
-                                                     || xxccp_common_pkg.get_msg(
-                                                          cv_msg_kbn_cff                   --XXCFF
-                                                         ,cv_msg_name12                    --物件エラー対象
-                                                         ,cv_tkn_name4                     --トークン'OBJECT_CODE'
-                                                         ,g_object_code_tab(in_loop_cnt_3) -- 物件コード
-                                                        )
-                                                     ,1
-                                                     ,5000);
-      FND_FILE.PUT_LINE(
-         which  => FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
-        ,buff   => lv_warn_msg
+      --  解約種別が解約確定、且つCSVファイルの解約日が設定されている場合、解約日のチェックを実施
+      --  リース判定処理取得
+      xxcff_common2_pkg.get_lease_class_info(
+          iv_lease_class  =>  g_lease_class_tab(in_loop_cnt_3)
+        , ov_ret_dff4     =>  lv_ret_dff4           --  DFF4(日本基準連携)
+        , ov_ret_dff5     =>  lv_ret_dff5           --  DFF5(IFRS連携)
+        , ov_ret_dff6     =>  lv_ret_dff6           --  DFF6(仕訳作成)
+        , ov_ret_dff7     =>  lv_ret_dff7           --  DFF7(リース判定処理)
+        , ov_errbuf       =>  lv_errbuf
+        , ov_retcode      =>  lv_retcode
+        , ov_errmsg       =>  lv_errmsg
       );
-      --エラーフラグをTRUEにする
-      gb_err_flag := TRUE;
+      -- 共通関数エラーの場合
+      IF (lv_retcode <> cv_status_normal) THEN
+        lv_warn_msg :=  SUBSTRB(  xxccp_common_pkg.get_msg( cv_msg_kbn_cff        --  アプリケーション短縮名：XXCFF
+                                                          , cv_msg_name1          --  メッセージ：共通関数エラー
+                                                          , cv_tkn_name1          --  共通関数名
+                                                          , cv_tkn_val20          --  ファイルID
+                                  )
+                                  ||  cv_msg_part
+                                  ||  lv_errmsg           --  共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                , 1
+                                , 5000
+                        );
+        FND_FILE.PUT_LINE(
+            which   =>  FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
+         ,  buff    =>  lv_warn_msg
+        );
+        --エラーフラグをTRUEにする
+        gb_err_flag :=  TRUE;
+      ELSE
+        --  共通関数正常終了した場合
+        --  会計帳簿IDの設定
+        IF ( lv_ret_dff7 = '1' ) THEN
+          --  GL
+          ln_set_of_book_id := TO_NUMBER(fnd_profile.value(cv_set_of_bks_id));
+        ELSE
+          --  IFRS
+          ln_set_of_book_id := TO_NUMBER(fnd_profile.value(cv_ifrs_set_of_bks_id));
+        END IF;
+        --
+        BEGIN
+          --  会計期間の取得
+          SELECT  ADD_MONTHS( TO_DATE( period_name, 'YYYY-MM' ), 1 )  period_date_from      --  現会計期間開始日（リース月次締め期間の翌月初日）
+          INTO   ld_period_date_from
+          FROM   xxcff_lease_closed_periods   xlcp
+          WHERE  xlcp.set_of_books_id   =   ln_set_of_book_id
+          ;
+          --  会計期間が取得された場合
+          --  解約日が締め済の期間であるか、業務日付より未来日の場合はエラー
+          IF( ( g_cancellation_date_xmw_tab(in_loop_cnt_3) < ld_period_date_from )
+              OR
+              ( g_cancellation_date_xmw_tab(in_loop_cnt_3) > g_init_rec.process_date )
+            )
+          THEN
+            --解約日エラー
+            lv_warn_msg :=  SUBSTRB(
+                                xxccp_common_pkg.get_msg(
+                                    cv_msg_kbn_cff                    --  XXCFF
+                                  , cv_msg_name16                     --  解約日エラー
+                                )
+                                ||
+                                xxccp_common_pkg.get_msg(
+                                    cv_msg_kbn_cff                    --  XXCFF
+                                  , cv_msg_name12                     --  物件エラー対象
+                                  , cv_tkn_name4                      --  トークン'OBJECT_CODE'
+                                  , g_object_code_tab(in_loop_cnt_3)  --  物件コード
+                                )
+                              , 1
+                              , 5000
+                            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT  --メッセージ(ユーザ用メッセージ)出力
+              ,buff   => lv_warn_msg
+            );
+            --エラーフラグをTRUEにする
+            gb_err_flag :=  TRUE;
+          END IF;
+        EXCEPTION
+          WHEN OTHERS THEN
+            --  会計期間が取得できなかった場合エラー
+          lv_warn_msg :=  SUBSTRB(
+                                xxccp_common_pkg.get_msg(
+                                    cv_msg_kbn_cff          --  XXCFF
+                                  , cv_msg_name15           --  現会計期間開始日取得エラー
+                                )
+                              , 1
+                              , 5000
+                          );
+          FND_FILE.PUT_LINE(
+              which   =>  FND_FILE.OUTPUT
+            , buff    =>  lv_warn_msg
+          );
+          --エラーフラグをTRUEにする
+          gb_err_flag :=  TRUE;
+        END;
+      END IF;
     END IF;
+-- V1.10 2018/09/10 Modified END
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
