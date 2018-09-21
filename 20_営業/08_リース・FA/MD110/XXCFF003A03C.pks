@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF003A03C(spec)
  * Description      : リース種類判定
  * MD.050           : MD050_CFF_003_A03_リース種類判定
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -20,6 +20,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-12-04    1.0   SCS 増子 秀幸    新規作成
  *  2016-08-10    1.1   SCSK 仁木 重人   [E_本稼動_13658]自販機耐用年数変更対応
+ *  2018-09-10    1.4   SCSK 佐々木宏之  E_本稼動_14830 追加対応
  *
  *****************************************************************************************/
 --
@@ -37,6 +38,9 @@ AS
 -- Ver.1.1 ADD Start
     iv_lease_class                 IN  VARCHAR2,    -- 8.リース種別
 -- Ver.1.1 ADD End
+--  V1.4 2018/09/10 Added START
+    iv_process_flag                IN  VARCHAR2 DEFAULT NULL,       --  処理区分
+--  V1.4 2018/09/10 Added END
     ov_lease_kind                  OUT VARCHAR2,    -- 9.リース種類
     on_present_value_discount_rate OUT NUMBER,      -- 10.現在価値割引率
     on_present_value               OUT NUMBER,      -- 11.現在価値
