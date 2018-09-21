@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A05C(body)
  * Description      : 支払計画作成
  * MD.050           : MD050_CFF_003_A05_支払計画作成.doc
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  * 2016/9/6       1.5   SCSK小路恭弘    [E_本稼動_13658] 耐用年数変更対応
  * 2016/10/26     1.6   SCSK郭          E_本稼動_13658 自販機耐用年数変更対応・フェーズ3
  * 2018/3/27      1.7   SCSK大塚        E_本稼動_14830 IFRSリース資産対応
+ * 2018/09/10     1.8   SCSK佐々木宏之  E_本稼動_14830 追加対応
  *
  *****************************************************************************************/
 --
@@ -154,6 +155,9 @@ AS
 -- 2016/09/06 Ver.1.5 Y.Shoji ADD Start
   --プロファイル
   cv_set_of_bks_id   CONSTANT VARCHAR2(30) := 'GL_SET_OF_BKS_ID';   --XXCFF: リース契約情報ファイル名称
+-- V1.8 2018/09/10 Added START
+  cv_ifrs_set_of_bks_id   CONSTANT VARCHAR2(30) := 'XXCFF1_IFRS_SET_OF_BKS_ID';   --  XXCFF:IFRS帳簿ID
+-- V1.8 2018/09/10 Added END
 -- 2016/09/06 Ver.1.5 Y.Shoji ADD End
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1109,6 +1113,38 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- V1.8 2018/09/10 Added START 下から移動
+    lv_lease_class := gn_lease_class;
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --  リース判定処理 
+    xxcff_common2_pkg.get_lease_class_info(
+        iv_lease_class  =>  lv_lease_class
+      , ov_ret_dff4     =>  lv_ret_dff4           --  DFF4(日本基準連携)
+      , ov_ret_dff5     =>  lv_ret_dff5           --  DFF5(IFRS連携)
+      , ov_ret_dff6     =>  lv_ret_dff6           --  DFF6(仕訳作成)
+      , ov_ret_dff7     =>  lv_ret_dff7           --  DFF7(リース判定処理)
+      , ov_errbuf       =>  lv_errbuf
+      , ov_retcode      =>  lv_retcode
+      , ov_errmsg       =>  lv_errmsg
+     );
+    -- 共通関数エラーの場合
+    IF (lv_retcode <> cv_status_normal) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                                                     cv_msg_cff_00094,    -- メッセージ：共通関数エラー
+                                                     cv_tk_cff_00094_01,  -- 共通関数名
+                                                     cv_msg_cff_50323  )  -- ファイルID
+                                                    || cv_msg_part
+                                                    || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- V1.8 2018/09/10 Added END
+--
     -- ***************************************************
     -- 1.リース支払計画をロックする
     -- ***************************************************
@@ -1144,8 +1180,17 @@ AS
     ln_calc_interested_rate := round(gn_calc_interested_rate/12,7);
 --
 -- 2012/02/06 Ver.1.4 D.Sugahara ADD Start
+
+-- V1.8 2018/09/10 Modified START
+--    --会計帳簿IDの取得
+--    ln_set_of_book_id := TO_NUMBER(fnd_profile.value('GL_SET_OF_BKS_ID'));
     --会計帳簿IDの取得
-    ln_set_of_book_id := TO_NUMBER(fnd_profile.value('GL_SET_OF_BKS_ID'));
+    IF ( lv_ret_dff7 = '1' ) THEN
+      ln_set_of_book_id := TO_NUMBER(fnd_profile.value(cv_set_of_bks_id));
+    ELSE
+      ln_set_of_book_id := TO_NUMBER(fnd_profile.value(cv_ifrs_set_of_bks_id));
+    END IF;
+-- V1.8 2018/09/10 Modified END
     --リース月次締め期間より現会計期間の取得
     BEGIN
 --
@@ -1169,38 +1214,41 @@ AS
     END;
 --
 -- 2012/02/06 Ver.1.4 D.Sugahara ADD End
+--
+-- V1.8 2018/09/10 Deleted START 処理を上へ移動
 -- 2018/03/27 Ver1.7 Otsuka ADD Start
 --
-    lv_lease_class := gn_lease_class;
-    -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
-    -- ***************************************
-    --  リース判定処理 
-    xxcff_common2_pkg.get_lease_class_info(
-        iv_lease_class  =>    lv_lease_class
-        ,ov_ret_dff4    =>    lv_ret_dff4           -- DFF4(日本基準連携)
-        ,ov_ret_dff5    =>    lv_ret_dff5           -- DFF5(IFRS連携)
-        ,ov_ret_dff6    =>    lv_ret_dff6           -- DFF6(仕訳作成)
-        ,ov_ret_dff7    =>    lv_ret_dff7           -- DFF7(リース判定処理)
-        ,ov_errbuf      =>    lv_errbuf
-        ,ov_retcode     =>    lv_retcode
-        ,ov_errmsg      =>    lv_errmsg
-     );
-    -- 共通関数エラーの場合
-    IF (lv_retcode <> cv_status_normal) THEN
-      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
-                                                     cv_msg_cff_00094,    -- メッセージ：共通関数エラー
-                                                     cv_tk_cff_00094_01,  -- 共通関数名
-                                                     cv_msg_cff_50323  )  -- ファイルID
-                                                    || cv_msg_part
-                                                    || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
-                                                    ,1
-                                                    ,5000);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-   END IF;
+--    lv_lease_class := gn_lease_class;
+--    -- ***************************************
+--    -- ***        実処理の記述             ***
+--    -- ***       共通関数の呼び出し        ***
+--    -- ***************************************
+--    --  リース判定処理 
+--    xxcff_common2_pkg.get_lease_class_info(
+--        iv_lease_class  =>    lv_lease_class
+--        ,ov_ret_dff4    =>    lv_ret_dff4           -- DFF4(日本基準連携)
+--        ,ov_ret_dff5    =>    lv_ret_dff5           -- DFF5(IFRS連携)
+--        ,ov_ret_dff6    =>    lv_ret_dff6           -- DFF6(仕訳作成)
+--        ,ov_ret_dff7    =>    lv_ret_dff7           -- DFF7(リース判定処理)
+--        ,ov_errbuf      =>    lv_errbuf
+--        ,ov_retcode     =>    lv_retcode
+--        ,ov_errmsg      =>    lv_errmsg
+--     );
+--    -- 共通関数エラーの場合
+--    IF (lv_retcode <> cv_status_normal) THEN
+--      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+--                                                     cv_msg_cff_00094,    -- メッセージ：共通関数エラー
+--                                                     cv_tk_cff_00094_01,  -- 共通関数名
+--                                                     cv_msg_cff_50323  )  -- ファイルID
+--                                                    || cv_msg_part
+--                                                    || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+--                                                    ,1
+--                                                    ,5000);
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--   END IF;
 -- 2018/03/27 Ver1.7 Otsuka ADD End
+-- V1.8 2018/09/10 Deleted END
     --初期化
     ln_cnt           := 1;
     -- 該当件数分ループする
@@ -1278,7 +1326,14 @@ AS
       IF (gn_lease_type  = cv_gn_lease_type1) OR (lv_ret_dff7 = cv_lease_cls_chk2)THEN
 -- 2018/03/27 Ver1.7 Otsuka MOD End
         IF (ln_cnt = 1) THEN
-          ln_fin_interest_due := round(gn_original_cost * ln_calc_interested_rate);
+-- V1.8 2018/09/10 Modified START
+--          ln_fin_interest_due := round(gn_original_cost * ln_calc_interested_rate);
+          IF ( lv_ret_dff7 = cv_lease_cls_chk2 ) THEN
+            ln_fin_interest_due :=  0;
+          ELSE
+            ln_fin_interest_due := round(gn_original_cost * ln_calc_interested_rate);
+          END IF;
+-- V1.8 2018/09/10 Modified END
         ELSE
           ln_fin_interest_due := round(ln_fin_debt_rem * ln_calc_interested_rate);
         END IF;
@@ -1414,7 +1469,13 @@ AS
        , ln_fin_debt_rem                                  -- ＦＩＮリース債務残
        , ln_fin_tax_debt_rem                              -- ＦＩＮリース債務残_消費税
        , ln_accounting_if_flag                            -- 会計ＩＦフラグ
-       , cv_const_0                                       -- 照合済フラグ
+-- V1.8 2018/09/10 Modified START
+--       , cv_const_0                                       -- 照合済フラグ
+       , CASE WHEN lv_ret_dff7 = cv_lease_cls_chk2
+           THEN  cv_const_1
+           ELSE  cv_const_0
+         END                                              -- 照合済フラグ
+-- V1.8 2018/09/10 Modified END
        , cn_created_by                                    -- 作成者
        , cd_creation_date                                 -- 作成日
        , cn_last_updated_by                               -- 最終更新者
@@ -1485,6 +1546,14 @@ AS
     --*** ローカル変数 ***
     ln_payment_frequency     xxcff_contract_headers.payment_frequency%TYPE;  --支払回数
     ln_lease_charge          NUMBER;
+-- V1.8 2018/09/10 Added START
+    lv_ret_dff4           VARCHAR2(1);                                    --  リース判定DFF4
+    lv_ret_dff5           VARCHAR2(1);                                    --  リース判定DFF5
+    lv_ret_dff6           VARCHAR2(1);                                    --  リース判定DFF6
+    lv_ret_dff7           VARCHAR2(1);                                    --  リース判定DFF7
+    ln_set_of_book_id     gl_sets_of_books.set_of_books_id%TYPE;          --  会計帳簿ID
+    lv_close_period_name  xxcff_lease_closed_periods.period_name%TYPE;    --  リース月次締期間（締められた最終月）
+-- V1.8 2018/09/10 Added END
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1510,6 +1579,64 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- V1.8 2018/09/10 Added START
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --  リース判定処理 
+    xxcff_common2_pkg.get_lease_class_info(
+        iv_lease_class  =>  gn_lease_class
+      , ov_ret_dff4     =>  lv_ret_dff4           --  DFF4(日本基準連携)
+      , ov_ret_dff5     =>  lv_ret_dff5           --  DFF5(IFRS連携)
+      , ov_ret_dff6     =>  lv_ret_dff6           --  DFF6(仕訳作成)
+      , ov_ret_dff7     =>  lv_ret_dff7           --  DFF7(リース判定処理)
+      , ov_errbuf       =>  lv_errbuf
+      , ov_retcode      =>  lv_retcode
+      , ov_errmsg       =>  lv_errmsg
+     );
+    -- 共通関数エラーの場合
+    IF (lv_retcode <> cv_status_normal) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                                                     cv_msg_cff_00094,    -- メッセージ：共通関数エラー
+                                                     cv_tk_cff_00094_01,  -- 共通関数名
+                                                     cv_msg_cff_50323  )  -- ファイルID
+                                                    || cv_msg_part
+                                                    || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    --
+    --会計帳簿IDの取得
+    IF ( lv_ret_dff7 = '1' ) THEN
+      ln_set_of_book_id := TO_NUMBER(fnd_profile.value(cv_set_of_bks_id));
+    ELSE
+      ln_set_of_book_id := TO_NUMBER(fnd_profile.value(cv_ifrs_set_of_bks_id));
+    END IF;
+    --
+    --リース月次締め期間より現会計期間の取得
+    BEGIN
+      SELECT TO_CHAR(TO_DATE(period_name,'YYYY-MM'),'YYYY-MM') period_name  -- リース月次締め期間
+      INTO   lv_close_period_name                                           -- 締られた最終月
+      FROM   xxcff_lease_closed_periods xlcp                                -- リース月次締め期間
+      WHERE  xlcp.set_of_books_id = ln_set_of_book_id                       -- 会計帳簿ID
+      AND    xlcp.period_name IS NOT NULL
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff                       -- XXCFF
+                                                      ,cv_msg_cff_00194                     -- リース月次締期間取得エラー
+                                                      ,cv_tk_cff_00194_01                   -- 帳簿ID：BOOK_ID
+                                                      ,TO_CHAR(ln_set_of_book_id))
+                                                      ,1
+                                                      ,5000);
+        lv_errbuf := CHR(10) || lv_errmsg;
+        RAISE global_api_expt;
+    END;
+-- V1.8 2018/09/10 Added END
+--
     -- ***************************************************
     -- 1.MIN値を取得する
     -- ***************************************************
@@ -1518,7 +1645,10 @@ AS
     FROM    xxcff_pay_planning xpp
     WHERE  xpp.contract_line_id   = in_contract_line_id
     AND    xpp.accounting_if_flag = cv_accounting_if_flag1
-    AND    xpp.period_name        >= TO_CHAR(gd_process_date,'YYYY-MM');
+-- V1.8 2018/09/10 Modified START
+--    AND    xpp.period_name        >= TO_CHAR(gd_process_date,'YYYY-MM');
+    AND    xpp.period_name        > lv_close_period_name;
+-- V1.8 2018/09/10 Modified END
 --    
     --支払回数が取得できない場合は０を設定する
     ln_payment_frequency  := NVL(ln_payment_frequency,0);
