@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF003A03C(body)
  * Description      : リース種類判定
  * MD.050           : MD050_CFF_003_A03_リース種類判定
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------- ---- ----- --------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2016-08-10    1.1   SCSK 仁木 重人   [E_本稼動_13658]自販機耐用年数変更対応
  *  2016-10-26    1.2   SCSK郭           E_本稼動_13658 自販機耐用年数変更対応・フェーズ3
  *  2018-03-27    1.3   SCSK 大塚 亨     E_本稼動_14830 IFRSリース資産対応
+ *  2018-09-10    1.4   SCSK 佐々木宏之  E_本稼動_14830 追加対応
  *
  *****************************************************************************************/
 --
@@ -621,6 +622,12 @@ AS
 --
     -- 支払回数から年数を算定
     ln_payment_years := in_payment_frequency / 12;
+--  V1.4 2018/09/10 Added START
+    IF ( ln_payment_years <> TRUNC( ln_payment_years ) ) THEN
+      --  12で割り切れない場合、小数点以下を切り捨て1加算する（切り上げする）
+      ln_payment_years  :=  TRUNC( ln_payment_years ) + 1;
+    END IF;
+--  V1.4 2018/09/10 Added END
 --
     -- 割引率マスタ検索
     OPEN  get_discount_rate_rec_cur(id_contract_ym);
@@ -1344,6 +1351,9 @@ AS
 -- Ver.1.1 ADD Start
     iv_lease_class                 IN  VARCHAR2,    -- 8.リース種別
 -- Ver.1.1 ADD End
+--  V1.4 2018/09/10 Added START
+    iv_process_flag                IN  VARCHAR2 DEFAULT NULL,       --  処理区分
+--  V1.4 2018/09/10 Added END
     ov_lease_kind                  OUT VARCHAR2,    -- 9.リース種類
     on_present_value_discount_rate OUT NUMBER,      -- 10.現在価値割引率
     on_present_value               OUT NUMBER,      -- 11.現在価値
@@ -1508,8 +1518,12 @@ AS
 --    IF (lv_retcode = cv_status_error) THEN
 --      RAISE global_process_expt;
 --    END IF;
-    -- リース判定処理='2'の場合
-    IF (gv_ret_dff7 = cv_lease_cls_chk2) THEN
+--  V1.4 2018/09/10 Modified START
+--    -- リース判定処理='2'の場合
+--    IF (gv_ret_dff7 = cv_lease_cls_chk2) THEN
+    --  リース判定処理='2' かつ 処理区分がNULL（リース料変更処理以外からコールされた）場合
+    IF ( gv_ret_dff7 = cv_lease_cls_chk2 AND iv_process_flag IS NULL ) THEN
+--  V1.4 2018/09/10 Modified END
       on_calc_interested_rate := ln_present_value_discount_rate;
     ELSE
       calc_interested_rate(
@@ -1561,7 +1575,10 @@ AS
 -- 2018/03/27 Ver1.3 Otsuka MOD Start
 --    on_calc_interested_rate        := ln_calc_interested_rate;
     -- リース判定処理='1'の場合
-    IF (gv_ret_dff7 = cv_lease_cls_chk1) THEN
+--  V1.4 2018/09/10 Modified START
+--    IF (gv_ret_dff7 = cv_lease_cls_chk1) THEN
+    IF ( gv_ret_dff7 = cv_lease_cls_chk1 OR iv_process_flag = '1' ) THEN
+--  V1.4 2018/09/10 Modified END
       on_calc_interested_rate        := ln_calc_interested_rate;
     END IF;
 -- 2018/03/27 Ver1.3 Otsuka MOD End
