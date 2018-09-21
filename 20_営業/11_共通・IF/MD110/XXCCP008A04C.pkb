@@ -5,7 +5,7 @@ AS
  *
  * Package Name     : XXCCP008A04C(body)
  * Description      : リース会計基準情報CSV出力
- * Version          : 1.01
+ * Version          : 1.02
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/24    1.00  SCSK 高崎美和    新規作成
  *  2016/09/14    1.01  SCSK 郭 有司     E_本稼動_13658（自販機耐用年数変更対応）
+ *  2018/09/10    1.02  SCSK 矢崎栄司    E_本稼動_14830（追加対応）
  *
  *****************************************************************************************/
 --
@@ -270,6 +271,9 @@ AS
                  WHERE cont_line_a.object_header_id   = obj_head.object_header_id
                    AND cont_line_a.contract_header_id = cont_head.contract_header_id
                    AND cont_line_a.lease_kind        <> cv_lease_kind_op --opリース以外
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD Start
+                   AND cont_head.re_lease_times      = obj_head.re_lease_times
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD End
              )                                                                           AS original_cost
                 -- 未経過リース期末残高相当額     リース支払計画.FINリース債務残          範囲：基準期間 時点
 -- 2016/09/14 Ver.1.01 Y.Koh MOD Start
@@ -643,6 +647,10 @@ AS
                  WHERE cont_line_a.object_header_id  = obj_head.object_header_id
                    AND cont_line_a.lease_kind       <> cv_lease_kind_op --op以外
                    AND fab.attribute10               = TO_CHAR( cont_line_a.contract_line_id )
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD Start
+                   AND cont_line_a.contract_header_id = cont_head.contract_header_id
+                   AND cont_head.re_lease_times      = obj_head.re_lease_times
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD End
              )                                                                           AS asset_number
            , (  -- 種類
                 SELECT ffvt.description
@@ -661,6 +669,10 @@ AS
                    AND ffvs.flex_value_set_id        = ffv.flex_value_set_id
                    AND ffv.flex_value_id             = ffvt.flex_value_id
                    AND ffvt.language                 = 'JA'
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD Start
+                   AND cont_line_a.contract_header_id = cont_head.contract_header_id
+                   AND cont_head.re_lease_times      = obj_head.re_lease_times
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD End
              )                                                                           AS category_name        -- 種類
            , --当年度リース月数
              CASE
@@ -822,6 +834,9 @@ AS
                  WHERE cont_line_a.object_header_id   = obj_head.object_header_id
                    AND cont_line_a.contract_header_id = cont_head.contract_header_id
                    AND cont_line_a.lease_kind        <> cv_lease_kind_op --opリース以外
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD Start
+                   AND cont_head.re_lease_times      = obj_head.re_lease_times
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD End
              )                                                                           AS original_cost
                 -- 未経過リース期末残高相当額     リース支払計画.FINリース債務残          範囲：基準期間 時点
 -- 2016/09/14 Ver.1.01 Y.Koh MOD Start
@@ -1195,6 +1210,10 @@ AS
                  WHERE cont_line_a.object_header_id  = obj_head.object_header_id
                    AND cont_line_a.lease_kind       <> cv_lease_kind_op --op以外
                    AND fab.attribute10               = TO_CHAR( cont_line_a.contract_line_id )
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD Start
+                   AND cont_line_a.contract_header_id = cont_head.contract_header_id
+                   AND cont_head.re_lease_times      = obj_head.re_lease_times
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD End
              )                                                                           AS asset_number
            , (  -- 種類
                 SELECT ffvt.description
@@ -1213,6 +1232,10 @@ AS
                    AND ffvs.flex_value_set_id        = ffv.flex_value_set_id
                    AND ffv.flex_value_id             = ffvt.flex_value_id
                    AND ffvt.language                 = 'JA'
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD Start
+                   AND cont_line_a.contract_header_id = cont_head.contract_header_id
+                   AND cont_head.re_lease_times      = obj_head.re_lease_times
+-- 2018/09/10 Ver.1.02 Y.E.Yazaki ADD End
              )                                                                           AS category_name        -- 種類
            , --当年度リース月数
              CASE
