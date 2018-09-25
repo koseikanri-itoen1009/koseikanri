@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  delete_rpt_wrk_data    帳票ワークテーブルデータ削除(A-8)
  *  update_rpt_wrk_data    帳票ワークテーブルデータ更新(A-9)
  *  ins_no_data_msg        0件メッセージ登録(A-10)
+ *  update_data_count      件数設定(A-11)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -80,6 +81,7 @@ AS
  *  2016/03/08    1.26  S.Niki           [E_本稼動_13480]売上金額差異リスト追加
  *  2016/06/17    1.27  S.Niki           [E_本稼動_13674]0件メッセージ時の出力項目追加
  *  2017/04/28    1.28  N.Watanabe       [E_本稼動_14220]HHTからのシステム時刻情報の取り込み障害対応
+ *  2018/08/23    1.29  E.Yazaki         [E_本稼動_15199]伝票枚数追加
  *
  *****************************************************************************************/
 --
@@ -163,6 +165,9 @@ AS
   cv_msg_get_profile_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00004';   -- プロファイル取得エラー
   cv_msg_in_param_err           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00006';   -- 必須入力パラメータ未設定エラー
   cv_msg_insert_data_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00010';   -- データ登録エラーメッセージ
+-- 2018/08/23 Ver.1.29 Add Start
+  cv_msg_upd_data_err           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00011';   -- データ更新エラーメッセージ
+-- 2018/08/23 Ver.1.29 Add End
   cv_msg_delete_data_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00012';   -- データ削除エラーメッセージ
   cv_msg_get_err                CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00013';   -- データ抽出エラーメッセージ
   cv_msg_call_api_err           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00017';   -- API呼出エラーメッセージ
@@ -280,6 +285,9 @@ AS
 -- ************* Ver.1.26 ADD START *************--
   -- 出力区分
   cv_output_type_2              CONSTANT VARCHAR2(1)   := '2';   -- 売上金額差異リスト
+-- 2018/08/23 Ver.1.29 Add Start
+  cv_output_type_1              CONSTANT VARCHAR2(1)   := '1';   -- 納品書チェックリスト
+-- 2018/08/23 Ver.1.29 Add End
   -- HHT受信フラグ
   cv_hht_received               CONSTANT VARCHAR2(1)   := 'Y';   -- HHT受信データ
 -- ************* Ver.1.26 ADD END   *************--
@@ -1124,6 +1132,9 @@ AS
         ,infh.total_sales_amt                      AS total_sales_amt                 -- 総販売金額
         ,infh.cash_card_sales_amt                  AS cash_card_sales_amt             -- 現金・カード販売金額
 -- ************* Ver.1.26 ADD END   *************--
+-- 2018/08/23 Ver.1.29 Add Start
+        ,infh.create_class                         AS create_class                    -- 作成元区分
+-- 2018/08/23 Ver.1.29 Add End
       FROM
          hz_cust_accounts         base          -- 顧客マスタ_拠点
         ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
@@ -2088,6 +2099,9 @@ AS
         -- 出力区分
         gt_dlv_chk_list(ln_num).output_type                  := iv_output_type;
 -- ************* Ver.1.26 ADD END   *************--
+-- 2018/08/23 Ver.1.29 Add Start
+        gt_dlv_chk_list(ln_num).create_class                 := lt_get_sale_data(in_no).create_class;
+-- 2018/08/23 Ver.1.29 Add End
 /*        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
           AND
              lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
@@ -2400,6 +2414,9 @@ AS
              ,program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
              ,program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
              ,program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
+-- 2018/08/23 Ver.1.29 Add Start
+             ,create_class                        -- 作成元区分
+-- 2018/08/23 Ver.1.29 Add End
           )
         SELECT
 -- 2012/03/30 Ver.1.23 Del Start
@@ -2485,6 +2502,9 @@ AS
           ,cn_program_application_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
           ,cn_program_id                          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
           ,cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
+-- 2018/08/23 Ver.1.29 Add Start
+          ,NULL                                   -- 作成元区分
+-- 2018/08/23 Ver.1.29 Add En
         FROM
            xxcos_payment            pay           -- 入金テーブル
           ,hz_cust_accounts         base          -- 顧客マスタ_拠点
@@ -3339,7 +3359,157 @@ AS
 --
   END ins_no_data_msg;
 --
--- ************* Ver.1.26 ADD END   *************--
+-- 2018/08/23 Ver.1.29 Add Start
+  /**********************************************************************************
+   * Procedure Name   : update_data_count
+   * Description      : 件数設定(A-11)
+   ***********************************************************************************/
+  PROCEDURE update_data_count(
+     ov_errbuf             OUT VARCHAR2   -- エラー・メッセージ           --# 固定 #
+    ,ov_retcode            OUT VARCHAR2   -- リターン・コード             --# 固定 #
+    ,ov_errmsg             OUT VARCHAR2   -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_data_count'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    CURSOR target_emp_cur
+    IS
+      SELECT xrdcl.employee_num   emp_code
+      FROM   xxcos_rep_dlv_chk_list xrdcl
+      WHERE  xrdcl.request_id  = cn_request_id
+      GROUP BY
+             employee_num
+      ;
+    -- *** ローカル・レコード ***
+    target_emp_rec target_emp_cur%ROWTYPE;
+--
+  BEGIN
+    BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==================================
+    -- 1.件数の更新
+    --==================================
+    OPEN target_emp_cur;
+--
+    LOOP
+--
+      FETCH target_emp_cur INTO target_emp_rec;
+--
+      EXIT WHEN target_emp_cur%NOTFOUND;
+--
+      UPDATE xxcos_rep_dlv_chk_list xrdcl1
+      SET    (
+               xrdcl1.vd_count
+              ,xrdcl1.other_vd_count
+             ) =
+             ( SELECT  SUM(CASE
+                             WHEN  inlist.create_class = '3'
+                             THEN
+                               1
+                             ELSE  0
+                           END
+                       )  vd_count
+                      ,SUM(CASE
+                             WHEN  inlist.create_class <> '3'
+                             THEN
+                               1
+                             ELSE  0
+                           END
+                       )  other_vd_count
+               FROM    ( SELECT  COUNT( DISTINCT 1 )  cnt
+                                ,xrdcl2.create_class  create_class
+                                ,xrdcl2.party_num     customer_code
+                         FROM    xxcos_rep_dlv_chk_list xrdcl2
+                         WHERE   xrdcl2.request_id          = cn_request_id
+                         AND     xrdcl2.employee_num  = target_emp_rec.emp_code
+                         and     xrdcl2.create_class IS NOT NULL  --入金データはカウントしない
+                         GROUP BY
+                           xrdcl2.entry_number
+                          ,xrdcl2.party_num
+                          ,xrdcl2.create_class
+                       )                    inlist  --営業員単位の伝票数
+             )
+      WHERE  xrdcl1.request_id          = cn_request_id
+      AND    xrdcl1.employee_num  = target_emp_rec.emp_code
+      ;
+--
+    END LOOP;
+--
+    CLOSE target_emp_cur;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- データ更新エラーメッセージ
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_request_id );
+        xxcos_common_pkg.makeup_key_info(
+                                         ov_errbuf      => lv_errbuf           -- エラー・メッセージ
+                                        ,ov_retcode     => lv_retcode          -- リターン・コード
+                                        ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
+                                        ,ov_key_info    => gv_key_info         -- キー情報
+                                        ,iv_item_name1  => gv_tkn1             -- 要求ID
+                                        ,iv_data_value1 => cn_request_id
+                                        );
+--
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_list_work_table );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                                               cv_application
+                                              ,cv_msg_upd_data_err
+                                              ,cv_tkn_table
+                                              ,gv_tkn1
+                                              ,cv_tkn_key_data
+                                              ,gv_key_info
+                                             );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_data_count;
+--
+-- 2018/08/23 Ver.1.29 Add End
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -3492,6 +3662,27 @@ AS
       END IF;
     END IF;
 -- ************* Ver.1.26 ADD END   *************--
+-- 2018/08/23 Ver.1.29 Add Start
+    -- 対象件数が0件ではない、かつ出力区分が「1」の場合、
+    -- VD件数・VD以外件数を取得します。
+    IF ( gn_target_cnt != 0
+       AND iv_output_type = cv_output_type_1 ) THEN
+      --  ===============================
+      --  件数設定(A-11)
+      --  ===============================
+      update_data_count(
+         lv_errbuf               -- エラー・メッセージ           --# 固定 #
+        ,lv_retcode              -- リターン・コード             --# 固定 #
+        ,lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+--
+      -- エラー処理
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+
+-- 2018/08/23 Ver.1.29 Add End
 --
     -- 対象件数が0件であった場合、「明細0件用メッセージ」を出力します。
     IF ( gn_target_cnt = 0 ) THEN
