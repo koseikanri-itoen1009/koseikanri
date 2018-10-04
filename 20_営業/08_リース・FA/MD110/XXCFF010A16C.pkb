@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF010A16C(body)
  * Description      : リース仕訳作成
  * MD.050           : MD050_CFF_010_A16_リース仕訳作成
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,7 +22,7 @@ AS
  *  get_lease_jnl_pattern        リース仕訳パターン情報取得             (A-7)
  *  get_les_trn_data             仕訳元データ(リース取引)抽出           (A-8)
  *  ctrl_jnl_ptn_les_trn         仕訳パターン制御(リース取引)           (A-9) ? (A-12)
- *  proc_ptn_tax                 【仕訳パターン】新規追加               (A-9)
+ *  proc_ptn_tax                 【仕訳パターン】新規追加・リース料変更 (A-9)
  *  proc_ptn_move_to_sagara      【仕訳パターン】振替(本社⇒工場)       (A-10)
  *  proc_ptn_move_to_itoen       【仕訳パターン】振替(工場⇒本社)       (A-11)
  *  proc_ptn_retire              【仕訳パターン】解約                   (A-12)
@@ -60,6 +60,7 @@ AS
  *  2017/03/27    1.10  SCSK小路恭弘     [E_本稼動_14030]減価償却費を拠点へ振替える
  *  2018/03/27    1.11  SCSK前田寛隆     [E_本稼動_14830]IFRSリース資産対応
  *  2018/09/07    1.12  SCSK小路恭弘     [E_本稼動_14830]IFRSリース追加対応
+ *  2018/10/02    1.13  SCSK小路恭弘     [E_本稼動_14830]リース料変更後対応
  *
  *****************************************************************************************/
 --
@@ -209,6 +210,9 @@ AS
   cv_msg_013a20_t_033 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50287'; -- XXCFF:台帳名_FINリース台帳
   cv_msg_013a20_t_034 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50324'; -- XXCFF:台帳名_IFRSリース台帳
 -- Ver.1.11 Maeda ADD End
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD Start
+  cv_msg_013a20_t_035 CONSTANT VARCHAR2(20) := 'APP-XXCFF1-50330'; -- XXCFF:リース料変更
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD End
 --
   -- ***トークン名
   cv_tkn_prof     CONSTANT VARCHAR2(20) := 'PROF_NAME';
@@ -254,6 +258,10 @@ AS
   -- XXCFF:台帳名_IFRSリース台帳
   cv_book_type_ifrs_lease CONSTANT VARCHAR2(30) := 'XXCFF1_IFRS_LEASE_BOOKS';
 -- Ver.1.11 Maeda ADD End
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD Start
+  -- XXCFF:リース料変更
+  cv_lease_charge_mod     CONSTANT VARCHAR2(30) := 'XXCFF1_LEASE_CHARGE_MOD';
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD End
 --
   -- ***参照タイプ
   cv_xxcff1_lease_class_check CONSTANT VARCHAR2(30) := 'XXCFF1_LEASE_CLASS_CHECK';
@@ -551,6 +559,11 @@ AS
   gv_book_type_ifrs_lease VARCHAR2(100);
 -- Ver.1.11 Maeda ADD End
 -- 2017/03/27 Ver.1.10 Y.Shoji ADD End
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD Start
+  -- XXCFF:リース料変更
+  gv_lease_charge_mod     VARCHAR2(100);
+--
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD End
   -- ***カーソル定義
   -- リース種別毎AFF情報取得カーソル
   CURSOR lease_class_cur
@@ -810,6 +823,37 @@ AS
 -- 2018/09/07 Ver.1.12 Y.Shoji MOD End
 -- Ver.1.11 Maeda MOD End
 -- T1_0874 2009/05/14 ADD END   --
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD Start
+    UNION ALL
+    SELECT
+            xxcff_fa_trn.fa_transaction_id      AS fa_transaction_id  -- リース取引内部ID
+           ,xxcff_fa_trn.contract_header_id     AS contract_header_id -- 契約内部ID
+           ,xxcff_fa_trn.contract_line_id       AS contract_line_id   -- 契約明細内部ID
+           ,xxcff_fa_trn.object_header_id       AS object_header_id   -- 物件内部ID
+           ,xxcff_fa_trn.period_name            AS period_name        -- 会計期間名
+           ,xxcff_fa_trn.transaction_type       AS transaction_type   -- 取引タイプ
+           ,xxcff_fa_trn.movement_type          AS movement_type      -- 移動タイプ
+           ,xxcff_fa_trn.lease_class            AS lease_class        -- リース種別
+           ,1                                   AS lease_type         -- リース区分
+           ,xxcff_fa_trn.owner_company          AS owner_company      -- 本社／工場
+           ,xxcff_fa_trn.tax_charge             AS temp_pay_tax       -- 仮払消費税額
+                                                                      -- (総額消費税_リース料 - 総額消費税_控除額)
+           ,NULL                                AS liab_blc           -- リース債務残
+           ,NULL                                AS liab_tax_blc       -- リース債務残_消費税
+           ,NULL                                AS liab_pretax_blc    -- リース債務残_本体＋税
+                                                                      -- (リース債務残 + リース債務残_消費税)
+           ,xxcff_fa_trn.tax_code               AS tax_code           -- 税コード
+           ,NULL                                AS debt_rem_re        -- リース債務残_再リース
+           ,NULL                                AS payment_frequency  -- 支払回数
+           ,xxcff_fa_trn.book_type_code         AS book_type_code     -- 資産台帳名
+    FROM
+           xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
+    WHERE
+           xxcff_fa_trn.period_name      = gv_period_name
+    AND    xxcff_fa_trn.transaction_type = '4'                           -- リース料変更
+    AND    xxcff_fa_trn.gl_if_flag       = cv_if_yet                     -- 未送信
+    AND    xxcff_fa_trn.book_type_code   = gv_book_type_code
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD End
     ;
   g_get_les_trn_data_rec  get_les_trn_data_cur%ROWTYPE;
 --
@@ -1411,7 +1455,7 @@ AS
 -- Ver.1.11 Maeda ADD Start
 /**********************************************************************************
    * Procedure Name   : ins_xxcff_gl_trn2
-   * Description      : 【内部共通処理】リース仕訳テーブル登録2 (A-23の改修版  追加、振替、解約用）
+   * Description      : 【内部共通処理】リース仕訳登録（新規、振替、解約用）(A-27)
    ***********************************************************************************/
   PROCEDURE ins_xxcff_gl_trn2(
     it_jnl_key_rec    IN     les_jnl_key_rtype              -- リース仕訳元キー情報
@@ -1439,6 +1483,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD Start
+    lt_description  xxcff_gl_transactions.description%TYPE;    -- 摘要
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD End
 --
     -- *** ローカル・カーソル ***
 --
@@ -1458,6 +1505,15 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD Start
+    -- 取引タイプがリース料変更の場合
+    IF ( g_transaction_type_tab(gn_main_loop_cnt) = '4' ) THEN
+      lt_description := it_jnl_aff_rec.description || gv_lease_charge_mod || ' ' || TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY');
+    ELSE
+      lt_description := it_jnl_aff_rec.description || ' ' || TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY');
+    END IF;
+--
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD End
     --連番カウントアップ
     gn_transaction_num := gn_transaction_num + 1;
 --
@@ -1664,8 +1720,11 @@ AS
       ,it_jnl_key_rec.object_header_id                                                 -- 物件内部ID
       ,it_jnl_key_rec.payment_frequency                                                -- 支払回数
       ,gn_transaction_num                                                              -- 連番
-      ,it_jnl_aff_rec.description
-         ||' '||TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY')      -- 摘要
+-- 2018/10/02 Ver.1.13 Y.Shoji MOD Start
+--      ,it_jnl_aff_rec.description
+--         ||' '||TO_CHAR(LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')),'DD/MM/YYYY')      -- 摘要
+      ,lt_description                                                                  -- 摘要
+-- 2018/10/02 Ver.1.13 Y.Shoji MOD End
       ,it_jnl_aff_rec.je_category                                                      -- 仕訳カテゴリ名
       ,it_jnl_aff_rec.je_source                                                        -- 仕訳ソース名
       ,it_jnl_aff_rec.company                                                          -- 会社コード
@@ -1778,12 +1837,34 @@ AS
     IF (iot_jnl_aff_rec.amount_grp = 'TEMP_PAY_TAX') THEN
       --DR(借方)
       IF (iot_jnl_aff_rec.crdr_type = 'DR') THEN
-        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.temp_pay_tax;
-        iot_jnl_aff_rec.amount_cr := NULL;
+-- 2018/10/02 Ver.1.13 Y.Shoji MOD Start
+--        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.temp_pay_tax;
+--        iot_jnl_aff_rec.amount_cr := NULL;
+        -- 仮払消費税がプラス
+        IF ( it_jnl_amount_rec.temp_pay_tax > 0 ) THEN
+          iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.temp_pay_tax;
+          iot_jnl_aff_rec.amount_cr := NULL;
+        -- 仮払消費税がマイナス
+        ELSE
+          iot_jnl_aff_rec.amount_dr := NULL;
+          iot_jnl_aff_rec.amount_cr := ABS(it_jnl_amount_rec.temp_pay_tax);
+        END IF;
+-- 2018/10/02 Ver.1.13 Y.Shoji MOD End
       --CR(貸方)
       ELSE
-        iot_jnl_aff_rec.amount_dr := NULL;
-        iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.temp_pay_tax;
+-- 2018/10/02 Ver.1.13 Y.Shoji MOD Start
+--        iot_jnl_aff_rec.amount_dr := NULL;
+--        iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.temp_pay_tax;
+        -- 仮払消費税がプラス
+        IF ( it_jnl_amount_rec.temp_pay_tax > 0 ) THEN
+          iot_jnl_aff_rec.amount_dr := NULL;
+          iot_jnl_aff_rec.amount_cr := it_jnl_amount_rec.temp_pay_tax;
+        -- 仮払消費税がマイナス
+        ELSE
+          iot_jnl_aff_rec.amount_dr := ABS(it_jnl_amount_rec.temp_pay_tax);
+          iot_jnl_aff_rec.amount_cr := NULL;
+        END IF;
+-- 2018/10/02 Ver.1.13 Y.Shoji MOD End
       END IF;
     END IF;
 --
@@ -4682,7 +4763,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : proc_ptn_tax
-   * Description      : 【仕訳パターン】新規追加 (A-9)
+   * Description      : 【仕訳パターン】新規追加 ・リース料変更(A-9)
    ***********************************************************************************/
   PROCEDURE proc_ptn_tax(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
@@ -4917,12 +4998,15 @@ AS
 -- 2016/09/23 Ver.1.9 Y.Shoji ADD End
 --
       --==============================================================
-      --取引タイプ = 1 (追加)
+      --取引タイプ = 1 (追加)、4（リース料変更）
       --==============================================================
-      IF ( g_transaction_type_tab(gn_main_loop_cnt) = 1 ) THEN
+-- 2018/10/02 Ver.1.13 Y.Shoji MOD Start
+--      IF ( g_transaction_type_tab(gn_main_loop_cnt) = 1 ) THEN
+      IF ( g_transaction_type_tab(gn_main_loop_cnt) IN ('1' ,'4') ) THEN
+-- 2018/10/02 Ver.1.13 Y.Shoji MOD End
 --
         --==============================================================
-        --【仕訳パターン】新規追加 (A-9)
+        --【仕訳パターン】新規追加・リース料変更 (A-9)
         --==============================================================
         proc_ptn_tax(
            ov_errbuf    => lv_errbuf       -- エラー・メッセージ           --# 固定 # 
@@ -6338,6 +6422,21 @@ AS
       RAISE global_api_expt;
     END IF;
 -- Ver.1.11 Maeda ADD End
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD Start
+--
+    -- XXCFF:リース料変更
+    gv_lease_charge_mod := FND_PROFILE.VALUE(cv_lease_charge_mod);
+    IF (gv_lease_charge_mod IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cff       -- XXCFF
+                                                    ,cv_msg_013a20_m_010  -- プロファイル取得エラー
+                                                    ,cv_tkn_prof          -- トークン'PROF_NAME'
+                                                    ,cv_msg_013a20_t_035) -- XXCFF:リース料変更
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2018/10/02 Ver.1.13 Y.Shoji ADD End
 --
   EXCEPTION
 --
