@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF004A28C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 再リース要否ダウンロード 004_A28
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2009/01/05    1.0   SCS大井 信幸     新規作成
  *  2009/02/09    1.1   SCS大井 信幸     ログ出力項目追加
  *  2009/08/11    1.2   SCS萱原 伸哉     統合テスト障害0000994対応
+ *  2018/09/18    1.3   SCSK佐々木大和   E_本稼動_14830のため
  *
  *****************************************************************************************/
 --
@@ -94,7 +95,10 @@ AS
   cv_obj_status_104  CONSTANT VARCHAR2(100)  := '104';              -- 再リース契約済
   cv_obj_status_108  CONSTANT VARCHAR2(100)  := '108';              -- 解約申請
   cv_class_min       CONSTANT VARCHAR2(100)  := '00';               -- リース種別最小値
-  cv_class_max       CONSTANT VARCHAR2(100)  := '99';               -- リース種別最大値
+-- 1.3 2018/09/18 Modified START
+--cv_class_max       CONSTANT VARCHAR2(100)  := '99';               -- リース種別最大値
+  cv_class_max       CONSTANT VARCHAR2(100)  := 'ZZ';               -- リース種別最大値
+-- 1.3 2018/09/18 Modified END
   cv_csv_data_type   CONSTANT VARCHAR2(100)  := '"1"';              -- CSVデータ区分値
   cv_wqt             CONSTANT VARCHAR2(100)  := '"';                -- CSV文字データ囲い文字
 --
