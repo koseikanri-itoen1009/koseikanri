@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.69
+ * Version          : 1.70
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -172,6 +172,7 @@ AS
  *  2015/03/27    1.67 SCSK   中村健一   E_本稼動_12237    倉庫管理システム対応（不具合対応）
  *  2016/10/13    1.68 SCSK   桐生和幸   E_本稼動_13899    配送No重複対応
  *  2017/02/24    1.69 SCSK   渡邊直樹   E_本稼動_14058    エラーチェック制御不具合修正
+ *  2018/10/04    1.70 SCSK   矢崎栄司   E_本稼動_15305    CSVと配車配送計画の比較条件の変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7692,10 +7693,16 @@ AS
           -- 配車配送計画の取得
           BEGIN
 --
-            SELECT xcs.shipped_date  shipped_date     --出荷日
-                  ,xcs.arrival_date  arrival_date     --着荷日
-                  ,xcs.carrier_code  carrier_code     --運送業者
-                  ,xcs.delivery_type delivery_type    --配送区分
+-- 2018/10/04 Ver.1.70 Mod Start
+--            SELECT xcs.shipped_date  shipped_date     --出荷日
+--                  ,xcs.arrival_date  arrival_date     --着荷日
+--                  ,xcs.carrier_code  carrier_code     --運送業者
+--                  ,xcs.delivery_type delivery_type    --配送区分
+            SELECT NVL(xcs.shipped_date, xcs.schedule_ship_date           ) shipped_date     --出荷日
+                  ,NVL(xcs.arrival_date, xcs.schedule_arrival_date        ) arrival_date     --着荷日
+                  ,NVL(xcs.result_freight_carrier_code, xcs.carrier_code  ) carrier_code     --運送業者
+                  ,NVL(xcs.result_shipping_method_code, xcs.delivery_type ) delivery_type    --配送区分
+-- 2018/10/04 Ver.1.70 Mod End
                   ,CASE
                      WHEN ( gr_interface_info_rec(i).eos_data_type IN ( gv_eos_data_cd_200  --200 有償出荷報告
                                                                        ,gv_eos_data_cd_210  --210 拠点出荷確定報告
