@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/11/14    1.11  大橋  孝郎       指摘567,599,605対応
  *  2008/12/11    1.12  山本  恭久       本番障害#641対応
  *  2010/10/21    1.13  仁木  重人       E_本稼動_04840対応
+ *  2018/10/12    1.14  小路  恭弘       E_本稼動_15274対応
  *
  *****************************************************************************************/
 --
@@ -132,6 +133,10 @@ AS
                                         --依頼区分
   gv_lg_confirm_req_class      CONSTANT VARCHAR2(27) := 'XXWSH_LG_CONFIRM_REQ_CLASS';
                                         --物流区分
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+  gv_notif_status              CONSTANT VARCHAR2(18) := 'XXWSH_NOTIF_STATUS';
+                                        --通知ステータス
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
   -- コード
   gv_order_category_code       CONSTANT VARCHAR2(5)  := 'ORDER';
   gv_shipping_shikyu_class     CONSTANT VARCHAR2(1)  := '1';
@@ -249,6 +254,10 @@ AS
                                                     -- 総重量/総容積（単位）
      ,loading_efficiency_weight  xxwsh_order_headers_all.loading_efficiency_weight%TYPE
                                                     -- 積載率
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+     ,expiration_date            ic_lots_mst.attribute3%TYPE
+                                                    -- 賞味期限
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
     ) ;
 
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
@@ -567,6 +576,10 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'prc_get_report_data'; -- プログラム名
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+    cv_slash               CONSTANT VARCHAR2(1)   := '/';
+    cv_record_type_code_10 CONSTANT VARCHAR2(2)   := '10';
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -621,11 +634,17 @@ AS
             ,xlv2v.meaning                                              -- 依頼区分
             ,xsm2v.ship_method_meaning                                  -- 配送区分
             ,xoha.collected_pallet_qty                                  -- パレット回収枚数
-            ,xlv2v2.meaning                                             -- ステータス
+-- 2018/10/12 Ver1.14 E_本稼動_15274 mod start by Yasuhiro.Shoji
+--            ,xlv2v2.meaning                                             -- ステータス
+            ,xlv2v2.meaning || cv_slash || xlv2v4.meaning  meaning2     -- ステータス/通知ステータス
+-- 2018/10/12 Ver1.14 E_本稼動_15274 mod end by Yasuhiro.Shoji
             ,xlv2v3.meaning                                             -- 物流区分
             ,xoha.shipping_instructions                                 -- 摘要
             ,xoha.deliver_from                                          -- 出荷元コード
-            ,xil2v.description                                          -- 出荷元
+-- 2018/10/12 Ver1.14 E_本稼動_15274 mod start by Yasuhiro.Shoji
+--            ,xil2v.description                                          -- 出荷元
+            ,xil2v.short_name         description                       -- 出荷元
+-- 2018/10/12 Ver1.14 E_本稼動_15274 mod end by Yasuhiro.Shoji
             ,xola.request_item_code                                     -- 品目コード
             ,xim2v.item_short_name                                      -- 品目
             ,xola.pallet_quantity                                       -- パレット枚数
@@ -721,6 +740,9 @@ AS
               WHEN xoha.weight_capacity_class = '1' THEN xoha.loading_efficiency_weight
               WHEN xoha.weight_capacity_class = '2' THEN xoha.loading_efficiency_capacity
              END                                                        -- 積載率
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+            ,ilm.attribute3           expiration_date                   -- 賞味期限
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
        FROM xxwsh_order_headers_all       xoha                        -- 受注ヘッダアドオン
           ,xxwsh_order_lines_all          xola                        -- 受注明細アドオン
           ,xxcmn_cust_acct_sites2_v       xcas2v                      -- 顧客サイト情報VIEW2
@@ -733,9 +755,16 @@ AS
           ,xxcmn_lookup_values2_v         xlv2v                       -- クイックコード(依頼区分)
           ,xxcmn_lookup_values2_v         xlv2v2                      -- クイックコード(ステータス)
           ,xxcmn_lookup_values2_v         xlv2v3                      -- クイックコード(物流区分)
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+          ,xxcmn_lookup_values2_v         xlv2v4                      -- クイックコード(通知ステータス)
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
           ,xxcmn_item_locations2_v        xil2v                       -- OPM保管場所マスタ
           ,xxwsh_oe_transaction_types2_v  xott2v                      -- 受注タイプ
           ,xxwsh_ship_method2_v           xsm2v                       -- 配送区分情報VIEW2
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+          ,xxinv_mov_lot_details          xmld                        -- 移動ロット詳細
+          ,ic_lots_mst                    ilm                         -- OPMロットマスタ
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
       WHERE xott2v.order_category_code       = gv_order_category_code
                                        -- 受注タイプ.受注カテゴリ＝「受注」
         AND xott2v.shipping_shikyu_class     = gv_shipping_shikyu_class
@@ -789,6 +818,12 @@ AS
                                 -- 受注ヘッダアドオン.ステータス＝クイックコード(ステータス).コード
         AND xlv2v2.lookup_type               = gv_tr_status
                                        -- クイックコード(ステータス).タイプ＝‘出荷依頼ステータス’
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+        AND xoha.notif_status                = xlv2v4.lookup_code
+                                -- 受注ヘッダアドオン.通知ステータス＝クイックコード(通知ステータス).コード
+        AND xlv2v4.lookup_type               = gv_notif_status
+                                       -- クイックコード(通知ステータス).タイプ＝‘通知ステータス’
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
         AND xoha.req_status                  = NVL(iv_req_status, xoha.req_status)
                                 -- 受注ヘッダアドオン.ステータス＝パラメータ.出荷依頼ステータス
         AND xoha.latest_external_flag        = gv_yes
@@ -915,6 +950,11 @@ AS
         AND xoha.req_status                  <> gv_cancel
                                        -- 受注ヘッダアドオン.ステータス <> 取消
 -- 2008/07/03 ST不具合対応#357 End
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+        AND    xola.order_line_id       = xmld.mov_line_id(+)
+        AND    xmld.record_type_code(+) = cv_record_type_code_10    -- 指示
+        AND    xmld.lot_id              = ilm.lot_id(+)
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
 -- 2008/07/03 ST不具合対応#344 Start
 --      ORDER BY xoha.request_no         -- 依頼no
 --               ,xola.order_line_number -- 明細番号
@@ -1042,6 +1082,14 @@ AS
     -- 前回管轄拠点
     pre_add_l_name          xxcmn_cust_accounts2_v.party_short_name%TYPE DEFAULT '*';
 -- 2008/07/03 ST不具合対応#344 End
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+    -- 前回品目No
+    pre_item_code           xxwsh_order_lines_all.request_item_code%TYPE DEFAULT '*';
+    -- 前回賞味期限
+    pre_expiration_date     ic_lots_mst.attribute3%TYPE DEFAULT '*';
+    -- 依頼No変更フラグ
+    req_no_mod_flg          VARCHAR2(1);
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
     -- 取得レコード表  
     lt_main_data            tab_data_type_dtl ;
 --
@@ -1085,9 +1133,20 @@ AS
       <<lg_irai_info>>
       FOR get_user_rec IN 1..lt_main_data.COUNT LOOP
 --
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+        -- 依頼No変更フラグ初期化
+        req_no_mod_flg  := 'N';
+--
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
         IF ( pre_req_no <> lt_main_data(get_user_rec).request_no ) THEN
 --
           IF ( get_user_rec <> 1 ) THEN
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+            -- 前回品目Noの初期化
+            pre_item_code := '*';
+            --データグループ名終了タグセット
+            insert_xml_plsql_table(iox_xml_data, '/g_mei', NULL, 'T', 'C', 0);
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
             --データグループ名終了タグセット
             insert_xml_plsql_table(iox_xml_data, '/lg_mei', NULL, 'T', 'C', 0);
 --
@@ -1180,43 +1239,109 @@ AS
           insert_xml_plsql_table(iox_xml_data, 'lg_mei', NULL, 'T', 'C', 0);
 --
           pre_req_no      := lt_main_data(get_user_rec).request_no;
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+          req_no_mod_flg  := 'Y';
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
 -- 2008/07/03 ST不具合対応#344 Start
           pre_add_l_name      := lt_main_data(get_user_rec).address_line_name;
 -- 2008/07/03 ST不具合対応#344 End
 --
         END IF;
 --
-        --データグループ名開始タグセット
-        insert_xml_plsql_table(iox_xml_data, 'g_mei' , NULL, 'T', 'C', 0);
-        --データセット(右)
-        insert_xml_plsql_table(iox_xml_data, 'list_code', 
-                                lt_main_data(get_user_rec).request_item_code, 'D', 'C', 7);
-        insert_xml_plsql_table(iox_xml_data, 'list_name', 
-                                lt_main_data(get_user_rec).item_short_name, 'D', 'C', 20);
-        insert_xml_plsql_table(iox_xml_data, 'num_palette', 
-                                lt_main_data(get_user_rec).pallet_quantity, 'D', 'C', 3);
-        insert_xml_plsql_table(iox_xml_data, 'steps_palette', 
-                                lt_main_data(get_user_rec).layer_quantity, 'D', 'C', 3);
-        insert_xml_plsql_table(iox_xml_data, 'num_case', 
-                                lt_main_data(get_user_rec).case_quantity, 'D', 'C', 3);
-        insert_xml_plsql_table(iox_xml_data, 'sum', 
-                                lt_main_data(get_user_rec).quantity, 'D', 'C', 15);
-        insert_xml_plsql_table(iox_xml_data, 'unit_sum1', 
-                                lt_main_data(get_user_rec).item_um, 'D', 'C', 3);
-        insert_xml_plsql_table(iox_xml_data, 'in_num', 
-                                lt_main_data(get_user_rec).num_of_cases, 'D', 'C', 7);
-        insert_xml_plsql_table(iox_xml_data, 'total_weight', 
--- 2008/07/03 ST不具合対応#344 Start
---                                lt_main_data(get_user_rec).weight, 'D', 'C');
-                                CEIL(TRUNC(lt_main_data(get_user_rec).weight, 1)), 'D', 'C', 9);
--- 2008/07/03 ST不具合対応#344 End
-        insert_xml_plsql_table(iox_xml_data, 'unit_total', 
-                                lt_main_data(get_user_rec).weight_capacity_class, 'D', 'C', 3);
+-- 2018/10/12 Ver1.14 E_本稼動_15274 mod start by Yasuhiro.Shoji
+--        --データグループ名開始タグセット
+--        insert_xml_plsql_table(iox_xml_data, 'g_mei' , NULL, 'T', 'C', 0);
+--        --データセット(右)
+--        insert_xml_plsql_table(iox_xml_data, 'list_code', 
+--                                lt_main_data(get_user_rec).request_item_code, 'D', 'C', 7);
+--        insert_xml_plsql_table(iox_xml_data, 'list_name', 
+--                                lt_main_data(get_user_rec).item_short_name, 'D', 'C', 20);
+--        insert_xml_plsql_table(iox_xml_data, 'num_palette', 
+--                                lt_main_data(get_user_rec).pallet_quantity, 'D', 'C', 3);
+--        insert_xml_plsql_table(iox_xml_data, 'steps_palette', 
+--                                lt_main_data(get_user_rec).layer_quantity, 'D', 'C', 3);
+--        insert_xml_plsql_table(iox_xml_data, 'num_case', 
+--                                lt_main_data(get_user_rec).case_quantity, 'D', 'C', 3);
+--        insert_xml_plsql_table(iox_xml_data, 'sum', 
+--                                lt_main_data(get_user_rec).quantity, 'D', 'C', 15);
+--        insert_xml_plsql_table(iox_xml_data, 'unit_sum1', 
+--                                lt_main_data(get_user_rec).item_um, 'D', 'C', 3);
+--        insert_xml_plsql_table(iox_xml_data, 'in_num', 
+--                                lt_main_data(get_user_rec).num_of_cases, 'D', 'C', 7);
+--        insert_xml_plsql_table(iox_xml_data, 'total_weight', 
+---- 2008/07/03 ST不具合対応#344 Start
+----                                lt_main_data(get_user_rec).weight, 'D', 'C');
+--                                CEIL(TRUNC(lt_main_data(get_user_rec).weight, 1)), 'D', 'C', 9);
+---- 2008/07/03 ST不具合対応#344 End
+--        insert_xml_plsql_table(iox_xml_data, 'unit_total', 
+--                                lt_main_data(get_user_rec).weight_capacity_class, 'D', 'C', 3);
+----
+----        --データグループ名終了タグセット
+----        insert_xml_plsql_table(iox_xml_data, '/g_mei', NULL, 'T', 'C', 0);
+        -- 依頼No変更フラグが'N'、または、
+        -- 前回品目Noがデフォルト値ではなく、品目Noと一致しない場合
+        IF (  req_no_mod_flg = 'N'
+          AND pre_item_code <> '*'
+          AND pre_item_code <> lt_main_data(get_user_rec).request_item_code ) THEN
+          --データグループ名終了タグセット
+          insert_xml_plsql_table(iox_xml_data, '/g_mei', NULL, 'T', 'C', 0);
+        END IF;
 --
-        --データグループ名終了タグセット
-        insert_xml_plsql_table(iox_xml_data, '/g_mei', NULL, 'T', 'C', 0);
+        -- 依頼No変更フラグが'Y'、または、品目コードが変更された場合
+        IF ( req_no_mod_flg = 'Y'
+          OR pre_item_code <> lt_main_data(get_user_rec).request_item_code ) THEN
+          --データグループ名開始タグセット
+          insert_xml_plsql_table(iox_xml_data, 'g_mei' , NULL, 'T', 'C', 0);
+          --データセット(右)
+          insert_xml_plsql_table(iox_xml_data, 'list_code', 
+                                  lt_main_data(get_user_rec).request_item_code, 'D', 'C', 7);
+          insert_xml_plsql_table(iox_xml_data, 'list_name', 
+                                  lt_main_data(get_user_rec).item_short_name, 'D', 'C', 20);
+          insert_xml_plsql_table(iox_xml_data, 'num_palette', 
+                                  lt_main_data(get_user_rec).pallet_quantity, 'D', 'C', 3);
+          insert_xml_plsql_table(iox_xml_data, 'steps_palette', 
+                                  lt_main_data(get_user_rec).layer_quantity, 'D', 'C', 3);
+          insert_xml_plsql_table(iox_xml_data, 'num_case', 
+                                  lt_main_data(get_user_rec).case_quantity, 'D', 'C', 3);
+          insert_xml_plsql_table(iox_xml_data, 'sum', 
+                                  lt_main_data(get_user_rec).quantity, 'D', 'C', 15);
+          insert_xml_plsql_table(iox_xml_data, 'unit_sum1', 
+                                  lt_main_data(get_user_rec).item_um, 'D', 'C', 3);
+          insert_xml_plsql_table(iox_xml_data, 'in_num', 
+                                  lt_main_data(get_user_rec).num_of_cases, 'D', 'C', 7);
+          insert_xml_plsql_table(iox_xml_data, 'total_weight', 
+                                  CEIL(TRUNC(lt_main_data(get_user_rec).weight, 1)), 'D', 'C', 9);
+          insert_xml_plsql_table(iox_xml_data, 'unit_total', 
+                                  lt_main_data(get_user_rec).weight_capacity_class, 'D', 'C', 3);
+        END IF;
+--
+        -- 依頼No変更フラグが'Y'、または、
+        -- 品目コードが変更された場合、または、
+        -- 賞味期限がNULLではなく、前回賞味期限と違う場合
+        IF ( req_no_mod_flg = 'Y'
+          OR pre_item_code <> lt_main_data(get_user_rec).request_item_code
+          OR (lt_main_data(get_user_rec).expiration_date IS NOT NULL
+            AND pre_expiration_date <> lt_main_data(get_user_rec).expiration_date) ) THEN
+--
+          --データグループ名開始タグセット
+          insert_xml_plsql_table(iox_xml_data, 'llg_mei' , NULL, 'T', 'C', 0);
+          insert_xml_plsql_table(iox_xml_data, 'expiration_date', 
+                                  lt_main_data(get_user_rec).expiration_date, 'D', 'C', 10);
+          --データグループ名終了タグセット
+          insert_xml_plsql_table(iox_xml_data, '/llg_mei', NULL, 'T', 'C', 0);
+          --前回賞味期限を更新
+          pre_expiration_date := NVL(lt_main_data(get_user_rec).expiration_date ,'*');
+          --前回品目Noを更新
+          pre_item_code      := lt_main_data(get_user_rec).request_item_code;
+        END IF;
+-- 2018/10/12 Ver1.14 E_本稼動_15274 mod end by Yasuhiro.Shoji
 --
       END LOOP lg_irai_info;
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
+--
+      --データグループ名終了タグセット
+      insert_xml_plsql_table(iox_xml_data, '/g_mei', NULL, 'T', 'C', 0);
+-- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
 --
       --データグループ名終了タグセット
       insert_xml_plsql_table(iox_xml_data, '/lg_mei', NULL, 'T', 'C', 0);
