@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *  2015/03/05    1.6   Y.Nagasue        [E_本稼動_12237]倉庫管理システム追加対応(仕様部修正なし)
  *  2017/01/23    1.7   S.Yamashita      [E_本稼動_13965]倉替入力の簡素化対応(引当可能数(総数)算出(ファンクション型)を追加)
  *  2017/04/18    1.8   S.Niki           [E_本稼動_14166]引当可能数表示対応(引当可能数(総数)算出2(ファンクション型)を追加)
+ *  2018/10/02    1.9   K.Nara           [E_本稼動_15276]鮮度基準日算出用の条件を細分化
  *
  *****************************************************************************************/
 --
@@ -657,6 +658,9 @@ AS
     id_use_by_date           IN  DATE     -- 賞味期限
    ,id_product_date          IN  DATE     -- 製造年月日
    ,iv_fresh_condition       IN  VARCHAR2 -- 鮮度条件
+-- Ver.1.9 [障害E_本稼動_15276] SCSK K.Nara ADD START
+   ,iv_item_code             IN  VARCHAR2   -- 品目コード
+-- Ver.1.9 [障害E_本稼動_15276] SCSK K.Nara ADD END
    ,od_fresh_condition_date  OUT DATE     -- 鮮度条件基準日
    ,ov_errbuf                OUT VARCHAR2 -- エラーメッセージ
    ,ov_retcode               OUT VARCHAR2 -- リターン・コード(0:正常、2:エラー)
@@ -694,6 +698,9 @@ AS
     id_use_by_date     IN  DATE     -- 賞味期限
    ,id_product_date    IN  DATE     -- 製造年月日
    ,iv_fresh_condition IN  VARCHAR2 -- 鮮度条件
+-- Ver.1.9 [障害E_本稼動_15276] SCSK K.Nara ADD START
+   ,iv_item_code       IN  VARCHAR2 -- 品目コード
+-- Ver.1.9 [障害E_本稼動_15276] SCSK K.Nara ADD END
   ) RETURN DATE
   ;
 --
