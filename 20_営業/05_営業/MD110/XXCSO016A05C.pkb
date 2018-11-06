@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -21,6 +21,7 @@ AS
  *  create_csv_rec              什器マスタデータCSV出力 (A-6)
  *  close_csv_file              CSVファイルクローズ処理 (A-7)
  *  submain                     メイン処理プロシージャ
+ *                                最新会計期間名取得処理 (A-9)
  *                                物件データ抽出処理 (A-4)
  *  main                        コンカレント実行ファイル登録プロシージャ
  *                                  終了処理 (A-8)
@@ -62,6 +63,7 @@ AS
  *  2015-07-23    1.19  S.Yamashita      E_本稼動_13237対応 
  *  2015-09-04    1.20  S.Yamashita      E_本稼動_09738対応 物件取得条件に論理削除フラグを追加
  *  2016-01-22    1.21  K.Kiriu          E_本稼動_13456対応 自販機管理システム代替対応
+ *  2018-10-16    1.22  Y.Sasaki         E_本稼動_15340対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -147,6 +149,9 @@ AS
   cv_instance_type_cd_1  CONSTANT VARCHAR2(1)   := '1';             -- インスタンスタイプが「1:自動販売機」
   cv_lease_kbn_1         CONSTANT VARCHAR2(1)   := '1';             -- リース区分「1:自社リース」
   cv_lease_kbn_2         CONSTANT VARCHAR2(1)   := '2';             -- リース区分「2:お客様リース」
+-- 2018/10/16 v1.22 Y.Sasaki E_本稼動_15340 START
+  cv_lease_kbn_4         CONSTANT VARCHAR2(1)   := '4';             -- リース区分「4:固定資産」
+-- 2018/10/16 v1.22 Y.Sasaki E_本稼動_15340 END
 /* 2009.04.08 K.Satomura T1_0365対応 START */
   cv_flag_yes            CONSTANT VARCHAR2(1)   := 'Y';
 /* 2009.04.08 K.Satomura T1_0365対応 END */
@@ -893,6 +898,9 @@ AS
   PROCEDURE get_csv_data(
     io_get_rec      IN  OUT NOCOPY g_value_rtype,      -- 情報データ
     id_bsnss_mnth   IN  DATE,                          -- 業務日付
+-- 2018/10/16 v1.22 Y.Sasaki E_本稼動_15340 START
+    it_max_period_name IN xxcso_object_deprn.period_name%TYPE,                     -- 最新の会計期間名
+-- 2018/10/16 v1.22 Y.Sasaki E_本稼動_15340 END
     ov_errbuf       OUT NOCOPY VARCHAR2,               -- エラー・メッセージ           --# 固定 #
     ov_retcode      OUT NOCOPY VARCHAR2,               -- リターン・コード             --# 固定 #
     ov_errmsg       OUT NOCOPY VARCHAR2                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1550,8 +1558,12 @@ AS
     /* 2010.03.17 K.Hosoi E_本稼動_01881対応 END */
 --
     -- ==================================================
-    -- 再リース区分とリース料 月額リース料(税抜)をを抽出
+    -- 再リース区分とリース料 月額リース料(税抜)を抽出
     -- ==================================================
+-- 2018/10/16 v1.22 Y.Sasaki Added START
+    -- リース料の初期化
+    ln_second_charge    := NULL;
+-- 2018/10/16 v1.22 Y.Sasaki Added END
     /*20090327_yabuki_T1_0191_T1_0194 START*/
     -- リース区分が「1:自社リース」の場合
     lv_install_code := l_get_rec.install_code;
@@ -1619,6 +1631,23 @@ AS
       END;
     END IF;
 --
+-- 2018/10/16 v1.22 Y.Sasaki added START
+    -- 会計期間名がNULLでないかつリース区分が「1:自社リース」または「4:固定資産」の場合、減価償却額をリース料に設定
+    IF ( it_max_period_name IS NOT NULL AND l_get_rec.lease_kbn IN(cv_lease_kbn_1,cv_lease_kbn_4) ) THEN
+      BEGIN
+        SELECT  xod.deprn_amount deprn_amount     -- 減価償却額
+        INTO    ln_second_charge                  -- リース料
+        FROM    xxcso_object_deprn xod            -- リース物件償却額情報テーブル
+        WHERE   xod.object_code = lv_install_code -- 物件コード
+        AND     xod.period_name = it_max_period_name    -- 会計期間名
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- データが取得できなかった場合、リース料は既存のまま
+          NULL;
+      END;
+    END IF;
+-- 2018/10/16 v1.22 Y.Sasaki added END
     -- =========================================
     -- 先月末拠点コード・先月末顧客コードを抽出
     -- =========================================
@@ -2336,6 +2365,9 @@ AS
     /* 2009.11.27 K.Satomura E_本稼動_00118対応 START */
     lv_warn_flag           VARCHAR2(1) := 'N';
     /* 2009.11.27 K.Satomura E_本稼動_00118対応 END */
+-- 2018/10/16 v1.22 Y.sasaki E_本稼動_15340対応 START
+     lt_max_period_name  xxcso_object_deprn.period_name%TYPE; --最新会計期間名
+-- 2018/10/16 v1.22 Y.sasaki E_本稼動_15340対応 END
     -- *** ローカル・カーソル ***
     /*20090709_hosoi_0000518 START*/
 --    CURSOR xibv_data_cur
@@ -3011,6 +3043,21 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- 2018/10/16 v1.22 Y.Sasaki added START
+    -- =================================================
+    -- A-9.最新会計期間抽出処理
+    -- =================================================
+    BEGIN
+      SELECT MAX(xod.period_name) AS max_period_name -- 最新の会計期間名
+      INTO   lt_max_period_name                      -- 最新の会計期間名
+      FROM   xxcso_object_deprn xod                  --リース物件減価償却額情報テーブル
+      ;
+    EXCEPTION
+      -- 検索結果がない場合、抽出失敗した場合
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+    END;
+-- 2018/10/16 v1.22 Y.Sasaki added END
     -- =================================================
     -- A-4.物件データ抽出処理
     -- =================================================
@@ -3319,6 +3366,9 @@ AS
         get_csv_data(
            io_get_rec       => l_get_rec        -- 什器マスタデータ
           ,id_bsnss_mnth    => ld_bsnss_mnth    -- 業務月
+-- 2018/10/16 v1.22 Y.Sasaki E_本稼動_15340 START
+          ,it_max_period_name => lt_max_period_name -- 最新の会計期間名
+-- 2018/10/16 v1.22 Y.Sasaki E_本稼動_15340 END
           ,ov_errbuf        => lv_errbuf        -- エラー・メッセージ            --# 固定 #
           ,ov_retcode       => lv_retcode       -- リターン・コード              --# 固定 #
           ,ov_errmsg        => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
