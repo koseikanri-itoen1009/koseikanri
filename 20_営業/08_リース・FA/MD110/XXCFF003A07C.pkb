@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A07C(body)
  * Description      : リース契約・物件アップロード
  * MD.050           : MD050_CFF_003_A07_リース契約・物件アップロード.doc
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2018/03/27    1.10  SCSK大塚 亨     【E_本稼動_14830】IFRSリース資産対応
  *  2018/05/25    1.11  SCSK森 晴加     【E_本稼動_15112】IFRS障害対応
  *  2018/09/10    1.12  SCSK佐々木宏之  【E_本稼動_14830】追加対応
+ *  2018/10/24    1.13  SCSK佐々木 大和 【E_本稼動_14830】追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5415,7 +5416,10 @@ AS
     gr_cont_hed_rec.payment_type            := gr_contract_info_rec.payment_type;      -- 頻度
   -- 年数
     IF (gr_contract_info_rec.payment_type = cv_payment_type_0) THEN
-      gr_cont_hed_rec.payment_years := ROUND(gr_contract_info_rec.payment_frequency/12);
+-- 2018/10/24 v1.13 Modified START
+--      gr_cont_hed_rec.payment_years := ROUND(gr_contract_info_rec.payment_frequency/12);
+      gr_cont_hed_rec.payment_years := CEIL(gr_contract_info_rec.payment_frequency/12);
+-- 2018/10/24 v1.13 Modified END
     END IF;
   -- リース開始日
     gr_cont_hed_rec.lease_start_date        := gr_contract_info_rec.lease_start_date;
