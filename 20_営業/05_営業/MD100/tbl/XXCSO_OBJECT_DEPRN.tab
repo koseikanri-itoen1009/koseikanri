@@ -1,0 +1,86 @@
+/*************************************************************************
+ * 
+ * TABLE Name      : xxcso_object_deprn
+ * Description     : 物件別減価償却額情報テーブル
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2018/10/15    1.0  E.Yazaki       初回作成(E_本稼動_15340)
+ ************************************************************************/
+CREATE TABLE xxcso.xxcso_object_deprn (
+     depreciation_id                NUMBER        NOT NULL
+    ,lease_kbn                      VARCHAR2(1)   NOT NULL
+    ,period_name                    VARCHAR2(15)  NOT NULL
+    ,object_header_id               NUMBER        NOT NULL
+    ,object_code                    VARCHAR2(10)  NOT NULL
+    ,lease_class                    VARCHAR2(2)   NOT NULL
+    ,machine_type                   VARCHAR2(2)
+    ,contract_header_id             NUMBER
+    ,contract_number                VARCHAR2(15)
+    ,contract_line_id               NUMBER
+    ,contract_line_num              NUMBER(3)
+    ,asset_id                       NUMBER(15)    NOT NULL
+    ,asset_number                   VARCHAR2(15)  NOT NULL
+    ,deprn_amount                   NUMBER        NOT NULL
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcso.xxcso_object_deprn IS '物件別減価償却額情報テーブル'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.depreciation_id                             IS '減価償却額ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.lease_kbn                                   IS 'リース区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.period_name                                 IS '会計期間名'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.object_header_id                            IS '物件内部ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.object_code                                 IS '物件コード'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.lease_class                                 IS 'リース種別'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.machine_type                                IS '機器区分'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.contract_header_id                          IS '契約内部ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.contract_number                             IS '契約番号'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.contract_line_id                            IS '契約明細内部ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.contract_line_num                           IS '契約明細番号'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.asset_id                                    IS '資産ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.asset_number                                IS '資産番号'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.deprn_amount                                IS '減価償却額'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.created_by                                  IS '作成者'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.creation_date                               IS '作成日'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.last_updated_by                             IS '最終更新者'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.last_update_date                            IS '最終更新日'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.last_update_login                           IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.request_id                                  IS '要求ID'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.program_id                                  IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcso.xxcso_object_deprn.program_update_date                         IS 'プログラム更新日'
+/
