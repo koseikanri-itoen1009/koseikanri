@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税込(店舗別内訳)
  * MD.050           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
  * MD.070           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
- * Version          : 1.91
+ * Version          : 1.92
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2015/07/31    1.80 SCSK 小路 恭弘   障害「E_本稼動_12963」対応
  *  2016/03/31    1.90 SCSK 小路 恭弘   障害「E_本稼動_13511」対応
  *  2016/09/06    1.91 SCSK 小路 恭弘   障害「E_本稼動_13849」対応
+ *  2018/10/25    1.92 SCSK 奈良 和宏   障害「E_本稼動_15307」対応
  *
  *****************************************************************************************/
 --
@@ -204,6 +205,10 @@ AS
   cv_table_c_h       CONSTANT VARCHAR2(100) := 'XXCFR_REP_ST_INV_INC_TAX_C_H';    -- 標準請求書税込帳票内訳印刷単位Cワークテーブルヘッダ名
   cv_table_c_l       CONSTANT VARCHAR2(100) := 'XXCFR_REP_ST_INV_INC_TAX_C_L';    -- 標準請求書税込帳票内訳印刷単位Cワークテーブル明細名
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+  cv_table_d_h       CONSTANT VARCHAR2(100) := 'XXCFR_REP_ST_INV_D_H';            -- 標準請求書帳票内訳印刷単位Dワークテーブルヘッダ名
+  cv_table_d_l       CONSTANT VARCHAR2(100) := 'XXCFR_REP_ST_INV_INC_TAX_D_L';    -- 標準請求書税込帳票内訳印刷単位Dワークテーブル明細名
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 --
   -- 請求書タイプ
   cv_invoice_type    CONSTANT VARCHAR2(1)   := 'S';                        -- ‘S’(標準請求書)
@@ -223,24 +228,48 @@ AS
   cv_taget_flag_2    CONSTANT VARCHAR2(1)   := '2';               -- 明細0件フラグ（2：対象データあり）
 --
   -- 店舗別明細帳票ID
-  cv_report_id_01    CONSTANT VARCHAR2(14)  := 'XXCFR003A2001C';  -- 請求書（14顧客合計_店舗別一覧）税込
-  cv_report_id_02    CONSTANT VARCHAR2(14)  := 'XXCFR003A2002C';  -- 店舗別明細（店舗別改ページ）税込
-  cv_report_id_03    CONSTANT VARCHAR2(14)  := 'XXCFR003A2003C';  -- 請求総括表（14顧客合計）税込
-  cv_report_id_04    CONSTANT VARCHAR2(14)  := 'XXCFR003A2004C';  -- 請求書（店舗別改ページ）税込
--- Add 2016.03.31 Ver1.90 Start
-  cv_report_id_09    CONSTANT VARCHAR2(14)  := 'XXCFR003A2009C';  -- 請求書（14顧客合計_店舗別一覧）税込
-  cv_report_id_10    CONSTANT VARCHAR2(14)  := 'XXCFR003A2010C';  -- 伝票別明細税込
--- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--  cv_report_id_01    CONSTANT VARCHAR2(14)  := 'XXCFR003A2001C';  -- 請求書（14顧客合計_店舗別一覧）税込
+--  cv_report_id_02    CONSTANT VARCHAR2(14)  := 'XXCFR003A2002C';  -- 店舗別明細（店舗別改ページ）税込
+--  cv_report_id_03    CONSTANT VARCHAR2(14)  := 'XXCFR003A2003C';  -- 請求総括表（14顧客合計）税込
+--  cv_report_id_04    CONSTANT VARCHAR2(14)  := 'XXCFR003A2004C';  -- 請求書（店舗別改ページ）税込
+---- Add 2016.03.31 Ver1.90 Start
+--  cv_report_id_09    CONSTANT VARCHAR2(14)  := 'XXCFR003A2009C';  -- 請求書（14顧客合計_店舗別一覧）税込
+--  cv_report_id_10    CONSTANT VARCHAR2(14)  := 'XXCFR003A2010C';  -- 伝票別明細税込
+---- Add 2016.03.31 Ver1.90 End
+  cv_report_id_01    CONSTANT VARCHAR2(14)  := 'XXCFR003A2001C';  -- 請求書A税込ヘッダ
+  cv_report_id_02    CONSTANT VARCHAR2(14)  := 'XXCFR003A2002C';  -- 請求書A税込明細
+  cv_report_id_03    CONSTANT VARCHAR2(14)  := 'XXCFR003A2003C';  -- 請求書B税込ヘッダ
+  cv_report_id_04    CONSTANT VARCHAR2(14)  := 'XXCFR003A2004C';  -- 請求書B税込明細
+  cv_report_id_09    CONSTANT VARCHAR2(14)  := 'XXCFR003A2009C';  -- 請求書C税込ヘッダ
+  cv_report_id_10    CONSTANT VARCHAR2(14)  := 'XXCFR003A2010C';  -- 請求書C税込明細
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+  cv_report_id_13    CONSTANT VARCHAR2(14)  := 'XXCFR003A2013C';  -- 請求書Dヘッダ
+  cv_report_id_14    CONSTANT VARCHAR2(14)  := 'XXCFR003A2014C';  -- 請求書D税込明細
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 --
   -- 店舗別明細の請求書タイプ
-  cv_bill_type_01    CONSTANT VARCHAR2(2)   := '01';              -- 請求書（14顧客合計_店舗別一覧）税込
-  cv_bill_type_02    CONSTANT VARCHAR2(2)   := '02';              -- 店舗別明細（店舗別改ページ）税込
-  cv_bill_type_03    CONSTANT VARCHAR2(2)   := '03';              -- 請求総括表（14顧客合計）税込
-  cv_bill_type_04    CONSTANT VARCHAR2(2)   := '04';              -- 請求書（店舗別改ページ）税込
--- Add 2016.03.31 Ver1.90 Start
-  cv_bill_type_09    CONSTANT VARCHAR2(2)   := '09';              -- 請求書（14顧客合計_店舗別一覧）税込
-  cv_bill_type_10    CONSTANT VARCHAR2(2)   := '10';              -- 伝票別明細税込
--- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--  cv_bill_type_01    CONSTANT VARCHAR2(2)   := '01';              -- 請求書（14顧客合計_店舗別一覧）税込
+--  cv_bill_type_02    CONSTANT VARCHAR2(2)   := '02';              -- 店舗別明細（店舗別改ページ）税込
+--  cv_bill_type_03    CONSTANT VARCHAR2(2)   := '03';              -- 請求総括表（14顧客合計）税込
+--  cv_bill_type_04    CONSTANT VARCHAR2(2)   := '04';              -- 請求書（店舗別改ページ）税込
+---- Add 2016.03.31 Ver1.90 Start
+--  cv_bill_type_09    CONSTANT VARCHAR2(2)   := '09';              -- 請求書（14顧客合計_店舗別一覧）税込
+--  cv_bill_type_10    CONSTANT VARCHAR2(2)   := '10';              -- 伝票別明細税込
+---- Add 2016.03.31 Ver1.90 End
+  cv_bill_type_01    CONSTANT VARCHAR2(2)   := '01';              -- 請求書A税込ヘッダ
+  cv_bill_type_02    CONSTANT VARCHAR2(2)   := '02';              -- 請求書A税込明細
+  cv_bill_type_03    CONSTANT VARCHAR2(2)   := '03';              -- 請求書B税込ヘッダ
+  cv_bill_type_04    CONSTANT VARCHAR2(2)   := '04';              -- 請求書B税込明細
+  cv_bill_type_09    CONSTANT VARCHAR2(2)   := '09';              -- 請求書C税込ヘッダ
+  cv_bill_type_10    CONSTANT VARCHAR2(2)   := '10';              -- 請求書C税込明細
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+  cv_bill_type_13    CONSTANT VARCHAR2(2)   := '13';              -- 請求書Dヘッダ
+  cv_bill_type_14    CONSTANT VARCHAR2(2)   := '14';              -- 請求書D税込明細
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 --
   -- コンカレントdevステータス
   cv_dev_status_normal  CONSTANT VARCHAR2(6)  := 'NORMAL';  -- '正常'
@@ -274,6 +303,9 @@ AS
 -- Add 2016.03.31 Ver1.90 Start
   cv_invoice_printing_unit_a9 CONSTANT VARCHAR2(2) := 'C';    -- 請求書印刷単位:'A9'
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+  cv_invoice_printing_unit_a10  CONSTANT VARCHAR2(2) := 'D';  -- 請求書印刷単位:'A10'
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 --
   -- 使用目的
   cv_site_use_code_bill_to CONSTANT VARCHAR(10) := 'BILL_TO';  -- 使用目的：「請求先」
@@ -298,6 +330,9 @@ AS
   -- 店舗別明細出力要求ID
   TYPE g_org_request_rtype IS RECORD(
     request_id                    fnd_concurrent_requests.request_id%TYPE
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+   ,conc_name                     fnd_lookup_values_vl.attribute1%TYPE
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
   );
   TYPE g_org_request_ttype IS TABLE OF g_org_request_rtype INDEX BY PLS_INTEGER;
   g_org_request  g_org_request_ttype;
@@ -321,6 +356,9 @@ AS
 -- Add 2016.03.31 Ver1.90 Start
   gv_target_c_flag      VARCHAR2(1) := '0';                        -- 明細0件フラグC
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+  gv_target_d_flag      VARCHAR2(1) := '0';                        -- 明細0件フラグD
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
   gn_target_cnt_a_h     NUMBER      := 0;                          -- 印刷単位Aヘッダーの対象件数
   gn_target_cnt_a_l     NUMBER      := 0;                          -- 印刷単位A明細の対象件数
   gn_target_cnt_b_h     NUMBER      := 0;                          -- 印刷単位Bヘッダーの対象件数
@@ -329,6 +367,10 @@ AS
   gn_target_cnt_c_h     NUMBER      := 0;                          -- 印刷単位Cヘッダーの対象件数
   gn_target_cnt_c_l     NUMBER      := 0;                          -- 印刷単位C明細の対象件数
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+  gn_target_cnt_d_h     NUMBER      := 0;                          -- 印刷単位Dヘッダーの対象件数
+  gn_target_cnt_d_l     NUMBER      := 0;                          -- 印刷単位D明細の対象件数
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
   gn_req_cnt            NUMBER;                                    -- 店舗別明細出力要求発行数
 -- Add 2015.07.31 Ver1.80 End
 --
@@ -873,6 +915,11 @@ AS
     lt_bill_cust_code8 xxcfr_rep_st_inv_inc_tax_c_l.bill_cust_code%TYPE;
     lt_location_code8  xxcfr_rep_st_inv_inc_tax_c_l.location_code%TYPE;
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+    lt_bill_cust_code9 xxcfr_rep_st_inv_inc_tax_d_l.bill_cust_code%TYPE;
+    lt_location_code9  xxcfr_rep_st_inv_inc_tax_d_l.location_code%TYPE;
+    lt_ship_cust_code9 xxcfr_rep_st_inv_inc_tax_d_l.ship_cust_code%TYPE;
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
     ln_cust_cnt        PLS_INTEGER;
     ln_int             PLS_INTEGER := 0;
 --
@@ -1037,6 +1084,50 @@ AS
       ;
 --
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+    --単位D明細の税別内訳更新用
+    CURSOR update_work_9_cur
+    IS
+      SELECT xrsidl.bill_cust_code                               bill_cust_code ,  -- 顧客コード
+             xrsidl.location_code                                location_code  ,  -- 担当拠点コード
+             xrsidl.ship_cust_code                               ship_cust_code ,  -- 納品先顧客コード
+             xrsidl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+             SUM( xrsidl.slip_sum ) + SUM( xrsidl.slip_tax_sum ) tax_rate_by_sum   -- 税別お買上げ額
+      FROM   xxcfr_rep_st_inv_inc_tax_d_l  xrsidl
+      WHERE  xrsidl.request_id  = cn_request_id
+      AND    xrsidl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+      GROUP BY
+             xrsidl.bill_cust_code, -- 顧客コード
+             xrsidl.location_code,  -- 担当拠点コード
+             xrsidl.ship_cust_code, -- 納品先顧客コード
+             xrsidl.tax_rate        -- 消費税率(編集用)
+      ORDER BY
+             xrsidl.bill_cust_code, -- 顧客コード
+             xrsidl.location_code,  -- 担当拠点コード
+             xrsidl.ship_cust_code, -- 納品先顧客コード
+             xrsidl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+      ;
+--
+    --単位D明細の当月ご請求額更新用
+    CURSOR update_work_10_cur
+    IS
+      SELECT xrsidl.bill_cust_code                               bill_cust_code ,  -- 顧客コード
+             xrsidl.location_code                                location_code  ,  -- 担当拠点コード
+             xrsidl.ship_cust_code                               ship_cust_code ,  -- 納品先顧客コード
+             SUM( xrsidl.slip_sum ) + SUM( xrsidl.slip_tax_sum ) store_sum         -- 税別お買上げ額
+      FROM   xxcfr_rep_st_inv_inc_tax_d_l  xrsidl
+      WHERE  xrsidl.request_id  = cn_request_id
+      GROUP BY
+             xrsidl.bill_cust_code, -- 顧客コード
+             xrsidl.location_code,  -- 担当拠点コード
+             xrsidl.ship_cust_code  -- 納品先顧客コード
+      ORDER BY
+             xrsidl.bill_cust_code, -- 顧客コード
+             xrsidl.location_code,  -- 担当拠点コード
+             xrsidl.ship_cust_code  -- 納品先顧客コード
+      ;
+--
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
     -- *** ローカル・レコード ***
     update_work_rec  update_work_cur%ROWTYPE;
 -- Add 2015.07.31 Ver1.80 Start
@@ -1050,6 +1141,10 @@ AS
 -- Add 2016.03.31 Ver1.90 Start
     update_work_8_rec  update_work_8_cur%ROWTYPE;
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+    update_work_9_rec  update_work_9_cur%ROWTYPE;
+    update_work_10_rec update_work_10_cur%ROWTYPE;
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 --
     -- *** ローカル・タイプ ***
     TYPE l_bill_cust_code_ttype IS TABLE OF xxcfr_rep_st_invoice_inc_tax_d.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
@@ -1097,6 +1192,19 @@ AS
     TYPE l_tax_rate_8_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_c_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
     TYPE l_inc_tax_charge_8_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_c_l.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+--
+    TYPE l_bill_cust_code_9_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
+    TYPE l_location_code_9_ttype  IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.location_code%TYPE   INDEX BY PLS_INTEGER;
+    TYPE l_ship_cust_code_9_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.ship_cust_code%TYPE  INDEX BY PLS_INTEGER;
+    TYPE l_tax_rate_9_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+    TYPE l_inc_tax_charge_9_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
+--
+    TYPE l_bill_cust_code_10_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
+    TYPE l_location_code_10_ttype  IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.location_code%TYPE   INDEX BY PLS_INTEGER;
+    TYPE l_ship_cust_code_10_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.ship_cust_code%TYPE  INDEX BY PLS_INTEGER;
+    TYPE l_store_sum_10_ttype      IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.store_sum%TYPE       INDEX BY PLS_INTEGER;
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 --
     l_bill_cust_code_tab     l_bill_cust_code_ttype;  --顧客コード
     l_location_code_tab      l_location_code_ttype;   --担当拠点コード
@@ -1155,6 +1263,21 @@ AS
     l_tax_rate2_8_tab        l_tax_rate_8_ttype;        -- 消費税率２
     l_inc_tax_charge2_8_tab  l_inc_tax_charge_8_ttype;  -- 当月お買上げ額２
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+--
+    l_bill_cust_code_9_tab   l_bill_cust_code_9_ttype;  -- 顧客コード
+    l_location_code_9_tab    l_location_code_9_ttype;   -- 担当拠点コード
+    l_ship_cust_code_9_tab   l_ship_cust_code_9_ttype;  -- 納品先顧客コード
+    l_tax_rate1_9_tab        l_tax_rate_9_ttype;        -- 消費税率１
+    l_inc_tax_charge1_9_tab  l_inc_tax_charge_9_ttype;  -- 当月お買上げ額１
+    l_tax_rate2_9_tab        l_tax_rate_9_ttype;        -- 消費税率２
+    l_inc_tax_charge2_9_tab  l_inc_tax_charge_9_ttype;  -- 当月お買上げ額２
+--
+    l_bill_cust_code_10_tab  l_bill_cust_code_10_ttype;  -- 顧客コード
+    l_location_code_10_tab   l_location_code_10_ttype;   -- 担当拠点コード
+    l_ship_cust_code_10_tab  l_ship_cust_code_10_ttype;  -- 納品先顧客コード
+    l_store_sum_10_tab       l_store_sum_10_ttype;       -- 税別お買上げ額
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 --
   BEGIN
 --
@@ -1750,6 +1873,124 @@ AS
 --
 -- Add 2016.03.31 Ver1.90 End
 -- Add 2015.07.31 Ver1.80 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+    -- 明細0件フラグD＝2である、かつ税別内訳出力ありの場合
+    IF ( gv_target_d_flag = cv_taget_flag_2 AND iv_tax_output_type = cv_tax_op_type_yes ) THEN
+      -- 9.税別の消費税額、及び、当月お買上げ額を計算し標準請求書税込帳票内訳印刷単位Dワークテーブル明細を更新
+      -- 変数の初期化
+      ln_cust_cnt := 0;
+      ln_int      := 0;
+--
+      <<edit_loop9>>
+      FOR update_work_9_rec IN update_work_9_cur LOOP
+--
+        --初回、又は、顧客コード・担当拠点コード・納品先顧客コードがブレーク
+        IF (
+             ( lt_bill_cust_code9 IS NULL )
+             OR
+             ( lt_bill_cust_code9 <> update_work_9_rec.bill_cust_code )
+             OR
+             ( lt_location_code9  <> update_work_9_rec.location_code )
+             OR
+             ( lt_ship_cust_code9 <> update_work_9_rec.ship_cust_code )
+           )
+        THEN
+          --初期化、及び、１レコード目の税別項目設定
+          ln_cust_cnt                     := 1;                                     -- ブレーク毎レコード件数初期化
+          ln_int                          := ln_int + 1;                            -- 配列カウントアップ
+          l_bill_cust_code_9_tab(ln_int)  := update_work_9_rec.bill_cust_code;      -- 顧客コード
+          l_location_code_9_tab(ln_int)   := update_work_9_rec.location_code;       -- 担当拠点コード
+          l_ship_cust_code_9_tab(ln_int)  := update_work_9_rec.ship_cust_code;      -- 納品先顧客コード
+          l_tax_rate1_9_tab(ln_int)       := update_work_9_rec.tax_rate;            -- 消費税率(編集用)
+          l_inc_tax_charge1_9_tab(ln_int) := update_work_9_rec.tax_rate_by_sum;     -- 当月お買上げ額１
+          l_tax_rate2_9_tab(ln_int)       := NULL;                                  -- 消費税率２
+          l_inc_tax_charge2_9_tab(ln_int) := NULL;                                  -- 当月お買上げ額２
+          lt_bill_cust_code9              := update_work_9_rec.bill_cust_code;      -- ブレークコード設定(顧客コード)
+          lt_location_code9               := update_work_9_rec.location_code;       -- ブレークコード設定(担当拠点コード)
+          lt_ship_cust_code9              := update_work_9_rec.ship_cust_code;      -- ブレークコード設定(納品先顧客コード)
+        ELSE
+          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(2レコード以上は設定しない)
+          ln_cust_cnt := ln_cust_cnt + 1;  --ブレーク毎件数カウントアップ
+          --1店舗につき最大２つの税別項目を設定
+          IF ( ln_cust_cnt = 2 ) THEN
+            --２レコード目
+            l_tax_rate2_9_tab(ln_int)       := update_work_9_rec.tax_rate;            -- 消費税率２
+            l_inc_tax_charge2_9_tab(ln_int) := update_work_9_rec.tax_rate_by_sum;     -- 当月お買上げ額２
+          END IF;
+        END IF;
+--
+      END LOOP edit_loop9;
+--
+      --一括更新
+      BEGIN
+        <<update_loop9>>
+        FORALL i IN l_bill_cust_code_9_tab.FIRST..l_bill_cust_code_9_tab.LAST
+          UPDATE  xxcfr_rep_st_inv_inc_tax_d_l  xrsidl
+          SET     xrsidl.tax_rate1        = l_tax_rate1_9_tab(i)        -- 消費税率1
+                 ,xrsidl.inc_tax_charge1  = l_inc_tax_charge1_9_tab(i)  -- 当月お買上げ額１
+                 ,xrsidl.tax_rate2        = l_tax_rate2_9_tab(i)        -- 消費税率２
+                 ,xrsidl.inc_tax_charge2  = l_inc_tax_charge2_9_tab(i)  -- 当月お買上げ額２
+          WHERE   xrsidl.bill_cust_code   = l_bill_cust_code_9_tab(i)
+          AND     xrsidl.location_code    = l_location_code_9_tab(i)
+          AND     xrsidl.ship_cust_code   = l_ship_cust_code_9_tab(i)
+          AND     xrsidl.request_id       = cn_request_id
+          ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg( cv_msg_kbn_cfr       -- 'XXCFR'
+                                                         ,cv_msg_003a18_026    -- テーブル更新エラー
+                                                         ,cv_tkn_table         -- トークン'TABLE'
+                                                         ,xxcfr_common_pkg.get_table_comment(cv_table_d_l))
+                                                        -- 標準請求書税込帳票内訳印刷単位Dワークテーブル明細
+                               ,1
+                               ,5000);
+          lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_api_expt;
+      END;
+--
+    END IF;
+--
+    -- -- 明細0件フラグD＝2である場合
+    IF ( gv_target_d_flag = cv_taget_flag_2 ) THEN
+      -- 10.当月お買上げ額と消費税額を計算し標準請求書税込帳票内訳印刷単位Dワークテーブル明細を更新
+      -- 変数の初期化
+      ln_int      := 0;
+--
+      <<edit_loop10>>
+      FOR update_work_10_rec IN update_work_10_cur LOOP
+        ln_int                          := ln_int + 1;                            -- 配列カウントアップ
+        l_bill_cust_code_10_tab(ln_int)  := update_work_10_rec.bill_cust_code;    -- 顧客コード
+        l_location_code_10_tab(ln_int)   := update_work_10_rec.location_code;     -- 担当拠点コード
+        l_ship_cust_code_10_tab(ln_int)  := update_work_10_rec.ship_cust_code;    -- 納品先顧客コード
+        l_store_sum_10_tab(ln_int)       := update_work_10_rec.store_sum;         -- 当月ご請求額（税込）
+      END LOOP edit_loop10;
+--
+      --一括更新
+      BEGIN
+        <<update_loop10>>
+        FORALL i IN l_bill_cust_code_10_tab.FIRST..l_bill_cust_code_10_tab.LAST
+          UPDATE  xxcfr_rep_st_inv_inc_tax_d_l  xrsidl
+          SET     xrsidl.store_sum        = l_store_sum_10_tab(i)        -- 当月ご請求額（税込）
+          WHERE   xrsidl.bill_cust_code   = l_bill_cust_code_10_tab(i)
+          AND     xrsidl.location_code    = l_location_code_10_tab(i)
+          AND     xrsidl.ship_cust_code   = l_ship_cust_code_10_tab(i)
+          AND     xrsidl.request_id       = cn_request_id
+          ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg( cv_msg_kbn_cfr       -- 'XXCFR'
+                                                         ,cv_msg_003a18_026    -- テーブル更新エラー
+                                                         ,cv_tkn_table         -- トークン'TABLE'
+                                                         ,xxcfr_common_pkg.get_table_comment(cv_table_d_l))
+                                                        -- 標準請求書税込帳票内訳印刷単位Dワークテーブル明細
+                               ,1
+                               ,5000);
+          lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+          RAISE global_api_expt;
+      END;
+    END IF;
+--
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1886,7 +2127,11 @@ AS
 -- Mod 2016.03.31 Ver1.90 Start
 --                                          ''''||cv_invoice_printing_unit_a8||''') '|| -- 請求書印刷単位
                                           ''''||cv_invoice_printing_unit_a8||''','||
-                                          ''''||cv_invoice_printing_unit_a9||''') '|| -- 請求書印刷単位
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--                                          ''''||cv_invoice_printing_unit_a9||''') '|| -- 請求書印刷単位
+                                          ''''||cv_invoice_printing_unit_a9||''','||
+                                          ''''||cv_invoice_printing_unit_a10||''') '|| -- 請求書印刷単位
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
 -- Mod 2016.03.31 Ver1.90 End
 -- Mod 2015.07.31 Ver1.80 End
     ' AND   hzca.customer_class_code = '''||cv_customer_class_code10||''' '||         -- 顧客区分:10
@@ -1916,7 +2161,11 @@ AS
 -- Mod 2016.03.31 Ver1.90 Start
 --                                           ''''||cv_invoice_printing_unit_a8||''')'||
                                            ''''||cv_invoice_printing_unit_a8||''','||
-                                           ''''||cv_invoice_printing_unit_a9||''')'||
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--                                           ''''||cv_invoice_printing_unit_a9||''')'||
+                                           ''''||cv_invoice_printing_unit_a9||''','||
+                                           ''''||cv_invoice_printing_unit_a10||''')'||
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
 -- Mod 2016.03.31 Ver1.90 End
 -- Mod 2015.07.31 Ver1.80 End
     'AND   hzca10.customer_class_code = '''||cv_customer_class_code10||''' '||         -- 顧客区分:10
@@ -2347,7 +2596,11 @@ AS
 -- Mod 2016.03.31 Ver1.90 Start
 --                                                     cv_invoice_printing_unit_a8) THEN
                                                      cv_invoice_printing_unit_a8,
-                                                     cv_invoice_printing_unit_a9) THEN
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--                                                     cv_invoice_printing_unit_a9) THEN
+                                                     cv_invoice_printing_unit_a9,
+                                                     cv_invoice_printing_unit_a10) THEN
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
 -- Mod 2016.03.31 Ver1.90 End
 -- Mod 2015.07.31 Ver1.80 End
           -- 顧客区分14の顧客に紐づく、顧客区分14の顧客を取得
@@ -4765,6 +5018,253 @@ AS
             gn_target_cnt_c_l := gn_target_cnt_c_l + SQL%ROWCOUNT;
 --
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+          --請求書印刷単位 = 'A10'
+          ELSIF (all_account_rec.invoice_printing_unit = cv_invoice_printing_unit_a10)
+           AND  ((gv_inv_all_flag = cv_status_yes) OR 
+                 ((gv_inv_all_flag = cv_status_no) AND  (get_14account_rec.bill_base_code = gt_user_dept)))   -- 請求拠点 = ログインユーザの拠点
+           AND  (get_14account_rec.bill_tax_div IN (cv_syohizei_kbn_inc2,cv_syohizei_kbn_inc3))               -- 消費税区分 IN (内税(伝票),内税(単価))
+           AND  (get_14account_rec.bill_invoice_type = iv_bill_invoice_type)                                  -- 請求書出力形式 = 入力パラメータ「請求書出力形式」
+           AND  (get_14account_rec.cons_inv_flag = cv_enabled_yes)                                            -- 一括請求書式 = 'Y'(有効)
+           AND  (get_14account_rec.bill_pub_cycle = NVL(iv_bill_pub_cycle, get_14account_rec.bill_pub_cycle)) -- 請求書発行サイクル = 入力パラメータ「請求書発行サイクル」
+          THEN
+--
+            BEGIN
+            -- 印刷単位：Dの顧客あり
+            gv_target_d_flag := cv_taget_flag_1;
+--
+            INSERT INTO xxcfr_rep_st_inv_inc_tax_d_l(
+              report_id               , -- 帳票ＩＤ
+              issue_date              , -- 発行日付
+              zip_code                , -- 郵便番号
+              send_address1           , -- 住所１
+              send_address2           , -- 住所２
+              send_address3           , -- 住所３
+              bill_cust_code          , -- 顧客コード(ソート順２)
+              bill_cust_name          , -- 顧客名
+              location_code           , -- 担当拠点コード
+              location_name           , -- 担当拠点名
+              phone_num               , -- 電話番号
+              target_date             , -- 対象年月
+              payment_cust_code       , -- 売掛管理顧客コード
+              payment_cust_name       , -- 売掛管理顧客名
+              ar_concat_text          , -- 売掛管理コード連結文字列(各項目の間にスペースを挿入)
+              payment_due_date        , -- 入金予定日
+              bank_account            , -- 振込口座情報
+              ship_cust_code          , -- 納品先顧客コード
+              ship_cust_name          , -- 納品先顧客名
+              store_code              , -- 店舗コード
+              store_code_sort         , -- 店舗コード(ソート用)
+              ship_account_number     , -- 納品先顧客コード(ソート用)
+              slip_date               , -- 伝票日付(ソート順３)
+              slip_num                , -- 伝票No(ソート順４)
+              slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
+              slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+              tax_rate                , -- 消費税率(編集用)
+              outsourcing_flag        , -- 業者委託フラグ
+              created_by              , -- 作成者
+              creation_date           , -- 作成日
+              last_updated_by         , -- 最終更新者
+              last_update_date        , -- 最終更新日
+              last_update_login       , -- 最終更新ログイン
+              request_id              , -- 要求ID
+              program_application_id  , -- アプリケーションID
+              program_id              , -- コンカレント・プログラムID
+              program_update_date     ) -- プログラム更新日
+            SELECT cv_report_id_14                                                        report_id             , -- 帳票ＩＤ
+                   TO_CHAR(xih.inv_creation_date,lv_format_date_jpymd4)                   issue_date            , -- 発行日
+                   DECODE(get_14account_rec.bill_postal_code,
+                          NULL,NULL,
+                          lv_format_zip_mark||SUBSTR(get_14account_rec.bill_postal_code,1,3)||'-'||
+                          SUBSTR(get_14account_rec.bill_postal_code,4,4))                 zip_code              , -- 郵便番号
+                   get_14account_rec.bill_state||get_14account_rec.bill_city              send_address1         , -- 住所１
+                   get_14account_rec.bill_address1                                        send_address2         , -- 住所２
+                   get_14account_rec.bill_address2                                        send_address3         , -- 住所３
+                   get_14account_rec.cash_account_number                                  bill_cust_code        , -- 顧客コード(ソート順２)
+                   get_14account_rec.cash_account_name                                    bill_cust_name        , -- 顧客名
+                   get_14account_rec.bill_base_code                                       bill_base_code        , -- 担当拠点コード
+                   xffvv.description                                                      location_name         , -- 担当拠点名
+                   xxcfr_common_pkg.get_base_target_tel_num(get_14account_rec.cash_account_number)  phone_num   , -- 電話番号
+                   SUBSTR(xih.object_month,1,4)||lv_format_date_year||
+                   SUBSTR(xih.object_month,5,2)||lv_format_date_month                     target_date           , -- 対象年月
+                   get_14account_rec.cash_account_number                                  payment_cust_code     , -- 入金先顧客コード
+                   get_14account_rec.cash_account_name                                    payment_cust_name     , -- 入金先顧客名
+                   get_14account_rec.cash_account_number||' '||xih.term_name              ar_concat_text        , -- 売掛管理コード連結文字列
+                   TO_CHAR(xih.payment_date, lv_format_date_jpymd2)                       payment_due_date      , -- 入金予定日
+                   CASE
+                   WHEN account.bank_account_num IS NULL THEN
+                     NULL
+                   ELSE
+                     DECODE(SUBSTR(account.bank_number,1,1),
+                     lv_format_bank_dummy,NULL,                                       -- ダミー銀行の場合はNULL
+                     CASE WHEN TO_NUMBER(account.bank_number)<1000  THEN
+                       CASE WHEN INSTR(account.bank_name,lv_format_date_bank)>0 THEN
+                         account.bank_name
+                       ELSE
+                         account.bank_name ||lv_format_date_bank
+                       END
+                     ELSE
+                      account.bank_name 
+                     END||' '||                                                       -- 銀行名
+                     CASE WHEN INSTR(account.bank_branch_name
+                                    ,lv_format_date_central)>0 THEN
+                       account.bank_branch_name
+                     ELSE
+                       account.bank_branch_name||lv_format_date_branch 
+                     END||' '||                                                       -- 支店名
+                     DECODE( account.bank_account_type,
+                             1,lv_format_date_account,
+                             2,lv_format_date_current,
+                             account.bank_account_type) ||' '||                       -- 口座種別
+                     account.bank_account_num ||' '||                                 -- 口座番号
+                     account.account_holder_name||' '||                               -- 口座名義人
+                     account.account_holder_name_alt)                                 -- 口座名義人カナ名
+                   END                                                                    account_data          , -- 振込口座情報
+                   xil.ship_cust_code                                                     ship_cust_code        , -- 納品先顧客コード
+                   hzp.party_name                                                         ship_cust_name        , -- 納品先顧客名
+                   LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                       store_code            , -- 店舗コード
+                   LPAD(NVL(all_account_rec.store_code,'0'),10,'0')                       store_code_sort       , -- 店舗コード(ソート用)
+                   xil.ship_cust_code                                                     ship_account_number   , -- 納品先顧客コード(ソート用)
+                   TO_CHAR(DECODE(xil.acceptance_date,
+                                  NULL,xil.delivery_date,
+                                  xil.acceptance_date),
+                           cv_format_date_ymds2)                                          slip_date             , -- 伝票日付(ソート順３)
+                   xil.slip_num                                                           slip_num              , -- 伝票No(ソート順４)
+                   SUM(xil.ship_amount)                                                   slip_sum              , -- 伝票金額(税抜額)
+                   SUM(xil.tax_amount)                                                    tax_sum               , -- 伝票税額
+                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+                   CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+                     cv_os_flag_y
+                   ELSE
+                     NULL
+                   END                                                                    outsourcing_flag      , -- 業者委託フラグ
+                   cn_created_by                                                          created_by            , -- 作成者
+                   cd_creation_date                                                       creation_date         , -- 作成日
+                   cn_last_updated_by                                                     last_updated_by       , -- 最終更新者
+                   cd_last_update_date                                                    last_update_date      , -- 最終更新日
+                   cn_last_update_login                                                   last_update_login     , -- 最終更新ログイン
+                   cn_request_id                                                          request_id            , -- 要求ID
+                   cn_program_application_id                                              program_application_id, -- アプリケーションID
+                   cn_program_id                                                          program_id            , -- コンカレント・プログラムID
+                   cd_program_update_date                                                 program_update_date     -- プログラム更新日
+            FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
+                 xxcfr_invoice_lines            xil  , -- 請求明細
+                 hz_cust_accounts               hzca , -- 顧客10顧客マスタ
+                 hz_parties                     hzp  , -- 顧客10パーティマスタ
+                 (SELECT all_account_rec.customer_code ship_cust_code,
+                         rcrm.customer_id             customer_id,
+                         abb.bank_number              bank_number,
+                         abb.bank_name                bank_name,
+                         abb.bank_branch_name         bank_branch_name,
+                         abaa.bank_account_type       bank_account_type,
+                         abaa.bank_account_num        bank_account_num,
+                         abaa.account_holder_name     account_holder_name,
+                         abaa.account_holder_name_alt account_holder_name_alt
+                  FROM ra_cust_receipt_methods        rcrm , --支払方法情報
+                       ar_receipt_method_accounts_all arma , --AR支払方法口座
+                       ap_bank_accounts_all           abaa , --銀行口座
+                       ap_bank_branches               abb    --銀行支店
+                  WHERE rcrm.primary_flag = cv_enabled_yes
+                    AND get_14account_rec.cash_account_id = rcrm.customer_id
+                    AND gd_target_date BETWEEN rcrm.start_date AND NVL(rcrm.end_date ,cd_max_date)
+                    AND rcrm.site_use_id IS NOT NULL
+                    AND rcrm.receipt_method_id = arma.receipt_method_id(+)
+                    AND arma.bank_account_id = abaa.bank_account_id(+)
+                    AND abaa.bank_branch_id = abb.bank_branch_id(+)
+                    AND arma.org_id = gn_org_id
+                    AND abaa.org_id = gn_org_id             ) account,    -- 銀行口座ビュー
+                 (SELECT ffv.flex_value   flex_value,
+                         ffv.description  description
+                  FROM   fnd_flex_values_vl ffv
+                  WHERE  EXISTS
+                         (SELECT  'X'
+                          FROM    fnd_flex_value_sets ffvs
+                          WHERE   ffvs.flex_value_set_name = cv_ffv_set_name_dept
+                          AND     ffvs.flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+            WHERE xih.invoice_id = xil.invoice_id                                       -- 一括請求書ID
+              AND xil.cutoff_date = gd_target_date                                      -- パラメータ．締日
+              AND xil.ship_cust_code = account.ship_cust_code(+)                        -- 外部結合のためのダミー結合
+              AND xih.set_of_books_id = gn_set_of_bks_id
+              AND xih.org_id = gn_org_id
+              AND get_14account_rec.bill_base_code = xffvv.flex_value
+              AND xil.ship_cust_code = all_account_rec.customer_code
+              AND hzca.cust_account_id = all_account_rec.customer_id
+              AND hzp.party_id = hzca.party_id
+            GROUP BY cv_pkg_name,
+                     xih.inv_creation_date,
+                     DECODE(get_14account_rec.bill_postal_code,
+                                 NULL,NULL,
+                                 lv_format_zip_mark||SUBSTR(get_14account_rec.bill_postal_code,1,3)||'-'||
+                                 SUBSTR(get_14account_rec.bill_postal_code,4,4)),
+                     get_14account_rec.bill_state||get_14account_rec.bill_city,
+                     get_14account_rec.bill_address1,
+                     get_14account_rec.bill_address2,
+                     get_14account_rec.cash_account_number,
+                     get_14account_rec.cash_account_name,
+                     xffvv.description,
+                     xih.object_month,
+                     get_14account_rec.cash_account_number||' '||xih.term_name,
+                     xih.payment_date,
+                     CASE
+                     WHEN account.bank_account_num IS NULL THEN
+                       NULL
+                     ELSE
+                       DECODE(SUBSTR(account.bank_number,1,1),
+                       lv_format_bank_dummy,NULL,                                       -- ダミー銀行の場合はNULL
+                       CASE WHEN TO_NUMBER(account.bank_number)<1000  THEN
+                         CASE WHEN INSTR(account.bank_name,lv_format_date_bank)>0 THEN
+                           account.bank_name
+                         ELSE
+                           account.bank_name ||lv_format_date_bank
+                         END
+                       ELSE
+                        account.bank_name 
+                       END||' '||                                                       -- 銀行名
+                       CASE WHEN INSTR(account.bank_branch_name
+                                      ,lv_format_date_central)>0 THEN
+                         account.bank_branch_name
+                       ELSE
+                         account.bank_branch_name||lv_format_date_branch 
+                       END||' '||                                                       -- 支店名
+                       DECODE( account.bank_account_type,
+                               1,lv_format_date_account,
+                               2,lv_format_date_current,
+                               account.bank_account_type) ||' '||                       -- 口座種別
+                       account.bank_account_num ||' '||                                 -- 口座番号
+                       account.account_holder_name||' '||                               -- 口座名義人
+                       account.account_holder_name_alt)                                 -- 口座名義人カナ名
+                     END,
+                     xil.ship_cust_code,
+                     hzp.party_name,
+                     TO_CHAR(DECODE(xil.acceptance_date,
+                                    NULL,xil.delivery_date,
+                                    xil.acceptance_date),
+                     cv_format_date_ymds2),
+                     xil.slip_num,
+                     xil.tax_rate,
+                     CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+                       cv_os_flag_y
+                     ELSE
+                       NULL
+                     END
+                     ;
+--
+            EXCEPTION
+              WHEN OTHERS THEN  -- 登録時エラー
+                lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
+                                                               ,cv_msg_003a18_013    -- テーブル登録エラー
+                                                               ,cv_tkn_table         -- トークン'TABLE'
+                                                               ,xxcfr_common_pkg.get_table_comment(cv_table_d_l))
+                                                              -- 標準請求書税込帳票内訳印刷単位Dワークテーブル明細
+                                     ,1
+                                     ,5000);
+                lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+                RAISE global_api_expt;
+            END;
+--
+            gn_target_cnt_d_l := gn_target_cnt_d_l + SQL%ROWCOUNT;
+--
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
           ELSE
             NULL;
           END IF;
@@ -5247,6 +5747,127 @@ AS
       END IF;
 --
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+      -- 印刷単位D明細の対象件数が0以外の場合
+      IF ( gn_target_cnt_d_l <> 0 ) THEN
+        -- 明細0件フラグ（2：対象データあり）
+        gv_target_d_flag := cv_taget_flag_2;
+--
+        -- 標準請求書帳票内訳印刷単位Dワークテーブルヘッダの登録
+        INSERT INTO xxcfr_rep_st_inv_d_h(
+           report_id                -- 帳票ID
+          ,issue_date               -- 発行日付
+          ,zip_code                 -- 郵便番号
+          ,send_address1            -- 住所１
+          ,send_address2            -- 住所２
+          ,send_address3            -- 住所３
+          ,bill_cust_code           -- 顧客コード
+          ,bill_cust_name           -- 顧客名
+          ,location_code            -- 担当拠点コード
+          ,location_name            -- 担当拠点名
+          ,phone_num                -- 電話番号
+          ,payment_cust_code        -- 売掛管理コード
+          ,payment_cust_name        -- 売掛管理顧客名
+          ,bank_account             -- 振込口座情報
+          ,outsourcing_flag         -- 業者委託フラグ
+          ,created_by               -- 作成者
+          ,creation_date            -- 作成日
+          ,last_updated_by          -- 最終更新者
+          ,last_update_date         -- 最終更新日
+          ,last_update_login        -- 最終更新ログイン
+          ,request_id               -- 要求ID
+          ,program_application_id   -- コンカレント・プログラム・アプリケーションID
+          ,program_id               -- コンカレント・プログラムID
+          ,program_update_date      -- プログラム更新日
+        )
+        SELECT cv_report_id_13                                   -- 帳票ID
+              ,xrsdl.issue_date                                  -- 発行日付
+              ,xrsdl.zip_code                                    -- 郵便番号
+              ,xrsdl.send_address1                               -- 住所１
+              ,xrsdl.send_address2                               -- 住所２
+              ,xrsdl.send_address3                               -- 住所３
+              ,xrsdl.bill_cust_code                              -- 顧客コード
+              ,xrsdl.bill_cust_name                              -- 顧客名
+              ,xrsdl.location_code                               -- 担当拠点コード
+              ,xrsdl.location_name                               -- 担当拠点名
+              ,xrsdl.phone_num                                   -- 電話番号
+              ,xrsdl.payment_cust_code                           -- 売掛管理コード
+              ,xrsdl.payment_cust_name                           -- 売掛管理顧客名
+              ,xrsdl.bank_account                                -- 振込口座情報
+              ,xrsdl.outsourcing_flag                            -- 業者委託フラグ
+              ,cn_created_by                                     -- 作成者
+              ,cd_creation_date                                  -- 作成日
+              ,cn_last_updated_by                                -- 最終更新者
+              ,cd_last_update_date                               -- 最終更新日
+              ,cn_last_update_login                              -- 最終更新ログイン
+              ,cn_request_id                                     -- 要求ID
+              ,cn_program_application_id                         -- コンカレント・プログラム・アプリケーションID
+              ,cn_program_id                                     -- コンカレント・プログラムID
+              ,cd_program_update_date                            -- プログラム更新日
+        FROM   xxcfr_rep_st_inv_inc_tax_d_l  xrsdl
+        WHERE  xrsdl.request_id = cn_request_id
+        GROUP BY cv_report_id_13             -- 帳票ID
+                ,xrsdl.issue_date            -- 発行日付
+                ,xrsdl.zip_code              -- 郵便番号
+                ,xrsdl.send_address1         -- 住所１
+                ,xrsdl.send_address2         -- 住所２
+                ,xrsdl.send_address3         -- 住所３
+                ,xrsdl.bill_cust_code        -- 顧客コード
+                ,xrsdl.bill_cust_name        -- 顧客名
+                ,xrsdl.location_code         -- 担当拠点コード
+                ,xrsdl.location_name         -- 担当拠点名
+                ,xrsdl.phone_num             -- 電話番号
+                ,xrsdl.payment_cust_code     -- 売掛管理コード
+                ,xrsdl.payment_cust_name     -- 売掛管理顧客名
+                ,xrsdl.bank_account          -- 振込口座情報
+                ,xrsdl.outsourcing_flag      -- 業者委託フラグ
+                ,cn_created_by               -- 作成者
+                ,cd_creation_date            -- 作成日
+                ,cn_last_updated_by          -- 最終更新者
+                ,cd_last_update_date         -- 最終更新日
+                ,cn_last_update_login        -- 最終更新ログイン
+                ,cn_request_id               -- 要求ID
+                ,cn_program_application_id   -- コンカレント・プログラム・アプリケーションID
+                ,cn_program_id               -- コンカレント・プログラムID
+                ,cd_program_update_date      -- プログラム更新日
+        ;
+--
+        gn_target_cnt_d_h := SQL%ROWCOUNT;
+--
+      -- 印刷単位：Dの顧客あり、かつ対象データがない場合
+      ELSIF ( gv_target_d_flag = cv_taget_flag_1 ) THEN
+        -- 帳票０件メッセージを標準請求書帳票内訳印刷単位Dワークテーブルヘッダに登録
+        INSERT INTO xxcfr_rep_st_inv_d_h (
+          data_empty_message           , -- 0件メッセージ
+          outsourcing_flag             , -- 業者委託フラグ
+          created_by                   , -- 作成者
+          creation_date                , -- 作成日
+          last_updated_by              , -- 最終更新者
+          last_update_date             , -- 最終更新日
+          last_update_login            , -- 最終更新ログイン
+          request_id                   , -- 要求ID
+          program_application_id       , -- コンカレント・プログラム・アプリケーションID
+          program_id                   , -- コンカレント・プログラムID
+          program_update_date          ) -- プログラム更新日
+        VALUES (
+          lv_no_data_msg               , -- 0件メッセージ
+          CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
+            cv_os_flag_y
+          ELSE
+            NULL
+          END                          , -- 業者委託フラグ
+          cn_created_by                , -- 作成者
+          cd_creation_date             , -- 作成日
+          cn_last_updated_by           , -- 最終更新者
+          cd_last_update_date          , -- 最終更新日
+          cn_last_update_login         , -- 最終更新ログイン
+          cn_request_id                , -- 要求ID
+          cn_program_application_id    , -- コンカレント・プログラム・アプリケーションID
+          cn_program_id                , -- コンカレント・プログラムID
+          cd_program_update_date       );-- プログラム更新日
+--
+      END IF;
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 -- Add 2013.12.13 Ver1.60 Start
 -- Mod 2015.07.31 Ver1.80 Start
 --      ELSE
@@ -5255,7 +5876,11 @@ AS
 -- Mod 2016.03.31 Ver1.90 Start
 --        OR ( gv_target_b_flag = cv_taget_flag_2 ) ) THEN
         OR ( gv_target_b_flag = cv_taget_flag_2 )
-        OR ( gv_target_c_flag = cv_taget_flag_2 ) ) THEN
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--        OR ( gv_target_c_flag = cv_taget_flag_2 ) ) THEN
+        OR ( gv_target_c_flag = cv_taget_flag_2 )
+        OR ( gv_target_d_flag = cv_taget_flag_2 ) ) THEN
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
 -- Mod 2016.03.31 Ver1.90 End
 -- Mod 2015.07.31 Ver1.80 End
 -- Mod 2016.09.06 Ver1.91 Start
@@ -5292,6 +5917,10 @@ AS
       END IF;
 --
     EXCEPTION
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+      WHEN global_api_expt THEN
+        RAISE global_api_expt;
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 -- Add 2013.12.13 Ver1.60 Start
       --ワーク更新例外
       WHEN update_work_expt THEN
@@ -5423,6 +6052,19 @@ AS
                xrsic.payment_cust_name,
                xrsic.location_name
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+      UNION ALL
+      SELECT xrsid.payment_cust_code  lv_payment_cust_code ,
+             xrsid.payment_cust_name  lv_payment_cust_name ,
+             xrsid.location_name      lv_location_name
+      FROM xxcfr_rep_st_inv_d_h  xrsid
+      WHERE xrsid.request_id         = cn_request_id  -- 要求ID
+        AND xrsid.bank_account       IS NULL          -- 振込口座
+        AND xrsid.data_empty_message IS NULL          -- 0件メッセージ
+      GROUP BY xrsid.payment_cust_code ,
+               xrsid.payment_cust_name,
+               xrsid.location_name
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
 -- Mod 2015.07.31 Ver1.80 Start
 --      ORDER BY xrsi.payment_cust_code ASC;
       ORDER BY lv_payment_cust_code ASC;
@@ -5447,7 +6089,11 @@ AS
 -- Mod 2016.03.31 Ver1.90 Start
 --      OR ( gn_target_cnt_b_h > 0 ) ) THEN
       OR ( gn_target_cnt_b_h > 0 )
-      OR ( gn_target_cnt_c_h > 0 ) ) THEN
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--      OR ( gn_target_cnt_c_h > 0 ) ) THEN
+      OR ( gn_target_cnt_c_h > 0 )
+      OR ( gn_target_cnt_d_h > 0 ) ) THEN
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
 -- Mod 2016.03.31 Ver1.90 End
 -- Mod 2015.07.31 Ver1.80 End
 --
@@ -5775,6 +6421,30 @@ AS
     lt_del_rep_st_inv_inc_c_l_data    g_del_rep_st_inv_inc_c_l_ttype;
 --
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+    -- 標準請求書帳票内訳印刷単位Dワークテーブルヘッダ抽出
+    CURSOR del_rep_st_inv_d_h_cur
+    IS
+      SELECT xrsidh.rowid        ln_rowid
+      FROM xxcfr_rep_st_inv_d_h xrsidh  -- 標準請求書帳票内訳印刷単位Dワークテーブルヘッダ
+      WHERE xrsidh.request_id = cn_request_id  -- 要求ID
+      FOR UPDATE NOWAIT;
+--
+    TYPE g_del_rep_st_inv_d_h_ttype IS TABLE OF ROWID INDEX BY PLS_INTEGER;
+    lt_del_rep_st_inv_d_h_data        g_del_rep_st_inv_d_h_ttype;
+--
+    -- 標準請求書税込帳票内訳印刷単位Dワークテーブル明細抽出
+    CURSOR del_rep_st_inv_inc_d_l_cur
+    IS
+      SELECT xrsidl.rowid        ln_rowid
+      FROM xxcfr_rep_st_inv_inc_tax_d_l xrsidl  -- 標準請求書税込帳票内訳印刷単位Dワークテーブル明細
+      WHERE xrsidl.request_id = cn_request_id  -- 要求ID
+      FOR UPDATE NOWAIT;
+--
+    TYPE g_del_rep_st_inv_inc_d_l_ttype IS TABLE OF ROWID INDEX BY PLS_INTEGER;
+    lt_del_rep_st_inv_inc_d_l_data    g_del_rep_st_inv_inc_d_l_ttype;
+--
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -6221,6 +6891,118 @@ AS
     END;
 --
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+    -- ⑧標準請求書帳票内訳印刷単位Dワークテーブルヘッダ削除処理
+    BEGIN
+      -- カーソルオープン
+      OPEN del_rep_st_inv_d_h_cur;
+--
+      -- データの一括取得
+      FETCH del_rep_st_inv_d_h_cur BULK COLLECT INTO lt_del_rep_st_inv_d_h_data;
+--
+      -- 処理件数のセット
+      ln_target_cnt := lt_del_rep_st_inv_d_h_data.COUNT;
+--
+      -- カーソルクローズ
+      CLOSE del_rep_st_inv_d_h_cur;
+--
+      -- 対象データが存在する場合レコードを削除する
+      IF (ln_target_cnt > 0) THEN
+        BEGIN
+          <<data_loop>>
+          FORALL ln_loop_cnt IN 1..ln_target_cnt
+            DELETE FROM xxcfr_rep_st_inv_d_h rep
+            WHERE rep.rowid = lt_del_rep_st_inv_d_h_data(ln_loop_cnt);
+--
+          -- コミット発行
+          COMMIT;
+--
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr       -- 'XXCFR'
+                                                          ,cv_msg_003a18_012    -- データ削除エラー
+                                                          ,cv_tkn_table         -- トークン'TABLE'
+                                                          ,xxcfr_common_pkg.get_table_comment(cv_table_d_h))
+                                                          -- 標準請求書帳票内訳印刷単位Dワークテーブルヘッダ
+                                ,1
+                                ,5000);
+            lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+            RAISE global_api_expt;
+        END;
+--
+      END IF;
+--
+    EXCEPTION
+      WHEN lock_expt THEN  -- テーブルロックできなかった
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
+                                                       ,cv_msg_003a18_011    -- テーブルロックエラー
+                                                       ,cv_tkn_table         -- トークン'TABLE'
+                                                       ,xxcfr_common_pkg.get_table_comment(cv_table_d_h))
+                                                      -- 標準請求書帳票内訳印刷単位Dワークテーブルヘッダ
+                             ,1
+                             ,5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+        ov_retcode := cv_status_error;
+    END;
+--
+    -- ⑨標準請求書税込帳票内訳印刷単位Dワークテーブル明細削除処理
+    BEGIN
+      -- カーソルオープン
+      OPEN del_rep_st_inv_inc_d_l_cur;
+--
+      -- データの一括取得
+      FETCH del_rep_st_inv_inc_d_l_cur BULK COLLECT INTO lt_del_rep_st_inv_inc_d_l_data;
+--
+      -- 処理件数のセット
+      ln_target_cnt := lt_del_rep_st_inv_inc_d_l_data.COUNT;
+--
+      -- カーソルクローズ
+      CLOSE del_rep_st_inv_inc_d_l_cur;
+--
+      -- 対象データが存在する場合レコードを削除する
+      IF (ln_target_cnt > 0) THEN
+        BEGIN
+          <<data_loop>>
+          FORALL ln_loop_cnt IN 1..ln_target_cnt
+            DELETE FROM xxcfr_rep_st_inv_inc_tax_d_l rep
+            WHERE rep.rowid = lt_del_rep_st_inv_inc_d_l_data(ln_loop_cnt);
+--
+          -- コミット発行
+          COMMIT;
+--
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                          ,cv_msg_003a18_012 -- データ削除エラー
+                                                          ,cv_tkn_table      -- トークン'TABLE'
+                                                          ,xxcfr_common_pkg.get_table_comment(cv_table_d_l))
+                                                          -- 標準請求書税込帳票内訳印刷単位Dワークテーブル明細
+                                ,1
+                                ,5000);
+            lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+            RAISE global_api_expt;
+        END;
+--
+      END IF;
+--
+    EXCEPTION
+      WHEN lock_expt THEN  -- テーブルロックできなかった
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(cv_msg_kbn_cfr        -- 'XXCFR'
+                                                       ,cv_msg_003a18_011    -- テーブルロックエラー
+                                                       ,cv_tkn_table         -- トークン'TABLE'
+                                                       ,xxcfr_common_pkg.get_table_comment(cv_table_d_l))
+                                                      -- 標準請求書税込帳票内訳印刷単位Dワークテーブル明細
+                             ,1
+                             ,5000);
+        lv_errbuf  := lv_errmsg ||cv_msg_part|| SQLERRM;
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+        ov_retcode := cv_status_error;
+    END;
+--
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
   EXCEPTION
 -- Mod 2015.07.31 Ver1.80 End
 --
@@ -6336,6 +7118,9 @@ AS
     --==============================================================
     -- コンカレント発行
     --==============================================================
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+    g_org_request(in_req_cnt).conc_name := lv_conc_name;
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
     g_org_request(in_req_cnt).request_id := fnd_request.submit_request(
                                                application => cv_msg_kbn_cfr         -- アプリケーション短縮名
 -- Mod 2016.03.31 Ver1.90 Start
@@ -6473,7 +7258,10 @@ AS
                           iv_application  => cv_msg_kbn_cfr
                          ,iv_name         => cv_msg_003a18_029
                          ,iv_token_name1  => cv_tkn_conc
-                         ,iv_token_value1 => cv_conc_name
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--                         ,iv_token_value1 => cv_conc_name
+                         ,iv_token_value1 => ig_org_request_id(i).conc_name
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
                          ,iv_token_name2  => cv_tkn_request_id
                          ,iv_token_value2 => TO_CHAR(ig_org_request_id(i).request_id)
                        );
@@ -6487,7 +7275,10 @@ AS
                             iv_application  => cv_msg_kbn_cfr
                            ,iv_name         => cv_msg_003a18_030
                            ,iv_token_name1  => cv_tkn_conc
-                           ,iv_token_value1 => cv_conc_name
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--                           ,iv_token_value1 => cv_conc_name
+                           ,iv_token_value1 => ig_org_request_id(i).conc_name
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
                            ,iv_token_name2  => cv_tkn_request_id
                            ,iv_token_value2 => TO_CHAR(ig_org_request_id(i).request_id)
                          );
@@ -6498,7 +7289,10 @@ AS
                             iv_application  => cv_msg_kbn_cfr
                            ,iv_name         => cv_msg_003a18_031
                            ,iv_token_name1  => cv_tkn_conc
-                           ,iv_token_value1 => cv_conc_name
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--                           ,iv_token_value1 => cv_conc_name
+                           ,iv_token_value1 => ig_org_request_id(i).conc_name
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
                            ,iv_token_name2  => cv_tkn_request_id
                            ,iv_token_value2 => TO_CHAR(ig_org_request_id(i).request_id)
                          );
@@ -6510,7 +7304,10 @@ AS
                              iv_application  => cv_msg_kbn_cfr
                            , iv_name         => cv_msg_003a18_032
                            , iv_token_name1  => cv_tkn_conc
-                           , iv_token_value1 => cv_conc_name
+-- Ver.1.92 [障害E_本稼動_15307] MOD START
+--                           , iv_token_value1 => cv_conc_name
+                           ,iv_token_value1 => ig_org_request_id(i).conc_name
+-- Ver.1.92 [障害E_本稼動_15307] MOD END
                            , iv_token_name2  => cv_tkn_request_id
                            , iv_token_value2 => TO_CHAR(ig_org_request_id(i).request_id)
                          );
@@ -6838,6 +7635,41 @@ AS
     END IF;
 --
 -- Add 2016.03.31 Ver1.90 End
+-- Ver.1.92 [障害E_本稼動_15307] ADD START
+    -- 明細0件フラグD＝1の場合
+    IF ( gv_target_d_flag = cv_taget_flag_1 ) THEN
+      gn_req_cnt := gn_req_cnt + 1;
+      -- 請求書タイプ：13の要求発行
+      exec_submit_req(
+         cv_bill_type_13           -- 請求書タイプ
+        ,gn_req_cnt                -- 要求発行数
+        ,gn_target_cnt_d_h         -- 対象件数
+        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+    -- 明細0件フラグD＝2の場合
+    ELSIF ( gv_target_d_flag =  cv_taget_flag_2 ) THEN
+      gn_req_cnt := gn_req_cnt + 1;
+      -- 請求書タイプ：13の要求発行
+      exec_submit_req(
+         cv_bill_type_13           -- 請求書タイプ
+        ,gn_req_cnt                -- 要求発行数
+        ,gn_target_cnt_d_h         -- 対象件数
+        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+      gn_req_cnt := gn_req_cnt + 1;
+      -- 請求書タイプ：14の要求発行
+      exec_submit_req(
+         cv_bill_type_14           -- 請求書タイプ
+        ,gn_req_cnt                -- 要求発行数
+        ,gn_target_cnt_d_l         -- 対象件数
+        ,lv_errbuf_svf             -- エラー・メッセージ           --# 固定 #
+        ,lv_retcode_svf            -- リターン・コード             --# 固定 #
+        ,lv_errmsg_svf);           -- ユーザー・エラー・メッセージ --# 固定 #
+    END IF;
+--
+-- Ver.1.92 [障害E_本稼動_15307] ADD END
     -- =====================================================
     --  コンカレント終了待機処理(A-14)
     -- =====================================================
