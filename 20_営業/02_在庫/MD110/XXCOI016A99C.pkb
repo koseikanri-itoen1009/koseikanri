@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A99C(body)
  * Description      : ロット別出荷情報作成_移行用
  * MD.050           : -
- * Version          : 1.0
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2015/05/12    1.0   S.Yamashita       新規作成
+ *  2018/10/02    1.4   K.Nara            E_本稼動_15276対応
  *
  *****************************************************************************************/
 --
@@ -1198,6 +1199,9 @@ AS
            id_use_by_date          => TO_DATE(iv_lot, cv_yyyymmdd) -- 賞味期限
          , id_product_date         => id_production_date           -- 製造年月日
          , iv_fresh_condition      => gt_cust_fresh_con_code       -- 鮮度条件
+-- Ver.1.4 [障害E_本稼動_15276] SCSK K.Nara ADD START
+         , iv_item_code            => iv_item_code                 -- 品目コード
+-- Ver.1.4 [障害E_本稼動_15276] SCSK K.Nara ADD END
          , od_fresh_condition_date => ld_fresh_condition_date      -- 鮮度条件基準日
          , ov_errbuf               => lv_errbuf                    -- エラーメッセージ
          , ov_retcode              => lv_retcode                   -- リターン・コード(0:正常、2:エラー)
