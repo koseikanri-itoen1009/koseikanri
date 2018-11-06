@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2017/01/23    1.17  S.Yamashita      [E_本稼動_13965]倉替入力の簡素化対応(引当可能数(総数)算出(ファンクション型)を追加)
  *  2017/04/18    1.18  S.Niki           [E_本稼動_14166]引当可能数表示対応(引当可能数(総数)算出2(ファンクション型)を追加)
  *  2017/07/03    1.19  S.Yamashita      [E_本稼動_14393]引当可能数算出 ヒント句追加
+ *  2018/10/02    1.20  K.Nara           [E_本稼動_15276]鮮度基準日算出用の条件を細分化
  *
  *****************************************************************************************/
 --
@@ -6884,6 +6885,9 @@ AS
     id_use_by_date           IN  DATE             -- 賞味期限
    ,id_product_date          IN  DATE             -- 製造年月日
    ,iv_fresh_condition       IN  VARCHAR2         -- 鮮度条件
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+   ,iv_item_code             IN  VARCHAR2         -- 品目コード
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
    ,od_fresh_condition_date  OUT DATE             -- 鮮度条件基準日
    ,ov_errbuf                OUT VARCHAR2         -- エラーメッセージ
    ,ov_retcode               OUT VARCHAR2         -- リターン・コード(0:正常、2:エラー)
@@ -6906,6 +6910,10 @@ AS
     cv_err_msg_xxcoi1_10588   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10588'; -- 賞味期限
     cv_err_msg_xxcoi1_10589   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10589'; -- 製造年月日
     cv_err_msg_xxcoi1_10590   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10590'; -- 鮮度条件
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+    cv_err_msg_xxcoi1_10677   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10677'; -- 品目コード
+    cv_err_msg_xxcoi1_10738   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10738'; -- 賞味期間情報取得エラー
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
     cv_err_msg_xxcoi1_10591   CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10591'; -- 鮮度条件情報取得エラー
 --
     cv_msg_tkn_param1         CONSTANT VARCHAR2(13)  := 'PARAM1';           -- トークン：パラメータ１
@@ -6922,6 +6930,10 @@ AS
     lt_fresh_condition_type   fnd_lookup_values.attribute1%TYPE;  -- 鮮度条件タイプ
     lt_standard_value         fnd_lookup_values.attribute2%TYPE;  -- 基準値
     lt_adjusted_value         fnd_lookup_values.attribute3%TYPE;  -- 調整値
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+    lt_multi_value            fnd_lookup_values.attribute4%TYPE;  -- 基準値（倍率）
+    lt_expiration_day         xxcmn_item_mst_b.expiration_day%TYPE;  -- 賞味期間
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
     ld_proc_date              DATE; -- 業務日付
 --
 --#####################  固定ローカル変数宣言部 START   ########################
@@ -6947,6 +6959,9 @@ AS
     lt_fresh_condition_type  := NULL;  -- 鮮度条件タイプ
     lt_standard_value        := NULL;  -- 基準値
     lt_adjusted_value        := NULL;  -- 調整値
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+    lt_multi_value           := NULL;  -- 基準値（倍率）
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
     ld_proc_date             := NULL;  -- 業務日付
 --
     -- ======================================
@@ -6992,6 +7007,21 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+    -- 品目コードがNULLの場合
+    IF ( iv_item_code IS NULL ) THEN
+      -- 入力パラメータ未設定エラーメッセージを設定
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_00024
+                     ,iv_token_name1  => cv_msg_tkn_in_param_name
+                     ,iv_token_value1 => cv_err_msg_xxcoi1_10677 -- 品目コード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
     -- 業務日付を取得
     ld_proc_date := xxccp_common_pkg2.get_process_date;
     -- 取得できない場合は、エラー
@@ -7011,9 +7041,15 @@ AS
       SELECT flv.attribute1    fresh_condition_type -- 鮮度条件タイプ
             ,flv.attribute2    standard_value       -- 基準値
             ,flv.attribute3    adjusted_value       -- 調整値
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+            ,flv.attribute4    multi_value          -- 基準値（倍率）
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
       INTO   lt_fresh_condition_type -- 鮮度条件タイプ
             ,lt_standard_value       -- 基準値
             ,lt_adjusted_value       -- 調整値
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+            ,lt_multi_value          -- 基準値（倍率）
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
       FROM   fnd_lookup_values  flv    -- 参照タイプ
       WHERE  flv.lookup_type         = cv_freshness_condition -- タイプ
         AND  flv.language            = USERENV('LANG')        -- 言語
@@ -7035,6 +7071,34 @@ AS
       RAISE global_process_expt;
     END;
 --
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+    -- ======================================
+    -- ２－２：賞味期間情報取得
+    -- ======================================
+    BEGIN
+      SELECT ximb.expiration_day expiration_day        -- 賞味期間
+      INTO   lt_expiration_day
+      FROM   xxcmn_item_mst_b   ximb                   -- OPM品目アドオンマスタ
+            ,ic_item_mst_b      iimb                   -- OPM品目マスタ
+      WHERE iimb.item_no            = iv_item_code     -- INパラメータ.品目コード
+      AND   iimb.item_id            = ximb.item_id
+      AND   ximb.start_date_active <= TRUNC( SYSDATE ) -- 適用開始日
+      AND   ximb.end_date_active   >= TRUNC( SYSDATE ) -- 適用終了日
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+      -- 賞味期間情報取得エラー
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_msg_kbn_coi
+                     ,iv_name         => cv_err_msg_xxcoi1_10738
+                     ,iv_token_name1  => cv_msg_tkn_param1
+                     ,iv_token_value1 => iv_item_code   -- INパラメータ.品目コード
+                    );
+      lv_errbuf := SQLERRM;
+      RAISE global_process_expt;
+    END;
+--
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
     -- ======================================
     -- ３：鮮度条件基準日算出
     -- ======================================
@@ -7048,8 +7112,12 @@ AS
     -- 鮮度条件タイプ = '1' (賞味期限基準) の場合
     ELSIF ( lt_fresh_condition_type = cv_fresh_con_type_1 ) THEN
       od_fresh_condition_date
-        := id_product_date              -- 製造年月日
-         + TRUNC((id_use_by_date - id_product_date) / lt_standard_value) -- (賞味期限 - 製造年月日) / 基準値
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara MOD START
+--        := id_product_date              -- 製造年月日
+--         + TRUNC((id_use_by_date - id_product_date) / lt_standard_value) -- (賞味期限 - 製造年月日) / 基準値
+        := id_use_by_date               -- 賞味期限
+         - TRUNC(lt_expiration_day * lt_multi_value / lt_standard_value) -- 賞味期間 * 基準値（倍率）/ 基準値
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara MOD END
          + NVL( lt_adjusted_value, 0 ); -- 調整値
     -- 鮮度条件タイプ = '2' (製造日基準) の場合
     ELSIF ( lt_fresh_condition_type = cv_fresh_con_type_2 ) THEN
@@ -7403,6 +7471,9 @@ AS
     id_use_by_date     IN  DATE     -- 賞味期限
    ,id_product_date    IN  DATE     -- 製造年月日
    ,iv_fresh_condition IN  VARCHAR2 -- 鮮度条件
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+   ,iv_item_code       IN  VARCHAR2 -- 品目コード
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
   ) RETURN DATE
   IS
 --
@@ -7432,6 +7503,9 @@ AS
       id_use_by_date          => id_use_by_date     -- 賞味期限
      ,id_product_date         => id_product_date    -- 製造年月日
      ,iv_fresh_condition      => iv_fresh_condition -- 鮮度条件
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD START
+     ,iv_item_code            => iv_item_code       -- 品目コード
+-- Ver.1.20 [障害E_本稼動_15276] SCSK K.Nara ADD END
      ,od_fresh_condition_date => ld_return          -- 鮮度条件基準日
      ,ov_errbuf               => lv_errbuf          -- エラーメッセージ
      ,ov_retcode              => lv_retcode         -- リターン・コード(0:正常、2:エラー)
