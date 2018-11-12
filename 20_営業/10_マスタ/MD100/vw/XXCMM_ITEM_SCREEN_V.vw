@@ -144,7 +144,9 @@ SELECT   iimb.item_no                      AS item_no                       -- •
 -- 2016/11/25 E_–{‰Ò“®_09591 add start by K.Kiriu
         ,iimb.attribute19                  AS freshness_condition           -- ‘N“xğŒ
 -- 2016/11/25 E_–{‰Ò“®_09591 add end by K.Kiriu
-
+-- 2018/10/23 E_–{‰Ò“®_15277 add start by Y.Shoji
+        ,ximb.lot_reversal_type            AS lot_reversal_type             -- ƒƒbƒg‹t“]‹æ•ª
+-- 2018/10/23 E_–{‰Ò“®_15277 add end by Y.Shoji
 FROM     ic_item_mst_b      iimb        -- OPM•i–Úƒ}ƒXƒ^
         ,xxcmn_item_mst_b   ximb        -- OPM•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
         ,xxcmm_system_items_b xsib      -- Disc•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
@@ -601,3 +603,7 @@ COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.BARACHA_DIV_CATEGORY_SET_ID IS 'ƒoƒ‰’
 COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.FRESHNESS_CONDITION IS '‘N“xğŒ'
 -- 2016/11/25 E_–{‰Ò“®_09591 add end by K.Kiriu
 /
+-- 2018/10/23 E_–{‰Ò“®_15277 add start by Y.Shoji
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.lot_reversal_type IS 'ƒƒbƒg‹t“]‹æ•ª'
+/
+-- 2018/10/23 E_–{‰Ò“®_15277 add end by Y.Shoji
