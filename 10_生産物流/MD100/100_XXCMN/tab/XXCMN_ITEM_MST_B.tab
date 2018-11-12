@@ -35,6 +35,9 @@ CREATE TABLE xxcmn.xxcmn_item_mst_b
     palette_step_qty          NUMBER(2),
     cs_weigth_or_capacity     NUMBER(10),
     raw_material_consumption  NUMBER(10),
+-- Ver.1.2 E_本稼動_15277 Add Start
+    lot_reversal_type         NUMBER(1,0),
+-- Ver.1.2 E_本稼動_15277 Add End
     attribute1                VARCHAR2(20),
     attribute2                VARCHAR2(20),
     attribute3                VARCHAR2(20),
@@ -86,7 +89,10 @@ COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.palette_max_cs_qty        IS '配数' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.palette_max_step_qty      IS 'パレット当り最大段数' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.palette_step_qty          IS 'パレット段' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.cs_weigth_or_capacity     IS 'ケース重量容積' ;
-COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.raw_material_consumption  IS '原料使用量' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.raw_material_consumption  IS '原料使用量' 
+-- Ver.1.2 E_本稼動_15277 Add Start
+COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.lot_reversal_type         IS 'ロット逆転区分'
+-- Ver.1.2 E_本稼動_15277 Add End;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.attribute1                IS '予備１' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.attribute2                IS '予備２' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_mst_b.attribute3                IS '予備３' ;
