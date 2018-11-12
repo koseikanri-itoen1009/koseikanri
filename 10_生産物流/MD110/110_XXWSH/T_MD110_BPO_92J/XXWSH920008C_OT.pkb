@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,8 @@ AS
  *                                       v.1.15と本番環境で並存させる
  *  2017/06/02   1.17' SCSK桐生和幸      E_本稼動_14307対応 運用テストモジュールとして作成、
  *                                       v.1.15と本番環境で並存させる
+ *  2018/10/23   1.18' SCSK小路恭弘      E_本稼動_15277対応 運用テストモジュールとして作成、
+ *                                       v.1.17と本番環境で並存させる
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -278,7 +280,11 @@ AS
     frequent_whse              xxcmn_item_locations2_v.frequent_whse%TYPE,              -- 代表倉庫 V
     inventory_location_id      xxcmn_item_locations2_v.inventory_location_id%TYPE,      -- 代表保管棚ID
     num_of_cases               xxcmn_item_mst2_v.num_of_cases%TYPE,                     -- ケース入数 N
-    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE                         -- 入出庫換算単位 V
+-- 2018/10/23 Y.Shoji Ver1.18' START
+--    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE                         -- 入出庫換算単位 V
+    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE,                        -- 入出庫換算単位 V
+    lot_reversal_type          xxcmn_item_mst2_v.lot_reversal_type%TYPE                 -- ロット逆転区分 N
+-- 2018/10/23 Y.Shoji Ver1.18' END
   );
   TYPE demand_tbl IS TABLE OF demand_rec INDEX BY PLS_INTEGER;
   gr_demand_tbl  demand_tbl;
@@ -307,7 +313,11 @@ AS
     frequent_whse              xxcmn_item_locations2_v.frequent_whse%TYPE,              -- 代表倉庫 V
     inventory_location_id      xxcmn_item_locations2_v.inventory_location_id%TYPE,      -- 代表保管棚ID
     num_of_cases               xxcmn_item_mst2_v.num_of_cases%TYPE,                     -- ケース入数 N
-    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE                         -- 入出庫換算単位 V
+-- 2018/10/23 Y.Shoji Ver1.18' START
+--    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE                         -- 入出庫換算単位 V
+    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE,                        -- 入出庫換算単位 V
+    lot_reversal_type          xxcmn_item_mst2_v.lot_reversal_type%TYPE                 -- ロット逆転区分 N
+-- 2018/10/23 Y.Shoji Ver1.18' END
   );
   TYPE demand_tbl2 IS TABLE OF demand_rec2 INDEX BY PLS_INTEGER;
   gr_demand_tbl2  demand_tbl2;
@@ -3754,7 +3764,11 @@ AS
 -- 2009/01/19 D.Nihei MOD END
                           'NULL, ';                            -- 代表保管棚ID
     lv_fwd_sql5 :=        'im.num_of_cases, '               || -- ケース入数
-                          'im.conv_unit '                   || -- 入出庫換算単位
+-- 2018/10/23 Y.Shoji Ver1.18' START
+--                          'im.conv_unit '                   || -- 入出庫換算単位
+                          'im.conv_unit, '                  || -- 入出庫換算単位
+                          'NVL(im.lot_reversal_type, 0) '   || -- ロット逆転区分
+-- 2018/10/23 Y.Shoji Ver1.18' END
                    'FROM   xxcmn_item_locations2_v       il, ' || -- OPM保管場所マスタ
                           'xxwsh_order_headers_all       oh, ' || -- 受注ヘッダアドオン
                           'xxcmn_cust_accounts2_v        p,  ';
@@ -3966,7 +3980,11 @@ AS
 -- 2009/01/19 D.Nihei MOD END
                           'NULL, ';                            -- 代表保管棚ID
     lv_mov_sql5 :=        'im.num_of_cases, '               || -- ケース入数
-                          'im.conv_unit '                   || -- 入出庫換算単位
+-- 2018/10/23 Y.Shoji Ver1.18' START
+--                          'im.conv_unit '                   || -- 入出庫換算単位
+                          'im.conv_unit, '                  || -- 入出庫換算単位
+                          'NVL(im.lot_reversal_type, 0) '   || -- ロット逆転区分
+-- 2018/10/23 Y.Shoji Ver1.18' END
                    'FROM   xxcmn_item_locations2_v       il, ' || -- OPM保管場所マスタ
                           'xxinv_mov_req_instr_headers   ih, ';   -- 移動依頼/指示ヘッダアドオン
     lv_mov_sql6 :=        'xxinv_mov_req_instr_lines     ml, ' || -- 移動依頼/指示明細アドオン
@@ -5820,6 +5838,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2018/10/23 Y.Shoji Ver1.18' START
+    cn_lot_reversal_type_0  CONSTANT NUMBER(1) := 0; -- ロット逆転不可
+-- 2018/10/23 Y.Shoji Ver1.18' END
 --
     -- *** ローカル変数 ***
     lc_out_param     VARCHAR2(1000);   -- 入力パラメータの処理結果レポート出力用
@@ -6023,6 +6044,10 @@ AS
                     gr_demand_tbl2(ln_i_cnt).num_of_cases;          -- ケース入数 N
       gr_demand_tbl(gn_target_cnt_deliv+ln_i_cnt).conv_unit :=
                     gr_demand_tbl2(ln_i_cnt).conv_unit;             -- 入出庫換算単位 V
+-- 2018/10/23 Y.Shoji Ver1.18 START
+      gr_demand_tbl(gn_target_cnt_deliv+ln_i_cnt).lot_reversal_type :=
+                    gr_demand_tbl2(ln_i_cnt).lot_reversal_type;     -- ロット逆転区分
+-- 2018/10/23 Y.Shoji Ver1.18 END
     END LOOP deliv_plus_move_loop;
 --
     -- 需要情報ループ
@@ -6234,8 +6259,14 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
 -- 2016/02/18 S.Yamashita Ver1.15 START
 --            -- ロット製造日 < 逆転日付の場合
 --            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
-            -- ロット賞味期限 < 逆転日付の場合
-            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).use_by_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
+-- 2018/10/23 Y.Shoji Ver1.18' START
+--            -- ロット賞味期限 < 逆転日付の場合
+--            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).use_by_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
+            -- ロット賞味期限 < 逆転日付の場合、かつ
+            -- ロット逆転区分が0（ロット逆転不可）の場合
+            IF (  ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).use_by_date, 'YYYY/MM/DD') < ld_reversal_date )
+              AND ( gr_demand_tbl(ln_d_cnt).lot_reversal_type = cn_lot_reversal_type_0 ) ) THEN
+-- 2018/10/23 Y.Shoji Ver1.18' END
 -- 2016/02/18 S.Yamashita Ver1.15 END
               -- チェック処理結果を格納する
               IF ( ( gr_check_tbl(1).warnning_date IS NULL )
