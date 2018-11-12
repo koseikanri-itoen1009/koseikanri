@@ -92,6 +92,10 @@ CREATE OR REPLACE VIEW APPS.XXSKY_品目マスタ_現在_V
 ,鮮度条件
 ,鮮度条件名称
 -- 2016/11/25 K.Kiriu Add End   E_本稼動_09591
+-- 2018/10/29 N.Koyama Add Start E_本稼動_15277
+,ロット逆転区分
+,ロット逆転区分名称
+-- 2018/10/29 N.Koyama Add End   E_本稼動_15277
 ,作成者
 ,作成日
 ,最終更新者
@@ -343,6 +347,15 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
            AND FLV17.lookup_code = IIMB.attribute19               --クイックコード
         ) freshness_condition_name
 -- 2016/11/25 K.Kiriu Add End   E_本稼動_09591
+-- 2018/10/29 N.Koyama Add Start E_本稼動_15277
+       ,XIMB.lot_reversal_type              lot_reversal_type     --ロット逆転区分
+       ,(SELECT FLV19.meaning
+         FROM fnd_lookup_values FLV19                             --クイックコード(ロット逆転区分名称)
+         WHERE FLV19.language    = 'JA'                           --言語
+           AND FLV19.lookup_type = 'XXCMN_LOT_REVERSAL_TYPE'      --クイックコードタイプ
+           AND FLV19.lookup_code = XIMB.lot_reversal_type         --クイックコード
+       ) lot_reversal_name
+-- 2018/10/29 N.Koyama Add End  E_本稼動_15277
 -- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
        --,FU_CB.user_name               created_by_name             --CREATED_BYのユーザー名(ログイン時の入力コード)
        ,(SELECT FU_CB.user_name
@@ -665,6 +678,12 @@ COMMENT ON COLUMN APPS.XXSKY_品目マスタ_現在_V.鮮度条件               IS '鮮度条
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_現在_V.鮮度条件名称           IS '鮮度条件名称'
 /
 -- 2016/11/25 K.Kiriu Add End   E_本稼動_09591
+-- 2018/10/29 N.Koyama Add Start E_本稼動_15277
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_現在_V.ロット逆転区分         IS 'ロット逆転区分'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_現在_V.ロット逆転区分名称     IS 'ロット逆転区分名称'
+/
+-- 2018/10/29 N.Koyama Add End   E_本稼動_15277
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_現在_V.作成者                 IS '作成者'
 /
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_現在_V.作成日                 IS '作成日'
