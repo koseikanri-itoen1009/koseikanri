@@ -73,6 +73,9 @@ CREATE OR REPLACE VIEW xxcmn_item_mst2_v
   palette_step_qty,
   cs_weigth_or_capacity,
   raw_material_consumption,
+-- Ver.1.2 E_本稼動_15277 Add Start
+  lot_reversal_type,
+-- Ver.1.2 E_本稼動_15277 Add End
   attribute1,
   attribute2,
   attribute3,
@@ -153,6 +156,9 @@ AS
           ximb.palette_step_qty,
           ximb.cs_weigth_or_capacity,
           ximb.raw_material_consumption,
+-- Ver.1.2 E_本稼動_15277 Add Start
+          ximb.lot_reversal_type,
+-- Ver.1.2 E_本稼動_15277 Add End
           ximb.attribute1,
           ximb.attribute2,
           ximb.attribute3,
@@ -239,6 +245,9 @@ COMMENT ON COLUMN xxcmn_item_mst2_v.palette_max_step_qty      IS 'パレット当り最
 COMMENT ON COLUMN xxcmn_item_mst2_v.palette_step_qty          IS 'パレット段';
 COMMENT ON COLUMN xxcmn_item_mst2_v.cs_weigth_or_capacity     IS 'ケース重量容積';
 COMMENT ON COLUMN xxcmn_item_mst2_v.raw_material_consumption  IS '原料使用量';
+-- Ver.1.2 E_本稼動_15277 Add Start
+COMMENT ON COLUMN xxcmn_item_mst2_v.lot_reversal_type         IS 'ロット逆転区分';
+-- Ver.1.2 E_本稼動_15277 Add End
 COMMENT ON COLUMN xxcmn_item_mst2_v.attribute1                IS '予備１';
 COMMENT ON COLUMN xxcmn_item_mst2_v.attribute2                IS '予備２';
 COMMENT ON COLUMN xxcmn_item_mst2_v.attribute3                IS '予備３';
