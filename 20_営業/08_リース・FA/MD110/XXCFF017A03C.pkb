@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF017A03C(body)
  * Description      : 自販機情報FA連携処理リース(FA)
  * MD.050           : MD050_CFF_017_A03_自販機情報FA連携処理
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ----------------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2014/08/06    1.1   SCSK小路         E_本稼働_12263対応
  *  2017/04/19    1.2   SCSK小路         E_本稼働_14030対応
  *  2017/11/21    1.3   SCSK大塚         E_本稼働_14502対応
+ *  2018/11/05    1.4   SCSK佐々木       E_本稼動_14868対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -210,6 +211,10 @@ AS
   cv_segment9_3     CONSTANT VARCHAR2(1)  := '3';         -- 仕訳区分：3
   cv_segment12_1    CONSTANT VARCHAR2(1)  := '1';         -- FA連携チェック対象区分：1
 -- 2017/04/19 Ver.1.2 Y.Shoji ADD End
+--  V1.4 2018/11/05 Added START
+  cv_date_type_md   CONSTANT VARCHAR2(4)  :=  'MMDD';     --  月日の型
+  cv_date_0101      CONSTANT VARCHAR2(4)  :=  '0101';     --  1月1日
+--  V1.4 2018/11/05 Added END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -2471,11 +2476,29 @@ AS
           -- カテゴリDFF02の取得
           IF (g_cat_attribute2_tab(ln_loop_cnt) IS NULL) THEN
             -- カテゴリDFF02(取得日)がNULLの時、事業供用日をYYYY/MM/DD型でセットする
-            lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+--  V1.4 2018/11/05 Modified START
+--            lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+            IF ( TO_CHAR( g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type_md ) = cv_date_0101 ) THEN
+              --  事業供用日が1月1日の場合は、1月2日に変換する
+              lv_attribute2 := TO_CHAR( g_date_placed_in_service_tab(ln_loop_cnt) + 1, cv_date_type );
+            ELSE
+              --  1月1日以外の場合は、そのまま設定する
+              lv_attribute2 := TO_CHAR(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+            END IF;
+--  V1.4 2018/11/05 Modified END
           ELSE
             -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
-            lv_attribute2 := to_char(g_cat_attribute2_tab(ln_loop_cnt), cv_date_type);
+--  V1.4 2018/11/05 Modified START
+--            lv_attribute2 := to_char(g_cat_attribute2_tab(ln_loop_cnt), cv_date_type);
+            IF ( TO_CHAR( g_cat_attribute2_tab(ln_loop_cnt), cv_date_type_md ) = cv_date_0101 ) THEN
+              --  取得日が1月1日の場合は、1月2日に変換する
+              lv_attribute2 := TO_CHAR( g_cat_attribute2_tab(ln_loop_cnt) + 1, cv_date_type );
+            ELSE
+              --  1月1日以外の場合は、そのまま設定する
+              lv_attribute2 := TO_CHAR(g_cat_attribute2_tab(ln_loop_cnt), cv_date_type);
+            END IF;
           END IF;
+--  V1.4 2018/11/05 Modified END
 -- 2017/11/21 Ver.1.3 T.Otsuka ADD START
           -- IFRS関連項目の取得
           -- 自販機物件管理テーブルの内容を常に正とするためNVLなどの処理は行わない
@@ -2588,7 +2611,13 @@ AS
             ,ld_dpis_old                                             -- 事業供用日（修正前）
             ,ln_category_id_old                                      -- 資産カテゴリID（修正前）
             ,lv_cat_attribute_category_old                           -- 資産カテゴリコード（修正前）
-            ,g_date_placed_in_service_tab(ln_loop_cnt)               -- 事業供用日（修正後）
+--  V1.4 2018/11/05 Modified START
+--            ,g_date_placed_in_service_tab(ln_loop_cnt)               -- 事業供用日（修正後）
+            , CASE WHEN TO_CHAR( g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type_md ) = cv_date_0101
+                THEN  g_date_placed_in_service_tab(ln_loop_cnt) + 1
+                ELSE  g_date_placed_in_service_tab(ln_loop_cnt)
+              END                                       --  事業供用日
+--  V1.4 2018/11/05 Modified END
             ,lv_description                                          -- 摘要（修正後）
             ,g_transaction_units_tab(ln_loop_cnt)                    -- 単位
             ,lv_attribute2                                           -- カテゴリDFF2
@@ -4310,10 +4339,28 @@ AS
           -- DFF02(取得日)の取得
           IF (g_assets_date_tab(ln_loop_cnt) IS NULL) THEN
             -- DFF02(取得日)がNULLの時、事業供用日をYYYY/MM/DD型でセットする
-            lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+--  V1.4 2018/11/05 Modified START
+--            lv_attribute2 := to_char(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+            IF ( TO_CHAR( g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type_md ) = cv_date_0101 ) THEN
+              --  事業供用日が1月1日の場合は、1月2日に変換する
+              lv_attribute2 := TO_CHAR( g_date_placed_in_service_tab(ln_loop_cnt) + 1, cv_date_type );
+            ELSE
+              --  1月1日以外の場合は、そのまま設定する
+              lv_attribute2 := TO_CHAR(g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type);
+            END IF;
+--  V1.4 2018/11/05 Modified END
           ELSE
             -- DFF02(取得日)が存在する時、DFF02(取得日)をYYYY/MM/DD型でセットする
-            lv_attribute2 := to_char(g_assets_date_tab(ln_loop_cnt), cv_date_type);
+--  V1.4 2018/11/05 Modified START
+--            lv_attribute2 := to_char(g_assets_date_tab(ln_loop_cnt), cv_date_type);
+            IF ( TO_CHAR( g_assets_date_tab(ln_loop_cnt), cv_date_type_md ) = cv_date_0101 ) THEN
+              --  取得日が1月1日の場合は、1月2日に変換する
+              lv_attribute2 := TO_CHAR( g_assets_date_tab(ln_loop_cnt) + 1, cv_date_type );
+            ELSE
+              --  1月1日以外の場合は、そのまま設定する
+              lv_attribute2 := TO_CHAR(g_assets_date_tab(ln_loop_cnt), cv_date_type);
+            END IF;
+--  V1.4 2018/11/05 Modified END
           END IF;
 --
           -- 追加OIF登録
@@ -4357,7 +4404,13 @@ AS
             ,lv_description                            -- 摘要
             ,g_category_ccid_tab(ln_loop_cnt)          -- 資産カテゴリCCID
             ,gv_fixed_asset_register                   -- 台帳
-            ,g_date_placed_in_service_tab(ln_loop_cnt) -- 事業供用日
+--  V1.4 2018/11/05 Modified START
+--            ,g_date_placed_in_service_tab(ln_loop_cnt) -- 事業供用日
+            , CASE WHEN TO_CHAR( g_date_placed_in_service_tab(ln_loop_cnt), cv_date_type_md ) = cv_date_0101
+                THEN  g_date_placed_in_service_tab(ln_loop_cnt) + 1
+                ELSE  g_date_placed_in_service_tab(ln_loop_cnt)
+              END                                       --  事業供用日
+--  V1.4 2018/11/05 Modified END
             ,g_cost_tab(ln_loop_cnt)                   -- 取得価額
             ,g_payables_units_tab(ln_loop_cnt)         -- AP数量
             ,g_fixed_assets_units_tab(ln_loop_cnt)     -- 単位数量
