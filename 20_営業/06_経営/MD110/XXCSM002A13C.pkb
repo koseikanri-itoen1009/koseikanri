@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  * Package Name     : XXCSM002A13C(body)
  * Description      : 商品計画リスト(時系列_本数単位)出力
  * MD.050           : 商品計画リスト(時系列_本数単位)出力 MD050_CSM_002_A13
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -58,6 +58,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  *  2011/01/07    1.10  SCS OuKou       [E_本稼動_05803]
  *  2012/12/19    1.11  SCSK K.Taniguchi[E_本稼動_09949] 新旧原価選択可能対応
  *  2013/01/31    1.12  SCSK K.Taniguchi[E_本稼動_09949再] 年度開始日取得の不具合対応
+ *  2018/11/14    1.13  SCSK Y.Sasaki   [E_本稼動_15333] 政策群追加による変更（出力対象政策群を参照表管理へ）
  *
  *****************************************************************************************/
 --
@@ -247,6 +248,20 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   gv_prf_gl_set_of_bks_id               VARCHAR2(100) ;                                 -- 会計帳簿ID(Char)
   gn_prf_gl_set_of_bks_id               NUMBER;                                         -- 会計帳簿ID
 --//+ADD END E_本稼動_09949 K.Taniguchi
+--  2018/11/14 V1.13 Added START
+  --  処理対象の政策群保持用タイプ
+  TYPE g_group_rtype IS RECORD(
+      target_group      fnd_lookup_values.lookup_code%TYPE            --  政策群コード
+    , summary_type      fnd_lookup_values.lookup_code%TYPE            --  合計区分
+    , summary_name      fnd_lookup_values.description%TYPE            --  合計区分名
+    , summary_disp      VARCHAR2(1)                                   --  合計出力フラグ
+  );
+  TYPE g_group_ttype IS TABLE OF g_group_rtype INDEX BY BINARY_INTEGER ;
+  --
+  cv_lookup_summary     CONSTANT VARCHAR2(30) :=  'XXCSM1_ITEM_PLAN_LIST_SUMMARY';    --  商品計画リスト合計区分
+  cv_lookup_group       CONSTANT VARCHAR2(30) :=  'XXCSM1_ITEM_PLAN_LIST_GROUP';      --  商品計画リスト出力対象商品群
+  cv_summary_type_99    CONSTANT VARCHAR2(2)  :=  '99';                               --  合計区分99:その他合計
+--  2018/11/14 V1.13 Added END
 --
     /****************************************************************************
    * Procedure Name   : init
@@ -1057,7 +1072,14 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
    * Description      : 【商品合計】データの詳細処理
    ****************************************************************************/
   PROCEDURE deal_sum_data(
-            ov_errbuf     OUT NOCOPY VARCHAR2    -- エラー・メッセージ
+--  2018/11/14 V1.13 Added START
+            it_summary_type   fnd_lookup_values.lookup_code%TYPE        --  合計区分
+          , it_summary_name   fnd_lookup_values.description%TYPE        --  合計区分名
+--  2018/11/14 V1.13 Added END
+--  2018/11/14 V1.13 Modified START
+--            ov_errbuf     OUT NOCOPY VARCHAR2    -- エラー・メッセージ
+          , ov_errbuf     OUT NOCOPY VARCHAR2    -- エラー・メッセージ
+--  2018/11/14 V1.13 Modified END
            ,ov_retcode    OUT NOCOPY VARCHAR2    -- リターン・コード
            ,ov_errmsg     OUT NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ
   IS
@@ -1088,24 +1110,45 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
 --============================================
 --  データの抽出【商品合計】ローカル・カーソル
 --============================================
+--  2018/11/14 V1.13 Modified START
 --                  
-    CURSOR   
-        get_sum_data_cur
+--    CURSOR   
+--        get_sum_data_cur
+--    IS
+--      SELECT   
+--             month_no                                   AS  month                     -- 月
+--            ,SUM(NVL(m_amount,0))                       AS  amount                    -- 数量
+--            ,SUM(NVL(m_sales,0))                        AS  sales                     -- 売上金額
+--            ,SUM(NVL(t_price,0))                        AS  t_price                   -- 数量*定価
+--            ,SUM(NVL(g_price,0))                        AS  g_price                   -- 数量*原価
+--      FROM     
+--            xxcsm_tmp_sales_plan_hon                      -- 商品計画リスト出力ワークテーブル
+--      WHERE    
+--            item_cd                                     IN ( 'A','C' )           -- 商品群(A+C)
+--      GROUP BY
+--            month_no                                                                  -- 月
+--      ORDER BY 
+--            month_no    ASC;
+    CURSOR  get_sum_data_cur( it_summary_type IN  fnd_lookup_values.lookup_code%TYPE )
     IS
-      SELECT   
-             month_no                                   AS  month                     -- 月
-            ,SUM(NVL(m_amount,0))                       AS  amount                    -- 数量
-            ,SUM(NVL(m_sales,0))                        AS  sales                     -- 売上金額
-            ,SUM(NVL(t_price,0))                        AS  t_price                   -- 数量*定価
-            ,SUM(NVL(g_price,0))                        AS  g_price                   -- 数量*原価
-      FROM     
-            xxcsm_tmp_sales_plan_hon                      -- 商品計画リスト出力ワークテーブル
-      WHERE    
-            item_cd                                     IN ( 'A','C' )           -- 商品群(A+C)
-      GROUP BY
-            month_no                                                                  -- 月
-      ORDER BY 
-            month_no    ASC;
+      SELECT  xtsph.month_no                            AS  "MONTH"           --  月
+            , SUM( NVL( xtsph.m_amount,0 ) )            AS  "AMOUNT"          --  数量
+            , SUM( NVL( xtsph.m_sales, 0 ) )            AS  "SALES"           --  売上金額
+            , SUM( NVL( xtsph.t_price, 0 ) )            AS  "T_PRICE"         --  数量*定価
+            , SUM( NVL( xtsph.g_price, 0 ) )            AS  "G_PRICE"         --  数量*原価
+      FROM    xxcsm_tmp_sales_plan_hon     xtsph                     --  商品計画リスト出力ワークテーブル
+            , fnd_lookup_values           flv                       --  参照表：商品計画リスト出力対象商品群
+      WHERE   flv.lookup_type       =   cv_lookup_group
+      AND     flv.language          =   USERENV( 'LANG' )
+      AND     flv.enabled_flag      =   cv_flg_y
+      AND     SYSDATE   >=  flv.start_date_active
+      AND     SYSDATE   <=  NVL( flv.end_date_active, SYSDATE )
+      AND     flv.attribute1        =   it_summary_type             --  合計区分ごとにサマリ
+      AND     flv.lookup_code       =   xtsph.item_cd
+      GROUP BY  xtsph.month_no
+      ORDER BY  xtsph.month_no  ASC
+      ;
+--  2018/11/14 V1.13 Modified END
 --
   BEGIN
 --
@@ -1117,7 +1160,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
 --
     <<get_sum_data_loop>>
     -- 【商品合計】データ取得
-    FOR rec_sum IN get_sum_data_cur LOOP
+--  2018/11/14 V1.13 Modified START
+--    FOR rec_sum IN get_sum_data_cur LOOP
+    FOR rec_sum IN get_sum_data_cur( it_summary_type ) LOOP
+--  2018/11/14 V1.13 Modified END
         lb_loop_end     := TRUE;
         -- =======================================
         -- 年間累計【加算】
@@ -1163,7 +1209,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
               ,NULL
               ,NULL
               ,NULL
-              ,lv_prf_cd_sum_val
+--  2018/11/14 V1.13 Modified START
+--              ,lv_prf_cd_sum_val
+              , it_summary_name
+--  2018/11/14 V1.13 Modified END
               ,rec_sum.month
               ,rec_sum.sales
               ,rec_sum.amount
@@ -1194,8 +1243,12 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
               ,y_amount         = ln_y_amount         -- 年間数量
               ,y_rate           = ln_y_rate           -- 年間掛率
               ,y_margin         = ln_y_margin         -- 年間粗利益額
-        WHERE
-               item_nm          = lv_prf_cd_sum_val;  -- 商品名称：商品合計
+--  2018/11/14 V1.13 Modified START
+--        WHERE
+--               item_nm          = lv_prf_cd_sum_val;  -- 商品名称：商品合計
+        WHERE   item_nm         =   it_summary_name
+        ;
+--  2018/11/14 V1.13 Modified END
     END IF;
 --
 --
@@ -1485,14 +1538,27 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
             ,SUM(NVL(m_sales,0))                        AS  sales                     -- 売上金額
             ,SUM(NVL(t_price,0))                        AS  t_price                   -- 数量*定価
             ,SUM(NVL(g_price,0))                        AS  g_price                   -- 数量*原価
-      FROM     
-            xxcsm_tmp_sales_plan_hon                      -- 商品計画リスト出力ワークテーブル
-      WHERE    
-            item_cd                                     IN ( 'A','C','D','N' )        -- 商品群(A+C+D+N)
-      GROUP BY
-            month_no                                                                  -- 月
-      ORDER BY 
-            month_no    ASC;
+--  2018/11/14 V1.13 Modified START
+--      FROM     
+--            xxcsm_tmp_sales_plan_hon                      -- 商品計画リスト出力ワークテーブル
+--      WHERE    
+--            item_cd                                     IN ( 'A','C','D','N' )        -- 商品群(A+C+D+N)
+--      GROUP BY
+--            month_no                                                                  -- 月
+--      ORDER BY 
+--            month_no    ASC;
+      FROM    xxcsm_tmp_sales_plan_hon     xtsph             --  商品計画リスト出力ワークテーブル
+            , fnd_lookup_values           flv               --  参照表：商品計画リスト出力対象商品群
+      WHERE   flv.lookup_type       =   cv_lookup_group
+      AND     flv.language          =   USERENV( 'LANG' )
+      AND     flv.enabled_flag      =   cv_flg_y
+      AND     SYSDATE   >=  flv.start_date_active
+      AND     SYSDATE   <=  NVL( flv.end_date_active, SYSDATE )
+      AND     flv.lookup_code       =   xtsph.item_cd
+      GROUP BY  xtsph.month_no
+      ORDER BY  xtsph.month_no
+      ;
+--  2018/11/14 V1.13 Modified END
 --
   BEGIN
 --
@@ -1897,6 +1963,24 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
         xxcsm_tmp_sales_plan_hon
       GROUP BY group_cd_1;
 --
+--  2018/11/14 V1.13 Added START
+    --  ======================================
+    --    合計区分の抽出・カーソル
+    --  ======================================
+    CURSOR  cur_summary_type
+    IS
+      SELECT    flv.lookup_code       summary_type
+              , flv.description       summary_name
+      FROM      fnd_lookup_values     flv                           --  参照表：商品計画リスト合計区分
+      WHERE     flv.lookup_type       =   cv_lookup_summary
+      AND       flv.language          =   USERENV( 'LANG' )
+      AND       flv.enabled_flag      =   cv_flg_y
+      AND       SYSDATE   >=  flv.start_date_active
+      AND       SYSDATE   <=  NVL( flv.end_date_active, SYSDATE )
+      AND       flv.lookup_code       <>  cv_summary_type_99        --  その他合計は除く
+    ;
+    get_summary_type      cur_summary_type%ROWTYPE;
+--  2018/11/14 V1.13 Added END
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -2164,18 +2248,35 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
             END IF;
         END LOOP get_group1_data;
 --
-        -- ================================================
-        -- 【★★★★商品合計★★★★】
-        -- ================================================
-        deal_sum_data(
-                   lv_errbuf                      -- エラー・メッセージ
-                  ,lv_retcode                     -- リターン・コード
-                  ,lv_errmsg                      -- ユーザー・エラー・メッセージ
-                  );
-        IF (lv_retcode <> cv_status_normal) THEN  -- 戻り値が異常の場合
-          RAISE global_process_expt;
-        END IF;
-        
+--  2018/11/14 V1.13 Modified START
+--        -- ================================================
+--        -- 【★★★★商品合計★★★★】
+--        -- ================================================
+--        deal_sum_data(
+--                   lv_errbuf                      -- エラー・メッセージ
+--                  ,lv_retcode                     -- リターン・コード
+--                  ,lv_errmsg                      -- ユーザー・エラー・メッセージ
+--                  );
+--        IF (lv_retcode <> cv_status_normal) THEN  -- 戻り値が異常の場合
+--          RAISE global_process_expt;
+--        END IF;
+--        
+        FOR rec_summary_type IN cur_summary_type LOOP
+          --  ==========================================
+          --    その他合計以外の合計行作成
+          --  ==========================================
+          deal_sum_data(
+              it_summary_type       =>  rec_summary_type.summary_type     --  合計区分
+            , it_summary_name       =>  rec_summary_type.summary_name     --  合計区分名
+            , ov_errbuf             =>  lv_errbuf                         --  エラー・メッセージ
+            , ov_retcode            =>  lv_retcode                        --  リターン・コード
+            , ov_errmsg             =>  lv_errmsg                         --  ユーザー・エラー・メッセージ
+          );
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+          END IF;
+        END LOOP;
+--  2018/11/14 V1.13 Modified END
     END IF;
 --
     -- ================================================
@@ -2676,6 +2777,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   PROCEDURE deal_csv_data(
         iv_kyoten_cd      IN  VARCHAR2                                          -- 拠点コード
        ,iv_kyoten_nm      IN  VARCHAR2                                          -- 拠点名称
+--  2018/11/14 V1.13 Added START
+       ,it_target_group   IN  g_group_ttype                                     --  処理対象政策群
+--  2018/11/14 V1.13 Added END
        ,ov_errbuf         OUT NOCOPY VARCHAR2                                   -- エラー・メッセージ
        ,ov_retcode        OUT NOCOPY VARCHAR2                                   -- リターン・コード
        ,ov_errmsg         OUT NOCOPY VARCHAR2)                                  -- ユーザー・エラー・メッセージ
@@ -2732,6 +2836,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
 --//+ADD START 2009/02/23 CT031 S.Son
     lv_group4_nm                VARCHAR2(100);
 --//+ADD END 2009/02/23 CT031 S.Son
+--  2018/11/14 V1.13 Added START
+    ln_num                      NUMBER;             --  テーブル型変数添え字
+--  2018/11/14 V1.13 Added END
 --
 -- ==========================================================
 -- 商品コード・商品群コード・商品区分を取得【カーソル】
@@ -2772,8 +2879,14 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
     lv_group4_data    := NULL;  -- 商品群情報
     lv_group1_data    := NULL;  -- 商品区分情報
     lv_kyoten_data    := NULL;  -- 拠点情報
-    -- 商品群A
-    lv_item_group   := cv_group_A;
+--  2018/11/14 V1.13 Modified START
+--    -- 商品群A
+--    lv_item_group   := cv_group_A;
+--    
+    --  処理対象の政策群を設定
+    ln_num  :=  1;
+    lv_item_group   := it_target_group( ln_num ).target_group;
+--  2018/11/14 V1.13 Modified END
 -- 
     lv_kyoten_data := cv_msg_duble || iv_kyoten_cd || cv_msg_duble || cv_msg_comma;
     lv_kyoten_data := lv_kyoten_data || cv_msg_duble || iv_kyoten_nm || cv_msg_duble || cv_msg_comma;
@@ -3117,10 +3230,20 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
         END IF;
 --
         -- 判断・設定・集計
-        IF (lv_item_group = cv_group_A ) THEN
-            -- 【商品群A→商品群C】
-            lv_item_group := cv_group_C;
-        ELSIF (lv_item_group = cv_group_C ) THEN
+--  2018/11/14 V1.13 Modified START
+--        IF (lv_item_group = cv_group_A ) THEN
+--            -- 【商品群A→商品群C】
+--            lv_item_group := cv_group_C;
+        IF ( it_target_group( ln_num ).summary_disp = cv_flg_n ) THEN
+          --  合計出力フラグ N の場合、次の政策群を処理する
+          ln_num  :=  ln_num + 1;
+          lv_item_group :=  it_target_group( ln_num ).target_group;
+--  2018/11/14 V1.13 Modified END
+--  2018/11/14 V1.13 Modified START
+--        ELSIF (lv_item_group = cv_group_C ) THEN
+        ELSIF ( it_target_group( ln_num ).summary_disp = cv_flg_y AND it_target_group( ln_num ).summary_type <> cv_summary_type_99 ) THEN
+          --  合計出力フラグ Y で、合計区分が「その他合計」以外の場合
+--  2018/11/14 V1.13 Modified END
             IF (lb_loop_end = TRUE) THEN
                 -- ======================================================
                 -- 【★商品合計★】
@@ -3131,7 +3254,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
 --                
                 -- 空白|名称
                 lv_line_head := cv_msg_duble || cv_msg_space || cv_msg_duble || cv_msg_comma;
-                lv_line_head := lv_line_head || cv_msg_duble || lv_prf_cd_sum_val || cv_msg_duble || cv_msg_comma;
+--  2018/11/14 V1.13 Modified START
+--                lv_line_head := lv_line_head || cv_msg_duble || lv_prf_cd_sum_val || cv_msg_duble || cv_msg_comma;
+                lv_line_head := lv_line_head || cv_msg_duble || it_target_group( ln_num ).summary_name || cv_msg_duble || cv_msg_comma;
+--  2018/11/14 V1.13 Modified END
 --              
 --//+DEL START 2009/02/23 CT029 S.Son
                 -- 対象件数【加算】
@@ -3139,7 +3265,10 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
 --//+DEL END 2009/02/23 CT029 S.Son
                 -- 商品合計情報（数量・売上・粗利益額・掛率）
                 get_col_data(
-                             lv_prf_cd_sum_val
+--  2018/11/14 V1.13 Modified START
+--                             lv_prf_cd_sum_val
+                            it_target_group( ln_num ).summary_name
+--  2018/11/14 V1.13 Modified END
                             ,1
                             ,lv_line_head
                             ,lv_first_rec
@@ -3170,9 +3299,18 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
                                  ,buff   => lv_temp_item
                                  );
             END IF;
+--  2018/11/14 V1.13 Modified START
             -- 【商品群C→商品群D】
-            lv_item_group := cv_group_D;
-        ELSIF (lv_item_group = cv_group_D) THEN
+--            lv_item_group := cv_group_D;
+--            
+            --  次の商品群を処理
+            ln_num  :=  ln_num + 1;
+            lv_item_group :=  it_target_group( ln_num ).target_group;
+--  2018/11/14 V1.13 Modified END
+--  2018/11/14 V1.13 Modified START
+--        ELSIF (lv_item_group = cv_group_D) THEN
+        ELSIF ( it_target_group( ln_num ).summary_disp = cv_flg_y AND it_target_group( ln_num ).summary_type = cv_summary_type_99 ) THEN
+--  2018/11/14 V1.13 Modified END
             -- ======================================================
             -- 【★売上値引★】
             -- ======================================================
@@ -3404,6 +3542,34 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
 --
 --###########################  固定部 END   ####################################
 --
+--  2018/11/14 V1.13 Added START
+    ln_num                NUMBER;               --  テーブル型変数添え字
+    lt_target_group       g_group_ttype;        --  処理対象政策群
+    --
+    --  処理対象政策群取得CURSOR
+    CURSOR  cur_target_group
+    IS
+      SELECT  flv2.lookup_code        target_group            --  政策群
+            , flv1.lookup_code        summary_type            --  合計区分
+            , flv1.description        summary_name            --  合計区分名
+      FROM    fnd_lookup_values   flv1                        --  参照表：商品計画リスト合計区分
+            , fnd_lookup_values   flv2                        --  参照表：商品計画リスト出力対象商品群
+      WHERE   flv1.lookup_type      =   cv_lookup_summary
+      AND     flv1.language         =   USERENV( 'LANG' )
+      AND     flv1.enabled_flag     =   cv_flg_y
+      AND     SYSDATE   >=  flv1.start_date_active
+      AND     SYSDATE   <=  NVL( flv1.end_date_active, SYSDATE )
+      AND     flv2.lookup_type      =   cv_lookup_group
+      AND     flv2.language         =   USERENV( 'LANG' )
+      AND     flv2.enabled_flag     =   cv_flg_y
+      AND     SYSDATE   >=  flv2.start_date_active
+      AND     SYSDATE   <=  NVL( flv2.end_date_active, SYSDATE )
+      AND     flv1.lookup_code      =   flv2.attribute1
+      ORDER BY  flv1.lookup_code
+              , flv2.lookup_code
+    ;
+    rec_target_group      cur_target_group%ROWTYPE;
+--  2018/11/14 V1.13 Added END
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -3430,6 +3596,27 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
         RAISE global_api_others_expt;
     END IF;
 --
+--  2018/11/14 V1.13 Added START
+    --  ==============================================
+    --    処理対象の政策群情報を保持
+    --  ==============================================
+    ln_num  :=  0;
+    lt_target_group.DELETE;
+    FOR rec_target_group IN cur_target_group LOOP
+      ln_num  :=  ln_num + 1;
+      lt_target_group( ln_num ).target_group  :=  rec_target_group.target_group;      --  政策群
+      lt_target_group( ln_num ).summary_type  :=  rec_target_group.summary_type;      --  合計区分
+      lt_target_group( ln_num ).summary_name  :=  rec_target_group.summary_name;      --  合計区分名
+      lt_target_group( ln_num ).summary_disp  :=  cv_flg_n;                           --  合計出力フラグ
+      --
+      IF ( ln_num <> 1 AND lt_target_group( ln_num ).summary_type <> lt_target_group( ln_num - 1 ).summary_type ) THEN
+        --  合計区分が変わったら、一つ前の情報の合計出力フラグを Y に変更
+        lt_target_group( ln_num - 1 ).summary_disp  :=  cv_flg_y;
+      END IF;
+    END LOOP;
+    --  最終データの合計出力フラグを Y に変更
+    lt_target_group( ln_num ).summary_disp  :=  cv_flg_y;
+--  2018/11/14 V1.13 Added END
   -- ================================================
   -- 【拠点コードリスト】拠点毎に下記処理を繰り返す
   -- ================================================
@@ -3488,6 +3675,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
         deal_csv_data(
                      lv_kyoten_cd
                     ,lv_kyoten_nm
+--  2018/11/14 V1.13 Added START
+                    , lt_target_group
+--  2018/11/14 V1.13 Added END
                     ,lv_errbuf
                     ,lv_retcode
                     ,lv_errmsg
