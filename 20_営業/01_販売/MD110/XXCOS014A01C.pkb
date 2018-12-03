@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2010/06/11    1.22  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *  2017/12/05    1.23  K.Kiriu          [E_本稼動_14775] 品目マスタ取得条件不正対応
  *  2018/07/03    1.24  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
+ *  2018/07/27    1.25  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *
  *****************************************************************************************/
 --
@@ -255,6 +256,10 @@ AS
   -- 発生元区分
   cv_occurrence_div      CONSTANT VARCHAR2(1)  := '1';                                   --HHT
 -- Ver1.24 Add End
+-- Ver1.25 Add Start
+  -- 顧客ステータス
+  cv_cust_stop_div       CONSTANT VARCHAR2(2)  := '90';                                  --中止決裁済
+-- Ver1.25 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3376,10 +3381,14 @@ AS
        AND    xxcos_common2_pkg.get_deliv_slip_flag(
                 i_input_rec.publish_flag_seq
                ,oola.global_attribute2 )    = i_input_rec.publish_div                                         --納品書発行フラグ取得関数
-/* 2009/10/14 Ver1.17 Add End   */
-       --パーティマスタ抽出条件
-       AND   hp.party_id(+)                 = ivoh.party_id                                                   --パーティID
-/* 2009/08/12 Ver1.14 Mod Start */
+-- Ver1.25 Mod Start
+--/* 2009/10/14 Ver1.17 Add End   */
+--       --パーティマスタ抽出条件
+--       AND   hp.party_id(+)                 = ivoh.party_id                                                   --パーティID
+--/* 2009/08/12 Ver1.14 Mod Start */
+       AND   hp.party_id                    = ivoh.party_id                                                   --パーティID
+       AND   hp.duns_number_c              <> cv_cust_stop_div                                                --中止決裁済以外
+-- Ver1.25 Mod End
 --       --OPM品目マスタ抽出条件
 --       AND   opm.item_no(+)                 = oola.ordered_item                                               --品名コード
 --       AND   oola.request_date                                                                                --要求日
