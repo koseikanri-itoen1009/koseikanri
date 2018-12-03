@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2014/04/01    1.25  K.Kiriu          [E_本稼動_11726] 消費税率取得の障害対応
  *  2017/12/05    1.26  K.Kiriu          [E_本稼動_14775] 品目マスタ取得条件不正対応
  *  2018/07/03    1.27  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
+ *  2018/07/27    1.28  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -266,6 +267,10 @@ AS
   ct_user_lang                    CONSTANT mtl_category_sets_tl.language%TYPE := userenv('LANG'); --LANG
   ct_item_div_h                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ITEM_DIV_H';
 -- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
+-- Ver1.28 Add Start
+  -- 顧客ステータス
+  cv_cust_stop_div                CONSTANT VARCHAR2(2)    := '90';                                  --中止決裁済
+-- Ver1.28 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3464,6 +3469,9 @@ AS
                       AND    hca.customer_class_code    IN (cv_cust_class_chain_store, cv_cust_class_uesama)                  --顧客区分
                       --パーティマスタ(店舗)抽出条件
                       AND    hp.party_id                = hca.party_id                                                        --パーティID
+-- Ver1.28 Add Start
+                      AND    hp.duns_number_c          <> cv_cust_stop_div                                                    --中止決裁済以外
+-- Ver1.28 Add End
 /* 2010/06/18 Ver1.20 Mod Start */
 --                      --チェーン店店舗セキュリティビュー抽出条件
 --                      AND    xcss.chain_code            = xeh.edi_chain_code                                                  --チェーン店コード
@@ -4970,7 +4978,11 @@ AS
               AND   oola.line_type_id               = ottt_l.transaction_type_id
               AND   oola.flow_status_code           = cv_booked
               --パーティマスタ抽出条件
-              AND   hp.party_id(+)                  = ooha.party_id
+-- Ver1.28 Mod Start
+--              AND   hp.party_id(+)                  = ooha.party_id
+              AND   hp.party_id                     = ooha.party_id
+              AND   hp.duns_number_c               <> cv_cust_stop_div                                     -- 中止決裁済以外
+-- Ver1.28 Mod End
               --OPM品目情報インラインビュー抽出条件
               AND   opm.item_no(+)                  = oola.ordered_item
 -- Ver.1.26 Mod Start
