@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2010/02/16    1.14  K.Kiriu          [E_本稼動_01590] エラー明細出力対応（単位換算実行チェック追加）
  *  2010/06/14    1.15  S.Arizumi        [E_本稼動_03075] 拠点選択対応
  *  2011/09/20    1.16  T.Ishiwata       [E_本稼動_07906] 流通BMS対応
+ *  2018/07/27    1.17  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *
  *****************************************************************************************/
 --
@@ -210,6 +211,9 @@ AS
   cv_tsukagatazaiko_13            CONSTANT VARCHAR2(2)  := '13';                                   -- 通過在庫型区分13（受注を作成する）
   cv_data_type_31                 CONSTANT VARCHAR2(2)  := '31';                                   -- データ種(納品確定)
 -- 2010/02/16 Ver.1.14 add start
+-- Ver1.17 Add Start
+  cv_cust_stop_div                CONSTANT VARCHAR2(2)  := '90';                                   --顧客ステータス.中止決裁済
+-- Ver1.17 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3227,6 +3231,9 @@ AS
                                                 )                                --顧客マスタ.顧客区分                IN 顧客,上様
                  --パーティマスタ(店舗)抽出条件
                  AND hp.party_id              = hca.party_id                     --パーティマスタ.パーティID           = 顧客マスタ.パーティID
+-- Ver1.17 Add Start
+                 AND hp.duns_number_c        <> cv_cust_stop_div                 --パーティマスタ.顧客スタータス      <> 中止決裁済
+-- Ver1.17 Add End
                  --税コードマスタ抽出条件
                  AND xlvv.lookup_type         = ct_qc_consumption_tax_class
                  AND xlvv.attribute3          = xca.tax_div
