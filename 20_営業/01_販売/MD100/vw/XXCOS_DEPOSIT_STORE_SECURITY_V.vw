@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_deposit_store_security_v
  * Description     : 店舗（預り金VD）セキュリティview
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/03/06    1.0   K.Kumamoto       新規作成
  *  2009/05/07    1.1   K.Kiriu          [T1_0326]ステータス条件追加対応
+ *  2018/07/27    1.2   K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_deposit_store_security_v (
   user_id
@@ -45,10 +46,17 @@ AS
     FROM   xxcos_lookup_values_v xlvv
           ,xxcmm_cust_accounts xca
           ,hz_cust_accounts hca
+--Ver1.2 Add Start
+          ,hz_parties hp
+--Ver1.2 Add End
     WHERE  xlvv.lookup_type = 'XXCOS1_DEPOSIT_VD_CHAIN_MST'
     AND    xca.sales_chain_code = xlvv.lookup_code
     AND    hca.cust_account_id = xca.customer_id
     AND    hca.customer_class_code = '10'
+--Ver1.2 Add Start
+    AND    hca.party_id = hp.party_id
+    AND    hp.duns_number_c <> '90'             -- 中止決裁済以外
+--Ver1.2 Add End
     ) store
   ,(
     --base:拠点情報
