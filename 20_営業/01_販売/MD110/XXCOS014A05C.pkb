@@ -7,7 +7,7 @@ AS
  * Description      : 帳票発行画面(アドオン)で指定した条件を元にEDI経由で取り込んだ在庫情報を、
  *                    帳票サーバ向けにファイルを出力します。
  * MD.050           : 在庫情報データ作成 MD050_COS_014_A05
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2010/03/09    1.10  T.Nakano         [E_本稼動_01695] EDI取込日の変更
  *  2010/06/15    1.11  S.Niki           [E_本稼動_03075] 拠点選択対応
  *  2011/10/11    1.12  S.Niki           [E_本稼動_07906] 流通BMS対応
+ *  2018/07/27    1.13  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -185,6 +186,11 @@ AS
   cv_cust_class_uesama            CONSTANT VARCHAR2(2)  := '12';                                  --顧客区分.上様
   cv_prod_class_all               CONSTANT VARCHAR2(1)  := '0';                                   --商品区分.全て
   cv_item_div_h_code_A            CONSTANT VARCHAR2(1)  := 'A';                                   --ヘッダコード
+--
+-- Ver1.13 Add Start
+  -- 顧客ステータス
+  cv_cust_stop_div                CONSTANT VARCHAR2(2)  := '90';                                  --中止決裁済
+-- Ver1.13 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2164,6 +2170,9 @@ AS
                 --パーティマスタ
                   AND hp.party_id                 = hca.party_id
 /* 2010/06/15 Ver1.11 Del Start */
+-- Ver1.13 Add Start
+                 AND  hp.duns_number_c           <> cv_cust_stop_div                                          --中止決裁済以外
+-- Ver1.13 Add End
                 --店舗セキュリティVIEW
 --                  AND xcss.chain_code             = xei.edi_chain_code                                        --チェーン店コード
 --                  AND xcss.chain_store_code       = xei.shop_code                                             --店コード
