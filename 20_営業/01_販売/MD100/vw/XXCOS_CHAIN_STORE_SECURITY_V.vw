@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_chain_store_security_v
  * Description     : 店舗(チェーン店)セキュリティview
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   T.Kumamoto       新規作成
  *  2009/05/07    1.1   K.Kiriu          [T1_0326]ステータス条件追加対応
+ *  2018/07/27    1.2   K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_chain_store_security_v (
   user_id
@@ -45,9 +46,16 @@ AS
 /* 2009/05/07 Ver1.1 Add End   */
     FROM   xxcmm_cust_accounts                               xca_s
           ,hz_cust_accounts                                  hca_s
+--Ver1.2 Add Start
+          ,hz_parties                                        hp_s
+--Ver1.2 Add End
     WHERE  xca_s.chain_store_code IS NOT NULL
     AND    hca_s.cust_account_id = xca_s.customer_id
     AND    hca_s.customer_class_code IN ('10', '12')
+--Ver1.2 Add Start
+    AND    hca_s.party_id        = hp_s.party_id
+    AND    hp_s.duns_number_c   <> '90'               -- 中止決裁済以外
+--Ver1.2 Add End
   )                                                          store
   ,(
     --base:拠点情報
