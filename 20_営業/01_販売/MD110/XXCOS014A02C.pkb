@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2010/10/15    1.18  K.Kiriu          [E_本稼動_04783] 地区コード、地区名(漢字)、地区コード(カナ)出力変更対応
  *  2011/10/06    1.19  A.Shirakawa      [E_本稼動_07906] EDIの流通BMS対応
  *  2018/03/07    1.20  H.Sasaki         [E_本稼動_14882] 削除明細を表示する
+ *  2018/07/27    1.21  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -251,6 +252,10 @@ AS
   cv_select_block_1               CONSTANT VARCHAR2(1) := '1';                                    --変換後顧客コードがNULL以外のEDIヘッダデータ
   cv_select_block_2               CONSTANT VARCHAR2(1) := '2';                                    --変換後顧客コードがNULLのEDIヘッダ
 /* 2009/09/15 Ver1.12 Add End   */
+-- Ver1.21 Add Start
+  -- 顧客ステータス
+  cv_cust_stop_div                CONSTANT VARCHAR2(2)  := '90';                                  --中止決裁済
+-- Ver1.21 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -3234,6 +3239,9 @@ AS
                    )                                                                                                       --顧客区分
              --パーティマスタ(店舗)抽出条件
              AND    hp.party_id = hca.party_id                                                                    --パーティID
+-- Ver1.21 Add Start
+             AND    hp.duns_number_c <> cv_cust_stop_div                                                          --中止決裁済以外
+-- Ver1.21 Add End
 /* 2010/06/11 Ver1.17 Mod Start */
 --             --チェーン店店舗セキュリティビュー抽出条件
 --             AND    xcss.chain_code       = xeh.edi_chain_code                                                    --チェーン店コード
