@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/12/11    1.12  山本  恭久       本番障害#641対応
  *  2010/10/21    1.13  仁木  重人       E_本稼動_04840対応
  *  2018/10/12    1.14  小路  恭弘       E_本稼動_15274対応
+ *  2018/12/04    1.15  佐々木  大和     E_本稼動_15274追加対応
  *
  *****************************************************************************************/
 --
@@ -254,12 +255,15 @@ AS
                                                     -- 総重量/総容積（単位）
      ,loading_efficiency_weight  xxwsh_order_headers_all.loading_efficiency_weight%TYPE
                                                     -- 積載率
+-- 2018/12/04 Ver1.15 Added START
+     ,actual_quantity            xxinv_mov_lot_details.actual_quantity%TYPE
+                                                    -- 数量
+-- 2018/12/04 Ver1.15 Added END
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
      ,expiration_date            ic_lots_mst.attribute3%TYPE
                                                     -- 賞味期限
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
     ) ;
-
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -740,6 +744,16 @@ AS
               WHEN xoha.weight_capacity_class = '1' THEN xoha.loading_efficiency_weight
               WHEN xoha.weight_capacity_class = '2' THEN xoha.loading_efficiency_capacity
              END                                                        -- 積載率
+-- 2018/12/04 Ver1.15 Added START
+            ,SUM ( CASE
+                     WHEN xim2v.conv_unit IS NULL THEN xmld.actual_quantity
+                     ELSE  xmld.actual_quantity / CASE 
+                                                    WHEN xim2v.num_of_cases IS NULL THEN '1'
+                                                    WHEN xim2v.num_of_cases =  '0'  THEN '1'
+                                                    ELSE                                 xim2v.num_of_cases
+                                                  END
+                   END )  actual_quantity                               -- 数量
+-- 2018/12/04 Ver1.15 Added END
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
             ,ilm.attribute3           expiration_date                   -- 賞味期限
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
@@ -955,6 +969,97 @@ AS
         AND    xmld.record_type_code(+) = cv_record_type_code_10    -- 指示
         AND    xmld.lot_id              = ilm.lot_id(+)
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
+-- 2018/12/04 Ver1.15 added START
+      GROUP BY 
+            xoha.request_no                                             -- 依頼no
+            ,xoha.customer_code                                         -- 顧客コード
+            ,xca2v.party_short_name                                     -- 顧客
+            ,xcas2v.address_line1 || xcas2v.address_line2               -- 配送先住所
+            ,xoha.head_sales_branch                                     -- 管轄拠点コード
+            ,xca2v2.party_short_name                                    -- 管轄拠点
+            ,xoha.deliver_to                                            -- 配送先コード
+            ,xcas2v.party_site_full_name                                -- 配送先
+            ,xoha.mixed_no                                              -- 混載元no
+            ,xoha.cust_po_number                                        -- 顧客発注番号
+            ,NVL(xoha.schedule_ship_date,xoha.shipped_date)             -- 出庫日
+            ,NVL(xoha.schedule_arrival_date,xoha.arrival_date)          -- 着日
+            ,xoha.arrival_time_from                                     -- 時間指定（from）
+            ,xoha.arrival_time_to                                       -- 時間指定（to）
+            ,xott2v.transaction_type_name                               -- 出庫形態
+            ,xlv2v.meaning                                              -- 依頼区分
+            ,xsm2v.ship_method_meaning                                  -- 配送区分
+            ,xoha.collected_pallet_qty                                  -- パレット回収枚数
+            ,xlv2v2.meaning || cv_slash || xlv2v4.meaning               -- ステータス/通知ステータス
+            ,xlv2v3.meaning                                             -- 物流区分
+            ,xoha.shipping_instructions                                 -- 摘要
+            ,xoha.deliver_from                                          -- 出荷元コード
+            ,xil2v.short_name                                           -- 出荷元
+            ,xola.order_line_number                                     -- 明細番号
+            ,xola.request_item_code                                     -- 品目コード
+            ,xim2v.item_short_name                                      -- 品目
+            ,xola.pallet_quantity                                       -- パレット枚数
+            ,xola.layer_quantity                                        -- パレット段数
+            ,xola.case_quantity                                         -- ケース数
+            ,CASE
+              WHEN xim2v.conv_unit IS NULL THEN DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity)
+              ELSE DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity) / CASE
+                                    WHEN xim2v.num_of_cases IS NULL THEN '1'
+                                    WHEN xim2v.num_of_cases = '0'   THEN '1'
+                                    ELSE                                 xim2v.num_of_cases
+                                   END
+             END                                                        -- 総数
+            ,CASE
+              WHEN (( xim2v.conv_unit IS NOT NULL )
+                AND ( xim2v.num_of_cases  > '0' ) )
+              THEN
+                xim2v.conv_unit
+              ELSE
+                xim2v.item_um
+             END                                                        -- 総数（単位）
+            ,NVL(xim2v.num_of_cases, '-')                               -- 入数
+            ,CASE 
+              WHEN xsm2v.small_amount_class = '1' THEN
+                              CASE 
+                                WHEN xoha.weight_capacity_class = '1' THEN xola.weight
+                                WHEN xoha.weight_capacity_class = '2' THEN xola.capacity
+                              END 
+              WHEN NVL(xsm2v.small_amount_class,'0') = '0' THEN
+                              CASE 
+                                WHEN xoha.weight_capacity_class = '1'
+                                 THEN xola.pallet_weight + xola.weight
+                                WHEN xoha.weight_capacity_class = '2'
+                                 THEN xola.pallet_weight + xola.capacity
+                              END
+             END                                                        -- 合計重量/合計容積
+            ,CASE 
+              WHEN xim2v.weight_capacity_class = '1' THEN gv_name_wei_u
+              WHEN xim2v.weight_capacity_class = '2' THEN gv_name_cap_u
+             END                                                        -- 合計重量/合計容積(単位)
+            ,xoha.pallet_sum_quantity                                   -- ﾊﾟﾚｯﾄ合計枚数
+            ,CASE 
+              WHEN xsm2v.small_amount_class = '1' THEN
+                              CASE 
+                                WHEN xoha.weight_capacity_class = '1' THEN CEIL(TRUNC(xoha.sum_weight,1))
+                                WHEN xoha.weight_capacity_class = '2' THEN CEIL(TRUNC(xoha.sum_capacity,1))
+                              END 
+              WHEN NVL(xsm2v.small_amount_class,'0') = '0' THEN
+                              CASE 
+                                WHEN xoha.weight_capacity_class = '1'
+                                 THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_weight,1))
+                                WHEN xoha.weight_capacity_class = '2'
+                                 THEN CEIL(TRUNC(xoha.sum_pallet_weight + xoha.sum_capacity,1))
+                              END
+             END                                                        -- 総重量/総容積
+            ,CASE 
+              WHEN xoha.weight_capacity_class = '1' THEN gv_name_wei_u
+              WHEN xoha.weight_capacity_class = '2' THEN gv_name_cap_u
+             END                                                        -- 総重量/総容積（単位）
+            ,CASE 
+              WHEN xoha.weight_capacity_class = '1' THEN xoha.loading_efficiency_weight
+              WHEN xoha.weight_capacity_class = '2' THEN xoha.loading_efficiency_capacity
+             END                                                        -- 積載率
+            ,ilm.attribute3                                             -- 賞味期限
+-- 2018/12/04 Ver1.15 added END
 -- 2008/07/03 ST不具合対応#344 Start
 --      ORDER BY xoha.request_no         -- 依頼no
 --               ,xola.order_line_number -- 明細番号
@@ -962,6 +1067,9 @@ AS
                ,xoha.request_no        -- 依頼no
 -- 2008/07/03 ST不具合対応#344 End
                ,xola.order_line_number -- 明細番号
+-- 2018/12/04 Ver1.15 Added START
+               ,ilm.attribute3         -- 賞味期限
+-- 2018/12/04 Ver1.15 Added END
     ;
 --
   BEGIN
@@ -1085,8 +1193,10 @@ AS
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
     -- 前回品目No
     pre_item_code           xxwsh_order_lines_all.request_item_code%TYPE DEFAULT '*';
-    -- 前回賞味期限
-    pre_expiration_date     ic_lots_mst.attribute3%TYPE DEFAULT '*';
+-- 2018/12/04 Ver1.15 deleted START
+--    -- 前回賞味期限
+--    pre_expiration_date     ic_lots_mst.attribute3%TYPE DEFAULT '*';
+-- 2018/12/04 Ver1.15 deleted END
     -- 依頼No変更フラグ
     req_no_mod_flg          VARCHAR2(1);
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
@@ -1199,7 +1309,10 @@ AS
           insert_xml_plsql_table(iox_xml_data, 'control_code', 
                                   lt_main_data(get_user_rec).address_line1, 'D', 'C', 4);
           insert_xml_plsql_table(iox_xml_data, 'control_name', 
-                                  lt_main_data(get_user_rec).address_line_name, 'D', 'C', 20);
+-- 2018/12/04 v1.15 modified START
+--                                  lt_main_data(get_user_rec).address_line_name, 'D', 'C', 20);
+                                  lt_main_data(get_user_rec).address_line_name, 'D', 'C', 8);
+-- 2018/12/04 v1.15 modified END
           insert_xml_plsql_table(iox_xml_data, 'delivery_code', 
                                   lt_main_data(get_user_rec).deliver_to, 'D', 'C', 9);
           insert_xml_plsql_table(iox_xml_data, 'delivery_name', 
@@ -1315,25 +1428,38 @@ AS
                                   lt_main_data(get_user_rec).weight_capacity_class, 'D', 'C', 3);
         END IF;
 --
-        -- 依頼No変更フラグが'Y'、または、
-        -- 品目コードが変更された場合、または、
-        -- 賞味期限がNULLではなく、前回賞味期限と違う場合
-        IF ( req_no_mod_flg = 'Y'
-          OR pre_item_code <> lt_main_data(get_user_rec).request_item_code
-          OR (lt_main_data(get_user_rec).expiration_date IS NOT NULL
-            AND pre_expiration_date <> lt_main_data(get_user_rec).expiration_date) ) THEN
+-- 2018/12/04 Ver1.15 modified START
+--        -- 依頼No変更フラグが'Y'、または、
+--        -- 品目コードが変更された場合、または、
+--        -- 賞味期限がNULLではなく、前回賞味期限と違う場合
+--        IF ( req_no_mod_flg = 'Y'
+--          OR pre_item_code <> lt_main_data(get_user_rec).request_item_code
+--          OR (lt_main_data(get_user_rec).expiration_date IS NOT NULL
+--            AND pre_expiration_date <> lt_main_data(get_user_rec).expiration_date) ) THEN
+----
+--          --データグループ名開始タグセット
+--          insert_xml_plsql_table(iox_xml_data, 'llg_mei' , NULL, 'T', 'C', 0);
+--          insert_xml_plsql_table(iox_xml_data, 'expiration_date', 
+--                                  lt_main_data(get_user_rec).expiration_date, 'D', 'C', 10);
+--          --データグループ名終了タグセット
+--          insert_xml_plsql_table(iox_xml_data, '/llg_mei', NULL, 'T', 'C', 0);
+--          --前回賞味期限を更新
+--          pre_expiration_date := NVL(lt_main_data(get_user_rec).expiration_date ,'*');
+--          --前回品目Noを更新
+--          pre_item_code      := lt_main_data(get_user_rec).request_item_code;
+--        END IF;
 --
-          --データグループ名開始タグセット
-          insert_xml_plsql_table(iox_xml_data, 'llg_mei' , NULL, 'T', 'C', 0);
-          insert_xml_plsql_table(iox_xml_data, 'expiration_date', 
-                                  lt_main_data(get_user_rec).expiration_date, 'D', 'C', 10);
-          --データグループ名終了タグセット
-          insert_xml_plsql_table(iox_xml_data, '/llg_mei', NULL, 'T', 'C', 0);
-          --前回賞味期限を更新
-          pre_expiration_date := NVL(lt_main_data(get_user_rec).expiration_date ,'*');
-          --前回品目Noを更新
-          pre_item_code      := lt_main_data(get_user_rec).request_item_code;
-        END IF;
+        --データグループ名開始タグセット
+        insert_xml_plsql_table(iox_xml_data, 'llg_mei' , NULL, 'T', 'C', 0);
+        insert_xml_plsql_table(iox_xml_data, 'actual_num' , 
+                                lt_main_data(get_user_rec).actual_quantity, 'D', 'C', 15);
+        insert_xml_plsql_table(iox_xml_data, 'expiration_date', 
+                                lt_main_data(get_user_rec).expiration_date, 'D', 'C', 10);
+        --データグループ名終了タグセット
+        insert_xml_plsql_table(iox_xml_data, '/llg_mei', NULL, 'T', 'C', 0);
+        --前回品目Noを更新
+        pre_item_code      := lt_main_data(get_user_rec).request_item_code;
+-- 2018/12/04 Ver1.15 modified END
 -- 2018/10/12 Ver1.14 E_本稼動_15274 mod end by Yasuhiro.Shoji
 --
       END LOOP lg_irai_info;
@@ -1580,7 +1706,6 @@ AS
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '<root>' ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '  <data_info>' ) ;
     FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '    <lg_irai_info>' ) ;
-
 --
     -- --------------------------------------------------
     -- 帳票データが出力できた場合
@@ -1609,7 +1734,6 @@ AS
     ov_retcode := lv_retcode ;
     ov_errmsg  := lv_errmsg ;
     ov_errbuf  := lv_errbuf ;
-
 --
   EXCEPTION
 --
