@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてイセトー社へ送信する支払案内書(圧着はがき)用データファイル作成
- * Version          : 2.5
+ * Version          : 2.6
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/12/15    2.3   K.Nakamura       [障害E_本稼動_00427] 銀行振込手数料の算出を変更
  *  2010/01/06    2.4   K.Yamaguchi      [E_本稼動_00901] 締め日の判定方法修正
  *  2010/10/20    2.5   S.Arizumi        [E_本稼動_01144対応]金額確定ステータスが確定済のレコードのみ対象とするように修正
+ *  2018/11/15    2.6   E.Yazaki         [E_本稼動_15367]年号変更対応（営業・個別・販売）
  *
  *****************************************************************************************/
   -- ===============================================
@@ -160,12 +161,17 @@ AS
   -- 数値(文字形式)
   cv_0                       CONSTANT VARCHAR2(1)     := '0';
   -- 書式フォーマット
-  cv_format_ee               CONSTANT VARCHAR2(50)    := 'EE';
-  cv_format_ee_year          CONSTANT VARCHAR2(50)    := 'RRMM';
+-- 2018/11/15 Ver.2.6 [E_本稼動_15367] SCSK E.Yazaki MOD START
+--  cv_format_ee               CONSTANT VARCHAR2(50)    := 'EE';
+--  cv_format_ee_year          CONSTANT VARCHAR2(50)    := 'RRMM';
+  cv_format_yyyymm_month       CONSTANT VARCHAR2(50)    := 'YYYYMM';
+-- 2018/11/15 Ver.2.6 [E_本稼動_15367] SCSK E.Yazaki MOD END
   cv_format_mmdd             CONSTANT VARCHAR2(50)    := 'MMDD';
   cv_format_yyyy_mm_dd       CONSTANT VARCHAR2(50)    := 'YYYY/MM/DD';
+-- 2018/11/15 Ver.2.6 [E_本稼動_15367] SCSK E.Yazaki DEL START
   -- 各国語サポートパラメータ
-  cv_nls_param               CONSTANT VARCHAR2(50)    := 'nls_calendar=''japanese imperial''';
+--  cv_nls_param               CONSTANT VARCHAR2(50)    := 'nls_calendar=''japanese imperial''';
+-- 2018/11/15 Ver.2.6 [E_本稼動_15367] SCSK E.Yazaki DEL END
   -- ファイルオープンパラメータ
   cv_open_mode_w             CONSTANT VARCHAR2(1)     := 'w';                   -- テキストの書込み
   cn_max_linesize            CONSTANT BINARY_INTEGER  := 32767;                 -- 1行当り最大文字数
@@ -652,10 +658,14 @@ AS
                                 || SUBSTRB( it_bm_data_rec.cntct_base_zip , 4 , 4 )        -- 拠点郵便番号
 -- 2009/11/16 Ver.2.2 [変更依頼I_E_665] SCS S.Moriyama UPD END
            || cv_separator_char || SUBSTRB( it_bm_data_rec.cntct_base_phone , 1 , 15 )     -- 拠点電話番号
-           || cv_separator_char || TO_CHAR( it_bm_data_rec.closing_date_end , cv_format_ee
-                                                                 , cv_nls_param )          -- 年号
-           || cv_separator_char || TO_CHAR( it_bm_data_rec.closing_date_end , cv_format_ee_year
-                                                                 , cv_nls_param )          -- 年月分
+-- 2018/11/15 Ver.2.6 [E_本稼動_15367] SCSK E.Yazaki MOD START
+--           || cv_separator_char || TO_CHAR( it_bm_data_rec.closing_date_end , cv_format_ee
+--                                                                 , cv_nls_param )          -- 年号
+--           || cv_separator_char || TO_CHAR( it_bm_data_rec.closing_date_end , cv_format_ee_year
+--                                                                 , cv_nls_param )          -- 年月分
+           || cv_separator_char || NULL                                                    -- 年号
+           || cv_separator_char || TO_CHAR( it_bm_data_rec.closing_date_end , cv_format_yyyymm_month )-- 年月分
+-- 2018/11/15 Ver.2.6 [E_本稼動_15367] SCSK E.Yazaki MOD END
            || cv_separator_char || TO_CHAR( gd_pay_date , cv_format_mmdd )                 -- 支払日
            || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_bank_number , 1 , 4 )     -- 銀行コード
            || cv_separator_char || SUBSTRB( it_bm_data_rec.payee_bank_name , 1 , 20 )      -- 銀行名
