@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2014-02-03    1.10  S.Niki           E_本稼動_11397対応
  *  2015-02-16    1.11  K.Nakatsu        E_本稼動_12565対応
  *  2015-06-25    1.12  Y.Shoji          E_本稼動_13019対応
+ *  2018-11-15    1.13  E.Yazaki         E_本稼動_15367対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -230,6 +231,10 @@ AS
   cv_dev_status_normal  CONSTANT VARCHAR2(6)   := 'NORMAL';  -- '正常'
   cv_dev_status_warn    CONSTANT VARCHAR2(7)   := 'WARNING'; -- '警告'
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+/* 2018/11/15 Ver1.13 E.Yazaki ADD START */
+  -- 書式フォーマット
+  cv_format_yyyymmdd_date        CONSTANT VARCHAR2(50)    := 'YYYY"年"MM"月"DD"日"';
+/* 2018/11/15 Ver1.13 E.Yazaki ADD END */
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -1081,8 +1086,11 @@ AS
               ,(NVL2(xcm.install_postal_code, cv_post_mark || xcm.install_postal_code || ' ', '')
                            || xcm.install_state || xcm.install_city
                            || xcm.install_address1 || xcm.install_address2) install_address  -- 設置先住所
-              ,(SUBSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial''')
-                 , 1, INSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
+/* 2018/11/15 Ver1.13 E.Yazaki MOD START */
+--              ,(SUBSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial''')
+--                 , 1, INSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
+              ,TO_CHAR(xcm.install_date, cv_format_yyyymmdd_date
+/* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                 ) install_date                                     -- 設置日
               /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
               --,xba.bank_name bank_name                             -- 銀行名
@@ -1116,9 +1124,12 @@ AS
 --              ,(SUBSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
 --                 , 1, INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
 --                ) contract_effect_date                             -- 契約書発効日
-              , NVL(SUBSTR(   TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
-                            , 1
-                            , INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1
+/* 2018/11/15 Ver1.13 E.Yazaki MOD START */
+--              , NVL(SUBSTR(   TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
+--                            , 1
+--                            , INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1
+              ,NVL(TO_CHAR(xcm.contract_effect_date, cv_format_yyyymmdd_date
+/* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                     ), gt_contract_date_ptn
                 )     contract_effect_date                             -- 契約書発効日
 -- == 2010/08/03 V1.9 Modified END   ===============================================================
@@ -1227,13 +1238,19 @@ AS
                    xsdh.electric_trans_name
                         || gv_electric_pre1 || xcc.contract_name
                         || gv_electric_pre2
-                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
+/* 2018/11/15 Ver1.13 E.Yazaki MOD START */
+--                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
+                        || TO_CHAR(xcm.contract_effect_date, cv_format_yyyymmdd_date)
+/* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                         || gv_electric_pre3
                  WHEN cv_electric_type_var THEN
                    xsdh.electric_trans_name
                         || gv_electric_pre1 || xcc.contract_name
                         || gv_electric_pre2
-                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
+/* 2018/11/15 Ver1.13 E.Yazaki MOD START */
+--                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
+                        || TO_CHAR(xcm.contract_effect_date, cv_format_yyyymmdd_date)
+/* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                         || gv_electric_pre4
                  ELSE NULL
                END                                      electric_preamble             -- 前文（電気代）
@@ -1578,8 +1595,11 @@ AS
               ,xcasv.party_name install_name                           -- 設置先顧客名
               ,NVL2(xcasv.postal_code, cv_post_mark || xcasv.postal_code || ' ', '') || xcasv.state || xcasv.city
                       || xcasv.address1 || xcasv.address2 install_address -- 設置先住所
-              ,(SUBSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial''')
-                 , 1, INSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
+/* 2018/11/15 Ver1.13 E.Yazaki MOD START */
+--              ,(SUBSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial''')
+--                 , 1, INSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
+              ,TO_CHAR(xcm.install_date, cv_format_yyyymmdd_date
+/* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                 ) install_date                                         -- 設置日
               /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
               --,xbav.bank_name bank_name                                -- 銀行名
@@ -1613,9 +1633,12 @@ AS
 --              ,(SUBSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
 --                 , 1, INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
 --                ) contract_effect_date                                 -- 契約書発効日
-              , NVL(SUBSTR(   TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
-                            , 1
-                            , INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1
+/* 2018/11/15 Ver1.13 E.Yazaki MOD START */
+--              , NVL(SUBSTR(   TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial''')
+--                            , 1
+--                            , INSTR(TO_CHAR(xcm.contract_effect_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1
+              ,NVL(TO_CHAR(xcm.contract_effect_date, cv_format_yyyymmdd_date
+/* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                     ), gt_contract_date_ptn
                 )     contract_effect_date                             -- 契約書発効日
 -- == 2010/08/03 V1.9 Modified END   ===============================================================
@@ -1719,13 +1742,19 @@ AS
                    xsdh.electric_trans_name
                         || gv_electric_pre1 || xcc.contract_name
                         || gv_electric_pre2
-                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
+/* 2018/11/15 Ver1.13 E.Yazaki MOD START */
+--                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
+                        || TO_CHAR(xcm.contract_effect_date, cv_format_yyyymmdd_date)
+/* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                         || gv_electric_pre3
                  WHEN cv_electric_type_var THEN
                    xsdh.electric_trans_name
                         || gv_electric_pre1 || xcc.contract_name
                         || gv_electric_pre2
-                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
+/* 2018/11/15 Ver1.13 E.Yazaki MOD START */
+--                        || TO_CHAR(xcm.contract_effect_date, 'EEYY"年"MM"月"DD"日"', 'nls_calendar = ''Japanese Imperial''')
+                        || TO_CHAR(xcm.contract_effect_date, cv_format_yyyymmdd_date)
+/* 2018/11/15 Ver1.13 E.Yazaki MOD END */
                         || gv_electric_pre4
                  ELSE NULL
                END                                      electric_preamble             -- 前文（電気代）
