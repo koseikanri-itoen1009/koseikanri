@@ -7,7 +7,7 @@ AS
  * Description      : 手数料を現金支払する際の支払案内書（領収書付き）を
  *                    各売上計上拠点で印刷します。
  * MD.050           : 支払案内書印刷（領収書付き） MD050_COK_015_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/09/10    1.3   S.Moriyama       [障害0000060]住所の桁数変更対応
  *  2009/10/14    1.4   S.Moriyama       [変更依頼I_E_573]仕入先名称、住所の設定内容変更対応
  *  2011/02/02    1.5   M.Watanabe       [E_本稼動_05408,05409]年次切替対応
+ *  2018/11/15    1.6   E.Yazaki         [E_本稼動_15367]年号変更対応（営業・個別・販売）
  *
  *****************************************************************************************/
   --==================================================
@@ -94,10 +95,15 @@ AS
   cv_format_fxrrrrmm               CONSTANT VARCHAR2(50)    := 'FXRRRRMM';
   cv_format_fxrrrrmmdd             CONSTANT VARCHAR2(50)    := 'FXRRRRMMDD';
   cv_format_date                   CONSTANT VARCHAR2(50)    := 'RRRR"年"MM"月"DD"日"';
-  cv_format_ee_month               CONSTANT VARCHAR2(50)    := 'EERR"年"MM"月分"';
+-- 2018/11/15 Ver.1.6 [障害E_本稼動__15367] SCSK E.Yazaki MOD START
+--  cv_format_ee_month               CONSTANT VARCHAR2(50)    := 'EERR"年"MM"月分"';
+  cv_format_yyyymm_month               CONSTANT VARCHAR2(50)    := 'YYYY"年"MM"月分"';
+-- 2018/11/15 Ver.1.6 [障害E_本稼動__15367] SCSK E.Yazaki MOD END
   cv_format_ee_date                CONSTANT VARCHAR2(50)    := 'EERR"年"MM"月"DD"日"';
+-- 2018/11/15 Ver.1.6 [障害E_本稼動__15367] SCSK E.Yazaki DEL START
   -- 各国語サポートパラメータ
-  cv_nls_param                     CONSTANT VARCHAR2(50)    := 'nls_calendar=''japanese imperial''';
+--  cv_nls_param                     CONSTANT VARCHAR2(50)    := 'nls_calendar=''japanese imperial''';
+-- 2018/11/15 Ver.1.6 [障害E_本稼動__15367] SCSK E.Yazaki DEL END
   -- BM支払区分
   cv_bm_type_1                     CONSTANT VARCHAR2(1)     := '1';                  -- 本振（案内有）
   cv_bm_type_2                     CONSTANT VARCHAR2(1)     := '2';                  -- 本振（案内無）
@@ -512,9 +518,13 @@ AS
          , contact_addr_1               AS contact_addr_1
          , contact_addr_2               AS contact_addr_2
          , contact_phone_no             AS contact_phone_no
+-- 2018/11/15 Ver.1.6 [障害E_本稼動__15367] SCSK E.Yazaki MOD START
          , TO_CHAR( closing_date
-                  , cv_format_ee_month
-                  , cv_nls_param )      AS target_month
+--                  , cv_format_ee_month
+--                  , cv_nls_param )      AS target_month
+                  , cv_format_yyyymm_month
+                  )                       AS target_month
+-- 2018/11/15 Ver.1.6 [障害E_本稼動__15367] SCSK E.Yazaki MOD END
          , closing_date                 AS closing_date
          , selling_amt_sum              AS selling_amt_sum
          , CASE
