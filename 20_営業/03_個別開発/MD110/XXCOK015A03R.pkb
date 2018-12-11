@@ -7,7 +7,7 @@ AS
  * Description      : 支払先の顧客より問合せがあった場合、
  *                    取引条件別の金額が印字された支払案内書を印刷します。
  * MD.050           : 支払案内書印刷（明細） MD050_COK_015_A03
- * Version          : 1.16
+ * Version          : 1.18
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2018/03/15    1.15  Y.Sekine         [障害E_本稼動_14900] 事務センター案件（支払案内書出力変更）
  *  2018/07/17    1.16  K.Nara           [障害E_本稼動_15005] 事務センター案件（支払案内書、販売報告書一括出力）
  *  2018/08/07    1.17  K.Nara           [障害E_本稼動_15202] 出力対象無し警告終了対応
+ *  2018/11/15    1.18   E.Yazaki        [障害E_本稼動_15367]年号変更対応（営業・個別・販売）
  *
  *****************************************************************************************/
   --==================================================
@@ -146,10 +147,14 @@ AS
   cv_format_fxrrrrmm               CONSTANT VARCHAR2(50)    := 'FXRRRR/MM';
   cv_format_fxrrrrmmdd             CONSTANT VARCHAR2(50)    := 'FXRRRRMMDD';
   cv_format_date                   CONSTANT VARCHAR2(50)    := 'RRRR"年"MM"月"DD"日"';
-  cv_format_ee_month               CONSTANT VARCHAR2(50)    := 'EERR"年"MM"月分"';
-  cv_format_ee_date                CONSTANT VARCHAR2(50)    := 'EERR"年"MM"月"DD"日"';
+-- 2018/11/15 Ver.1.18 [障害E_本稼動_15367] SCSK E.Yazaki MOD START
+--  cv_format_ee_month               CONSTANT VARCHAR2(50)    := 'EERR"年"MM"月分"';
+--  cv_format_ee_date                CONSTANT VARCHAR2(50)    := 'EERR"年"MM"月"DD"日"';
+  cv_format_yyyymm_month           CONSTANT VARCHAR2(50)    := 'YYYY"年"MM"月分"';
+  cv_format_yyyymmdd_date          CONSTANT VARCHAR2(50)    := 'YYYY"年"MM"月"DD"日"';
   -- 各国語サポートパラメータ
-  cv_nls_param                     CONSTANT VARCHAR2(50)    := 'nls_calendar=''japanese imperial''';
+--  cv_nls_param                     CONSTANT VARCHAR2(50)    := 'nls_calendar=''japanese imperial''';
+-- 2018/11/15 Ver.1.18 [障害E_本稼動_15367] SCSK E.Yazaki MOD END
   -- BM支払区分
   cv_bm_type_1                     CONSTANT VARCHAR2(1)     := '1';                  -- 本振（案内有）
   cv_bm_type_2                     CONSTANT VARCHAR2(1)     := '2';                  -- 本振（案内無）
@@ -701,18 +706,24 @@ AS
 --        , xrbpd.payment_amt_tax    = g_summary_tab(i).payment_amt_tax
         , xrbpd.payment_amt_tax    = g_summary_tab(i).payment_amt_tax - NVL(g_summary_tab(i).bm_amt_3 , 0)
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama UPD END
+-- 2018/11/15 Ver.1.18 [障害E_本稼動_15367] SCSK E.Yazaki MOD START
         , xrbpd.target_month       = TO_CHAR( g_summary_tab(i).closing_date
-                                            , cv_format_ee_month
-                                            , cv_nls_param )
+--                                            , cv_format_ee_month
+--                                            , cv_nls_param )
+                                            , cv_format_yyyymm_month )
         , xrbpd.term_from          = TO_CHAR( g_summary_tab(i).term_from
-                                            , cv_format_ee_date
-                                            , cv_nls_param )
+--                                            , cv_format_ee_date
+--                                            , cv_nls_param )
+                                            , cv_format_yyyymmdd_date )
         , xrbpd.term_to            = TO_CHAR( g_summary_tab(i).term_to
-                                            , cv_format_ee_date
-                                            , cv_nls_param )
+--                                            , cv_format_ee_date
+--                                            , cv_nls_param )
+                                            , cv_format_yyyymmdd_date )
         , xrbpd.payment_date       = TO_CHAR( g_summary_tab(i).payment_date
-                                            , cv_format_ee_date
-                                            , cv_nls_param )
+--                                            , cv_format_ee_date
+--                                            , cv_nls_param )
+                                            , cv_format_yyyymmdd_date )
+-- 2018/11/15 Ver.1.18 [障害E_本稼動_15367] SCSK E.Yazaki MOD END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD START
         , xrbpd.bm_index_3         = CASE WHEN g_summary_tab(i).bm_amt_1 > 0
                                            AND g_summary_tab(i).bm_amt_2 > 0
