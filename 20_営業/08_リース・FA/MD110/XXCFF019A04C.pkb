@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF019A04C(body)
  * Description      : IFRS台帳修正
  * MD.050           : MD050_CFF_019_A04_IFRS台帳修正
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ----------------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2017/11/30    1.0   SCSK小路         新規作成
  *  2018/04/27    1.1   SCSK森           E_本稼動_15041対応
+ *  2018/12/14    1.2   SCSK小路         E_本稼動_15399対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -125,6 +126,9 @@ AS
   cv_file_type_log          CONSTANT VARCHAR2(10) := 'LOG';    -- ログ出力
 --
   cv_yes                    CONSTANT VARCHAR2(1)  := 'Y';
+-- 2018/12/14 1.2 ADD Y.Shoji START
+  cv_no                     CONSTANT VARCHAR2(1)  := 'N';
+-- 2018/12/14 1.2 ADD Y.Shoji END
   cv_space                  CONSTANT VARCHAR2(1)  := ' ';      -- スペース
 --
   -- ===============================
@@ -213,6 +217,10 @@ AS
     ,attribute19_fixed             fa_additions_b.attribute19%TYPE               -- その他（固定資産台帳）
     ,attribute20_fixed             fa_additions_b.attribute20%TYPE               -- IFRS資産科目（固定資産台帳）
     ,attribute21_fixed             fa_additions_b.attribute21%TYPE               -- 修正年月日（固定資産台帳）
+-- 2018/12/14 1.2 ADD Y.Shoji START
+    ,amortized_flag                xx01_adjustment_oif.amortized_flag%TYPE             -- 修正額償却フラグ
+    ,amortization_start_date       fa_transaction_headers.amortization_start_date%TYPE -- 償却開始日
+-- 2018/12/14 1.2 ADD Y.Shoji END
   );
 --
   -- ===============================
@@ -396,6 +404,9 @@ AS
                 INDEX(fc_ifrs.b FA_CATEGORIES_B_U1)
                 INDEX(fc_ifrs.t FA_CATEGORIES_TL_U1)
                 INDEX(fak_ifrs FA_ASSET_KEYWORDS_U1)
+-- 2018/12/14 1.2 ADD Y.Shoji START
+                INDEX(fth_ifrs FA_TRANSACTION_HEADERS_U1)
+-- 2018/12/14 1.2 ADD Y.Shoji END
              */
               fab_ifrs.asset_id                   AS asset_id                      -- 資産ID
              ,fab_fixed.asset_number              AS asset_number_fixed            -- 資産番号（固定資産台帳）
@@ -480,6 +491,12 @@ AS
              ,fab_fixed.attribute19               AS attribute19_fixed             -- その他（固定資産台帳）
              ,fab_fixed.attribute20               AS attribute20_fixed             -- IFRS資産科目（固定資産台帳）
              ,fab_fixed.attribute21               AS attribute21_fixed             -- 修正年月日（固定資産台帳）
+-- 2018/12/14 1.2 ADD Y.Shoji START
+             ,DECODE(fth_ifrs.amortization_start_date
+                    ,NULL ,cv_no
+                          ,cv_yes)                AS amortized_flag                -- 修正額償却フラグ
+             ,fth_ifrs.amortization_start_date    AS amortization_start_date       -- 償却開始日
+-- 2018/12/14 1.2 ADD Y.Shoji END
       FROM    fa_books                fb_fixed    -- 資産台帳情報（固定資産台帳）
              ,fa_additions_b          fab_fixed   -- 資産詳細情報（固定資産台帳）
              ,fa_additions_tl         fat_fixed   -- 資産摘要情報（固定資産台帳）
@@ -488,6 +505,9 @@ AS
              ,fa_additions_tl         fat_ifrs    -- 資産摘要情報（IFRS台帳）
              ,fa_categories           fc_ifrs     -- 資産カテゴリ（IFRS台帳）
              ,fa_asset_keywords       fak_ifrs    -- 資産キー（IFRS台帳）
+-- 2018/12/14 1.2 ADD Y.Shoji START
+             ,fa_transaction_headers  fth_ifrs    -- 資産取引ヘッダ（IFRS台帳）
+-- 2018/12/14 1.2 ADD Y.Shoji END
              ,(SELECT 
                       /*+
                           QB_NAME(a)
@@ -555,6 +575,9 @@ AS
       AND     fat_ifrs.language                = cv_lang
       AND     fab_ifrs.asset_category_id       = fc_ifrs.category_id
       AND     fab_ifrs.asset_key_ccid          = fak_ifrs.code_combination_id(+)
+-- 2018/12/14 1.2 ADD Y.Shoji START
+      AND     fb_ifrs.transaction_header_id_in = fth_ifrs.transaction_header_id(+)
+-- 2018/12/14 1.2 ADD Y.Shoji END
       ;
 --
     -- *** ローカル・レコード ***
@@ -782,6 +805,10 @@ AS
           ,original_cost                   -- 当初取得価額
           ,posting_flag                    -- 転記チェックフラグ
           ,status                          -- ステータス
+-- 2018/12/14 1.2 ADD Y.Shoji START
+          ,amortized_flag                  -- 修正額償却フラグ
+          ,amortization_start_date         -- 償却開始日
+-- 2018/12/14 1.2 ADD Y.Shoji END
           ,asset_number_new                -- 資産番号（修正後）
           ,tag_number                      -- 現品票番号
           ,category_id_new                 -- 資産カテゴリID（修正後）
@@ -866,6 +893,10 @@ AS
           ,g_ifrs_adj_tab(ln_loop_cnt).original_cost                 -- 当初取得価額
           ,cv_yes                                                    -- 転記チェックフラグ
           ,cv_status_pending                                         -- ステータス
+-- 2018/12/14 1.2 ADD Y.Shoji START
+          ,g_ifrs_adj_tab(ln_loop_cnt).amortized_flag                -- 修正額償却フラグ
+          ,g_ifrs_adj_tab(ln_loop_cnt).amortization_start_date       -- 償却開始日
+-- 2018/12/14 1.2 ADD Y.Shoji END
           ,g_ifrs_adj_tab(ln_loop_cnt).asset_number_ifrs             -- 資産番号（修正後）
           ,g_ifrs_adj_tab(ln_loop_cnt).tag_number                    -- 現品票番号
           ,lt_asset_category_id                                      -- 資産カテゴリID（修正後）
