@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg_pt(BODY)
  * Description            : 共通関数(BODY)(PT用)
  * MD.070(CMD.050)        : なし
- * Version                : 1.39
+ * Version                : 1.40
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -27,8 +27,8 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
- *  2016/11/25   1.39  SCSK  桐生和幸   [納品鮮度管理強化] E_本稼動_09591対応
- *  2016/11/28                          上記対応PT用モジュール
+ *  2018/11/06   1.40  SCSK  奈良和宏   [鮮度基準日算出用の条件を細分化] E_本稼動_15398対応
+ *  2018/11/08                          上記対応PT用モジュール
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4222,6 +4222,9 @@ AS
     lv_freshness_class             VARCHAR2(2);                      -- 鮮度条件区分
     ln_freshness_base_value        NUMBER;                           -- 鮮度条件基準値
     ln_freshness_adjust_value      NUMBER;                           -- 鮮度条件調整値
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara ADD START
+    ln_multi_value                 NUMBER;                           -- 鮮度条件基準値（倍率）
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara ADD END
     -- 賞味期間
     ld_manufact_date               DATE;                             -- 製造年月日
     ld_limit_expiration_date       DATE;                             -- 賞味期限
@@ -4294,10 +4297,18 @@ AS
     BEGIN
       SELECT xlv.attribute1,
              TO_NUMBER( xlv.attribute2 ),
-             TO_NUMBER( xlv.attribute3 )
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--             TO_NUMBER( xlv.attribute3 )
+             TO_NUMBER( xlv.attribute3 ),
+             TO_NUMBER( xlv.attribute4 )
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara MOD END
       INTO   lv_freshness_class,
              ln_freshness_base_value,
-             ln_freshness_adjust_value
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--             ln_freshness_adjust_value
+             ln_freshness_adjust_value,
+             ln_multi_value
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara MOD END
       FROM   xxcmn_cust_acct_sites2_v  xcasv,              -- 顧客サイト情報VIEW2
              xxcmn_lookup_values2_v    xlv                 -- クイックコード情報VIEW2
       WHERE  xcasv.party_site_id       =  iv_move_to_id                 -- 配送先ID(パーティサイトID)
@@ -4486,10 +4497,17 @@ AS
        *  鮮度条件基準日の算出(賞味期限基準)(E-4) *
        ********************************************/
       WHEN lv_freshness_class1 THEN
-        ln_base_days
-            := TRUNC( ( ld_limit_expiration_date - ld_manufact_date ) / ln_freshness_base_value );
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--        ln_base_days
+--            := TRUNC( ( ld_limit_expiration_date - ld_manufact_date ) / ln_freshness_base_value );
+--        ld_freshness_base_date
+--            := ld_manufact_date + ln_base_days + NVL( ln_freshness_adjust_value, 0);
+        -- 鮮度条件基準日 = 賞味期限 - TRUNC( 賞味期間 * 鮮度条件基準値（倍率） / 鮮度条件基準値 ) + 鮮度条件調整値
         ld_freshness_base_date
-            := ld_manufact_date + ln_base_days + NVL( ln_freshness_adjust_value, 0);
+            := ld_limit_expiration_date
+             - TRUNC( ln_expiration_days * ln_multi_value / ln_freshness_base_value )
+             + NVL( ln_freshness_adjust_value, 0 );
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara MOD END
       --
       /********************************************
        *  鮮度条件基準日の算出(製造日基準)(E-5)   *
@@ -4625,6 +4643,9 @@ AS
     lv_freshness_class             VARCHAR2(2);                      -- 鮮度条件区分
     ln_freshness_base_value        NUMBER;                           -- 鮮度条件基準値
     ln_freshness_adjust_value      NUMBER;                           -- 鮮度条件調整値
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara ADD START
+    ln_multi_value                 NUMBER;                           -- 鮮度条件基準値（倍率）
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara ADD END
     -- 賞味期間
     ld_manufact_date               DATE;                             -- 製造年月日
     ld_expiration_date             DATE;                             -- 賞味期限
@@ -4705,9 +4726,16 @@ AS
                    ,NVL( TO_NUMBER( xlv2.attribute2 ), 0 )) freshness_base_value
             ,DECODE(xlv2.attribute1, NULL, NVL( TO_NUMBER( xlv.attribute3 ), 0 )
                    ,NVL( TO_NUMBER( xlv2.attribute3 ), 0 )) freshness_adjust_value
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara ADD START
+            ,DECODE(xlv2.attribute1, NULL, NVL( TO_NUMBER( xlv.attribute4 ), 0 )
+                   ,NVL( TO_NUMBER( xlv2.attribute4 ), 0 )) multi_value
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara ADD END
       INTO   lv_freshness_class                                  -- 鮮度条件区分
             ,ln_freshness_base_value                             -- 鮮度条件基準値
             ,ln_freshness_adjust_value                           -- 鮮度条件調整値
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara ADD START
+            ,ln_multi_value                                      -- 鮮度条件基準値（倍率）
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara ADD END
       FROM   xxcmn_cust_acct_sites2_v    xcasv                   -- 顧客サイト情報VIEW2
             ,xxcmn_lookup_values2_v      xlv                     -- クイックコード情報VIEW2(鮮度条件)
             ,xxcmn_lookup_values2_v      xlv2
@@ -4794,8 +4822,16 @@ AS
      *  製造日の算出(1:賞味期限基準)(H-4) *
      **************************************/
     IF   ( lv_freshness_class = cv_freshness_class1 ) THEN
-      -- 製造日 = 着荷予定日 - (賞味期間 / 鮮度条件基準値) - 鮮度条件調整値
-      ld_manufact_date := id_arrival_date - TRUNC( ln_expiration_days / ln_freshness_base_value ) - ln_freshness_adjust_value;
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--      -- 製造日 = 着荷予定日 - (賞味期間 / 鮮度条件基準値) - 鮮度条件調整値
+--      ld_manufact_date := id_arrival_date - TRUNC( ln_expiration_days / ln_freshness_base_value ) - ln_freshness_adjust_value;
+      -- 製造日 = 着荷予定日 + TRUNC(賞味期間 * 鮮度条件基準値（倍率） / 鮮度条件基準値) - 鮮度条件調整値 - 賞味期間
+      ld_manufact_date
+          := id_arrival_date
+           + TRUNC( ln_expiration_days * ln_multi_value / ln_freshness_base_value )
+           - ln_freshness_adjust_value
+           - ln_expiration_days;
+-- Ver.1.40 [障害E_本稼動_15398] SCSK K.Nara MOD END
 --
     /**************************************
      *  製造日の算出(2:製造日基準)(H-5)   *
