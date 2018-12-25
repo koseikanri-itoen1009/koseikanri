@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF015A34C(body)
  * Description      : ©”Ì‹@ƒŠ[ƒX—¿—\Zì¬
  * MD.050           : ©”Ì‹@ƒŠ[ƒX—¿—\Zì¬ MD050_CFF_015_A34
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2014/10/17    1.3   SCSK ¬˜H‹±O    E_–{‰Ò“®_11719‘Î‰ •s‹ï‡‘Î‰
  *  2017/08/17    1.4   SCSK ¬˜H‹±O    E_–{‰Ò“®_14390‘Î‰
  *  2018/03/20    1.5   SCSK X°‰Á      E_–{‰Ò“®_14390‘Î‰ •s‹ï‡‘Î‰
+ *  2018/12/17    1.6   SCSK ¬˜H‹±O    E_–{‰Ò“®_15401‘Î‰
  *
  *****************************************************************************************/
 --
@@ -3856,43 +3857,82 @@ AS
       ELSIF ( ld_start_months <= ld_end_months 
         AND   gv_lease_amt_kbn = cv_lease_amt_kbn_2 ) THEN
         -- ‘ä”İ’è
+-- 2018/12/17 Ver.1.6 Y.Shouji MOD START
         -- Œ‚ª‘ÎÛŠúŠÔ“à‚Ìê‡
-        IF ( TO_DATE(g_next_year_rec.may, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--        IF ( TO_DATE(g_next_year_rec.may, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_may_number       := 1; -- 5Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.june, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_june_number      := 1; -- 6Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.july, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_july_number      := 1; -- 7Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.august, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_august_number    := 1; -- 8Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.september, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_september_number := 1; -- 9Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.october, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_october_number   := 1; -- 10Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.november, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_november_number  := 1; -- 11Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.december, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_december_number  := 1; -- 12Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.january, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_january_number   := 1; -- 1Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.february, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_february_number  := 1; -- 2Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.march, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_march_number     := 1; -- 3Œ_‘ä”
+--        END IF;
+--        IF ( TO_DATE(g_next_year_rec.april, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+--          ln_april_number     := 1; -- 4Œ_‘ä”
+--        END IF;
+        -- Œ‚ª‘ÎÛŠúŠÔ“à‚©‚Âæ“¾‰¿Ši‚ª0‚Å‚Í‚È‚¢ê‡A‘ä”1
+        IF ( ( TO_DATE(g_next_year_rec.may, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_may_cost <> 0 )) THEN
           ln_may_number       := 1; -- 5Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.june, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.june, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_june_cost <> 0 )) THEN
           ln_june_number      := 1; -- 6Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.july, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.july, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_july_cost <> 0 )) THEN
           ln_july_number      := 1; -- 7Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.august, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.august, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_august_cost <> 0 )) THEN
           ln_august_number    := 1; -- 8Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.september, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.september, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_september_cost <> 0 )) THEN
           ln_september_number := 1; -- 9Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.october, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.october, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_october_cost <> 0 )) THEN
           ln_october_number   := 1; -- 10Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.november, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.november, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_november_cost <> 0 )) THEN
           ln_november_number  := 1; -- 11Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.december, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.december, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_december_cost <> 0 )) THEN
           ln_december_number  := 1; -- 12Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.january, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.january, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_january_cost <> 0 )) THEN
           ln_january_number   := 1; -- 1Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.february, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.february, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_february_cost <> 0 )) THEN
           ln_february_number  := 1; -- 2Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.march, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.march, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_march_cost <> 0 )) THEN
           ln_march_number     := 1; -- 3Œ_‘ä”
         END IF;
-        IF ( TO_DATE(g_next_year_rec.april, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) THEN
+        IF ( ( TO_DATE(g_next_year_rec.april, cv_format_yyyymm) BETWEEN ld_start_months AND ld_end_months ) AND ( gn_april_cost <> 0 )) THEN
           ln_april_number     := 1; -- 4Œ_‘ä”
         END IF;
+-- 2018/12/17 Ver.1.6 Y.Shouji MOD END
         -- XŒ_‘ä” * XŒ_æ“¾‰¿ŠiiŒ¸‰¿‹p”ïj
         ln_may_charge       := ln_may_number       * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 5Œ_ƒŠ[ƒX—¿
         ln_june_charge      := ln_june_number      * g_vd_budget_bulk_tab(gn_count).deprn_amount;  -- 6Œ_ƒŠ[ƒX—¿
