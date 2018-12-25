@@ -30,6 +30,7 @@ AS
  *  2009/04/22   1.4    N.Maeda          [ST障害No.T1_0754対応]ファイル出力時の｢"｣付加修正
  *  2009/08/31   1.5    M.Sano           [SCS障害No.0000428対応]PT対応
  *  2017/03/27   1.6    S.Niki           [E_本稼動_14024対応]統一価格表情報を連携データに追加
+ *  2018/11/22   1.7    Y.Sasaki         [E_本稼動_15411対応]納品日が1年以上過ぎた各履歴の数量サインにブランクを設定
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -641,7 +642,10 @@ AS
      --通常　前回　納品年月日が処理日（バッチ日付）より一年を過ぎている場合は設定を行いません。
       IF gd_process_date > main_rec.nml_prev_dlv_date THEN
         lv_nml_prev_unit_price := NULL;--通常前回単価
-        lv_nml_prev_qty_sign   := NULL;--通常前回数量サイン
+-- 2018/11/22 Ver1.7 Modified START
+--        lv_nml_prev_qty_sign   := NULL;--通常前回数量サイン
+        lv_nml_prev_qty_sign   := cv_brank;--通常前回数量サイン
+-- 2018/11/22 Ver1.7 Modified END
         lv_nml_prev_qty        := NULL;--通常前回数量
         lv_nml_prev_dlv_date   := NULL;--通常前回納品年月日
       ELSE
@@ -651,7 +655,10 @@ AS
       END IF;
      --通常　前々回　納品年月日が処理日（バッチ日付）より一年を過ぎている場合は設定を行いません。
       IF (gd_process_date > main_rec.nml_bef_prev_dlv_date) THEN
-        lv_nml_bef_prev_qty_sign := NULL;--通常前々回数量サイン
+-- 2018/11/22 Ver1.7 Modified START
+--        lv_nml_bef_prev_qty_sign := NULL;--通常前々回数量サイン
+        lv_nml_bef_prev_qty_sign := cv_brank;--通常前々回数量サイン
+-- 2018/11/22 Ver1.7 Modified END
         lv_nml_bef_prev_qty      := NULL;--通常前々回数量
         lv_nml_bef_prev_dlv_date := NULL;--通常前々回納品年月日
       ELSE
@@ -661,7 +668,10 @@ AS
      --特売　前回　納品年月日が処理日（バッチ日付）より一年を過ぎている場合は設定を行いません。
       IF (gd_process_date > main_rec.sls_prev_dlv_date) THEN
         lv_sls_prev_unit_price := NULL;--特売前回単価
-        lv_sls_prev_qty_sign   := NULL;--特売前回数量サイン
+-- 2018/11/22 Ver1.7 Modified START
+--        lv_sls_prev_qty_sign   := NULL;--特売前回数量サイン
+        lv_sls_prev_qty_sign   := cv_brank;--特売前回数量サイン
+-- 2018/11/22 Ver1.7 Modified END
         lv_sls_prev_qty        := NULL;--特売前回数量
         lv_sls_prev_dlv_date   := NULL;--特売前回納品年月日
       ELSE
@@ -671,7 +681,10 @@ AS
       END IF;
      --特売　前々回　納品年月日が処理日（バッチ日付）より一年を過ぎている場合は設定を行いません。
       IF (gd_process_date > main_rec.sls_bef_prev_dlv_date) THEN
-        lv_sls_bef_prev_qty_sign := NULL;--特売前々回数量サイン
+-- 2018/11/22 Ver1.7 Modified START
+--        lv_sls_bef_prev_qty_sign := NULL;--特売前々回数量サイン
+        lv_sls_bef_prev_qty_sign := cv_brank;--特売前々回数量サイン
+-- 2018/11/22 Ver1.7 Modified END
         lv_sls_bef_prev_qty      := NULL;--特売前々回数量
         lv_sls_bef_prev_dlv_date := NULL;--特売前々回納品年月日
       ELSE
@@ -1271,14 +1284,23 @@ AS
         || cv_delimit || cv_quot || get_tmp_data_rec.price_list_div      || cv_quot   -- 価格表区分
         || cv_delimit || cn_zero                                                      -- 数量
         || cv_delimit || get_tmp_data_rec.end_date_active                             -- 適用終了年月日
-        || cv_delimit || cv_quot || NULL                                 || cv_quot   -- 数量サイン
+-- 2018/11/22 Ver1.7 Modified START
+--        || cv_delimit || cv_quot || NULL                                 || cv_quot   -- 数量サイン
+        || cv_delimit || cv_quot || cv_brank                             || cv_quot   -- 数量サイン
+-- 2018/11/22 Ver1.7 Modified END
         || cv_delimit || cn_zero                                                      -- 数量予備１
         || cv_delimit || cn_zero                                                      -- 単価予備１
         || cv_delimit || NULL                                                         -- 年月日予備１
-        || cv_delimit || cv_quot || NULL                                 || cv_quot   -- 数量サイン予備１
+-- 2018/11/22 Ver1.7 Modified START
+--        || cv_delimit || cv_quot || NULL                                 || cv_quot   -- 数量サイン予備１
+        || cv_delimit || cv_quot || cv_brank                             || cv_quot   -- 数量サイン予備１
+-- 2018/11/22 Ver1.7 Modified END
         || cv_delimit || cn_zero                                                      -- 数量予備２
         || cv_delimit || NULL                                                         -- 年月日予備２
-        || cv_delimit || cv_quot || NULL                                 || cv_quot   -- 数量サイン予備２
+-- 2018/11/22 Ver1.7 Modified START
+--        || cv_delimit || cv_quot || NULL                                 || cv_quot   -- 数量サイン予備２
+        || cv_delimit || cv_quot || cv_brank                             || cv_quot   -- 数量サイン予備２
+-- 2018/11/22 Ver1.7 Modified END
         || cv_delimit || cn_zero                                                      -- 数量予備３
         || cv_delimit || cn_zero                                                      -- 単価予備２
         || cv_delimit || cv_quot || TO_CHAR( SYSDATE ,cv_date_fmt_full ) || cv_quot   -- 処理日時
