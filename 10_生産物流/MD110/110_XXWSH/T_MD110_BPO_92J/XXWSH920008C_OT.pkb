@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.18
+ * Version          : 1.18'2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,8 @@ AS
  *  2017/06/02   1.17' SCSK桐生和幸      E_本稼動_14307対応 運用テストモジュールとして作成、
  *                                       v.1.15と本番環境で並存させる
  *  2018/10/23   1.18' SCSK小路恭弘      E_本稼動_15277対応 運用テストモジュールとして作成、
+ *                                       v.1.17と本番環境で並存させる
+ *  2018/11/14   1.18'2 SCSK奈良和宏     共通関数xxwsh_common910_pkg_pt(E_本稼動_15398対応 v1.40 PT版)呼び出し用として作成
  *                                       v.1.17と本番環境で並存させる
  *****************************************************************************************/
 --
@@ -6320,7 +6322,10 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
 ----              xxwsh_common910_pkg.get_fresh_pass_date(
 --              xxwsh_common910_pkg_PT.get_fresh_pass_date(
 ---- 2016/11/28 K.kiriu Ver1.16' Mod END
-              xxwsh_common910_pkg.get_fresh_pass_date(
+-- Ver1.18'2 Mod START
+--              xxwsh_common910_pkg.get_fresh_pass_date(
+              xxwsh_common910_pkg_pt.get_fresh_pass_date(
+-- Ver1.18'2 Mod END
 -- 2017/06/02 Ver1.17' Mod START
                  gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
                , gr_demand_tbl(ln_d_cnt).shipping_item_code     -- 2.品目コード
