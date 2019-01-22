@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2010/10/21    1.13  仁木  重人       E_本稼動_04840対応
  *  2018/10/12    1.14  小路  恭弘       E_本稼動_15274対応
  *  2018/12/04    1.15  佐々木  大和     E_本稼動_15274追加対応
+ *  2019/01/17    1.16  小路  恭弘       E_本稼動_15274PT対応
  *
  *****************************************************************************************/
 --
@@ -616,7 +617,14 @@ AS
         iv_prod_class                VARCHAR2       --   13.商品区分  2008/07/01 ST不具合対応#331
       )
     IS
-      SELECT xoha.request_no                                            -- 依頼no
+-- 2019/01/17 Ver1.16 Mod Start
+--      SELECT xoha.request_no                                            -- 依頼no
+      SELECT 
+             /*+ 
+                 INDEX(xoha XXWSH_OH_N18)
+              */
+             xoha.request_no                                            -- 依頼no
+-- 2019/01/17 Ver1.16 Mod End
             ,xoha.customer_code                                         -- 顧客コード
             ,xca2v.party_short_name                                     -- 顧客
             ,xcas2v.address_line1 || xcas2v.address_line2               -- 配送先住所
