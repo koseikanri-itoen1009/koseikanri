@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *  2016/06/17    1.27  S.Niki           [E_本稼動_13674]0件メッセージ時の出力項目追加
  *  2017/04/28    1.28  N.Watanabe       [E_本稼動_14220]HHTからのシステム時刻情報の取り込み障害対応
  *  2018/08/23    1.29  E.Yazaki         [E_本稼動_15199]伝票枚数追加
+ *  2019/01/22    1.30  E.Yazaki         [E_本稼動_15535]納品書チェックリストのソート順対応
  *
  *****************************************************************************************/
 --
@@ -210,7 +211,6 @@ AS
   cv_tkn_customer_number        CONSTANT VARCHAR2(100) := 'CUSTOMER_NUMBER';    -- 顧客
   cv_tkn_payment_date           CONSTANT VARCHAR2(100) := 'PAYMENT_DATE';       -- 入金日
 -- 2009/12/17 Ver.1.19 Add End
-
 --
   -- クイックコード（作成元区分）
   ct_qck_org_cls_type           CONSTANT fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_MK_ORG_CLS_MST_002_A05';
@@ -1135,6 +1135,9 @@ AS
 -- 2018/08/23 Ver.1.29 Add Start
         ,infh.create_class                         AS create_class                    -- 作成元区分
 -- 2018/08/23 Ver.1.29 Add End
+-- 2019/01/22 Ver.1.30 Add Start
+        ,cuac.business_low_type                    AS business_low_type               -- 業態（小分類）
+-- 2019/01/22 Ver.1.30 Add End
       FROM
          hz_cust_accounts         base          -- 顧客マスタ_拠点
         ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
@@ -2102,6 +2105,9 @@ AS
 -- 2018/08/23 Ver.1.29 Add Start
         gt_dlv_chk_list(ln_num).create_class                 := lt_get_sale_data(in_no).create_class;
 -- 2018/08/23 Ver.1.29 Add End
+-- 2019/01/22 Ver.1.30 Add Start
+        gt_dlv_chk_list(ln_num).business_low_type            := lt_get_sale_data(in_no).business_low_type;
+-- 2019/01/22 Ver.1.30 Add End
 /*        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
           AND
              lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
@@ -2417,6 +2423,9 @@ AS
 -- 2018/08/23 Ver.1.29 Add Start
              ,create_class                        -- 作成元区分
 -- 2018/08/23 Ver.1.29 Add End
+-- 2019/01/22 Ver.1.30 Add Start
+             ,business_low_type                   -- 業態（小分類）
+-- 2019/01/22 Ver.1.30 Add End
           )
         SELECT
 -- 2012/03/30 Ver.1.23 Del Start
@@ -2504,7 +2513,10 @@ AS
           ,cd_program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
 -- 2018/08/23 Ver.1.29 Add Start
           ,NULL                                   -- 作成元区分
--- 2018/08/23 Ver.1.29 Add En
+-- 2018/08/23 Ver.1.29 Add End
+-- 2019/01/22 Ver.1.30 Add Start
+          ,cuac.business_low_type                 -- 業態（小分類）
+-- 2019/01/22 Ver.1.30 Add End
         FROM
            xxcos_payment            pay           -- 入金テーブル
           ,hz_cust_accounts         base          -- 顧客マスタ_拠点
@@ -3681,7 +3693,6 @@ AS
         RAISE global_process_expt;
       END IF;
     END IF;
-
 -- 2018/08/23 Ver.1.29 Add End
 --
     -- 対象件数が0件であった場合、「明細0件用メッセージ」を出力します。
