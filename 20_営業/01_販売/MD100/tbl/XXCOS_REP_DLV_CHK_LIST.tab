@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_DLV_CHK_LIST
  * Description : 納品書チェックリスト帳票ワークテーブル
- * Version     : 1.4
+ * Version     : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -18,6 +18,7 @@
  *  2011/03/15    1.3   SCS S.Ochiai     [E_本稼動_06590] オーダー№追加連携対応
  *  2016/03/08    1.4   SCSK S.Niki      [E_本稼動_13480] 納品書チェックリスト対応
  *  2018/08/23    1.5   SCSK E.Yazaki    [E_本稼動_15199] 納品書チェックリストへの伝票枚数
+ *  2019/01/22    1.6   SCSK E.Yazaki    [E_本稼動_15535] 納品書チェックリストのソート順対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
@@ -73,6 +74,9 @@ CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
     OTHER_VD_COUNT                NUMBER,                                      --VD以外枚数
     CREATE_CLASS                  VARCHAR2(2),                                 --作成元区分
 -- Ver.1.5 ADD End
+-- Ver.1.6 ADD Start
+    BUSINESS_LOW_TYPE             VARCHAR2(2),                                 --業態（小分類）
+-- Ver.1.6 ADD End
     CREATED_BY                    NUMBER(15,0)    NOT NULL,                    --作成者
     CREATION_DATE                 DATE            NOT NULL,                    --作成日
     LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,                    --最終更新者
@@ -137,6 +141,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.VD_COUNT                         
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.OTHER_VD_COUNT                   IS 'VD以外枚数';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATE_CLASS                     IS '作成元区分';
 -- Ver.1.5 ADD End
+-- Ver.1.6 ADD Start
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.BUSINESS_LOW_TYPE               IS '業態（小分類）';
+-- Ver.1.6 ADD End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATED_BY                      IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATION_DATE                   IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.LAST_UPDATED_BY                 IS '最終更新者';
