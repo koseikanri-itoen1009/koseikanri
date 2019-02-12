@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A40C(body)
  * Description      : 顧客一括登録ワークテーブルに取込済のデータから顧客レコードを登録します。
  * MD.050           : 顧客一括登録 MD050_CMM_003_A40
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2013/04/18    1.3   K.Nakamura       E_本稼動_09963追加対応  支払方法、カード会社区分追加
  *  2015/03/10    1.4   S.Niki           E_本稼動_12955対応  請求書発行サイクルのチェック追加
  *  2017/06/14    1.5   S.Niki           E_本稼動_14271対応  自販機フォロー委託２次開発
+ *  2019/01/31    1.6   N.Abe            E_本稼動_15490対応  顧客追加情報項目変更
  *
  *****************************************************************************************/
 --
@@ -163,6 +164,9 @@ AS
   cv_msg_xxcmm_10359     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10359';                                  -- 相殺用顧客コード存在チェックエラー
   cv_msg_xxcmm_10360     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10360';                                  -- 取引先顧客コード重複チェックエラー
 -- Ver1.5 add end
+-- Ver1.6 add start
+  cv_msg_xxcmm_10491     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10491';                                  -- カテゴリー商品計上区分必須チェックエラー
+-- Ver1.6 add end
   -- トークン名
   cv_tkn_file_id         CONSTANT VARCHAR2(20)  := 'FILE_ID';                                           -- ファイルID
   cv_tkn_up_name         CONSTANT VARCHAR2(20)  := 'UPLOAD_NAME';                                       -- ファイルアップロード名称
@@ -190,6 +194,9 @@ AS
 -- Ver1.3 K.Nakamura add start
   cv_tkn_req_id          CONSTANT VARCHAR2(20)  := 'REQ_ID';                                            -- 要求ID
 -- Ver1.3 K.Nakamura add end
+-- Ver1.6 add start
+  cv_tkn_input_data      CONSTANT VARCHAR2(20)  := 'INPUT_DATA';                                        -- 業態小分類
+-- Ver1.6 add end
   --
   cv_appl_name_xxcmm     CONSTANT VARCHAR2(5)   := 'XXCMM';                                             -- アプリケーション短縮名
   cv_appl_short_name     CONSTANT VARCHAR2(10)  := 'XXCCP';                                             -- アドオン：共通・IF領域
@@ -269,6 +276,10 @@ AS
 -- Ver1.3 K.Nakamura add start
   cv_lookup_card_bkn     CONSTANT VARCHAR2(30)  := 'XXCMM_CUST_CARD_COMPANY_KBN';                       -- LOOKUP：カード会社区分
 -- Ver1.3 K.Nakamura add end
+-- Ver1.6 add start
+  cv_lookup_cat_prod_div CONSTANT VARCHAR2(30)  := 'XXCMM_CATEGORY_PRODUCT_DIV';                        -- LOOKUP：カテゴリー商品計上区分
+  cv_lookup_cat_prod_unn CONSTANT VARCHAR2(30)  := 'XXCMM_CAT_PROD_DIV_UNNECESSARY';                    -- LOOKUP：カテゴリー商品計上区分不要業態小分類定義
+-- Ver1.6 add end
   --
   cv_file_format_mc      CONSTANT VARCHAR2(3)   := '501';                                               -- ファイルフォーマット(MC)
   cv_file_format_st      CONSTANT VARCHAR2(3)   := '502';                                               -- ファイルフォーマット(店舗営業)
@@ -348,6 +359,9 @@ AS
   cv_receipt_methods     CONSTANT VARCHAR2(30)  := '支払方法';                                          -- 支払方法
   cv_card_company_kbn    CONSTANT VARCHAR2(30)  := 'カード会社区分';                                    -- カード会社区分
 -- Ver1.3 K.Nakamura add end
+-- Ver1.6 add start
+  cv_cat_prod_div        CONSTANT VARCHAR2(30)  := 'カテゴリー商品計上区分';                            -- カテゴリー商品計上区分
+-- Ver1.6 add end
   -- 標準API名
   cv_api_cust_acct       CONSTANT VARCHAR2(60)  := 'hz_cust_account_v2pub.create_cust_account';         -- 標準API：顧客マスタ作成
   cv_api_location        CONSTANT VARCHAR2(60)  := 'hz_location_v2pub.create_location';                 -- 標準API：顧客所在地マスタ作成
@@ -1243,6 +1257,9 @@ AS
       l_validate_cust_tab(25) := i_wk_cust_rec.offset_cust_code;                      -- 相殺用顧客コード
       l_validate_cust_tab(26) := i_wk_cust_rec.bp_customer_code;                      -- 取引先顧客コード
 -- Ver1.5 add end
+-- Ver1.6 add start
+      l_validate_cust_tab(27) := i_wk_cust_rec.latitude;                              -- カテゴリー商品計上区分
+-- Ver1.6 add end
     --
     -- フォーマットパターン「502:店舗営業」の場合
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama mod start
@@ -3379,6 +3396,95 @@ AS
         END IF;
       END IF;
 -- Ver1.5 add end
+-- Ver1.6 add start
+      --==============================================================
+      -- A-4.47 カテゴリー商品計上区分必須チェック
+      --==============================================================
+      lv_step := 'A-4.47';
+      -- フォーマットパターン「501:MC」の場合
+      IF ( gv_format = cv_file_format_mc ) THEN
+        -- 業態小分類がカテゴリー商品計上区分の必須対象かチェック
+        SELECT COUNT(1)
+        INTO   ln_cnt
+        FROM   fnd_lookup_values_vl flv                                           -- LOOKUP表
+        WHERE  flv.lookup_type  = cv_lookup_cat_prod_unn                          -- タイプ
+        AND    flv.lookup_code  = i_wk_cust_rec.business_low_type_tmp             -- コード
+        AND    flv.enabled_flag = cv_yes                                          -- 使用可能フラグ
+        AND    NVL( flv.start_date_active, gd_process_date ) <= gd_process_date   -- 適用開始日
+        AND    NVL( flv.end_date_active,   gd_process_date ) >= gd_process_date   -- 適用終了日
+        ;
+        -- 業態小分類がカテゴリー商品計上区分が不要な業態以外の場合に必須かをチェック
+        -- ※LOOKUPに業態小分類が存在する場合は必須チェックをスキップする
+        IF (ln_cnt = 0) THEN
+          IF (i_wk_cust_rec.latitude IS NULL) THEN
+            lv_check_status   := cv_status_error;
+            ov_retcode        := cv_status_error;
+            -- カテゴリー商品計上区分存在チェックエラー
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmm_10491                    -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_input_data                     -- トークンコード1
+                          ,iv_token_value1 => i_wk_cust_rec.business_low_type_tmp   -- トークン値1
+                          ,iv_token_name2  => cv_tkn_input_line_no                  -- トークンコード2
+                          ,iv_token_value2 => i_wk_cust_rec.line_no                 -- トークン値1
+                         );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => gv_out_msg);
+            --
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+            lv_check_flag := cv_status_error;
+          END IF;
+        END IF;
+      END IF;
+--
+      --==============================================================
+      -- A-4.48 カテゴリー商品計上区分チェック
+      --==============================================================
+      lv_step := 'A-4.48';
+      -- フォーマットパターン「501:MC」かつ、値が入っている場合
+      IF ( gv_format = cv_file_format_mc )
+        AND ( i_wk_cust_rec.latitude IS NOT NULL ) THEN
+        -- カテゴリー商品計上区分存在チェック
+        SELECT COUNT(1)
+        INTO   ln_cnt
+        FROM   fnd_lookup_values_vl flv                                           -- LOOKUP表
+        WHERE  flv.lookup_type  = cv_lookup_cat_prod_div                          -- タイプ
+        AND    flv.lookup_code  = i_wk_cust_rec.latitude                          -- コード
+        AND    flv.enabled_flag = cv_yes                                          -- 使用可能フラグ
+        AND    NVL( flv.start_date_active, gd_process_date ) <= gd_process_date   -- 適用開始日
+        AND    NVL( flv.end_date_active,   gd_process_date ) >= gd_process_date   -- 適用終了日
+        ;
+        --
+        IF (ln_cnt = 0) THEN
+          lv_check_status   := cv_status_error;
+          ov_retcode        := cv_status_error;
+          -- カテゴリー商品計上区分存在チェックエラー
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_10330                    -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                          -- トークンコード1
+                        ,iv_token_value1 => cv_cat_prod_div                       -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                          -- トークンコード2
+                        ,iv_token_value2 => i_wk_cust_rec.latitude                -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no                  -- トークンコード3
+                        ,iv_token_value3 => i_wk_cust_rec.line_no                 -- トークン値3
+                       );
+          -- メッセージ出力
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => gv_out_msg);
+          --
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+          lv_check_flag := cv_status_error;
+        END IF;
+      END IF;
+-- Ver1.6 add end
 -- 2012/12/14 Ver1.2 SCSK K.Furuyama add end
     END IF;
   --
@@ -5229,6 +5335,9 @@ AS
     lt_offset_cust_code         xxcmm_cust_accounts.offset_cust_code%TYPE;               -- 相殺用顧客コード
     lt_bp_customer_code         xxcmm_cust_accounts.bp_customer_code%TYPE;               -- 取引先顧客コード
 -- Ver1.5 add end
+-- Ver1.6 add start
+    lt_latitude                 xxcmm_cust_accounts.latitude%TYPE;                       -- カテゴリー商品計上区分
+-- Ver1.6 add end
 --
     -- *** ローカル・カーソル ***
 --
@@ -5269,6 +5378,9 @@ AS
         lt_offset_cust_code      := i_wk_cust_rec.offset_cust_code;        -- 相殺用顧客コード
         lt_bp_customer_code      := i_wk_cust_rec.bp_customer_code;        -- 取引先顧客コード
 -- Ver1.5 add end
+-- Ver1.6 add start
+        lt_latitude              := i_wk_cust_rec.latitude;                -- カテゴリー商品計上区分
+-- Ver1.6 add end
       --ELSE
       -- フォーマットパターン「502:店舗営業」の場合
       ELSIF ( gv_format = cv_file_format_st ) THEN
@@ -5501,7 +5613,10 @@ AS
         NULL,                                           -- 紹介拠点コード
         NULL,                                           -- 紹介営業員
         NULL,                                           -- チェーン店コード(EDI)【親レコード用】
-        NULL,                                           -- 緯度
+-- Ver1.6 mod start
+--        NULL,                                           -- 緯度
+        lt_latitude,                                    -- カテゴリー商品計上区分
+-- Ver1.6 mod end
         NULL,                                           -- 経度
         NULL,                                           -- 管理元拠点コード
         NULL,                                           -- EDI連携品目コード区分
@@ -6265,6 +6380,9 @@ AS
                 ,xwcu.offset_cust_code                    -- 相殺用顧客コード
                 ,xwcu.bp_customer_code                    -- 取引先顧客コード
 -- Ver1.5 add end
+-- Ver1.6 add start
+                ,xwcu.latitude                            -- カテゴリー商品計上区分
+-- Ver1.6 add end
       FROM       xxcmm_wk_cust_upload  xwcu               -- 顧客一括登録ワーク
       WHERE      xwcu.request_id = cn_request_id          -- 要求ID
       ORDER BY   xwcu.line_no                             -- ファイルSEQ
@@ -6763,6 +6881,9 @@ AS
              ,offset_cust_code              -- 相殺用顧客コード
              ,bp_customer_code              -- 取引先顧客コード
 -- Ver1.5 add end
+-- Ver1.6 add start
+             ,latitude                      -- カテゴリー商品計上区分
+-- Ver1.6 add end
              ,created_by                    -- 作成者
              ,creation_date                 -- 作成日
              ,last_updated_by               -- 最終更新者
@@ -6833,6 +6954,9 @@ AS
              ,l_wk_item_tab(25)             -- 相殺用顧客コード
              ,l_wk_item_tab(26)             -- 取引先顧客コード
 -- Ver1.5 add end
+-- Ver1.6 add start
+             ,l_wk_item_tab(27)             -- カテゴリー商品計上区分
+-- Ver1.6 add end
              ,cn_created_by                 -- 作成者
              ,cd_creation_date              -- 作成日
              ,cn_last_updated_by            -- 最終更新者
