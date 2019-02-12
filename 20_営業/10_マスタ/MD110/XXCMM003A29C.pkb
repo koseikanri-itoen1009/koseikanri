@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2017/06/14    1.16  仁木 重人        障害E_本稼動_14271対応 自販機フォロー委託２次開発
  *  2017/10/18    1.17  大室 慶治        障害E_本稼動_14667対応 MC顧客の中止
  *  2018/07/19    1.18  桐生 和幸        障害E_本稼動_15194対応 通過在庫型区分のチェック追加
+ *  2019/01/31    1.19  阿部 直樹        障害E_本稼動_15490対応 顧客追加情報項目変更
  *
  *****************************************************************************************/
 --
@@ -209,6 +210,9 @@ AS
   cv_offset_cust_rel_err_msg  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10363';                --相殺用顧客コード関連チェックエラー
   cv_bp_cust_exists_err_msg   CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10364';                --取引先顧客コード重複チェックエラー
 -- Ver1.16 add end
+-- Ver1.19 add start
+  cv_latitude_exists_err_mst  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10490';                --カテゴリー商品計上区分必須チェックエラー
+-- Ver1.19 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -456,6 +460,17 @@ AS
   cv_mc_candidates            CONSTANT VARCHAR2(2)   := '10';                               --顧客ステータス・MC候補
   cv_mc                       CONSTANT VARCHAR2(2)   := '20';                               --顧客ステータス・MC
 -- 2017/10/18 Ver1.17 E_本稼動_14667 add end by Y.Omuro
+-- Ver1.19 add start
+  --参照タイプ
+  cv_lkp_cat_prod_div         CONSTANT VARCHAR2(30)  := 'XXCMM_CATEGORY_PRODUCT_DIV';       --参照タイプ・カテゴリー商品計上区分
+  cv_lkp_cat_prod_unn         CONSTANT VARCHAR2(30)  := 'XXCMM_CAT_PROD_DIV_UNNECESSARY';   --参照タイプ・カテゴリー商品計上区分不要業態小分類定義
+  --メッセージトークン
+  cv_input_data               CONSTANT VARCHAR2(10)  := 'INPUT_DATA';                       --トークン
+  --項目名
+  cv_latitude_div             CONSTANT VARCHAR2(22)  := 'カテゴリー商品計上区分';           --カテゴリー商品計上区分
+  --固定値
+  cv_gyomu_kokyaku_resp       CONSTANT VARCHAR2(30)  := 'XXCMM_RESP_006';                   --職責管理プロファイル値(業務管理部(顧客))
+-- Ver1.19 add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -756,6 +771,12 @@ AS
     lb_offset_cust_chk_flg      BOOLEAN         DEFAULT TRUE;                   --相殺用顧客関連チェックフラグ
     lv_bp_cust_exists           VARCHAR2(9)     := NULL;                        --取引先顧客コード重複チェック用変数
 -- Ver1.16 add end
+-- Ver1.19 add start
+    lv_latitude                 VARCHAR2(20)    := NULL;                        --ローカル変数・カテゴリー商品計上区分
+    lt_latitude_bef             xxcmm_cust_accounts.latitude%TYPE;              --現在値・カテゴリー商品計上区分
+    lt_latitude_mst             xxcmm_cust_accounts.latitude%TYPE;              --LOOKUP確認用・カテゴリー商品計上区分
+    ln_cnt                      NUMBER          := NULL;                        --カテゴリー商品計上区分不要対象件数
+-- Ver1.19 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -1328,6 +1349,9 @@ AS
             ,xca.offset_cust_code      AS offset_cust_code      --相殺用顧客コード
             ,xca.bp_customer_code      AS bp_customer_code      --取引先顧客コード
 -- Ver1.16 add end
+-- Ver1.19 add start
+            ,xca.latitude              AS latitude              --カテゴリー商品計上区分
+-- Ver1.19 add end
       FROM   hz_cust_accounts     hca
             ,xxcmm_cust_accounts  xca
       WHERE  hca.cust_account_id     = xca.customer_id
@@ -1443,6 +1467,23 @@ AS
     -- 取引先顧客コード重複チェックレコード型
     chk_bp_customer_code_rec chk_bp_customer_code_cur%ROWTYPE;
 -- Ver1.16 add end
+-- Ver1.19 add start
+    -- カテゴリー商品計上区分不要業態小分類チェックカーソル
+    CURSOR check_cat_prod_unn_cur(
+      iv_lookup_code IN VARCHAR2     -- 業態小分類
+    )
+    IS
+      SELECT COUNT(1)              AS cnt
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type      = cv_lkp_cat_prod_unn
+      AND    flvv.lookup_code      = iv_lookup_code
+      AND    flvv.enabled_flag     = cv_yes
+      AND    NVL(flvv.start_date_active, gd_process_date) <= gd_process_date
+      AND    NVL(flvv.end_date_active,   gd_process_date) >= gd_process_date
+      ;
+    -- カテゴリー商品計上区分不要業態小分類チェックカーソルレコード型
+    check_cat_prod_unn_rec  check_cat_prod_unn_cur%ROWTYPE;
+-- Ver1.19 add end
 --
   BEGIN
 --
@@ -8056,6 +8097,9 @@ AS
             lt_offset_cust_code_bef   := get_xca_info_rec.offset_cust_code;  --相殺用顧客コード
             lt_bp_customer_code_bef   := get_xca_info_rec.bp_customer_code;  --取引先顧客コード
 -- Ver1.16 add end
+-- Ver1.19 add start
+            lt_latitude_bef           := get_xca_info_rec.latitude;          --カテゴリー商品計上区分
+-- Ver1.19 add end
           END LOOP get_xca_info_loop;
 --
           --業態(小分類)の妥当性チェックOKの場合のみ取得・チェック
@@ -9027,6 +9071,76 @@ AS
           END IF;
         END IF;
 -- Ver1.14 add end
+-- Ver1.19 add start
+        --カテゴリー商品計上区分取得
+        lv_latitude := xxccp_common_pkg.char_delim_partition( lv_temp
+                                                            , cv_comma
+                                                            , 82
+                                                            );
+--
+        -- カテゴリー商品計上区分必須チェック
+        <<check_unn_loop>>
+        -- 業態小分類がカテゴリー商品計上区分不要対象かチェック
+        FOR check_cat_prod_unn_rec IN check_cat_prod_unn_cur( lt_business_low_type_aft )
+        LOOP
+          ln_cnt := check_cat_prod_unn_rec.cnt;
+        END LOOP check_unn_loop;
+        --
+        -- 不要対象外の場合、カテゴリー商品計上区分が設定されているかチェック
+        IF (ln_cnt = 0) THEN
+          IF   ((lv_latitude = cv_null_bar)
+            OR  (NVL(lv_latitude, lt_latitude_bef) IS NULL))
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --カテゴリー商品計上区分必須チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_latitude_exists_err_mst
+                            ,iv_token_name1  => cv_input_data
+                            ,iv_token_value1 => lt_business_low_type_aft
+                            ,iv_token_name2  => cv_cust_code
+                            ,iv_token_value2 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+          END IF;
+        END IF;
+        --
+        --CSV値が任意の値の場合
+        IF ( NVL( lv_latitude ,cv_null_bar ) <> cv_null_bar ) THEN
+          --参照表存在チェック(使用可能='Y')
+          << check_latitude_loop >>
+          FOR check_lookup_type_rec2 IN check_lookup_type_cur2( lv_latitude
+                                                              , cv_lkp_cat_prod_div )
+          LOOP
+            lt_latitude_mst := check_lookup_type_rec2.lookup_code;
+          END LOOP check_latitude_loop;
+          --
+          IF ( lt_latitude_mst IS NULL )
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --参照表存在チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_lookup_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_latitude_div
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_latitude
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+          END IF;
+        END IF;
+-- Ver1.19 add end
         --
         IF (lv_check_status = cv_status_normal) THEN
           BEGIN
@@ -9129,6 +9243,9 @@ AS
               ,offset_cust_code          --相殺用顧客コード
               ,bp_customer_code          --取引先顧客コード
 -- Ver1.16 add end
+-- Ver1.19 add start
+              ,latitude                  --カテゴリー商品計上区分
+-- Ver1.19 add end
               ,created_by
               ,creation_date
               ,last_updated_by
@@ -9237,6 +9354,9 @@ AS
               ,lv_offset_cust_code            --相殺用顧客コード
               ,lv_bp_customer_code            --取引先顧客コード
 -- Ver1.16 add end
+-- Ver1.19 add start
+              ,lv_latitude                    --カテゴリー商品計上区分
+-- Ver1.19 add end
               ,fnd_global.user_id
               ,sysdate
               ,fnd_global.user_id
@@ -9449,6 +9569,12 @@ AS
       lt_bp_customer_code_aft     := NULL;  --更新値・取引先顧客コード
       lv_bp_cust_exists           := NULL;  --取引先顧客コード重複チェック用変数
 -- Ver1.16 add end
+-- Ver1.19 add start
+      lv_latitude                 := NULL;  --ローカル変数・カテゴリー商品計上区分
+      lt_latitude_bef             := NULL;  --現在値・カテゴリー商品計上区分
+      lt_latitude_mst             := NULL;  --LOOKUP確認用・カテゴリー商品計上区分
+      ln_cnt                      := NULL;  --カテゴリー商品計上区分不要対象件数
+-- Ver1.19 add end
       --妥当性チェックフラグ
       lb_bz_low_type_chk_flg      := TRUE;  --業態(小分類)チェックフラグ
       lb_sell_trans_chk_flg       := TRUE;  --売上実績振替チェックフラグ
@@ -9809,6 +9935,10 @@ AS
              ,xwcbr.bp_customer_code       bp_customer_code          --取引先顧客コード
              ,xca.bp_customer_code         addon_bp_customer_code    --顧客追加情報.取引先顧客コード
 -- Ver1.16 add end
+-- Ver1.19 add start
+             ,xwcbr.latitude               latitude                  --カテゴリー商品計上区分
+             ,xca.latitude                 addon_latitude            --顧客追加情報.カテゴリー商品計上区分
+-- Ver1.19 add end
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -11493,6 +11623,35 @@ AS
     --
     END IF;
 -- Ver1.16 add end
+-- Ver1.19 add start
+    -- ===============================
+    -- カテゴリー商品計上区分
+    -- ===============================
+    --顧客区分「10：顧客」且つ、職責「業務管理部(顧客)」の場合
+    IF    ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+      AND ( gv_management_resp = cv_gyomu_kokyaku_resp)
+    THEN
+      --設定値が'-'の場合
+      IF ( cust_data_rec.latitude = cv_null_bar )
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.latitude := NULL;
+      --設定値がNULLの場合
+      ELSIF ( cust_data_rec.latitude IS NULL )
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.latitude := cust_data_rec.addon_latitude;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.latitude := cust_data_rec.latitude;
+      END IF;
+    --更新可能な顧客区分、職責以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.latitude := cust_data_rec.addon_latitude;
+    --
+    END IF;
+-- Ver1.19 add end
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -11566,6 +11725,9 @@ AS
           ,xca.offset_cust_code       = l_xxcmm_cust_accounts.offset_cust_code           --相殺用顧客コード
           ,xca.bp_customer_code       = l_xxcmm_cust_accounts.bp_customer_code           --取引先顧客コード
 -- Ver1.16 add end
+-- Ver1.19 add start
+          ,xca.latitude               = l_xxcmm_cust_accounts.latitude                   --カテゴリー商品計上区分
+-- Ver1.19 add end
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID
