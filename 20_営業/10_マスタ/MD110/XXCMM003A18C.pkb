@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2011/11/09    1.18  Shigeto.Niki     障害E_本稼動_08648の対応
  *  2012/01/11    1.19  Shigeto.Niki     障害E_本稼動_08830の対応
  *  2017/04/05    1.20  Shigeto.Niki     障害E_本稼動_13976の対応
+ *  2019/01/25    1.21  Yasuhiro.Shoji   障害E_本稼動_15490の対応 「緯度」と「経度」のコメント変更のみ
  *
  *****************************************************************************************/
 --
@@ -585,8 +586,8 @@ AS
               xca.established_site_name                      established_site_name,       --設置先名
               hp.attribute2                                  emp_number,                  --社員数
               hopero.route_s_date                            route_s_date,                --適用開始日(ルートＮＯ)
-              xca.latitude                                   latitude,                    --緯度
-              xca.longitude                                  longitude,                   --経度
+              xca.latitude                                   latitude,                    --カテゴリー商品計上区分
+              xca.longitude                                  longitude,                   --ピークカット開始時刻
               xmc.decide_div                                 decide_div,                  --判定区分
               xca.new_point_div                              new_point_div,               --新規ポイント区分
               xca.receiv_discount_rate                       receiv_discount_rate,        --入金値引率
@@ -1456,8 +1457,8 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.established_site_name, 1, 30)      || cv_dqu;  --設置先名
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.emp_number, 1, 15);                                      --社員数
       lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.route_s_date, cv_fnd_date);                              --適用開始日（ルートＮＯ）
-      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.latitude, 1, 10);                                        --緯度
-      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.longitude, 1, 10);                                       --経度
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.latitude, 1, 10);                                        --カテゴリー商品計上区分
+      lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.longitude, 1, 10);                                       --ピークカット開始時刻
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.decide_div, 1, 1)                  || cv_dqu;  --判定区分
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(cust_data_rec.new_point_div, 1, 1)               || cv_dqu;  --新規ポイント区分
       lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.receiv_discount_rate), 1, 4);                         --入金値引率
