@@ -4,7 +4,7 @@
  * TABLE Name      : xxcmm_wk_cust_batch_regist
  * Description     : 顧客一括更新用ワーク
  * MD.070          : 
- * Version         : 1.8
+ * Version         : 1.9
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -19,6 +19,7 @@
  *  2014/03/18    1.6  S.Niki        障害E_本稼動_11616
  *  2017/04/05    1.7  S.Niki        障害E_本稼動_13976
  *  2017/06/14    1.8  S.Niki        障害E_本稼動_14271
+ *  2018/12/28    1.9  N.Abe         障害E_本稼動_15490
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
@@ -125,6 +126,9 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
   OFFSET_CUST_CODE        VARCHAR2(30),
   BP_CUSTOMER_CODE        VARCHAR2(100),
 -- Ver1.8 add end
+-- Ver1.9 add start
+  LATITUDE                VARCHAR2(20),
+-- Ver1.9 add end
   CREATED_BY              NUMBER(15,0) NOT NULL,
   CREATION_DATE           DATE NOT NULL,
   LAST_UPDATED_BY         NUMBER(15,0) NOT NULL,
@@ -322,6 +326,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.offset_cust_code IS '相殺用顧
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.bp_customer_code IS '取引先顧客コード'
 /
 -- Ver1.8 add end
+-- Ver1.9 add start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.latitude IS 'カテゴリー商品計上区分'
+/
+-- Ver1.9 add end
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.created_by IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.creation_date IS '作成日'
