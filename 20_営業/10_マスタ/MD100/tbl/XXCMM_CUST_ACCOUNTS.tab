@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.10
+ * Version         : 1.11
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -23,6 +23,7 @@
                                                        顧客別鮮度条件コード追加
  *  2016/10/26    1.9  S.Niki        【E_本稼動_13879】取引先顧客コード、相殺用顧客コード、相殺用顧客区分追加
  *  2017/03/07    1.10 S.Yamashita   【E_本稼動_13976】ストレポ＆商談くん連携対象フラグ追加
+ *  2019/01/28    1.11 Y.Shoji       【E_本稼動_15490】緯度 -> カテゴリー商品計上区分
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
@@ -280,7 +281,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.intro_business_person       IS '紹介
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.edi_chain_code              IS 'チェーン店コード(EDI)【親レコード用】'
 /
-COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.latitude                    IS '緯度'
+-- Ver1.11 modify start
+--COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.latitude                    IS '緯度'
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.latitude                    IS 'カテゴリー商品計上区分'
+-- Ver1.11 modify End
 /
 -- 2011/05/18 Ver1.6 modify start by S.Niki
 --COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.longitude                   IS '経度'
