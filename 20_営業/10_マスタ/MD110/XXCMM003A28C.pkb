@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2014/03/11    1.8   仁木 重人        障害E_本稼動_11616対応
  *  2017/04/05    1.9   仁木 重人        障害E_本稼動_13976対応
  *  2017/06/14    1.10  仁木 重人        障害E_本稼動_14271対応
+ *  2019/01/31    1.11  阿部 直樹        障害E_本稼動_15490対応
  *
  *****************************************************************************************/
 --
@@ -554,6 +555,9 @@ AS
               ,xca.offset_cust_code                   offset_cust_code      --相殺用顧客コード
               ,xca.bp_customer_code                   bp_customer_code      --取引先顧客コード
 -- Ver1.10 add end
+-- Ver1.11 add start
+              ,xca.latitude                           latitude              --カテゴリー商品計上区分
+-- Ver1.11 add end
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -1071,6 +1075,9 @@ AS
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_tdb_code                                ,1 ,12 );  --TDBコード
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_base_code                               ,1 ,4  );  --本部担当拠点
         lv_output_str := lv_output_str || cv_comma || TO_CHAR(ln_credit_limit);                                     --与信限度額
+-- Ver1.11 add start
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.latitude                     ,1 ,20 );  --カテゴリー商品計上区分
+-- Ver1.11 add end
         lv_output_str := lv_output_str || cv_comma || lv_decide_div;                                                --判定区分
         lv_output_str := lv_output_str || cv_comma || TO_CHAR(lt_approval_date ,cv_date_fmt_std);                   --決済日付
         lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information                             ,1 ,100);  --情報欄
