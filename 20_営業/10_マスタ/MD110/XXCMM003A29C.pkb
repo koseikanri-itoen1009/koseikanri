@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2017/10/18    1.17  大室 慶治        障害E_本稼動_14667対応 MC顧客の中止
  *  2018/07/19    1.18  桐生 和幸        障害E_本稼動_15194対応 通過在庫型区分のチェック追加
  *  2019/01/31    1.19  阿部 直樹        障害E_本稼動_15490対応 顧客追加情報項目変更
+ *  2019/02/18    1.20  奈良 和宏        障害E_本稼動_15490対応 顧客追加情報項目変更の不具合対応
  *
  *****************************************************************************************/
 --
@@ -213,6 +214,9 @@ AS
 -- Ver1.19 add start
   cv_latitude_exists_err_mst  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10490';                --カテゴリー商品計上区分必須チェックエラー
 -- Ver1.19 add end
+-- Ver1.20 add start
+  cv_latitude_not_null_err    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10492';                --カテゴリー商品計上区分指定エラー
+-- Ver1.20 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -9079,60 +9083,82 @@ AS
                                                             );
 --
         -- カテゴリー商品計上区分必須チェック
-        <<check_unn_loop>>
-        -- 業態小分類がカテゴリー商品計上区分不要対象かチェック
-        FOR check_cat_prod_unn_rec IN check_cat_prod_unn_cur( lt_business_low_type_aft )
-        LOOP
-          ln_cnt := check_cat_prod_unn_rec.cnt;
-        END LOOP check_unn_loop;
-        --
-        -- 不要対象外の場合、カテゴリー商品計上区分が設定されているかチェック
-        IF (ln_cnt = 0) THEN
-          IF   ((lv_latitude = cv_null_bar)
-            OR  (NVL(lv_latitude, lt_latitude_bef) IS NULL))
-          THEN
-            lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
-            --カテゴリー商品計上区分必須チェックエラーメッセージ取得
-            gv_out_msg := xxccp_common_pkg.get_msg(
-                             iv_application  => gv_xxcmm_msg_kbn
-                            ,iv_name         => cv_latitude_exists_err_mst
-                            ,iv_token_name1  => cv_input_data
-                            ,iv_token_value1 => lt_business_low_type_aft
-                            ,iv_token_name2  => cv_cust_code
-                            ,iv_token_value2 => lv_customer_code
-                           );
-            FND_FILE.PUT_LINE(
-               which  => FND_FILE.LOG
-              ,buff   => gv_out_msg
-            );
-          END IF;
-        END IF;
-        --
-        --CSV値が任意の値の場合
-        IF ( NVL( lv_latitude ,cv_null_bar ) <> cv_null_bar ) THEN
-          --参照表存在チェック(使用可能='Y')
-          << check_latitude_loop >>
-          FOR check_lookup_type_rec2 IN check_lookup_type_cur2( lv_latitude
-                                                              , cv_lkp_cat_prod_div )
+-- Ver1.20 add start
+        IF (lv_cust_customer_class = cv_kokyaku_kbn ) THEN
+-- Ver1.20 add end
+          <<check_unn_loop>>
+          -- 業態小分類がカテゴリー商品計上区分不要対象かチェック
+          FOR check_cat_prod_unn_rec IN check_cat_prod_unn_cur( lt_business_low_type_aft )
           LOOP
-            lt_latitude_mst := check_lookup_type_rec2.lookup_code;
-          END LOOP check_latitude_loop;
+            ln_cnt := check_cat_prod_unn_rec.cnt;
+          END LOOP check_unn_loop;
           --
-          IF ( lt_latitude_mst IS NULL )
-          THEN
+          -- 不要対象外の場合、カテゴリー商品計上区分が設定されているかチェック
+          IF (ln_cnt = 0) THEN
+            IF   ((lv_latitude = cv_null_bar)
+              OR  (NVL(lv_latitude, lt_latitude_bef) IS NULL))
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --カテゴリー商品計上区分必須チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_latitude_exists_err_mst
+                              ,iv_token_name1  => cv_input_data
+                              ,iv_token_value1 => lt_business_low_type_aft
+                              ,iv_token_name2  => cv_cust_code
+                              ,iv_token_value2 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          END IF;
+          --
+          --CSV値が任意の値の場合
+          IF ( NVL( lv_latitude ,cv_null_bar ) <> cv_null_bar ) THEN
+            --参照表存在チェック(使用可能='Y')
+            << check_latitude_loop >>
+            FOR check_lookup_type_rec2 IN check_lookup_type_cur2( lv_latitude
+                                                                , cv_lkp_cat_prod_div )
+            LOOP
+              lt_latitude_mst := check_lookup_type_rec2.lookup_code;
+            END LOOP check_latitude_loop;
+            --
+            IF ( lt_latitude_mst IS NULL )
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --参照表存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_lookup_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_latitude_div
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_latitude
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          END IF;
+-- Ver1.19 add end
+-- Ver1.20 add start
+        ELSE  --顧客区分:10以外
+          IF ( lv_latitude <> cv_null_bar ) THEN
             lv_check_status := cv_status_error;
             lv_retcode      := cv_status_error;
-            --参照表存在チェックエラーメッセージ取得
+            --カテゴリー商品計上区分指定エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
-                            ,iv_name         => cv_lookup_err_msg
+                            ,iv_name         => cv_latitude_not_null_err
                             ,iv_token_name1  => cv_cust_code
                             ,iv_token_value1 => lv_customer_code
-                            ,iv_token_name2  => cv_col_name
-                            ,iv_token_value2 => cv_latitude_div
-                            ,iv_token_name3  => cv_input_val
-                            ,iv_token_value3 => lv_latitude
                            );
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
@@ -9140,7 +9166,7 @@ AS
             );
           END IF;
         END IF;
--- Ver1.19 add end
+-- Ver1.20 add end
         --
         IF (lv_check_status = cv_status_normal) THEN
           BEGIN
