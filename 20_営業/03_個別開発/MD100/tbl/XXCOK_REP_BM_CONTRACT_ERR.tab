@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_BM_CONTRACT_ERR
  * Description : 販手条件エラーリスト帳票ワークテーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
  *  2011/12/20    1.2   T.Yoshimoto      [E_本稼動_08631]パラメータ項目追加
+ *  2018/12/27    1.3   Y.Sasaki         [E_本稼動_15349]エラー区分追加
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_CONTRACT_ERR
@@ -24,6 +25,9 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_CONTRACT_ERR
    SELLING_BASE_NAME         VARCHAR2(240),
    COST_CODE                 VARCHAR2(9),
    COST_NAME                 VARCHAR2(360),
+-- 2018/12/27 v1.3 Added START
+   ERR_KBN                   VARCHAR2(40),
+-- 2018/12/27 v1.3 Added END
    ITEM_CODE                 VARCHAR2(7),
    ITEM_NAME                 VARCHAR2(20),
    CONTAINER_TYPE            VARCHAR2(80),
@@ -62,6 +66,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_CONTRACT_ERR.COST_CODE                 IS '
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_CONTRACT_ERR.COST_NAME                 IS '顧客名'
 /
+-- 2018/12/27 v1.3 Added START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_CONTRACT_ERR.ERR_KBN                   IS 'エラー区分'
+/
+-- 2018/12/27 v1.3 Added END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_CONTRACT_ERR.ITEM_CODE                 IS '品目コード'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_CONTRACT_ERR.ITEM_NAME                 IS '品目名'
