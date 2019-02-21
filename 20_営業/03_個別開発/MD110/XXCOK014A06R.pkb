@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A06R(body)
  * Description      : 条件別販手販協計算処理実行時に販手条件マスタ未登録の販売実績をエラーリストに出力
  * MD.050           : 自販機販手条件エラーリスト MD050_COK_014_A06
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/09/01    1.4   S.Moriyama       [障害0001230] OPM品目マスタ取得条件追加
  *  2011/02/02    1.5   S.Ochiai         [障害E_本稼動_05408] 年次切替対応
  *  2011/12/20    1.6   T.Yoshimoto      [改善E_本稼動_08361] パラメータ追加対応
+ *  2018/12/27    1.7   Y.Sasaki         [E_本稼動_15249] エラー区分追加対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -94,6 +95,9 @@ AS
 --  cv_token_yoki_kubun        CONSTANT VARCHAR2(20)  := 'XXCMM_YOKI_KUBUN';          -- 容器区分
   cv_token_yoki_kubun        CONSTANT VARCHAR2(25)  := 'XXCSO1_SP_RULE_BOTTLE';     -- 容器区分
 -- End   2009/03/03 M.Hiruta
+-- 2018/12/27 v1.7 Added START
+  cv_token_err_kubun         CONSTANT VARCHAR2(25)  := 'XXCOK1_VD_ERR_KBN';         --エラー区分
+-- 2018/12/27 v1.7 Added END
   -- プロファイル
 -- 2009/04/14 Ver.1.3 [障害T1_0510] SCS K.Yamaguchi ADD START
   cv_prof_org_id             CONSTANT VARCHAR2(25)  := 'ORG_ID';    -- MO：営業単位ID
@@ -118,6 +122,9 @@ AS
   -- SVF出力ファイル名作成用
   cv_format_yyyymmdd         CONSTANT VARCHAR2(20)  := 'YYYYMMDD';           -- 文字列変換用日付書式フォーマット
   cv_extension               CONSTANT VARCHAR2(5)   := '.pdf';               -- 出力ファイル用拡張子(PDF形式)
+-- 2018/12/27 v1.7 Y.Sasaki Added START
+  cv_flg_y                   CONSTANT VARCHAR2(1)  := 'Y';
+-- 2018/12/27 v1.7 Y.Sasaki Added END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -183,6 +190,9 @@ AS
            xbce.base_code            AS base_code                 -- 拠点コード
 -- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD END
          , xbce.cust_code            AS cust_code                 -- 顧客コード
+-- 2018/12/27 v1.7 Added START
+         , err.err_kbn_name          AS err_kbn                   -- エラー区分
+-- 2018/12/27 v1.7 Added END
          , xbce.item_code            AS item_code                 -- 品目コード
          , xbce.container_type_code  AS container_type_code       -- 容器コード
          , xbce.selling_price        AS selling_price             -- 売価
@@ -215,6 +225,17 @@ AS
              FROM   xxcmn_lookup_values_v xlvv                    -- クイックコード
              WHERE  xlvv.lookup_type      = cv_token_yoki_kubun
            ) cont
+-- 2018/12/27 v1.7 Added START
+         , ( SELECT flv.lookup_code       AS err_kbn               -- エラー区分
+                  , flv.meaning           AS err_kbn_name          -- エラー区分名
+             FROM   fnd_lookup_values flv
+             WHERE  flv.lookup_type       = cv_token_err_kubun
+             AND    flv.language          =   USERENV( 'LANG' )
+             AND    flv.enabled_flag      =   cv_flg_y
+             AND    gd_process_date BETWEEN flv.start_date_active
+                                    AND NVL( flv.end_date_active, gd_process_date )
+           ) err
+-- 2018/12/27 v1.7 Added END
 -- 2011/02/02 Ver.1.5 [障害E_本稼動_05408] SCS S.Ochiai UPD START
 --    WHERE  xbce.base_code            = NVL( iv_bace_code , xbce.base_code )
     WHERE  xbce.cust_code            = xca.customer_code
@@ -225,6 +246,9 @@ AS
 -- 2011/12/20 v1.6 T.Yoshimoto Add Start E_本稼動_08631
     AND    xbce.cust_code            = NVL(iv_cust_code,    xbce.cust_code)
 -- 2011/12/20 v1.6 T.Yoshimoto Add End
+-- 2018/12/27 v1.7 Added START
+    AND    xbce.err_kbn              = err.err_kbn
+-- 2018/12/27 v1.7 Added END
     ORDER BY
       xbce.base_code
     , xbce.cust_code
@@ -471,6 +495,9 @@ AS
       , selling_base_name                      -- 売上計上拠点名
       , cost_code                              -- 顧客コード
       , cost_name                              -- 顧客名
+-- 2018/12/27 v1.7 Added START
+      , err_kbn                                -- エラー区分
+-- 2018/12/27 v1.7 Added END
       , item_code                              -- 品目コード
       , item_name                              -- 品目名
       , container_type                         -- 容器区分
@@ -498,6 +525,9 @@ AS
       , gt_selling_base_name                   -- 売上計上拠点名
       , gt_customer_code                       -- 顧客コード
       , gt_customer_name                       -- 顧客名
+-- 2018/12/27 v1.7 Added START
+      , SUBSTRB (g_err_tab( in_cnt ).err_kbn,0,18)  -- エラー区分
+-- 2018/12/27 v1.7 Added END
       , g_err_tab( in_cnt ).item_code          -- 品目コード
       , g_err_tab( in_cnt ).item_short_name    -- 品目名
       , g_err_tab( in_cnt ).container_name     -- 容器区分
@@ -532,6 +562,9 @@ AS
       , selling_base_name                      -- 売上計上拠点名
       , cost_code                              -- 顧客コード
       , cost_name                              -- 顧客名
+-- 2018/12/27 v1.7 Added START
+      , err_kbn                                -- エラー区分
+-- 2018/12/27 v1.7 Added END
       , item_code                              -- 品目コード
       , item_name                              -- 品目名
       , container_type                         -- 容器区分
@@ -559,6 +592,9 @@ AS
       , NULL                                   -- 売上計上拠点名
       , NULL                                   -- 顧客コード
       , NULL                                   -- 顧客名
+-- 2018/12/27 v1.7 Added START
+      , NULL                                   -- エラー区分
+-- 2018/12/27 v1.7 Added END
       , NULL                                   -- 品目コード
       , NULL                                   -- 品目名
       , NULL                                   -- 容器区分
@@ -803,7 +839,10 @@ AS
         -- ===============================================
         -- 品目・略名が取得できなかった場合
         -- ===============================================
-        IF ( g_err_tab( i ).item_short_name IS NULL ) THEN
+-- 2018/12/27 v1.7 Modified START
+--        IF ( g_err_tab( i ).item_short_name IS NULL ) THEN
+        IF ( g_err_tab(i).item_code IS NOT NULL AND g_err_tab( i ).item_short_name IS NULL ) THEN
+-- 2018/12/27 v1.7 Modified END
           lv_message := xxccp_common_pkg.get_msg(
                           iv_application  => cv_xxcok_appl_short_name
                         , iv_name         => cv_msg_code_00056
@@ -822,7 +861,10 @@ AS
         -- ===============================================
         -- 容器が取得できなかった場合
         -- ===============================================
-        IF ( g_err_tab( i ).container_name IS NULL ) THEN
+-- 2018/12/27 v1.7 Modified START
+--        IF ( g_err_tab( i ).container_name IS NULL ) THEN
+        IF (g_err_tab( i ).container_type_code IS NOT NULL AND g_err_tab( i ).container_name IS NULL ) THEN
+-- 2018/12/27 v1.7 Modified END
           lv_message := xxccp_common_pkg.get_msg(
                           iv_application  => cv_xxcok_appl_short_name
                         , iv_name         => cv_msg_code_00015
