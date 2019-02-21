@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.17
+ * Version          : 3.18
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -80,6 +80,7 @@ AS
  *  2012/09/14    3.15  S.Niki           [E_本稼動_08751] パフォーマンス改善対応
  *  2012/10/01    3.16  K.Kiriu          [E_本稼動_10133] パフォーマンス改善対応(ヒント句固定化)
  *  2012/10/18    3.17  K.Kiriu          [E_本稼動_10133] パフォーマンス改善追加対応(ヒント句固定化)
+ *  2018/12/26    3.18  E.Yazaki         [E_本稼動_15349] 【営業・個別】仕入先CD制御
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -142,6 +143,9 @@ AS
   cv_msg_cok_10494                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10494';
   cv_msg_cok_10495                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10495';
 -- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  cv_msg_cok_10562                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10562';
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   -- トークン
   cv_tkn_close_date                CONSTANT VARCHAR2(30)    := 'CLOSE_DATE';
   cv_tkn_container_type            CONSTANT VARCHAR2(30)    := 'CONTAINER_TYPE';
@@ -208,6 +212,10 @@ AS
 -- 2009/11/09 Ver.3.4 [仕様変更I_E_633] SCS K.Yamaguchi ADD START
   cv_disable                       CONSTANT VARCHAR2(1)     := 'N';
 -- 2009/11/09 Ver.3.4 [仕様変更I_E_633] SCS K.Yamaguchi ADD END
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  cv_vendor_dummy_on             CONSTANT VARCHAR2(1)  := '1';
+  cv_vendor_dummy_off            CONSTANT VARCHAR2(1)  := '0';
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   -- 共通関数メッセージ出力区分
   cv_which_log                     CONSTANT VARCHAR2(10)    := 'LOG';
   -- 書式フォーマット
@@ -285,6 +293,9 @@ AS
   gn_error_cnt                     NUMBER        DEFAULT 0;      -- 異常件数
   gn_skip_cnt                      NUMBER        DEFAULT 0;      -- スキップ件数
   gn_contract_err_cnt              NUMBER        DEFAULT 0;      -- 販手条件エラー件数
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  gn_vendor_err_cnt                NUMBER        DEFAULT 0;      -- 支払先不正件数
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
   gn_purge_xcbi_cnt                NUMBER        DEFAULT 0;      -- 販手計算済顧客情報データ削除件数
   gn_purge_xcbs_cnt                NUMBER        DEFAULT 0;      -- 条件別販手販協データ削除件数
@@ -695,6 +706,9 @@ AS
          , NULL                                                    AS bm3_electric_amt_tax     -- 【ＢＭ３】電気料(税込)
          , xbc.item_code                                           AS item_code                -- エラー品目コード
          , xbc.amount_fix_date                                     AS amount_fix_date          -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+         , xbc.vendor_dummy_flag                                   AS vendor_dummy_flag        -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     FROM ( SELECT xse.sales_base_code                                                              AS sales_base_code          -- 売上拠点コード
                 , NVL2( xmbc.calc_type, xse.results_employee_code              , NULL )            AS results_employee_code    -- 成績計上者コード
                 , xse.ship_to_customer_code                                                        AS ship_to_customer_code    -- 【出荷先】顧客コード
@@ -739,6 +753,9 @@ AS
                 , NVL2( xmbc.calc_type, xmbc.bm3_amt                           , NULL )            AS bm3_amt                  -- 【ＢＭ３】BM金額
                 , NVL2( xmbc.calc_type, NULL, xse.item_code )                                      AS item_code                -- エラー品目コード
                 , xse.amount_fix_date                                                              AS amount_fix_date          -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+                , xse.vendor_dummy_flag                                                            AS vendor_dummy_flag        -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
 --           FROM ( SELECT /*+ LEADING(xt0c xcbi xseh xsel xsim) USE_NL(xsel xsim) */
            FROM ( SELECT /*+
@@ -791,6 +808,9 @@ AS
                        , xsel.item_code                         AS item_code                   -- 在庫品目コード
                        , xt0c.amount_fix_date                   AS amount_fix_date             -- 金額確定日
                        , xsim.vessel_group                      AS vessel_group                -- 容器群コード
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+                       , xt0c.vendor_dummy_flag                 AS vendor_dummy_flag           -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
                   FROM xxcmm_system_items_b        xsim  -- Disc品目アドオン
                      , xxcos_sales_exp_lines       xsel  -- 販売実績明細
                      , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
@@ -905,6 +925,9 @@ AS
            , xbc.bm3_amt
            , xbc.item_code
            , xbc.amount_fix_date
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+           , xbc.vendor_dummy_flag
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   ;
   -- 販売実績情報・容器区分別条件
   CURSOR get_sales_data_cur2 IS
@@ -958,6 +981,9 @@ AS
          , NULL                                                    AS bm3_electric_amt_tax     -- 【ＢＭ３】電気料(税込)
          , xbc.item_code                                           AS item_code                -- エラー品目コード
          , xbc.amount_fix_date                                     AS amount_fix_date          -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+         , xbc.vendor_dummy_flag                                   AS vendor_dummy_flag        -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     FROM ( SELECT xse.sales_base_code                                                              AS sales_base_code          -- 売上拠点コード
                 , NVL2( xmbc.calc_type, xse.results_employee_code              , NULL )            AS results_employee_code    -- 成績計上者コード
                 , xse.ship_to_customer_code                                                        AS ship_to_customer_code    -- 【出荷先】顧客コード
@@ -1002,6 +1028,9 @@ AS
                 , NVL2( xmbc.calc_type, xmbc.bm3_amt                           , NULL )            AS bm3_amt                  -- 【ＢＭ３】BM金額
                 , NVL2( xmbc.calc_type, NULL, xse.item_code )                                      AS item_code                -- エラー品目コード
                 , xse.amount_fix_date                                                              AS amount_fix_date          -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+                , xse.vendor_dummy_flag                                                            AS vendor_dummy_flag        -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
 --           FROM ( SELECT /*+ LEADING(xt0c xcbi xseh xsel xsim) USE_NL(xsel xsim) */
            FROM ( SELECT /*+
@@ -1054,6 +1083,9 @@ AS
                        , xsel.item_code                     AS item_code                       -- 在庫品目コード
                        , xt0c.amount_fix_date               AS amount_fix_date                 -- 金額確定日
                        , flv1.attribute1                    AS attribute1                      -- 容器区分コード
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+                       , xt0c.vendor_dummy_flag             AS vendor_dummy_flag               -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
                   FROM xxcmm_system_items_b        xsim  -- Disc品目アドオン
                      , xxcos_sales_exp_lines       xsel  -- 販売実績明細
                      , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
@@ -1168,6 +1200,9 @@ AS
             , xbc.bm3_amt
             , xbc.item_code
             , xbc.amount_fix_date
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+            , xbc.vendor_dummy_flag
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   ;
   -- 販売実績情報・一律条件
   CURSOR get_sales_data_cur3 IS
@@ -1241,6 +1276,9 @@ AS
          , NULL                                                                    AS bm3_electric_amt_tax     -- 【ＢＭ３】電気料(税込)
          , NULL                                                                    AS item_code                -- エラー品目コード
          , xt0c.amount_fix_date                                                    AS amount_fix_date          -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+         , xt0c.vendor_dummy_flag                                                  AS vendor_dummy_flag        -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     FROM xxcok_mst_bm_contract       xmbc  -- 販手条件マスタ
        , xxcos_sales_exp_lines       xsel  -- 販売実績明細
        , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
@@ -1347,6 +1385,9 @@ AS
            , xmbc.bm3_pct
            , xmbc.bm3_amt
            , xt0c.amount_fix_date
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+           , xt0c.vendor_dummy_flag
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   ;
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR START
 --  -- 販売実績情報・定額条件
@@ -1669,6 +1710,9 @@ AS
          , NULL                          AS bm3_electric_amt_tax     -- 【ＢＭ３】電気料(税込)
          , NULL                          AS item_code                -- エラー品目コード
          , xt0c.amount_fix_date          AS amount_fix_date          -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+         , xt0c.vendor_dummy_flag        AS vendor_dummy_flag        -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
 --    FROM xxcok_tmp_014a01c_custdata      xt0c  -- 条件別販手販協計算顧客情報一時表
     FROM xxcok_wk_014a01c_custdata       xt0c  -- 条件別販手販協計算顧客情報一時表
@@ -1762,6 +1806,9 @@ GROUP BY CASE
        , xmbc.bm3_amt                           -- 【ＢＭ３】BM金額
        , TRUNC( xmbc.bm3_amt )                  -- 【ＢＭ３】条件別手数料額(税込)_額
        , xt0c.amount_fix_date                   -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+       , xt0c.vendor_dummy_flag                 -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- 2010/12/13 Ver.3.12 [E_本稼動_01896] SCS S.Niki REPAIR END
   ;
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR END
@@ -2571,6 +2618,9 @@ GROUP BY CASE
          , NULL                          AS bm3_electric_amt_tax     -- 【ＢＭ３】電気料(税込)
          , NULL                          AS item_code                -- エラー品目コード
          , xt0c.amount_fix_date          AS amount_fix_date          -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+         , xt0c.vendor_dummy_flag        AS vendor_dummy_flag        -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
 --    FROM xxcok_tmp_014a01c_custdata      xt0c  -- 条件別販手販協計算顧客情報一時表
     FROM xxcok_wk_014a01c_custdata       xt0c  -- 条件別販手販協計算顧客情報一時表
@@ -2678,6 +2728,9 @@ GROUP BY CASE
            , xt0c.bm1_bm_payment_type               -- 【ＢＭ１】BM支払区分
            , xcbi.last_fix_delivery_date            -- 前回確定の納品日
            , xt0c.amount_fix_date                   -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+           , xt0c.vendor_dummy_flag                 -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- 2010/12/13 Ver.3.12 [E_本稼動_01896] SCS S.Niki REPAIR END
   ;
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR END
@@ -2754,6 +2807,9 @@ GROUP BY CASE
          , NULL                                                                                  AS bm3_electric_amt_tax     -- 【ＢＭ３】電気料(税込)
          , NULL                                                                                  AS item_code                -- エラー品目コード
          , xt0c.amount_fix_date                                                                  AS amount_fix_date          -- 金額確定日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+         , xt0c.vendor_dummy_flag                                                                AS vendor_dummy_flag        -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     FROM xxcos_sales_exp_lines       xsel  -- 販売実績明細
        , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
@@ -2843,6 +2899,9 @@ GROUP BY CASE
            , xt0c.bm1_vendor_site_code
            , xt0c.receiv_discount_rate
            , xt0c.amount_fix_date
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+           , xt0c.vendor_dummy_flag
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   ;
   --==================================================
   -- グローバルタイプ
@@ -2898,8 +2957,14 @@ GROUP BY CASE
   , bm3_electric_amt_tax           NUMBER
   , item_code                      VARCHAR2(7)
   , amount_fix_date                DATE
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  , vendor_dummy_flag              VARCHAR2(1)
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   );
   TYPE xcbs_data_ttype             IS TABLE OF xxcok_cond_bm_support%ROWTYPE INDEX BY BINARY_INTEGER;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  TYPE vendor_dummy_flag_ttype     IS TABLE OF xxcok_wk_014a01c_custdata.vendor_dummy_flag%TYPE INDEX BY BINARY_INTEGER;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 --
   /**********************************************************************************
    * Procedure Name   : get_operating_day_f
@@ -3265,8 +3330,12 @@ GROUP BY CASE
         AND NOT EXISTS ( SELECT 'X'
                          FROM xxcok_bm_contract_err xbce
                          WHERE xbce.cust_code           = xseh.ship_to_customer_code
-                           AND xbce.item_code           = xsel.item_code
-                           AND xbce.selling_price       = xsel.dlv_unit_price
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki MOD START
+--                           AND xbce.item_code           = xsel.item_code
+--                           AND xbce.selling_price       = xsel.dlv_unit_price
+                           AND NVL ( xbce.item_code, xsel.item_code )           = xsel.item_code
+                           AND NVL ( xbce.selling_price,xsel. dlv_unit_price)   = xsel.dlv_unit_price
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki MOD END
                            AND ROWNUM = 1
             )
       FOR UPDATE OF xsel.sales_exp_line_id NOWAIT
@@ -3355,8 +3424,12 @@ GROUP BY CASE
                      AND NOT EXISTS ( SELECT 'X'
                                       FROM xxcok_bm_contract_err xbce
                                       WHERE xbce.cust_code           = xseh.ship_to_customer_code
-                                        AND xbce.item_code           = xsel2.item_code
-                                        AND xbce.selling_price       = xsel2.dlv_unit_price
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki MOD START
+--                                        AND xbce.item_code           = xsel2.item_code
+--                                        AND xbce.selling_price       = xsel2.dlv_unit_price
+                                          AND NVL ( xbce.item_code, xsel2.item_code )           = xsel2.item_code
+                                          AND NVL ( xbce.selling_price, xsel2.dlv_unit_price )  = xsel2.dlv_unit_price
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki MOD END
                                         AND ROWNUM = 1
                          )
                      AND xsel2.sales_exp_line_id = xsel.sales_exp_line_id
@@ -3416,6 +3489,12 @@ GROUP BY CASE
     -- ローカル定数
     --==================================================
     cv_prg_name                    CONSTANT VARCHAR2(30) := 'insert_xbce';      -- プログラム名
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    lv_bm_contract_err             CONSTANT VARCHAR2(4)  := '1'          ;      -- 1:販手マスタ
+    lv_bm_vendor_err               CONSTANT VARCHAR2(4)  := '2'          ;      -- 2:BM支払先不正
+    lv_err_counted_flg_on          CONSTANT VARCHAR2(1)  := '0'          ;      -- 0:未登録
+    lv_err_counted_flg_off         CONSTANT VARCHAR2(1)  := '1'          ;      -- 0:登録済
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     --==================================================
     -- ローカル変数
     --==================================================
@@ -3425,6 +3504,10 @@ GROUP BY CASE
     lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    ln_err_dup_cnt                 NUMBER         DEFAULT 0;                    -- 仕入先ダミー登録済件数
+    lv_err_counted_flg             VARCHAR2(1)    DEFAULT NULL;                 -- 登録済エラーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 --
   BEGIN
     --==================================================
@@ -3434,6 +3517,10 @@ GROUP BY CASE
     --==================================================
     -- 販手条件エラーテーブルへの登録
     --==================================================
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  -- 登録済エラーフラグ初期化
+    lv_err_counted_flg := lv_err_counted_flg_off;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     IF( i_get_sales_data_rec.calc_type IS NULL ) THEN
       INSERT INTO xxcok_bm_contract_err (
         base_code              -- 拠点コード
@@ -3443,6 +3530,9 @@ GROUP BY CASE
       , selling_price          -- 売価
       , selling_amt_tax        -- 売上金額(税込)
       , closing_date           -- 締め日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki MOD START
+      , err_kbn                -- エラー区分
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki MOD END
       , created_by             -- 作成者
       , creation_date          -- 作成日
       , last_updated_by        -- 最終更新者
@@ -3461,6 +3551,9 @@ GROUP BY CASE
       , i_get_sales_data_rec.dlv_unit_price      -- 売価
       , i_get_sales_data_rec.amount_inc_tax      -- 売上金額(税込)
       , i_get_sales_data_rec.closing_date        -- 締め日
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , lv_bm_contract_err                       -- エラー区分
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       , cn_created_by                            -- 作成者
       , SYSDATE                                  -- 作成日
       , cn_last_updated_by                       -- 最終更新者
@@ -3478,7 +3571,82 @@ GROUP BY CASE
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       gn_contract_err_cnt := gn_contract_err_cnt + 1;
       lv_end_retcode := cv_status_warn;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  -- 登録済エラーフラグ設定
+      lv_err_counted_flg := lv_err_counted_flg_on;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     END IF;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    --==================================================
+    -- 仕入先ダミーの場合エラー登録済みかの確認
+    --==================================================
+  -- 仕入先ダミー登録済件数初期化
+    ln_err_dup_cnt := 0;
+  -- 仕入先ダミー件数取得
+    SELECT COUNT(base_code)  err_dup_cnt
+    INTO   ln_err_dup_cnt
+    FROM   xxcok_bm_contract_err       xbce
+    WHERE  i_get_sales_data_rec.base_code         = xbce.base_code
+    AND    i_get_sales_data_rec.ship_cust_code    = xbce.cust_code
+    AND    i_get_sales_data_rec.closing_date      = closing_date
+    AND    xbce.err_kbn = lv_bm_vendor_err
+    AND    i_get_sales_data_rec.vendor_dummy_flag = cv_vendor_dummy_on
+    ;
+    --==================================================
+    -- 販手条件エラーテーブルへの登録（2:BM支払先不正）
+    --==================================================
+    IF ( NVL( i_get_sales_data_rec.vendor_dummy_flag ,cv_vendor_dummy_off )  = cv_vendor_dummy_on
+        AND (ln_err_dup_cnt = 0 )
+       ) THEN
+      INSERT INTO xxcok_bm_contract_err (
+        base_code              -- 拠点コード
+      , cust_code              -- 顧客コード
+      , item_code              -- 品目コード
+      , container_type_code    -- 容器区分コード
+      , selling_price          -- 売価
+      , selling_amt_tax        -- 売上金額(税込)
+      , closing_date           -- 締め日
+      , err_kbn                -- エラー区分
+      , created_by             -- 作成者
+      , creation_date          -- 作成日
+      , last_updated_by        -- 最終更新者
+      , last_update_date       -- 最終更新日
+      , last_update_login      -- 最終更新ログイン
+      , request_id             -- 要求ID
+      , program_application_id -- コンカレント・プログラム・アプリケーションID
+      , program_id             -- コンカレント・プログラムID
+      , program_update_date    -- プログラム更新日
+      )
+      VALUES (
+        i_get_sales_data_rec.base_code           -- 拠点コード
+      , i_get_sales_data_rec.ship_cust_code      -- 顧客コード
+      , NULL                                     -- 品目コード
+      , NULL                                     -- 容器区分コード
+      , NULL                                     -- 売価
+      , NULL                                     -- 売上金額(税込)
+      , i_get_sales_data_rec.closing_date        -- 締め日
+      , lv_bm_vendor_err                         -- エラー区分
+      , cn_created_by                            -- 作成者
+      , SYSDATE                                  -- 作成日
+      , cn_last_updated_by                       -- 最終更新者
+      , SYSDATE                                  -- 最終更新日
+      , cn_last_update_login                     -- 最終更新ログイン
+      , cn_request_id                            -- 要求ID
+      , cn_program_application_id                -- コンカレント・プログラム・アプリケーションID
+      , cn_program_id                            -- コンカレント・プログラムID
+      , SYSDATE                                  -- プログラム更新日
+      );
+      gn_error_cnt       := gn_error_cnt + 1;
+      gn_vendor_err_cnt  := gn_vendor_err_cnt + 1;
+      lv_end_retcode := cv_status_warn;
+    END IF;
+    -- 対象件数カウント
+    IF ( NVL( i_get_sales_data_rec.vendor_dummy_flag ,cv_vendor_dummy_off )  = cv_vendor_dummy_on
+        AND (lv_err_counted_flg = lv_err_counted_flg_off )
+       ) THEN
+      gn_target_cnt      := gn_target_cnt + 1;
+    END IF;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -3517,6 +3685,9 @@ GROUP BY CASE
   , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
   , i_get_sales_data_rec           IN  get_sales_data_rtype      -- 販売実績情報レコード
   , i_xcbs_data_tab                IN  xcbs_data_ttype           -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  , i_vendor_dummy_flag_tab        IN  vendor_dummy_flag_ttype   -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   )
   IS
     --==================================================
@@ -3563,6 +3734,9 @@ GROUP BY CASE
                 OR ( i_xcbs_data_tab( i ).electric_amt_tax      IS NOT NULL ) -- 電気料(税込)
                 OR ( i_xcbs_data_tab( i ).csh_rcpt_discount_amt IS NOT NULL ) -- 入金値引額
               )
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+          AND ( NVL( i_vendor_dummy_flag_tab( i ), cv_vendor_dummy_off )  = cv_vendor_dummy_off )
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       ) THEN
         --==================================================
         -- 条件別販手販協計算結果を条件別販手販協テーブルに登録
@@ -3717,6 +3891,9 @@ END insert_xcbs;
   , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
   , i_get_sales_data_rec           IN  get_sales_data_rtype  -- 販売実績情報レコード
   , o_xcbs_data_tab                OUT xcbs_data_ttype       -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+  , o_vendor_dummy_flag_tab        OUT vendor_dummy_flag_ttype --仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
   )
   IS
     --==================================================
@@ -3748,6 +3925,9 @@ END insert_xcbs;
     lv_ar_interface_status         xxcok_cond_bm_support.ar_interface_status%TYPE      DEFAULT NULL;
 --
     l_xcbs_data_tab                     xcbs_data_ttype;                             -- 条件別販手販協テーブルタイプ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    l_vendor_dummy_flag_tab             vendor_dummy_flag_ttype;                     -- 仕入先ダミーフラグタイプ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 --
   BEGIN
     --==================================================
@@ -4078,11 +4258,17 @@ END insert_xcbs;
       l_xcbs_data_tab( i ).bm_interface_date         := NULL;                                           -- 連携日(販手残高)
       l_xcbs_data_tab( i ).ar_interface_status       := lv_ar_interface_status;                         -- 連携ステータス(AR)
       l_xcbs_data_tab( i ).ar_interface_date         := NULL;                                           -- 連携日(AR)
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      l_vendor_dummy_flag_tab( i )                   := i_get_sales_data_rec.vendor_dummy_flag;         -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     END LOOP set_xcbs_data_loop;
     --==================================================
     -- 出力パラメータ設定
     --==================================================
     o_xcbs_data_tab := l_xcbs_data_tab;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    o_vendor_dummy_flag_tab := l_vendor_dummy_flag_tab;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     ov_errbuf  := NULL;
     ov_errmsg  := NULL;
     ov_retcode := lv_end_retcode;
@@ -4132,6 +4318,9 @@ END set_xcbs_data;
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
     l_xcbs_data_tab                xcbs_data_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    l_vendor_dummy_flag_tab        vendor_dummy_flag_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     l_get_sales_data_rec           get_sales_data_rtype;
 --
   BEGIN
@@ -4156,6 +4345,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , o_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4170,6 +4362,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , i_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4244,6 +4439,9 @@ END set_xcbs_data;
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
     l_xcbs_data_tab                xcbs_data_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    l_vendor_dummy_flag_tab        vendor_dummy_flag_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     l_get_sales_data_rec           get_sales_data_rtype;
 --
   BEGIN
@@ -4268,6 +4466,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , o_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4282,6 +4483,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , i_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4356,6 +4560,9 @@ END set_xcbs_data;
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
     l_xcbs_data_tab                xcbs_data_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    l_vendor_dummy_flag_tab        vendor_dummy_flag_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     l_get_sales_data_rec           get_sales_data_rtype;
 --
   BEGIN
@@ -4380,6 +4587,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , o_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4394,6 +4604,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , i_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4468,6 +4681,9 @@ END set_xcbs_data;
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
     l_xcbs_data_tab                xcbs_data_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    l_vendor_dummy_flag_tab        vendor_dummy_flag_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     l_get_sales_data_rec           get_sales_data_rtype;
 --
   BEGIN
@@ -4492,6 +4708,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , o_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4506,6 +4725,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , i_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4580,6 +4802,9 @@ END set_xcbs_data;
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
     l_xcbs_data_tab                xcbs_data_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    l_vendor_dummy_flag_tab        vendor_dummy_flag_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     l_get_sales_data_rec           get_sales_data_rtype;
 --
   BEGIN
@@ -4604,6 +4829,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , o_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4618,6 +4846,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , i_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4692,6 +4923,9 @@ END set_xcbs_data;
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
     l_xcbs_data_tab                xcbs_data_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    l_vendor_dummy_flag_tab        vendor_dummy_flag_ttype;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     l_get_sales_data_rec           get_sales_data_rtype;
 --
   BEGIN
@@ -4716,6 +4950,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , o_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , o_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -4730,6 +4967,9 @@ END set_xcbs_data;
       , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
       , i_get_sales_data_rec        => l_get_sales_data_rec       -- 販売実績情報レコード
       , i_xcbs_data_tab             => l_xcbs_data_tab            -- 条件別販手販協情報
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+      , i_vendor_dummy_flag_tab     => l_vendor_dummy_flag_tab    -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
       );
       IF( lv_retcode = cv_status_error ) THEN
         lv_end_retcode := cv_status_error;
@@ -5029,6 +5269,9 @@ END delete_xcbs;
     -- ローカル定数
     --==================================================
     cv_prg_name                    CONSTANT VARCHAR2(30) := 'insert_xt0c';      -- プログラム名
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    cv_xxcok1_dummy_vendor_code    CONSTANT VARCHAR2(30) := 'XXCOK1_DUMMY_VENDOR_CODE';      -- ダミー仕入先コード
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     --==================================================
     -- ローカル変数
     --==================================================
@@ -5102,6 +5345,9 @@ END delete_xcbs;
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     , proc_type                   -- 実行区分
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    , vendor_dummy_flag           -- 仕入先ダミーフラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     , created_by                  -- 作成者
     , creation_date               -- 作成日
     , last_updated_by             -- 最終更新者
@@ -5145,6 +5391,26 @@ END delete_xcbs;
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     , i_get_cust_data_rec.proc_type                  -- 実行区分
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    , CASE
+        WHEN EXISTS ( SELECT 'X'
+                      FROM fnd_lookup_values     flv   -- ダミー仕入先コード
+                      WHERE flv.lookup_code  in ( i_get_cust_data_rec.bm1_vendor_code,
+                                                  i_get_cust_data_rec.bm2_vendor_code,
+                                                  i_get_cust_data_rec.bm3_vendor_code
+                                                 )
+                      AND   flv.lookup_type  = cv_xxcok1_dummy_vendor_code
+                      AND   flv.language     = cv_lang
+                      AND   flv.enabled_flag = cv_enable
+                      AND   gd_process_date    BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                   AND NVL( flv.end_date_active,   gd_process_date )
+                    )
+        THEN
+          cv_vendor_dummy_on
+        ELSE
+          cv_vendor_dummy_off
+      END                                            -- ダミー仕入先判定フラグ
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     , cn_created_by                                  -- 作成者
     , SYSDATE                                        -- 作成日
     , cn_last_updated_by                             -- 最終更新者
@@ -6951,6 +7217,22 @@ END insert_xt0c;
                     , in_new_line              => 1
                     );
     END IF;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
+    --==================================================
+    -- 支払先不正エラーメッセージ出力
+    --==================================================
+    IF( gn_vendor_err_cnt > 0 ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application           => cv_appl_short_name_cok
+                    , iv_name                  => cv_msg_cok_10562
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                 => FND_FILE.OUTPUT
+                    , iv_message               => lv_outmsg
+                    , in_new_line              => 1
+                    );
+    END IF;
+-- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
     --==================================================
     -- エラー出力
     --==================================================
