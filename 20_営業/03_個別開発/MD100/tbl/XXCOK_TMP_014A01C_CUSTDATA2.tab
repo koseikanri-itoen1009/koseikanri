@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_TMP_014A01C_CUSTDATA2
  * Description : 条件別販手販協計算顧客情報一時表
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2012/04/30    1.0   S.Niki           新規作成
  *  2014/02/26    1.1   S.Niki           E_本稼動_11539対応
+ *  2018/12/27    1.2   E.Yazaki         E_本稼動_15349対応
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_TMP_014A01C_CUSTDATA2
@@ -48,7 +49,13 @@ CREATE TABLE XXCOK.XXCOK_TMP_014A01C_CUSTDATA2
     PROC_TYPE                VARCHAR2(1),
     PROC_TYPE2               VARCHAR2(1),
     AMOUNT_FIX_DATE          DATE,
-    EMP_CODE                 VARCHAR2(5)
+-- ******* Ver.1.2 SCSK E.Yazaki MOD START  *******
+--    EMP_CODE                 VARCHAR2(5)
+    EMP_CODE                 VARCHAR2(5),
+-- ******* Ver.1.2 SCSK E.Yazaki MOD END  *******
+-- ******* Ver.1.2 SCSK E.Yazaki ADD START  *******
+    VENDOR_DUMMY_FLAG        VARCHAR2(1)
+-- ******* Ver.1.2 SCSK E.Yazaki ADD END  *******
 )
 PCTFREE 10 PCTUSED 60 INITRANS 16 STORAGE ( INITIAL 2M )
 /
@@ -123,3 +130,7 @@ COMMENT ON COLUMN XXCOK.XXCOK_TMP_014A01C_CUSTDATA2.AMOUNT_FIX_DATE          IS 
 /
 COMMENT ON COLUMN XXCOK.XXCOK_TMP_014A01C_CUSTDATA2.EMP_CODE                 IS '担当者コード'
 /
+-- ******* Ver.1.2 SCSK E.Yazaki ADD START  *******
+COMMENT ON COLUMN XXCOK.XXCOK_TMP_014A01C_CUSTDATA2.VENDOR_DUMMY_FLAG        IS '仕入先ダミーフラグ'
+/
+-- ******* Ver.1.2 SCSK E.Yazaki ADD END  *******
