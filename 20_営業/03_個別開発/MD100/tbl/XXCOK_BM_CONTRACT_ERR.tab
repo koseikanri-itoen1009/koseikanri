@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_BM_CONTRACT_ERR
  * Description : 販手条件エラーテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
+ *  2018/12/25    1.2   E.Yazaki         E_本稼動_15349対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_BM_CONTRACT_ERR
@@ -22,6 +23,9 @@ CREATE TABLE XXCOK.XXCOK_BM_CONTRACT_ERR
    SELLING_PRICE          NUMBER,
    SELLING_AMT_TAX        NUMBER(9),
    CLOSING_DATE           DATE,
+-- 2018/12/25 Ver.1.2 [E_本稼動_15349] SCSK E.Yazaki ADD START
+   ERR_KBN                VARCHAR2(4),
+-- 2018/12/25 Ver.1.2 [E_本稼動_15349] SCSK E.Yazaki ADD END
    CREATED_BY             NUMBER(15,0)   NOT NULL,
    CREATION_DATE          DATE           NOT NULL,
    LAST_UPDATED_BY        NUMBER(15,0)   NOT NULL,
@@ -51,6 +55,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR.SELLING_PRICE          IS '売価'
 COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR.SELLING_AMT_TAX        IS '売上金額(税込)'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR.CLOSING_DATE           IS '締め日'
+-- 2018/12/25 Ver.1.2 [E_本稼動_15349] SCSK E.Yazaki ADD START
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR.ERR_KBN                IS 'エラー区分'
+-- 2018/12/25 Ver.1.2 [E_本稼動_15349] SCSK E.Yazaki ADD END
 /
 COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR.CREATED_BY             IS '作成者'
 /
