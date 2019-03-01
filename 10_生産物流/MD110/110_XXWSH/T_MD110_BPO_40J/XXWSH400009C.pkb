@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼確認表
  * MD.050           : 出荷依頼       T_MD050_BPO_401
  * MD.070           : 出荷依頼確認表 T_MD070_BPO_40J
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2018/10/12    1.14  小路  恭弘       E_本稼動_15274対応
  *  2018/12/04    1.15  佐々木  大和     E_本稼動_15274追加対応
  *  2019/01/17    1.16  小路  恭弘       E_本稼動_15274PT対応
+ *  2019/02/26    1.17  佐々木  大和     E_本稼動_15274追加対応②
  *
  *****************************************************************************************/
 --
@@ -585,6 +586,9 @@ AS
     cv_slash               CONSTANT VARCHAR2(1)   := '/';
     cv_record_type_code_10 CONSTANT VARCHAR2(2)   := '10';
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
+-- V1.17 Y.Sasaki Added START
+    cv_record_type_code_20 CONSTANT VARCHAR2(2)   := '20';  -- 実績
+-- V1.17 Y.Sasaki Added END
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -663,17 +667,24 @@ AS
             ,xola.layer_quantity                                        -- パレット段数
             ,xola.case_quantity                                         -- ケース数
             ,CASE
--- mod start ver1.11
---              WHEN xim2v.conv_unit IS NULL THEN xola.quantity
-              WHEN xim2v.conv_unit IS NULL THEN DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity)
---              ELSE xola.quantity / CASE
-              ELSE DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity) / CASE
+-- V1.17 Y.Sasaki Modified START
+---- mod start ver1.11
+----              WHEN xim2v.conv_unit IS NULL THEN xola.quantity
+--              WHEN xim2v.conv_unit IS NULL THEN DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity)
+----              ELSE xola.quantity / CASE
+--              ELSE DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity) / CASE
+              WHEN xim2v.conv_unit IS NULL THEN xola.quantity
+              ELSE xola.quantity / CASE
 -- mod end ver1.11
+-- v1.17 Y.Sasaki Modified END
                                     WHEN xim2v.num_of_cases IS NULL THEN '1'
                                     WHEN xim2v.num_of_cases = '0'   THEN '1'
                                     ELSE                                 xim2v.num_of_cases
                                    END
-             END                                                        -- 総数
+-- V1.17 Y.Sasaki Modified START
+--             END                                                        -- 総数
+              END   total                                               -- 総数
+-- V1.17 Y.Sasaki Modified END
 -- v1.10 Update Start
             ,CASE
               WHEN (( xim2v.conv_unit IS NOT NULL )
@@ -833,7 +844,7 @@ AS
                                        -- 受注ヘッダアドオン.着荷予定日≦パラメータ.着日To
 -- mod end ver1.11
         AND xoha.order_type_id               = NVL(iv_order_type_id, xoha.order_type_id)
-                                       -- 受注ヘッダアドオン.受注タイプID＝パラメータ.出庫形態                                                                       
+                                       -- 受注ヘッダアドオン.受注タイプID＝パラメータ.出庫形態
         AND xoha.request_no                  = NVL(iv_request_no, xoha.request_no)
                                        -- 受注ヘッダアドオン.依頼No＝パラメータ.依頼No
         AND xoha.req_status                  = xlv2v2.lookup_code
@@ -974,7 +985,10 @@ AS
 -- 2008/07/03 ST不具合対応#357 End
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add start by Yasuhiro.Shoji
         AND    xola.order_line_id       = xmld.mov_line_id(+)
-        AND    xmld.record_type_code(+) = cv_record_type_code_10    -- 指示
+-- V1.17 Y.Sasaki Modified START
+--        AND    xmld.record_type_code(+) = cv_record_type_code_10    -- 指示
+        AND    xmld.record_type_code(+) = DECODE(xola.shipped_quantity,NULL,cv_record_type_code_10,cv_record_type_code_20)
+-- V1.17 Y.Sasaki Modified END
         AND    xmld.lot_id              = ilm.lot_id(+)
 -- 2018/10/12 Ver1.14 E_本稼動_15274 add end by Yasuhiro.Shoji
 -- 2018/12/04 Ver1.15 added START
@@ -1009,8 +1023,12 @@ AS
             ,xola.layer_quantity                                        -- パレット段数
             ,xola.case_quantity                                         -- ケース数
             ,CASE
-              WHEN xim2v.conv_unit IS NULL THEN DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity)
-              ELSE DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity) / CASE
+-- V1.17 Y.Sasaki Modified START
+--              WHEN xim2v.conv_unit IS NULL THEN DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity)
+--              ELSE DECODE(xoha.schedule_ship_date,NULL,xola.shipped_quantity,xola.quantity) / CASE
+              WHEN xim2v.conv_unit IS NULL THEN xola.quantity
+              ELSE xola.quantity / CASE
+-- V1.17 Y.Sasaki Modified END
                                     WHEN xim2v.num_of_cases IS NULL THEN '1'
                                     WHEN xim2v.num_of_cases = '0'   THEN '1'
                                     ELSE                                 xim2v.num_of_cases
