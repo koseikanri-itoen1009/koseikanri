@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcsm_plan_tmp FOR xxcsm.xxcsm_plan_tmp;
