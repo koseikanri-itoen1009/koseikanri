@@ -1,0 +1,61 @@
+CREATE GLOBAL TEMPORARY TABLE xxcsm.xxcsm_plan_tmp
+(
+   record_id    NUMBER
+  ,base_code    VARCHAR2(50)
+  ,plan_year    VARCHAR2(50)
+  ,plan_kind    VARCHAR2(50)
+  ,record_kind  VARCHAR2(50)
+  ,plan_may     NUMBER
+  ,plan_jun     NUMBER
+  ,plan_jul     NUMBER
+  ,plan_aug     NUMBER
+  ,plan_sep     NUMBER
+  ,plan_oct     NUMBER
+  ,plan_nov     NUMBER
+  ,plan_dec     NUMBER
+  ,plan_jan     NUMBER
+  ,plan_feb     NUMBER
+  ,plan_mar     NUMBER
+  ,plan_apr     NUMBER
+  ,plan_sum     NUMBER
+)
+ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  xxcsm.xxcsm_plan_tmp                                        IS '商品計画アップロードワークテーブル'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.record_id                              IS 'レコードNo'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.base_code                              IS '拠点コード'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_year                              IS '年度'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_kind                              IS '予算区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.record_kind                            IS 'レコード区分'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_may                               IS '５月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_jun                               IS '６月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_jul                               IS '７月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_aug                               IS '８月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_sep                               IS '９月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_oct                               IS '１０月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_nov                               IS '１１月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_dec                               IS '１２月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_jan                               IS '１月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_feb                               IS '２月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_mar                               IS '３月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_apr                               IS '４月'
+/
+COMMENT ON COLUMN xxcsm.xxcsm_plan_tmp.plan_sum                               IS '年間計'
+/
