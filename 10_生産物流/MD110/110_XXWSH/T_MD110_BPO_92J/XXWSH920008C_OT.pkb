@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.18'2
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,33 +36,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/11/20   1.0   SCS北寒寺         初回作成
- *  2008/11/28   1.1   SCS北寒寺         本番障害246対応
- *  2008/11/29   1.2   SCS宮田           ロック対応
- *  2008/12/02   1.3   SCS二瓶           本番障害#251対応（条件追加）
- *  2008/12/15   1.4   SCS伊藤           本番障害#645対応（D4需要数 S4供給数 予定日から実績日に変更）
- *  2008/12/19   1.5   SCS伊藤           本番障害#648対応（I5実績未取在庫数 I6 実績未取在庫数 抽出項目を実績数－前回数に変更）
- *  2008/12/25   1.6   SCS北寒寺         本番障害#859対応 (ログのオーバーフローによりコンカレントエラーとなるため余分なログを出力しないように変更)
- *  2009/01/19   1.7   SCS二瓶           本番障害#949対応（PT対応）
- *  2009/01/26   1.8   SCS二瓶           本番障害#936対応（鮮度条件・ロット逆転PT対応）
- *                                       本番障害#332対応（条件：出庫元不備対応）
- *  2009/01/28   1.9   SCS伊藤           本番障害#1028対応（パラメータに指示部署追加）
- *  2009/03/17   1.10  SCS北寒寺         本番障害#1323対応
- *  2009/10/16   1.11  SCS菅原           本番障害#1611対応
- *  2010/01/08   1.12  SCS北寒寺         本番稼働障害#701対応
- *  2010/01/28   1.13  SCS北寒寺         本番稼働障害#1320対応
- *  2010/02/26   1.14  SCS北寒寺         本番稼働障害#1612対応
- *  2016/02/18   1.15  SCSK山下翔太      E_本稼動_13468対応
- *  2016/05/11   1.15' SCSK菅原大輔      E_本稼動_13468対応 運用テストモジュールとして作成、
- *                                       v.1.14と本番環境で並存させる
- *  2016/11/28   1.16' SCSK桐生和幸      E_本稼動_09591対応 運用テストモジュールとして作成、
- *                                       v.1.15と本番環境で並存させる
- *  2017/06/02   1.17' SCSK桐生和幸      E_本稼動_14307対応 運用テストモジュールとして作成、
- *                                       v.1.15と本番環境で並存させる
- *  2018/10/23   1.18' SCSK小路恭弘      E_本稼動_15277対応 運用テストモジュールとして作成、
- *                                       v.1.17と本番環境で並存させる
- *  2018/11/14   1.18'2 SCSK奈良和宏     共通関数xxwsh_common910_pkg_pt(E_本稼動_15398対応 v1.40 PT版)呼び出し用として作成
- *                                       v.1.17と本番環境で並存させる
+ *  2019/02/27   1.18  SCSK奈良和宏      E_本稼動_15398対応
+ *  2019/03/01                           上記対応OT用及び共通関数xxwsh_common910_pkg_pt(v1.41 PT版)呼び出し用として作成
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -282,11 +257,11 @@ AS
     frequent_whse              xxcmn_item_locations2_v.frequent_whse%TYPE,              -- 代表倉庫 V
     inventory_location_id      xxcmn_item_locations2_v.inventory_location_id%TYPE,      -- 代表保管棚ID
     num_of_cases               xxcmn_item_mst2_v.num_of_cases%TYPE,                     -- ケース入数 N
--- 2018/10/23 Y.Shoji Ver1.18' START
+-- 2018/10/23 Y.Shoji Ver1.17 START
 --    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE                         -- 入出庫換算単位 V
     conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE,                        -- 入出庫換算単位 V
     lot_reversal_type          xxcmn_item_mst2_v.lot_reversal_type%TYPE                 -- ロット逆転区分 N
--- 2018/10/23 Y.Shoji Ver1.18' END
+-- 2018/10/23 Y.Shoji Ver1.17 END
   );
   TYPE demand_tbl IS TABLE OF demand_rec INDEX BY PLS_INTEGER;
   gr_demand_tbl  demand_tbl;
@@ -315,11 +290,11 @@ AS
     frequent_whse              xxcmn_item_locations2_v.frequent_whse%TYPE,              -- 代表倉庫 V
     inventory_location_id      xxcmn_item_locations2_v.inventory_location_id%TYPE,      -- 代表保管棚ID
     num_of_cases               xxcmn_item_mst2_v.num_of_cases%TYPE,                     -- ケース入数 N
--- 2018/10/23 Y.Shoji Ver1.18' START
+-- 2018/10/23 Y.Shoji Ver1.17 START
 --    conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE                         -- 入出庫換算単位 V
     conv_unit                  xxcmn_item_mst2_v.conv_unit%TYPE,                        -- 入出庫換算単位 V
     lot_reversal_type          xxcmn_item_mst2_v.lot_reversal_type%TYPE                 -- ロット逆転区分 N
--- 2018/10/23 Y.Shoji Ver1.18' END
+-- 2018/10/23 Y.Shoji Ver1.17 END
   );
   TYPE demand_tbl2 IS TABLE OF demand_rec2 INDEX BY PLS_INTEGER;
   gr_demand_tbl2  demand_tbl2;
@@ -3766,11 +3741,11 @@ AS
 -- 2009/01/19 D.Nihei MOD END
                           'NULL, ';                            -- 代表保管棚ID
     lv_fwd_sql5 :=        'im.num_of_cases, '               || -- ケース入数
--- 2018/10/23 Y.Shoji Ver1.18' START
+-- 2018/10/23 Y.Shoji Ver1.17 START
 --                          'im.conv_unit '                   || -- 入出庫換算単位
                           'im.conv_unit, '                  || -- 入出庫換算単位
                           'NVL(im.lot_reversal_type, 0) '   || -- ロット逆転区分
--- 2018/10/23 Y.Shoji Ver1.18' END
+-- 2018/10/23 Y.Shoji Ver1.17 END
                    'FROM   xxcmn_item_locations2_v       il, ' || -- OPM保管場所マスタ
                           'xxwsh_order_headers_all       oh, ' || -- 受注ヘッダアドオン
                           'xxcmn_cust_accounts2_v        p,  ';
@@ -3982,11 +3957,11 @@ AS
 -- 2009/01/19 D.Nihei MOD END
                           'NULL, ';                            -- 代表保管棚ID
     lv_mov_sql5 :=        'im.num_of_cases, '               || -- ケース入数
--- 2018/10/23 Y.Shoji Ver1.18' START
+-- 2018/10/23 Y.Shoji Ver1.17 START
 --                          'im.conv_unit '                   || -- 入出庫換算単位
                           'im.conv_unit, '                  || -- 入出庫換算単位
                           'NVL(im.lot_reversal_type, 0) '   || -- ロット逆転区分
--- 2018/10/23 Y.Shoji Ver1.18' END
+-- 2018/10/23 Y.Shoji Ver1.17 END
                    'FROM   xxcmn_item_locations2_v       il, ' || -- OPM保管場所マスタ
                           'xxinv_mov_req_instr_headers   ih, ';   -- 移動依頼/指示ヘッダアドオン
     lv_mov_sql6 :=        'xxinv_mov_req_instr_lines     ml, ' || -- 移動依頼/指示明細アドオン
@@ -4734,13 +4709,13 @@ AS
               AND    ili.loct_onhand > cn_zero
               UNION
               -- S1)供給数  移動入庫予定
--- 2017/06/02 Ver1.17' Mod START
+-- 2017/06/08 Ver1.16 Mod START
 --              SELECT  mld.lot_id   lot_id
               SELECT  /*+
                         INDEX(mld.xmld XXINV_MLD_N07)
                       */
                       mld.lot_id   lot_id
--- 2017/06/02 Ver1.17' Mod END
+-- 2017/06/08 Ver1.16 Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4759,13 +4734,13 @@ AS
               AND     mld.record_type_code        = cv_record_type_code_10
               UNION
               -- S4)供給数  実績計上済の移動出庫実績
--- 2017/06/02 Ver1.17' Mod START
+-- 2017/06/08 Ver1.16 Mod START
 --              SELECT  mld.lot_id   lot_id
               SELECT  /*+
                         INDEX(mld.xmld XXINV_MLD_N07)
                       */
                       mld.lot_id   lot_id
--- 2017/06/02 Ver1.17' Mod END
+-- 2017/06/08 Ver1.16 Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4788,13 +4763,13 @@ AS
               -- I2)実績未取在庫数  移動入庫（入庫報告有）
               -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
               -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有)
--- 2017/06/02 Ver1.17' Mod START
+-- 2017/06/08 Ver1.16 Mod START
 --              SELECT  mld.lot_id   lot_id
               SELECT  /*+
                         INDEX(mld.xmld XXINV_MLD_N07)
                       */
                       mld.lot_id   lot_id
--- 2017/06/02 Ver1.17' Mod END
+-- 2017/06/08 Ver1.16 Mod END
                      ,mld.item_id  item_id
               FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                      ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
@@ -4824,13 +4799,13 @@ AS
               UNION
               -- I5)実績未取在庫数  出荷
               -- I6)実績未取在庫数  支給
--- 2017/06/02 Ver1.17' Mod START
+-- 2017/06/08 Ver1.16 Mod START
 --              SELECT  mld.lot_id   lot_id
               SELECT  /*+
                         INDEX(mld.xmld XXINV_MLD_N07)
                       */
                       mld.lot_id   lot_id
--- 2017/06/02 Ver1.17' Mod END
+-- 2017/06/08 Ver1.16 Mod END
                      ,mld.item_id  item_id
               FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                      ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
@@ -5840,9 +5815,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
--- 2018/10/23 Y.Shoji Ver1.18' START
+-- 2018/10/23 Y.Shoji Ver1.17 START
     cn_lot_reversal_type_0  CONSTANT NUMBER(1) := 0; -- ロット逆転不可
--- 2018/10/23 Y.Shoji Ver1.18' END
+-- 2018/10/23 Y.Shoji Ver1.17 END
 --
     -- *** ローカル変数 ***
     lc_out_param     VARCHAR2(1000);   -- 入力パラメータの処理結果レポート出力用
@@ -5872,7 +5847,9 @@ AS
     lv_delv_from   xxwsh_order_headers_all.deliver_from%TYPE;          -- 出庫元
     lv_delv_to     xxwsh_order_headers_all.deliver_to%TYPE;            -- 配送先
 -- 2009/01/26 D.Nihei Mod Start 本番#936対応
-    lv_fresh_retcode     VARCHAR2(1);      -- 鮮度条件チェック用リターン・コード
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--    lv_fresh_retcode     VARCHAR2(1);      -- 鮮度条件チェック用リターン・コード
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
     ld_manufacture_date  DATE;             -- 鮮度条件合格製造日
 -- 2009/01/26 D.Nihei Mod End
 --
@@ -6046,10 +6023,10 @@ AS
                     gr_demand_tbl2(ln_i_cnt).num_of_cases;          -- ケース入数 N
       gr_demand_tbl(gn_target_cnt_deliv+ln_i_cnt).conv_unit :=
                     gr_demand_tbl2(ln_i_cnt).conv_unit;             -- 入出庫換算単位 V
--- 2018/10/23 Y.Shoji Ver1.18 START
+-- 2018/10/23 Y.Shoji Ver1.17 START
       gr_demand_tbl(gn_target_cnt_deliv+ln_i_cnt).lot_reversal_type :=
                     gr_demand_tbl2(ln_i_cnt).lot_reversal_type;     -- ロット逆転区分
--- 2018/10/23 Y.Shoji Ver1.18 END
+-- 2018/10/23 Y.Shoji Ver1.17 END
     END LOOP deliv_plus_move_loop;
 --
     -- 需要情報ループ
@@ -6141,7 +6118,9 @@ AS
       lv_no_meisai_flg               := gv_cons_flg_yes;
 -- 2009/01/26 D.Nihei Add Start 本番#936対応
       ld_reversal_date               := NULL;
-      lv_fresh_retcode               := NULL;      -- 鮮度条件チェック用リターン・コード
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--      lv_fresh_retcode               := NULL;      -- 鮮度条件チェック用リターン・コード
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
 -- 2009/01/26 D.Nihei Add End
       -- 供給情報ループ
       <<supply_inf_loop>>
@@ -6201,14 +6180,7 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
               -- =========================================
               -- ロット逆転防止チェック 共通関数
               -- =========================================
--- 2016/05/11 D.Sugahara Ver1.15' Mod START
--- 2017/06/02 Ver1.17' Mod START
----- 運用テストモジュールとして、xxwsh_common910_pkg_PTのロット逆転防止チェックを呼び出すように変更する。
-----              xxwsh_common910_pkg.check_lot_reversal(
---              xxwsh_common910_pkg_PT.check_lot_reversal(
----- 2016/05/11 D.Sugahara Ver1.15' Mod End
               xxwsh_common910_pkg.check_lot_reversal(
--- 2017/06/02 Ver1.17' Mod START
                              lv_lot_biz_class                              -- 1.ロット逆転処理種別
                            , gr_demand_tbl(ln_d_cnt).shipping_item_code    -- 2.品目コード
                            , gr_supply_tbl(ln_s_cnt).lot_no                -- 3.ロットNo
@@ -6261,14 +6233,14 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
 -- 2016/02/18 S.Yamashita Ver1.15 START
 --            -- ロット製造日 < 逆転日付の場合
 --            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
--- 2018/10/23 Y.Shoji Ver1.18' START
+-- 2018/10/23 Y.Shoji Ver1.17 START
 --            -- ロット賞味期限 < 逆転日付の場合
 --            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).use_by_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
             -- ロット賞味期限 < 逆転日付の場合、かつ
             -- ロット逆転区分が0（ロット逆転不可）の場合
             IF (  ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).use_by_date, 'YYYY/MM/DD') < ld_reversal_date )
               AND ( gr_demand_tbl(ln_d_cnt).lot_reversal_type = cn_lot_reversal_type_0 ) ) THEN
--- 2018/10/23 Y.Shoji Ver1.18' END
+-- 2018/10/23 Y.Shoji Ver1.17 END
 -- 2016/02/18 S.Yamashita Ver1.15 END
               -- チェック処理結果を格納する
               IF ( ( gr_check_tbl(1).warnning_date IS NULL )
@@ -6312,31 +6284,45 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
 --                );
 --            -- 共通関数のエラー
 --            IF (lv_retcode = gv_cons_error) THEN
-            IF ( lv_fresh_retcode IS NULL ) THEN
-              -- =======================================
-              -- 鮮度条件合格製造日取得 共通関数
-              -- =======================================
--- 2017/06/02 Ver1.17' Mod START
----- 2016/11/28 K.kiriu Ver1.16' Mod START
----- 運用テストモジュールとして、xxwsh_common910_pkg_PTの鮮度条件合格製造日取得を呼び出すように変更する。
-----              xxwsh_common910_pkg.get_fresh_pass_date(
---              xxwsh_common910_pkg_PT.get_fresh_pass_date(
----- 2016/11/28 K.kiriu Ver1.16' Mod END
--- Ver1.18'2 Mod START
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--            IF ( lv_fresh_retcode IS NULL ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--              -- =======================================
+--              -- 鮮度条件合格製造日取得 共通関数
+--              -- =======================================
 --              xxwsh_common910_pkg.get_fresh_pass_date(
-              xxwsh_common910_pkg_pt.get_fresh_pass_date(
--- Ver1.18'2 Mod END
--- 2017/06/02 Ver1.17' Mod START
-                 gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
-               , gr_demand_tbl(ln_d_cnt).shipping_item_code     -- 2.品目コード
-               , gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷日
-               , gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.出庫予定日
-               , ld_manufacture_date                            -- 5.鮮度条件合格製造日
-               , lv_fresh_retcode                               -- 6.リターン・コード
-               , lv_errbuf                                      -- 7.エラー・メッセージ
+--                 gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
+--               , gr_demand_tbl(ln_d_cnt).shipping_item_code     -- 2.品目コード
+--               , gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷日
+--               , gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.出庫予定日
+--               , ld_manufacture_date                            -- 5.鮮度条件合格製造日
+--               , lv_fresh_retcode                               -- 6.リターン・コード
+--               , lv_errbuf                                      -- 7.エラー・メッセージ
+--              );
+              -- =======================================
+              -- 引当可能鮮度チェック 共通関数
+              -- =======================================
+-- Ver1.18_OT mod start
+--              xxwsh_common910_pkg.check_fresh_condition_2(
+              xxwsh_common910_pkg_pt.check_fresh_condition_2(
+-- Ver1.18_OT mod end
+                 in_move_to_id     =>  gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
+               , it_lot_id         =>  gr_supply_tbl(ln_s_cnt).lot_id                 -- 2.ロットID
+               , id_arrival_date   =>  gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷予定日
+               , id_standard_date  =>  gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.基準日(適用日基準日)
+               , ov_retcode        =>  lv_retcode                                     -- 5.リターン・コード
+               , ov_errmsg_code    =>  lv_errbuf                                      -- 6.エラーメッセージコード
+               , ov_errmsg         =>  lv_errmsg                                      -- 7.エラー・メッセージ
+               , on_result         =>  ln_result                                      -- 8.引当可否(0:可, 1:否)
+               , od_standard_date  =>  ld_standard_date                               -- 9.引当可否判定基準日付
               );
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
               -- 共通関数のエラー
-              IF ( lv_fresh_retcode = gv_cons_error ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--              IF ( lv_fresh_retcode = gv_cons_error ) THEN
+              IF ( lv_retcode = gv_cons_error ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
 -- 2009/01/26 D.Nihei Mod End
                 -- メッセージのセット
                 lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
@@ -6364,7 +6350,9 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
                 RAISE global_process_expt;
               END IF;
 -- 2009/01/26 D.Nihei Add Start 本番#936対応
-            END IF;
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--            END IF;
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
 -- 2009/01/26 D.Nihei Add End
 --
 -- 2009/01/26 D.Nihei Mod Start 本番#936対応
@@ -6375,17 +6363,27 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
 --                OR ( gr_check_tbl(1).warnning_date <= ld_standard_date ))
 --                THEN
             -- 正常の場合
-            IF ( lv_fresh_retcode = gv_status_normal ) THEN
-              -- ロット製造日 < 鮮度条件合格製造日の場合
-              IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_manufacture_date ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--            IF ( lv_fresh_retcode = gv_status_normal ) THEN
+--              -- ロット製造日 < 鮮度条件合格製造日の場合
+--              IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_manufacture_date ) THEN
+              -- 引当可否が1:否の場合
+              IF ( ln_result = 1 ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
                 -- チェック処理結果を格納する
                 IF ( ( gr_check_tbl(1).warnning_date IS NULL )
-                  OR ( gr_check_tbl(1).warnning_date <= ld_manufacture_date ) ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--                  OR ( gr_check_tbl(1).warnning_date <= ld_manufacture_date ) ) THEN
+                  OR ( gr_check_tbl(1).warnning_date <= ld_standard_date ) ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
 -- 2009/01/26 D.Nihei Mod End
                   gr_check_tbl(1).warnning_class := gv_cons_wrn_fresh;                   -- 警告区分
 -- 2009/01/26 D.Nihei Mod Start 本番#936対応
 --                  gr_check_tbl(1).warnning_date  := ld_standard_date;                    -- 警告日付
-                  gr_check_tbl(1).warnning_date  := ld_manufacture_date;                 -- 警告日付
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--                  gr_check_tbl(1).warnning_date  := ld_manufacture_date;                 -- 警告日付
+                  gr_check_tbl(1).warnning_date  := ld_standard_date;                 -- 警告日付
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
 -- 2009/01/26 D.Nihei Mod End
                   gr_check_tbl(1).lot_no         := gr_supply_tbl(ln_s_cnt).lot_no;      -- ロットNo
                   gr_check_tbl(1).p_date         := gr_supply_tbl(ln_s_cnt).p_date;      -- 製造年月日
@@ -6401,7 +6399,9 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
               lv_no_meisai_flg := gv_cons_flg_yes;
 --
 -- 2009/01/26 D.Nihei Add Start 本番#936対応
-            END IF;
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--            END IF;
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
 -- 2009/01/26 D.Nihei Add End
           END IF;
 --
