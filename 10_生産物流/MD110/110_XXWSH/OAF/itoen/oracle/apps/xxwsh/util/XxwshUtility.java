@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.16
+* バージョン : 1.17
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,8 +21,9 @@
 * 2009-01-22 1.12 伊藤ひとみ   本番障害#1000対応
 * 2009-01-26 1.13 伊藤ひとみ   本番障害#936対応
 * 2009-02-13 1.14 伊藤ひとみ   本番障害#863対応
-* 2009-12-04 1.15 伊藤ひとみ     本稼動障害#11対応
+* 2009-12-04 1.15 伊藤ひとみ   本稼動障害#11対応
 * 2014-11-11 1.16 桐生和幸     E_本稼働_12237対応
+* 2019-02-25 1.17 小路恭弘     E_本稼働_15398対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -6787,4 +6788,135 @@ public class XxwshUtility
     }
   } // insUpdLotHoldInfo
 // 2014-11-11 K.Kiriu Add End E_本稼動_12237対応
+// 2019-02-25 Y.Shoji Add Start E_本稼動_15398対応
+  /*****************************************************************************
+   * 引当可能鮮度チェックAPIを実行します。
+   * @param trans          - トランザクション
+   * @param moveToId       - 配送先ID
+   * @param lotId          - ロットId
+   * @param arrivalDate    - 着日
+   * @param standard_date  - 基準日(適用日基準日)
+   * @return HashMap 
+   * @throws OAException   - OA例外
+   ****************************************************************************/
+  public static HashMap doCheckFreshCondition2(
+    OADBTransaction trans,
+    Number moveToId,
+    Number lotId,
+    Date   arrivalDate,
+    Date   standard_date
+  ) throws OAException
+  {
+    String apiName = "doCheckFreshCondition2";
+    HashMap ret    = new HashMap();
+    
+    // OUTパラメータ
+    String exeType = XxcmnConstants.RETURN_NOT_EXE;
+    
+    //PL/SQL作成
+    StringBuffer sb = new StringBuffer(100);
+    sb.append("BEGIN "                                    );
+    sb.append("  xxwsh_common910_pkg.check_fresh_condition_2( ");
+    sb.append("    in_move_to_id       => :1,            ");   // 1.配送先ID
+    sb.append("    it_lot_id           => :2,            ");   // 2.ロットId
+    sb.append("    id_arrival_date     => :3,            ");   // 3.着日
+    sb.append("    id_standard_date    => :4,            ");   // 4.基準日
+    sb.append("    on_result           => :5,            ");   // 5.処理結果
+    sb.append("    od_standard_date    => :6,            ");   // 6.基準日付
+    sb.append("    ov_retcode          => :7,            ");   // 7.リターンコード
+    sb.append("    ov_errmsg_code      => :8,            ");   // 8.エラーメッセージコード
+    sb.append("    ov_errmsg           => :9);           ");   // 9.エラーメッセージ
+    sb.append("END; "                                     );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(1,    XxcmnUtility.intValue(moveToId));     // 配送先ID
+      cstmt.setInt(2,    XxcmnUtility.intValue(lotId));        // ロットId
+      cstmt.setDate(3,   XxcmnUtility.dateValue(arrivalDate)); // 着日
+      cstmt.setDate(4,   XxcmnUtility.dateValue(standard_date)); // 基準日
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(5,  Types.INTEGER); // 処理結果
+      cstmt.registerOutParameter(6,  Types.DATE);    // 基準日付
+      cstmt.registerOutParameter(7,  Types.VARCHAR); // リターンコード
+      cstmt.registerOutParameter(8,  Types.VARCHAR); // エラーメッセージコード
+      cstmt.registerOutParameter(9,  Types.VARCHAR); // エラーメッセージ
+
+      //PL/SQL実行
+      cstmt.execute();
+
+      String retCode    = cstmt.getString(7);               // リターンコード
+      String errmsgCode = cstmt.getString(8);               // エラーメッセージコード
+      String errmsg     = cstmt.getString(9);               // エラーメッセージ
+
+      // API正常終了の場合、値をセット
+      if (XxcmnConstants.API_RETURN_NORMAL.equals(retCode)) 
+      {
+        ret.put("result",       new Number(cstmt.getInt(5))); // 処理結果
+        ret.put("standardDate", new Date(cstmt.getDate(6)));  // 基準日付
+        
+      // API正常終了でない場合、エラー  
+      } else
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          errmsg, // エラーメッセージ
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      rollBack(trans);
+      // ログ出力
+      XxcmnUtility.writeLog(
+        trans,
+        XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+        s.toString(),
+        6);
+      // エラーメッセージ出力
+      throw new OAException(
+        XxcmnConstants.APPL_XXCMN, 
+        XxcmnConstants.XXCMN10123);
+        
+    } finally
+    {
+      try
+      {
+        // PL/SQLクローズ
+        cstmt.close();
+        
+      // クローズ中ににエラーが発生した場合
+      } catch(SQLException s)
+      {
+        // ロールバック
+        rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxwshConstants.CLASS_XXWSH_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+    return ret;
+  } // doCheckFreshCondition2
+// 2019-02-25 Y.Shoji Add End E_本稼動_15398対応
 }
