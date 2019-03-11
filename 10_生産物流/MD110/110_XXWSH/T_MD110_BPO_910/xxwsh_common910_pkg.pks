@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流共通（出荷・移動チェック）
  * MD.050           : 生産物流共通（出荷・移動チェック）T_MD050_BPO_910
  * MD.070           : なし
- * Version          : 1.37
+ * Version          : 1.41
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -22,6 +22,8 @@ AS
  *  calc_lead_time         P         F.リードタイム算出
  *  check_shipping_judgment
  *                         P         G.出荷可否チェック
+ *  check_fresh_condition_2
+ *                         P         I.引当可能鮮度チェック
  *
  * Change Record
  * ------------ ----- ---------------- -------------------------------------------------
@@ -71,6 +73,7 @@ AS
  *  2009/03/19   1.32  SCS   飯田甫     [積載効率チェック(合計値算出)] 統合テスト指摘311対応
  *  2009/04/23   1.33  SCS   風間由紀   [リードタイム算出] 本番障害#1398対応
  *  2009/10/15   1.37  SCS   伊藤ひとみ [ロット逆転防止チェック] 本番障害#1661対応
+ *  2019/02/26   1.41  SCSK  佐々木宏之 [鮮度基準日算出用の条件を細分化] E_新規プロシージャ作成
  *****************************************************************************************/
 --
 -- 2008/10/06 H.Itou Del Start 統合テスト指摘240
@@ -226,5 +229,22 @@ AS
     on_result                     OUT NOCOPY NUMBER                                        -- 11.処理結果
   );
 --
+--  V1.41 Added START
+  /**********************************************************************************
+   * Procedure Name   : check_fresh_condition_2
+   * Description      : 引当可能鮮度チェック
+   ***********************************************************************************/
+  PROCEDURE check_fresh_condition_2(
+      in_move_to_id                 IN  NUMBER                          -- 1.配送先ID
+    , it_lot_id                     IN  ic_lots_mst.lot_id%TYPE         -- 2.ロットID
+    , id_arrival_date               IN  DATE                            -- 3.着荷予定日
+    , id_standard_date              IN  DATE  DEFAULT SYSDATE           -- 4.基準日(適用日基準日)
+    , on_result                     OUT NOCOPY NUMBER                   -- 8.引当可否(0:可, 1:否)
+    , od_standard_date              OUT NOCOPY DATE                     -- 9.引当可否判定基準日付
+    , ov_retcode                    OUT NOCOPY VARCHAR2                 -- 5.リターンコード
+    , ov_errmsg_code                OUT NOCOPY VARCHAR2                 -- 6.エラーメッセージコード
+    , ov_errmsg                     OUT NOCOPY VARCHAR2                 -- 7.エラーメッセージ
+  );
+--  V1.41 Added END
 END xxwsh_common910_pkg;
 /
