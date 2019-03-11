@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.37
+* バージョン : 1.38
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -45,6 +45,7 @@
 * 2017-08-10 1.35 山下翔太     E_本稼動_14243対応
 * 2018-01-09 1.36 桐生和幸     E_本稼動_14243対応（メッセージ追加）
 * 2018-02-22 1.37 桐生和幸     E_本稼動_14859対応
+* 2019-02-28 1.38 佐々木大和   E_本稼動_15597対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -11949,7 +11950,10 @@ public class XxpoUtility
     sb.append("  lv_errmsg                     VARCHAR2(5000); "                                     );
     sb.append("  ln_lead_time                  NUMBER; "                                             );
     sb.append("BEGIN "                                                                               );
-    sb.append("  xxwsh_common910_pkg_pt.calc_lead_time( "                                            );
+// v1.38 Y.Sasaki Modified START
+//    sb.append("  xxwsh_common910_pkg_pt.calc_lead_time( "                                            );
+    sb.append("  xxwsh_common910_pkg.calc_lead_time( "                                            );
+// v1.38 Y.Sasaki Modified END
     sb.append("    iv_code_class1                => '4' "                                            ); // 4(倉庫)
     sb.append("   ,iv_entering_despatching_code1 => :1 "                                             ); // 出庫倉庫
     sb.append("   ,iv_code_class2                => '11' "                                           ); // 11(支給先)
