@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2016/02/18   1.15  SCSK山下翔太      E_本稼動_13468対応
  *  2017/06/08   1.16  SCSK山下翔太      E_本稼動_14307対応
  *  2018/10/23   1.17  SCSK小路恭弘      E_本稼動_15277対応
+ *  2019/02/27   1.18  SCSK奈良和宏      E_本稼動_15398対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5864,7 +5865,9 @@ AS
     lv_delv_from   xxwsh_order_headers_all.deliver_from%TYPE;          -- 出庫元
     lv_delv_to     xxwsh_order_headers_all.deliver_to%TYPE;            -- 配送先
 -- 2009/01/26 D.Nihei Mod Start 本番#936対応
-    lv_fresh_retcode     VARCHAR2(1);      -- 鮮度条件チェック用リターン・コード
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--    lv_fresh_retcode     VARCHAR2(1);      -- 鮮度条件チェック用リターン・コード
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
     ld_manufacture_date  DATE;             -- 鮮度条件合格製造日
 -- 2009/01/26 D.Nihei Mod End
 --
@@ -6133,7 +6136,9 @@ AS
       lv_no_meisai_flg               := gv_cons_flg_yes;
 -- 2009/01/26 D.Nihei Add Start 本番#936対応
       ld_reversal_date               := NULL;
-      lv_fresh_retcode               := NULL;      -- 鮮度条件チェック用リターン・コード
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--      lv_fresh_retcode               := NULL;      -- 鮮度条件チェック用リターン・コード
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
 -- 2009/01/26 D.Nihei Add End
       -- 供給情報ループ
       <<supply_inf_loop>>
@@ -6297,21 +6302,42 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
 --                );
 --            -- 共通関数のエラー
 --            IF (lv_retcode = gv_cons_error) THEN
-            IF ( lv_fresh_retcode IS NULL ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--            IF ( lv_fresh_retcode IS NULL ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--              -- =======================================
+--              -- 鮮度条件合格製造日取得 共通関数
+--              -- =======================================
+--              xxwsh_common910_pkg.get_fresh_pass_date(
+--                 gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
+--               , gr_demand_tbl(ln_d_cnt).shipping_item_code     -- 2.品目コード
+--               , gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷日
+--               , gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.出庫予定日
+--               , ld_manufacture_date                            -- 5.鮮度条件合格製造日
+--               , lv_fresh_retcode                               -- 6.リターン・コード
+--               , lv_errbuf                                      -- 7.エラー・メッセージ
+--              );
               -- =======================================
-              -- 鮮度条件合格製造日取得 共通関数
+              -- 引当可能鮮度チェック 共通関数
               -- =======================================
-              xxwsh_common910_pkg.get_fresh_pass_date(
-                 gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
-               , gr_demand_tbl(ln_d_cnt).shipping_item_code     -- 2.品目コード
-               , gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷日
-               , gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.出庫予定日
-               , ld_manufacture_date                            -- 5.鮮度条件合格製造日
-               , lv_fresh_retcode                               -- 6.リターン・コード
-               , lv_errbuf                                      -- 7.エラー・メッセージ
+              xxwsh_common910_pkg.check_fresh_condition_2(
+                 in_move_to_id     =>  gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
+               , it_lot_id         =>  gr_supply_tbl(ln_s_cnt).lot_id                 -- 2.ロットID
+               , id_arrival_date   =>  gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷予定日
+               , id_standard_date  =>  gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.基準日(適用日基準日)
+               , ov_retcode        =>  lv_retcode                                     -- 5.リターン・コード
+               , ov_errmsg_code    =>  lv_errbuf                                      -- 6.エラーメッセージコード
+               , ov_errmsg         =>  lv_errmsg                                      -- 7.エラー・メッセージ
+               , on_result         =>  ln_result                                      -- 8.引当可否(0:可, 1:否)
+               , od_standard_date  =>  ld_standard_date                               -- 9.引当可否判定基準日付
               );
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
               -- 共通関数のエラー
-              IF ( lv_fresh_retcode = gv_cons_error ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--              IF ( lv_fresh_retcode = gv_cons_error ) THEN
+              IF ( lv_retcode = gv_cons_error ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
 -- 2009/01/26 D.Nihei Mod End
                 -- メッセージのセット
                 lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
@@ -6339,7 +6365,9 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
                 RAISE global_process_expt;
               END IF;
 -- 2009/01/26 D.Nihei Add Start 本番#936対応
-            END IF;
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--            END IF;
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
 -- 2009/01/26 D.Nihei Add End
 --
 -- 2009/01/26 D.Nihei Mod Start 本番#936対応
@@ -6350,17 +6378,27 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
 --                OR ( gr_check_tbl(1).warnning_date <= ld_standard_date ))
 --                THEN
             -- 正常の場合
-            IF ( lv_fresh_retcode = gv_status_normal ) THEN
-              -- ロット製造日 < 鮮度条件合格製造日の場合
-              IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_manufacture_date ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--            IF ( lv_fresh_retcode = gv_status_normal ) THEN
+--              -- ロット製造日 < 鮮度条件合格製造日の場合
+--              IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_manufacture_date ) THEN
+              -- 引当可否が1:否の場合
+              IF ( ln_result = 1 ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
                 -- チェック処理結果を格納する
                 IF ( ( gr_check_tbl(1).warnning_date IS NULL )
-                  OR ( gr_check_tbl(1).warnning_date <= ld_manufacture_date ) ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--                  OR ( gr_check_tbl(1).warnning_date <= ld_manufacture_date ) ) THEN
+                  OR ( gr_check_tbl(1).warnning_date <= ld_standard_date ) ) THEN
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
 -- 2009/01/26 D.Nihei Mod End
                   gr_check_tbl(1).warnning_class := gv_cons_wrn_fresh;                   -- 警告区分
 -- 2009/01/26 D.Nihei Mod Start 本番#936対応
 --                  gr_check_tbl(1).warnning_date  := ld_standard_date;                    -- 警告日付
-                  gr_check_tbl(1).warnning_date  := ld_manufacture_date;                 -- 警告日付
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD START
+--                  gr_check_tbl(1).warnning_date  := ld_manufacture_date;                 -- 警告日付
+                  gr_check_tbl(1).warnning_date  := ld_standard_date;                 -- 警告日付
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara MOD END
 -- 2009/01/26 D.Nihei Mod End
                   gr_check_tbl(1).lot_no         := gr_supply_tbl(ln_s_cnt).lot_no;      -- ロットNo
                   gr_check_tbl(1).p_date         := gr_supply_tbl(ln_s_cnt).p_date;      -- 製造年月日
@@ -6376,7 +6414,9 @@ FND_FILE.PUT_LINE( FND_FILE.LOG, '【依頼/移動No】' || gr_demand_tbl(ln_d_cnt).re
               lv_no_meisai_flg := gv_cons_flg_yes;
 --
 -- 2009/01/26 D.Nihei Add Start 本番#936対応
-            END IF;
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL START
+--            END IF;
+-- Ver.1.18 [障害E_本稼動_15398] SCSK K.Nara DEL END
 -- 2009/01/26 D.Nihei Add End
           END IF;
 --
