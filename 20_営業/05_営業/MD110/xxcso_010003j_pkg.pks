@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  chk_bank_account          F    V      銀行口座マスタチェック
  *  chk_bank_account_change   F    V      銀行口座マスタ変更チェック
  *  chk_owner_change_use      F    V      オーナ変更物件使用チェック
+ *  chk_supp_info_change      F    V      送付先変更チェック
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -57,6 +58,7 @@ AS
  *  2013/04/01    1.9   K.Kiriu          E_本稼動_10413対応
  *  2015/12/03    1.10  S.Yamashita      E_本稼動_13345対応
  *  2016/01/06    1.11  K.Kiriu          E_本稼動_13456対応
+ *  2019/02/19    1.12  Y.Sasaki         E_本稼動_15349対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -254,6 +256,30 @@ AS
    ,in_install_account_id         IN  NUMBER           -- 顧客ID
   ) RETURN VARCHAR2;
 /* 2016/01/06 Ver1.11 K.kiriu E_本稼動_13456対応 END */
+/* V1.12 Y.Sasaki Added START */
+  -- 送付先情報変更チェック
+  FUNCTION chk_supp_info_change(
+     iv_vendor_code                  IN  VARCHAR2         -- 送付先コード
+    ,ov_bm_transfer_commission_type  OUT VARCHAR2         -- 振込手数料負担
+    ,ov_bm_payment_type              OUT VARCHAR2         -- 支払方法、明細書
+    ,ov_inquiry_base_code            OUT VARCHAR2         -- 問合せ担当拠点
+    ,ov_inquiry_base_name            OUT VARCHAR2         -- 問合せ担当拠点名
+    ,ov_vendor_name                  OUT VARCHAR2         -- 送付先名
+    ,ov_vendor_name_alt              OUT VARCHAR2         -- 送付先名カナ
+    ,ov_zip                          OUT VARCHAR2         -- 郵便番号
+    ,ov_address_line1                OUT VARCHAR2         -- 住所１
+    ,ov_address_line2                OUT VARCHAR2         -- 住所２
+    ,ov_phone_number                 OUT VARCHAR2         -- 電話番号
+    ,ov_bank_number                  OUT VARCHAR2         -- 金融機関コード
+    ,ov_bank_name                    OUT VARCHAR2         -- 金融機関名
+    ,ov_bank_branch_number           OUT VARCHAR2         -- 支店コード
+    ,ov_bank_branch_name             OUT VARCHAR2         -- 支店名
+    ,ov_bank_account_type            OUT VARCHAR2         -- 口座種別
+    ,ov_bank_account_num             OUT VARCHAR2         -- 口座番号
+    ,ov_bank_account_holder_nm_alt   OUT VARCHAR2         -- 口座名義カナ
+    ,ov_bank_account_holder_nm       OUT VARCHAR2         -- 口座名義漢字
+  ) RETURN VARCHAR2;
+/* V1.12 Y.Sasaki Added END   */
 --
 END xxcso_010003j_pkg;
 /
