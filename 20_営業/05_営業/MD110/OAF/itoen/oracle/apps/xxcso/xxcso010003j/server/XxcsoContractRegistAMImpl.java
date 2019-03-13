@@ -1,26 +1,27 @@
-/*============================================================================
+/*==============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 2.1
-*============================================================================
+* バージョン : 2.2
+*==============================================================================
 * 修正履歴
-* 日付       Ver. 担当者       修正内容
-* ---------- ---- ------------ ----------------------------------------------
-* 2009-01-27 1.0  SCS小川浩    新規作成
-* 2009-02-16 1.1  SCS柳平直人  [CT1-008]BM指定チェックボックス不正対応
-* 2009-02-23 1.1  SCS柳平直人  [CT1-021]送付先コード取得不正対応
-*                              [CT1-022]口座情報取得不正対応
-* 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
-* 2010-01-26 1.3  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
-* 2010-01-20 1.4  SCS阿部大輔  [E_本稼動_01176]口座種別対応
-* 2010-02-09 1.5  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
-* 2010-03-01 1.6  SCS阿部大輔  [E_本稼動_01678]現金支払対応
-* 2011-06-06 1.7  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
-* 2012-06-12 1.8  SCS桐生和幸  [E_本稼動_09602]契約取消ボタン追加対応
-* 2013-04-01 1.9  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
-* 2015-02-09 2.0  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
-* 2016-01-06 2.1  SCSK桐生和幸 [E_本稼動_13456]自販機管理システム代替対応
-*============================================================================
+* 日付       Ver. 担当者         修正内容
+* ---------- ---- -------------- ----------------------------------------------
+* 2009-01-27 1.0  SCS小川浩      新規作成
+* 2009-02-16 1.1  SCS柳平直人    [CT1-008]BM指定チェックボックス不正対応
+* 2009-02-23 1.1  SCS柳平直人    [CT1-021]送付先コード取得不正対応
+*                                [CT1-022]口座情報取得不正対応
+* 2009-04-08 1.2  SCS柳平直人    [ST障害T1_0364]仕入先重複チェック修正対応
+* 2010-01-26 1.3  SCS阿部大輔    [E_本稼動_01314]契約書発効日必須対応
+* 2010-01-20 1.4  SCS阿部大輔    [E_本稼動_01176]口座種別対応
+* 2010-02-09 1.5  SCS阿部大輔    [E_本稼動_01538]契約書の複数確定対応
+* 2010-03-01 1.6  SCS阿部大輔    [E_本稼動_01678]現金支払対応
+* 2011-06-06 1.7  SCS桐生和幸    [E_本稼動_01963]新規仕入先作成チェック対応
+* 2012-06-12 1.8  SCS桐生和幸    [E_本稼動_09602]契約取消ボタン追加対応
+* 2013-04-01 1.9  SCSK桐生和幸   [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
+* 2015-02-09 2.0  SCSK山下翔太   [E_本稼動_12565]SP専決・契約書画面改修
+* 2016-01-06 2.1  SCSK桐生和幸   [E_本稼動_13456]自販機管理システム代替対応
+* 2019-02-19 2.2  SCSK佐々木大和 [E_本稼動_15349]仕入先CD制御対応
+*==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
 
@@ -1559,7 +1560,7 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
          ,mngVo
         );
     if (oaeMsg != null)
-    {
+    { 
       throw oaeMsg;
     }
 
@@ -3241,7 +3242,742 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     return confirmMsg;
   }
 // 2013-04-01 Ver1.9 [E_本稼動_10413] Add End
+// V2.2 Y.Sasaki Added START
+  /*****************************************************************************
+   * 送付先情報の変更チェック処理
+   *****************************************************************************
+   */
+  public void suppllierChangeCheck()
+  {
+    OADBTransaction txn = getOADBTransaction();
 
+    XxcsoUtils.debug(txn, "[START]");
+
+    mMessage = this.validateSuppllierChangeInfo();
+
+    XxcsoUtils.debug(txn, "[END]");
+  }
+
+  /*****************************************************************************
+   * 送付先情報の変更チェック
+   * @return OAException 
+   *****************************************************************************
+   */
+  private OAException validateSuppllierChangeInfo()
+  {
+    OADBTransaction txn = getOADBTransaction();
+
+    XxcsoUtils.debug(txn, "[START]");
+
+    OAException  confirmMsg = null;
+    OAException  MsgData    = null;
+
+    StringBuffer sbMsg    = new StringBuffer();
+
+    String retVal         = null;
+
+    String msgVenCd       = null;
+
+    //送付先情報
+    String BmTranComType  = null;   //振込手数料負担
+    String BmPayType      = null;   //支払方法、明細書
+    String InqBaseCode    = null;   //問合せ担当拠点
+    String InqBaseName    = null;   //問合せ担当拠点名
+    String VenName        = null;   //送付先名
+    String VenNameAlt     = null;   //送付先名カナ
+    String Zip            = null;   //郵便番号
+    String Address1       = null;   //住所１
+    String Address2       = null;   //住所２
+    String PhoneNum       = null;   //電話番号
+
+    //送付先の銀行情報
+    String BkNum          = null;   //金融機関コード
+    String BkName         = null;   //金融機関名
+    String BkBranNum      = null;   //支店コード
+    String BkBranName     = null;   //支店名
+    String BkAcType       = null;   //口座種別
+    String BkAcTypeName   = null;   //口座種別名
+    String BkAcNum        = null;   //口座番号
+    String BkAcHldNameAlt = null;   //口座名義カナ
+    String BkAcHldName    = null;   //口座名義漢字
+
+    OracleCallableStatement stmt = null;
+
+    OracleCallableStatement debug = null;
+
+    //インスタンス取得
+    XxcsoPageRenderVOImpl pageRenderVo
+      = getXxcsoPageRenderVO1();
+    if ( pageRenderVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoPageRenderVOImpl");
+    }
+
+    //BM1の送付先情報のインスタンス取得
+    XxcsoBm1DestinationFullVOImpl dest1Vo
+      = getXxcsoBm1DestinationFullVO1();
+    if ( dest1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1DestinationFullVO1");
+    }
+
+    //BM1の銀行情報のインスタンス取得
+    XxcsoBm1BankAccountFullVOImpl bank1Vo
+      = getXxcsoBm1BankAccountFullVO1();
+    if ( bank1Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm1BankAccountFullVO1");
+    }
+
+    //BM2の送付先情報のインスタンス取得
+    XxcsoBm2DestinationFullVOImpl dest2Vo
+      = getXxcsoBm2DestinationFullVO1();
+    if ( dest2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2DestinationFullVO1");
+    }
+
+    //BM2の銀行情報のインスタンス取得
+    XxcsoBm2BankAccountFullVOImpl bank2Vo
+      = getXxcsoBm2BankAccountFullVO1();
+    if ( bank2Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm2BankAccountFullVO1");
+    }
+
+    //BM3の送付先情報のインスタンス取得
+    XxcsoBm3DestinationFullVOImpl dest3Vo
+      = getXxcsoBm3DestinationFullVO1();
+    if ( dest3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3DestinationFullVO1");
+    }
+
+    //BM3の銀行情報のインスタンス取得
+    XxcsoBm3BankAccountFullVOImpl bank3Vo
+      = getXxcsoBm3BankAccountFullVO1();
+    if ( bank3Vo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBm3BankAccountFullVO1");
+    }
+
+    // 行インスタンス取得
+    XxcsoPageRenderVORowImpl pageRenderRow
+      = (XxcsoPageRenderVORowImpl) pageRenderVo.first();
+
+    //BM1の送付先情報の行インスタンス取得
+    XxcsoBm1DestinationFullVORowImpl bm1DestVoRow
+      = (XxcsoBm1DestinationFullVORowImpl) dest1Vo.first();
+
+    //BM1の銀行情報の行インスタンス取得
+    XxcsoBm1BankAccountFullVORowImpl bank1Row
+      = (XxcsoBm1BankAccountFullVORowImpl)bank1Vo.first();
+
+    //BM2の送付先情報の行インスタンス取得
+    XxcsoBm2DestinationFullVORowImpl bm2DestVoRow
+      = (XxcsoBm2DestinationFullVORowImpl) dest2Vo.first();
+
+    //BM2の銀行情報の行インスタンス取得
+    XxcsoBm2BankAccountFullVORowImpl bank2Row
+      = (XxcsoBm2BankAccountFullVORowImpl)bank2Vo.first();
+
+    //BM3の送付先情報の行インスタンス取得
+    XxcsoBm3DestinationFullVORowImpl bm3DestVoRow
+      = (XxcsoBm3DestinationFullVORowImpl) dest3Vo.first();
+
+    //BM3の銀行情報の行インスタンス取得
+    XxcsoBm3BankAccountFullVORowImpl bank3Row
+      = (XxcsoBm3BankAccountFullVORowImpl)bank3Vo.first();
+
+    /////////////////////////////////////
+    // BM1送付先変更チェック
+    /////////////////////////////////////
+    // BM1指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm1ExistFlag() ) )
+    {
+      //送付先コードがnull以外の場合
+      if (bm1DestVoRow.getVendorCode() != null )
+      {
+        // メッセージ用に入力値の送付先コードを保持
+        msgVenCd = bm1DestVoRow.getVendorCode();
+        try
+        {
+          StringBuffer sql = new StringBuffer(300);
+          //  送付先変更チェック
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010003j_pkg.chk_supp_info_change(");
+          sql.append("        iv_vendor_code                  => :2");          // 送付先コード
+          sql.append("       ,ov_bm_transfer_commission_type  => :3");          // 振込手数料負担
+          sql.append("       ,ov_bm_payment_type              => :4");          // 支払方法、明細書
+          sql.append("       ,ov_inquiry_base_code            => :5");          // 問合せ担当拠点
+          sql.append("       ,ov_inquiry_base_name            => :6");          // 問合せ担当拠点名
+          sql.append("       ,ov_vendor_name                  => :7");          // 送付先名
+          sql.append("       ,ov_vendor_name_alt              => :8");          // 送付先名カナ
+          sql.append("       ,ov_zip                          => :9");          // 郵便番号
+          sql.append("       ,ov_address_line1                => :10");         // 住所１
+          sql.append("       ,ov_address_line2                => :11");         // 住所２
+          sql.append("       ,ov_phone_number                 => :12");         // 電話番号
+          sql.append("       ,ov_bank_number                  => :13");         // 金融機関コード
+          sql.append("       ,ov_bank_name                    => :14");         // 金融機関名
+          sql.append("       ,ov_bank_branch_number           => :15");         // 支店コード
+          sql.append("       ,ov_bank_branch_name             => :16");         // 支店名
+          sql.append("       ,ov_bank_account_type            => :17");         // 口座種別
+          sql.append("       ,ov_bank_account_num             => :18");         // 口座番号
+          sql.append("       ,ov_bank_account_holder_nm_alt   => :19");         // 口座名義カナ
+          sql.append("       ,ov_bank_account_holder_nm       => :20");         // 口座名義漢字
+          sql.append("        );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, bm1DestVoRow.getVendorCode());
+          stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(6, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(7, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(10,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(11,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(12,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(13,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(14,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(15,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(16,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(17,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(18,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(19,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(20,OracleTypes.VARCHAR);
+
+          stmt.execute();
+
+          retVal = stmt.getString(1);   //リターンコード
+
+         //リターンコードが1(ダミー仕入先)の場合
+          if ( "1".equals(retVal) )
+          {
+            //送付先情報
+            BmTranComType   = stmt.getString(3);   //振込手数料負担
+            BmPayType       = stmt.getString(4);   //支払方法、明細書
+            InqBaseCode     = stmt.getString(5);   //問合せ担当拠点
+            InqBaseName     = stmt.getString(6);   //問合せ担当拠点名
+            VenName         = stmt.getString(7);   //送付先名
+            VenNameAlt      = stmt.getString(8);   //送付先名カナ
+            Zip             = stmt.getString(9);   //郵便番号
+            Address1        = stmt.getString(10);  //住所１
+            Address2        = stmt.getString(11);  //住所２
+            PhoneNum        = stmt.getString(12);  //電話番号
+
+            //送付先の銀行情報
+            BkNum           = stmt.getString(13);  //金融機関コード
+            BkName          = stmt.getString(14);  //金融機関名
+            BkBranNum       = stmt.getString(15);  //支店コード
+            BkBranName      = stmt.getString(16);  //支店名
+            BkAcType        = stmt.getString(17);  //口座種別
+            BkAcNum         = stmt.getString(18);  //口座番号
+            BkAcHldNameAlt  = stmt.getString(19);  //口座名義カナ
+            BkAcHldName     = stmt.getString(20);  //口座名義漢字
+
+            //全ての項目に対して変更があるかチェック
+            if (   !(bm1DestVoRow.getBankTransferFeeChargeDiv() != null && (bm1DestVoRow.getBankTransferFeeChargeDiv()).equals(BmTranComType)
+                    || bm1DestVoRow.getBankTransferFeeChargeDiv() == null && BmTranComType == null)
+                || !(bm1DestVoRow.getBellingDetailsDiv() != null && (bm1DestVoRow.getBellingDetailsDiv()).equals(BmPayType))
+                || !(bm1DestVoRow.getInqueryChargeHubCd() != null && (bm1DestVoRow.getInqueryChargeHubCd()).equals(InqBaseCode))
+                || !(bm1DestVoRow.getInqueryChargeHubName() != null && (bm1DestVoRow.getInqueryChargeHubName()).equals(InqBaseName))
+                || !(bm1DestVoRow.getPaymentName() != null &&  (bm1DestVoRow.getPaymentName()).equals(VenName))
+                || !(bm1DestVoRow.getPaymentNameAlt() != null && (bm1DestVoRow.getPaymentNameAlt()).equals(VenNameAlt))
+                || !(bm1DestVoRow.getPostCode() != null && (bm1DestVoRow.getPostCode()).equals(Zip))
+                || !(bm1DestVoRow.getAddress1() != null && (bm1DestVoRow.getAddress1()).equals(Address1))
+                || !(bm1DestVoRow.getAddress2() != null && (bm1DestVoRow.getAddress2()).equals(Address2)
+                    || bm1DestVoRow.getAddress2() == null && Address2 == null)
+                || !(bm1DestVoRow.getAddressLinesPhonetic() != null && (bm1DestVoRow.getAddressLinesPhonetic()).equals(PhoneNum)
+                    || bm1DestVoRow.getAddressLinesPhonetic() == null && PhoneNum == null)
+                || !(bank1Row.getBankNumber() != null && (bank1Row.getBankNumber()).equals(BkNum)
+                    || bank1Row.getBankNumber() == null && BkNum == null)
+                || !(bank1Row.getBankName() != null && (bank1Row.getBankName()).equals(BkName)
+                    || bank1Row.getBankName() == null && BkName == null)
+                || !(bank1Row.getBranchNumber() != null && (bank1Row.getBranchNumber()).equals(BkBranNum)
+                    || bank1Row.getBranchNumber() == null && BkBranNum == null)
+                || !(bank1Row.getBranchName() != null && (bank1Row.getBranchName()).equals(BkBranName)
+                    || bank1Row.getBranchName() == null && BkBranName == null)
+                || !(bank1Row.getBankAccountType() != null && (bank1Row.getBankAccountType()).equals(BkAcType)
+                    || bank1Row.getBankAccountType() == null && BkAcType == null)
+                || !(bank1Row.getBankAccountNumber() != null && (bank1Row.getBankAccountNumber()).equals(BkAcNum)
+                    || bank1Row.getBankAccountNumber() == null && BkAcNum == null)
+                || !(bank1Row.getBankAccountNameKana() != null && (bank1Row.getBankAccountNameKana()).equals(BkAcHldNameAlt)
+                    || bank1Row.getBankAccountNameKana() == null && BkAcHldNameAlt == null)
+                || !(bank1Row.getBankAccountNameKanji() != null && (bank1Row.getBankAccountNameKanji()).equals(BkAcHldName)
+                    || bank1Row.getBankAccountNameKanji() == null && BkAcHldName == null))
+            {
+              //BM1トークン設定
+              sbMsg.append(  XxcsoContractRegistConstants.TOKEN_VALUE_BM1 
+                           + XxcsoConstants.TOKEN_VALUE_DELIMITER3
+                           + msgVenCd );
+
+              //送付先情報をマスタの値で更新
+              bm1DestVoRow.setBankTransferFeeChargeDiv(BmTranComType);
+              bm1DestVoRow.setBellingDetailsDiv(BmPayType);
+              bm1DestVoRow.setInqueryChargeHubCd(InqBaseCode);
+              bm1DestVoRow.setInqueryChargeHubName(InqBaseName);
+              bm1DestVoRow.setPaymentName(VenName);
+              bm1DestVoRow.setPaymentNameAlt(VenNameAlt);
+              bm1DestVoRow.setPostCode(Zip);
+              bm1DestVoRow.setAddress1(Address1);
+              bm1DestVoRow.setAddress2(Address2);
+              bm1DestVoRow.setAddressLinesPhonetic(PhoneNum);
+
+              //口座情報をマスタの値で更新
+              bank1Row.setBankNumber(BkNum);
+              bank1Row.setBankName(BkName);
+              bank1Row.setBranchNumber(BkBranNum);
+              bank1Row.setBranchName(BkBranName);
+              bank1Row.setBankAccountType(BkAcType);
+              bank1Row.setBankAccountNumber(BkAcNum);
+              bank1Row.setBankAccountNameKana(BkAcHldNameAlt);
+              bank1Row.setBankAccountNameKanji(BkAcHldName);
+            }
+          }
+
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_SUPPLIER_CHANGE_CHK
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+    }
+
+    retVal         = null;
+    BkAcType       = null;
+    BkAcHldNameAlt = null;
+    BkAcHldName    = null;
+    msgVenCd       = null;
+
+    /////////////////////////////////////
+    // BM2送付先変更チェック
+    /////////////////////////////////////
+    // BM2指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm2ExistFlag() ) )
+    {
+      //送付先コードがnull以外の場合
+      if (bm2DestVoRow.getVendorCode() != null )
+      {
+        // メッセージ用にパラメータを保持
+        msgVenCd = bm2DestVoRow.getVendorCode();
+        try
+        {
+
+          StringBuffer sql = new StringBuffer(300);
+          //  送付先変更チェック
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010003j_pkg.chk_supp_info_change(");
+          sql.append("        iv_vendor_code                  => :2");          // 送付先コード
+          sql.append("       ,ov_bm_transfer_commission_type  => :3");          // 振込手数料負担
+          sql.append("       ,ov_bm_payment_type              => :4");          // 支払方法、明細書
+          sql.append("       ,ov_inquiry_base_code            => :5");          // 問合せ担当拠点
+          sql.append("       ,ov_inquiry_base_name            => :6");          // 問合せ担当拠点名
+          sql.append("       ,ov_vendor_name                  => :7");          // 送付先名
+          sql.append("       ,ov_vendor_name_alt              => :8");          // 送付先名カナ
+          sql.append("       ,ov_zip                          => :9");          // 郵便番号
+          sql.append("       ,ov_address_line1                => :10");         // 住所１
+          sql.append("       ,ov_address_line2                => :11");         // 住所２
+          sql.append("       ,ov_phone_number                 => :12");         // 電話番号
+          sql.append("       ,ov_bank_number                  => :13");         // 金融機関コード
+          sql.append("       ,ov_bank_name                    => :14");         // 金融機関名
+          sql.append("       ,ov_bank_branch_number           => :15");         // 支店コード
+          sql.append("       ,ov_bank_branch_name             => :16");         // 支店名
+          sql.append("       ,ov_bank_account_type            => :17");         // 口座種別
+          sql.append("       ,ov_bank_account_num             => :18");         // 口座番号
+          sql.append("       ,ov_bank_account_holder_nm_alt   => :19");         // 口座名義カナ
+          sql.append("       ,ov_bank_account_holder_nm       => :20");         // 口座名義漢字
+          sql.append("        );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, bm2DestVoRow.getVendorCode());
+          stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(6, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(7, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(10,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(11,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(12,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(13,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(14,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(15,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(16,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(17,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(18,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(19,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(20,OracleTypes.VARCHAR);
+
+          stmt.execute();
+
+          retVal = stmt.getString(1);   //リターンコード
+
+        	//戻り値が1(ダミー仕入先)の場合、項目が変更されていないかチェック
+          if ( "1".equals(retVal) )
+          {
+            //送付先情報
+            BmTranComType   = stmt.getString(3);   //振込手数料負担
+            BmPayType       = stmt.getString(4);   //支払方法、明細書
+            InqBaseCode     = stmt.getString(5);   //問合せ担当拠点
+            InqBaseName     = stmt.getString(6);   //問合せ担当拠点名
+            VenName         = stmt.getString(7);   //送付先名
+            VenNameAlt      = stmt.getString(8);   //送付先名カナ
+            Zip             = stmt.getString(9);   //郵便番号
+            Address1        = stmt.getString(10);  //住所１
+            Address2        = stmt.getString(11);  //住所２
+            PhoneNum        = stmt.getString(12);  //電話番号
+
+            //送付先の銀行情報
+            BkNum           = stmt.getString(13);  //金融機関コード
+            BkName          = stmt.getString(14);  //金融機関名
+            BkBranNum       = stmt.getString(15);  //支店コード
+            BkBranName      = stmt.getString(16);  //支店名
+            BkAcType        = stmt.getString(17);  //口座種別
+            BkAcNum         = stmt.getString(18);  //口座番号
+            BkAcHldNameAlt  = stmt.getString(19);  //口座名義カナ
+            BkAcHldName     = stmt.getString(20);  //口座名義漢字
+
+            //全ての項目に対して変更があるかチェック
+            if (   !(bm2DestVoRow.getBankTransferFeeChargeDiv() != null && (bm2DestVoRow.getBankTransferFeeChargeDiv()).equals(BmTranComType)
+                    || bm2DestVoRow.getBankTransferFeeChargeDiv() == null && BmTranComType == null)
+                || !(bm2DestVoRow.getBellingDetailsDiv() != null && (bm2DestVoRow.getBellingDetailsDiv()).equals(BmPayType))
+                || !(bm2DestVoRow.getInqueryChargeHubCd() != null && (bm2DestVoRow.getInqueryChargeHubCd()).equals(InqBaseCode))
+                || !(bm2DestVoRow.getInqueryChargeHubName() != null && (bm2DestVoRow.getInqueryChargeHubName()).equals(InqBaseName))
+                || !(bm2DestVoRow.getPaymentName() != null &&  (bm2DestVoRow.getPaymentName()).equals(VenName))
+                || !(bm2DestVoRow.getPaymentNameAlt() != null && (bm2DestVoRow.getPaymentNameAlt()).equals(VenNameAlt))
+                || !(bm2DestVoRow.getPostCode() != null && (bm2DestVoRow.getPostCode()).equals(Zip))
+                || !(bm2DestVoRow.getAddress1() != null && (bm2DestVoRow.getAddress1()).equals(Address1))
+                || !(bm2DestVoRow.getAddress2() != null && (bm2DestVoRow.getAddress2()).equals(Address2)
+                    || bm2DestVoRow.getAddress2() == null && Address2 == null)
+                || !(bm2DestVoRow.getAddressLinesPhonetic() != null && (bm2DestVoRow.getAddressLinesPhonetic()).equals(PhoneNum)
+                    || bm2DestVoRow.getAddressLinesPhonetic() == null && PhoneNum == null )
+                || !(bank2Row.getBankNumber() != null && (bank2Row.getBankNumber()).equals(BkNum)
+                    || bank2Row.getBankNumber() == null && BkNum == null)
+                || !(bank2Row.getBankName() != null && (bank2Row.getBankName()).equals(BkName)
+                    || bank2Row.getBankName() == null && BkName == null)
+                || !(bank2Row.getBranchNumber() != null && (bank2Row.getBranchNumber()).equals(BkBranNum)
+                    || bank2Row.getBranchNumber() == null && BkBranNum == null)
+                || !(bank2Row.getBranchName() != null && (bank2Row.getBranchName()).equals(BkBranName)
+                    || bank2Row.getBranchName() == null && BkBranName == null)
+                || !(bank2Row.getBankAccountType() != null && (bank2Row.getBankAccountType()).equals(BkAcType)
+                    || bank2Row.getBankAccountType() == null && BkAcType == null)
+                || !(bank2Row.getBankAccountNumber() != null && (bank2Row.getBankAccountNumber()).equals(BkAcNum)
+                    || bank2Row.getBankAccountNumber() == null && BkAcNum == null)
+                || !(bank2Row.getBankAccountNameKana() != null && (bank2Row.getBankAccountNameKana()).equals(BkAcHldNameAlt)
+                    || bank2Row.getBankAccountNameKana() == null && BkAcHldNameAlt == null)
+                || !(bank2Row.getBankAccountNameKanji() != null && (bank2Row.getBankAccountNameKanji()).equals(BkAcHldName)
+                    || bank2Row.getBankAccountNameKanji() == null && BkAcHldName == null))
+            {
+              //BM2トークン設定
+              if ( sbMsg.length() > 0 )
+              {
+                sbMsg.append( XxcsoConstants.TOKEN_VALUE_DELIMITER2 );//カンマの挿入
+              }
+              sbMsg.append(  XxcsoContractRegistConstants.TOKEN_VALUE_BM2 
+                           + XxcsoConstants.TOKEN_VALUE_DELIMITER3
+                           + msgVenCd );
+
+              //送付先情報をマスタの値で更新
+              bm2DestVoRow.setBankTransferFeeChargeDiv(BmTranComType);
+              bm2DestVoRow.setBellingDetailsDiv(BmPayType);
+              bm2DestVoRow.setInqueryChargeHubCd(InqBaseCode);
+              bm2DestVoRow.setInqueryChargeHubName(InqBaseName);
+              bm2DestVoRow.setPaymentName(VenName);
+              bm2DestVoRow.setPaymentNameAlt(VenNameAlt);
+              bm2DestVoRow.setPostCode(Zip);
+              bm2DestVoRow.setAddress1(Address1);
+              bm2DestVoRow.setAddress2(Address2);
+              bm2DestVoRow.setAddressLinesPhonetic(PhoneNum);
+
+              //口座情報をマスタの値で更新
+              bank2Row.setBankNumber(BkNum);
+              bank2Row.setBankName(BkName);
+              bank2Row.setBranchNumber(BkBranNum);
+              bank2Row.setBranchName(BkBranName);
+              bank2Row.setBankAccountType(BkAcType);
+              bank2Row.setBankAccountNumber(BkAcNum);
+              bank2Row.setBankAccountNameKana(BkAcHldNameAlt);
+              bank2Row.setBankAccountNameKanji(BkAcHldName);
+            }
+          }
+
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_SUPPLIER_CHANGE_CHK
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+    }
+
+    retVal         = null;
+    BkAcType       = null;
+    BkAcHldNameAlt = null;
+    BkAcHldName    = null;
+    msgVenCd       = null;
+
+    /////////////////////////////////////
+    // BM3送付先変更チェック
+    /////////////////////////////////////
+    // BM3指定がONの場合
+    if ( XxcsoContractRegistValidateUtils.isChecked(
+           pageRenderRow.getBm3ExistFlag() ) )
+    {
+      //送付先コードがnull以外の場合
+      if (bm3DestVoRow.getVendorCode() != null)
+      {
+        // メッセージ用に入力値を保持
+        msgVenCd = bm3DestVoRow.getVendorCode();
+        try
+        {
+
+          StringBuffer sql = new StringBuffer(300);
+          //  送付先変更チェック
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010003j_pkg.chk_supp_info_change(");
+          sql.append("        iv_vendor_code                  => :2");          // 送付先コード
+          sql.append("       ,ov_bm_transfer_commission_type  => :3");          // 振込手数料負担
+          sql.append("       ,ov_bm_payment_type              => :4");          // 支払方法、明細書
+          sql.append("       ,ov_inquiry_base_code            => :5");          // 問合せ担当拠点
+          sql.append("       ,ov_inquiry_base_name            => :6");          // 問合せ担当拠点名
+          sql.append("       ,ov_vendor_name                  => :7");          // 送付先名
+          sql.append("       ,ov_vendor_name_alt              => :8");          // 送付先名カナ
+          sql.append("       ,ov_zip                          => :9");          // 郵便番号
+          sql.append("       ,ov_address_line1                => :10");         // 住所１
+          sql.append("       ,ov_address_line2                => :11");         // 住所２
+          sql.append("       ,ov_phone_number                 => :12");         // 電話番号
+          sql.append("       ,ov_bank_number                  => :13");         // 金融機関コード
+          sql.append("       ,ov_bank_name                    => :14");         // 金融機関名
+          sql.append("       ,ov_bank_branch_number           => :15");         // 支店コード
+          sql.append("       ,ov_bank_branch_name             => :16");         // 支店名
+          sql.append("       ,ov_bank_account_type            => :17");         // 口座種別
+          sql.append("       ,ov_bank_account_num             => :18");         // 口座番号
+          sql.append("       ,ov_bank_account_holder_nm_alt   => :19");         // 口座名義カナ
+          sql.append("       ,ov_bank_account_holder_nm       => :20");         // 口座名義漢字
+          sql.append("        );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, bm3DestVoRow.getVendorCode());
+          stmt.registerOutParameter(3, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(4, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(5, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(6, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(7, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(8, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+          stmt.registerOutParameter(10,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(11,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(12,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(13,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(14,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(15,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(16,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(17,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(18,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(19,OracleTypes.VARCHAR);
+          stmt.registerOutParameter(20,OracleTypes.VARCHAR);
+
+          stmt.execute();
+
+          retVal = stmt.getString(1);   //リターンコード
+
+        	//戻り値が1(ダミー仕入先)場合
+          if ( "1".equals(retVal) )
+          {
+            //送付先情報
+            BmTranComType   = stmt.getString(3);   //振込手数料負担
+            BmPayType       = stmt.getString(4);   //支払方法、明細書
+            InqBaseCode     = stmt.getString(5);   //問合せ担当拠点
+            InqBaseName     = stmt.getString(6);   //問合せ担当拠点名
+            VenName         = stmt.getString(7);   //送付先名
+            VenNameAlt      = stmt.getString(8);   //送付先名カナ
+            Zip             = stmt.getString(9);   //郵便番号
+            Address1        = stmt.getString(10);  //住所１
+            Address2        = stmt.getString(11);  //住所２
+            PhoneNum        = stmt.getString(12);  //電話番号
+
+            //送付先の銀行情報
+            BkNum           = stmt.getString(13);  //金融機関コード
+            BkName          = stmt.getString(14);  //金融機関名
+            BkBranNum       = stmt.getString(15);  //支店コード
+            BkBranName      = stmt.getString(16);  //支店名
+            BkAcType        = stmt.getString(17);  //口座種別
+            BkAcNum         = stmt.getString(18);  //口座番号
+            BkAcHldNameAlt  = stmt.getString(19);  //口座名義カナ
+            BkAcHldName     = stmt.getString(20);  //口座名義漢字
+
+            //全ての項目に対して変更があるかチェック
+            if (   !(bm3DestVoRow.getBankTransferFeeChargeDiv() != null && (bm3DestVoRow.getBankTransferFeeChargeDiv()).equals(BmTranComType)
+                    || bm3DestVoRow.getBankTransferFeeChargeDiv() == null && BmTranComType == null)
+                || !(bm3DestVoRow.getBellingDetailsDiv() != null && (bm3DestVoRow.getBellingDetailsDiv()).equals(BmPayType))
+                || !(bm3DestVoRow.getInqueryChargeHubCd() != null && (bm3DestVoRow.getInqueryChargeHubCd()).equals(InqBaseCode))
+                || !(bm3DestVoRow.getInqueryChargeHubName() != null && (bm3DestVoRow.getInqueryChargeHubName()).equals(InqBaseName))
+                || !(bm3DestVoRow.getPaymentName() != null &&  (bm3DestVoRow.getPaymentName()).equals(VenName))
+                || !(bm3DestVoRow.getPaymentNameAlt() != null && (bm3DestVoRow.getPaymentNameAlt()).equals(VenNameAlt))
+                || !(bm3DestVoRow.getPostCode() != null && (bm3DestVoRow.getPostCode()).equals(Zip))
+                || !(bm3DestVoRow.getAddress1() != null && (bm3DestVoRow.getAddress1()).equals(Address1))
+                || !(bm3DestVoRow.getAddress2() != null && (bm3DestVoRow.getAddress2()).equals(Address2)
+                    || bm3DestVoRow.getAddress2() == null && Address2 == null)
+                || !(bm3DestVoRow.getAddressLinesPhonetic() != null && (bm3DestVoRow.getAddressLinesPhonetic()).equals(PhoneNum)
+                    || bm3DestVoRow.getAddressLinesPhonetic() == null && PhoneNum == null)
+                || !(bank3Row.getBankNumber() != null && (bank3Row.getBankNumber()).equals(BkNum)
+                    || bank3Row.getBankNumber() == null && BkNum == null)
+                || !(bank3Row.getBankName() != null && (bank3Row.getBankName()).equals(BkName)
+                    || bank3Row.getBankName() == null && BkName == null)
+                || !(bank3Row.getBranchNumber() != null && (bank3Row.getBranchNumber()).equals(BkBranNum)
+                    || bank3Row.getBranchNumber() == null && BkBranNum == null)
+                || !(bank3Row.getBranchName() != null && (bank3Row.getBranchName()).equals(BkBranName)
+                    || bank3Row.getBranchName() == null && BkBranName == null)
+                || !(bank3Row.getBankAccountType() != null && (bank3Row.getBankAccountType()).equals(BkAcType)
+                    || bank3Row.getBankAccountType() == null && BkAcType == null)
+                || !(bank3Row.getBankAccountNumber() != null && (bank3Row.getBankAccountNumber()).equals(BkAcNum)
+                    || bank3Row.getBankAccountNumber() == null && BkAcNum == null)
+                || !(bank3Row.getBankAccountNameKana() != null && (bank3Row.getBankAccountNameKana()).equals(BkAcHldNameAlt)
+                    || bank3Row.getBankAccountNameKana() == null && BkAcHldNameAlt == null)
+                || !(bank3Row.getBankAccountNameKanji() != null && (bank3Row.getBankAccountNameKanji()).equals(BkAcHldName)
+                    || bank3Row.getBankAccountNameKanji() == null && BkAcHldName == null))
+            {
+              //BM3トークン設定
+              if ( sbMsg.length() > 0 )
+              {
+                sbMsg.append( XxcsoConstants.TOKEN_VALUE_DELIMITER2 );
+              }
+              sbMsg.append(  XxcsoContractRegistConstants.TOKEN_VALUE_BM3 
+                           + XxcsoConstants.TOKEN_VALUE_DELIMITER3
+                           + msgVenCd );
+
+              //送付先情報をマスタの値で更新
+              bm3DestVoRow.setBankTransferFeeChargeDiv(BmTranComType);
+              bm3DestVoRow.setBellingDetailsDiv(BmPayType);
+              bm3DestVoRow.setInqueryChargeHubCd(InqBaseCode);
+              bm3DestVoRow.setInqueryChargeHubName(InqBaseName);
+              bm3DestVoRow.setPaymentName(VenName);
+              bm3DestVoRow.setPaymentNameAlt(VenNameAlt);
+              bm3DestVoRow.setPostCode(Zip);
+              bm3DestVoRow.setAddress1(Address1);
+              bm3DestVoRow.setAddress2(Address2);
+              bm3DestVoRow.setAddressLinesPhonetic(PhoneNum);
+
+              //口座情報をマスタの値で更新
+              bank3Row.setBankNumber(BkNum);
+              bank3Row.setBankName(BkName);
+              bank3Row.setBranchNumber(BkBranNum);
+              bank3Row.setBranchName(BkBranName);
+              bank3Row.setBankAccountType(BkAcType);
+              bank3Row.setBankAccountNumber(BkAcNum);
+              bank3Row.setBankAccountNameKana(BkAcHldNameAlt);
+              bank3Row.setBankAccountNameKanji(BkAcHldName);
+            }
+          }
+
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_SUPPLIER_CHANGE_CHK
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+     
+    }
+    
+    // 送付先情報が変更されている場合、確認画面を表示する
+    if (sbMsg.length() > 0)
+    {
+      confirmMsg
+        = XxcsoMessage.createWarningMessage(
+            XxcsoConstants.APP_XXCSO1_00889
+           ,XxcsoConstants.TOKEN_VENDOR_CD
+           ,new String(sbMsg)
+          );
+     }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return confirmMsg;
+  }
+// V2.2 Y.Sasaki Added END
   /**
    * 
    * Container's getter for XxcsoBm1DestinationFullVO1
