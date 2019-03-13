@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  chk_bank_account          F    V      銀行口座マスタチェック
  *  chk_bank_account_change   F    V      銀行口座マスタ変更チェック
  *  chk_owner_change_use      F    V      オーナ変更物件使用チェック
+ *  chk_supp_info_change      F    V      送付先情報変更チェック
+ *  
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -64,6 +66,7 @@ AS
  *  2015/05/21    1.15  S.Yamashita      E_本稼動_12984対応
  *  2015/12/03    1.16  S.Yamashita      E_本稼動_13345対応
  *  2016/01/06    1.17  K.Kiriu          E_本稼動_13456対応
+ *  2019/03/05    1.18  Y.Sasaki         E_本稼動_15349対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1992,7 +1995,10 @@ AS
     -- ===============================
     cv_flag_yes                  CONSTANT VARCHAR2(1)     := 'Y';
     cd_process_date              CONSTANT DATE            := TRUNC(xxccp_common_pkg2.get_process_date);  -- 業務処理日付
-    cv_separate                  CONSTANT VARCHAR2(3)     := ' , ';                                      -- 区切文字
+-- v1.18 Y.Sasaki Modified START
+--    cv_separate                  CONSTANT VARCHAR2(3)     := ' , ';                                      -- 区切文字
+    cv_separate                  CONSTANT VARCHAR2(2)     := ', ';                                       -- 区切文字
+-- v1.18 Y.Sasaki Modified END
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -2224,6 +2230,147 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_owner_change_use;
 /* 2016/01/06 Ver1.17 K.Kiriu E_本稼動_13456対応 END */
+/* v1.18 Y.Sasaki Added START */
+  /**********************************************************************************
+   * Function Name    : chk_supp_info_change
+   * Description      : 送付先情報変更チェック
+   ***********************************************************************************/
+  FUNCTION chk_supp_info_change(
+     iv_vendor_code                  IN  VARCHAR2         -- 送付先コード
+    ,ov_bm_transfer_commission_type  OUT VARCHAR2         -- 振込手数料負担
+    ,ov_bm_payment_type              OUT VARCHAR2         -- 支払方法、明細書
+    ,ov_inquiry_base_code            OUT VARCHAR2         -- 問合せ担当拠点
+    ,ov_inquiry_base_name            OUT VARCHAR2         -- 問合せ担当拠点名
+    ,ov_vendor_name                  OUT VARCHAR2         -- 送付先名
+    ,ov_vendor_name_alt              OUT VARCHAR2         -- 送付先名カナ
+    ,ov_zip                          OUT VARCHAR2         -- 郵便番号
+    ,ov_address_line1                OUT VARCHAR2         -- 住所１
+    ,ov_address_line2                OUT VARCHAR2         -- 住所２
+    ,ov_phone_number                 OUT VARCHAR2         -- 電話番号
+    ,ov_bank_number                  OUT VARCHAR2         -- 金融機関コード
+    ,ov_bank_name                    OUT VARCHAR2         -- 金融機関名
+    ,ov_bank_branch_number           OUT VARCHAR2         -- 支店コード
+    ,ov_bank_branch_name             OUT VARCHAR2         -- 支店名
+    ,ov_bank_account_type            OUT VARCHAR2         -- 口座種別
+    ,ov_bank_account_num             OUT VARCHAR2         -- 口座番号
+    ,ov_bank_account_holder_nm_alt   OUT VARCHAR2         -- 口座名義カナ
+    ,ov_bank_account_holder_nm       OUT VARCHAR2         -- 口座名義漢字
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_supp_info_change';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_unupdate_dest_cd          CONSTANT VARCHAR2(30)    := 'XXCSO1_UNUPDATE_DEST_CD';                  -- 参照表：更新不可送付先コード
+    cv_flag_y                    CONSTANT VARCHAR2(1)     := 'Y';
+    cv_unupdate_flag_off         CONSTANT VARCHAR(1)      := '0';                                        -- 戻り値 更新不可フラグ OFF
+    cv_unupdate_flag_on          CONSTANT VARCHAR(1)      := '1';                                        -- 戻り値 更新不可フラグ ON
+    cd_process_date              CONSTANT DATE            := TRUNC(xxccp_common_pkg2.get_process_date);  -- 業務処理日付
+    cv_vendor_type               CONSTANT VARCHAR2(3)     := 'VD';                                       -- 仕入先タイプ
+    cv_4                         CONSTANT VARCHAR2(1)     := '4';
+    cv_5                         CONSTANT VARCHAR2(1)     := '5';
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_return_value              VARCHAR2(1)              DEFAULT NULL;
+    ln_unupdate_flag             NUMBER                   DEFAULT 0;
+--
+  BEGIN
+--
+    -- 入力された送付先コードが更新不可であるか確認
+    SELECT COUNT(*)  AS  unupdate_flag
+    INTO   ln_unupdate_flag
+    FROM   fnd_lookup_values flv
+    WHERE  flv.lookup_type  = cv_unupdate_dest_cd
+    AND    flv.lookup_code  = iv_vendor_code
+    AND    flv.language     = USERENV('LANG')
+    AND    flv.enabled_flag = cv_flag_y
+    AND    cd_process_date BETWEEN TRUNC(NVL( flv.start_date_active, cd_process_date ))
+                               AND TRUNC(NVL( flv.end_date_active  , cd_process_date ))
+    ;
+--
+    -- リターンコードに値を設定
+    lv_return_value := TO_CHAR(ln_unupdate_flag);
+--
+    -- 送付先コードが更新不可の場合、マスタの情報をOUTパラメータに格納
+    IF( lv_return_value = cv_unupdate_flag_on )
+      THEN
+--
+        BEGIN
+          SELECT  SUBSTRB(pvs.attribute1, 1, 80)                                AS vendor_name                  -- 送付先名
+                 ,SUBSTRB(pv.vendor_name_alt, 1, 320)                           AS vendor_name_alt              -- 送付先名カナ
+                 ,pvs.zip                                                       AS zip                          -- 郵便番号
+                 ,SUBSTRB(pvs.address_line1, 1, 35)                             AS address_line1                -- 住所１
+                 ,SUBSTRB(pvs.address_line2, 1, 35)                             AS address_line2                -- 住所２
+                 ,pvs.phone                                                     AS phone_number                 -- 電話番号
+                 ,DECODE(pvs.attribute4,cv_4,NULL,xbav.bank_number)             AS bank_number                  -- 金融機関コード
+                 ,DECODE(pvs.attribute4,cv_4,NULL,xbav.bank_name)               AS bank_name                    -- 金融機関名
+                 ,DECODE(pvs.attribute4,cv_4,NULL,xbav.bank_num)                AS bank_branch_number           -- 支店コード
+                 ,DECODE(pvs.attribute4,cv_4,NULL,xbav.bank_branch_name)        AS bank_branch_name             -- 支店名
+                 ,DECODE(pvs.attribute4,cv_4,NULL,xbav.bank_account_type)       AS bank_account_type            -- 口座種別
+                 ,DECODE(pvs.attribute4,cv_4,NULL,xbav.bank_account_num)        AS bank_account_num             -- 口座番号
+                 ,DECODE(pvs.attribute4,cv_4,NULL,xbav.account_holder_name_alt) AS bank_account_holder_nm_alt   -- 口座名義カナ
+                 ,DECODE(pvs.attribute4,cv_4,NULL,xbav.account_holder_name)     AS bank_account_holder_nm       -- 口座名義漢字
+                 ,DECODE(pvs.attribute4,cv_4,NULL,pvs.bank_charge_bearer)       AS bm_transfer_commission_type  -- 振込手数料負担
+                 ,pvs.attribute4                                                AS bm_payment_type              -- 支払方法、明細書
+                 ,pvs.attribute5                                                AS inquiry_base_code            -- 問合せ担当拠点
+                 ,xxcso_util_common_pkg.get_base_name(
+                    pvs.attribute5
+                   ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                  )                                                             AS inquiry_base_name            -- 問合せ担当拠点名
+          INTO   ov_vendor_name                                      -- 送付先名
+                ,ov_vendor_name_alt                                  -- 送付先名カナ
+                ,ov_zip                                              -- 郵便番号
+                ,ov_address_line1                                    -- 住所１
+                ,ov_address_line2                                    -- 住所２
+                ,ov_phone_number                                     -- 電話番号
+                ,ov_bank_number                                      -- 金融機関コード
+                ,ov_bank_name                                        -- 金融機関名
+                ,ov_bank_branch_number                               -- 支店コード
+                ,ov_bank_branch_name                                 -- 支店名
+                ,ov_bank_account_type                                -- 口座種別
+                ,ov_bank_account_num                                 -- 口座番号
+                ,ov_bank_account_holder_nm_alt                       -- 口座名義カナ
+                ,ov_bank_account_holder_nm                           -- 口座名義漢字
+                ,ov_bm_transfer_commission_type                      -- 振込手数料負担
+                ,ov_bm_payment_type                                  -- 支払方法、明細書
+                ,ov_inquiry_base_code                                -- 問合せ担当拠点
+                ,ov_inquiry_base_name                                -- 問合せ担当拠点名
+          FROM   po_vendors            pv
+                ,po_vendor_sites       pvs
+                ,xxcso_bank_accts_v    xbav
+          WHERE  pv.vendor_type_lookup_code = cv_vendor_type
+            AND  pv.enabled_flag            = cv_flag_y
+            AND  pvs.vendor_id              = pv.vendor_id
+            AND  pvs.attribute4             IS NOT NULL
+            AND  pvs.attribute4             <> cv_5
+            AND  xbav.vendor_id(+)          = pvs.vendor_id
+            AND  xbav.vendor_site_id(+)     = pvs.vendor_site_id
+            AND  pv.segment1                = iv_vendor_code
+          ;
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -- リターンコードに値を設定
+            lv_return_value := cv_unupdate_flag_off;
+        END;
+    END IF;
+--
+    RETURN lv_return_value;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_supp_info_change;
+/* v1.18 Y.Sasaki Added END */
 --
 END xxcso_010003j_pkg;
 /
