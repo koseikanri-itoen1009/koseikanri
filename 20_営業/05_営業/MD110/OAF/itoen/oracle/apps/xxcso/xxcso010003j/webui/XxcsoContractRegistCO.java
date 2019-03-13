@@ -1,19 +1,20 @@
-/*============================================================================
+/*==============================================================================
 * ファイル名 : XxcsoContractRegistCO
 * 概要説明   : 自販機設置契約情報登録コントローラクラス
-* バージョン : 1.6
-*============================================================================
+* バージョン : 1.7
+*==============================================================================
 * 修正履歴
-* 日付       Ver. 担当者       修正内容
-* ---------- ---- ------------ ----------------------------------------------
-* 2009-01-27 1.0  SCS小川浩    新規作成
-* 2009-04-09 1.1  SCS柳平直人  [ST障害T1_0327]レイアウト調整処理修正
-* 2010-02-09 1.2  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
-* 2011-06-06 1.3  SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
-* 2012-06-12 1.4  SCSK桐生和幸 [E_本稼動_09602]契約取消ボタン追加対応
-* 2013-04-01 1.5  SCSK桐生和幸 [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
-* 2015-02-02 1.6  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
-*============================================================================
+* 日付       Ver. 担当者         修正内容
+* ---------- ---- -------------- ----------------------------------------------
+* 2009-01-27 1.0  SCS小川浩      新規作成
+* 2009-04-09 1.1  SCS柳平直人    [ST障害T1_0327]レイアウト調整処理修正
+* 2010-02-09 1.2  SCS阿部大輔    [E_本稼動_01538]契約書の複数確定対応
+* 2011-06-06 1.3  SCS桐生和幸    [E_本稼動_01963]新規仕入先作成チェック対応
+* 2012-06-12 1.4  SCSK桐生和幸   [E_本稼動_09602]契約取消ボタン追加対応
+* 2013-04-01 1.5  SCSK桐生和幸   [E_本稼動_10413]銀行口座マスタ変更チェック追加対応
+* 2015-02-02 1.6  SCSK山下翔太   [E_本稼動_12565]SP専決・契約書画面改修
+* 2019-02-19 1.7  SCSK佐々木大和 [E_本稼動_15349]仕入先CD制御対応
+*==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.webui;
 
@@ -238,6 +239,20 @@ public class XxcsoContractRegistCO extends OAControllerImpl
         );
       }
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+// v1.7 Y.Sasaki Added START
+      // 送付先情報変更チェック
+      am.invokeMethod("suppllierChangeCheck");
+      confirmMsg = (OAException)am.invokeMethod("getMessage");
+
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialogWarn(
+          pageContext
+         ,confirmMsg
+         ,XxcsoConstants.TOKEN_VALUE_WARN4
+        );
+      }
+// v1.7 Y.Sasaki Added END
       else
       {
         // AMへのパラメータ作成
@@ -312,7 +327,19 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
-
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN5
+          );
+        }
+// v1.7 Y.Sasaki Added END
 // 2010-02-09 [E_本稼動_01538] Mod Start
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
@@ -362,10 +389,26 @@ public class XxcsoContractRegistCO extends OAControllerImpl
          ,XxcsoConstants.TOKEN_VALUE_WARN3
         );
       }
+// v1.7 Y.Sasaki Deleted START
+//      else
+//      {
+// v1.7 Y.Sasaki Deleted END
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+// v1.7 Y.Sasaki Added START
+      // 送付先情報変更チェック
+      am.invokeMethod("suppllierChangeCheck");
+      confirmMsg = (OAException)am.invokeMethod("getMessage");
+      if (confirmMsg != null)
+      {
+        this.createConfirmDialogWarn(
+          pageContext
+         ,confirmMsg
+         ,XxcsoConstants.TOKEN_VALUE_WARN6
+        );
+      }
       else
       {
-// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
-
+// v1.7 Y.Sasaki Added END
         HashMap returnMap = (HashMap) am.invokeMethod("handlePrintPdfButton");
 
         this.redirect(pageContext, returnMap);
@@ -448,6 +491,19 @@ public class XxcsoContractRegistCO extends OAControllerImpl
            ,XxcsoConstants.TOKEN_VALUE_WARN2
           );
         }
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN5
+          );
+        }
+// v1.7 Y.Sasaki Added END
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
 
         // マスタ連携待ちチェック
@@ -508,7 +564,19 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
-
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN5
+          );
+        }
+// v1.7 Y.Sasaki Added END
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -550,7 +618,19 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
-
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN5
+          );
+        }
+// v1.7 Y.Sasaki Added END
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
         // メッセージの取得
@@ -582,10 +662,26 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       else if ( XxcsoConstants.TOKEN_VALUE_WARN2.equals(actionValue) )
       {
 
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN5
+          );
+        }
+// v1.7 Y.Sasaki Added END
         // マスタ連携待ちチェック
         am.invokeMethod("cooperateWaitCheck");
-        // メッセージの取得
-        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+// v1.7 Y.Sasaki Modified START
+//        // メッセージの取得
+//        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+// v1.7 Y.Sasaki Modified END
         if (confirmMsg != null)
         {
           this.createConfirmDialogCooperate(
@@ -606,6 +702,31 @@ public class XxcsoContractRegistCO extends OAControllerImpl
         }
 
       }
+// v1.7 Y.Sasaki Added START
+      // 確定ボタン(送付先情報変更チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN5.equals(actionValue) )
+      {
+        // マスタ連携待ちチェック
+        am.invokeMethod("cooperateWaitCheck");
+        // メッセージの取得
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogCooperate(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_DECISION
+          );
+        }
+        // AMへのパラメータ作成
+        Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_DECISION };
+
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+        this.redirect(pageContext, returnMap);
+      }
+// v1.7 Y.Sasaki Added END
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
       // 適用ボタン(複数顧客指定送付先)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_SAVE.equals(actionValue) )
@@ -650,6 +771,19 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN4
+          );
+        }
+// v1.7 Y.Sasaki Added END
         else
         {
           // AMへのパラメータ作成
@@ -691,6 +825,19 @@ public class XxcsoContractRegistCO extends OAControllerImpl
           );
         }
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN4
+          );
+        }
+// v1.7 Y.Sasaki Added END
         else
         {
           // AMへのパラメータ作成
@@ -718,9 +865,27 @@ public class XxcsoContractRegistCO extends OAControllerImpl
            ,XxcsoConstants.TOKEN_VALUE_WARN1
           );
         }
+// v1.7  Deleted START
+//        else
+//        {
+// v1.7  Deleted START
+// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN4
+          );
+        }
         else
         {
-// 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
+// v1.7 Y.Sasaki Added END
+
           // AMへのパラメータ作成
           Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
 
@@ -737,6 +902,19 @@ public class XxcsoContractRegistCO extends OAControllerImpl
       //適用ボタン(銀行口座変更チェック)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_WARN1.equals(actionValue) )
       {
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN4
+          );
+        }
+// v1.7 Y.Sasaki Added END
         // AMへのパラメータ作成
         Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
 
@@ -745,16 +923,53 @@ public class XxcsoContractRegistCO extends OAControllerImpl
 
         this.redirect(pageContext, returnMap);
       }
+// v1.7 Y.Sasaki Added START
+      // 適用ボタン(送付先情報変更チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN4.equals(actionValue) )
+      {
+        // AMへのパラメータ作成
+        Serializable[] params    = { XxcsoConstants.TOKEN_VALUE_SAVE };
+
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handleConfirmOkButton", params);
+
+        this.redirect(pageContext, returnMap);
+      
+      }
+// v1.7 Y.Sasaki Added END
       // PDF作成ボタン(銀行口座変更チェック)の場合
       else if ( XxcsoConstants.TOKEN_VALUE_WARN3.equals(actionValue) )
       {
-
+// v1.7 Y.Sasaki Added START
+        // 送付先情報変更チェック
+        am.invokeMethod("suppllierChangeCheck");
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
+        if (confirmMsg != null)
+        {
+          this.createConfirmDialogWarn(
+            pageContext
+           ,confirmMsg
+           ,XxcsoConstants.TOKEN_VALUE_WARN6
+          );
+        }
+// v1.7 Y.Sasaki Added END
         HashMap returnMap
           = (HashMap) am.invokeMethod("handlePrintPdfButton");
 
         this.redirect(pageContext, returnMap);
 
       }
+// v1.7 Y.Sasaki Added START
+      // PDF作成ボタン(送付先情報変更チェック)の場合
+      else if ( XxcsoConstants.TOKEN_VALUE_WARN6.equals(actionValue) )
+      {
+        HashMap returnMap
+          = (HashMap) am.invokeMethod("handlePrintPdfButton");
+
+        this.redirect(pageContext, returnMap);
+
+      }
+// v1.7 Y.Sasaki Added END
 // 2013-04-01 Ver1.5 [E_本稼動_10413] Add End
 // 2012-06-12 Ver1.4 [E_本稼動_09602] Add Start
       else if ( XxcsoConstants.TOKEN_VALUE_REJECT.equals(actionValue) )
