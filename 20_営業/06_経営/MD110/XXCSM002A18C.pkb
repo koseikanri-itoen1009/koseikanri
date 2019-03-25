@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A18C(body)
  * Description      : ƒAƒbƒvƒ[ƒhƒtƒ@ƒCƒ‹‚©‚ç’P•i•Ê‚Ì”NŠÔ¤•iŒv‰æƒf[ƒ^‚Ìô‚¢‘Ö‚¦
  * MD.050           : ”NŠÔ¤•iŒv‰æ’P•i•ÊƒAƒbƒvƒ[ƒh MD050_CSM_002_A18
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2019/01/30    1.0   K.Nara           V‹Kì¬
+ *  2019/03/25    1.1   K.Nara           —\ZZo‚Ì•s‹ï‡‘Î‰
  *
  *****************************************************************************************/
 --
@@ -843,6 +844,9 @@ AS
     ,iv_bara_kbn             IN  VARCHAR2    -- “ü—Í_ƒoƒ‰‹æ•ª
     ,in_discrete_cost        IN  XXCMM_SYSTEM_ITEMS_B_HST.DISCRETE_COST%TYPE      -- ‰c‹ÆŒ´‰¿
     ,in_fixed_price          IN  XXCMM_SYSTEM_ITEMS_B_HST.FIXED_PRICE%TYPE        -- ’è‰¿
+-- Ver.1.1 SCSK K.Nara ADD START
+    ,on_sales_budget         OUT xxcsm_item_plan_lines.sales_budget%TYPE          -- ZoŒ‹‰Ê_”„ã(’PˆÊF‰~)
+-- Ver.1.1 SCSK K.Nara ADD END
     ,on_amount_gross_margin  OUT xxcsm_item_plan_lines.amount_gross_margin%TYPE   -- ZoŒ‹‰Ê_‘e—˜Šz(’PˆÊF‰~)
     ,on_margin_rate          OUT xxcsm_item_plan_lines.margin_rate%TYPE           -- ZoŒ‹‰Ê_‘e—˜—¦
     ,on_credit_rate          OUT xxcsm_item_plan_lines.credit_rate%TYPE           -- ZoŒ‹‰Ê_Š|—¦
@@ -863,7 +867,9 @@ AS
     lb_retcode     BOOLEAN;        -- ƒƒbƒZ[ƒW–ß‚è’l
     lv_step        VARCHAR2(200);
     --
-    ln_sales_budget             NUMBER;  -- ”„ã(’PˆÊF‰~)
+-- Ver.1.1 SCSK K.Nara DEL START
+--    ln_sales_budget             NUMBER;  -- ”„ã(’PˆÊF‰~)
+-- Ver.1.1 SCSK K.Nara DEL END
     ln_sales_bdgt_per1          NUMBER;  -- 1–{“–‚½‚è‚Ì”„’l
     ln_gross_amount_per1        NUMBER;  -- 1–{“–‚½‚è‚Ì—˜‰v
   BEGIN
@@ -875,179 +881,245 @@ AS
     --
     lv_step := '‰Šú‰»';
     --”„ã(‰~) = ”„ã(ç‰~) * 1000
-    ln_sales_budget := in_sales_budget * 1000;
+-- Ver.1.1 SCSK K.Nara MOD START
+--    ln_sales_budget := in_sales_budget * 1000;
+    on_sales_budget := in_sales_budget * 1000;
+-- Ver.1.1 SCSK K.Nara MOD END
     ln_sales_bdgt_per1   := 0;
     ln_gross_amount_per1 := 0;
     -------------------------------------------------
     -- 1.‘e—˜ŠzA‘e—˜—¦AŠ|—¦A”—Ê‚ÌZo
     -------------------------------------------------
     IF in_amount_gross_margin IS NOT NULL THEN
-      -------------------------------------------------
-      -- ‘e—˜Šz‚ªw’è‚³‚ê‚Ä‚¢‚éê‡
-      -------------------------------------------------
-      lv_step := '‘e—˜Šzw’è ‘e—˜Šz';
-      --‘e—˜Šz = ƒAƒbƒvƒ[ƒh’l * 1000
-      on_amount_gross_margin := in_amount_gross_margin * 1000;
-      --‘e—˜—¦ = ( ‘e—˜‰vŠz / ”„ã * 100 ) ‚Ì¬”“_‘æ3ˆÊ‚ğlÌŒÜ“ü
-      lv_step := '‘e—˜Šzw’è ‘e—˜—¦';
-      IF ln_sales_budget = 0 THEN
-        on_margin_rate := 0;
-      ELSE
-        BEGIN
-          on_margin_rate := ROUND( ( on_amount_gross_margin / ln_sales_budget * 100 ), 2);
-        EXCEPTION
-          WHEN VALUE_ERROR THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-                           , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
-                           , iv_token_name1  => cv_tkn_deal_cd
-                           , iv_token_value1 => iv_item_group_no
-                           , iv_token_name2  => cv_tkn_item_cd
-                           , iv_token_value2 => iv_item_no
-                           , iv_token_name3  => cv_tkn_month
-                           , iv_token_value3 => TO_CHAR(in_month_no)
-                           , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => '‘e—˜Šzw’è ‘e—˜—¦Zo > ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ƒGƒ‰[“à—e='||SQLERRM
-                         );
-            fnd_file.put_line(
-               which  => FND_FILE.OUTPUT
-              ,buff   => lv_errbuf
-            );
-            ov_retcode := cv_status_check;
-        END;
-      END IF;
-      --1–{“–‚½‚è‚Ì”„’l
-      lv_step := '‘e—˜Šzw’è 1–{“–‚½‚è‚Ì”„’l';
-      IF (ln_sales_budget - on_amount_gross_margin) = 0 THEN
-        ln_sales_bdgt_per1 := 0;
-      ELSE
-        --1–{“–‚½‚è‚Ì”„’l = ( ”„ã / (”„ã - ‘e—˜‰vŠz) * ‰c‹ÆŒ´‰¿ )‚Ì¬”“_‘æ11ˆÊ‚ğlÌŒÜ“ü
-        BEGIN
-          ln_sales_bdgt_per1 := ROUND( ( ln_sales_budget / (ln_sales_budget - on_amount_gross_margin) * in_discrete_cost ), 10);
-        EXCEPTION
-          WHEN VALUE_ERROR THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-                           , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
-                           , iv_token_name1  => cv_tkn_deal_cd
-                           , iv_token_value1 => iv_item_group_no
-                           , iv_token_name2  => cv_tkn_item_cd
-                           , iv_token_value2 => iv_item_no
-                           , iv_token_name3  => cv_tkn_month
-                           , iv_token_value3 => TO_CHAR(in_month_no)
-                           , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => '‘e—˜Šzw’è 1–{“–‚½‚è‚Ì”„’lZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ‰c‹ÆŒ´‰¿='||TO_CHAR(in_discrete_cost)||' ƒGƒ‰[“à—e='||SQLERRM
-                         );
-            fnd_file.put_line(
-               which  => FND_FILE.OUTPUT
-              ,buff   => lv_errbuf
-            );
-            ov_retcode := cv_status_check;
-        END;
-      END IF;
-      --Š|—¦
-      lv_step := '‘e—˜Šzw’è Š|—¦';
-      IF in_fixed_price = 0 THEN
-        on_credit_rate := 0;
-      ELSE
-        --Š|—¦ = (1–{“–‚½‚è‚Ì”„’l / ’è‰¿ * 100)‚Ì¬”“_‘æ3ˆÊ‚ğlÌŒÜ“ü
-        BEGIN
-          on_credit_rate := ROUND( (ln_sales_bdgt_per1 / in_fixed_price * 100), 2);
-        EXCEPTION
-          WHEN VALUE_ERROR THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-                           , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
-                           , iv_token_name1  => cv_tkn_deal_cd
-                           , iv_token_value1 => iv_item_group_no
-                           , iv_token_name2  => cv_tkn_item_cd
-                           , iv_token_value2 => iv_item_no
-                           , iv_token_name3  => cv_tkn_month
-                           , iv_token_value3 => TO_CHAR(in_month_no)
-                           , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => '‘e—˜Šzw’è Š|—¦Zo > 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ’è‰¿='||TO_CHAR(in_fixed_price)||' ƒGƒ‰[“à—e='||SQLERRM
-                         );
-            fnd_file.put_line(
-               which  => FND_FILE.OUTPUT
-              ,buff   => lv_errbuf
-            );
-            ov_retcode := cv_status_check;
-        END;
-      END IF;
-      --”—Ê
-      lv_step := '‘e—˜Šzw’è ”—Ê';
-      IF ln_sales_bdgt_per1 = 0 THEN
-        on_amount := 0;
-      ELSE
-        BEGIN
-          IF (iv_bara_kbn = cv_y) THEN
-            --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ2ˆÊ‚ğlÌŒÜ“ü
-            on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 1);
-          ELSE
-            --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ1ˆÊ‚ğlÌŒÜ“ü
-            on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 0);
-          END IF;
-        EXCEPTION
-          WHEN VALUE_ERROR THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-                           , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
-                           , iv_token_name1  => cv_tkn_deal_cd
-                           , iv_token_value1 => iv_item_group_no
-                           , iv_token_name2  => cv_tkn_item_cd
-                           , iv_token_value2 => iv_item_no
-                           , iv_token_name3  => cv_tkn_month
-                           , iv_token_value3 => TO_CHAR(in_month_no)
-                           , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => '‘e—˜Šzw’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
-                         );
-            fnd_file.put_line(
-               which  => FND_FILE.OUTPUT
-              ,buff   => lv_errbuf
-            );
-            ov_retcode := cv_status_check;
-        END;
-      END IF;
-    ELSIF in_margin_rate IS NOT NULL THEN
-      -------------------------------------------------
-      -- ‘e—˜—¦‚ªw’è‚³‚ê‚Ä‚¢‚éê‡
-      -------------------------------------------------
-      lv_step := '‘e—˜—¦w’è ‘e—˜Šz';
-      --‘e—˜Šz = ( ”„ã * ‘e—˜‰v—¦ / 100 / 1000 ) ‚Ì¬”“_‘æ1ˆÊ‚ğlÌŒÜ“ü‚µ‚ÄA’PˆÊ‚ğ‰~‚É•ÏX(~1000‚·‚é)
+-- Ver.1.1 SCSK K.Nara ADD START
       BEGIN
-        on_amount_gross_margin := ROUND( ( ln_sales_budget * in_margin_rate / 100 / 1000), 0) * 1000;
+-- Ver.1.1 SCSK K.Nara ADD END
+        -------------------------------------------------
+        -- ‘e—˜Šz‚ªw’è‚³‚ê‚Ä‚¢‚éê‡
+        -------------------------------------------------
+        lv_step := '‘e—˜Šzw’è ‘e—˜Šz';
+        --‘e—˜Šz = ƒAƒbƒvƒ[ƒh’l * 1000
+        on_amount_gross_margin := in_amount_gross_margin * 1000;
+        --‘e—˜—¦ = ( ‘e—˜‰vŠz / ”„ã * 100 ) ‚Ì¬”“_‘æ3ˆÊ‚ğlÌŒÜ“ü
+        lv_step := '‘e—˜Šzw’è ‘e—˜—¦';
+-- Ver.1.1 SCSK K.Nara MOD START
+--        IF ln_sales_budget = 0 THEN
+        IF on_sales_budget = 0 THEN
+          on_amount_gross_margin := 0;
+-- Ver.1.1 SCSK K.Nara MOD END
+          on_margin_rate := 0;
+        ELSE
+          BEGIN
+-- Ver.1.1 SCSK K.Nara MOD START
+--            on_margin_rate := ROUND( ( on_amount_gross_margin / ln_sales_budget * 100 ), 2);
+            on_margin_rate := ROUND( ( on_amount_gross_margin / on_sales_budget * 100 ), 2);
+-- Ver.1.1 SCSK K.Nara MOD END
+          EXCEPTION
+            WHEN VALUE_ERROR THEN
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                             , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
+                             , iv_token_name1  => cv_tkn_deal_cd
+                             , iv_token_value1 => iv_item_group_no
+                             , iv_token_name2  => cv_tkn_item_cd
+                             , iv_token_value2 => iv_item_no
+                             , iv_token_name3  => cv_tkn_month
+                             , iv_token_value3 => TO_CHAR(in_month_no)
+                             , iv_token_name4  => cv_tkn_errmsg
+-- Ver.1.1 SCSK K.Nara MOD START
+--                             , iv_token_value4 => '‘e—˜Šzw’è ‘e—˜—¦Zo > ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ƒGƒ‰[“à—e='||SQLERRM
+                             , iv_token_value4 => '‘e—˜Šzw’è ‘e—˜—¦Zo > ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ”„ã(ç‰~)='||TO_CHAR(on_sales_budget / 1000)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD END
+                           );
+              fnd_file.put_line(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errbuf
+              );
+              ov_retcode := cv_status_check;
+          END;
+        END IF;
+        --1–{“–‚½‚è‚Ì”„’l
+        lv_step := '‘e—˜Šzw’è 1–{“–‚½‚è‚Ì”„’l';
+-- Ver.1.1 SCSK K.Nara DEL START
+--        IF (ln_sales_budget - on_amount_gross_margin) = 0 THEN
+--          ln_sales_bdgt_per1 := 0;
+--        ELSE
+-- Ver.1.1 SCSK K.Nara DEL END
+          --1–{“–‚½‚è‚Ì”„’l = ( ”„ã / (”„ã - ‘e—˜‰vŠz) * ‰c‹ÆŒ´‰¿ )‚Ì¬”“_‘æ11ˆÊ‚ğlÌŒÜ“ü
+          BEGIN
+-- Ver.1.1 SCSK K.Nara MOD START
+--            ln_sales_bdgt_per1 := ROUND( ( ln_sales_budget / (ln_sales_budget - on_amount_gross_margin) * in_discrete_cost ), 10);
+            ln_sales_bdgt_per1 := ROUND( ( on_sales_budget / (on_sales_budget - on_amount_gross_margin) * in_discrete_cost ), 10);
+-- Ver.1.1 SCSK K.Nara MOD END
+          EXCEPTION
+            WHEN VALUE_ERROR THEN
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                             , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
+                             , iv_token_name1  => cv_tkn_deal_cd
+                             , iv_token_value1 => iv_item_group_no
+                             , iv_token_name2  => cv_tkn_item_cd
+                             , iv_token_value2 => iv_item_no
+                             , iv_token_name3  => cv_tkn_month
+                             , iv_token_value3 => TO_CHAR(in_month_no)
+                             , iv_token_name4  => cv_tkn_errmsg
+-- Ver.1.1 SCSK K.Nara MOD START
+--                             , iv_token_value4 => '‘e—˜Šzw’è 1–{“–‚½‚è‚Ì”„’lZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ‰c‹ÆŒ´‰¿='||TO_CHAR(in_discrete_cost)||' ƒGƒ‰[“à—e='||SQLERRM
+                             , iv_token_value4 => '‘e—˜Šzw’è 1–{“–‚½‚è‚Ì”„’lZo > ”„ã(ç‰~)='||TO_CHAR(on_sales_budget / 1000)||' ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ‰c‹ÆŒ´‰¿='||TO_CHAR(in_discrete_cost)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD END
+                           );
+              fnd_file.put_line(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errbuf
+              );
+              ov_retcode := cv_status_check;
+          END;
+-- Ver.1.1 SCSK K.Nara DEL START
+--        END IF;
+-- Ver.1.1 SCSK K.Nara DEL END
+        --Š|—¦
+        lv_step := '‘e—˜Šzw’è Š|—¦';
+        IF in_fixed_price = 0 THEN
+          on_credit_rate := 0;
+        ELSE
+          --Š|—¦ = (1–{“–‚½‚è‚Ì”„’l / ’è‰¿ * 100)‚Ì¬”“_‘æ3ˆÊ‚ğlÌŒÜ“ü
+          BEGIN
+            on_credit_rate := ROUND( (ln_sales_bdgt_per1 / in_fixed_price * 100), 2);
+          EXCEPTION
+            WHEN VALUE_ERROR THEN
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                             , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
+                             , iv_token_name1  => cv_tkn_deal_cd
+                             , iv_token_value1 => iv_item_group_no
+                             , iv_token_name2  => cv_tkn_item_cd
+                             , iv_token_value2 => iv_item_no
+                             , iv_token_name3  => cv_tkn_month
+                             , iv_token_value3 => TO_CHAR(in_month_no)
+                             , iv_token_name4  => cv_tkn_errmsg
+                             , iv_token_value4 => '‘e—˜Šzw’è Š|—¦Zo > 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ’è‰¿='||TO_CHAR(in_fixed_price)||' ƒGƒ‰[“à—e='||SQLERRM
+                           );
+              fnd_file.put_line(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errbuf
+              );
+              ov_retcode := cv_status_check;
+          END;
+        END IF;
+        --”—Ê
+        lv_step := '‘e—˜Šzw’è ”—Ê';
+        IF ln_sales_bdgt_per1 = 0 THEN
+          on_amount := 0;
+        ELSE
+          BEGIN
+            IF (iv_bara_kbn = cv_y) THEN
+              --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ2ˆÊ‚ğlÌŒÜ“ü
+-- Ver.1.1 SCSK K.Nara MOD START
+--              on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 1);
+              on_amount := ROUND( ( on_sales_budget / ln_sales_bdgt_per1), 1);
+-- Ver.1.1 SCSK K.Nara MOD END
+            ELSE
+              --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ1ˆÊ‚ğlÌŒÜ“ü
+-- Ver.1.1 SCSK K.Nara MOD START
+--              on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 0);
+              on_amount := ROUND( ( on_sales_budget / ln_sales_bdgt_per1), 0);
+-- Ver.1.1 SCSK K.Nara MOD END
+            END IF;
+          EXCEPTION
+            WHEN VALUE_ERROR THEN
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                             , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
+                             , iv_token_name1  => cv_tkn_deal_cd
+                             , iv_token_value1 => iv_item_group_no
+                             , iv_token_name2  => cv_tkn_item_cd
+                             , iv_token_value2 => iv_item_no
+                             , iv_token_name3  => cv_tkn_month
+                             , iv_token_value3 => TO_CHAR(in_month_no)
+                             , iv_token_name4  => cv_tkn_errmsg
+-- Ver.1.1 SCSK K.Nara MOD START
+--                             , iv_token_value4 => '‘e—˜Šzw’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
+                             , iv_token_value4 => '‘e—˜Šzw’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(on_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD END
+                           );
+              fnd_file.put_line(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errbuf
+              );
+              ov_retcode := cv_status_check;
+          END;
+        END IF;
+-- Ver.1.1 SCSK K.Nara ADD START
       EXCEPTION
-        WHEN VALUE_ERROR THEN
-          lv_errbuf := xxccp_common_pkg.get_msg(
-                           iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-                         , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
-                         , iv_token_name1  => cv_tkn_deal_cd
-                         , iv_token_value1 => iv_item_group_no
-                         , iv_token_name2  => cv_tkn_item_cd
-                         , iv_token_value2 => iv_item_no
-                         , iv_token_name3  => cv_tkn_month
-                         , iv_token_value3 => TO_CHAR(in_month_no)
-                         , iv_token_name4  => cv_tkn_errmsg
-                         , iv_token_value4 => '‘e—˜—¦w’è ‘e—˜ŠzZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ‘e—˜—¦='||TO_CHAR(in_margin_rate)||' ƒGƒ‰[“à—e='||SQLERRM
-                       );
-          fnd_file.put_line(
-             which  => FND_FILE.OUTPUT
-            ,buff   => lv_errbuf
-          );
-          ov_retcode := cv_status_check;
+        WHEN ZERO_DIVIDE THEN
+          -- ƒ[ƒœZƒGƒ‰[
+          IF (on_sales_budget = 0) THEN
+            on_amount := 0;
+            on_margin_rate := 0;
+            on_credit_rate := 0;
+          ELSE
+            on_sales_budget := 0;
+            on_amount := 0;
+            on_amount_gross_margin := 0;
+            on_margin_rate := 0;
+            on_credit_rate := 0;
+          END IF;
       END;
-      --
-      lv_step := '‘e—˜—¦w’è ‘e—˜—¦';
-      --‘e—˜—¦ = ƒAƒbƒvƒ[ƒh’l
-      on_margin_rate := in_margin_rate;
-      lv_step := '‘e—˜—¦w’è 1–{“–‚½‚è‚Ì”„’l';
-      --1–{“–‚½‚è‚Ì”„’l
-      IF (ln_sales_budget - on_amount_gross_margin) = 0 THEN
-        ln_sales_bdgt_per1 := 0;
-      ELSE
+-- Ver.1.1 SCSK K.Nara ADD END
+    ELSIF in_margin_rate IS NOT NULL THEN
+-- Ver.1.1 SCSK K.Nara ADD START
+      BEGIN
+-- Ver.1.1 SCSK K.Nara ADD END
+        -------------------------------------------------
+        -- ‘e—˜—¦‚ªw’è‚³‚ê‚Ä‚¢‚éê‡
+        -------------------------------------------------
+        lv_step := '‘e—˜—¦w’è ‘e—˜Šz';
+        --‘e—˜Šz = ( ”„ã * ‘e—˜‰v—¦ / 100 / 1000 ) ‚Ì¬”“_‘æ1ˆÊ‚ğlÌŒÜ“ü‚µ‚ÄA’PˆÊ‚ğ‰~‚É•ÏX(~1000‚·‚é)
+        BEGIN
+-- Ver.1.1 SCSK K.Nara MOD START
+--          on_amount_gross_margin := ROUND( ( ln_sales_budget * in_margin_rate / 100 / 1000), 0) * 1000;
+          on_amount_gross_margin := ROUND( ( on_sales_budget * in_margin_rate / 100 / 1000), 0) * 1000;
+-- Ver.1.1 SCSK K.Nara MOD END
+        EXCEPTION
+          WHEN VALUE_ERROR THEN
+            lv_errbuf := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                           , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
+                           , iv_token_name1  => cv_tkn_deal_cd
+                           , iv_token_value1 => iv_item_group_no
+                           , iv_token_name2  => cv_tkn_item_cd
+                           , iv_token_value2 => iv_item_no
+                           , iv_token_name3  => cv_tkn_month
+                           , iv_token_value3 => TO_CHAR(in_month_no)
+                           , iv_token_name4  => cv_tkn_errmsg
+-- Ver.1.1 SCSK K.Nara MOD START
+--                           , iv_token_value4 => '‘e—˜—¦w’è ‘e—˜ŠzZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ‘e—˜—¦='||TO_CHAR(in_margin_rate)||' ƒGƒ‰[“à—e='||SQLERRM
+                           , iv_token_value4 => '‘e—˜—¦w’è ‘e—˜ŠzZo > ”„ã(ç‰~)='||TO_CHAR(on_sales_budget / 1000)||' ‘e—˜—¦='||TO_CHAR(in_margin_rate)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD END
+                         );
+            fnd_file.put_line(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errbuf
+            );
+            ov_retcode := cv_status_check;
+        END;
+        --
+        lv_step := '‘e—˜—¦w’è ‘e—˜—¦';
+        --‘e—˜—¦ = ƒAƒbƒvƒ[ƒh’l
+        on_margin_rate := in_margin_rate;
+        lv_step := '‘e—˜—¦w’è 1–{“–‚½‚è‚Ì”„’l';
+        --1–{“–‚½‚è‚Ì”„’l
+-- Ver.1.1 SCSK K.Nara DEL START
+--        IF (ln_sales_budget - on_amount_gross_margin) = 0 THEN
+--          ln_sales_bdgt_per1 := 0;
+--        ELSE
+-- Ver.1.1 SCSK K.Nara DEL END
         --1–{“–‚½‚è‚Ì”„’l = ( ”„ã / (”„ã - ‘e—˜‰vŠz) * ‰c‹ÆŒ´‰¿ )‚Ì¬”“_‘æ11ˆÊ‚ğlÌŒÜ“ü
         BEGIN
-          ln_sales_bdgt_per1 := ROUND( ( ln_sales_budget / (ln_sales_budget - on_amount_gross_margin) * in_discrete_cost ), 10);
+-- Ver.1.1 SCSK K.Nara MOD START
+--          ln_sales_bdgt_per1 := ROUND( ( ln_sales_budget / (ln_sales_budget - on_amount_gross_margin) * in_discrete_cost ), 10);
+          ln_sales_bdgt_per1 := ROUND( ( on_sales_budget / (on_sales_budget - on_amount_gross_margin) * in_discrete_cost ), 10);
+-- Ver.1.1 SCSK K.Nara MOD END
         EXCEPTION
           WHEN VALUE_ERROR THEN
             lv_errbuf := xxccp_common_pkg.get_msg(
@@ -1060,7 +1132,10 @@ AS
                            , iv_token_name3  => cv_tkn_month
                            , iv_token_value3 => TO_CHAR(in_month_no)
                            , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => '‘e—˜—¦w’è 1–{“–‚½‚è‚Ì”„’lZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ‰c‹ÆŒ´‰¿='||TO_CHAR(in_discrete_cost)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD START
+--                           , iv_token_value4 => '‘e—˜—¦w’è 1–{“–‚½‚è‚Ì”„’lZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ‰c‹ÆŒ´‰¿='||TO_CHAR(in_discrete_cost)||' ƒGƒ‰[“à—e='||SQLERRM
+                           , iv_token_value4 => '‘e—˜—¦w’è 1–{“–‚½‚è‚Ì”„’lZo > ”„ã(ç‰~)='||TO_CHAR(on_sales_budget / 1000)||' ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ‰c‹ÆŒ´‰¿='||TO_CHAR(in_discrete_cost)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD END
                          );
             fnd_file.put_line(
                which  => FND_FILE.OUTPUT
@@ -1068,70 +1143,98 @@ AS
             );
             ov_retcode := cv_status_check;
         END;
-      END IF;
-      lv_step := '‘e—˜—¦w’è Š|—¦';
-      --Š|—¦
-      IF in_fixed_price = 0 THEN
-        on_credit_rate := 0;
-      ELSE
-        --Š|—¦ = (1–{“–‚½‚è‚Ì”„’l / ’è‰¿ * 100)‚Ì¬”“_‘æ3ˆÊ‚ğlÌŒÜ“ü
-        BEGIN
-          on_credit_rate := ROUND( (ln_sales_bdgt_per1 / in_fixed_price * 100), 2);
-        EXCEPTION
-          WHEN VALUE_ERROR THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-                           , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
-                           , iv_token_name1  => cv_tkn_deal_cd
-                           , iv_token_value1 => iv_item_group_no
-                           , iv_token_name2  => cv_tkn_item_cd
-                           , iv_token_value2 => iv_item_no
-                           , iv_token_name3  => cv_tkn_month
-                           , iv_token_value3 => TO_CHAR(in_month_no)
-                           , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => '‘e—˜—¦w’è Š|—¦Zo > 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ’è‰¿='||TO_CHAR(in_fixed_price)||' ƒGƒ‰[“à—e='||SQLERRM
-                         );
-            fnd_file.put_line(
-               which  => FND_FILE.OUTPUT
-              ,buff   => lv_errbuf
-            );
-            ov_retcode := cv_status_check;
-        END;
-      END IF;
-      lv_step := '‘e—˜—¦w’è ”—Ê';
-      --”—Ê
-      IF ln_sales_bdgt_per1 = 0 THEN
-        on_amount := 0;
-      ELSE
-        BEGIN
-          IF (iv_bara_kbn = cv_y) THEN
-            --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ2ˆÊ‚ğlÌŒÜ“ü
-            on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 1);
+-- Ver.1.1 SCSK K.Nara DEL START
+--        END IF;
+-- Ver.1.1 SCSK K.Nara DEL END
+        lv_step := '‘e—˜—¦w’è Š|—¦';
+        --Š|—¦
+        IF in_fixed_price = 0 THEN
+          on_credit_rate := 0;
+        ELSE
+          --Š|—¦ = (1–{“–‚½‚è‚Ì”„’l / ’è‰¿ * 100)‚Ì¬”“_‘æ3ˆÊ‚ğlÌŒÜ“ü
+          BEGIN
+            on_credit_rate := ROUND( (ln_sales_bdgt_per1 / in_fixed_price * 100), 2);
+          EXCEPTION
+            WHEN VALUE_ERROR THEN
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                             , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
+                             , iv_token_name1  => cv_tkn_deal_cd
+                             , iv_token_value1 => iv_item_group_no
+                             , iv_token_name2  => cv_tkn_item_cd
+                             , iv_token_value2 => iv_item_no
+                             , iv_token_name3  => cv_tkn_month
+                             , iv_token_value3 => TO_CHAR(in_month_no)
+                             , iv_token_name4  => cv_tkn_errmsg
+                             , iv_token_value4 => '‘e—˜—¦w’è Š|—¦Zo > 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ’è‰¿='||TO_CHAR(in_fixed_price)||' ƒGƒ‰[“à—e='||SQLERRM
+                           );
+              fnd_file.put_line(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errbuf
+              );
+              ov_retcode := cv_status_check;
+          END;
+        END IF;
+        lv_step := '‘e—˜—¦w’è ”—Ê';
+        --”—Ê
+        IF ln_sales_bdgt_per1 = 0 THEN
+          on_amount := 0;
+        ELSE
+          BEGIN
+            IF (iv_bara_kbn = cv_y) THEN
+              --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ2ˆÊ‚ğlÌŒÜ“ü
+-- Ver.1.1 SCSK K.Nara MOD START
+--              on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 1);
+              on_amount := ROUND( ( on_sales_budget / ln_sales_bdgt_per1), 1);
+-- Ver.1.1 SCSK K.Nara MOD END
+            ELSE
+              --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ1ˆÊ‚ğlÌŒÜ“ü
+-- Ver.1.1 SCSK K.Nara MOD START
+--              on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 0);
+              on_amount := ROUND( ( on_sales_budget / ln_sales_bdgt_per1), 0);
+-- Ver.1.1 SCSK K.Nara MOD END
+            END IF;
+          EXCEPTION
+            WHEN VALUE_ERROR THEN
+              lv_errbuf := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
+                             , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
+                             , iv_token_name1  => cv_tkn_deal_cd
+                             , iv_token_value1 => iv_item_group_no
+                             , iv_token_name2  => cv_tkn_item_cd
+                             , iv_token_value2 => iv_item_no
+                             , iv_token_name3  => cv_tkn_month
+                             , iv_token_value3 => TO_CHAR(in_month_no)
+                             , iv_token_name4  => cv_tkn_errmsg
+-- Ver.1.1 SCSK K.Nara MOD START
+--                             , iv_token_value4 => '‘e—˜—¦w’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
+                             , iv_token_value4 => '‘e—˜—¦w’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(on_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD END
+                           );
+              fnd_file.put_line(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errbuf
+              );
+              ov_retcode := cv_status_check;
+          END;
+        END IF;
+-- Ver.1.1 SCSK K.Nara ADD START
+      EXCEPTION
+        WHEN ZERO_DIVIDE THEN
+          -- ƒ[ƒœZƒGƒ‰[
+          IF (on_sales_budget = 0) THEN
+            on_amount := 0;
+            on_margin_rate := 0;
+            on_credit_rate := 0;
           ELSE
-            --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ1ˆÊ‚ğlÌŒÜ“ü
-            on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 0);
+            on_sales_budget := 0;
+            on_amount := 0;
+            on_amount_gross_margin := 0;
+            on_margin_rate := 0;
+            on_credit_rate := 0;
           END IF;
-        EXCEPTION
-          WHEN VALUE_ERROR THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_appl_short_name_csm     -- ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
-                           , iv_name         => cv_msg_xxcsm10326          -- ƒƒbƒZ[ƒWƒR[ƒh
-                           , iv_token_name1  => cv_tkn_deal_cd
-                           , iv_token_value1 => iv_item_group_no
-                           , iv_token_name2  => cv_tkn_item_cd
-                           , iv_token_value2 => iv_item_no
-                           , iv_token_name3  => cv_tkn_month
-                           , iv_token_value3 => TO_CHAR(in_month_no)
-                           , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => '‘e—˜—¦w’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
-                         );
-            fnd_file.put_line(
-               which  => FND_FILE.OUTPUT
-              ,buff   => lv_errbuf
-            );
-            ov_retcode := cv_status_check;
-        END;
-      END IF;
+      END;
+-- Ver.1.1 SCSK K.Nara ADD END
     ELSIF in_credit_rate IS NOT NULL THEN
       -------------------------------------------------
       -- Š|—¦‚ªw’è‚³‚ê‚Ä‚¢‚éê‡
@@ -1170,10 +1273,16 @@ AS
         BEGIN
           IF (iv_bara_kbn = cv_y) THEN
             --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ2ˆÊ‚ğlÌŒÜ“ü
-            on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 1);
+-- Ver.1.1 SCSK K.Nara MOD START
+--            on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 1);
+            on_amount := ROUND( ( on_sales_budget / ln_sales_bdgt_per1), 1);
+-- Ver.1.1 SCSK K.Nara MOD END
           ELSE
             --”—Ê = ( ”„ã / ”„’l )‚Ì¬”“_‘æ1ˆÊ‚ğlÌŒÜ“ü
-            on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 0);
+-- Ver.1.1 SCSK K.Nara MOD START
+--            on_amount := ROUND( ( ln_sales_budget / ln_sales_bdgt_per1), 0);
+            on_amount := ROUND( ( on_sales_budget / ln_sales_bdgt_per1), 0);
+-- Ver.1.1 SCSK K.Nara MOD END
           END IF;
         EXCEPTION
           WHEN VALUE_ERROR THEN
@@ -1187,7 +1296,10 @@ AS
                            , iv_token_name3  => cv_tkn_month
                            , iv_token_value3 => TO_CHAR(in_month_no)
                            , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => 'Š|—¦w’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD START
+--                           , iv_token_value4 => 'Š|—¦w’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
+                           , iv_token_value4 => 'Š|—¦w’è ”—ÊZo > ”„ã(ç‰~)='||TO_CHAR(on_sales_budget / 1000)||' 1–{“–‚½‚è‚Ì”„’l='||TO_CHAR(ln_sales_bdgt_per1)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD END
                          );
             fnd_file.put_line(
                which  => FND_FILE.OUTPUT
@@ -1228,11 +1340,17 @@ AS
       --
       lv_step := 'Š|—¦w’è ‘e—˜—¦';
       --‘e—˜—¦ = (‘e—˜‰vŠz / ”„ã * 100)‚Ì¬”“_‘æ3ˆÊ‚ğlÌŒÜ“ü
-      IF ln_sales_budget = 0 THEN
+-- Ver.1.1 SCSK K.Nara MOD START
+--      IF ln_sales_budget = 0 THEN
+      IF on_sales_budget = 0 THEN
+-- Ver.1.1 SCSK K.Nara MOD END
         on_margin_rate := 0;
       ELSE
         BEGIN
-          on_margin_rate := ROUND( (on_amount_gross_margin / ln_sales_budget * 100 ), 2);
+-- Ver.1.1 SCSK K.Nara MOD START
+--          on_margin_rate := ROUND( (on_amount_gross_margin / ln_sales_budget * 100 ), 2);
+          on_margin_rate := ROUND( (on_amount_gross_margin / on_sales_budget * 100 ), 2);
+-- Ver.1.1 SCSK K.Nara MOD END
         EXCEPTION
           WHEN VALUE_ERROR THEN
             lv_errbuf := xxccp_common_pkg.get_msg(
@@ -1245,7 +1363,10 @@ AS
                            , iv_token_name3  => cv_tkn_month
                            , iv_token_value3 => TO_CHAR(in_month_no)
                            , iv_token_name4  => cv_tkn_errmsg
-                           , iv_token_value4 => 'Š|—¦w’è ‘e—˜—¦Zo > ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD START
+--                           , iv_token_value4 => 'Š|—¦w’è ‘e—˜—¦Zo > ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ”„ã(ç‰~)='||TO_CHAR(ln_sales_budget / 1000)||' ƒGƒ‰[“à—e='||SQLERRM
+                           , iv_token_value4 => 'Š|—¦w’è ‘e—˜—¦Zo > ‘e—˜Šz(ç‰~)='||TO_CHAR(on_amount_gross_margin / 1000)||' ”„ã(ç‰~)='||TO_CHAR(on_sales_budget / 1000)||' ƒGƒ‰[“à—e='||SQLERRM
+-- Ver.1.1 SCSK K.Nara MOD END
                          );
             fnd_file.put_line(
                which  => FND_FILE.OUTPUT
@@ -1266,7 +1387,10 @@ AS
     -------------------------------------------------
     lv_step := '‹–—e”ÍˆÍƒ`ƒFƒbƒN';
     --0
-    IF ln_sales_budget = 0 AND on_amount_gross_margin = 0 AND on_margin_rate = 0
+-- Ver.1.1 SCSK K.Nara MOD START
+--    IF ln_sales_budget = 0 AND on_amount_gross_margin = 0 AND on_margin_rate = 0
+    IF on_sales_budget = 0 AND on_amount_gross_margin = 0 AND on_margin_rate = 0
+-- Ver.1.1 SCSK K.Nara MOD END
       AND on_credit_rate = 0 AND on_amount = 0
     THEN 
       --‘S€–Ú0‚Íok‚Æ‚·‚é
@@ -1633,6 +1757,9 @@ AS
            ,iv_bara_kbn            => g_upload_data_tab(ln_line_no).bara_kbn                -- “ü—Í_ƒoƒ‰‹æ•ª
            ,in_discrete_cost       => g_upload_data_tab(ln_line_no).discrete_cost           -- “ü—Í_‰c‹ÆŒ´‰¿
            ,in_fixed_price         => g_upload_data_tab(ln_line_no).fixed_price             -- “ü—Í_’è‰¿
+-- Ver.1.1 SCSK K.Nara ADD START
+           ,on_sales_budget        => g_item_line_tab(ln_item_line_cnt).sales_budget        -- ZoŒ‹‰Ê_”„ã(’PˆÊF‰~)
+-- Ver.1.1 SCSK K.Nara ADD END
            ,on_amount_gross_margin => g_item_line_tab(ln_item_line_cnt).amount_gross_margin -- ZoŒ‹‰Ê_‘e—˜Šz(’PˆÊF‰~)
            ,on_margin_rate         => g_item_line_tab(ln_item_line_cnt).margin_rate         -- ZoŒ‹‰Ê_‘e—˜—¦
            ,on_credit_rate         => g_item_line_tab(ln_item_line_cnt).credit_rate         -- ZoŒ‹‰Ê_Š|—¦
@@ -1656,7 +1783,10 @@ AS
         -- ’P•i—\Z‡ŒvXV(‘ÎÛ¤•iŒQ•ª)
         -------------------------------------------------
         --”„ã
-        g_item_bgt_sum_tab(i).sales_budget        := g_item_bgt_sum_tab(i).sales_budget + ln_sales_budget * 1000;
+-- Ver.1.1 SCSK K.Nara MOD START
+--        g_item_bgt_sum_tab(i).sales_budget        := g_item_bgt_sum_tab(i).sales_budget + ln_sales_budget * 1000;
+        g_item_bgt_sum_tab(i).sales_budget        := g_item_bgt_sum_tab(i).sales_budget + g_item_line_tab(ln_item_line_cnt).sales_budget;
+-- Ver.1.1 SCSK K.Nara MOD END
         --‘e—˜Šz
         g_item_bgt_sum_tab(i).amount_gross_margin := g_item_bgt_sum_tab(i).amount_gross_margin + g_item_line_tab(ln_item_line_cnt).amount_gross_margin;
         --
