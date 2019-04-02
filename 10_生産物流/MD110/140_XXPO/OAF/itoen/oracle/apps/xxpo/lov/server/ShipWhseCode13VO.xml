@@ -27,6 +27,21 @@ WHERE  EXISTS ( SELECT 1
                 AND    xlvvs.lookup_type  = 'XXPO_START_UP_TYPE'
                 AND    xlvvs.lookup_code  = 13
                 AND    xssv.segment1      = xilv.segment1
+-- 2019/03/25 E_本稼動_15612 Y.Sasaki Added START
+              )
+UNION
+SELECT xilv.inventory_location_id ship_whse_id    -- 出庫倉庫ID(保管棚ID)
+      ,xilv.segment1              ship_whse_code  -- 出庫倉庫コード(保管倉庫コード)
+      ,xilv.description           ship_whse_name  -- 出庫倉庫名(略称)
+      ,xilv.drink_calender        drink_calender  -- ドリンク基準カレンダ
+      ,xilv.leaf_calender         leaf_calender   -- リーフ基準カレンダ
+      ,xilv.frequent_mover        frequent_mover  -- 代表運送会社
+FROM   xxcmn_item_locations_v xilv
+WHERE  EXISTS ( SELECT 1
+                FROM   xxcmn_lookup_values_v          xlvvs
+                WHERE  xlvvs.lookup_type  = 'XXPO_TOYO_UNLO_WARE'
+                AND    xlvvs.lookup_code  = xilv.segment1
+-- 2019/03/25 E_本稼動_15612 Y.Sasaki Added END
               )
    ]]></SQLQuery>
    <DesignTime>
