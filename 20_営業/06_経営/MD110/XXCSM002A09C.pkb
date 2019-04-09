@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A09C(body)
  * Description      : 年間商品計画（営業原価）チェックリスト出力
  * MD.050           : 年間商品計画（営業原価）チェックリスト出力 MD050_CSM_002_A09
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2011-01-05    1.6   SCS OuKou        [E_本稼動_05803]
  *  2012-12-13    1.7   SCSK K.Taniguchi [E_本稼動_09949] 新旧原価選択可能対応
  *  2013-01-31    1.8   SCSK K.Taniguchi [E_本稼動_09949] 年度開始日取得の不具合対応
+ *  2019-04-09    1.9   SCSK K.Nara      [E_本稼動_15667] 商品群として｢B:青汁｣を追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -163,6 +164,9 @@ AS
 
   -- 商品区分
   cv_leaf          CONSTANT VARCHAR2(1)   := 'A';                            -- 商品区分（LEAF）
+--//+ADD START E_本稼動_15667 K.Nara
+  cv_green         CONSTANT VARCHAR2(1)   := 'B';                            -- 商品区分（その他(青汁)）
+--//+ADD END   E_本稼動_15667 K.Nara
   cv_drink         CONSTANT VARCHAR2(1)   := 'C';                            -- 商品区分（DRINK）
   cv_sonota        CONSTANT VARCHAR2(1)   := 'D';                            -- 商品区分（その他）
   cv_nebiki        CONSTANT VARCHAR2(1)   := 'N';                            -- 商品区分（値引）
@@ -976,7 +980,10 @@ AS
     FROM
       xxcsm_tmp_item_plan_sales  xti   -- 商品計画営業原価ワークテーブル
     WHERE
-      xti.group1_cd  IN (cv_leaf, cv_drink)   -- 商品群コード１
+--//+MOD START E_本稼動_15667 K.Nara
+--      xti.group1_cd  IN (cv_leaf, cv_drink)   -- 商品群コード１
+      xti.group1_cd  IN (cv_leaf, cv_drink,cv_green)   -- 商品群コード１
+--//+MOD END   E_本稼動_15667 K.Nara
     ;
 --
     --==============================================================
@@ -1179,7 +1186,10 @@ AS
     FROM
       xxcsm_tmp_item_plan_sales   xti  -- 商品計画営業原価ワークテーブル
     WHERE
-      xti.group1_cd  IN (cv_leaf, cv_drink, cv_sonota, cv_nebiki)   -- 商品群コード１
+--//+MOD START E_本稼動_15667 K.Nara
+--      xti.group1_cd  IN (cv_leaf, cv_drink, cv_sonota, cv_nebiki)   -- 商品群コード１
+      xti.group1_cd  IN (cv_leaf, cv_drink, cv_sonota, cv_nebiki, cv_green)   -- 商品群コード１
+--//+MOD END   E_本稼動_15667 K.Nara
     ;
 --
     --==============================================================
