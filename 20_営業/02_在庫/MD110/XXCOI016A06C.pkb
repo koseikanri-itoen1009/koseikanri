@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI016A06C(body)
  * Description      : ロット別出荷情報作成
  * MD.050           : MD050_COI_016_A06_ロット別出荷情報作成
- * Version          : 1.12
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,7 +53,6 @@ AS
  *  2016/02/25    1.9   S.Yamashita      E_本稼動_13478対応
  *  2016/04/15    1.10  S.Niki           E_本稼動_13552対応
  *  2017/09/01    1.11  H.Sasaki         E_本稼動_14592対応
- *  2018/10/02    1.12  K.Nara           E_本稼動_15276対応
  *
  *****************************************************************************************/
 --
@@ -1265,9 +1264,6 @@ AS
            id_use_by_date          => TO_DATE(iv_lot, cv_yyyymmdd) -- 賞味期限
          , id_product_date         => id_production_date           -- 製造年月日
          , iv_fresh_condition      => gt_cust_fresh_con_code       -- 鮮度条件
--- Ver.1.12 [障害E_本稼動_15276] SCSK K.Nara ADD START
-         , iv_item_code            => iv_item_code                 -- 品目コード
--- Ver.1.12 [障害E_本稼動_15276] SCSK K.Nara ADD END
          , od_fresh_condition_date => ld_fresh_condition_date      -- 鮮度条件基準日
          , ov_errbuf               => lv_errbuf                    -- エラーメッセージ
          , ov_retcode              => lv_retcode                   -- リターン・コード(0:正常、2:エラー)
