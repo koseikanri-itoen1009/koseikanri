@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *                                                       「残高取消」⇒'1'「保留」⇒'2'「保留解除」⇒'0'
  *  2012/09/20    1.8   T.Osawa          [E_本稼動_10100]残高更新Excelアップロードの改修について
  *  2018/01/23    1.9   K.Nara           [E_本稼動_14790]事務センター対応（事務センタユーザの顧客指定残高取消）
+ *  2019/03/14    1.10  T.Kawaguchi      [E_本稼動_15561]残高消し込みを問合せ担当拠点でできるようにする
  *
  *****************************************************************************************/
 --
@@ -516,6 +517,10 @@ AS
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD START
             ,xxcmm_cust_accounts      xca2 -- 顧客追加情報【拠点】
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD END
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD START
+            ,po_vendors               pv   -- 仕入先マスタ
+            ,po_vendor_sites_all      pva  -- 仕入先サイトマスタ
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
       WHERE  xbb.supplier_code       = iv_vendor_code
       AND    xbb.expect_payment_date <= id_pay_date
       AND    xbb.resv_flag           IS NULL
@@ -532,6 +537,9 @@ AS
       AND  (
                (    xca.past_sale_base_code   = gv_dept_bel_code  -- 所属拠点 = 前月売上拠点
                  OR xca2.management_base_code = gv_dept_bel_code  -- 所属拠点 = 前月売上拠点の管理元拠点
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD START
+                 OR pva.attribute5            = gv_dept_bel_code  -- 所属拠点 = 仕入先の問合せ担当拠点
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
                )
            OR
                ( gv_f_cend_cust = cv_yes )                           -- 事務センターの顧客指定メニュー
@@ -540,6 +548,13 @@ AS
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
       AND    xbb.cust_code           = iv_customer_code
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD START
+      AND    pv.segment1               = xbb.supplier_code
+      AND    pv.vendor_id              = pva.vendor_id
+      AND    pva.vendor_site_code      = xbb.supplier_site_code
+      AND    pva.org_id                = gn_org_id
+      AND    TRUNC( NVL( pva.inactive_date, gd_proc_date + 1 ) )  > gd_proc_date
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -- 拠点顧客保留ロックカーソル定義
@@ -2596,6 +2611,10 @@ AS
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD START
                 ,xxcmm_cust_accounts      xca2 -- 顧客追加情報【拠点】
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki ADD END
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD START
+                ,po_vendors               pv   -- 仕入先マスタ
+                ,po_vendor_sites_all      pva  -- 仕入先サイトマスタ
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
           WHERE  xbb.supplier_code       = lv_vendor_code
           AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
           AND    xbb.resv_flag           IS NULL
@@ -2613,6 +2632,9 @@ AS
           AND  (
                    (    xca.past_sale_base_code   = gv_dept_bel_code  -- 所属拠点 = 前月売上拠点
                      OR xca2.management_base_code = gv_dept_bel_code  -- 所属拠点 = 前月売上拠点の管理元拠点
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD START
+                     OR pva.attribute5            = gv_dept_bel_code  -- 所属拠点 = 仕入先の問合せ担当拠点
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
                    )
                OR
                    ( gv_f_cend_cust = cv_yes )                           -- 事務センターの顧客指定メニュー
@@ -2620,6 +2642,13 @@ AS
 -- Ver_1.9 E_本稼動_14790 MOD End
 -- 2011/04/14 Ver.1.6 [障害E_本稼動_07143] SCS S.Niki UPD END
 -- 2011/02/22 Ver.1.5 [障害E_本稼動_05408] SCS T.Ishiwata UPD END
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD START
+          AND    pv.segment1               = xbb.supplier_code
+          AND    pv.vendor_id              = pva.vendor_id
+          AND    pva.vendor_site_code      = xbb.supplier_site_code
+          AND    pva.org_id                = gn_org_id
+          AND    TRUNC( NVL( pva.inactive_date, gd_proc_date + 1 ) )  > gd_proc_date
+-- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
           GROUP BY xbb.supplier_code
                   ,xbb.cust_code;
         EXCEPTION
