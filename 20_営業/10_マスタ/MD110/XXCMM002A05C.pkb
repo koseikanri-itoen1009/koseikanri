@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A05C(body)
  * Description      : 仕入先マスタデータ連携
  * MD.050           : 仕入先マスタデータ連携 MD050_CMM_002_A05
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,25 +22,26 @@ AS
  *  main                   コンカレント実行プロシージャ
  *
  * Change Record
- * ------------- ----- ---------------- -------------------------------------------------
- *  Date          Ver.  Editor           Description
- * ------------- ----- ---------------- -------------------------------------------------
- *  2009/01/20    1.0   SCS 福間 貴子    初回作成
- *  2009/03/03    1.1   SCS 吉川 博章    新規連携時、仕入先サイトのATTRIBUTE_CATEGORYに
- *                                       ORG_IDを設定するよう修正
- *  2009/04/21    1.2   SCS 吉川 博章    障害T1_0255, T1_0388, T1_0438 対応
- *  2009/04/24          SCS 吉川 博章    仕入先登録済み、サイト「会社」未登録時の対応
- *  2009/07/17    1.3   SCS 久保島 豊    統合テスト障害0000204の対応
- *                                       CSVファイルを作成しBFAのローダーで中間テーブルに取込から
- *                                       CSVファイル作成は廃止し、中間テーブルにINSERTを行うように修正
- *  2009/10/02    1.4   SCS 久保島 豊    統合テスト障害0001221の対応
- *                                       仕入先のマッピングを移行に合わせる
- *  2010/04/12    1.5   SCS 久保島 豊    障害E_本稼動_02240の対応
- *                                       ・抽出SQLに条件を追加
- *                                       ・支払グループの導出方法の変更
- *                                       ・更新対象データチェック方法の変更
- *                                       ・再雇用者に対する処理の追加
- *                                       ・仕入先マスタの無効日の設定の変更
+ * ------------- ----- ------------------ -------------------------------------------------
+ *  Date          Ver.  Editor            Description
+ * ------------- ----- ------------------ -------------------------------------------------
+ *  2009/01/20    1.0   SCS 福間 貴子     初回作成
+ *  2009/03/03    1.1   SCS 吉川 博章     新規連携時、仕入先サイトのATTRIBUTE_CATEGORYに
+ *                                        ORG_IDを設定するよう修正
+ *  2009/04/21    1.2   SCS 吉川 博章     障害T1_0255, T1_0388, T1_0438 対応
+ *  2009/04/24          SCS 吉川 博章     仕入先登録済み、サイト「会社」未登録時の対応
+ *  2009/07/17    1.3   SCS 久保島 豊     統合テスト障害0000204の対応
+ *                                        CSVファイルを作成しBFAのローダーで中間テーブルに取込から
+ *                                        CSVファイル作成は廃止し、中間テーブルにINSERTを行うように修正
+ *  2009/10/02    1.4   SCS 久保島 豊     統合テスト障害0001221の対応
+ *                                        仕入先のマッピングを移行に合わせる
+ *  2010/04/12    1.5   SCS 久保島 豊     障害E_本稼動_02240の対応
+ *                                        ・抽出SQLに条件を追加
+ *                                        ・支払グループの導出方法の変更
+ *                                        ・更新対象データチェック方法の変更
+ *                                        ・再雇用者に対する処理の追加
+ *                                        ・仕入先マスタの無効日の設定の変更
+ *  2019/04/04    1.6   SCSK 佐々木大和   E_本稼動_15620 経費精算を4つの支払グループに分割
  *
  *****************************************************************************************/
 --
@@ -141,6 +142,9 @@ AS
   cv_prepay_ccid_aff8       CONSTANT VARCHAR2(30)  := 'XXCMM1_002A05_PREPAY_CCID_AFF8';  -- 前払/仮払金勘定科目AFF8
   cv_bks_name               CONSTANT VARCHAR2(30)  := 'GL_SET_OF_BKS_NAME';              -- GL会計帳簿名
 -- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Added START
+  cv_bks_id                 CONSTANT VARCHAR2(30)  := 'GL_SET_OF_BKS_ID';                -- GL会計帳簿ID
+-- V1.6 Y.Sasaki Added END
   -- トークン
   cv_tkn_profile            CONSTANT VARCHAR2(10)  := 'NG_PROFILE';                      -- プロファイル名
 -- 2009/07/17 Ver1.3 delete start by Yutaka.Kuboshima
@@ -202,6 +206,13 @@ AS
   cv_tkn_ccid_aff8          CONSTANT VARCHAR2(30)  := '前払/仮払金勘定科目AFF8';    -- 前払/仮払金勘定科目AFF8
   cv_tkn_bks_name           CONSTANT VARCHAR2(30)  := 'GL会計帳簿名';               -- GL会計帳簿名
 -- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Added START
+  cv_tkn_bks_id             CONSTANT VARCHAR2(30)  := 'GL会計帳簿ID';               -- GL会計帳簿ID
+--
+  -- 参照表
+  cv_pay_group              CONSTANT VARCHAR2(30)  := 'PAY GROUP';                  -- 参照表：支払グループ
+  cv_xxcfo1_pay_dept_code   CONSTANT VARCHAR2(30)  := 'XXCFO1_PAY_DEPT_CODE';       -- 参照表：本社振込対象部署
+-- V1.6 Y.Sasaki Added END
   --
 -- 2009/07/17 Ver1.3 add start by Yutaka.Kuboshima
   cv_tkn_err_msg            CONSTANT VARCHAR2(10)  := 'ERR_MSG';                    -- 項目名
@@ -416,6 +427,9 @@ AS
   gv_id_flex_code           VARCHAR2(100);        -- キーフレックスコード
   g_aff_segments_tab        fnd_flex_ext.segmentarray; -- AFFセグメントテーブル
 -- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Added START
+  gv_bks_id                 VARCHAR2(100);        -- GL会計帳簿ID
+-- V1.6 Y.Sasaki Added END
   -- ===============================
   -- ユーザー定義グローバルカーソル
   -- ===============================
@@ -508,6 +522,26 @@ AS
   ;
   TYPE g_i_people_data_ttype IS TABLE OF get_i_people_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
   gt_i_people_data            g_i_people_data_ttype;
+-- v1.6 Y.Sasaki Added START
+  -- 支払グループを取得(4大銀行およびダミー)
+  CURSOR get_pay_group_cur IS
+    SELECT  flv.lookup_code       AS  pay_group   -- 支払グループ
+          , flv.attribute4        AS  bank_num    -- 銀行コード
+    FROM    fnd_lookup_values flv
+    WHERE   flv.lookup_type       = cv_pay_group  -- 参照表:支払グループ
+    AND     flv.attribute4        IS NOT NULL
+    AND     flv.language          = USERENV( 'LANG' )
+    AND     flv.enabled_flag      = cv_y_flag
+    AND     (flv.attribute3       IS NULL
+               OR
+             flv.attribute3       = cv_n_flag)
+    AND     flv.start_date_active <= gd_process_date
+    AND     gd_process_date       <= NVL( flv.end_date_active, gd_process_date )
+    ;
+  get_pay_group_rec      get_pay_group_cur%ROWTYPE;
+  TYPE g_pay_group_ttype IS TABLE OF get_pay_group_cur%ROWTYPE INDEX BY VARCHAR2(4);
+  gt_pay_group_data           g_pay_group_ttype;
+-- v1.6 Y.Sasaki Added START
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -814,6 +848,14 @@ AS
       RAISE global_process_expt;
     END IF;
 -- 2009/10/02 Ver1.4 add end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Added START
+    -- GL会計帳簿IDの取得
+    gv_bks_id   := fnd_profile.value(cv_bks_id);
+    IF (gv_bks_id IS NULL) THEN
+      lv_tkn_nm := cv_tkn_bks_id;
+      RAISE global_process_expt;
+    END IF;
+-- V1.6 Y.Sasaki Added END
     --
 -- Ver1.2  2009/04/21  Del  障害：T1_0438対応  会計オプションから取得するよう変更（負債・前払金）
     -- ============================================================
@@ -1002,6 +1044,16 @@ AS
         RAISE global_api_others_expt;
     END;
 --
+-- V1.6 Y.Sasaki Added START
+    -- =========================================================
+    --  支払グループの取得
+    -- =========================================================
+    gt_pay_group_data.DELETE;
+    FOR get_pay_group_rec IN get_pay_group_cur LOOP
+      gt_pay_group_data(get_pay_group_rec.bank_num) :=  get_pay_group_rec;
+    END LOOP;
+--
+-- V1.6 Y.Sasaki Added END
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1171,6 +1223,17 @@ AS
 -- 2009/07/17 Ver1.3 add start by Yutaka.Kuboshima
     l_vend_if_rec       xx03_vendors_interface%ROWTYPE; -- 仕入先従業員情報中間I/Fテーブルレコード型
 -- 2009/07/17 Ver1.3 add end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Added START
+    lv_pay_bank                 VARCHAR2(4);      -- 銀行コード
+    lv_bank_number              VARCHAR2(50);     -- 銀行支店コード
+    lv_bank_account_num         VARCHAR2(50);     -- 銀行口座番号
+    lv_currency_code            VARCHAR2(30);     -- 通貨コード
+    lv_bank_account_name        VARCHAR2(160);    -- 口座名称
+    lv_bank_account_type        VARCHAR2(50);     -- 口座種別
+    lv_account_holder_name      VARCHAR2(240);    -- 口座名義
+    lv_account_holder_name_alt  VARCHAR2(150);    -- 口座名義カナ
+    ln_count                    NUMBER;           -- カウンタ
+-- V1.6 Y.Sasaki Added END
 --
     -- *** ローカル・カーソル ***
 --
@@ -1195,6 +1258,16 @@ AS
     --
     <<u_out_loop>>
     FOR ln_loop_cnt IN gt_u_people_data.FIRST..gt_u_people_data.LAST LOOP
+-- v1.6 Y.Sasaki Added START
+      lv_pay_bank                 :=  NULL;
+      lv_bank_number              :=  NULL;
+      lv_bank_account_num         :=  NULL;
+      lv_currency_code            :=  NULL;
+      lv_bank_account_name        :=  NULL;
+      lv_bank_account_type        :=  NULL;
+      lv_account_holder_name      :=  NULL;
+      lv_account_holder_name_alt  :=  NULL;
+-- v1.6 Y.Sasaki Added END
 -- Ver1.2  2009/04/21  Add  障害：T1_0388対応
       gn_s_vendor_site_id := gt_u_people_data(ln_loop_cnt).vendor_site_id;
 -- End Ver1.2
@@ -1302,11 +1375,34 @@ AS
           AND      NVL(attribute3, cv_n_flag) = cv_n_flag
 -- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
           AND      ROWNUM = 1;
-          IF (gt_u_people_data(ln_loop_cnt).ass_attribute3 = gv_pay_bumon_cd) THEN
--- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
---            lv_new_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
-            lv_new_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
--- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Added START
+          -- 本社振込の対象部署であるか確認
+          BEGIN
+            SELECT   COUNT(*)     AS pay_dept_cnt
+            INTO     ln_count
+            FROM     fnd_lookup_values flv
+            WHERE    flv.lookup_type        = cv_xxcfo1_pay_dept_code                       -- 本社振込対象部署
+            AND      flv.lookup_code        = gt_u_people_data(ln_loop_cnt).ass_attribute3
+            AND      flv.language           = USERENV( 'LANG' )
+            AND      flv.enabled_flag       = cv_y_flag
+            AND      flv.start_date_active  <= gd_process_date
+            AND      gd_process_date        <= NVL(flv.end_date_active, gd_process_date)
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              RAISE global_api_others_expt;
+          END;
+-- V1.6 Y.Sasaki Added END
+-- V1.6 Y.Sasaki Modified START
+--          IF (gt_u_people_data(ln_loop_cnt).ass_attribute3 = gv_pay_bumon_cd) THEN
+          IF ( ln_count = 1 ) THEN
+-- V1.6 Y.Sasaki Modified END
+-- V1.6 Y.Sasaki Deleted START
+---- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+----            lv_new_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+--            lv_new_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+---- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Deleted END
             -- 支払可能部門フラグになしをセット
             lv_pay_flg := 'N';
           ELSE
@@ -1319,15 +1415,70 @@ AS
           END IF;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
--- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
---            lv_new_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
-            lv_new_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
--- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Deleted START
+---- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+----            lv_new_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+--            lv_new_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+---- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+-- V1.6 Y.Sasaki Deleted END
             -- 支払可能部門フラグになしをセット
             lv_pay_flg := 'N';
           WHEN OTHERS THEN
             RAISE global_api_others_expt;
         END;
+-- V1.6 Y.Sasaki Added START
+        -- 対象の従業員に設定されている銀行コードを取得
+        IF ( lv_pay_flg = cv_n_flag ) THEN
+          BEGIN
+            SELECT   abb.bank_number               AS  bank_number              -- 銀行コード
+                    ,abb.bank_num                  AS  bank_num                 -- 銀行支店コード
+                    ,aba.bank_account_num          AS  bank_account_num         -- 銀行口座番号
+                    ,aba.currency_code             AS  currency_code            -- 銀行口座通貨コード
+                    ,aba.bank_account_name         AS  bank_account_name        -- 銀行口座口座名称
+                    ,aba.bank_account_type         AS  bank_account_type        -- 銀行口座預金種別
+                    ,aba.account_holder_name       AS  account_holder_name      -- 銀行口座口座名義人名
+                    ,aba.account_holder_name_alt   AS  account_holder_name_alt  -- 銀行口座口座名義人名(カナ)
+            INTO     lv_pay_bank                   --  銀行コード
+                    ,lv_bank_number                --  銀行支店コード
+                    ,lv_bank_account_num           --  銀行口座番号
+                    ,lv_currency_code              --  銀行口座通貨コード
+                    ,lv_bank_account_name          --  銀行口座口座名称
+                    ,lv_bank_account_type          --  銀行口座預金種別
+                    ,lv_account_holder_name        --  銀行口座口座名義人名
+                    ,lv_account_holder_name_alt    --  銀行口座口座名義人名(カナ)
+            FROM    po_vendor_sites_all pvs                                     -- 仕入先サイトマスタ
+                   ,ap_bank_account_uses_all abau                               -- 銀行口座使用情報
+                   ,ap_bank_accounts_all aba                                    -- 銀行口座
+                   ,ap_bank_branches abb                                        -- 銀行支店
+            WHERE  pvs.vendor_site_id             = abau.vendor_site_id (+)
+            AND    abau.external_bank_account_id  = aba.bank_account_id (+)
+            AND    aba.bank_branch_id             = abb.bank_branch_id
+            AND    aba.set_of_books_id            = gv_bks_id
+            AND    pvs.org_id                     = gn_org_id
+            AND    pvs.vendor_site_id             = gn_s_vendor_site_id
+            AND    abau.primary_flag              = cv_y_flag
+            AND    abau.start_date                <= gd_process_date
+            AND    gd_process_date                <= NVL( abau.end_date, gd_process_date )
+            AND    ROWNUM                         = 1
+            ORDER BY  abau.start_date DESC
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              -- 銀行コードが取得できなかった場合、ダミーの支払グループを設定
+              lv_pay_bank := gv_bank_num;
+            WHEN OTHERS THEN
+              RAISE global_api_others_expt;
+          END;
+          --
+--          -- 取得した銀行コードに紐付く支払グループを取得
+          IF (gt_pay_group_data.EXISTS(lv_pay_bank)) THEN
+            lv_new_pay_group  :=  gt_pay_group_data(lv_pay_bank).pay_group;
+          ELSE
+            lv_new_pay_group  :=  gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+          END IF;
+        END IF;
+--
+-- V1.6 Y.Sasaki Added END
         IF (LENGTHB(lv_new_pay_group) > cv_pay_group_length) THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
                            iv_application  => cv_msg_kbn_cmm                                -- 'XXCMM'
@@ -2050,14 +2201,25 @@ AS
             l_vend_if_rec.site_email_address            := gv_s_email_address;                                    -- 仕入先サイトEメールアドレス
             l_vend_if_rec.site_primary_pay_site_flag    := gv_s_pps_flag;                                         -- 仕入先サイト主支払サイトフラグ
             l_vend_if_rec.site_purchasing_site_flag     := gv_s_ps_flag;                                          -- 仕入先サイト購買フラグ
-            l_vend_if_rec.acnt_bank_number              := gv_bank_number;                                        -- 銀行口座銀行支店コード
-            l_vend_if_rec.acnt_bank_num                 := gv_bank_num;                                           -- 銀行口座銀行コード
-            l_vend_if_rec.acnt_bank_account_name        := gv_bank_nm || '/' || gv_shiten_nm;                     -- 銀行口座口座名称
-            l_vend_if_rec.acnt_bank_account_num         := gv_account_num;                                        -- 銀行口座口座番号
-            l_vend_if_rec.acnt_currency_code            := gv_currency_cd;                                        -- 銀行口座通貨コード
+-- v1.6 Y.Sasaki Modified START
+--            l_vend_if_rec.acnt_bank_number              := gv_bank_number;                                        -- 銀行口座銀行支店コード
+--            l_vend_if_rec.acnt_bank_num                 := gv_bank_num;                                           -- 銀行口座銀行コード
+--            l_vend_if_rec.acnt_bank_account_name        := gv_bank_nm || '/' || gv_shiten_nm;                     -- 銀行口座口座名称
+--            l_vend_if_rec.acnt_bank_account_num         := gv_account_num;                                        -- 銀行口座口座番号
+--            l_vend_if_rec.acnt_currency_code            := gv_currency_cd;                                        -- 銀行口座通貨コード
+            l_vend_if_rec.acnt_bank_number              := NVL(lv_bank_number, gv_bank_number);                   -- 銀行口座銀行支店コード
+            l_vend_if_rec.acnt_bank_num                 := NVL(lv_pay_bank, gv_bank_num);                         -- 銀行口座銀行コード
+            l_vend_if_rec.acnt_bank_account_name        := NVL(lv_bank_account_name,
+                                                                  (gv_bank_nm || '/' || gv_shiten_nm));           -- 銀行口座口座名称
+            l_vend_if_rec.acnt_bank_account_num         := NVL(lv_bank_account_num, gv_account_num);              -- 銀行口座口座番号
+            l_vend_if_rec.acnt_currency_code            := NVL(lv_currency_code, gv_currency_cd);                 -- 銀行口座通貨コード
+-- v1.6 Y.Sasaki Modified END
             l_vend_if_rec.acnt_description              := NULL;                                                  -- 銀行口座摘要
             l_vend_if_rec.acnt_asset_id                 := NULL;                                                  -- 銀行口座現預金勘定科目ID
-            l_vend_if_rec.acnt_bank_account_type        := gv_account_type;                                       -- 銀行口座預金種別
+-- v1.6 Y.Sasaki Modified START
+--            l_vend_if_rec.acnt_bank_account_type        := gv_account_type;                                       -- 銀行口座預金種別
+            l_vend_if_rec.acnt_bank_account_type        := NVL(lv_bank_account_type, gv_account_type);            -- 銀行口座預金種別
+-- v1.6 Y.Sasaki Modified END
             l_vend_if_rec.acnt_attribute_category       := NULL;                                                  -- 銀行口座予備カテゴリ
             l_vend_if_rec.acnt_attribute1               := NULL;                                                  -- 銀行口座予備1
             l_vend_if_rec.acnt_attribute2               := NULL;                                                  -- 銀行口座予備2
@@ -2077,8 +2239,12 @@ AS
             l_vend_if_rec.acnt_cash_clearing_ccid       := NULL;                                                  -- 銀行口座資金決済勘定科目ID
             l_vend_if_rec.acnt_bank_charges_ccid        := NULL;                                                  -- 銀行口座銀行手数料勘定科目ID
             l_vend_if_rec.acnt_bank_errors_ccid         := NULL;                                                  -- 銀行口座銀行エラー勘定科目ID
-            l_vend_if_rec.acnt_account_holder_name      := gv_holder_nm;                                          -- 銀行口座口座名義人名
-            l_vend_if_rec.acnt_account_holder_name_alt  := gv_holder_alt_nm;                                      -- 銀行口座口座名義人名(カナ)
+-- v1.6 Y.Sasaki Modified START
+--            l_vend_if_rec.acnt_account_holder_name      := gv_holder_nm;                                          -- 銀行口座口座名義人名
+--            l_vend_if_rec.acnt_account_holder_name_alt  := gv_holder_alt_nm;                                      -- 銀行口座口座名義人名(カナ)
+            l_vend_if_rec.acnt_account_holder_name      := NVL(lv_account_holder_name, gv_holder_nm);             -- 銀行口座口座名義人名
+            l_vend_if_rec.acnt_account_holder_name_alt  := NVL(lv_account_holder_name_alt, gv_holder_alt_nm);     -- 銀行口座口座名義人名(カナ)
+-- v1.6 Y.Sasaki Modified END
             l_vend_if_rec.uses_start_date               := gd_process_date;                                       -- 銀行口座割当開始日
             l_vend_if_rec.uses_end_date                 := NULL;                                                  -- 銀行口座割当終了日
             l_vend_if_rec.uses_attribute_category       := NULL;                                                  -- 銀行口座割当予備カテゴリ
