@@ -7,7 +7,7 @@ AS
  * Description      : ロックボックス入金処理
  * MD.050           : MD050_CFR_005_A04_ロックボックス入金処理
  * MD.070           : MD050_CFR_005_A04_ロックボックス入金処理
- * Version          : 1.02
+ * Version          : 1.03
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2010/10/15    1.00 SCS 廣瀬 真佐人  初回作成
  *  2013/07/22    1.01 SCSK 中村 健一   E_本稼動_10950 消費税増税対応
  *  2015/05/29    1.02 SCSK 小路 恭弘   E_本稼動_13114 振込24時間化対応
+ *  2019/02/05    1.03 SCSK 矢崎 栄司   E_本稼動_15534 年号変更対応
  *
  *****************************************************************************************/
 --
@@ -589,6 +590,12 @@ AS
     cv_kind_receipt    CONSTANT VARCHAR2(2) := '03';  -- 種別コード
     cv_payment_receipt CONSTANT VARCHAR2(1) := '1';   -- 入払区分
     cv_trance_receipt  CONSTANT VARCHAR2(2) := '11';  -- 取引区分
+-- 2019/02/05 Ver1.03 Add START
+    cv_receipt_standard_date_to   CONSTANT VARCHAR2(6) := '310331'; -- 入金日変換 基準日1
+    cv_receipt_standard_date_from CONSTANT VARCHAR2(6) := '310501'; -- 入金日変換 基準日2
+    cn_newnengou_add_year         CONSTANT NUMBER(4)   := 2018;
+    cn_heisei_add_year            CONSTANT NUMBER(4)   := 1988;
+-- 2019/02/05 Ver1.03 Add END
 --
     -- *** ローカル変数 ***
 --
@@ -777,10 +784,32 @@ AS
 --
                   BEGIN
 --
-                    lt_l_receipt_date := TO_DATE( lv_l_receipt_date
-                                                , cv_format_rmd
-                                                , cv_format_nls_cal
-                                         );
+-- 2019/02/05 Ver1.03 Mod START
+--                    lt_l_receipt_date := TO_DATE( lv_l_receipt_date
+--                                                , cv_format_rmd
+--                                                , cv_format_nls_cal
+--                                         );
+                    --入金日変換 310331以下の場合
+                    IF( lv_l_receipt_date <= cv_receipt_standard_date_to )
+                      THEN
+                        lt_l_receipt_date := TO_DATE(
+                                               ( TO_CHAR( TO_NUMBER( SUBSTRB( lv_l_receipt_date, 1, 2) + cn_newnengou_add_year ))
+                                               || SUBSTRB( lv_l_receipt_date, 3, 4 ) ) , 'YYYYMMDD'
+                                             );
+                    --入金日変換 310501以上の場合
+                    ELSIF (lv_l_receipt_date >= cv_receipt_standard_date_from )
+                      THEN
+                        lt_l_receipt_date := TO_DATE(
+                                               ( TO_CHAR( TO_NUMBER( SUBSTRB(lv_l_receipt_date , 1, 2) + cn_heisei_add_year ))
+                                               || SUBSTRB( lv_l_receipt_date, 3, 4 ) ) , 'YYYYMMDD'
+                                             );
+                    ELSE
+                      lt_l_receipt_date := TO_DATE( lv_l_receipt_date
+                                                  , cv_format_rmd
+                                                  , cv_format_nls_cal
+                                           );
+                    END IF;
+-- 2019/02/05 Ver1.03 Mod END
                   EXCEPTION
                     WHEN OTHERS THEN
                       -- 日付変換エラー
