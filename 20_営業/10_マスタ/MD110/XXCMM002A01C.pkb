@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -112,6 +112,7 @@ AS
  *                                       ・ユーザーマスタのパスワード失効日を初期設定
  *  2011/03/03    1.19 SCS 堀籠 直樹     障害E_本稼動_02272 対応
  *                                       ・新規／異動／退職いずれの場合もユーザーマスタ「摘要」を「カナ姓＋カナ名」で更新するよう変更
+ *  2019/04/16    1.20 SCSK 阿部 直樹    障害E_本稼動_15639 対応
  *
  *****************************************************************************************/
 --
@@ -253,6 +254,11 @@ AS
   cv_error_msg                 CONSTANT VARCHAR2(30)  := 'APP-XXCCP1-90006';  -- エラー終了全ロールバック
   cv_file_name                 CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-05102';  -- ファイル名メッセージ
   cv_input_no_msg              CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90008';  -- コンカレント入力パラメータなし
+--Ver1.20 2019/04/16 N.Abe Add Start
+  cv_msg_xxcmm_10494           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10494';  -- 承認者未存在エラーメッセージ
+  cv_msg_xxcmm_10495           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10495';  -- 承認者複数（承認者）エラーメッセージ
+  cv_msg_xxcmm_10496           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10496';  -- 承認者複数（申請者）エラーメッセージ
+--Ver1.20 2019/04/16 N.Abe Add End
   --
   --プロファイル
   cv_prf_dir                   CONSTANT VARCHAR2(30)  := 'XXCMM1_JINJI_IN_DIR';          -- 人事(INBOUND)連携用CSVファイル保管場所
@@ -298,6 +304,14 @@ AS
   cv_tkn_ng_err                CONSTANT VARCHAR2(10)  := 'NG_ERR';             -- エラー内容
   cv_tkn_filename              CONSTANT VARCHAR2(10)  := 'FILE_NAME';          -- ファイル名
   cv_tkn_apiname               CONSTANT VARCHAR2(10)  := 'API_NAME';           -- API名
+--Ver1.20 2019/04/16 N.Abe Add Start
+  cv_tkn_emp_num               CONSTANT VARCHAR2(7)   := 'EMP_NUM';            -- 従業員番号
+  cv_tkn_emp_name              CONSTANT VARCHAR2(8)   := 'EMP_NAME';            -- 従業員名'
+  cv_tkn_ar_dep_code           CONSTANT VARCHAR2(11)  := 'AR_DEP_CODE';        -- 承認者所属
+  cv_tkn_ar_pos_code           CONSTANT VARCHAR2(11)  := 'AR_POS_CODE';        -- 承認者職位
+  cv_tkn_al_dep_code           CONSTANT VARCHAR2(11)  := 'AL_DEP_CODE';        -- 申請者所属
+  cv_tkn_al_pos_code           CONSTANT VARCHAR2(11)  := 'AL_POS_CODE';        -- 申請者職位
+--Ver1.20 2019/04/16 N.Abe Add End
   cv_prf_dir_nm                CONSTANT VARCHAR2(20)  := 'CSVファイル出力先';  -- プロファイル;
   cv_prf_fil_nm                CONSTANT VARCHAR2(20)  := 'CSVファイル名';      -- プロファイル;
   cv_prf_supervisor_nm         CONSTANT VARCHAR2(20)  := '管理者従業員番号';   -- プロファイル;
@@ -348,6 +362,9 @@ AS
   cv_flv_consent               CONSTANT VARCHAR2(30)  := 'XXCMM_002A01_**';             -- 承認区分テーブル
   cv_flv_agent                 CONSTANT VARCHAR2(30)  := 'XXCMM_002A01_**';             -- 代行区分テーブル
   cv_flv_responsibility        CONSTANT VARCHAR2(30)  := 'XXCMM1_002A01_RESP';          -- 職責自動割当テーブル
+--Ver1.20 2019/04/16 N.Abe Add Start
+  cv_flv_exp_sett_appr         CONSTANT VARCHAR2(30)  := 'XXCMM_EXPENSE_SETT_APPROVER'; -- 経費精算拠点別承認者設定
+--Ver1.20 2019/04/16 N.Abe Add End
   --
   -- テーブル名
   cd_sysdate                   DATE := SYSDATE;                -- 処理開始時間(YYYYMMDDHH24MISS)
@@ -375,6 +392,11 @@ AS
   cn_partition_id              CONSTANT NUMBER        := 2;                     -- パーティションID
   cv_role_orig_system          CONSTANT VARCHAR2(10)  := 'FND_RESP';            -- ロールシステム名
 -- 2010/03/02 Ver1.17 E_本稼動_XXXXX add end by Yutaka.Kuboshima
+--Ver1.20 2019/04/16 N.Abe Add Start
+  cv_std                       CONSTANT VARCHAR2(8)   := 'STANDARD';
+  cv_all                       CONSTANT VARCHAR2(3)   := 'ALL';
+  cv_ok                        CONSTANT VARCHAR2(2)   := 'OK';
+--Ver1.20 2019/04/16 N.Abe Add End
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -7985,6 +8007,10 @@ AS
       FROM    xxcmm_hierarchy_dept_v xhd
     ;
 --Ver1.8 Mod  2009/07/06  0000412 END
+--Ver1.20 2019/04/16 N.Abe Add Start
+    -- 承認者ワークのデータを削除
+    DELETE  xxcmm_wk_approver;
+--Ver1.20 2019/04/16 N.Abe Add End
 --
   EXCEPTION
     --==============================================================
@@ -8040,6 +8066,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+--Ver1.20 2019/04/16 N.Abe Add Start
+    cv_aste              CONSTANT VARCHAR2(1) := '*'; -- NULLの代替文字
+--Ver1.20 2019/04/16 N.Abe Add End
 -- Ver1.3 Del 2009/04/16  使用していないため削除
 --    lr_masters_rec       masters_rec;       -- 処理対象データ格納レコード
 -- Ver1.3 End
@@ -8074,6 +8103,17 @@ AS
     ln_exist_cnt         NUMBER;
     ln_wk_emp_num        xxcmm_in_people_if.employee_number%TYPE;
 -- End Ver1.3
+--Ver1.20 2019/04/16 N.Abe Add Start
+    ln_app_id            NUMBER;                  -- 従業員ID（承認者ID）
+    lv_skip_flag         BOOLEAN  DEFAULT FALSE;  -- スキップフラグ（承認者ID取得失敗時）
+    lv_msg_code          VARCHAR2(30);            -- メッセージコード判別用（警告時）
+    ln_wk_cnt            PLS_INTEGER;             -- 承認者ワーク用ループカウンタ
+    ln_sk_cnt            PLS_INTEGER;             -- スキップデータ用ループカウンタ
+    ln_ar_cnt            PLS_INTEGER;             -- 承認者用エラーメッセージカウンタ
+    ln_emp_cnt           PLS_INTEGER;             -- 更新対象従業員カウント（標準パターン）
+    ln_apr_cnt           NUMBER;                  -- 設定パターンカウンタ（承認者）
+    ln_apl_cnt           NUMBER;                  -- 設定パターンカウンタ（申請者）
+--Ver1.20 2019/04/16 N.Abe Add End
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -8153,6 +8193,132 @@ AS
       WHERE  xwpr.employee_kbn = lv_emp_kbn
       ORDER BY xwpr.employee_number,xwpr.responsibility_id;
 --
+--Ver1.20 2019/04/16 N.Abe Add Start
+    -- 承認者ワーク抽出(標準)
+    CURSOR get_wk_st_cur
+    IS
+      SELECT xwa.applica_dep_code
+      FROM   xxcmm_wk_approver  xwa
+      WHERE  xwa.config_type = cv_std
+      GROUP BY xwa.applica_dep_code
+    ;
+--
+    -- 承認者ワーク抽出(ALL/OK)
+    CURSOR get_wk_alok_cur(iv_conf_type IN VARCHAR2)  -- [ALL] or [OK]を指定
+    IS
+      SELECT xwa.applica_dep_code
+            ,xwa.applica_position_code
+            ,xwa.approve_dep_code
+            ,xwa.approve_position_code
+            ,xwa.person_id
+      FROM   xxcmm_wk_approver  xwa
+      WHERE  xwa.config_type  = iv_conf_type
+      AND    xwa.person_id    IS NOT NULL
+      UNION ALL
+      SELECT xwa.applica_dep_code
+            ,xwa.applica_position_code
+            ,xwa.approve_dep_code
+            ,xwa.approve_position_code
+            ,xwa.person_id
+      FROM   xxcmm_wk_approver  xwa
+      WHERE  xwa.config_type  = iv_conf_type
+      AND    xwa.person_id    IS NULL
+      AND NOT EXISTS (SELECT 1
+                      FROM   xxcmm_wk_approver  xwa2
+                      WHERE  xwa2.config_type                         = iv_conf_type
+                      AND    xwa2.person_id                           IS NOT NULL
+                      AND    xwa2.applica_dep_code                    = xwa.applica_dep_code
+                      AND    NVL(xwa2.applica_position_code, cv_aste) = NVL(xwa.applica_position_code, cv_aste)
+                      AND    NVL(xwa2.approve_dep_code, cv_aste)      = NVL(xwa.approve_dep_code, cv_aste)
+                      AND    NVL(xwa2.approve_position_code, cv_aste) = NVL(xwa.approve_position_code, cv_aste)
+                     )
+      GROUP BY applica_dep_code
+              ,applica_position_code
+              ,approve_dep_code
+              ,approve_position_code
+              ,person_id
+    ;
+--
+    -- 更新対象従業員取得(標準/ALL/OK)
+    CURSOR get_emp_cur(
+      iv_dep_code  IN VARCHAR2   -- 申請者者所属コード
+     ,iv_pos_code  IN VARCHAR2   -- 申請者職位コード  (OK時に指定する。NULLなら従業員マスタの自分を参照）
+     ,in_person_id IN NUMBER     -- 承認者ID          (承認者ワークの従業員が、SQLで取得した従業員かを指定）
+    )
+    IS
+      SELECT paaf.assignment_id                               AS assignment_id
+            ,paaf.effective_start_date                        AS effective_start_date
+            ,paaf.effective_end_date                          AS effective_end_date
+            ,paaf.person_id                                   AS person_id
+            ,papf.employee_number                             AS employee_number
+            ,papf.per_information18 || papf.per_information19 AS emp_name
+      FROM   per_all_people_f         papf
+            ,per_all_assignments_f    paaf
+            ,per_periods_of_service   ppos
+            ,(SELECT  papf2.person_id                 AS person_id
+                     ,MAX(papf2.effective_start_date) AS effective_start_date
+              FROM    per_all_people_f  papf2
+              WHERE   papf2.current_emp_or_apl_flag = gv_const_y
+              GROUP BY papf2.person_id
+             ) sub
+      WHERE  sub.person_id                                  = papf.person_id
+      AND    sub.effective_start_date                       = papf.effective_start_date
+      AND    papf.effective_start_date                      = paaf.effective_start_date
+      AND    papf.person_id                                 = paaf.person_id
+      AND    paaf.period_of_service_id                      = ppos.period_of_service_id
+      AND    papf.attribute_category                        = TO_CHAR(gn_org_id)
+      AND    NVL(ppos.actual_termination_date, cd_sysdate) >= cd_sysdate
+      AND    paaf.ass_attribute5                            = iv_dep_code
+      AND    papf.attribute11                               = NVL(iv_pos_code, papf.attribute11)
+      AND    papf.person_id                                <> in_person_id
+    ;
+--
+    --承認者情報取得(ALL/OK)
+    CURSOR get_approver_cur(
+      iv_dep_code  IN VARCHAR2   -- 申請者所属コード
+     ,iv_pos_code  IN VARCHAR2   -- 申請者職位コード
+    )
+    IS
+      SELECT papf.employee_number                             AS employee_number
+            ,papf.per_information18 || papf.per_information19 AS emp_name
+      FROM   per_all_people_f         papf
+            ,per_all_assignments_f    paaf
+            ,per_periods_of_service   ppos
+            ,(SELECT  papf2.person_id                 AS person_id
+                     ,MAX(papf2.effective_start_date) AS effective_start_date
+              FROM    per_all_people_f  papf2
+              WHERE   papf2.current_emp_or_apl_flag = gv_const_y
+              GROUP BY papf2.person_id
+             ) sub
+      WHERE  sub.person_id = papf.person_id
+      AND    sub.effective_start_date                       = papf.effective_start_date
+      AND    papf.effective_start_date                      = paaf.effective_start_date
+      AND    papf.person_id                                 = paaf.person_id
+      AND    paaf.period_of_service_id                      = ppos.period_of_service_id
+      AND    papf.attribute_category                        = TO_CHAR(gn_org_id)
+      AND    NVL(ppos.actual_termination_date, cd_sysdate) >= cd_sysdate
+      AND    paaf.ass_attribute5                            = iv_dep_code
+      AND    papf.attribute11                               = iv_pos_code
+    ;
+--
+    -- ローカルテーブル
+    -- 承認者ワーク（標準）
+    TYPE l_tab_wk_st  IS TABLE OF get_wk_st_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    lt_wk_st          l_tab_wk_st;
+    -- 承認者ワーク（ALL）
+    TYPE l_tab_wk_all IS TABLE OF get_wk_alok_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    lt_wk_all         l_tab_wk_all;
+    -- 承認者ワーク（OK）
+    TYPE l_tab_wk_ok  IS TABLE OF get_wk_alok_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    lt_wk_ok          l_tab_wk_ok;
+    -- 更新対象従業員
+    TYPE l_tab_emp    IS TABLE OF get_emp_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    lt_emp            l_tab_emp;
+    -- 承認者情報
+    TYPE l_tab_approv IS TABLE OF get_approver_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+    lt_approv         l_tab_approv;
+--
+--Ver1.20 2019/04/16 N.Abe Add End
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -8967,7 +9133,571 @@ AS
           RAISE global_api_expt;
         END IF;
       END IF;
+
+--Ver1.20 2019/04/16 N.Abe Add Start
+      -- ============================
+      -- 承認者設定パターンの登録
+      -- ============================
+      -- カウンタ初期化
+      ln_apr_cnt := 0;
+      ln_apl_cnt := 0;
+--
+      -- ① 異動先（新コード）が承認者と一致
+      INSERT INTO xxcmm_wk_approver(
+        applica_dep_code
+       ,applica_position_code
+       ,approve_dep_code
+       ,approve_position_code
+       ,config_type
+       ,person_id
+       ,created_by
+       ,creation_date
+       ,request_id
+      )
+      SELECT flv.attribute1
+            ,flv.attribute2
+            ,flv.attribute3
+            ,flv.attribute4
+            ,DECODE(flv.attribute2, cv_all, cv_all, cv_ok)
+            ,lt_proc_masters(ln_cnt).person_id
+            ,gn_created_by
+            ,gd_creation_date
+            ,gn_request_id
+      FROM   fnd_lookup_values_vl flv
+      WHERE  flv.lookup_type                            = cv_flv_exp_sett_appr
+      AND    flv.enabled_flag                           = gv_const_y
+      AND    flv.start_date_active                     <= cd_process_date
+      AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
+      AND    flv.attribute3                             = lt_proc_masters(ln_cnt).location_code  -- 承認者所属 = 所属コード（新）
+      AND    flv.attribute4                             = lt_proc_masters(ln_cnt).job_post       -- 承認者職位 = 職位（新）
+      ;
+--
+      -- ①の登録件数取得
+      ln_apr_cnt := SQL%ROWCOUNT;
+--
+      -- ② 異動先（新コード）が申請者と一致
+      INSERT INTO xxcmm_wk_approver(
+        applica_dep_code
+       ,applica_position_code
+       ,approve_dep_code
+       ,approve_position_code
+       ,config_type
+       ,created_by
+       ,creation_date
+       ,request_id
+      )
+      SELECT flv.attribute1
+            ,flv.attribute2
+            ,flv.attribute3
+            ,flv.attribute4
+            ,DECODE(flv.attribute2, cv_all, cv_all, cv_ok)
+            ,gn_created_by
+            ,gd_creation_date
+            ,gn_request_id
+      FROM   fnd_lookup_values_vl flv
+      WHERE  flv.lookup_type                            = cv_flv_exp_sett_appr
+      AND    flv.enabled_flag                           = gv_const_y
+      AND    flv.start_date_active                     <= cd_process_date
+      AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
+      AND    flv.attribute1                             = lt_proc_masters(ln_cnt).location_code  -- 申請者所属 = 所属コード（新）
+      AND    DECODE(flv.attribute2, cv_all, lt_proc_masters(ln_cnt).job_post, flv.attribute2)    -- 申請者職位(ALLの場合は全件) = 職位（新）
+                                                        = lt_proc_masters(ln_cnt).job_post
+      ;
+--
+      -- ②の登録件数取得
+      ln_apl_cnt := SQL%ROWCOUNT;
+--
+      -- ①②の登録件数0（例外なし）の場合
+      IF (ln_apr_cnt = 0 AND ln_apl_cnt = 0) THEN
+        -- ③ 標準ルールのデータ
+        INSERT INTO xxcmm_wk_approver(
+          applica_dep_code
+         ,config_type
+         ,created_by
+         ,creation_date
+         ,request_id
+        ) VALUES (
+          lt_proc_masters(ln_cnt).location_code
+         ,cv_std
+         ,gn_created_by
+         ,gd_creation_date
+         ,gn_request_id
+        );
+      END IF;
+  --
+      -- ④ 異動元（旧コード）が承認者と一致しない場合
+      INSERT INTO xxcmm_wk_approver(
+        applica_dep_code
+       ,config_type
+       ,created_by
+       ,creation_date
+       ,request_id
+      ) 
+      SELECT lt_proc_masters(ln_cnt).location_code_old
+            ,cv_std
+            ,gn_created_by
+            ,gd_creation_date
+            ,gn_request_id
+      FROM   dual
+      WHERE NOT EXISTS (SELECT 1
+                        FROM   fnd_lookup_values_vl flv
+                        WHERE  flv.lookup_type                            = cv_flv_exp_sett_appr
+                        AND    flv.enabled_flag                           = gv_const_y
+                        AND    flv.start_date_active                     <= cd_process_date
+                        AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
+                        AND    flv.attribute3                             = lt_proc_masters(ln_cnt).location_code_old  -- 承認者所属 = 所属コード（旧）
+                        AND    flv.attribute4                             = lt_proc_masters(ln_cnt).job_post_old       -- 承認者職位 = 職位（旧）
+                       )
+      AND    lt_proc_masters(ln_cnt).location_code_old IS NOT NULL
+      ;
+--Ver1.20 2019/04/16 N.Abe Add End
     END LOOP lt_proc_masters_loop;
+--Ver1.20 2019/04/16 N.Abe Add Start
+    -- ===================================
+    -- 承認者更新処理（A-14）
+    -- ===================================
+    -- =========================
+    -- ①設定タイプ = 'STANDARD'
+    -- =========================
+--
+    --承認者ワークより対象データ取得
+    --オープン
+    OPEN get_wk_st_cur;
+    --バルクフェッチ
+    FETCH get_wk_st_cur BULK COLLECT INTO lt_wk_st;
+    --クローズ
+    CLOSE get_wk_st_cur;
+--
+    -- 標準パターンの件数分処理を実施
+    <<std_loop>>
+    FOR ln_wk_cnt IN 1..lt_wk_st.COUNT LOOP
+      -- フラグ初期化
+      lv_skip_flag := FALSE;
+      --承認者の従業員IDを取得
+      BEGIN
+        SELECT sub.person_id
+        INTO   ln_app_id
+        FROM  (SELECT paaf.person_id
+               FROM   per_all_assignments_f   paaf
+                     ,per_periods_of_service  ppos
+               WHERE  paaf.ass_attribute5                        = lt_wk_st(ln_wk_cnt).applica_dep_code
+               AND    paaf.period_of_service_id                  = ppos.period_of_service_id
+               AND    TO_NUMBER(NVL(paaf.ass_attribute11, '99')) > 0
+               AND    ppos.actual_termination_date               IS NULL
+               ORDER BY TO_NUMBER(paaf.ass_attribute11)
+                       ,ppos.date_start
+              ) sub
+        WHERE ROWNUM = 1
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- NULLだと従業員が取得できないため「-1」代入
+          ln_app_id     := -1;
+          -- 承認者未存在エラーメッセージ
+          lv_msg_code   := cv_msg_xxcmm_10494;
+          -- 従業員検索後のスキップ判定
+          lv_skip_flag  := TRUE;
+          gv_retcode    := cv_status_warn;  -- 処理結果(警告)
+      END;
+      --
+      --更新対象従業員を取得
+      OPEN get_emp_cur(
+        lt_wk_st(ln_wk_cnt).applica_dep_code  --申請者所属コード
+       ,NULL                          --職位（標準で申請者職位は不要）
+       ,ln_app_id                     --承認者の従業員ID
+      );
+      --バルクフェッチ
+      FETCH get_emp_cur BULK COLLECT INTO lt_emp;
+      --クローズ
+      CLOSE get_emp_cur;
+--
+      -- スキップ対象の場合
+      IF (lv_skip_flag = TRUE) THEN
+        --
+        <<msg_st_loop>>
+        FOR ln_sk_cnt IN 1..lt_emp.COUNT LOOP
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                      ,iv_name         => cv_msg_xxcmm_10494
+                      ,iv_token_name1  => cv_tkn_emp_num
+                      ,iv_token_value1 => lt_emp(ln_emp_cnt).employee_number    -- 申請者の従業員番号
+                      ,iv_token_name2  => cv_tkn_emp_name
+                      ,iv_token_value2 => lt_emp(ln_emp_cnt).emp_name           -- 申請者の従業員名
+                      ,iv_token_name3  => cv_tkn_al_dep_code
+                      ,iv_token_value3 => lt_wk_st(ln_wk_cnt).applica_dep_code  -- 申請者の所属
+                      ,iv_token_name4  => cv_tkn_ar_dep_code
+                      ,iv_token_value4 => lt_wk_st(ln_wk_cnt).applica_dep_code  -- 承認者の所属（標準は承認と申請の所属は一致）
+                      ,iv_token_name5  => cv_tkn_ar_pos_code
+                      ,iv_token_value5 => NULL                                  -- 承認者の職位（標準はないのでNULL）
+                     );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_errmsg
+          );
+        END LOOP msg_st_loop;
+        -- std_loopの次レコード
+        CONTINUE;
+      END IF;
+--
+      --承認者の更新
+      FORALL j IN 1..lt_emp.COUNT
+        UPDATE per_all_assignments_f
+        SET    supervisor_id        = ln_app_id                       --承認者の従業員ID
+        WHERE  assignment_id        = lt_emp(j).assignment_id         --アサインメントID
+        AND    effective_start_date = lt_emp(j).effective_start_date  --登録年月日
+        AND    effective_end_date   = lt_emp(j).effective_end_date    --登録期限年月日
+        ;
+--
+      --承認者範囲の更新
+      FORALL k IN 1..lt_emp.COUNT
+        UPDATE per_all_people_f
+        SET    attribute30          = lt_wk_st(ln_wk_cnt).applica_dep_code    --申請者所属コード
+        WHERE  person_id            = lt_emp(k).person_id             --従業員ID
+        AND    effective_start_date = lt_emp(k).effective_start_date  --登録年月日
+        AND    effective_end_date   = lt_emp(k).effective_end_date    --登録期限年月日
+        ;
+--
+    END LOOP std_loop;
+--
+    -- =========================
+    -- ②設定タイプ = 'ALL'
+    -- =========================
+--
+    --承認者ワークより対象データ取得
+    --オープン
+    OPEN get_wk_alok_cur(cv_all);
+    --バルクフェッチ
+    FETCH get_wk_alok_cur BULK COLLECT INTO lt_wk_all;
+    --クローズ
+    CLOSE get_wk_alok_cur;
+--
+    -- ALLパターンの件数分処理を実施
+    <<all_loop>>
+    FOR ln_wk_cnt IN 1..lt_wk_all.COUNT LOOP
+      -- フラグ初期化
+      lv_skip_flag := FALSE;
+      --承認者の従業員IDを取得
+      BEGIN
+        SELECT papf.person_id
+        INTO   ln_app_id
+        FROM   per_all_people_f         papf
+              ,per_all_assignments_f    paaf
+              ,per_periods_of_service   ppos
+              ,(SELECT  papf2.person_id                 AS person_id
+                       ,MAX(papf2.effective_start_date) AS effective_start_date
+                FROM    per_all_people_f  papf2
+                WHERE   papf2.current_emp_or_apl_flag = gv_const_y
+                GROUP BY papf2.person_id
+               ) sub
+        WHERE  sub.person_id = papf.person_id
+        AND    sub.effective_start_date                       = papf.effective_start_date
+        AND    papf.effective_start_date                      = paaf.effective_start_date
+        AND    papf.person_id                                 = paaf.person_id
+        AND    paaf.period_of_service_id                      = ppos.period_of_service_id
+        AND    papf.attribute_category                        = TO_CHAR(gn_org_id)
+        AND    NVL(ppos.actual_termination_date, cd_sysdate) >= cd_sysdate
+        AND    paaf.ass_attribute5                            = lt_wk_all(ln_wk_cnt).approve_dep_code       --承認者所属コード
+        AND    papf.attribute11                               = lt_wk_all(ln_wk_cnt).approve_position_code  --承認者職位コード
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 更新従業員取得用に「-1」代入
+          ln_app_id := -1;
+          -- 承認者未存在エラーメッセージ
+          lv_msg_code  := cv_msg_xxcmm_10494;
+          -- 従業員検索後のスキップ判定
+          lv_skip_flag := TRUE;
+          gv_retcode    := cv_status_warn;  -- 処理結果(警告)
+        WHEN TOO_MANY_ROWS THEN
+          -- 承認者情報取得カーソル
+          OPEN get_approver_cur(
+            lt_wk_all(ln_wk_cnt).approve_dep_code
+           ,lt_wk_all(ln_wk_cnt).approve_position_code
+          );
+          --バルクフェッチ
+          FETCH get_approver_cur BULK COLLECT INTO lt_approv;
+          --クローズ
+          CLOSE get_approver_cur;
+          <<msg_all_approv_loop>>
+          -- 承認者メッセージ出力ループ
+          FOR ln_ar_cnt IN 1..lt_approv.COUNT LOOP
+             -- 承認者情報複数エラーメッセージ（承認者）
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name
+                        ,iv_name         => cv_msg_xxcmm_10495
+                        ,iv_token_name1  => cv_tkn_emp_num
+                        ,iv_token_value1 => lt_approv(ln_ar_cnt).employee_number        -- 承認者の従業員番号
+                        ,iv_token_name2  => cv_tkn_emp_name
+                        ,iv_token_value2 => lt_approv(ln_ar_cnt).emp_name               -- 承認者の従業員名
+                        ,iv_token_name3  => cv_tkn_ar_dep_code
+                        ,iv_token_value3 => lt_wk_all(ln_wk_cnt).approve_dep_code       -- 承認者の所属
+                        ,iv_token_name4  => cv_tkn_ar_pos_code
+                        ,iv_token_value4 => lt_wk_all(ln_wk_cnt).approve_position_code  -- 承認者の職位
+                       );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg
+            );
+          END LOOP msg_all_approv_loop;
+        -- 更新従業員取得用に「-1」代入
+          ln_app_id := -1;
+        -- 承認者複数エラーメッセージ
+          lv_msg_code  := cv_msg_xxcmm_10496;
+        -- 従業員検索後のスキップ判定
+          lv_skip_flag := TRUE;
+          gv_retcode    := cv_status_warn;  -- 処理結果(警告)
+      END;
+      --
+      --更新対象従業員を取得
+      OPEN get_emp_cur(
+        lt_wk_all(ln_wk_cnt).applica_dep_code   --申請者所属コード
+       ,NULL                                    --職位（ALLは所属全てなので不要）
+       ,ln_app_id                               --取得した従業員
+      );
+      --バルクフェッチ
+      FETCH get_emp_cur BULK COLLECT INTO lt_emp;
+      --クローズ
+      CLOSE get_emp_cur;
+--
+      -- スキップ対象の場合
+      IF (lv_skip_flag = TRUE) THEN
+        -- 申請者メッセージ出力ループ
+        <<msg_all_loop>>
+        FOR ln_sk_cnt IN 1..lt_emp.COUNT LOOP
+          -- メッセージコードが、承認者未存在エラーの場合
+          IF (lv_msg_code = cv_msg_xxcmm_10494) THEN
+            -- 承認者未存在エラーメッセージ
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name
+                        ,iv_name         => lv_msg_code
+                        ,iv_token_name1  => cv_tkn_emp_num
+                        ,iv_token_value1 => lt_emp(ln_sk_cnt).employee_number           -- 申請者の従業員番号
+                        ,iv_token_name2  => cv_tkn_emp_name
+                        ,iv_token_value2 => lt_emp(ln_sk_cnt).emp_name                  -- 申請者の従業員名
+                        ,iv_token_name3  => cv_tkn_al_dep_code
+                        ,iv_token_value3 => lt_wk_all(ln_wk_cnt).applica_dep_code       -- 申請者の所属
+                        ,iv_token_name4  => cv_tkn_ar_dep_code
+                        ,iv_token_value4 => lt_wk_all(ln_wk_cnt).approve_dep_code       -- 承認者の所属（標準は承認と申請の所属は一致）
+                        ,iv_token_name5  => cv_tkn_ar_pos_code
+                        ,iv_token_value5 => lt_wk_all(ln_wk_cnt).approve_position_code  -- 承認者の職位
+                       );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg
+            );
+--
+          -- 承認者複数エラーの場合
+          ELSE
+            -- 承認者情報複数エラーメッセージ（申請者）
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name
+                        ,iv_name         => lv_msg_code
+                        ,iv_token_name1  => cv_tkn_emp_num
+                        ,iv_token_value1 => lt_emp(ln_sk_cnt).employee_number           -- 申請者の従業員番号
+                        ,iv_token_name2  => cv_tkn_emp_name
+                        ,iv_token_value2 => lt_emp(ln_sk_cnt).emp_name                  -- 申請者の従業員名
+                        ,iv_token_name3  => cv_tkn_al_dep_code
+                        ,iv_token_value3 => lt_wk_all(ln_wk_cnt).applica_dep_code       -- 申請者の所属
+                       );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg
+            );
+          END IF;
+        END LOOP msg_all_loop;
+        -- all_loopの次レコード
+        CONTINUE;
+      END IF;
+--
+      --承認者の更新
+      FORALL j IN 1..lt_emp.COUNT
+        UPDATE per_all_assignments_f
+        SET    supervisor_id        = ln_app_id                       --取得した従業員
+        WHERE  assignment_id        = lt_emp(j).assignment_id         --アサインメントID
+        AND    effective_start_date = lt_emp(j).effective_start_date  --登録年月日
+        AND    effective_end_date   = lt_emp(j).effective_end_date    --登録期限年月日
+        ;
+--
+      --承認者範囲の更新
+      FORALL k IN 1..lt_emp.COUNT
+        UPDATE per_all_people_f
+        SET    attribute30          = lt_wk_all(ln_wk_cnt).approve_dep_code   --承認者所属コード
+        WHERE  person_id            = lt_emp(k).person_id                     --従業員ID
+        AND    effective_start_date = lt_emp(k).effective_start_date          --登録年月日
+        AND    effective_end_date   = lt_emp(k).effective_end_date            --登録期限年月日
+        ;
+--
+    END LOOP all_loop;
+--
+    -- =========================
+    -- ③設定タイプ = 'OK'
+    -- =========================
+--
+    --承認者ワークより対象データ取得
+    --オープン
+    OPEN get_wk_alok_cur(cv_ok);
+    --バルクフェッチ
+    FETCH get_wk_alok_cur BULK COLLECT INTO lt_wk_ok;
+    --クローズ
+    CLOSE get_wk_alok_cur;
+--
+    -- OKパターンの件数分処理を実施
+    <<ok_loop>>
+    FOR ln_wk_cnt IN 1..lt_wk_ok.COUNT LOOP
+      -- フラグ初期化
+      lv_skip_flag := FALSE;
+      --承認者の従業員IDを取得
+      BEGIN
+        SELECT papf.person_id
+        INTO   ln_app_id
+        FROM   per_all_people_f         papf
+              ,per_all_assignments_f    paaf
+              ,per_periods_of_service   ppos
+              ,(SELECT  papf2.person_id                 AS person_id
+                       ,MAX(papf2.effective_start_date) AS effective_start_date
+                FROM    per_all_people_f  papf2
+                WHERE   papf2.current_emp_or_apl_flag = gv_const_y
+                GROUP BY papf2.person_id
+               ) sub
+        WHERE  sub.person_id                                  = papf.person_id
+        AND    sub.effective_start_date                       = papf.effective_start_date
+        AND    papf.effective_start_date                      = paaf.effective_start_date
+        AND    papf.person_id                                 = paaf.person_id
+        AND    paaf.period_of_service_id                      = ppos.period_of_service_id
+        AND    papf.attribute_category                        = TO_CHAR(gn_org_id)
+        AND    NVL(ppos.actual_termination_date, cd_sysdate) >= cd_sysdate
+        AND    paaf.ass_attribute5                            = lt_wk_ok(ln_wk_cnt).approve_dep_code      --承認者所属コード
+        AND    papf.attribute11                               = lt_wk_ok(ln_wk_cnt).approve_position_code --承認者職位コード
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 更新従業員取得用に「-1」代入
+          ln_app_id := -1;
+          -- 承認者未存在エラーメッセージ
+          lv_msg_code  := cv_msg_xxcmm_10494;
+          -- 従業員検索後のスキップ判定
+          lv_skip_flag := TRUE;
+          gv_retcode    := cv_status_warn;  -- 処理結果(警告)
+        WHEN TOO_MANY_ROWS THEN
+          -- 承認者情報取得カーソル
+          OPEN get_approver_cur(
+            lt_wk_ok(ln_wk_cnt).approve_dep_code
+           ,lt_wk_ok(ln_wk_cnt).approve_position_code
+          );
+          --バルクフェッチ
+          FETCH get_approver_cur BULK COLLECT INTO lt_approv;
+          --クローズ
+          CLOSE get_approver_cur;
+          <<msg_all_approv_loop>>
+          -- 承認者メッセージ出力ループ
+          FOR ln_ar_cnt IN 1..lt_approv.COUNT LOOP
+             -- 承認者情報複数エラーメッセージ（承認者）
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name
+                        ,iv_name         => cv_msg_xxcmm_10495
+                        ,iv_token_name1  => cv_tkn_emp_num
+                        ,iv_token_value1 => lt_approv(ln_ar_cnt).employee_number      -- 承認者の従業員番号
+                        ,iv_token_name2  => cv_tkn_emp_name
+                        ,iv_token_value2 => lt_approv(ln_ar_cnt).emp_name             -- 承認者の従業員名
+                        ,iv_token_name3  => cv_tkn_ar_dep_code
+                        ,iv_token_value3 => lt_wk_ok(ln_wk_cnt).approve_dep_code      -- 承認者の所属
+                        ,iv_token_name4  => cv_tkn_ar_pos_code
+                        ,iv_token_value4 => lt_wk_ok(ln_wk_cnt).approve_position_code -- 承認者の職位
+                       );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg
+            );
+          END LOOP msg_all_approv_loop;
+        -- 更新従業員取得用に「-1」代入
+          ln_app_id := -1;
+        -- 承認者複数エラーメッセージ
+          lv_msg_code  := cv_msg_xxcmm_10495;
+        -- 従業員検索後のスキップ判定
+          lv_skip_flag := TRUE;
+          gv_retcode    := cv_status_warn;  -- 処理結果(警告)
+      END;
+      --
+      --更新対象従業員を取得
+      OPEN get_emp_cur(
+        lt_wk_ok(ln_wk_cnt).applica_dep_code
+       ,lt_wk_ok(ln_wk_cnt).applica_position_code
+       ,ln_app_id                                 --取得した従業員
+      );
+      --バルク
+      FETCH get_emp_cur BULK COLLECT INTO lt_emp;
+      --クローズ
+      CLOSE get_emp_cur;
+--
+      -- スキップ対象の場合
+      IF (lv_skip_flag = TRUE) THEN
+        -- 申請者メッセージ出力ループ
+        <<msg_ok_loop>>
+        FOR ln_sk_cnt IN 1..lt_emp.COUNT LOOP
+          -- メッセージコードが、承認者未存在エラーの場合
+          IF (lv_msg_code = cv_msg_xxcmm_10494) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name
+                        ,iv_name         => lv_msg_code
+                        ,iv_token_name1  => cv_tkn_emp_num
+                        ,iv_token_value1 => lt_emp(ln_sk_cnt).employee_number         -- 申請者の従業員番号
+                        ,iv_token_name2  => cv_tkn_emp_name
+                        ,iv_token_value2 => lt_emp(ln_sk_cnt).emp_name                -- 申請者の従業員名
+                        ,iv_token_name3  => cv_tkn_al_dep_code
+                        ,iv_token_value3 => lt_wk_ok(ln_wk_cnt).applica_dep_code      -- 申請者の所属
+                        ,iv_token_name4  => cv_tkn_ar_dep_code
+                        ,iv_token_value4 => lt_wk_ok(ln_wk_cnt).approve_dep_code      -- 承認者の所属
+                        ,iv_token_name5  => cv_tkn_ar_pos_code
+                        ,iv_token_value5 => lt_wk_ok(ln_wk_cnt).approve_position_code -- 承認者の職位
+                       );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg
+            );
+          -- 承認者複数エラーの場合
+          ELSE
+            -- 承認者情報複数エラーメッセージ（申請者）
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name
+                        ,iv_name         => lv_msg_code
+                        ,iv_token_name1  => cv_tkn_emp_num
+                        ,iv_token_value1 => lt_emp(ln_sk_cnt).employee_number           -- 申請者の従業員番号
+                        ,iv_token_name2  => cv_tkn_emp_name
+                        ,iv_token_value2 => lt_emp(ln_sk_cnt).emp_name                  -- 申請者の従業員名
+                        ,iv_token_name3  => cv_tkn_al_dep_code
+                        ,iv_token_value3 => lt_wk_ok(ln_wk_cnt).applica_dep_code       -- 申請者の所属
+                       );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errmsg
+            );
+          END IF;
+        END LOOP msg_ok_loop;
+        -- ok_loopの次レコード
+        CONTINUE;
+      END IF;
+--
+      --承認者の更新
+      FORALL j IN 1..lt_emp.COUNT
+        UPDATE per_all_assignments_f
+        SET    supervisor_id        = ln_app_id                       --取得した従業員
+        WHERE  assignment_id        = lt_emp(j).assignment_id         --アサインメントID
+        AND    effective_start_date = lt_emp(j).effective_start_date  --登録年月日
+        AND    effective_end_date   = lt_emp(j).effective_end_date    --登録期限年月日
+        ;
+--
+      --承認者範囲の更新
+      FORALL k IN 1..lt_emp.COUNT
+        UPDATE per_all_people_f
+        SET    attribute30          = attribute28                     --起票部門(所属コード（新）)
+        WHERE  person_id            = lt_emp(k).person_id             --従業員ID
+        AND    effective_start_date = lt_emp(k).effective_start_date  --登録年月日
+        AND    effective_end_date   = lt_emp(k).effective_end_date    --登録期限年月日
+        ;
+--
+    END LOOP ok_loop;
+--
+--Ver1.20 2019/04/16 N.Abe Add End
     -- 新規社員の職責は社員職責自動割当ワークより一括登録
     <<wk_pr2_loop>>
     FOR wk_pr2_rec IN wk_pr2_cur(gv_kbn_new) 
