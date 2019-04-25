@@ -1,0 +1,31 @@
+CREATE TABLE xxcmm.xxcmm_wk_approver (
+     applica_dep_code               VARCHAR2(10)  NOT NULL
+    ,applica_position_code          VARCHAR2(3)
+    ,approve_dep_code               VARCHAR2(10)
+    ,approve_position_code          VARCHAR2(3)
+    ,config_type                    VARCHAR2(20)  NOT NULL
+    ,person_id                      VARCHAR2(100)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,request_id                     NUMBER(15)    NOT NULL)
+/
+COMMENT ON TABLE xxcmm.xxcmm_wk_approver IS '承認者ワーク'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.applica_dep_code                             IS '申請者所属CD'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.applica_position_code                        IS '申請者職位'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.approve_dep_code                             IS '承認者所属CD'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.approve_position_code                        IS '承認者職位'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.config_type                                  IS '設定タイプ'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.person_id                                    IS '従業員ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.created_by                                   IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.creation_date                                IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_approver.request_id                                   IS '要求ID'
+/
