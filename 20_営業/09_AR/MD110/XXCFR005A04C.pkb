@@ -7,7 +7,7 @@ AS
  * Description      : ロックボックス入金処理
  * MD.050           : MD050_CFR_005_A04_ロックボックス入金処理
  * MD.070           : MD050_CFR_005_A04_ロックボックス入金処理
- * Version          : 1.03
+ * Version          : 1.04
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2013/07/22    1.01 SCSK 中村 健一   E_本稼動_10950 消費税増税対応
  *  2015/05/29    1.02 SCSK 小路 恭弘   E_本稼動_13114 振込24時間化対応
  *  2019/02/05    1.03 SCSK 矢崎 栄司   E_本稼動_15534 年号変更対応
+ *  2019/05/08    1.04 SCSK 阿部 直樹   E_本稼動_15722 年号変更不具合対応
  *
  *****************************************************************************************/
 --
@@ -592,7 +593,10 @@ AS
     cv_trance_receipt  CONSTANT VARCHAR2(2) := '11';  -- 取引区分
 -- 2019/02/05 Ver1.03 Add START
     cv_receipt_standard_date_to   CONSTANT VARCHAR2(6) := '310331'; -- 入金日変換 基準日1
-    cv_receipt_standard_date_from CONSTANT VARCHAR2(6) := '310501'; -- 入金日変換 基準日2
+-- 2019/05/08 Ver1.04 Mod START
+--    cv_receipt_standard_date_from CONSTANT VARCHAR2(6) := '310501'; -- 入金日変換 基準日2
+    cv_receipt_standard_date_from CONSTANT VARCHAR2(6) := '310401'; -- 入金日変換 基準日2
+-- 2019/05/08 Ver1.04 Mod END
     cn_newnengou_add_year         CONSTANT NUMBER(4)   := 2018;
     cn_heisei_add_year            CONSTANT NUMBER(4)   := 1988;
 -- 2019/02/05 Ver1.03 Add END
