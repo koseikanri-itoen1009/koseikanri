@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2017/03/29    1.10  SCSK小路         [E_本稼動_14030]減価償却費を拠点へ振替える
  *  2018/03/29    1.11  SCSK大塚         [E_本稼動_14830]IFRSリース資産対応
  *  2018/09/07    1.12  SCSK小路         [E_本稼動_14830]IFRSリース追加対応
+ *  2019/05/24    1.13  SCSK小路         [E_本稼動_15727]自販機の減価償却費の拠点振替対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3318,79 +3319,104 @@ AS
 --                     ,lse_trnsf_hist_data.contract_line_id
 -- 2016/08/03 Ver.1.9 Y.Koh DEL End
               FROM (
--- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+-- 2019/05/24 Ver.1.13 Y.Shoji MOD Start
+---- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+----                     SELECT
+---- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+----                     SELECT /*+ INDEX(obj_hist XXCFF_OBJECT_HISTORIES_N02) INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
 --                     SELECT
--- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
---                     SELECT /*+ INDEX(obj_hist XXCFF_OBJECT_HISTORIES_N02) INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03) INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */
+--                            /*+ USE_NL(obj_hist ctrct_line ctrct_head)
+--                                INDEX(obj_hist XXCFF_OBJECT_HISTORIES_N02)
+--                                INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03)
+--                                INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */ 
+---- 2017/03/29 Ver.1.10 Y.Shoji ADD End
+---- 2016/08/03 Ver.1.9 Y.Koh MOD End
+--                             obj_hist.object_header_id   AS object_header_id
+---- 2017/03/29 Ver.1.10 Y.Shoji DEL Start
+----                            ,ctrct_line.contract_line_id AS contract_line_id
+---- 2017/03/29 Ver.1.10 Y.Shoji DEL End
+--                     FROM
+--                           xxcff_object_histories  obj_hist    -- リース物件履歴
+--                          ,xxcff_contract_lines    ctrct_line  -- リース契約明細
+--                          ,xxcff_contract_headers  ctrct_head  -- リース契約
+---- 2018/03/29 Ver1.11 Otsuka ADD Start
+--                          ,fnd_lookup_values         flv       -- 参照表
+---- 2018/03/29 Ver1.11 Otsuka ADD End
+--                     WHERE 
+--                           obj_hist.object_header_id   = ctrct_line.object_header_id
+--                       AND ctrct_line.contract_status  IN ( cv_ctrt_ctrt
+--                                                           ,cv_ctrt_manryo
+---- 2016/08/03 Ver.1.9 Y.Koh ADD Start
+--                                                           ,cv_ctrt_re_lease
+---- 2016/08/03 Ver.1.9 Y.Koh ADD End
+--                                                           ,cv_ctrt_cancel_jiko
+--                                                           ,cv_ctrt_cancel_hoken
+--                                                           ,cv_ctrt_cancel_manryo
+--                                                           ) -- 契約
+--                                                             -- 満了
+--                                                             -- 中途解約(自己都合),中途解約(保険対応),中途解約(満了)
+---- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
+----                       AND obj_hist.object_status        = cv_obj_move  -- 移動
+--                       AND obj_hist.object_status        IN (cv_obj_move ,cv_obj_modify)  -- 移動,物件情報変更
+---- 2017/03/29 Ver.1.10 Y.Shoji MOD End
+--                       AND obj_hist.accounting_if_flag   = cv_if_yet    -- 未送信
+---- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
+--                       AND obj_hist.accounting_date      >= TO_DATE(gv_period_name,'YYYY-MM')
+---- 2017/03/29 Ver.1.10 Y.Shoji ADD End
+--                       AND obj_hist.accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+--                       AND ctrct_head.contract_header_id = ctrct_line.contract_header_id
+---- 2016/08/03 Ver.1.9 Y.Koh MOD Start
+----                       AND ctrct_head.lease_type         =  cv_original                            -- 原契約
+----                       AND ctrct_line.lease_kind         IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
+---- 2018/03/29 Ver1.11 Otsuka DEL Start
+----                       AND ( ctrct_head.lease_type         =  cv_original                            -- 原契約
+----                       OR    ctrct_head.lease_type         =  cv_re_lease                            -- 再リース
+----                       AND   ctrct_head.lease_class        =  cv_lease_class_vd                      -- 自販機
+----                       AND   ctrct_head.re_lease_times     <= 3 )                                    -- 再リース回数
+---- 2016/08/03 Ver.1.9 Y.Koh MOD End
+---- 2018/03/29 Ver1.11 Otsuka DEL End
+--                       AND obj_hist.re_lease_times       = ctrct_head.re_lease_times
+---- 2018/03/29 Ver1.11 Otsuka ADD Start
+--                       AND (  ctrct_head.lease_type      =  cv_original                            -- 原契約
+--                         OR   (ctrct_head.lease_type     =  cv_re_lease                            -- 再リース
+--                           AND ctrct_head.lease_class    =  cv_lease_class_vd                      -- 自販機
+--                           AND ctrct_head.re_lease_times <= 3 )                                    -- 再リース回数
+--                         OR   (ctrct_head.lease_type     =  cv_re_lease                            -- 再リース
+--                           AND flv.attribute7            =  cv_lease_cls_chk2))                    -- リース判定結果：2
+--                       AND  ctrct_head.lease_class       =  flv.lookup_code
+--                       AND  flv.lookup_type              =  cv_xxcff1_lease_class_check
+---- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
+--                       AND   flv.attribute7              =  gv_lease_class_att7
+---- 2018/09/07 Ver.1.12 Y.Shoji ADD End
+--                       AND  flv.language                 =  USERENV('LANG')
+--                       AND  flv.enabled_flag             =  cv_flg_y
+--                       AND  LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
+--                                                                        AND     NVL(flv.end_date_active  , LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
+---- 2018/03/29 Ver1.11 Otsuka ADD End
                      SELECT
-                            /*+ USE_NL(obj_hist ctrct_line ctrct_head)
-                                INDEX(obj_hist XXCFF_OBJECT_HISTORIES_N02)
-                                INDEX(ctrct_line XXCFF_CONTRACT_LINES_N03)
-                                INDEX(ctrct_head XXCFF_CONTRACT_HEADERS_PK) */ 
--- 2017/03/29 Ver.1.10 Y.Shoji ADD End
--- 2016/08/03 Ver.1.9 Y.Koh MOD End
-                             obj_hist.object_header_id   AS object_header_id
--- 2017/03/29 Ver.1.10 Y.Shoji DEL Start
---                            ,ctrct_line.contract_line_id AS contract_line_id
--- 2017/03/29 Ver.1.10 Y.Shoji DEL End
+                            obj_hist.object_header_id   AS object_header_id
                      FROM
-                           xxcff_object_histories  obj_hist    -- リース物件履歴
-                          ,xxcff_contract_lines    ctrct_line  -- リース契約明細
-                          ,xxcff_contract_headers  ctrct_head  -- リース契約
--- 2018/03/29 Ver1.11 Otsuka ADD Start
-                          ,fnd_lookup_values         flv       -- 参照表
--- 2018/03/29 Ver1.11 Otsuka ADD End
-                     WHERE 
-                           obj_hist.object_header_id   = ctrct_line.object_header_id
-                       AND ctrct_line.contract_status  IN ( cv_ctrt_ctrt
-                                                           ,cv_ctrt_manryo
--- 2016/08/03 Ver.1.9 Y.Koh ADD Start
-                                                           ,cv_ctrt_re_lease
--- 2016/08/03 Ver.1.9 Y.Koh ADD End
-                                                           ,cv_ctrt_cancel_jiko
-                                                           ,cv_ctrt_cancel_hoken
-                                                           ,cv_ctrt_cancel_manryo
-                                                           ) -- 契約
-                                                             -- 満了
-                                                             -- 中途解約(自己都合),中途解約(保険対応),中途解約(満了)
--- 2017/03/29 Ver.1.10 Y.Shoji MOD Start
---                       AND obj_hist.object_status        = cv_obj_move  -- 移動
-                       AND obj_hist.object_status        IN (cv_obj_move ,cv_obj_modify)  -- 移動,物件情報変更
--- 2017/03/29 Ver.1.10 Y.Shoji MOD End
-                       AND obj_hist.accounting_if_flag   = cv_if_yet    -- 未送信
--- 2017/03/29 Ver.1.10 Y.Shoji ADD Start
-                       AND obj_hist.accounting_date      >= TO_DATE(gv_period_name,'YYYY-MM')
--- 2017/03/29 Ver.1.10 Y.Shoji ADD End
-                       AND obj_hist.accounting_date      <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
-                       AND ctrct_head.contract_header_id = ctrct_line.contract_header_id
--- 2016/08/03 Ver.1.9 Y.Koh MOD Start
---                       AND ctrct_head.lease_type         =  cv_original                            -- 原契約
---                       AND ctrct_line.lease_kind         IN (cv_lease_kind_fin,cv_lease_kind_lfin) -- Fin,旧Fin
--- 2018/03/29 Ver1.11 Otsuka DEL Start
---                       AND ( ctrct_head.lease_type         =  cv_original                            -- 原契約
---                       OR    ctrct_head.lease_type         =  cv_re_lease                            -- 再リース
---                       AND   ctrct_head.lease_class        =  cv_lease_class_vd                      -- 自販機
---                       AND   ctrct_head.re_lease_times     <= 3 )                                    -- 再リース回数
--- 2016/08/03 Ver.1.9 Y.Koh MOD End
--- 2018/03/29 Ver1.11 Otsuka DEL End
-                       AND obj_hist.re_lease_times       = ctrct_head.re_lease_times
--- 2018/03/29 Ver1.11 Otsuka ADD Start
-                       AND (  ctrct_head.lease_type      =  cv_original                            -- 原契約
-                         OR   (ctrct_head.lease_type     =  cv_re_lease                            -- 再リース
-                           AND ctrct_head.lease_class    =  cv_lease_class_vd                      -- 自販機
-                           AND ctrct_head.re_lease_times <= 3 )                                    -- 再リース回数
-                         OR   (ctrct_head.lease_type     =  cv_re_lease                            -- 再リース
-                           AND flv.attribute7            =  cv_lease_cls_chk2))                    -- リース判定結果：2
-                       AND  ctrct_head.lease_class       =  flv.lookup_code
-                       AND  flv.lookup_type              =  cv_xxcff1_lease_class_check
--- 2018/09/07 Ver.1.12 Y.Shoji ADD Start
-                       AND   flv.attribute7              =  gv_lease_class_att7
--- 2018/09/07 Ver.1.12 Y.Shoji ADD End
-                       AND  flv.language                 =  USERENV('LANG')
-                       AND  flv.enabled_flag             =  cv_flg_y
-                       AND  LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
+                            xxcff_object_histories  obj_hist    -- リース物件履歴
+                           ,fnd_lookup_values       flv         -- 参照表
+                     WHERE
+                            obj_hist.object_status      IN (cv_obj_move ,cv_obj_modify)  -- 移動,物件情報変更
+                     AND    obj_hist.accounting_if_flag = cv_if_yet    -- 未送信
+                     AND    obj_hist.accounting_date    >= TO_DATE(gv_period_name,'YYYY-MM')
+                     AND    obj_hist.accounting_date    <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
+                     AND    ( obj_hist.lease_type       =  cv_original                            -- 原契約
+                       OR     ( obj_hist.lease_type     =  cv_re_lease                            -- 再リース
+                         AND    obj_hist.lease_class    =  cv_lease_class_vd                      -- 自販機
+                         AND    obj_hist.re_lease_times <= 3 )                                    -- 再リース回数
+                       OR     ( obj_hist.lease_type     =  cv_re_lease                            -- 再リース
+                         AND    flv.attribute7          =  cv_lease_cls_chk2))                    -- リース判定結果：2
+                     AND    obj_hist.lease_class         =  flv.lookup_code
+                     AND    flv.lookup_type              =  cv_xxcff1_lease_class_check
+                     AND    flv.attribute7               =  gv_lease_class_att7
+                     AND    flv.language                 =  USERENV('LANG')
+                     AND    flv.enabled_flag             =  cv_flg_y
+                     AND    LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')) BETWEEN NVL(flv.start_date_active, LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
                                                                         AND     NVL(flv.end_date_active  , LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM')))
--- 2018/03/29 Ver1.11 Otsuka ADD End
+-- 2019/05/24 Ver.1.13 Y.Shoji MOD End
                      UNION ALL
 -- 2016/08/03 Ver.1.9 Y.Koh MOD Start
 --                     SELECT
