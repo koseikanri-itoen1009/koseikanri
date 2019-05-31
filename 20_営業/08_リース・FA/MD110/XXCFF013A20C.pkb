@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF013A20C(body)
  * Description      : FAアドオンIF
  * MD.050           : MD050_CFF_013_A20_FAアドオンIF
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2018/03/29    1.11  SCSK大塚         [E_本稼動_14830]IFRSリース資産対応
  *  2018/09/07    1.12  SCSK小路         [E_本稼動_14830]IFRSリース追加対応
  *  2019/05/24    1.13  SCSK小路         [E_本稼動_15727]自販機の減価償却費の拠点振替対応
+ *  2019/05/30    1.14  SCSK小路         [E_本稼動_15727]追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -751,8 +752,13 @@ AS
                   FROM   xxcff_object_histories xoh
                   WHERE  xoh.object_header_id =  it_object_header_id
                   AND    xoh.accounting_date  <= LAST_DAY(TO_DATE(gv_period_name,'YYYY-MM'))
-                  AND    xoh.object_status    =  cv_obj_modify
+-- 2019/05/30 Ver.1.14 Y.Shoji MOD Start
+                  AND    xoh.object_status    IN (cv_obj_move ,cv_obj_modify) -- 105:移動、106：情報変更
+-- 2019/05/30 Ver.1.14 Y.Shoji MOD End
                   ORDER BY xoh.creation_date DESC
+-- 2019/05/30 Ver.1.14 Y.Shoji ADD Start
+                          ,xoh.object_status DESC -- 移動と情報変更が同時の場合、情報変更を取得
+-- 2019/05/30 Ver.1.14 Y.Shoji ADD End
                  ) xoh1
         WHERE    rownum = 1;
       EXCEPTION
