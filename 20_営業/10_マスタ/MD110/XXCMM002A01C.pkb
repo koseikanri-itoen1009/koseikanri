@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -113,6 +113,7 @@ AS
  *  2011/03/03    1.19 SCS 堀籠 直樹     障害E_本稼動_02272 対応
  *                                       ・新規／異動／退職いずれの場合もユーザーマスタ「摘要」を「カナ姓＋カナ名」で更新するよう変更
  *  2019/04/16    1.20 SCSK 阿部 直樹    障害E_本稼動_15639 対応
+ *  2019/05/22    1.21 SCSK 阿部 直樹    障害E_本稼動_15725 対応
  *
  *****************************************************************************************/
 --
@@ -9200,8 +9201,10 @@ AS
       AND    flv.start_date_active                     <= cd_process_date
       AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
       AND    flv.attribute1                             = lt_proc_masters(ln_cnt).location_code  -- 申請者所属 = 所属コード（新）
-      AND    DECODE(flv.attribute2, cv_all, lt_proc_masters(ln_cnt).job_post, flv.attribute2)    -- 申請者職位(ALLの場合は全件) = 職位（新）
-                                                        = lt_proc_masters(ln_cnt).job_post
+--Ver1.21 2019/05/22 N.Abe Del Start
+--      AND    DECODE(flv.attribute2, cv_all, lt_proc_masters(ln_cnt).job_post, flv.attribute2)    -- 申請者職位(ALLの場合は全件) = 職位（新）
+--                                                        = lt_proc_masters(ln_cnt).job_post
+--Ver1.21 2019/05/22 N.Abe Del End
       ;
 --
       -- ②の登録件数取得
@@ -9248,6 +9251,17 @@ AS
                         AND    flv.attribute3                             = lt_proc_masters(ln_cnt).location_code_old  -- 承認者所属 = 所属コード（旧）
                         AND    flv.attribute4                             = lt_proc_masters(ln_cnt).job_post_old       -- 承認者職位 = 職位（旧）
                        )
+--Ver1.21 2019/05/22 N.Abe Add Start
+      AND   NOT EXISTS (SELECT 1
+                        FROM   fnd_lookup_values_vl flv
+                        WHERE  flv.lookup_type                            = cv_flv_exp_sett_appr
+                        AND    flv.enabled_flag                           = gv_const_y
+                        AND    flv.start_date_active                     <= cd_process_date
+                        AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
+                        AND    flv.attribute1                             = lt_proc_masters(ln_cnt).location_code_old  -- 申請者所属 = 所属コード（旧）
+                        AND    flv.attribute2                             = cv_all                                     -- 申請者職位 = 'ALL'
+                       )
+--Ver1.21 2019/05/22 N.Abe Add End
       AND    lt_proc_masters(ln_cnt).location_code_old IS NOT NULL
       ;
 --Ver1.20 2019/04/16 N.Abe Add End
