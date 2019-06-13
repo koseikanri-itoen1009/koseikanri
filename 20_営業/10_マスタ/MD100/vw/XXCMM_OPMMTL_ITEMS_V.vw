@@ -61,6 +61,9 @@ SELECT    o_itm.item_id                               AS  item_id               
 -- Ver1.3  2009/05/07  Add H.Yoshikawa  áŠQNo.T1_0906 ‘Î‰
          ,xsib.case_conv_inc_num                      AS  case_conv_inc_num              -- Disc•i–ÚƒAƒhƒIƒ“ ƒP[ƒXŠ·Z“ü”
 -- End
+-- Ver1.4 2019/06/04 Add Start
+         ,xsib.class_for_variable_tax                 AS  class_for_variable_tax         -- Disc•i–ÚƒAƒhƒIƒ“ ŒyŒ¸Å—¦—pÅí•Ê
+-- Ver1.4 2019/06/04 Add End
          ,d_itm.inventory_item_id                     AS  inventory_item_id              -- Disc•i–Ú •i–ÚID
          ,d_itm.organization_id                       AS  organization_id                -- Disc•i–Ú ‘gDID
          ,d_itm.description                           AS  description                    -- Disc•i–Ú “E—v
@@ -196,6 +199,10 @@ COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.SEARCH_UPDATE_DATE IS 'Disc•i–ÚƒAƒhƒIƒ“ Œ
 COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.CASE_CONV_INC_NUM IS 'Disc•i–ÚƒAƒhƒIƒ“ ƒP[ƒXŠ·Z“ü”'
 /
 -- End
+-- Ver1.4 2019/06/04 Add Start
+COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.CLASS_FOR_VARIABLE_TAX IS 'Disc•i–ÚƒAƒhƒIƒ“ ŒyŒ¸Å—¦—pÅí•Ê'
+/
+-- Ver1.4 2019/06/04 Add End
 COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.INVENTORY_ITEM_ID IS 'Disc•i–Ú •i–ÚID'
 /
 COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.ORGANIZATION_ID IS 'Disc•i–Ú ‘gDID'
