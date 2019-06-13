@@ -61,6 +61,9 @@ CREATE TABLE xxcmm.xxcmm_wk_item_batch_regist
     program_application_id         NUMBER(15,0),
     program_id                     NUMBER(15,0),
     program_update_date            DATE
+-- Ver1.3  2019/06/04  Add E_本稼動_15472対応
+   ,class_for_variable_tax         VARCHAR2(100)
+-- End
 )
 /
 COMMENT ON TABLE xxcmm.xxcmm_wk_item_batch_regist                         IS '品目一括登録ワーク'
@@ -165,6 +168,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.renewal_item_code      IS 'リ
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.sp_supplier_code       IS '専門店仕入先コード'
 /
+-- Ver1.3  2019/06/04  Add E_本稼動_15472対応
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.class_for_variable_tax IS '軽減税率用税種別'
+/
+-- End
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.created_by             IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.creation_date          IS '作成日'
