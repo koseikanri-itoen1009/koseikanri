@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -20,6 +20,7 @@ AS
  *  get_period_year             P                 当年度会計期間取得
  *  get_account_period          P                 会計期間情報取得
  *  get_specific_master         F      VARCHAR2   特定マスタ取得(クイックコード)
+ *  get_tax_rate_info           P                 品目別消費税率取得関数
  *  
  * Change Record
  * ------------- ----- ---------------- --------------------------------------------------
@@ -30,6 +31,7 @@ AS
  *  2009/05/14    1.2   N.Maeda          [T1_0997]納品形態区分の導出方法修正
  *  2009/08/03    1.3   N.Maeda          [0000433]get_account_period,get_specific_masterの
  *                                                参照タイプコード取得時の不要なテーブル結合の削除
+ *  2019/06/04    1.4   S.Kuwako         [E_本稼動_15472]軽減税率用の消費税率取得関数の追加
  *
  ****************************************************************************************/
 --
@@ -177,6 +179,32 @@ AS
     it_lookup_type            IN            fnd_lookup_types.lookup_type%TYPE, -- ルックアップタイプ
     it_lookup_code            IN            fnd_lookup_values.lookup_code%TYPE -- ルックアップコード
   ) RETURN  VARCHAR2;
+--
+  /************************************************************************
+   * Procedure Name  : get_tax_rate_info
+   * Description     : 品目別消費税率取得関数
+   ************************************************************************/
+  PROCEDURE get_tax_rate_info(
+    iv_item_code                   IN         VARCHAR2,                      -- 品目コード
+    id_base_date                   IN         DATE,                          -- 基準日
+    ov_class_for_variable_tax      OUT NOCOPY VARCHAR2,                      -- 軽減税率用税種別
+    ov_tax_name                    OUT NOCOPY VARCHAR2,                      -- 税率キー名称
+    ov_tax_description             OUT NOCOPY VARCHAR2,                      -- 摘要
+    ov_tax_histories_code          OUT NOCOPY VARCHAR2,                      -- 消費税履歴コード
+    ov_tax_histories_description   OUT NOCOPY VARCHAR2,                      -- 消費税履歴名称
+    od_start_date                  OUT NOCOPY DATE,                          -- 税率キー_開始日
+    od_end_date                    OUT NOCOPY DATE,                          -- 税率キー_終了日
+    od_start_date_histories        OUT NOCOPY DATE,                          -- 消費税履歴_開始日
+    od_end_date_histories          OUT NOCOPY DATE,                          -- 消費税履歴_終了日
+    on_tax_rate                    OUT NOCOPY NUMBER,                        -- 税率
+    ov_tax_class_suppliers_outside OUT NOCOPY VARCHAR2,                      -- 税区分_仕入外税
+    ov_tax_class_suppliers_inside  OUT NOCOPY VARCHAR2,                      -- 税区分_仕入内税
+    ov_tax_class_sales_outside     OUT NOCOPY VARCHAR2,                      -- 税区分_売上外税
+    ov_tax_class_sales_inside      OUT NOCOPY VARCHAR2,                      -- 税区分_売上内税
+    ov_errbuf                      OUT NOCOPY VARCHAR2,                      -- エラー・メッセージエラー       #固定#
+    ov_retcode                     OUT NOCOPY VARCHAR2,                      -- リターン・コード               #固定#
+    ov_errmsg                      OUT NOCOPY VARCHAR2                       -- ユーザー・エラー・メッセージ   #固定#
+  );
 --
 END XXCOS_COMMON_PKG;
 /
