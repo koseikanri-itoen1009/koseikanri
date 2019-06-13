@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_system_items_b
  * Description     : Disc品目アドオン
  * MD.070          : 
- * Version         : 1.3
+ * Version         : 1.4
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@
  *  2009/04/10    1.1  H.Yoshikawa   【T1_0214】内容量、内訳入数の定義変更 NUMBER(4,1) -> NUMBER(5,1)
  *  2009/05/07    1.2  H.Yoshikawa   【T1_0906】ケース換算入数の追加
  *  2009/07/09    1.3  K.Ito         【0000493】ストレージ句の見直し対応
+ *  2019/06/04    1.4  N.Abe         【E_本稼動_15472】軽減税率用税種別の追加
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_system_items_b
 (
@@ -43,6 +44,9 @@ CREATE TABLE xxcmm.xxcmm_system_items_b
     search_update_date             DATE,
 -- Ver1.2  2009/05/07  MOD T1_0906対応
     case_conv_inc_num              NUMBER(5,0),
+-- End
+-- Ver1.4  2019/06/04  MOD E_本稼動_15472
+    class_for_variable_tax         VARCHAR2(4),
 -- End
     created_by                     NUMBER(15,0) NOT NULL,
     creation_date                  DATE NOT NULL,
@@ -100,6 +104,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.search_update_date     IS '検索対象
 /
 -- Ver1.2  2009/05/07  MOD T1_0906対応
 COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.case_conv_inc_num      IS 'ケース換算入数'
+/
+-- End
+-- Ver1.4  2019/06/04  MOD E_本稼動_15472
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.class_for_variable_tax IS '軽減税率用税種別'
 /
 -- End
 COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.created_by             IS '作成者'
