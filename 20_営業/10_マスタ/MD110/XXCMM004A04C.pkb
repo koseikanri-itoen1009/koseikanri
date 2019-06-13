@@ -77,6 +77,7 @@ AS
  *  2012/04/17    1.18  K.Nakamura       障害対応(本稼動_07669) 品目ステータスDへ変更する場合のチェック追加
  *  2014/03/27    1.19  K.Nakamura       障害対応(本稼動_11556) 取引存在チェック条件修正
  *  2017/08/04    1.20  N.Watanabe       障害対応(本稼動_14300) 品目ステータスDにおけるチェック条件変更
+ *  2019/06/04    1.21  N.Abe            障害対応(本稼動_15472) 軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -224,6 +225,10 @@ AS
   cv_msg_xxcmm_00496           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00496';   -- 品目ステータス取引作成済エラー
   cv_msg_xxcmm_00497           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00497';   -- 品目ステータス拠点在庫存在エラー
 -- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+  cv_msg_xxcmm_10448           CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10488';   -- 政策群コード相関チェックエラー
+  cv_msg_xxcmm_10493           CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10493';   -- 軽減税率用税種別取得エラー
+-- 2019/06/04 Ver1.21 N.Abe Add End
   --
   -- トークン
   cv_tkn_param_name            CONSTANT VARCHAR2(100) := 'PARAM_NAME';
@@ -242,6 +247,11 @@ AS
 -- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
   cv_tkn_ng_profile            CONSTANT VARCHAR2(20)  := 'NG_PROFILE';         -- プロファイル名
 -- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+  cv_tkn_gun_code              CONSTANT VARCHAR2(8)   := 'GUN_CODE';           -- 政策群コード
+  cv_tkn_tax_div1              CONSTANT VARCHAR2(8)   := 'TAX_DIV1';           -- 軽減税率用税種別（品目）
+  cv_tkn_tax_div2              CONSTANT VARCHAR2(8)   := 'TAX_DIV2';           -- 軽減税率用税種別（政策群）
+-- 2019/06/04 Ver1.21 N.Abe Add End
   --
   cv_tkn_val_categ_policy_cd   CONSTANT VARCHAR2(30)  := '政策群カテゴリ情報';
 -- Ver1.8  2009/06/11  Add  政策群コードが変更された場合、群コードにも反映
@@ -270,6 +280,9 @@ AS
 -- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
   cv_tkn_val_org_code          CONSTANT VARCHAR2(20)  := '在庫組織コード';     -- 在庫組織コード
 -- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+  cv_tkn_pol_cd                CONSTANT VARCHAR2(20)  := '政策群コード';
+-- 2019/06/04 Ver1.21 N.Abe Add End
   --
   -- 品目カテゴリセット名
   cv_categ_set_seisakugun      CONSTANT VARCHAR2(20)  := xxcmm_004common_pkg.cv_categ_set_seisakugun;
@@ -313,6 +326,10 @@ AS
   cv_leaf_material             CONSTANT VARCHAR2(1)   := '5';                  -- 資材品目(リーフ)
   cv_drink_material            CONSTANT VARCHAR2(1)   := '6';                  -- 資材品目(ドリンク)
 -- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+  cv_prf_policy_code           CONSTANT VARCHAR2(25)  := 'XXCMM1_004A05_POLICY_CODE';
+                                                                               -- プロファイル「XXCMM:政策群コード」
+-- 2019/06/04 Ver1.21 N.Abe Add End
   --
 -- 2009/08/10 Ver1.11 障害0000894 move start by Y.Kuboshima
 -- この位置ではgd_process_dateはまだ定義されていないため、カーソルを下へ移動します。
@@ -452,6 +469,9 @@ AS
 -- 2012/04/17 Ver1.18 本稼動_07669 add start by K.Nakamura
   gd_period_start              DATE;                                           -- 在庫会計期間開始日
 -- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+  gv_policy_code_name          VARCHAR2(20);                                   -- 政策群コード（名称）
+-- 2019/06/04 Ver1.21 N.Abe Add End
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -521,6 +541,9 @@ AS
                ,xoiv.internal_order_enabled_flag                        -- 社内発注
                ,xoiv.so_transactions_flag                               -- OE 取引可能
                ,xoiv.reservable_type                                    -- 予約可能
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+               ,xoiv.class_for_variable_tax                             -- 軽減税率用税種別
+-- 2019/06/04 Ver1.21 N.Abe Add End
     FROM        xxcmm_system_items_b_hst  xsibh                         -- Disc品目変更履歴アドオン
                ,xxcmm_opmmtl_items_v      xoiv                          -- 品目ビュー
     WHERE       xsibh.apply_date       <= pd_apply_date                 -- 適用日(起動日付で対象とならない日があるかも)
@@ -578,6 +601,9 @@ AS
                ,xoiv.internal_order_enabled_flag                        -- 社内発注
                ,xoiv.so_transactions_flag                               -- OE 取引可能
                ,xoiv.reservable_type                                    -- 予約可能
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+               ,xoiv.class_for_variable_tax                             -- 軽減税率用税種別
+-- 2019/06/04 Ver1.21 N.Abe Add End
     FROM        xxcmm_system_items_b_hst  xsibh                         -- Disc品目変更履歴アドオン
                ,xxcmm_opmmtl_items_v      xoiv                          -- 品目ビュー
     WHERE       xsibh.apply_date       <= pd_apply_date                 -- 適用日(起動日付で対象とならない日があるかも)
@@ -2782,6 +2808,9 @@ AS
     cv_sp_supplier_code        CONSTANT VARCHAR2(20)  := '専門店仕入先';
     cv_palette_max_cs_qty      CONSTANT VARCHAR2(20)  := '配数';
     cv_palette_max_step_qty    CONSTANT VARCHAR2(20)  := '段数';
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+    cv_class_for_variable_tax  CONSTANT VARCHAR2(20)  := '軽減税率用税種別';
+-- 2019/06/04 Ver1.21 N.Abe Add End
     --
     -- ===============================
     -- ローカル変数
@@ -2802,6 +2831,9 @@ AS
     ln_parent_status           xxcmm_system_items_b.item_status%TYPE; -- 親品目ステータス
     lv_parent_status_name      fnd_lookup_values.meaning%TYPE;        -- 親品目ステータス名
 -- 2009/10/16 Ver1.13 障害0001423 add end by Y.Kuboshima
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+    lv_pol_class_tax           mtl_categories_b.attribute4%TYPE;      -- 軽減税率用税種別（政策群コード）
+-- 2019/06/04 Ver1.21 N.Abe Add Start
     --
     -- ===============================
     -- ユーザー定義例外
@@ -2829,6 +2861,10 @@ AS
     tran_status_chk_expt       EXCEPTION;    -- 品目ステータス取引作成済エラー
     inv_status_chk_expt        EXCEPTION;    -- 品目ステータス拠点在庫存在エラー
 -- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
+-- 2019/06/04 Ver1.21 N.Abe Add End
+    get_class_tax_expt         EXCEPTION;    -- 軽減税率用税種別取得エラー（政策群コード）
+    chk_gun_corr_expt          EXCEPTION;    -- 政策群コード相関チェックエラー
+-- 2019/06/04 Ver1.21 N.Abe Add End
     --
   BEGIN
     --
@@ -2953,7 +2989,7 @@ AS
       -- ・仮登録以降：子品目 カナ、売上対象、親商品、重量/体積 必須
       --                      ※親商品が設定されていれば他項目も設定されている想定。
       -- ・仮登録以降：親品目 定価（変更適用）
-      --                      カナ、売上対象、親商品
+      --                      カナ、売上対象、親商品、軽減税率用税種別
       --                      ケース入数、基準単位、商品製品区分
       --                      NET、重量/体積、内容量、内容量単位
       --                      内訳入数、本社商品区分、バラ茶区分
@@ -3012,6 +3048,14 @@ AS
         WHEN OTHERS THEN
           lv_head_product := NULL;
       END;
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+      -- 軽減税率用税種別
+      lv_step := 'STEP-07590';
+      IF ( i_update_item_rec.class_for_variable_tax IS NULL ) THEN
+        lv_msg_token := cv_class_for_variable_tax;
+        RAISE data_validate_expt;
+      END IF;
+-- 2019/06/04 Ver1.21 N.Abe Add End
       --
       -- 変更後ステータスが『仮登録』以外(本登録, 廃, Ｄ’)の場合
       -- 本登録時のチェックを実施する。
@@ -3414,6 +3458,36 @@ AS
     END IF;
     --
 -- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+    -- 変更後ステータスが「30：本登録」の場合
+    IF ( i_update_item_rec.item_status = cn_itm_status_regist ) THEN
+      lv_step := 'STEP-07600';
+      -- 政策群コードに紐付く軽減税率用税種別を取得
+      BEGIN
+        SELECT mcb.attribute4       AS  class_for_variable_tax
+        INTO   lv_pol_class_tax
+        FROM   mtl_categories_b     mcb   --品目カテゴリマスタ
+              ,mtl_category_sets_b  mcsb  --品目カテゴリセット
+              ,mtl_category_sets_tl mcst  --品目カテゴリセット（日本語）
+        WHERE  mcst.category_set_name = gv_policy_code_name
+        AND    mcst.language = USERENV('LANG')
+        AND    mcst.category_set_id = mcsb.category_set_id
+        AND    mcb.structure_id = mcsb.structure_id
+        AND    mcb.segment1 = NVL(i_update_item_rec.policy_group, i_update_item_rec.crowd_code_new)
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          --  軽減税率用税種別取得エラー
+          RAISE get_class_tax_expt;
+      END;
+      -- 政策群の軽減税率用税種別を取得できた場合、品目コードの軽減税率用税種別と一致するかチェック
+      IF ( i_update_item_rec.class_for_variable_tax <> lv_pol_class_tax ) THEN
+        -- 政策群コード相関チェックエラー
+        RAISE chk_gun_corr_expt;
+--
+      END IF;
+    END IF;
+-- 2019/06/04 Ver1.21 N.Abe Add End
   EXCEPTION
 --
 -- Ver1.9  2009/07/06  Add  障害対応(0000364)
@@ -3544,6 +3618,38 @@ AS
       ov_retcode := cv_status_error;
 -- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
 --
+-- 2019/06/04 Ver1.21 N.Abe Add End
+    -- *** 軽減税率用税種別取得例外ハンドラ ***
+    WHEN get_class_tax_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm                       -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_10493                       -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_gun_code                          -- トークンコード1
+                     ,iv_token_value1 => i_update_item_rec.policy_group           -- トークン値1
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** 政策群コード相関チェック例外ハンドラ ***
+    WHEN chk_gun_corr_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm                       -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_10448                       -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item_code                         -- トークンコード1
+                     ,iv_token_value1 => i_update_item_rec.item_no                -- トークン値1
+                     ,iv_token_name2  => cv_tkn_tax_div1                          -- トークンコード2
+                     ,iv_token_value2 => i_update_item_rec.class_for_variable_tax -- トークン値2
+                     ,iv_token_name3  => cv_tkn_gun_code                          -- トークンコード3
+                     ,iv_token_value3 => i_update_item_rec.policy_group           -- トークン値3
+                     ,iv_token_name4  => cv_tkn_tax_div2                          -- トークンコード4
+                     ,iv_token_value4 => lv_pol_class_tax                         -- トークン値4
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+-- 2019/06/04 Ver1.21 N.Abe Add End
     -- *** データチェック例外ハンドラ ***
     WHEN data_validate_expt THEN
       lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -5200,6 +5306,14 @@ AS
       RAISE get_profile_expt;
     END IF;
     --
+-- 2019/06/04 Ver1.21 N.Abe Add Start
+    -- 政策群コードの取得
+    gv_policy_code_name := fnd_profile.value(cv_prf_policy_code);
+    IF (gv_policy_code_name IS NULL) THEN
+      lv_msg_token := cv_tkn_pol_cd;
+      RAISE get_profile_expt;
+    END IF;
+-- 2019/06/04 Ver1.21 N.Abe Add End
 -- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
     --
     --==============================================================
