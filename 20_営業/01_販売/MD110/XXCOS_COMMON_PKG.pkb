@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -20,6 +20,7 @@ AS
  *  get_period_year             P                 当年度会計期間取得
  *  get_account_period          P                 会計期間情報取得
  *  get_specific_master         F      VARCHAR2   特定マスタ取得(クイックコード)
+ *  get_tax_rate_info           P                 品目別消費税率取得関数
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -30,6 +31,7 @@ AS
  *  2009/05/14    1.2   N.Maeda          [T1_0997]納品形態区分の導出方法修正
  *  2009/08/03    1.3   N.Maeda          [0000433]get_account_period,get_specific_masterの
  *                                                参照タイプコード取得時の不要なテーブル結合の削除
+ *  2019/06/04    1.4   S.Kuwako         [E_本稼動_15472]軽減税率用の消費税率取得関数の追加
  *
  *****************************************************************************************/
 --
@@ -2833,6 +2835,292 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END get_specific_master;
+--
+  /************************************************************************
+   * Procedure Name  : get_tax_rate_info
+   * Description     : 品目別消費税率取得関数
+   ************************************************************************/
+  PROCEDURE get_tax_rate_info(
+    iv_item_code                   IN         VARCHAR2,                      -- 品目コード
+    id_base_date                   IN         DATE,                          -- 基準日
+    ov_class_for_variable_tax      OUT NOCOPY VARCHAR2,                      -- 軽減税率用税種別
+    ov_tax_name                    OUT NOCOPY VARCHAR2,                      -- 税率キー名称
+    ov_tax_description             OUT NOCOPY VARCHAR2,                      -- 摘要
+    ov_tax_histories_code          OUT NOCOPY VARCHAR2,                      -- 消費税履歴コード
+    ov_tax_histories_description   OUT NOCOPY VARCHAR2,                      -- 消費税履歴名称
+    od_start_date                  OUT NOCOPY DATE,                          -- 税率キー_開始日
+    od_end_date                    OUT NOCOPY DATE,                          -- 税率キー_終了日
+    od_start_date_histories        OUT NOCOPY DATE,                          -- 消費税履歴_開始日
+    od_end_date_histories          OUT NOCOPY DATE,                          -- 消費税履歴_終了日
+    on_tax_rate                    OUT NOCOPY NUMBER,                        -- 税率
+    ov_tax_class_suppliers_outside OUT NOCOPY VARCHAR2,                      -- 税区分_仕入外税
+    ov_tax_class_suppliers_inside  OUT NOCOPY VARCHAR2,                      -- 税区分_仕入内税
+    ov_tax_class_sales_outside     OUT NOCOPY VARCHAR2,                      -- 税区分_売上外税
+    ov_tax_class_sales_inside      OUT NOCOPY VARCHAR2,                      -- 税区分_売上内税
+    ov_errbuf                      OUT NOCOPY VARCHAR2,                      -- エラー・メッセージエラー       #固定#
+    ov_retcode                     OUT NOCOPY VARCHAR2,                      -- リターン・コード               #固定#
+    ov_errmsg                      OUT NOCOPY VARCHAR2                       -- ユーザー・エラー・メッセージ   #固定#
+  )
+  IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_tax_rate_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_date_format                CONSTANT VARCHAR2(10)   := 'YYYY/MM/DD';
+    cn_tax_rate_warn              CONSTANT NUMBER         := '0';
+    cv_param_check_flag_err0      CONSTANT VARCHAR2(1)    := '0';                          -- エラーなし
+    cv_param_check_flag_err1      CONSTANT VARCHAR2(1)    := '1';                          -- 品目コードエラー
+    cv_param_check_flag_err2      CONSTANT VARCHAR2(1)    := '2';                          -- 基準日エラー
+    cv_param_check_flag_err3      CONSTANT VARCHAR2(1)    := '3';                          -- 双方(品目コード/基準日)エラー
+--
+    -- メッセージ
+    cv_msg_no_data_err            CONSTANT VARCHAR2(20)   := 'APP-XXCOS1-00003';           -- 対象データはありません。
+    cv_msg_many_data_err          CONSTANT VARCHAR2(20)   := 'APP-XXCOI1-00025';           -- 取得件数が複数件存在します。
+    cv_msg_base_date              CONSTANT VARCHAR2(20)   := 'APP-XXCOS1-13558';           -- 基準日
+--
+    -- トークン
+    cv_tkn_data                   CONSTANT VARCHAR2(100)  := 'DATA';
+--
+    -- メッセージ用文字列
+      -- 品目コード
+    cv_msgtxt_item_code           CONSTANT VARCHAR2(5000) := xxccp_common_pkg.get_msg(
+                                                               iv_application    =>  ct_xxcos_appl_short_name
+                                                              ,iv_name           =>  ct_msg_item_code
+                                                             );
+      -- 基準日
+    cv_msgtxt_base_date           CONSTANT VARCHAR2(5000) := xxccp_common_pkg.get_msg(
+                                                               iv_application    =>  ct_xxcos_appl_short_name
+                                                              ,iv_name           =>  cv_msg_base_date
+                                                             );
+      -- 品目コード/基準日
+    cv_msgtxt_two_err             CONSTANT VARCHAR2(5000) := cv_msgtxt_item_code || '/' || cv_msgtxt_base_date;
+--
+    -- *** ローカル変数 ***
+    lv_class_for_variable_tax      VARCHAR2(4);                   -- 軽減税率用税種別
+    lv_tax_name                    VARCHAR2(80);                  -- 税率キ名称
+    lv_tax_description             VARCHAR2(240);                 -- 摘要
+    lv_tax_histories_code          VARCHAR2(80);                  -- 消費税履歴コード
+    lv_tax_histories_description   VARCHAR2(240);                 -- 消費税履歴名称
+    ld_start_date                  DATE;                          -- 税率キー_開始日
+    ld_end_date                    DATE;                          -- 税率キー_終了日
+    ld_start_date_histories        DATE;                          -- 消費税履歴_開始日
+    ld_end_date_histories          DATE;                          -- 消費税履歴_終了日
+    ln_tax_rate                    NUMBER;                        -- 税率
+    lv_tax_class_suppliers_outside VARCHAR2(150);                 -- 税区分_仕入外税
+    lv_tax_class_suppliers_inside  VARCHAR2(150);                 -- 税区分_仕入内税
+    lv_tax_class_sales_outside     VARCHAR2(150);                 -- 税区分_売上外税
+    lv_tax_class_sales_inside      VARCHAR2(150);                 -- 税区分_売上内税
+    ln_param_check_flag            VARCHAR2(1);                   -- 引数チェックフラグ
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==============================================================
+    -- 初期化
+    --==============================================================
+    ov_class_for_variable_tax       := NULL;
+    ov_tax_name                     := NULL;
+    ov_tax_description              := NULL;
+    ov_tax_histories_code           := NULL;
+    ov_tax_histories_description    := NULL;
+    od_start_date                   := NULL;
+    od_end_date                     := NULL;
+    od_start_date_histories         := NULL;
+    od_end_date_histories           := NULL;
+    on_tax_rate                     := NULL;
+    ov_tax_class_suppliers_outside  := NULL;
+    ov_tax_class_suppliers_inside   := NULL;
+    ov_tax_class_sales_outside      := NULL;
+    ov_tax_class_sales_inside       := NULL;
+    ln_param_check_flag             := cv_param_check_flag_err0;
+--
+    --==============================================================
+    -- 引数チェック
+    --==============================================================
+    -- 品目コードチェック
+    IF ( iv_item_code    IS NULL ) THEN
+      ln_param_check_flag  := cv_param_check_flag_err1;            -- 品目コードエラー
+    END IF;
+    
+    -- 基準日チェック
+    IF ( id_base_date    IS NULL ) THEN
+      IF ( ln_param_check_flag = cv_param_check_flag_err1 ) THEN
+        ln_param_check_flag   := cv_param_check_flag_err3;         -- 双方(品目コード/基準日)エラー
+      ELSE
+        ln_param_check_flag   := cv_param_check_flag_err2;         -- 基準日エラー
+      END IF;
+    END IF;
+    
+    -- チェック結果判定
+    CASE ln_param_check_flag WHEN cv_param_check_flag_err1 THEN
+                               lv_errmsg := xxccp_common_pkg.get_msg(
+                                              iv_application  => ct_xxcos_appl_short_name
+                                             ,iv_name         => ct_msg_require_param_err
+                                             ,iv_token_name1  => cv_tkn_in_param
+                                             ,iv_token_value1 => cv_msgtxt_item_code
+                                            );
+                                            
+                               lv_errbuf := lv_errmsg;
+                               RAISE global_api_expt;
+                               
+                             WHEN cv_param_check_flag_err2 THEN
+                               lv_errmsg := xxccp_common_pkg.get_msg(
+                                              iv_application  => ct_xxcos_appl_short_name
+                                             ,iv_name         => ct_msg_require_param_err
+                                             ,iv_token_name1  => cv_tkn_in_param
+                                             ,iv_token_value1 => cv_msgtxt_base_date
+                                            );
+                               lv_errbuf := lv_errmsg;
+                               RAISE global_api_expt;
+                               
+                             WHEN cv_param_check_flag_err3 THEN
+                               lv_errmsg := xxccp_common_pkg.get_msg(
+                                              iv_application  => ct_xxcos_appl_short_name
+                                             ,iv_name         => ct_msg_require_param_err
+                                             ,iv_token_name1  => cv_tkn_in_param
+                                             ,iv_token_value1 => cv_msgtxt_two_err
+                                            );
+                               lv_errbuf := lv_errmsg;
+                               RAISE global_api_expt;
+                               
+                             ELSE NULL;
+                             
+    END CASE;
+--
+    --==============================================================
+    -- 消費税率取得処理
+    --==============================================================
+    BEGIN
+      --消費税率取得SQL
+      SELECT  xrtrv.class_for_variable_tax        class_for_variable_tax       -- 軽減税率用税種別
+             ,xrtrv.tax_name                      tax_name                     -- 税率キー名称
+             ,xrtrv.tax_description               tax_description              -- 摘要
+             ,xrtrv.tax_histories_code            tax_histories_code           -- 消費税履歴コード
+             ,xrtrv.tax_histories_description     tax_histories_description    -- 消費税履歴名称
+             ,xrtrv.start_date                    start_date                   -- 税率キー_開始日
+             ,xrtrv.end_date                      end_date                     -- 税率キー_終了日
+             ,xrtrv.start_date_histories          start_date_histories         -- 消費税履歴_開始日
+             ,xrtrv.end_date_histories            end_date_histories           -- 消費税履歴_終了日
+             ,xrtrv.tax_rate                      tax_rate                     -- 税率
+             ,xrtrv.tax_class_suppliers_outside   tax_class_suppliers_outside  -- 税区分_仕入外税
+             ,xrtrv.tax_class_suppliers_inside    tax_class_suppliers_inside   -- 税区分_仕入内税
+             ,xrtrv.tax_class_sales_outside       tax_class_sales_outside      -- 税区分_売上外税
+             ,xrtrv.tax_class_sales_inside        tax_class_sales_inside       -- 税区分_売上内税
+      INTO    lv_class_for_variable_tax
+             ,lv_tax_name
+             ,lv_tax_description
+             ,lv_tax_histories_code
+             ,lv_tax_histories_description
+             ,ld_start_date
+             ,ld_end_date
+             ,ld_start_date_histories
+             ,ld_end_date_histories
+             ,ln_tax_rate
+             ,lv_tax_class_suppliers_outside
+             ,lv_tax_class_suppliers_inside
+             ,lv_tax_class_sales_outside
+             ,lv_tax_class_sales_inside
+      FROM    xxcos_reduced_tax_rate_v  xrtrv                     -- 品目別消費税率view
+      WHERE   xrtrv.item_code = iv_item_code
+      AND     id_base_date   >= xrtrv.start_date
+      AND    ( id_base_date  <= xrtrv.end_date
+               OR      xrtrv.end_date  IS NULL
+             )
+      AND     id_base_date   >= xrtrv.start_date_histories
+      AND    ( id_base_date  <= xrtrv.end_date_histories
+               OR      xrtrv.end_date_histories IS NULL
+             )
+      ;
+--
+      --戻り値設定
+      ov_class_for_variable_tax       := lv_class_for_variable_tax;
+      ov_tax_name                     := lv_tax_name;
+      ov_tax_description              := lv_tax_description;
+      ov_tax_histories_code           := lv_tax_histories_code;
+      ov_tax_histories_description    := lv_tax_histories_description;
+      od_start_date                   := ld_start_date;
+      od_end_date                     := ld_end_date;
+      od_start_date_histories         := ld_start_date_histories;
+      od_end_date_histories           := ld_end_date_histories;
+      on_tax_rate                     := ln_tax_rate;
+      ov_tax_class_suppliers_outside  := lv_tax_class_suppliers_outside;
+      ov_tax_class_suppliers_inside   := lv_tax_class_suppliers_inside;
+      ov_tax_class_sales_outside      := lv_tax_class_sales_outside;
+      ov_tax_class_sales_inside       := lv_tax_class_sales_inside;
+--
+    EXCEPTION
+--
+      WHEN NO_DATA_FOUND THEN
+        -- 消費税率「0」を設定
+        on_tax_rate := cn_tax_rate_warn;
+        
+        lv_errmsg   := xxccp_common_pkg.get_msg(
+                         iv_application => ct_xxcos_appl_short_name
+                        ,iv_name        => cv_msg_no_data_err
+                       );
+        ov_errmsg   := lv_errmsg;
+        ov_errbuf   := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+        ov_retcode  := cv_status_warn;
+--
+      WHEN TOO_MANY_ROWS THEN
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application => ct_xxcoi_appl_short_name
+                       ,iv_name        => cv_msg_many_data_err
+                      );
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+        ov_retcode := cv_status_error;
+--
+      WHEN OTHERS THEN
+        ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+        ov_retcode := cv_status_error;
+--
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_tax_rate_info;
 --
 END XXCOS_COMMON_PKG;
 /
