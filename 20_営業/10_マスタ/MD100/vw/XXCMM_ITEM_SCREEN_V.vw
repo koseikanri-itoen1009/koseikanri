@@ -147,6 +147,9 @@ SELECT   iimb.item_no                      AS item_no                       -- •
 -- 2018/10/23 E_–{‰Ò“®_15277 add start by Y.Shoji
         ,ximb.lot_reversal_type            AS lot_reversal_type             -- ƒƒbƒg‹t“]‹æ•ª
 -- 2018/10/23 E_–{‰Ò“®_15277 add end by Y.Shoji
+-- 2019/6/4 E_–{‰Ò“®_15472 add start by N.Abe
+        ,xsib.class_for_variable_tax       AS food_type_code                -- H•i‹æ•ª
+-- 2019/6/4 E_–{‰Ò“®_15472 add end by N.Abe
 FROM     ic_item_mst_b      iimb        -- OPM•i–Úƒ}ƒXƒ^
         ,xxcmn_item_mst_b   ximb        -- OPM•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
         ,xxcmm_system_items_b xsib      -- Disc•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
@@ -607,3 +610,7 @@ COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.FRESHNESS_CONDITION IS '‘N“xğŒ'
 COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.lot_reversal_type IS 'ƒƒbƒg‹t“]‹æ•ª'
 /
 -- 2018/10/23 E_–{‰Ò“®_15277 add end by Y.Shoji
+-- 2019/6/4 E_–{‰Ò“®_15472 add start by N.Abe
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.food_type_code IS 'H•i‹æ•ª'
+/
+-- 2019/6/4 E_–{‰Ò“®_15472 add end by N.Abe
