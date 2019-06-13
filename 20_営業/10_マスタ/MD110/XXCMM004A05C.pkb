@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A05C(body)
  * Description      : 品目一括登録ワークテーブルに取込まれた品目一括登録データを品目テーブルに登録します。
  * MD.050           : 品目一括登録 CMM_004_A05
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -81,6 +81,7 @@ AS
  *  2016/06/02    1.21  Shigeto.Niki     E_本稼動_13652 OPM品目マスタの設定値修正
  *  2016/09/13    1.22  Shigeto.Niki     E_本稼動_13703 適用開始日 < 前年度開始日の場合エラーとする
  *                                                      適用開始日および業務日付時点の年度の標準原価を作成する
+ *  2019/06/04    1.23  N.Abe            E_本稼動_15472 INPUT用CSV、品目一括登録ワークへの軽減税率用税種別の追加
  *
  *****************************************************************************************/
 --
@@ -200,6 +201,10 @@ AS
   cv_msg_xxcmm_00498     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00498';                              -- 適用開始日過去日付エラー
   cv_msg_xxcmm_00499     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00499';                              -- 適用開始日年度取得エラー
 -- Ver Add End
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+  cv_msg_xxcmm_10486     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10486';                              -- 政策群コード相関チェックエラー
+  cv_msg_xxcmm_10487     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10487';                              -- 軽減税率用税種別取得エラー
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
   -- トークン
   cv_tkn_value           CONSTANT VARCHAR2(20)  := 'VALUE';                                         --
   cv_tkn_ng_profile      CONSTANT VARCHAR2(20)  := 'NG_PROFILE';                                    --
@@ -239,6 +244,12 @@ AS
 -- 2010/03/09 Ver1.20 E_本稼動_01619 add start by Y.Kuboshima
   cv_tkn_apply_date      CONSTANT VARCHAR2(20)  := 'APPLY_DATE';                                    -- 適用開始日
 -- 2010/03/09 Ver1.20 E_本稼動_01619 add end by Y.Kuboshima
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+  cv_tkn_gun_code        CONSTANT VARCHAR2(8)   := 'GUN_CODE';                                      -- 政策群コード
+  cv_tkn_item_code       CONSTANT VARCHAR2(9)   := 'ITEM_CODE';                                     -- 品目コード
+  cv_tkn_tax_div1        CONSTANT VARCHAR2(8)   := 'TAX_DIV1';                                      -- 軽減税率用税種別（品目コード）
+  cv_tkn_tax_div2        CONSTANT VARCHAR2(8)   := 'TAX_DIV2';                                      -- 軽減税率用税種別（政策群コード）
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
 --
   -- アプリケーション短縮名
   cv_appl_name_xxcmm     CONSTANT VARCHAR2(5)   := 'XXCMM';                                         --
@@ -314,6 +325,12 @@ AS
   cv_lookup_units_of_measure
                          CONSTANT VARCHAR2(30)  := 'XXCMM_UNITS_OF_MEASURE';                        -- 基準単位
 -- 2009/09/07 Ver1.15 障害0000948 add end by Y.Kuboshima
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+  cv_lookup_tax_code     CONSTANT VARCHAR2(30)  := 'XXCFO1_TAX_CODE';                               -- 消費税コード(軽減税率対応用)
+  cv_prof_pol_cd         CONSTANT VARCHAR2(30)  := 'XXCMM1_004A05_POLICY_CODE';                     -- XXCMM:政策群コード
+  cv_pol_cd              CONSTANT VARCHAR2(60)  := 'XXCMM:政策群コード';                            -- XXCMM:政策群コード
+  cv_lang                CONSTANT VARCHAR2(5)   := USERENV('LANG');                                 -- 言語コード
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
 --
   -- TABLE NAME
   cv_table_flv           CONSTANT VARCHAR2(30)  := 'LOOKUP表';                                      -- FND_LOOKUP_VALUES_VL
@@ -372,6 +389,10 @@ AS
   cv_list_price          CONSTANT VARCHAR2(30)  := '定価';                                          --
   cv_standard_price      CONSTANT VARCHAR2(30)  := '標準原価';                                      --
   cv_business_price      CONSTANT VARCHAR2(30)  := '営業原価';                                      --
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+  cv_class_for_variable_tax
+                         CONSTANT VARCHAR2(30)  := '軽減税率用税種別';                                --
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
 -- 2009/10/14 障害0001370 add start by Y.Kuboshima
   cv_case_conv_inc_num   CONSTANT VARCHAR2(30)  := 'ケース換算入数';                                --
   cv_net                 CONSTANT VARCHAR2(30)  := 'ＮＥＴ';                                        --
@@ -550,6 +571,9 @@ AS
       ,bd_category_id           mtl_categories_b.category_id%TYPE                                   -- カテゴリID(バラ茶区分)
       ,bd_category_set_id       mtl_category_sets_b.category_set_id%TYPE                            -- カテゴリセットID(バラ茶区分)
 -- 2010/02/25 Ver1.19 E_本稼動_01589 add end by Shigeto.Niki
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+      ,class_for_variable_tax   xxcmm_system_items_b.class_for_variable_tax%TYPE                    -- 軽減税率用税種別
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
       );
   -- カテゴリ情報(親品目時に使用)
   TYPE g_item_ctg_rtype    IS RECORD                                                                -- レコード型を宣言
@@ -645,6 +669,9 @@ AS
   gn_now_year               NUMBER;                                                                 -- 当年度
   gn_apply_year             NUMBER;                                                                 -- 適用開始日年度
 -- Ver1.22 Add End
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+  gv_pol_cd_name            VARCHAR2(20);                                                           -- XXCMM:政策群コード
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
   --
   -- ===============================
   -- ユーザー定義例外
@@ -1463,6 +1490,9 @@ AS
              ,bd.bd_category_set_id
              ,bd.bd_category_id
 -- 2010/02/25 Ver1.19 E_本稼動_01589 add end by Shigeto.Niki
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+             ,xsib.class_for_variable_tax
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
       FROM    xxcmn_item_mst_b     ximb
              ,ic_item_mst_b        iimb
              ,xxcmm_system_items_b xsib
@@ -1663,6 +1693,9 @@ AS
       l_set_parent_item_rec.bd_category_id           := i_item_ctg_rec.bd_category_id;
       l_set_parent_item_rec.bd_category_set_id       := i_item_ctg_rec.bd_category_set_id;
 -- 2010/02/25 Ver1.19 E_本稼動_01589 add end by Shigeto.Niki
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+      l_set_parent_item_rec.class_for_variable_tax   := i_wk_item_rec.class_for_variable_tax;       -- 軽減税率用税種別
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
     ELSE
       --==============================================================
       -- 子品目の場合、親品目抽出し、変数にセットします。
@@ -2564,6 +2597,9 @@ AS
 -- Ver1.8  2009/05/18 Add  T1_0906 ケース換算入数を追加
        ,case_conv_inc_num
 -- End
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+       ,class_for_variable_tax
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
        ,created_by
        ,creation_date
        ,last_updated_by
@@ -2602,6 +2638,9 @@ AS
 -- Ver1.8  2009/05/18 Add  T1_0906 ケース換算入数を追加
        ,l_set_parent_item_rec.case_conv_inc_num   -- ケース換算入数
 -- End
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+       ,l_set_parent_item_rec.class_for_variable_tax       -- 軽減税率用税種別
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
        ,cn_created_by                             -- 作成者
        ,cd_creation_date                          -- 作成日
        ,cn_last_updated_by                        -- 最終更新者
@@ -2802,6 +2841,9 @@ AS
     ln_pg_category_id          mtl_categories_b.category_id%TYPE;         -- カテゴリID（群コード）
     ln_pg_category_set_id      mtl_category_sets_b.category_set_id%TYPE;  -- カテゴリセットID（群コード）
 -- Ver1.11  2009/06/11  End
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+    lt_class_for_variable_tax  mtl_categories_b.attribute4%TYPE;          -- 軽減税率用税種別（政策群コード）
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
     --
     ln_check_cnt              NUMBER;
     lv_required_item          VARCHAR2(2000);
@@ -2942,6 +2984,9 @@ AS
     l_validate_item_tab(44) := i_wk_item_rec.business_price;          -- 営業原価
     l_validate_item_tab(45) := i_wk_item_rec.renewal_item_code;       -- リニューアル元商品コード
     l_validate_item_tab(46) := i_wk_item_rec.sp_supplier_code;        -- 専門店仕入先コード
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+    l_validate_item_tab(47) := i_wk_item_rec.class_for_variable_tax;  -- 軽減税率用税種別
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
 -- 2010/03/09 Ver1.20 E_本稼動_01619 modigy end by Y.Kuboshima
     --
     -- カウンタの初期化
@@ -3106,6 +3151,9 @@ AS
 -- 2010/01/04 Ver1.18 障害E_本稼動_00614 modify end by Shigeto.Niki
       -- 内容量,内容量単位,内訳入数,本社商品区分,バラ茶区分,
       -- 政策群,定価,標準原価,営業原価
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+      -- 軽減税率用税種別
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
       --==============================================================
       lv_step := 'A-4.5';
       --
@@ -3506,6 +3554,17 @@ AS
             lv_required_item := lv_required_item || cv_msg_comma_double || cv_business_price;
           END IF;
         END IF;
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+        --
+        -- 軽減税率用税種別
+        IF ( i_wk_item_rec.class_for_variable_tax IS NULL ) THEN
+          IF ( lv_required_item IS NULL ) THEN
+            lv_required_item := cv_class_for_variable_tax;
+          ELSE
+            lv_required_item := lv_required_item || cv_msg_comma_double || cv_class_for_variable_tax;
+          END IF;
+        END IF;
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
         --
         IF ( lv_required_item IS NOT NULL ) THEN
           -- 親品目必須エラー
@@ -4738,6 +4797,103 @@ AS
 --End1.12
           --
         END IF;
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+        --==============================================================
+        -- A-4.44 消費税コード(軽減税率対応用)存在チェック
+        -- 親品目は必須、子品目は親値継承
+        --==============================================================
+        lv_step := 'A-4.44';
+        -- LOOKUP表存在チェック
+        -- 初期化
+        l_lookup_rec := NULL;
+        l_lookup_rec.lookup_type := cv_lookup_tax_code;
+        l_lookup_rec.lookup_code := i_wk_item_rec.class_for_variable_tax;
+        l_lookup_rec.line_no     := i_wk_item_rec.line_no;
+        l_lookup_rec.item_code   := i_wk_item_rec.item_code;
+        -- LOOKUP表存在チェック
+        chk_exists_lookup(
+          io_lookup_rec => l_lookup_rec
+         ,ov_errbuf     => lv_errbuf
+         ,ov_retcode    => lv_retcode
+         ,ov_errmsg     => lv_errmsg
+        );
+        -- 処理結果チェック
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          lv_check_flag := cv_status_error;
+        END IF;
+        --
+        --==============================================================
+        -- A-4.45 政策群と軽減税率用税種別の相関チェック
+        -- 親品目は必須、子品目は親値継承
+        --==============================================================
+        lv_step := 'A-4.45';
+        -- 初期化
+        lt_class_for_variable_tax := NULL;
+        -- 政策群コードの軽減税率用税種別を取得
+        BEGIN
+          SELECT mcb.attribute4
+          INTO   lt_class_for_variable_tax
+          FROM   mtl_categories_b     mcb
+                ,mtl_category_sets_b  mcsb
+                ,mtl_category_sets_tl mcst
+          WHERE  mcst.category_set_name = gv_pol_cd_name
+          AND    mcst.language          = cv_lang
+          AND    mcst.category_set_id   = mcsb.category_set_id
+          AND    mcb.structure_id       = mcsb.structure_id
+          AND    mcb.segment1           = i_wk_item_rec.policy_group
+          ;
+          -- 取得した値がNULLもエラー
+          IF lt_class_for_variable_tax IS NULL THEN
+            RAISE NO_DATA_FOUND;
+          END IF;
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -- 政策群コード取得エラー
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmm_10487                          -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_gun_code                             -- トークンコード1
+                          ,iv_token_value1 => i_wk_item_rec.policy_group                  -- 政策群コード
+                          ,iv_token_name2  => cv_tkn_input_line_no                        -- トークンコード2
+                          ,iv_token_value2 => i_wk_item_rec.line_no                       -- 行番号
+                         );
+            -- メッセージ出力
+            xxcmm_004common_pkg.put_message(
+              iv_message_buff => lv_errmsg
+             ,ov_errbuf       => lv_errbuf
+             ,ov_retcode      => lv_retcode
+             ,ov_errmsg       => lv_errmsg
+            );
+            lv_check_flag := cv_status_error;
+        END;
+        -- 政策群コードの軽減税率用税種別と品目の軽減税率用税種別の比較
+        IF (lt_class_for_variable_tax <> i_wk_item_rec.class_for_variable_tax) THEN
+          -- 政策群コード相関チェックエラー
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm                          -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_10486                          -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_item_code                            -- トークンコード1
+                        ,iv_token_value1 => i_wk_item_rec.item_code                     -- 品目コード
+                        ,iv_token_name2  => cv_tkn_tax_div1                             -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.class_for_variable_tax        -- 軽減税率用税種別（品目）
+                        ,iv_token_name3  => cv_tkn_gun_code                             -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.policy_group                  -- 政策群コード
+                        ,iv_token_name4  => cv_tkn_tax_div2                             -- トークンコード4
+                        ,iv_token_value4 => lt_class_for_variable_tax                   -- 軽減税率用税種別（政策群）
+                        ,iv_token_name5  => cv_tkn_input_line_no                        -- トークンコード5
+                        ,iv_token_value5 => i_wk_item_rec.line_no                       -- 行番号
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+        END IF;
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
 -- Ver1.8  2009/05/18 Add  T1_0322 子品目で商品製品区分導出時に親品目の商品製品区分との比較処理を追加
       ELSE
         --==============================================================
@@ -5064,9 +5220,13 @@ AS
 --
     --
     --==============================================================
-    -- A-4.44 処理件数加算
+-- 2019/06/04 Ver1.23 E_本稼動_15472 mod start by N.Abe
+--    -- A-4.44 処理件数加算
+    -- A-4.99 戻り値ステータスの設定
     --==============================================================
-    lv_step := 'A-4.44';
+--    lv_step := 'A-4.44';
+    lv_step := 'A-4.99';
+-- 2019/06/04 Ver1.23 E_本稼動_15472 mod end by N.Abe
     IF ( lv_check_flag = cv_status_normal )THEN
       ov_retcode := cv_status_normal;
     ELSIF ( lv_check_flag = cv_status_error ) THEN
@@ -5209,6 +5369,9 @@ AS
                 ,xwibr.program_application_id                                   -- コンカレント・プログラムのアプリケーションID
                 ,xwibr.program_id                                               -- コンカレント・プログラムID
                 ,xwibr.program_update_date                                      -- プログラムによる更新日
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+                ,TRIM(xwibr.class_for_variable_tax)  AS class_for_variable_tax  -- 軽減税率用税種別
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
       FROM       xxcmm_wk_item_batch_regist  xwibr                              -- 品目一括登録ワーク
       WHERE      xwibr.request_id = cn_request_id                               -- 要求ID
       ORDER BY   file_seq                                                       -- ファイルシーケンス
@@ -5608,6 +5771,9 @@ AS
          ,business_price                -- 営業原価
          ,renewal_item_code             -- リニューアル元商品コード
          ,sp_supplier_code              -- 専門店仕入先コード
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+         ,class_for_variable_tax        -- 軽減税率用税種別
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
          ,created_by                    -- 作成者
          ,creation_date                 -- 作成日
          ,last_updated_by               -- 最終更新者
@@ -5709,6 +5875,9 @@ AS
          ,l_wk_item_tab(44)             -- 営業原価
          ,l_wk_item_tab(45)             -- リニューアル元商品コード
          ,l_wk_item_tab(46)             -- 専門店仕入先コード
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+         ,l_wk_item_tab(47)             -- 軽減税率用税種別
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
 -- 2010/03/09 Ver1.20 E_本稼動_01619 modify end by Y.Kuboshima
          ,cn_created_by                 -- 作成者
          ,cd_creation_date              -- 作成日
@@ -6039,6 +6208,15 @@ AS
       RAISE get_profile_expt;
     END IF;
 -- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
+    -- XXCMM:政策群コード
+    gv_pol_cd_name := FND_PROFILE.VALUE(cv_prof_pol_cd);
+    -- 取得エラー時
+    IF ( gv_pol_cd_name IS NULL ) THEN
+      lv_tkn_value := cv_pol_cd;
+      RAISE get_profile_expt;
+    END IF;
+-- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
     --
     --==============================================================
     -- A-1.4 ファイルアップロード名称取得
