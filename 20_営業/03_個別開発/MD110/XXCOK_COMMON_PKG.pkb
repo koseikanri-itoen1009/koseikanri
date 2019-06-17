@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2012/03/06    1.15  SCSK K.Nakamura  [E_本稼動_08318] 問屋請求見積照合 OUTに通常NET価格、今回NET価格を追加
  *                                                        問屋請求書見積書突合ステータス取得 問屋請求見積照合呼出修正
  *  2017/06/06    1.16  SCSK S.Niki      [E_本稼動_14226] 問屋請求見積照合PT対応
+ *  2019/06/11    1.17  SCSK K.Minoura   [E_本稼動_15472] 問屋請求見積照合 軽減税率対応 共通関数「品目別消費税率取得」から税率取得
  *
  *****************************************************************************************/
   -- ==============================
@@ -1664,6 +1665,26 @@ AS
     ln_sales_discount_price        NUMBER DEFAULT NULL; -- 売上値引
     ln_usuall_net_price            NUMBER DEFAULT NULL; -- 通常NET価格
     ln_this_time_net_price         NUMBER DEFAULT NULL; -- 今回NET価格
+-- 2019/06/11 Ver.1.17 [E_本稼動_15472] SCSK K.Minoura MOD START
+    ld_selling_date                DATE;
+    lv_class_for_variable_tax      VARCHAR2(4);         -- 軽減税率用税種別
+    lv_tax_name                    VARCHAR2(80);        -- 税率キ名称
+    lv_tax_description             VARCHAR2(240);       -- 摘要
+    lv_tax_histories_code          VARCHAR2(80);        -- 消費税履歴コード
+    lv_tax_histories_description   VARCHAR2(240);       -- 消費税履歴名称
+    ld_start_date                  DATE;                -- 税率キー_開始日
+    ld_end_date                    DATE;                -- 税率キー_終了日
+    ld_start_date_histories        DATE;                -- 消費税履歴_開始日
+    ld_end_date_histories          DATE;                -- 消費税履歴_終了日
+    lv_tax_class_suppliers_outside VARCHAR2(150);       -- 税区分_仕入外税
+    lv_tax_class_suppliers_inside  VARCHAR2(150);       -- 税区分_仕入内税
+    lv_tax_class_sales_outside     VARCHAR2(150);       -- 税区分_売上外税
+    lv_tax_class_sales_inside      VARCHAR2(150);       -- 税区分_売上内税
+    lv_errbuf                      VARCHAR2(5000);      -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1);         -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000);      -- ユーザー・エラー・メッセージ
+-- 2019/06/11 Ver.1.17 [E_本稼動_15472] SCSK K.Minoura MOD END
+
     --==================================================
     -- ローカル変数
     --==================================================
@@ -1728,6 +1749,13 @@ AS
              , whole_xql.this_time_net_price      DESC NULLS LAST
              , whole_xql.usuall_net_price         DESC NULLS LAST
     ;
+-- 2019/06/11 Ver.1.17 [E_本稼動_15472] SCSK K.Minoura ADD START
+  -- ===============================
+  -- ユーザー定義例外
+  -- ===============================
+  -- ロックエラー
+  get_tax_error_expt          EXCEPTION;
+-- 2019/06/11 Ver.1.17 [E_本稼動_15472] SCSK K.Minoura ADD END
 --
   BEGIN
     --==================================================
@@ -1804,22 +1832,54 @@ AS
       on_sales_support_amt           := NULL;
       RETURN;
     END IF;
+
     --==================================================
     -- 税率取得
     --==================================================
     BEGIN
-      SELECT TO_NUMBER( flvv.description )   tax_rate
-      INTO ln_tax_rate
-      FROM fnd_lookup_values_vl    flvv
-      WHERE flvv.lookup_type  = 'XXCOK1_QUOTE_TAX_RATE'
-        AND flvv.enabled_flag = 'Y'
-        AND TO_DATE( iv_selling_month, 'RRRRMM' ) BETWEEN flvv.start_date_active
-                                                      AND NVL( flvv.end_date_active, TO_DATE( iv_selling_month, 'RRRRMM' ) )
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-         ln_tax_rate := 0;   -- 取得できない場合は税率をゼロとする
+-- 2019/06/11 Ver.1.17 [E_本稼動_15472] SCSK K.Minoura MOD START
+--      SELECT TO_NUMBER( flvv.description )   tax_rate
+--      INTO ln_tax_rate
+--      FROM fnd_lookup_values_vl    flvv
+--      WHERE flvv.lookup_type  = 'XXCOK1_QUOTE_TAX_RATE'
+--        AND flvv.enabled_flag = 'Y'
+--        AND TO_DATE( iv_selling_month, 'RRRRMM' ) BETWEEN flvv.start_date_active
+--                                                      AND NVL( flvv.end_date_active, TO_DATE( iv_selling_month, 'RRRRMM' ) )
+--      ;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--         ln_tax_rate := 0;   -- 取得できない場合は税率をゼロとする
+
+      ld_selling_date :=  TO_DATE( iv_selling_month, 'RRRRMM' );
+
+      xxcos_common_pkg.get_tax_rate_info(
+        iv_item_code                     -- 品目コード
+      , ld_selling_date                  -- 基準日
+      , lv_class_for_variable_tax        -- 軽減税率用税種別
+      , lv_tax_name                      -- 税率キー名称
+      , lv_tax_description               -- 摘要
+      , lv_tax_histories_code            -- 消費税履歴コード
+      , lv_tax_histories_description     -- 消費税履歴名称
+      , ld_start_date                    -- 税率キー_開始日
+      , ld_end_date                      -- 税率キー_終了日
+      , ld_start_date_histories          -- 消費税履歴_開始日
+      , ld_end_date_histories            -- 消費税履歴_終了日
+      , ln_tax_rate                      -- 税率
+      , lv_tax_class_suppliers_outside   -- 税区分_仕入外税
+      , lv_tax_class_suppliers_inside    -- 税区分_仕入内税
+      , lv_tax_class_sales_outside       -- 税区分_売上外税
+      , lv_tax_class_sales_inside        -- 税区分_売上内税
+      , lv_errbuf                        -- エラー・メッセージエラー       #固定#
+      , lv_retcode                       -- リターン・コード               #固定#
+      , lv_errmsg                        -- ユーザー・エラー・メッセージ   #固定#
+      );
+
+      IF ( lv_retcode = gv_status_error ) THEN  --リターンコードが1(警告)の場合は共通関数より0が返却されるので、税率0で処理を続行
+        RAISE get_tax_error_expt;
+      END IF;
+-- 2019/06/11 Ver.1.17 [E_本稼動_15472] SCSK K.Minoura MOD END
     END;
+
     --==================================================
     -- 突合せ
     --==================================================
@@ -1836,6 +1896,8 @@ AS
       DECLARE
         skip_expt                  EXCEPTION; -- 見積突合せ対象外（見積書無し）
       BEGIN
+
+
         --==================================================
         -- 税抜額計算（問屋）
         --==================================================
@@ -2192,6 +2254,14 @@ AS
     on_sales_support_amt           := NULL;
 --
   EXCEPTION
+    -- 税率取得例外 ***
+-- 2019/06/11 Ver.1.17 [E_本稼動_15472] SCSK K.Minoura ADD START
+    WHEN get_tax_error_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_sepa_period || cv_prg_name || cv_sepa_colon || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_retcode;
+-- 2019/06/11 Ver.1.17 [E_本稼動_15472] SCSK K.Minoura ADD END
+
     WHEN OTHERS THEN
       ov_retcode := gv_status_error;
       RAISE_APPLICATION_ERROR(
