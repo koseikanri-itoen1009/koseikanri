@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2012/03/12    1.11  K.Nakamura       [E_本稼動_08318] レイアウト改修対応
  *  2012/07/12    1.12  S.Niki           [E_本稼動_09806] 単位別にNET価格と営業原価の比較方法を変更
  *  2012/07/19    1.13  T.Osawa          [E_本稼動_08317] 問屋請求見積書明細の取得方法変更
+ *  2018/03/11    1.14  N.Abe            [E_本稼動_15472] 軽減税率対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -90,6 +91,9 @@ AS
   cv_msg_code_90002          CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90002';          -- エラー件数
   cv_msg_code_90004          CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90004';          -- 正常終了
   cv_msg_code_90006          CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90006';          -- エラー終了全ロールバック
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+  cv_msg_code_10566          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10566';          -- 消費税履歴重複エラー
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
   -- トークン
   cv_token_location_code     CONSTANT VARCHAR2(15)  := 'LOCATION_CODE';
   cv_token_cust_code         CONSTANT VARCHAR2(15)  := 'CUST_CODE';
@@ -134,6 +138,10 @@ AS
   cn_number_0                CONSTANT NUMBER        := 0;
   cn_number_1                CONSTANT NUMBER        := 1;
   cn_number_100              CONSTANT NUMBER        := 100;
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+  cn_8                       CONSTANT NUMBER        := 8;     -- 税率8%
+  cn_10                      CONSTANT NUMBER        := 10;    -- 税率10%
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
   -- 出力区分
   cv_which                   CONSTANT VARCHAR2(3)   := 'LOG'; -- 出力区分
   -- 主銀行フラグ
@@ -148,6 +156,11 @@ AS
   cv_lookup_type_stamp       CONSTANT VARCHAR2(30)  := 'XXCOK1_WHOLESALE_PAY_STAMP';
   cv_lookup_type_chilled     CONSTANT VARCHAR2(30)  := 'XXCOK1_ITM_YOKIGUN_CHILLED';
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+  cv_lookup_sub_acct_tax     CONSTANT VARCHAR2(19)  := 'XXCOK1_SUB_ACCT_TAX';       -- 補助科目税率
+  cv_lookup_tax_code         CONSTANT VARCHAR2(15)  := 'XXCFO1_TAX_CODE';           -- 軽減税率用税種別
+  cv_lookup_tax_code_his     CONSTANT VARCHAR2(25)  := 'XXCFO1_TAX_CODE_HISTORIES';
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
   -- 請求単位
   cv_unit_type_cs            CONSTANT VARCHAR2(1)   := '2';   -- C/S
 -- 2010/04/23 Ver.1.10 [E_本稼動_02088] SCS K.Yamaguchi ADD START
@@ -165,6 +178,9 @@ AS
   cv_index_1                 CONSTANT VARCHAR2(1)   := '1';   -- クイックコード
   cv_index_2                 CONSTANT VARCHAR2(1)   := '2';   -- クイックコード
   cv_index_3                 CONSTANT VARCHAR2(1)   := '3';   -- クイックコード
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+  cv_index_4                 CONSTANT VARCHAR2(1)   := '4';   -- クイックコード
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
   -- ダミー値
   cv_dummy                   CONSTANT VARCHAR2(5)   := 'dummy';              -- ダミー値
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
@@ -266,6 +282,37 @@ AS
          , bank.bank_account_type         AS bank_account_type              -- 口座種別
          , bank.bank_account_num          AS bank_account_num               -- 口座番号
          , xlv.meaning                    AS wholesale_ctrl_name            -- 問屋管理名
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+         , NVL( (SELECT xrtrv.tax_rate AS tax_rate
+                 FROM   xxcos_reduced_tax_rate_v xrtrv
+                 WHERE  xrtrv.item_code(+) = xwbl.item_code
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) >= xrtrv.start_date(+)
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) <= NVL(xrtrv.end_date(+), TO_DATE(xwbl.selling_month, cv_format_yyyymm))
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) >= xrtrv.start_date_histories(+)
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) <= NVL(xrtrv.end_date_histories(+), TO_DATE(xwbl.selling_month, cv_format_yyyymm))
+                )
+               ,(SELECT TO_NUMBER(his.attribute1)  AS tax_rate
+                 FROM   fnd_lookup_values_vl acc
+                       ,fnd_lookup_values_vl tax
+                       ,fnd_lookup_values_vl his
+                 WHERE  acc.lookup_type(+)  = cv_lookup_sub_acct_tax
+                 AND    tax.lookup_type(+)  = cv_lookup_tax_code
+                 AND    his.lookup_type(+)  = cv_lookup_tax_code_his
+                 AND    acc.enabled_flag(+) = cv_enabled_flag
+                 AND    tax.enabled_flag(+) = cv_enabled_flag
+                 AND    his.enabled_flag(+) = cv_enabled_flag
+                 AND    acc.description     = tax.lookup_code
+                 AND    tax.lookup_code     = his.tag
+                 AND    acc.lookup_code(+)  = xwbl.acct_code || cv_hyphen || xwbl.sub_acct_code
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) >= acc.start_date_active(+)
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) <= NVL(acc.end_date_active(+), TO_DATE(xwbl.selling_month, cv_format_yyyymm))
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) >= tax.start_date_active(+)
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) <= NVL(tax.end_date_active(+), TO_DATE(xwbl.selling_month, cv_format_yyyymm))
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) >= his.start_date_active(+)
+                 AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) <= NVL(his.end_date_active(+), TO_DATE(xwbl.selling_month, cv_format_yyyymm))
+                )
+              )                           AS tax_rate
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
     FROM   xxcok_wholesale_bill_head      xwbh                              -- 問屋請求書ヘッダーテーブル
          , xxcok_wholesale_bill_line      xwbl                              -- 問屋請求書明細テーブル
          , hz_cust_accounts               hca                               -- 顧客マスタ
@@ -365,6 +412,7 @@ AS
     AND    pvsa.org_id                   = gn_org_id
     AND    ( pvsa.inactive_date > gd_process_date OR pvsa.inactive_date IS NULL )
     AND    xwbh.wholesale_bill_header_id = xwbl.wholesale_bill_header_id;
+
   TYPE g_target_ttype IS TABLE OF g_target_cur%ROWTYPE INDEX BY BINARY_INTEGER;
   g_target_tab g_target_ttype;
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD START
@@ -646,6 +694,9 @@ AS
 -- 2012/07/12 Ver.1.12 [E_本稼動_09806] SCSK S.Niki ADD START
     ln_trading_cost          NUMBER         DEFAULT NULL;              -- 営業原価(比較用)
 -- 2012/07/12 Ver.1.12 [E_本稼動_09806] SCSK S.Niki ADD END
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+    lv_tax                   VARCHAR2(2)    DEFAULT NULL;              -- 税(印)
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
 --
   BEGIN
     -- ===============================================
@@ -1017,6 +1068,15 @@ AS
           ln_misc_acct_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
         END IF;
       END IF;
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+      -- ===============================================
+      -- 税(印)
+      -- 税率10%の場合、税に印を設定する。
+      -- ===============================================
+      IF ( g_target_tab( in_i ).tax_rate = cn_10 ) THEN
+        lv_tax := g_lookup_stamp_tab( cv_index_4 ).meaning;
+      END IF;
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
 -- 2009/12/18 Ver.1.7 [E_本稼動_00543] SCS S.Moriyama UPD END
       -- ===============================================
       -- 売上対象年月(YYYY/MM)データ変換
@@ -1040,6 +1100,10 @@ AS
       , stamp2_description                             -- ヘッダ用印２摘要
       , stamp3                                         -- ヘッダ用印３
       , stamp3_description                             -- ヘッダ用印３摘要
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+      , stamp4                                         -- ヘッダ用印４
+      , stamp4_description                             -- ヘッダ用印４摘要
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
       , base_code                                      -- 拠点コード
       , base_name                                      -- 拠点名
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
@@ -1068,6 +1132,9 @@ AS
       , payment_unit_price                             -- 支払単価
       , payment_amt_disp                               -- 支払金額(表示用)
       , payment_amt_calc                               -- 支払金額(計算用)
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+      , tax                                            -- 税
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
       , normal_special_type                            -- 通特区分
       , market_amt                                     -- (実)建値
       , normal_store_deliver_amt                       -- 通常店納
@@ -1112,6 +1179,10 @@ AS
       , g_lookup_stamp_tab( cv_index_2 ).description   -- stamp1_description
       , g_lookup_stamp_tab( cv_index_3 ).meaning       -- stamp1
       , g_lookup_stamp_tab( cv_index_3 ).description   -- stamp1_description
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+      , g_lookup_stamp_tab( cv_index_4 ).meaning       -- stamp4
+      , g_lookup_stamp_tab( cv_index_4 ).description   -- stamp4_description
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
       , g_target_tab( in_i ).base_code                 -- base_code
       , g_target_tab( in_i ).base_name                 -- base_name
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
@@ -1140,6 +1211,9 @@ AS
       , ln_payment_unit_price                          -- payment_unit_price
       , ln_payment_amt                                 -- payment_amt_disp
       , g_target_tab( in_i ).payment_amt               -- payment_amt_calc
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+      , lv_tax                                         -- tax
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
       , gv_estimated_type                              -- normal_special_type
       , ln_market_amt                                  -- market_amt
       , gn_normal_store_deliver_amt                    -- normal_store_deliver_amt
@@ -1447,11 +1521,17 @@ AS
     lv_outmsg   VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
     ld_chk_date DATE           DEFAULT NULL;              -- チェック用変数
     lb_retcode  BOOLEAN        DEFAULT TRUE;              -- メッセージ出力関数戻り値
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+    ln_cnt      NUMBER;                                   -- 重複件数カウンタ
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
     -- ===============================================
     -- ローカル例外
     -- ===============================================
     --*** 初期処理エラー ***
     init_fail_expt             EXCEPTION;
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+    dup_tax_rate_expt          EXCEPTION;
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
 --
   BEGIN
     -- ===============================================
@@ -1783,6 +1863,30 @@ AS
       RAISE init_fail_expt;
     END IF;
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+    -- ===============================================
+    -- 税率履歴の重複チェック
+    -- ===============================================
+    SELECT COUNT(1) AS cnt
+    INTO   ln_cnt
+    FROM   fnd_lookup_values  v1
+          ,fnd_lookup_values  v2
+    WHERE  v1.lookup_type             = cv_lookup_tax_code_his
+    AND    v2.lookup_type             = cv_lookup_tax_code_his
+    AND    v1.enabled_flag            = cv_enabled_flag
+    AND    v2.enabled_flag            = cv_enabled_flag
+    AND    ( ( v1.start_date_active  >= v2.start_date_active
+    AND        v1.start_date_active  <= v2.end_date_active )
+      OR     ( v1.end_date_active    >= v2.start_date_active
+    AND        v1.end_date_active    <= v2.end_date_active ) )
+    AND    v1.tag                     = v2.tag
+    AND    v1.lookup_code            <> v2.lookup_code
+    ;
+    -- 重複データが1件でもあればエラー
+    IF ( ln_cnt > 0 ) THEN
+      RAISE dup_tax_rate_expt;
+    END IF;
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
   EXCEPTION
     -- *** 初期処理エラー ***
     WHEN init_fail_expt THEN
@@ -1797,6 +1901,16 @@ AS
         CLOSE lookup_chilled_cur;
       END IF;
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+    WHEN dup_tax_rate_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_short_name
+                    , iv_name         => cv_msg_code_10566
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
