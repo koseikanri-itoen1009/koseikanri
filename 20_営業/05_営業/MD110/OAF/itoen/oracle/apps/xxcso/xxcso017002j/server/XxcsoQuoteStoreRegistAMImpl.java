@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistAMImpl
 * 概要説明   : 帳合問屋用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -23,6 +23,7 @@
 * 2011-05-17 1.11 SCS桐生和幸  【E_本稼動_02500】原価割れチェック方法の変更対応
 * 2011-11-14 1.12 SCSK桐生和幸 【E_本稼動_08312】問屋見積画面の改修①
 * 2013-08-22 1.13 SCSK中野徹也 【E_本稼動_10884】消費税増税対応
+* 2019-06-11 1.14 SCSK阿部直樹 【E_本稼動_15472】軽減税率対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.server;
@@ -2708,7 +2709,10 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
         double taxrate = -1;
         if ( taxFlag )
         {
-          taxVo.initQuery(lineRow.getQuoteEndDate());
+// 2019-06-11 Ver1.14 [E_本稼動_15472] Mod Start
+//          taxVo.initQuery(lineRow.getQuoteEndDate());
+          taxVo.initQuery(lineRow.getQuoteEndDate(), lineRow.getInventoryItemCode());
+// 2019-06-11 Ver1.14 [E_本稼動_15472] Mod End
           XxcsoQtApTaxRateVORowImpl taxRow
             = (XxcsoQtApTaxRateVORowImpl)taxVo.first();
           if ( taxRow != null )
