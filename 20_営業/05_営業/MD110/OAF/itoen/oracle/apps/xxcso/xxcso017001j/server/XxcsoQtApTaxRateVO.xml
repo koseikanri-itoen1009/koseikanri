@@ -8,16 +8,23 @@
    RowClass="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQtApTaxRateVORowImpl"
    ComponentClass="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQtApTaxRateVOImpl"
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT qatrv.ap_tax_rate
 FROM   xxcso_qt_ap_tax_rate_v qatrv
 WHERE  qatrv.start_date <= :1
-AND    NVL( qatrv.end_date, :1 ) >= :1
+/* 2019-06-11 [E_–{‰Ò“®_15472] Mod Start */
+--AND    NVL( qatrv.end_date, :1 ) >= :1
+AND    NVL(qatrv.end_date, :2) >= :3
+AND    qatrv.item_code = :4
+AND    qatrv.start_date_histories <= :5
+AND    NVL( qatrv.end_date_histories, :6 ) >= :7
+/* 2019-06-11 [E_–{‰Ò“®_15472] Mod End */
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
