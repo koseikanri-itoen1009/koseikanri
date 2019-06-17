@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO017A07C(body)
  * Description      : 見積書アップロード
  * MD.050           : 見積書アップロード MD050_CSO_017_A07
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2012/01/26    1.0   Y.Horikawa       新規作成
  *  2012/06/20    1.1   K.Kiriu          [T4障害]見積区分のチェック修正
  *  2013/07/30    1.2   K.Kiriu          [E_本稼動_10884]消費税対応
+ *  2019/06/11    1.3   K.Minoura        [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -2044,6 +2045,12 @@ AS
           WHERE   xqatrv.start_date                   <= get_quote_upload_work_rec.quote_end_date
           AND     NVL( xqatrv.end_date, get_quote_upload_work_rec.quote_end_date )
                                                       >= get_quote_upload_work_rec.quote_end_date
+/* 2019/06/11 Ver1.3 Add Start   */
+          AND     xqatrv.start_date_histories         <= get_quote_upload_work_rec.quote_end_date
+          AND     NVL( xqatrv.end_date_histories, get_quote_upload_work_rec.quote_end_date )
+                                                      >= get_quote_upload_work_rec.quote_end_date
+          AND     xqatrv.item_code = get_quote_upload_work_rec.item_code
+/* 2019/06/11 Ver1.3 Add End   */
           ;
         EXCEPTION
           WHEN OTHERS THEN
