@@ -25,7 +25,6 @@ CREATE OR REPLACE VIEW APPS.XXCSO_QT_AP_TAX_RATE_V
  ,end_date_histories
  ,item_code
 -- 2019/06/11 Ver1.2 Add End
-
 )
 AS
 -- 2019/06/11 Ver1.2 Mod Start
@@ -54,7 +53,6 @@ AS
 --  AND     flvv.lookup_type       = 'XXCSO1_AP_TAX_RATE_SALES' --AP税率マスタ課税売上
 --  AND     flvv.enabled_flag      = 'Y'                        --有効フラグ(参照タイプ)
 ---- 2013/07/30 Ver1.1 Add End
-
   SELECT  1 + ( NVL(xrtrv.tax_rate, 0) / 100 )      ap_tax_rate
          ,xrtrv.start_date                          start_date            --適用開始日
          ,xrtrv.end_date                            end_date              --適用終了日
