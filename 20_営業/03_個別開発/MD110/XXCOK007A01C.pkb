@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2010/05/18    1.14  K.Yamaguchi      [E_本稼動_02683]営業原価の取得方法を修正
  *  2011/11/11    1.15  K.Nakamura       [E_本稼動_08340]店舗納品日のAR会計期間チェック追加
  *  2017/06/27    1.16  S.Niki           [E_本稼動_14382]伝票Noシーケンスあふれ対応
+ *  2019/06/25    1.17  N.Abe            [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
   -- =========================
@@ -119,6 +120,11 @@ AS
   cv_message_90004       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90004';   --正常終了メッセージ
   cv_message_90005       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90005';   --警告終了メッセージ
   cv_message_90006       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90006';   --エラー終了全ロールバックメッセージ
+-- Ver.1.17 [E_本稼動_15472] Add Start
+  cv_message_10563       CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10563';   --非課税消費税率取得失敗メッセージ
+  cv_message_10564       CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10564';   --品目別消費税率取得失敗メッセージ
+  cv_message_00101       CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00101';   --例外エラーメッセージ
+-- Ver.1.17 [E_本稼動_15472] Add End
   --プロファイル
   cv_purge_term_profile  CONSTANT VARCHAR2(100) := 'XXCOS1_EDI_PURGE_TERM';       --EDI情報削除期間
   cv_org_id_profile      CONSTANT VARCHAR2(100) := 'ORG_ID';                      --組織ID
@@ -156,6 +162,9 @@ AS
   cv_token_delivery_price     CONSTANT VARCHAR2(15) := 'DELIVERY_PRICE';          --トークン名(DELIVERY_PRICE)
   cv_token_create_date        CONSTANT VARCHAR2(15) := 'CREATE_DATE';             --トークン名(CREATE_DATE)
   cv_token_count              CONSTANT VARCHAR2(5)  := 'COUNT';                   --トークン名(COUNT)
+-- Ver.1.17 [E_本稼動_15472] Add Start
+  cv_token_errmsg             CONSTANT VARCHAR2(6)  := 'ERRMSG';                  --トークン名(ERRMSG)
+-- Ver.1.17 [E_本稼動_15472] Add End
   --文字列
 -- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
 --  cv_lookup_type              CONSTANT VARCHAR2(50) := 'XXCOK1_CONSUMPTION_TAX_CLASS';   --値セット名
@@ -1515,6 +1524,9 @@ AS
     ln_selling_amt_no_tax           NUMBER         DEFAULT 0;      --算出した売上金額(税抜き)
     lv_store_delivery_date          VARCHAR2(10)   DEFAULT NULL;   --店舗納品日(YYYY/MM/DD変換後)
     lb_retcode                      BOOLEAN        DEFAULT NULL;   --メッセージ出力の戻り値
+-- Ver.1.17 [E_本稼動_15472] Add Start
+    l_tax_rec                       xxcos_reduced_tax_rate_v%ROWTYPE;  -- 共通関数用レコード変数
+-- Ver.1.17 [E_本稼動_15472] Add End
     -- =======================
     -- ローカルカーソル
     -- =======================
@@ -2366,12 +2378,16 @@ AS
     BEGIN
       SELECT bill_hca.account_number    AS bill_cust_code
            , bill_xca.tax_div           AS tax_div
-           , bill_xtv.tax_rate          AS tax_rate
-           , bill_xtv.tax_code          AS tax_code
+-- Ver.1.17 [E_本稼動_15472] Del Start
+--           , bill_xtv.tax_rate          AS tax_rate
+--           , bill_xtv.tax_code          AS tax_code
+-- Ver.1.17 [E_本稼動_15472] Del End
       INTO lv_bill_cust_code
          , lv_tax_type
-         , ln_tax_rate
-         , lv_tax_code
+-- Ver.1.17 [E_本稼動_15472] Del Start
+--         , ln_tax_rate
+--         , lv_tax_code
+-- Ver.1.17 [E_本稼動_15472] Del End
       FROM hz_cust_accounts        ship_hca
          , hz_cust_acct_sites      ship_hcas
          , hz_cust_site_uses       ship_hcsu
@@ -2379,7 +2395,9 @@ AS
          , hz_cust_acct_sites      bill_hcas
          , hz_cust_accounts        bill_hca
          , xxcmm_cust_accounts     bill_xca
-         , xxcos_tax_v             bill_xtv
+-- Ver.1.17 [E_本稼動_15472] Del Start
+--         , xxcos_tax_v             bill_xtv
+-- Ver.1.17 [E_本稼動_15472] Del End
       WHERE ship_hca.account_number          = lv_from_account_number
         AND ship_hca.cust_account_id         = ship_hcas.cust_account_id
         AND ship_hcas.cust_acct_site_id      = ship_hcsu.cust_acct_site_id
@@ -2389,10 +2407,12 @@ AS
         AND bill_hcsu.cust_acct_site_id      = bill_hcas.cust_acct_site_id
         AND bill_hcas.cust_account_id        = bill_hca.cust_account_id
         AND bill_hca.cust_account_id         = bill_xca.customer_id
-        AND bill_xca.tax_div                 = bill_xtv.tax_class
-        AND bill_xtv.set_of_books_id         = gn_set_of_books_id
-        AND id_store_delivery_date     BETWEEN NVL( bill_xtv.start_date_active, id_store_delivery_date )
-                                           AND NVL( bill_xtv.end_date_active  , id_store_delivery_date )
+-- Ver.1.17 [E_本稼動_15472] Del Start
+--        AND bill_xca.tax_div                 = bill_xtv.tax_class
+--        AND bill_xtv.set_of_books_id         = gn_set_of_books_id
+--        AND id_store_delivery_date     BETWEEN NVL( bill_xtv.start_date_active, id_store_delivery_date )
+--                                           AND NVL( bill_xtv.end_date_active  , id_store_delivery_date )
+-- Ver.1.17 [E_本稼動_15472] Del End
 -- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD START
         AND bill_hcsu.status                 = cv_flag_a
         AND ship_hcsu.status                 = cv_flag_a
@@ -2473,6 +2493,92 @@ AS
     -- =============================================================================
     -- (3)消費税を計算
     -- =============================================================================
+-- Ver.1.17 [E_本稼動_15472] Add Start
+    -- 消費関区分が'4'(非課税)の場合
+    IF ( lv_tax_type = cv_4 ) THEN
+      BEGIN
+        -- 非課税の消費税情報を取得
+        SELECT xtv.tax_rate
+              ,xtv.tax_code
+        INTO   ln_tax_rate
+              ,lv_tax_code
+        FROM   xxcos_tax_v  xtv
+        WHERE  xtv.tax_class           = cv_4
+        AND    xtv.set_of_books_id     = gn_set_of_books_id
+        AND    id_store_delivery_date >= NVL( xtv.start_date_active, id_store_delivery_date )
+        AND    id_store_delivery_date <= NVL( xtv.end_date_active, id_store_delivery_date )
+        ;
+      EXCEPTION
+        --取得に失敗した場合 例外処理（警告）
+        WHEN NO_DATA_FOUND THEN
+          lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_message_10563
+                    );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.OUTPUT   --出力区分
+                        , iv_message  => lv_msg            --メッセージ
+                        , in_new_line => 0                 --改行
+                        );
+          RAISE chk_data_expt;
+      END;
+    -- 消費税区分が'4'(非課税)以外の場合
+    ELSE
+      -- 共通関数：品目別消費税率取得関数から消費税情報を取得
+      xxcos_common_pkg.get_tax_rate_info(
+        iv_item_code                   =>  lv_item_code                           -- 品目コード
+       ,id_base_date                   =>  id_store_delivery_date                 -- 基準日
+       ,ov_class_for_variable_tax      =>  l_tax_rec.class_for_variable_tax       -- 軽減税率用税種別
+       ,ov_tax_name                    =>  l_tax_rec.tax_name                     -- 税率キー名称
+       ,ov_tax_description             =>  l_tax_rec.tax_description              -- 摘要
+       ,ov_tax_histories_code          =>  l_tax_rec.tax_histories_code           -- 消費税履歴コード
+       ,ov_tax_histories_description   =>  l_tax_rec.tax_histories_description    -- 消費税履歴名称
+       ,od_start_date                  =>  l_tax_rec.start_date                   -- 税率キー_開始日
+       ,od_end_date                    =>  l_tax_rec.end_date                     -- 税率キー_終了日
+       ,od_start_date_histories        =>  l_tax_rec.start_date_histories         -- 消費税履歴_開始日
+       ,od_end_date_histories          =>  l_tax_rec.end_date_histories           -- 消費税履歴_終了日
+       ,on_tax_rate                    =>  ln_tax_rate                            -- 税率
+       ,ov_tax_class_suppliers_outside =>  l_tax_rec.tax_class_suppliers_outside  -- 税区分_仕入外税
+       ,ov_tax_class_suppliers_inside  =>  l_tax_rec.tax_class_suppliers_inside   -- 税区分_仕入内税
+       ,ov_tax_class_sales_outside     =>  l_tax_rec.tax_class_sales_outside      -- 税区分_売上外税
+       ,ov_tax_class_sales_inside      =>  l_tax_rec.tax_class_sales_inside       -- 税区分_売上内税
+       ,ov_errbuf                      =>  lv_errbuf                              -- エラー・メッセージエラー       #固定#
+       ,ov_retcode                     =>  lv_retcode                             -- リターン・コード               #固定#
+       ,ov_errmsg                      =>  lv_errmsg                              -- ユーザー・エラー・メッセージ   #固定#
+      );
+      -- 共通関数のリターン・コードが'2'（異常）の場合
+      IF    ( lv_retcode = cv_status_error ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcok_appl_name
+                     , iv_name         => cv_message_00101
+                     , iv_token_name1  => cv_token_errmsg
+                     , iv_token_value1 => lv_errbuf
+                     );
+        RAISE global_process_expt;
+      -- 共通関数のリターン・コードが'1'（警告）の場合
+      ELSIF ( lv_retcode = cv_status_warn ) THEN
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_message_10564
+                  , iv_token_name1  => cv_token_item_code
+                  , iv_token_value1 => lv_item_code
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        RAISE chk_data_expt;
+      END IF;
+      -- 外税の場合、税区分_売上外税を消費税コードに設定
+      IF ( lv_tax_type = cv_1 ) THEN
+        lv_tax_code := l_tax_rec.tax_class_sales_outside;
+      -- 内税（伝票、単価）の場合、税区分_売上内税を消費税コードに設定
+      ELSIF ( lv_tax_type IN (cv_2, cv_3) ) THEN
+        lv_tax_code := l_tax_rec.tax_class_sales_inside;
+      END IF;
+    END IF;
+-- Ver.1.17 [E_本稼動_15472] Add End
     -- =========================================================
     -- 消費税区分が'1'(外税)、'4'(対象外)の場合
     -- =========================================================
