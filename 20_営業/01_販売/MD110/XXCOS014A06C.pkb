@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2017/12/05    1.26  K.Kiriu          [E_本稼動_14775] 品目マスタ取得条件不正対応
  *  2018/07/03    1.27  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *  2018/07/27    1.28  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
+ *  2019/06/25    1.29  N.Miyamoto       [E_本稼動_15472]軽減税率対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -271,6 +272,16 @@ AS
   -- 顧客ステータス
   cv_cust_stop_div                CONSTANT VARCHAR2(2)    := '90';                                  --中止決裁済
 -- Ver1.28 Add End
+-- 2019/06/25 V1.29 N.Miyamoto ADD START
+  cv_attribute_y                  CONSTANT VARCHAR2(1)    := 'Y';                                   -- DFF値'Y'
+  cv_out_tax                      CONSTANT VARCHAR(10)    := '1';                                   -- 外税
+  cv_ins_slip_tax                 CONSTANT VARCHAR(10)    := '2';                                   -- 内税(伝票課税)
+  cv_ins_bid_tax                  CONSTANT VARCHAR(10)    := '3';                                   -- 内税(単価込み)
+  cv_non_tax                      CONSTANT VARCHAR(10)    := '4';                                   -- 非課税
+  cv_tkn_down                     CONSTANT VARCHAR2(20)   := 'DOWN';                                -- 切捨て
+  cv_tkn_up                       CONSTANT VARCHAR2(20)   := 'UP';                                  -- 切上げ
+  cv_tkn_nearest                  CONSTANT VARCHAR2(20)   := 'NEAREST';                             -- 四捨五入
+-- 2019/06/25 V1.29 N.Miyamoto ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1633,6 +1644,12 @@ AS
     lt_reason_code                    oe_reasons.reason_code%TYPE;
     lv_data_type                      VARCHAR2(1);                      -- 取得データタイプ(1:EDI,2:Online)
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
+-- 2019/06/25 V1.29 N.Miyamoto ADD START
+    lt_bill_tax_round_rule            xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE;
+    ln_shipping_cost_amt              NUMBER;
+    ln_tax_rate                       NUMBER;
+    ln_general_add_item10             NUMBER;
+-- 2019/06/25 V1.29 N.Miyamoto ADD END
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_data_record(i_input_rec    g_input_rtype
@@ -3205,7 +3222,10 @@ AS
                             ,xeh.charge_name                                             charge_name                   --担当者名
                             ,xeh.price_tag                                               price_tag                     --値札
                             ,xeh.tax_type                                                tax_type                      --税種
-                            ,xeh.consumption_tax_class                                   consumption_tax_class         --消費税区分
+-- 2019/06/25 V1.29 N.Miyamoto MOD START
+--                            ,xeh.consumption_tax_class                                   consumption_tax_class         --消費税区分
+                            ,NVL(xeh.consumption_tax_class, xca.tax_div)                 consumption_tax_class         --消費税区分
+-- 2019/06/25 V1.29 N.Miyamoto MOD END
                             ,xeh.brand_class                                             brand_class                   --ＢＲ
                             ,xeh.id_code                                                 id_code                       --ＩＤコード
                             ,xeh.department_code                                         department_code               --百貨店コード
@@ -3257,7 +3277,12 @@ AS
                             ,xeh.l3_column                                               l3_column                     --Ｌ－３欄
                             ,xeh.chain_peculiar_area_header                              chain_peculiar_area_header    --チェーン店固有エリア（ヘッダー）
                             ,xeh.order_connection_number                                 order_connection_number       --受注関連番号（仮）
-                            ,avtab.tax_rate                                              tax_rate                      --汎用付加項目１(税率)
+-- 2019/06/25 V1.29 N.Miyamoto MOD START
+--                            ,avtab.tax_rate                                              tax_rate                      --汎用付加項目１(税率)
+                            ,DECODE( xlvv2.attribute4, cv_attribute_y                                                  -- 顧客税区分が非課税(税コードマスタ.非課税区分=Y)の場合は
+                                   , avtab.tax_rate                                                                    -- 税率マスタより取得
+                                   , xrtrv.tax_rate )                                    tax_rate                      -- 非課税以外は品目別消費税率より取得
+-- 2019/06/25 V1.29 N.Miyamoto MOD END
                             ,xeh.total_indv_order_qty                                    total_indv_order_qty          --（総合計）発注数量（バラ）
                             ,xeh.total_case_order_qty                                    total_case_order_qty          --（総合計）発注数量（ケース）
                             ,xeh.total_ball_order_qty                                    total_ball_order_qty          --（総合計）発注数量（ボール）
@@ -3396,6 +3421,9 @@ AS
 --******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
                             ,xxcos_edi_lines                                             xel                           --EDI明細情報テーブル
 --******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
+-- 2019/06/25 V1.29 N.Miyamoto ADD START
+                            ,xxcos_reduced_tax_rate_v                                    xrtrv                         --品目別消費税率view
+-- 2019/06/25 V1.29 N.Miyamoto ADD END
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
                             ,(SELECT
                                       hca1.account_number            base_account_number
@@ -3520,6 +3548,43 @@ AS
                                          ,NVL(xeh.order_date
                                              ,xeh.data_creation_date_edi_data))))
 -- 2013/07/26 v1.24 R.Watanabe Mod End E_本稼動_10904
+-- 2019/06/25 V1.29 N.Miyamoto ADD START
+                      AND    xel.item_code = xrtrv.item_code(+)                          -- EDI明細.品目=品目別消費税率.品目
+                      AND    COALESCE ( xeh.shop_delivery_date                           -- EDIヘッダ.店舗納品日
+                                       ,xeh.center_delivery_date                         -- EDIヘッダ.センター納品日
+                                       ,xeh.order_date                                   -- EDIヘッダ.発注日
+                                       ,xeh.data_creation_date_edi_data                  -- EDIヘッダ.データ作成日
+                                      )
+                                      BETWEEN COALESCE ( xrtrv.start_date                -- 品目別消費税率.税率キー_開始日
+                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
+                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+                                                       )
+                                          AND COALESCE ( xrtrv.end_date                  -- 品目別消費税率.税率キー_終了日
+                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
+                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+                                                       )
+                      AND    COALESCE ( xeh.shop_delivery_date                           -- EDIヘッダ.店舗納品日
+                                       ,xeh.center_delivery_date                         -- EDIヘッダ.センター納品日
+                                       ,xeh.order_date                                   -- EDIヘッダ.発注日
+                                       ,xeh.data_creation_date_edi_data                  -- EDIヘッダ.データ作成日
+                                      )
+                                      BETWEEN COALESCE ( xrtrv.start_date_histories      -- 品目別消費税率.消費税履歴_開始日
+                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
+                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+                                                       )
+                                          AND COALESCE ( xrtrv.end_date_histories        -- 品目別消費税率.消費税履歴_終了日
+                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
+                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+                                                       )
+-- 2019/06/25 V1.29 N.Miyamoto ADD END
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
                       AND xca.delivery_base_code = cdm.base_account_number
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
@@ -4383,7 +4448,10 @@ AS
                     ,NULL                                                               charge_name                   --担当者名
                     ,NULL                                                               price_tag                     --値札
                     ,NULL                                                               tax_type                      --税種
-                    ,NULL                                                               consumption_tax_class         --消費税区分
+-- 2019/06/25 V1.29 N.Miyamoto MOD START
+--                    ,NULL                                                               consumption_tax_class         --消費税区分
+                    ,ooha.tax_div                                                       consumption_tax_class         --消費税区分
+-- 2019/06/25 V1.29 N.Miyamoto MOD END
                     ,NULL                                                               brand_class                   --ＢＲ
                     ,NULL                                                               id_code                       --ＩＤコード
                     ,NULL                                                               department_code               --百貨店コード
@@ -4662,7 +4730,12 @@ AS
                     ,NULL                                                               general_succeeded_item8       --汎用引継ぎ項目８
                     ,NULL                                                               general_succeeded_item9       --汎用引継ぎ項目９
                     ,NULL                                                               general_succeeded_item10      --汎用引継ぎ項目１０
-                    ,TO_CHAR(avtab.tax_rate)                                            general_add_item1             --汎用付加項目１(税率)
+-- 2019/06/25 V1.29 N.Miyamoto MOD START
+--                    ,TO_CHAR(avtab.tax_rate)                                            general_add_item1             --汎用付加項目１(税率)
+                    ,TO_CHAR(DECODE( xlvv2.attribute4, cv_attribute_y                                                 -- 顧客税区分が非課税(税コードマスタ.非課税区分=Y)の場合は
+                                   , avtab.tax_rate                                                                   -- 税率マスタより取得,非課税以外は品目別消費税率より取得
+                                   , xrtrv.tax_rate ))                                  general_add_item1             -- 汎用付加項目１(税率)
+-- 2019/06/25 V1.29 N.Miyamoto MOD END
 --******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
 --                    ,SUBSTRB(i_base_rec.phone_number, 1, 10)                            general_add_item2             --汎用付加項目２
 --                    ,SUBSTRB(i_base_rec.phone_number, 11, 10)                           general_add_item3             --汎用付加項目３
@@ -4849,6 +4922,9 @@ AS
 /* 2010/06/18 Ver1.20 Del Start */
 --                  ,xxcos_chain_store_security_v                                         xcss                          --チェーン店店舗セキュリティビュー
 /* 2010/06/18 Ver1.20 Del End   */
+-- 2019/06/25 V1.29 N.Miyamoto ADD START
+                  ,xxcos_reduced_tax_rate_v                                             xrtrv                         --品目別消費税率view
+-- 2019/06/25 V1.29 N.Miyamoto ADD END
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD START *************************************
                   ,(
                     SELECT
@@ -4867,6 +4943,9 @@ AS
                           ,hl.address2                                                         address2                     --住所２
                           ,hl.address_lines_phonetic                                           phone_number                 --電話番号
                           ,xca.torihikisaki_code                                               customer_code                --取引先コード
+-- 2019/06/25 V1.29 N.Miyamoto ADD START
+                          ,xca.tax_div                                                         tax_div                      --消費税区分
+-- 2019/06/25 V1.29 N.Miyamoto ADD END
                     FROM   hz_cust_accounts                                                    hca                          --顧客マスタ
                           ,xxcmm_cust_accounts                                                 xca                          --顧客マスタアドオン
                           ,hz_parties                                                          hp                           --パーティマスタ
@@ -5090,6 +5169,15 @@ AS
               AND   TRUNC(ooha.request_date)
                 BETWEEN NVL(avtab.start_date , TRUNC(ooha.request_date))
                 AND     NVL(avtab.end_date ,   TRUNC(ooha.request_date))
+-- 2019/06/25 V1.29 N.Miyamoto ADD START
+              AND oola.ordered_item                 = xrtrv.item_code(+)                 -- 受注明細.品目コード=品目別消費税率.品目
+              AND   TRUNC(ooha.request_date)                                             -- 受注ヘッダ情報テーブル.納品日
+                BETWEEN NVL(xrtrv.start_date, TRUNC(ooha.request_date))                  -- 品目別消費税率V.税率キー_開始日
+                AND     NVL(xrtrv.end_date,   TRUNC(ooha.request_date))                  -- 品目別消費税率V.税率キー_終了日
+              AND   TRUNC(ooha.request_date)                                             -- 受注ヘッダ情報テーブル.納品日
+                BETWEEN NVL(xrtrv.start_date_histories, TRUNC(ooha.request_date))        -- 品目別消費税率V.消費税履歴_開始日
+                AND     NVL(xrtrv.end_date_histories,   TRUNC(ooha.request_date))        -- 品目別消費税率V.消費税履歴_終了日
+-- 2019/06/25 V1.29 N.Miyamoto ADD END
 -- 2014/04/01 K.Kiriu Ver1.25 Mod Start
               AND   ooha.org_id                     = i_prf_rec.org_id
               AND   oola.org_id                     = ooha.org_id
@@ -6069,6 +6157,61 @@ out_line(buff => 'i:' || i);
                                       + NVL( TO_NUMBER( l_data_tab('SHIPPING_PRICE_AMT') ),0 );
       lt_invoice_stockout_price_amt  := lt_invoice_stockout_price_amt
                                       + NVL( TO_NUMBER( l_data_tab('STOCKOUT_PRICE_AMT') ),0 );
+-- 2019/06/25 V1.29 N.Miyamoto ADD START
+      --税率に値が入っている場合に消費税額を計算し、汎用付加項目１０にセットする。
+      IF ( l_data_tab('GENERAL_ADD_ITEM1') IS NOT NULL ) THEN
+        --消費税額を算出する
+        ln_shipping_cost_amt  := TO_NUMBER(l_data_tab('SHIPPING_COST_AMT'));        --原価金額(出荷)
+        ln_tax_rate           := TO_NUMBER(l_data_tab('GENERAL_ADD_ITEM1')) / 100;  --消費税率
+        --
+        IF ( NVL(ln_shipping_cost_amt, 0) = 0 ) THEN      -- 原価金額(出荷)がNULL、または0の場合
+          ln_general_add_item10 := ln_shipping_cost_amt;  -- NULLまたは0を設定する
+        ELSE
+          -- 顧客マスタの消費税区分が内税(単価込み)の場合
+          IF ( l_data_tab('CONSUMPTION_TAX_CLASS') = cv_ins_bid_tax ) THEN
+            --税額の導出
+            ln_general_add_item10 := ln_shipping_cost_amt - ln_shipping_cost_amt / ( 1 + ln_tax_rate );
+          -- 消費税区分が内税(単価込み)以外の場合
+          ELSE
+            --税額の導出
+            ln_general_add_item10 := ln_shipping_cost_amt * ln_tax_rate;
+          END IF;
+        END IF;
+        --端数が出たか判定
+        IF ( ln_general_add_item10  <>  TRUNC(ln_general_add_item10) ) THEN
+          -- 税金－端数処理取得
+          BEGIN
+            SELECT  xchv.bill_tax_round_rule    bill_tax_round_rule          -- 税金－端数処理
+            INTO    lt_bill_tax_round_rule
+            FROM    xxcos_cust_hierarchy_v      xchv                         -- 顧客階層ビュー
+            WHERE   xchv.ship_account_number = l_data_tab('CUSTOMER_CODE')   -- 顧客階層ビュー.出荷先顧客コード＝カーソルで取得した顧客コード
+            ;
+          EXCEPTION
+            --端数処理の取得に失敗した場合は税計算をしない
+            WHEN NO_DATA_FOUND THEN
+              ln_general_add_item10 := NULL;
+            WHEN OTHERS THEN
+              RAISE global_api_expt;
+          END;
+          --請求先顧客の端数処理に基づいて端数処理計算を行なう
+          IF ( lt_bill_tax_round_rule =  cv_tkn_down ) THEN         -- 切捨て
+               --小終点以下の処理(切捨て)
+               ln_general_add_item10   := TRUNC(ln_general_add_item10);
+          ELSIF ( lt_bill_tax_round_rule =  cv_tkn_up ) THEN        -- 切上げ
+            --小数点以下の処理(切上げ)
+            IF ( SIGN( ln_general_add_item10 )  <>  -1 ) THEN
+              ln_general_add_item10 := TRUNC( ln_general_add_item10 ) + 1;
+            ELSE
+              ln_general_add_item10 := TRUNC( ln_general_add_item10 ) - 1;
+            END IF;
+          ELSIF ( lt_bill_tax_round_rule = cv_tkn_nearest ) THEN    -- 四捨五入
+            ln_general_add_item10 := ROUND( ln_general_add_item10 );
+          END IF;
+        END IF;
+        --計算結果を文字型にCASTしてテーブル変数にセット
+        l_data_tab('GENERAL_ADD_ITEM10') := TO_CHAR(ln_general_add_item10);
+      END IF;
+-- 2019/06/25 V1.29 N.Miyamoto ADD END
   --親テーブルに子テーブルをセット
       lt_tbl(ln_cnt) := l_data_tab;
 --
