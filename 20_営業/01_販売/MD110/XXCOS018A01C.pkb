@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS018A01C(body)
  * Description      : CSVデータアップロード（販売実績）
  * MD.050           : MD050_COS_018_A01_CSVデータアップロード（販売実績）
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/11/01    1.0   S.Niki           新規作成
  *  2016/12/19    1.1   S.Niki           E_本稼動_13879追加対応
+ *  2019/06/20    1.2   S.Kuwako         E_本稼動_15472軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -140,6 +141,9 @@ AS
   cv_msg_overlap_err                CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15118';    --重複レコード取得エラーメッセージ
   cv_msg_bp_com_code_err            CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15120';    --取引先コードエラーメッセージ
   cv_msg_get_h_count                CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11287';    --件数メッセージ
+-- Ver.1.2 ADD START
+  cv_msg_common_pkg_err             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15123';      --共通関数エラーメッセージ
+-- Ver.1.2 ADD END
 --
   --メッセージ用文字列
   cv_msg_file_up_load               CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11282';    --ファイルアップロードIF
@@ -184,6 +188,11 @@ AS
   cv_tkn_param3                     CONSTANT VARCHAR2(30)  := 'PARAM3';              --パラメータ3
   cv_tkn_param4                     CONSTANT VARCHAR2(30)  := 'PARAM4';              --パラメータ4
   cv_tkn_column                     CONSTANT VARCHAR2(30)  := 'COLUMN';              --項目名
+-- Ver.1.2 ADD START
+  cv_tkn_common                     CONSTANT VARCHAR2(30)  := 'LINE_NO';             --行番号
+  cv_tkn_common_name                CONSTANT VARCHAR2(30)  := 'FUNC_NAME';           --共通関数名
+  cv_tkn_common_info                CONSTANT VARCHAR2(30)  := 'INFO';
+-- Ver.1.2 ADD END
 --
   --プロファイル
   cv_prf_org_id                     CONSTANT VARCHAR2(50)  := 'ORG_ID';                      --MO:営業単位
@@ -1820,26 +1829,47 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver.1.2 ADD START
+    cv_common_pkg_name             CONSTANT VARCHAR2(128) := 'XXCOS_COMMON_PKG.GET_TAX_RATE_INFO';   --共通関数名
+    cv_view_name                   CONSTANT VARCHAR2(30)  := 'XXCOS_REDUCED_TAX_RATE_V';             --XXCOS品目別消費税率ビュー
+    cv_tax_view_txt                CONSTANT VARCHAR2(100) := 'XXCOS_TAX_V';
+    cv_tax_class_txt               CONSTANT VARCHAR2(100) := 'TAX_CLASS';                            
+-- Ver.1.2 ADD END
 --
     -- *** ローカル変数 ***
-    lv_bp_company_code        VARCHAR2(9);      --取引先コード
-    lv_base_code              VARCHAR2(4);      --拠点コード
-    lv_card_sale_class        VARCHAR2(1);      --カード売区分
-    lv_customer_status        VARCHAR2(2);      --顧客ステータス
-    lv_tax_class              VARCHAR2(1);      --消費税区分
-    ld_process_month          DATE;             --業務日付月
-    ld_delivery_month         DATE;             --納品月
-    lv_customer_code          VARCHAR2(9);      --顧客コード
-    lv_customer_status_chk    VARCHAR2(2);      --顧客ステータス_チェック用
-    lv_item_code              VARCHAR2(7);      --品名コード
-    lv_sales_target           VARCHAR2(1);      --売上対象区分
-    lv_item_status            VARCHAR2(2);      --品目ステータス
+    lv_bp_company_code             VARCHAR2(9);      --取引先コード
+    lv_base_code                   VARCHAR2(4);      --拠点コード
+    lv_card_sale_class             VARCHAR2(1);      --カード売区分
+    lv_customer_status             VARCHAR2(2);      --顧客ステータス
+    lv_tax_class                   VARCHAR2(1);      --消費税区分
+    ld_process_month               DATE;             --業務日付月
+    ld_delivery_month              DATE;             --納品月
+    lv_customer_code               VARCHAR2(9);      --顧客コード
+    lv_customer_status_chk         VARCHAR2(2);      --顧客ステータス_チェック用
+    lv_item_code                   VARCHAR2(7);      --品名コード
+    lv_sales_target                VARCHAR2(1);      --売上対象区分
+    lv_item_status                 VARCHAR2(2);      --品目ステータス
+-- Ver.1.2 ADD START
+    lv_class_for_variable_tax      VARCHAR2(4);      -- 軽減税率用税種別
+    lv_tax_name                    VARCHAR2(80);     -- 税率キー名称
+    lv_tax_description             VARCHAR2(240);    -- 摘要
+    lv_tax_histories_code          VARCHAR2(80);     -- 消費税履歴コード
+    lv_tax_histories_description   VARCHAR2(240);    -- 消費税履歴名称
+    ld_tax_start_date              DATE;             -- 税率キー_開始日
+    ld_tax_end_date                DATE;             -- 税率キー_終了日
+    ld_tax_start_date_histories    DATE;             -- 消費税履歴_開始日
+    ld_tax_end_date_histories      DATE;             -- 消費税履歴_終了日
+    lv_tax_class_suppliers_outside VARCHAR2(150);    -- 税区分_仕入外税
+    lv_tax_class_suppliers_inside  VARCHAR2(150);    -- 税区分_仕入内税
+    lv_tax_class_sales_outside     VARCHAR2(150);    -- 税区分_売上外税
+    lv_tax_class_sales_inside      VARCHAR2(150);    -- 税区分_売上内税
+-- Ver.1.2 ADD END
 --
-    lv_tab_name               VARCHAR2(100);    --テーブル名
-    lv_col_name               VARCHAR2(100);    --項目名
-    lv_key_info1              VARCHAR2(100);    --key情報1
-    lv_key_info2              VARCHAR2(100);    --key情報2
-    lv_key_info               VARCHAR2(200);    --key情報
+    lv_tab_name                    VARCHAR2(100);    --テーブル名
+    lv_col_name                    VARCHAR2(100);    --項目名
+    lv_key_info1                   VARCHAR2(100);    --key情報1
+    lv_key_info2                   VARCHAR2(100);    --key情報2
+    lv_key_info                    VARCHAR2(200);    --key情報
 --
     -- *** ローカル・カーソル ***
 --
@@ -2461,113 +2491,116 @@ AS
 --
     END IF;
 --
+-- Ver.1.2 DEL START
     -- ********************
     -- ***  消費税区分  ***
     -- ********************
 --
-    BEGIN
-      SELECT flv.attribute1   AS tax_class
-        INTO lv_tax_class
-        FROM fnd_lookup_values flv
-       WHERE flv.language     = ct_user_lang
-         AND flv.lookup_type  = cv_look_tax_class
-         AND flv.attribute1   = iv_tax_class
-         AND gd_process_date >= NVL( flv.start_date_active ,gd_process_date )
-         AND gd_process_date <= NVL( flv.end_date_active ,gd_max_date )
-         AND flv.enabled_flag = cv_enabled_flag_y
-      ;
-    EXCEPTION
-     -- *** 取得エラーハンドラ ***
-      WHEN NO_DATA_FOUND THEN
-        --キー情報の編集処理
-        lv_tab_name := xxccp_common_pkg.get_msg(
-                         iv_application => cv_xxcos_appl_short_name
-                        ,iv_name        => cv_msg_lkp_code                       --クイックコード
-                       );
-        lv_col_name := xxccp_common_pkg.get_msg(
-                         iv_application => cv_xxcos_appl_short_name
-                        ,iv_name        => cv_msg_tax_class                      --消費税区分
-                       );
-        --
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application   => cv_xxcos_appl_short_name
-                      ,iv_name          => cv_msg_mst_chk_err
-                      ,iv_token_name1   => cv_tkn_param1                         --パラメータ1(トークン)
-                      ,iv_token_value1  => in_cnt                                --行番号
-                      ,iv_token_name2   => cv_tkn_param2                         --パラメータ2(トークン)
-                      ,iv_token_value2  => iv_dlv_inv_num                        --納品伝票番号
-                      ,iv_token_name3   => cv_tkn_param3                         --パラメータ3(トークン)
-                      ,iv_token_value3  => in_line_number                        --行No
-                      ,iv_token_name4   => cv_tkn_table                          --テーブル名(トークン)
-                      ,iv_token_value4  => lv_tab_name                           --テーブル名
-                      ,iv_token_name5   => cv_tkn_column                         --項目名(トークン)
-                      ,iv_token_value5  => lv_col_name                           --項目名
-                      ,iv_token_name6   => cv_tkn_param4                         --パラメータ4(トークン)
-                      ,iv_token_value6  => iv_tax_class                          --消費税区分
-                     );
-        --
-        FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-         ,buff   => lv_errmsg --ユーザー・エラーメッセージ
-        );
-        ov_retcode := cv_status_warn;
-    END;
+--    BEGIN
+--      SELECT flv.attribute1   AS tax_class
+--        INTO lv_tax_class
+--        FROM fnd_lookup_values flv
+--       WHERE flv.language     = ct_user_lang
+--         AND flv.lookup_type  = cv_look_tax_class
+--         AND flv.attribute1   = iv_tax_class
+--         AND gd_process_date >= NVL( flv.start_date_active ,gd_process_date )
+--         AND gd_process_date <= NVL( flv.end_date_active ,gd_max_date )
+--         AND flv.enabled_flag = cv_enabled_flag_y
+--      ;
+--    EXCEPTION
+--     -- *** 取得エラーハンドラ ***
+--      WHEN NO_DATA_FOUND THEN
+--       --キー情報の編集処理
+--        lv_tab_name := xxccp_common_pkg.get_msg(
+--                         iv_application => cv_xxcos_appl_short_name
+--                        ,iv_name        => cv_msg_lkp_code                       --クイックコード
+--                       );
+--        lv_col_name := xxccp_common_pkg.get_msg(
+--                         iv_application => cv_xxcos_appl_short_name
+--                        ,iv_name        => cv_msg_tax_class                      --消費税区分
+--                       );
+--        --
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application   => cv_xxcos_appl_short_name
+--                      ,iv_name          => cv_msg_mst_chk_err
+--                      ,iv_token_name1   => cv_tkn_param1                         --パラメータ1(トークン)
+--                      ,iv_token_value1  => in_cnt                                --行番号
+--                      ,iv_token_name2   => cv_tkn_param2                         --パラメータ2(トークン)
+--                      ,iv_token_value2  => iv_dlv_inv_num                        --納品伝票番号
+--                      ,iv_token_name3   => cv_tkn_param3                         --パラメータ3(トークン)
+--                      ,iv_token_value3  => in_line_number                        --行No
+--                      ,iv_token_name4   => cv_tkn_table                          --テーブル名(トークン)
+--                      ,iv_token_value4  => lv_tab_name                           --テーブル名
+--                      ,iv_token_name5   => cv_tkn_column                         --項目名(トークン)
+--                      ,iv_token_value5  => lv_col_name                           --項目名
+--                      ,iv_token_name6   => cv_tkn_param4                         --パラメータ4(トークン)
+--                      ,iv_token_value6  => iv_tax_class                          --消費税区分
+--                     );
+--        --
+--        FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--         ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+--        );
+--        ov_retcode := cv_status_warn;
+--    END;
 --
-    --消費税区分が取得できる場合
-    IF ( lv_tax_class IS NOT NULL ) THEN
+--    --消費税区分が取得できる場合
+--    IF ( lv_tax_class IS NOT NULL ) THEN
 --
-      ------------------------------------
-      -- 消費税情報取得
-      ------------------------------------
-      BEGIN
-        SELECT xtv.tax_rate   AS tax_rate                -- 消費税率
-              ,xtv.tax_code   AS tax_code                -- 消費税コード
-              ,xtv.tax_class  AS consumption_tax_class   -- 販売実績連携消費税区分
-          INTO on_tax_rate
-              ,ov_tax_code
-              ,ov_consumption_tax_class
-          FROM xxcos_tax_v  xtv   -- 消費税view
-         WHERE xtv.hht_tax_class     = lv_tax_class
-           AND xtv.set_of_books_id   = gn_bks_id
-           AND id_delivery_date     >= NVL( xtv.start_date_active ,id_delivery_date )
-           AND id_delivery_date     <= NVL( xtv.end_date_active ,gd_max_date )
-        ;
-      EXCEPTION
-        -- *** 取得エラーハンドラ ***
-        WHEN NO_DATA_FOUND THEN
-          --キー情報の編集処理
-          lv_tab_name := xxccp_common_pkg.get_msg(
-                           iv_application => cv_xxcos_appl_short_name
-                          ,iv_name        => cv_msg_tax_view                       --消費税view
-                         );
-          lv_col_name := xxccp_common_pkg.get_msg(
-                           iv_application => cv_xxcos_appl_short_name
-                          ,iv_name        => cv_msg_tax_rate                       --消費税率
-                         );
-          --
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application   => cv_xxcos_appl_short_name
-                        ,iv_name          => cv_msg_null_or_get_data_err
-                        ,iv_token_name1   => cv_tkn_param1                         --パラメータ1(トークン)
-                        ,iv_token_value1  => in_cnt                                --行番号
-                        ,iv_token_name2   => cv_tkn_param2                         --パラメータ2(トークン)
-                        ,iv_token_value2  => iv_dlv_inv_num                        --納品伝票番号
-                        ,iv_token_name3   => cv_tkn_param3                         --パラメータ3(トークン)
-                        ,iv_token_value3  => in_line_number                        --行No
-                        ,iv_token_name4   => cv_tkn_table                          --テーブル名(トークン)
-                        ,iv_token_value4  => lv_tab_name                           --テーブル名
-                        ,iv_token_name5   => cv_tkn_column                         --項目名(トークン)
-                        ,iv_token_value5  => lv_col_name                           --項目名
-                       );
-          --
-          FND_FILE.PUT_LINE(
-            which  => FND_FILE.OUTPUT
-           ,buff   => lv_errmsg --ユーザー・エラーメッセージ
-          );
-          ov_retcode := cv_status_warn;
-      END;
+--      ------------------------------------
+--      -- 消費税情報取得
+--      ------------------------------------
+--      BEGIN
+--        SELECT xtv.tax_rate   AS tax_rate                -- 消費税率
+--              ,xtv.tax_code   AS tax_code                -- 消費税コード
+--              ,xtv.tax_class  AS consumption_tax_class   -- 販売実績連携消費税区分
+--          INTO on_tax_rate
+--              ,ov_tax_code
+--              ,ov_consumption_tax_class
+--          FROM xxcos_tax_v  xtv   -- 消費税view
+--         WHERE xtv.hht_tax_class     = lv_tax_class
+--           AND xtv.set_of_books_id   = gn_bks_id
+--           AND id_delivery_date     >= NVL( xtv.start_date_active ,id_delivery_date )
+--           AND id_delivery_date     <= NVL( xtv.end_date_active ,gd_max_date )
+--        ;
+--      EXCEPTION
+--        -- *** 取得エラーハンドラ ***
+--        WHEN NO_DATA_FOUND THEN
+--          --キー情報の編集処理
+--          lv_tab_name := xxccp_common_pkg.get_msg(
+--                           iv_application => cv_xxcos_appl_short_name
+--                          ,iv_name        => cv_msg_tax_view                       --消費税view
+--                         );
+--          lv_col_name := xxccp_common_pkg.get_msg(
+--                           iv_application => cv_xxcos_appl_short_name
+--                          ,iv_name        => cv_msg_tax_rate                       --消費税率
+--                         );
+--          --
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                         iv_application   => cv_xxcos_appl_short_name
+--                        ,iv_name          => cv_msg_null_or_get_data_err
+--                        ,iv_token_name1   => cv_tkn_param1                         --パラメータ1(トークン)
+--                       ,iv_token_value1  => in_cnt                                --行番号
+--                        ,iv_token_name2   => cv_tkn_param2                         --パラメータ2(トークン)
+--                        ,iv_token_value2  => iv_dlv_inv_num                        --納品伝票番号
+--                        ,iv_token_name3   => cv_tkn_param3                         --パラメータ3(トークン)
+--                        ,iv_token_value3  => in_line_number                        --行No
+--                        ,iv_token_name4   => cv_tkn_table                          --テーブル名(トークン)
+--                        ,iv_token_value4  => lv_tab_name                           --テーブル名
+--                        ,iv_token_name5   => cv_tkn_column                         --項目名(トークン)
+--                        ,iv_token_value5  => lv_col_name                           --項目名
+--                       );
+--          --
+--          FND_FILE.PUT_LINE(
+--            which  => FND_FILE.OUTPUT
+--           ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+--          );
+--          ov_retcode := cv_status_warn;
+--      END;
 --
-    END IF;
+--    END IF;
+--
+-- Ver.1.2 DEL END
 --
   -- ********************************************
   -- ***  伊藤園品名コード／取引先品名コード  ***
@@ -2815,6 +2848,263 @@ AS
       END;
 --
     END IF;
+--
+-- Ver.1.2 ADD START
+    -- ********************
+    -- ***  消費税区分  ***
+    -- ********************
+--
+    BEGIN
+      SELECT flv.attribute1   AS tax_class
+        INTO lv_tax_class
+        FROM fnd_lookup_values flv
+       WHERE flv.language     = ct_user_lang
+         AND flv.lookup_type  = cv_look_tax_class
+         AND flv.attribute1   = iv_tax_class
+         AND gd_process_date >= NVL( flv.start_date_active ,gd_process_date )
+         AND gd_process_date <= NVL( flv.end_date_active ,gd_max_date )
+         AND flv.enabled_flag = cv_enabled_flag_y
+      ;
+    EXCEPTION
+     -- *** 取得エラーハンドラ ***
+      WHEN NO_DATA_FOUND THEN
+        --キー情報の編集処理
+        lv_tab_name := xxccp_common_pkg.get_msg(
+                         iv_application => cv_xxcos_appl_short_name
+                        ,iv_name        => cv_msg_lkp_code                       --クイックコード
+                       );
+        lv_col_name := xxccp_common_pkg.get_msg(
+                         iv_application => cv_xxcos_appl_short_name
+                        ,iv_name        => cv_msg_tax_class                      --消費税区分
+                       );
+        --
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application   => cv_xxcos_appl_short_name
+                      ,iv_name          => cv_msg_mst_chk_err
+                      ,iv_token_name1   => cv_tkn_param1                         --パラメータ1(トークン)
+                      ,iv_token_value1  => in_cnt                                --行番号
+                      ,iv_token_name2   => cv_tkn_param2                         --パラメータ2(トークン)
+                      ,iv_token_value2  => iv_dlv_inv_num                        --納品伝票番号
+                      ,iv_token_name3   => cv_tkn_param3                         --パラメータ3(トークン)
+                      ,iv_token_value3  => in_line_number                        --行No
+                      ,iv_token_name4   => cv_tkn_table                          --テーブル名(トークン)
+                      ,iv_token_value4  => lv_tab_name                           --テーブル名
+                      ,iv_token_name5   => cv_tkn_column                         --項目名(トークン)
+                      ,iv_token_value5  => lv_col_name                           --項目名
+                      ,iv_token_name6   => cv_tkn_param4                         --パラメータ4(トークン)
+                      ,iv_token_value6  => iv_tax_class                          --消費税区分
+                     );
+        --
+        FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+         ,buff   => lv_errmsg           --ユーザー・エラーメッセージ
+        );
+        ov_retcode := cv_status_warn;
+    END;
+--
+    --消費税区分が取得できる場合
+    IF ( lv_tax_class IS NOT NULL ) THEN
+--
+      ------------------------------------
+      -- 消費税情報取得
+      ------------------------------------
+      BEGIN
+        -- 消費税区分が非課税である場合
+        IF ( lv_tax_class = cv_tax_class_tax ) THEN
+           SELECT xtv.tax_rate   AS tax_rate                -- 消費税率
+                 ,xtv.tax_code   AS tax_code                -- 消費税コード
+           INTO   on_tax_rate
+                 ,ov_tax_code
+           FROM   xxcos_tax_v  xtv
+           WHERE  xtv.hht_tax_class  = cv_tax_class_tax
+           AND xtv.set_of_books_id   = gn_bks_id
+           AND id_delivery_date     >= NVL( xtv.start_date_active ,id_delivery_date )
+           AND id_delivery_date     <= NVL( xtv.end_date_active ,gd_max_date )
+           ;
+        -- 
+        ELSE
+        
+          -- 品目別消費税率取得関数コール
+          xxcos_common_pkg.get_tax_rate_info(
+            iv_item_code                    => ov_conv_item_code               -- 変換後品目コード
+           ,id_base_date                    => id_delivery_date                -- 基準日（納品日）
+           ,ov_class_for_variable_tax       => lv_class_for_variable_tax       -- 軽減税率用税種別
+           ,ov_tax_name                     => lv_tax_name                     -- 税率キー名称
+           ,ov_tax_description              => lv_tax_description              -- 摘要
+           ,ov_tax_histories_code           => lv_tax_histories_code           -- 消費税履歴コード
+           ,ov_tax_histories_description    => lv_tax_histories_description    -- 消費税履歴名称
+           ,od_start_date                   => ld_tax_start_date               -- 税率キー_開始日
+           ,od_end_date                     => ld_tax_end_date                 -- 税率キー_終了日
+           ,od_start_date_histories         => ld_tax_start_date_histories     -- 消費税履歴_開始日
+           ,od_end_date_histories           => ld_tax_end_date_histories       -- 消費税履歴_終了日
+           ,on_tax_rate                     => on_tax_rate                     -- 税率
+           ,ov_tax_class_suppliers_outside  => lv_tax_class_suppliers_outside  -- 税区分_仕入外税
+           ,ov_tax_class_suppliers_inside   => lv_tax_class_suppliers_inside   -- 税区分_仕入内税
+           ,ov_tax_class_sales_outside      => lv_tax_class_sales_outside      -- 税区分_売上外税
+           ,ov_tax_class_sales_inside       => lv_tax_class_sales_inside       -- 税区分_売上内税
+           ,ov_errbuf                       => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+           ,ov_retcode                      => lv_retcode                      -- リターン・コード               #固定#
+           ,ov_errmsg                       => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+          );
+          
+        -- 税金コード設定
+           CASE lv_tax_class WHEN cv_tax_class_out      THEN                 -- 外税の場合
+                               ov_tax_code  := lv_tax_class_sales_outside;
+                             WHEN cv_tax_class_ins_slip THEN                 -- 内税（伝票課税）
+                               ov_tax_code  := lv_tax_class_sales_inside;
+                             WHEN cv_tax_class_ins_bid  THEN                 -- 内税（単価込み）
+                               ov_tax_code  := lv_tax_class_sales_inside;
+                             ELSE NULL;
+           END CASE;
+          
+        END IF;
+        
+        -- 戻り値チェック(共通関数)
+        IF ( lv_retcode = cv_status_error ) THEN
+          --エラーメッセージの編集処理
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                           iv_application   => cv_xxcos_appl_short_name
+                          ,iv_name          => cv_msg_common_pkg_err
+                          ,iv_token_name1   => cv_tkn_common
+                          ,iv_token_value1  => in_cnt                                --行番号
+                          ,iv_token_name2   => cv_tkn_common_name
+                          ,iv_token_value2  => cv_common_pkg_name                    --共通関数名
+                          ,iv_token_name3   => cv_tkn_common_info
+                          ,iv_token_value3  => lv_errmsg                             --共通関数エラーメッセージ
+                          );
+          
+          RAISE global_api_expt;
+        
+        ELSIF ( lv_retcode = cv_status_warn ) THEN
+          --キー情報の編集処理
+          SELECT dtc.comments     AS view_name
+          INTO   lv_tab_name
+          FROM   dba_tab_comments  dtc
+          WHERE  dtc.table_name = cv_view_name                           --XXCOS品目別消費税率ビュー
+          ;
+          
+          lv_col_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_appl_short_name
+                          ,iv_name        => cv_msg_tax_rate                       --消費税率
+                         );
+--
+          lv_errmsg   := xxccp_common_pkg.get_msg(
+                           iv_application   => cv_xxcos_appl_short_name
+                          ,iv_name          => cv_msg_null_or_get_data_err
+                          ,iv_token_name1   => cv_tkn_param1                         --パラメータ1(トークン)
+                          ,iv_token_value1  => in_cnt                                --行番号
+                          ,iv_token_name2   => cv_tkn_param2                         --パラメータ2(トークン)
+                          ,iv_token_value2  => iv_dlv_inv_num                        --納品伝票番号
+                          ,iv_token_name3   => cv_tkn_param3                         --パラメータ3(トークン)
+                          ,iv_token_value3  => in_line_number                        --行No
+                          ,iv_token_name4   => cv_tkn_table                          --テーブル名(トークン)
+                          ,iv_token_value4  => lv_tab_name                           --テーブル名
+                          ,iv_token_name5   => cv_tkn_column                         --項目名(トークン)
+                          ,iv_token_value5  => lv_col_name                           --項目名
+                         );
+--
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_errmsg                                                      --ユーザー・エラーメッセージ
+          );
+          
+          ov_retcode := cv_status_warn;
+        
+        END IF;
+--
+      EXCEPTION
+        -- *** 取得エラーハンドラ ***
+        WHEN NO_DATA_FOUND THEN
+          --キー情報の編集処理
+          lv_tab_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_appl_short_name
+                          ,iv_name        => cv_msg_lkp_code                       --消費税view
+                         );
+          lv_col_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_appl_short_name
+                          ,iv_name        => cv_msg_tax_rate                       --消費税率
+                         );
+          --
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application   => cv_xxcos_appl_short_name
+                        ,iv_name          => cv_msg_null_or_get_data_err
+                        ,iv_token_name1   => cv_tkn_param1                         --パラメータ1(トークン)
+                        ,iv_token_value1  => in_cnt                                --行番号
+                        ,iv_token_name2   => cv_tkn_param2                         --パラメータ2(トークン)
+                        ,iv_token_value2  => iv_dlv_inv_num                        --納品伝票番号
+                        ,iv_token_name3   => cv_tkn_param3                         --パラメータ3(トークン)
+                        ,iv_token_value3  => in_line_number                        --行No
+                        ,iv_token_name4   => cv_tkn_table                          --テーブル名(トークン)
+                        ,iv_token_value4  => lv_tab_name                           --テーブル名
+                        ,iv_token_name5   => cv_tkn_column                         --項目名(トークン)
+                        ,iv_token_value5  => lv_col_name                           --項目名
+                       );
+          --
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+          );
+          ov_retcode := cv_status_warn;
+      END;
+--
+      BEGIN
+        
+        -- 品目別消費税率取得関数で警告または異常が発生していない場合
+        IF ( lv_retcode NOT IN ( cv_status_error,cv_status_warn )) THEN
+          -- 販売実績連携消費税区分の取得
+          SELECT xtv.tax_class  AS consumption_tax_class   -- 販売実績連携消費税区分
+            INTO ov_consumption_tax_class
+            FROM xxcos_tax_v  xtv                          -- 消費税view
+           WHERE xtv.hht_tax_class     = lv_tax_class
+             AND xtv.set_of_books_id   = gn_bks_id
+             AND xtv.tax_rate          = on_tax_rate
+             AND id_delivery_date     >= NVL( xtv.start_date_active ,id_delivery_date )
+             AND id_delivery_date     <= NVL( xtv.end_date_active ,gd_max_date )
+          ;
+          
+        END IF;
+--
+      EXCEPTION
+        -- *** 取得エラーハンドラ ***
+        WHEN NO_DATA_FOUND THEN
+          --キー情報の編集処理
+          lv_tab_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_appl_short_name
+                          ,iv_name        => cv_msg_lkp_code                       --消費税view
+                         );
+
+          SELECT  dcc.comments       AS col_coment     -- 項目名
+            INTO  lv_col_name
+            FROM  dba_col_comments  dcc
+           WHERE  dcc.table_name = cv_tax_view_txt
+             AND  dcc.column_name = cv_tax_class_txt                                    --販売実績連携消費税区分
+           ;
+--
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application   => cv_xxcos_appl_short_name
+                        ,iv_name          => cv_msg_null_or_get_data_err
+                        ,iv_token_name1   => cv_tkn_param1                         --パラメータ1(トークン)
+                        ,iv_token_value1  => in_cnt                                --行番号
+                        ,iv_token_name2   => cv_tkn_param2                         --パラメータ2(トークン)
+                        ,iv_token_value2  => iv_dlv_inv_num                        --納品伝票番号
+                        ,iv_token_name3   => cv_tkn_param3                         --パラメータ3(トークン)
+                        ,iv_token_value3  => in_line_number                        --行No
+                        ,iv_token_name4   => cv_tkn_table                          --テーブル名(トークン)
+                        ,iv_token_value4  => lv_tab_name                           --テーブル名
+                        ,iv_token_name5   => cv_tkn_column                         --項目名(トークン)
+                        ,iv_token_value5  => lv_col_name                           --項目名
+                       );
+          --
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+          );
+          ov_retcode := cv_status_warn;
+--
+      END;
+--
+    END IF;
+-- Ver.1.2 ADD START
 --
   EXCEPTION
 --
@@ -3347,6 +3637,10 @@ AS
     gr_sales_line_data1(gn_line_cnt1).sale_amount                    := lt_sale_amount;              --売上金額
     gr_sales_line_data1(gn_line_cnt1).pure_amount                    := lt_pure_amount;              --本体金額
     gr_sales_line_data1(gn_line_cnt1).tax_amount                     := lt_tax_amount;               --消費税金額
+-- Ver.1.2 ADD START
+    gr_sales_line_data1(gn_line_cnt1).tax_code                       := iv_tax_code;                 --税金コード
+    gr_sales_line_data1(gn_line_cnt1).tax_rate                       := in_tax_rate;                 --消費税率
+-- Ver.1.2 ADD END
     gr_sales_line_data1(gn_line_cnt1).cash_and_card                  := in_cash_and_card;            --現金・カード併用額
     gr_sales_line_data1(gn_line_cnt1).ship_from_subinventory_code    := NULL;                        --出荷元保管場所
     gr_sales_line_data1(gn_line_cnt1).delivery_base_code             := iv_sales_base_code;          --納品拠点コード
@@ -3395,6 +3689,10 @@ AS
     gr_sales_line_data2(gn_line_cnt2).sale_amount                    := lt_sale_amount * -1;         --売上金額
     gr_sales_line_data2(gn_line_cnt2).pure_amount                    := lt_pure_amount * -1;         --本体金額
     gr_sales_line_data2(gn_line_cnt2).tax_amount                     := lt_tax_amount * -1;          --消費税金額
+-- Ver.1.2 ADD START
+    gr_sales_line_data2(gn_line_cnt2).tax_code                       := iv_tax_code;                 --税金コード
+    gr_sales_line_data2(gn_line_cnt2).tax_rate                       := in_tax_rate;                 --消費税率
+-- Ver.1.2 ADD END
     gr_sales_line_data2(gn_line_cnt2).cash_and_card                  := in_cash_and_card;            --現金・カード併用額
     gr_sales_line_data2(gn_line_cnt2).ship_from_subinventory_code    := NULL;                        --出荷元保管場所
     gr_sales_line_data2(gn_line_cnt2).delivery_base_code             := iv_sales_base_code;          --納品拠点コード
