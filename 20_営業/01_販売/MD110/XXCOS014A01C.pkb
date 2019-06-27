@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2017/12/05    1.23  K.Kiriu          [E_本稼動_14775] 品目マスタ取得条件不正対応
  *  2018/07/03    1.24  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *  2018/07/27    1.25  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
+ *  2019/06/25    1.26  T.Kawaguchi      [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -120,6 +121,9 @@ AS
 --
   update_expt             EXCEPTION;     --更新エラー
   sale_class_expt         EXCEPTION;     --売上区分チェックエラー
+/* 2019/06/25 Ver1.26 Add Start */
+  tax_not_found_expt      EXCEPTION;     --税率取得エラー
+/* 2019/06/25 Ver1.26 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -191,6 +195,13 @@ AS
 -- 2009/02/13 T.Nakamura Ver.1.2 add start
   ct_msg_mo_org_id                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00047';                    --メッセージ用文字列.MO:営業単位
 -- 2009/02/13 T.Nakamura Ver.1.2 add end
+/* 2019/06/25 Ver1.26 Add Start */
+  ct_msg_tax_not_found_err        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12269';                    --税率取得エラー
+  ct_msg_order_no                 CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11277';                    --オーダーNO
+  ct_msg_item_code                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00054';                    --品目コード
+  ct_msg_schedule_inspect_date    CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11678';                    --検収予定日
+  ct_msg_schedule_dlv_date        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11677';                    --納品予定日
+/* 2019/06/25 Ver1.26 Add End */
 --
   --トークン
   cv_tkn_data                     CONSTANT VARCHAR2(4) := 'DATA';                                 --データ
@@ -246,6 +257,9 @@ AS
   cv_exists_flag                  CONSTANT VARCHAR2(1)  := '1';                                   --存在フラグ
   cv_datatime_fmt                 CONSTANT VARCHAR2(21) := 'YYYY/MM/DD HH24:MI:SS';               --日時書式
 /* 2009/09/15 Ver1.15 Mod End   */
+/* 2019/06/25 Ver1.26 Add Start */
+  cv_date_fmt_w_slash             CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                         --日付書式(YYYY/MM/DD)
+/* 2019/06/25 Ver1.26 Add End   */
 --
 -- Ver1.24 Add Start
   -- ＥＤＩ手書伝票伝送区分
@@ -260,6 +274,9 @@ AS
   -- 顧客ステータス
   cv_cust_stop_div       CONSTANT VARCHAR2(2)  := '90';                                  --中止決裁済
 -- Ver1.25 Add End
+/* 2019/06/25 Ver1.26 Add Start */
+  cv_tax_exemption      CONSTANT VARCHAR(1)   := '4';                                   -- 税区分 非課税
+/* 2019/06/25 Ver1.26 Add End  */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2992,33 +3009,68 @@ AS
             ,NULL                                                               general_succeeded_item8       --汎用引継ぎ項目８
             ,NULL                                                               general_succeeded_item9       --汎用引継ぎ項目９
             ,NULL                                                               general_succeeded_item10      --汎用引継ぎ項目１０
+/* 2019/06/25 Ver1.26 Mod Start */
+            ,CASE WHEN ivoh.tax_div != cv_tax_exemption THEN
+               ( SELECT TO_CHAR(xrtrv.tax_rate)
+                FROM   xxcos_reduced_tax_rate_v xrtrv
+                WHERE  xrtrv.item_code = opm.item_no
+                AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                         BETWEEN NVL(xrtrv.start_date
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                         AND     NVL(xrtrv.end_date
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                         BETWEEN NVL(xrtrv.start_date_histories
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                         AND     NVL(xrtrv.end_date_histories
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                AND    1 = ( SELECT COUNT(*)
+                             FROM   xxcos_reduced_tax_rate_v xrtrv_in
+                             WHERE  xrtrv_in.item_code = opm.item_no
+                             AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                                      BETWEEN NVL(xrtrv_in.start_date
+                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                      AND     NVL(xrtrv_in.end_date
+                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                             AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                                      BETWEEN NVL(xrtrv_in.start_date_histories
+                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                      AND     NVL(xrtrv_in.end_date_histories
+                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                           )
+               )
 /* 2009/08/12 Ver1.14 Mod Start */
 --            ,TO_CHAR( avtab.tax_rate )                                          general_add_item1             --汎用付加項目１(税率)
-            ,( SELECT TO_CHAR( avtab.tax_rate)
-               FROM   ar_vat_tax_all_b       avtab
-                     ,xxcos_lookup_values_v  xlvv2
-               WHERE  xlvv2.lookup_type           = ct_tax_class
-               AND    xlvv2.attribute3            = ivoh.tax_div
+             ELSE 
+               ( SELECT TO_CHAR( avtab.tax_rate)
+--            ,( SELECT TO_CHAR( avtab.tax_rate)
+                FROM   ar_vat_tax_all_b       avtab
+                      ,xxcos_lookup_values_v  xlvv2
+                WHERE  xlvv2.lookup_type           = ct_tax_class
+                AND    xlvv2.attribute3            = ivoh.tax_div
 /* 2009/09/15 Ver1.15 Mod Start */
 --               AND    ivoh.request_date           BETWEEN NVL( xlvv2.start_date_active, ivoh.request_date )
 --                                                  AND     NVL( xlvv2.end_date_active, ivoh.request_date )
-               AND    NVL( TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
-                        BETWEEN NVL( xlvv2.start_date_active
-                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
-                        AND     NVL( xlvv2.end_date_active
-                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                AND    NVL( TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                         BETWEEN NVL( xlvv2.start_date_active
+                                    , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                         AND     NVL( xlvv2.end_date_active
+                                    , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
 /* 2009/09/15 Ver1.15 Mod End   */
-               AND    xlvv2.attribute2            = avtab.tax_code
-               AND    avtab.set_of_books_id       = i_prf_rec.set_of_books_id
-               AND    avtab.org_id                = i_prf_rec.org_id
-               AND    avtab.enabled_flag          = cv_enabled_flag
+                AND    xlvv2.attribute2            = avtab.tax_code
+                AND    avtab.set_of_books_id       = i_prf_rec.set_of_books_id
+                AND    avtab.org_id                = i_prf_rec.org_id
+                AND    avtab.enabled_flag          = cv_enabled_flag
 /* 2009/09/07 Ver1.15 Del Start */
 --               AND    i_other_rec.process_date    BETWEEN avtab.start_date
 --                                                  AND     NVL( avtab.end_date, i_other_rec.process_date )
 /* 2009/09/07 Ver1.15 Del End   */
-               AND    rownum                      = 1
-             )                                                                  general_add_item1             --汎用付加項目１(税率)
+                AND    rownum                      = 1
+--             )                                                                  general_add_item1             --汎用付加項目１(税率)
+               )
+             END                                                                general_add_item1             --汎用付加項目１(税率)
 /* 2009/08/12 Ver1.14 Mod End   */
+/* 2019/06/25 Ver1.26 Mod End   */
 --******************************************************* 2009/04/02    1.6   T.kitajima MOD START *******************************************************
 --            ,SUBSTRB( i_base_rec.phone_number,1,10 )                            general_add_item2             --汎用付加項目２
 --            ,SUBSTRB( i_base_rec.phone_number,11,20 )                           general_add_item3             --汎用付加項目３
@@ -3079,6 +3131,9 @@ AS
             ,NULL                                                               total_line_qty                --トータル行数
             ,NULL                                                               total_invoice_qty             --トータル伝票枚数
             ,NULL                                                               chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
+/* 2019/06/25 Ver1.26 Add Start */
+            ,oola.attribute4                                                    schedule_inspect_date         --検収予定日
+/* 2019/06/25 Ver1.26 Add End   */
       --抽出条件
       FROM
            ( SELECT ooha.header_id                                              header_id                     --ヘッダID
@@ -3498,6 +3553,11 @@ AS
     l_order_line_id_tab        l_order_line_id_ttype;                                       --フラグの更新対象の明細ID
 /* 2009/10/14 Ver1.17 Add End   */
 --
+/* 2019/06/25 Ver1.26 Add Start */
+    lb_tax_not_found           BOOLEAN := FALSE;                                            --税率取得チェック用フラグ
+    lv_errmsg_tax              VARCHAR2(5000);                                              --税率取得エラーメッセージ
+    lv_errmsg_tax_all          VARCHAR2(5000);                                              --税率取得エラーメッセージ（複数件用）
+/* 2019/06/25 Ver1.26 Add End   */
   BEGIN
     out_line(buff => cv_prg_name || ' start');
 --
@@ -4024,6 +4084,9 @@ AS
        ,l_data_tab('TOTAL_LINE_QTY')                                                                          --トータル行数
        ,l_data_tab('TOTAL_INVOICE_QTY')                                                                       --トータル伝票枚数
        ,l_data_tab('CHAIN_PECULIAR_AREA_FOOTER')                                                              --チェーン店固有エリア（フッター）
+/* 2019/06/25 Ver1.26 Add Start */
+       ,l_data_tab('SCHEDULE_INSPECT_DATE')                                                                   --検収予定日
+/* 2019/06/25 Ver1.26 Add End   */
       ;
       EXIT WHEN cur_data_record%NOTFOUND;
 --
@@ -4273,6 +4336,32 @@ AS
   --受注明細IDテーブルに伝票計を集計した受注明細IDをセット
       l_order_line_id_tab(ln_cnt).line_id := lt_line_id;
 /* 2009/10/14 Ver1.17 Add End   */
+/* 2019/06/25 Ver1.26 Add Start */
+      IF l_data_tab('GENERAL_ADD_ITEM1') IS NULL THEN
+        lb_tax_not_found := TRUE;
+        xxcos_common_pkg.makeup_key_info(
+          ov_errbuf      => lv_errbuf                --エラー・メッセージ
+         ,ov_retcode     => lv_retcode               --リターン・コード
+         ,ov_errmsg      => lv_errmsg                --ユーザー・エラー・メッセージ
+         ,ov_key_info    => lt_tkn
+         ,iv_item_name1  => xxccp_common_pkg.get_msg(cv_apl_name,ct_msg_order_no)
+         ,iv_data_value1 => l_data_tab('OTHER_PARTY_ORDER_NUMBER')                                                            -- オーダーNO（相手先発注番号）
+         ,iv_item_name2  => xxccp_common_pkg.get_msg(cv_apl_name,ct_msg_item_code)
+         ,iv_data_value2 => l_data_tab('PRODUCT_CODE_ITOUEN')                                                                 -- 品目コード（商品コード（伊藤園））
+         ,iv_item_name3  => xxccp_common_pkg.get_msg(cv_apl_name,ct_msg_schedule_inspect_date)
+         ,iv_data_value3 => NVL(SUBSTR(l_data_tab('SCHEDULE_INSPECT_DATE'), 0, 10),'NULL')                                    -- 検収予定日
+         ,iv_item_name4  => xxccp_common_pkg.get_msg(cv_apl_name,ct_msg_schedule_dlv_date)
+         ,iv_data_value4 => NVL(TO_CHAR(TO_DATE(l_data_tab('SHOP_DELIVERY_DATE'), cv_date_fmt), cv_date_fmt_w_slash), 'NULL') -- 納品予定日（店舗納品日）
+        );
+        lv_errmsg_tax := xxccp_common_pkg.get_msg(
+                       cv_apl_name
+                      ,ct_msg_tax_not_found_err
+                      ,cv_tkn_key
+                      ,lt_tkn
+                     );
+        lv_errmsg_tax_all := SUBSTRB(lv_errmsg_tax_all || lv_errmsg_tax, 0 , 5000);
+      END IF;
+/* 2019/06/25 Ver1.26 Add End   */
 --
     END LOOP data_record_loop;
     --==============================================================
@@ -4340,6 +4429,12 @@ AS
     IF (lb_error) THEN
       RAISE sale_class_expt;
     END IF;
+
+/* 2019/06/25 Ver1.26 Add Start */
+    IF (lb_tax_not_found) THEN
+      RAISE tax_not_found_expt;
+    END IF;
+/* 2019/06/25 Ver1.26 Add End   */
 --
     --対象データ未存在
     IF (gn_target_cnt = 0) THEN
@@ -4388,6 +4483,12 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||ct_msg_cont||cv_prg_name||ct_msg_part||lv_errbuf_all,1,5000);
 -- 2009/02/19 T.Nakamura Ver.1.3 mod end
       ov_retcode := cv_status_error;
+/* 2019/06/25 Ver1.26 Add Start */
+    -- *** 税率取得エラーハンドラ ***
+    WHEN tax_not_found_expt THEN
+      ov_retcode  := cv_status_error;
+      ov_errbuf   := lv_errmsg_tax_all;
+/* 2019/06/25 Ver1.26 Add End   */
 --
 --#################################  固定例外処理部 START   ####################################
 --
