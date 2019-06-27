@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.18
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,8 @@ AS
  *                                       [E_本稼動_02635] クローズされない受注のエラーリスト出力
  *  2011/02/07    1.17  Y.Nishino        [E_本稼動_01010] 販売単価0円の受注データをクローズしないように修正
  *  2014/01/28    1.18  S.Niki           [E_本稼動_11449] 消費税率取得基準日を検収日⇒オリジナル検収日に変更
+ *  2019/02/19    1.19  S.Kuwako         [E_本稼動_15472] 軽減税率対応
+ *  2019/06/20    1.20  S.Kuwako         [E_本稼動_15472] 軽減税率対応_販売実績税額計算修正
  *
  *****************************************************************************************/
 --
@@ -150,6 +152,13 @@ AS
   global_price_err_expt   EXCEPTION;
 -- ************ 2011/02/07 1.17 Y.Nishino ADD END   ************ --
 --
+-- ************ 2019/02/19 1.19 S.Kuwako  ADD START ************ --
+  --*** 消費税取得警告例外ハンドラ ***
+  global_tax_warn_expt    EXCEPTION;
+  --*** 消費税取得エラー例外ハンドラ ***
+  global_tax_err_expt     EXCEPTION;
+-- ************ 2019/02/19 1.19 S.Kuwako  ADD  END  ************ --
+--
   PRAGMA EXCEPTION_INIT(global_lock_err_expt, -54);
 --
 --
@@ -227,6 +236,11 @@ AS
   -- 単価0円チェック 汎用エラーリスト
   ct_line_type_err_lst      CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11542';
 -- ************ 2011/02/07 1.17 Y.Nishino ADD END   ************ --
+--
+-- ************ 2019/02/19 1.19 S.Kuwako ADD START ************ --
+  -- 消費税取得共通関数取得エラーメッセージ
+  ct_msg_tax_err            CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11686';
+-- ************ 2019/02/19 1.19 S.Kuwako ADD  END  ************ --
 --
   --トークン
   cv_tkn_para_date        CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -326,6 +340,10 @@ AS
   ct_qct_edi_item_err_type      CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCOS1_EDI_ITEM_ERR_TYPE';
   -- 消費税区分特定情報       
   ct_qct_tax_class_type         CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCOS1_CONSUMPT_TAX_CLS_MST';
+-- 2019/06/20 Ver.1.20 S.Kuwako  Add Start --
+  -- 消費税履歴（軽減税率対応用）
+  ct_tax_code_history_type      CONSTANT  fnd_lookup_types.lookup_type%TYPE :=  'XXCFO1_TAX_CODE_HISTORIES';
+-- 2019/06/20 Ver.1.20 S.Kuwako  Add End   --
 --
   --クイックコード
   -- 返品実績データ作成(HHT以外)抽出対象条件
@@ -594,6 +612,18 @@ AS
     line_id                       oe_order_lines_all.line_id%type                     -- 受注明細ID
   );
 -- 2009/07/08 Ver.1.9 M.Sano Add End
+-- 2019/06/20 Ver.1.20 S.Kuwako Add Start
+  -- 税額/差額計算（ヘッダ/税率単位）
+  TYPE tax_amount_sum_rtype IS RECORD(
+     tax_rate                     xxcos_sales_exp_headers.tax_rate%TYPE        -- 税率
+    ,max_pure_amount              xxcos_sales_exp_lines.pure_amount%TYPE       -- 最大本体金額
+    ,max_pure_amount_idx          NUMBER                                       -- 最大本体金額のインデックス
+    ,pure_amount                  xxcos_sales_exp_headers.pure_amount_sum%TYPE -- 本体金額積上げ
+    ,tax_amount                   xxcos_sales_exp_headers.tax_amount_sum%TYPE  -- 消費税金額積上げ(端数処理済)
+    ,tax_amount_sum               NUMBER                                       -- 消費税金額(小数点以下を考慮)
+    ,diff_amount                  NUMBER                                       -- 差額
+  );
+-- 2019/06/20 Ver.1.20 S.Kuwako Add End
 --
   -- ===============================
   -- ユーザー定義グローバルレコード宣言
@@ -638,6 +668,11 @@ AS
   -- 汎用エラーリスト
   TYPE g_gen_err_list_ttype IS TABLE OF xxcos_gen_err_list%ROWTYPE INDEX BY BINARY_INTEGER;
 -- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+-- 2019/06/20 Ver.1.20 S.Kuwako Add Start
+  -- 税率毎の消費税金額
+  TYPE g_tax_amount_sum_ttype
+        IS TABLE OF tax_amount_sum_rtype   INDEX BY BINARY_INTEGER;
+-- 2019/06/20 Ver.1.20 S.Kuwako Add End
 --
   -- ===============================
   -- ユーザー定義グローバルPL/SQL表
@@ -660,6 +695,9 @@ AS
   g_order_all_data_tab        g_n_order_data_ttype;           -- 受注データ(処理対象全データ)
   g_order_cls_data_tab        order_line_data_ttype;          -- 受注データ(受注CLOSE対象)
 -- 2009/07/08 Ver.1.9 M.Sano Add End
+-- 2019/06/20 Ver.1.20 S.Kuwako Add Start
+  g_tax_amount_sum_type_tab   g_tax_amount_sum_ttype;         -- 消費税金額（税率毎）
+-- 2019/06/20 Ver.1.20 S.Kuwako Add End
 --
 -- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
   g_gen_err_list_tab          g_gen_err_list_ttype;           -- 汎用エラーリスト
@@ -2136,7 +2174,22 @@ AS
 --****************************** 2009/06/08 1.7 T.Kitajima ADD START ******************************--
     ln_tax_amount             NUMBER;                     --  消費税計算ワーク変数
 --****************************** 2009/06/08 1.7 T.Kitajima ADD  END  ******************************--
-
+--****************************** 2019/02/19 1.19 S.Kuwako  ADD START ******************************--
+    lv_common_err_msg               VARCHAR2(5000);       -- 共通関数エラーメッセージ
+    lv_class_for_variable_tax       VARCHAR2(4);          -- 軽減税率用税種別
+    lv_tax_name                     VARCHAR2(80);         -- 税率キー名称
+    lv_tax_description              VARCHAR2(240);        -- 摘要
+    lv_tax_histories_code           VARCHAR2(80);         -- 消費税履歴コード
+    lv_tax_histories_description    VARCHAR2(240);        -- 消費税履歴名称
+    ld_tax_start_date               DATE;                 -- 税率キー_開始日
+    ld_tax_end_date                 DATE;                 -- 税率キー_終了日
+    ld_tax_start_date_histories     DATE;                 -- 消費税履歴_開始日
+    ld_tax_end_date_histories       DATE;                 -- 消費税履歴_終了日
+    lv_tax_class_suppliers_outside  VARCHAR2(150);        -- 税区分_仕入外税
+    lv_tax_class_suppliers_inside   VARCHAR2(150);        -- 税区分_仕入内税
+    lv_tax_class_sales_outside      VARCHAR2(150);        -- 税区分_売上外税
+    lv_tax_class_sales_inside       VARCHAR2(150);        -- 税区分_売上内税
+--****************************** 2019/02/19 1.19 S.Kuwako  ADD  END  ******************************--
 --
     -- *** ローカル・レコード ***
 --
@@ -2237,9 +2290,65 @@ AS
         AND ( g_tax_tab(i).end_date_active   >= io_order_rec.orig_inspect_date )
 -- ************ 2014/01/28 1.18 S.Niki MOD END ************ --
       THEN
-         io_order_rec.tax_rate  := NVL(g_tax_tab(i).tax_rate, 0);  -- 税率
-         io_order_rec.tax_code  := g_tax_tab(i).tax_code;          -- 税コード
-         EXIT;
+-- ************ 2019/02/19 1.19 S.Kuwako ADD START ************ --
+         -- 非課税の場合
+         IF ( io_order_rec.consumption_tax_class = g_tax_class_rec.tax_free ) THEN
+-- ************ 2019/02/19 1.19 S.Kuwako ADD END   ************ --
+           io_order_rec.tax_rate  := NVL(g_tax_tab(i).tax_rate, 0);  -- 税率
+           io_order_rec.tax_code  := g_tax_tab(i).tax_code;          -- 税コード
+           EXIT;
+-- ************ 2019/02/19 1.19 S.Kuwako ADD START ************ --
+         ELSE
+         -- 品目別消費税率取得関数コール
+           xxcos_common_pkg.get_tax_rate_info(
+             iv_item_code                    => io_order_rec.item_code          -- 品目コード
+            ,id_base_date                    => io_order_rec.orig_inspect_date  -- 基準日（オリジナル検収日、またはオリジナル納品日）
+            ,ov_class_for_variable_tax       => lv_class_for_variable_tax       -- 軽減税率用税種別
+            ,ov_tax_name                     => lv_tax_name                     -- 税率キー名称
+            ,ov_tax_description              => lv_tax_description              -- 摘要
+            ,ov_tax_histories_code           => lv_tax_histories_code           -- 消費税履歴コード
+            ,ov_tax_histories_description    => lv_tax_histories_description    -- 消費税履歴名称
+            ,od_start_date                   => ld_tax_start_date               -- 税率キー_開始日
+            ,od_end_date                     => ld_tax_end_date                 -- 税率キー_終了日
+            ,od_start_date_histories         => ld_tax_start_date_histories     -- 消費税履歴_開始日
+            ,od_end_date_histories           => ld_tax_end_date_histories       -- 消費税履歴_終了日
+            ,on_tax_rate                     => io_order_rec.tax_rate           -- 税率
+            ,ov_tax_class_suppliers_outside  => lv_tax_class_suppliers_outside  -- 税区分_仕入外税
+            ,ov_tax_class_suppliers_inside   => lv_tax_class_suppliers_inside   -- 税区分_仕入内税
+            ,ov_tax_class_sales_outside      => lv_tax_class_sales_outside      -- 税区分_売上外税
+            ,ov_tax_class_sales_inside       => lv_tax_class_sales_inside       -- 税区分_売上内税
+            ,ov_errbuf                       => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+            ,ov_retcode                      => lv_retcode                      -- リターン・コード               #固定#
+            ,ov_errmsg                       => lv_common_err_msg               -- ユーザー・エラー・メッセージ   #固定#
+            );
+           
+           -- 税コードの設定
+           CASE io_order_rec.consumption_tax_class WHEN g_tax_class_rec.tax_consumption THEN  -- 外税
+                                                     io_order_rec.tax_code  := lv_tax_class_sales_outside;
+                                                   WHEN g_tax_class_rec.tax_slip        THEN  -- 内税(伝票課税)
+                                                     io_order_rec.tax_code  := lv_tax_class_sales_inside;
+                                                   WHEN g_tax_class_rec.tax_included    THEN  -- 内税(単価込み)
+                                                     io_order_rec.tax_code  := lv_tax_class_sales_inside;
+                                                   ELSE
+                                                     NULL;
+           END CASE;
+           
+           
+           -- 品目別消費税率取得関数(警告の場合)
+           IF ( lv_retcode = cv_status_warn ) THEN
+             
+             RAISE global_tax_warn_expt;
+             
+           -- 品目別消費税率取得関数(異常の場合)
+           ELSIF ( lv_retcode = cv_status_error ) THEN
+             
+             RAISE global_tax_err_expt;
+             
+           END IF;
+           EXIT;
+           
+         END IF;
+-- ************ 2019/02/19 1.19 S.Kuwako ADD END   ************ --
       ELSE
         io_order_rec.tax_rate  := 0;
         io_order_rec.tax_code  := NULL;
@@ -2678,6 +2787,40 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_warn;
       io_order_rec.check_status := cn_check_status_error;
+--
+-- ************ 2019/02/19 1.19 S.Kuwako ADD START ************ --
+    --*** 消費税取得警告例外ハンドラ ***
+    WHEN global_tax_warn_expt          THEN
+      io_order_rec.check_status := cn_check_status_error;
+      gn_warn_cnt := gn_warn_cnt + 1;
+      ov_errmsg   := xxccp_common_pkg.get_msg(
+                       iv_application   => cv_xxcos_appl_short_nm      --アプリケーション短縮名
+                      ,iv_name          => ct_msg_tax_err              --メッセージコード
+                      ,iv_token_name1   => cv_tkn_order_number         --トークンコード1
+                      ,iv_token_value1  => io_order_rec.order_number   --トークン値1
+                      ,iv_token_name2   => cv_tkn_line_number          --トークンコード2
+                      ,iv_token_value2  => io_order_rec.line_number    --トークン値2
+                      ,iv_token_name3   => cv_tkn_err_msg              --トークンコード3
+                      ,iv_token_value3  => lv_common_err_msg           --トークン値3
+                     );
+      ov_errbuf   := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode  := cv_status_warn;
+--
+    --*** 消費税取得エラー例外ハンドラ ***
+    WHEN global_tax_err_expt           THEN
+      ov_errmsg   := xxccp_common_pkg.get_msg(
+                       iv_application   => cv_xxcos_appl_short_nm      --アプリケーション短縮名
+                      ,iv_name          => ct_msg_tax_err              --メッセージコード
+                      ,iv_token_name1   => cv_tkn_order_number         --トークンコード1
+                      ,iv_token_value1  => io_order_rec.order_number   --トークン値1
+                      ,iv_token_name2   => cv_tkn_line_number          --トークンコード2
+                      ,iv_token_value2  => io_order_rec.line_number    --トークン値2
+                      ,iv_token_name3   => cv_tkn_err_msg              --トークンコード3
+                      ,iv_token_value3  => lv_common_err_msg           --トークン値3
+                     );
+      ov_errbuf   := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode  := cv_status_error;
+-- ************ 2019/02/19 1.19 S.Kuwako ADD  END  ************ --
 --
     -- *** 会計期間取得例外ハンドラ ***
     WHEN global_fiscal_period_err_expt THEN
@@ -3243,10 +3386,13 @@ AS
     ln_tax_amount           NUMBER;           -- 明細の消費税金額の積み上げ合計金額
     ln_max_amount           NUMBER;           -- ヘッダ単位の一番大きい金額
     ln_diff_amount          NUMBER;           -- ヘッダ単位の消費税金額と明細単位の消費税の合計の差額
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD START ******************************--
 --****************************** 2009/06/08 1.7 T.Kitajima ADD START ******************************--
-    ln_tax_amount_sum       NUMBER;           --  消費税計算ワーク変数
+--    ln_tax_amount_sum       NUMBER;           --  消費税計算ワーク変数
 --****************************** 2009/06/08 1.7 T.Kitajima ADD  END  ******************************--
-
+    a                       NUMBER;
+    ln_max_index            NUMBER;
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD END   ******************************--
 --
     -- *** ローカル・レコード ***
 --
@@ -3263,10 +3409,58 @@ AS
     j := 0;                      -- 販売実績ヘッダの添え字
     k := 0;                      -- 販売実績明細の添え字
     ln_tax_amount := 0;          -- 明細の消費税金額の積み上げ合計金額
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+    a := 0;
+    ln_max_index        := 1;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
 --
     IF g_order_data_sort_tab.COUNT = 0 THEN
       RETURN;
     END IF;
+--
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+    BEGIN
+      SELECT xxtax.tax_rate AS tax_rate
+            ,0              AS max_pure_amount
+            ,0              AS max_pure_amount_idx
+            ,0              AS pure_amount
+            ,0              AS tax_amount
+            ,0              AS tax_amount_sum
+            ,0              AS diff_amount
+      BULK COLLECT INTO
+             g_tax_amount_sum_type_tab
+      FROM   (
+               SELECT  tax.rate   AS tax_rate
+               FROM   ( SELECT    TO_NUMBER(flv.attribute1) AS rate
+                        FROM      fnd_lookup_values flv
+                        WHERE     lookup_type  = ct_tax_code_history_type
+                        AND       language     = ct_lang
+                        AND       enabled_flag = ct_yes_flg
+--
+                        UNION
+--
+                        SELECT    xtv.tax_rate  AS rate
+                        FROM      xxcos_tax_v  xtv
+                        WHERE     xtv.set_of_books_id = gn_gl_id
+                      ) tax
+                GROUP BY  tax.rate
+             ) xxtax
+      ORDER BY xxtax.tax_rate
+      ;
+--
+      IF ( g_tax_amount_sum_type_tab.COUNT = 0 ) THEN
+        RAISE NO_DATA_FOUND;
+      ELSE
+         ln_max_index := g_tax_amount_sum_type_tab.COUNT;
+      END IF;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE global_api_others_expt;
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
 --
     ln_first_index := g_order_data_sort_tab.first;
     ln_now_index := ln_first_index;
@@ -3281,9 +3475,16 @@ AS
            OR g_order_data_sort_tab(ln_now_index).dlv_invoice_number
                 != g_order_data_sort_tab(ln_bfr_index).dlv_invoice_number) THEN
 --
-        -- 外税と内税(伝票課税)は本体金額合計から消費税金額合計を算出する
-        IF ( g_order_data_sort_tab( ln_bfr_index ).consumption_tax_class = g_tax_class_rec.tax_consumption
-          OR g_order_data_sort_tab( ln_bfr_index ).consumption_tax_class = g_tax_class_rec.tax_slip ) THEN
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+        FOR a IN 1..ln_max_index LOOP
+          -- 税率毎の消費税金額合計
+          g_tax_amount_sum_type_tab(a).tax_amount_sum  := g_tax_amount_sum_type_tab(a).pure_amount
+                                                             * g_tax_amount_sum_type_tab(a).tax_rate / 100;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
+--
+          -- 外税と内税(伝票課税)は本体金額合計から消費税金額合計を算出する
+          IF ( g_order_data_sort_tab( ln_bfr_index ).consumption_tax_class = g_tax_class_rec.tax_consumption
+            OR g_order_data_sort_tab( ln_bfr_index ).consumption_tax_class = g_tax_class_rec.tax_slip ) THEN
 --
 --****************************** 2009/06/08 1.7 T.Kitajima MOD START ******************************--
 --          -- 消費税金額合計 ＝ 本体金額合計 × 税率
@@ -3312,47 +3513,110 @@ AS
 --          END IF;
 --/* 2009/05/18 Ver1.5 Add End */
 --
-          -- 消費税金額合計 ＝ 本体金額合計 × 税率
-          ln_tax_amount_sum := g_sale_hdr_tab(j).pure_amount_sum * g_sale_hdr_tab(j).tax_rate / 100;
-          --切上(金額はマイナスなので-1で切上とする)
-          IF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_up ) THEN
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL START ******************************--
+--          -- 消費税金額合計 ＝ 本体金額合計 × 税率
+--          ln_tax_amount_sum := g_sale_hdr_tab(j).pure_amount_sum * g_sale_hdr_tab(j).tax_rate / 100;
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL END   ******************************--
+            --切上(金額はマイナスなので-1で切上とする)
+            IF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_up ) THEN
 --
-            -- 小数点以下が存在する場合
-            IF ( ln_tax_amount_sum - TRUNC( ln_tax_amount_sum ) <> 0 ) THEN
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD START ******************************--
+              -- 小数点以下が存在する場合
+--              IF ( ln_tax_amount_sum - TRUNC( ln_tax_amount_sum ) <> 0 ) THEN
+              IF ( g_tax_amount_sum_type_tab(a).tax_amount_sum - TRUNC( g_tax_amount_sum_type_tab(a).tax_amount_sum ) <> 0 ) THEN
 --
-              g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum ) - 1;
+--                g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum ) - 1;
+                g_tax_amount_sum_type_tab(a).tax_amount_sum := TRUNC( g_tax_amount_sum_type_tab(a).tax_amount_sum ) - 1;
+--
+                -- 税率毎の消費税金額合計の合算
+                g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).tax_amount_sum + g_tax_amount_sum_type_tab(a).tax_amount_sum;
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD END   ******************************--
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL START ******************************--
 --****************************** 2009/06/10 1.8 T.Kitajima ADD START ******************************--
-            ELSE
-              g_sale_hdr_tab(j).tax_amount_sum := ln_tax_amount_sum;
+--            ELSE
+--              g_sale_hdr_tab(j).tax_amount_sum := ln_tax_amount_sum;
 --****************************** 2009/06/10 1.8 T.Kitajima ADD  END  ******************************--
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL END   ******************************--
+--
+              END IF;
+--
+            --切捨て
+            ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_down ) THEN
+--
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD START ******************************--
+--              g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum );
+              g_tax_amount_sum_type_tab(a).tax_amount_sum     := TRUNC( g_tax_amount_sum_type_tab(a).tax_amount_sum );
+              g_sale_hdr_tab(j).tax_amount_sum                := g_sale_hdr_tab(j).tax_amount_sum
+                                                                   + g_tax_amount_sum_type_tab(a).tax_amount_sum;
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD END   ******************************--
+--
+            --四捨五入
+            ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_nearest ) THEN
+--
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD START ******************************--
+--              g_sale_hdr_tab(j).tax_amount_sum := ROUND( ln_tax_amount_sum, 0 );
+              g_tax_amount_sum_type_tab(a).tax_amount_sum     := ROUND( g_tax_amount_sum_type_tab(a).tax_amount_sum );
+              g_sale_hdr_tab(j).tax_amount_sum                := g_sale_hdr_tab(j).tax_amount_sum
+                                                                   + g_tax_amount_sum_type_tab(a).tax_amount_sum;
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD END   ******************************--
 --
             END IF;
---
-          --切捨て
-          ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_down ) THEN
---
-            g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum );
---
-          --四捨五入
-          ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_nearest ) THEN
---
-            g_sale_hdr_tab(j).tax_amount_sum := ROUND( ln_tax_amount_sum, 0 );
---
-          END IF;
-
 --****************************** 2009/06/08 1.7 T.Kitajima MOD  END  ******************************--
-        ELSE
-          -- 消費税金額合計 ＝ 売上金額合計 － 本体金額合計
-          g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).sale_amount_sum - g_sale_hdr_tab(j).pure_amount_sum;
-        END IF;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+            -- 税率毎の差額(ヘッダ．消費税金額合計 - 明細.消費税金額の合計値)
+            g_tax_amount_sum_type_tab(a).diff_amount        := g_tax_amount_sum_type_tab(a).tax_amount_sum
+                                                                   - g_tax_amount_sum_type_tab(a).tax_amount;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
+          ELSE
+            -- 消費税金額合計 ＝ 売上金額合計 － 本体金額合計
+            g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).sale_amount_sum - g_sale_hdr_tab(j).pure_amount_sum;
+          END IF;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+        END LOOP;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
 /* 2009/05/18 Ver1.5 Del Start */
         -- 消費税金額合計を四捨五入（端数なし）
---        g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0);        
+--        g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0);
 /* 2009/05/18 Ver1.5 Del End   */
-        -- 差額分 ＝  ヘッダ単位の消費税金額 － 明細の消費税金額の積み上げ合計金額
-        ln_diff_amount := g_sale_hdr_tab(j).tax_amount_sum - ln_tax_amount;
-        -- 消費税金額 ＝ 消費税金額 － 差額
-        g_sale_line_tab(ln_tax_index).tax_amount := g_sale_line_tab(ln_tax_index).tax_amount + ln_diff_amount;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+        -- 差額計算
+        FOR a IN 1..ln_max_index LOOP
+          ln_tax_index   := 0;
+          ln_diff_amount := 0;
+--
+          -- 最大金額のインデックスおよび差額が格納されている場合
+          IF ( g_tax_amount_sum_type_tab(a).max_pure_amount_idx <> 0 )
+           AND ( g_tax_amount_sum_type_tab(a).diff_amount <> 0 )       THEN
+--
+            -- 外税または内税(伝票課税)の場合
+            IF  ( g_sale_hdr_tab(j).consumption_tax_class = g_tax_class_rec.tax_consumption )
+             OR ( g_sale_hdr_tab(j).consumption_tax_class = g_tax_class_rec.tax_slip ) THEN
+--
+              ln_tax_index   := g_tax_amount_sum_type_tab(a).max_pure_amount_idx;
+              ln_diff_amount := g_tax_amount_sum_type_tab(a).diff_amount;
+--
+              -- 消費税金額 ＝ 消費税金額 ＋ 差額
+              g_sale_line_tab(ln_tax_index).tax_amount := g_sale_line_tab(ln_tax_index).tax_amount + ln_diff_amount;
+--
+            -- 外税または内税(伝票課税)以外の場合
+            ELSE
+              -- 税率毎の消費税金額積上げ(端数処理済)をヘッダ単位の消費税金額合計として集計
+              ln_tax_amount    := ln_tax_amount + g_tax_amount_sum_type_tab(a).tax_amount;
+--
+              -- ヘッダ単位の消費税金額合計の集計が完了したら
+              IF ( a = ln_max_index ) THEN
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
+                -- 差額分 ＝  ヘッダ単位の消費税金額 － 明細の消費税金額の積み上げ合計金額
+                ln_diff_amount := g_sale_hdr_tab(j).tax_amount_sum - ln_tax_amount;
+                -- 消費税金額 ＝ 消費税金額 － 差額
+                g_sale_line_tab(ln_tax_index).tax_amount := g_sale_line_tab(ln_tax_index).tax_amount + ln_diff_amount;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+                EXIT;
+              END IF;
+            END IF;
+          END IF;
+        END LOOP;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
 --
         lv_break := cv_break_ok;
       ELSE
@@ -3405,10 +3669,12 @@ AS
         g_sale_hdr_tab(j).ship_to_customer_code       := g_order_data_sort_tab(ln_now_index).ship_to_customer_code;
         -- 消費税区分
         g_sale_hdr_tab(j).consumption_tax_class       := g_order_data_sort_tab(ln_now_index).consumption_tax_class;
+-- ************ 2019/02/19 1.19 S.Kuwako MOD START ************ --
         -- 税金コード
-        g_sale_hdr_tab(j).tax_code                    := g_order_data_sort_tab(ln_now_index).tax_code;
+          g_sale_hdr_tab(j).tax_code                    := g_order_data_sort_tab(ln_now_index).tax_code;
         -- 消費税率
-        g_sale_hdr_tab(j).tax_rate                    := g_order_data_sort_tab(ln_now_index).tax_rate;
+          g_sale_hdr_tab(j).tax_rate                    := g_order_data_sort_tab(ln_now_index).tax_rate;
+-- ************ 2019/02/19 1.19 S.Kuwako MOD  END  ************ --
         -- 成績計上者コード
         g_sale_hdr_tab(j).results_employee_code       := g_order_data_sort_tab(ln_now_index).results_employee_code;
         -- 売上拠点コード
@@ -3479,6 +3745,17 @@ AS
 --
         -- 明細の消費税金額の積み上げ合計金額
         ln_tax_amount := 0;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+        -- 税率毎の消費税金額の初期化
+        FOR a IN 1..ln_max_index LOOP
+          g_tax_amount_sum_type_tab(a).max_pure_amount     := 0;
+          g_tax_amount_sum_type_tab(a).max_pure_amount_idx := 0;
+          g_tax_amount_sum_type_tab(a).pure_amount         := 0;
+          g_tax_amount_sum_type_tab(a).tax_amount          := 0;
+          g_tax_amount_sum_type_tab(a).tax_amount_sum      := 0;
+          g_tax_amount_sum_type_tab(a).diff_amount         := 0;
+        END LOOP;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
 --
       END IF;
 --
@@ -3532,6 +3809,12 @@ AS
       g_sale_line_tab(k).pure_amount                 := g_order_data_sort_tab(ln_now_index).pure_amount;
       -- 消費税金額
       g_sale_line_tab(k).tax_amount                  := g_order_data_sort_tab(ln_now_index).tax_amount;
+--****************************** 2019/02/19 1.19 S.Kuwako  ADD START ******************************--
+      -- 税金コード
+      g_sale_line_tab(k).tax_code                    := g_order_data_sort_tab(ln_now_index).tax_code;
+      -- 消費税率
+      g_sale_line_tab(k).tax_rate                    := g_order_data_sort_tab(ln_now_index).tax_rate;
+--****************************** 2019/02/19 1.19 S.Kuwako  ADD END   ******************************--
       -- 現金・カード併用額
       g_sale_line_tab(k).cash_and_card               := g_order_data_sort_tab(ln_now_index).cash_and_card;
       -- 出荷元保管場所
@@ -3577,23 +3860,49 @@ AS
       -- 本体金額
       g_sale_hdr_tab(j).pure_amount_sum   := g_sale_hdr_tab(j).pure_amount_sum
                                             + g_order_data_sort_tab(ln_now_index).pure_amount;-- 本体金額合計
-      -- 明細の消費税金額の積み上げ合計金額
-      ln_tax_amount := ln_tax_amount + g_order_data_sort_tab(ln_now_index).tax_amount;
-      -- 消費税金額
-      g_sale_hdr_tab(j).tax_amount_sum    := g_sale_hdr_tab(j).tax_amount_sum
-                                            + g_order_data_sort_tab(ln_now_index).tax_amount;-- 消費税金額合計
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL START ******************************--
+--      -- 明細の消費税金額の積み上げ合計金額
+--      ln_tax_amount := ln_tax_amount + g_order_data_sort_tab(ln_now_index).tax_amount;
+--      -- 消費税金額
+--      g_sale_hdr_tab(j).tax_amount_sum    := g_sale_hdr_tab(j).tax_amount_sum
+--                                            + g_order_data_sort_tab(ln_now_index).tax_amount;-- 消費税金額合計
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL END   ******************************--
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+      FOR a IN 1..ln_max_index LOOP
+        IF ( g_tax_amount_sum_type_tab(a).tax_rate = g_sale_line_tab(k).tax_rate )
+         AND ( g_tax_amount_sum_type_tab(a).pure_amount IS NOT NULL ) THEN
+           -- 税率毎の本体金額積上げ
+           g_tax_amount_sum_type_tab(a).pure_amount     := g_tax_amount_sum_type_tab(a).pure_amount
+                                                             + g_sale_line_tab(k).pure_amount;
+           -- 税率毎の消費税金額積上げ(端数処理済)
+           g_tax_amount_sum_type_tab(a).tax_amount      := g_tax_amount_sum_type_tab(a).tax_amount
+                                                             + g_sale_line_tab(k).tax_amount;
 --
+           -- 処理中の本体金額がヘッダ単位/税率単位の最大本体金額より多い場合
+           IF ( ABS( g_tax_amount_sum_type_tab(a).max_pure_amount ) < ABS( g_sale_line_tab(k).pure_amount ) ) THEN
+             -- 最大本体金額を保持
+             g_tax_amount_sum_type_tab(a).max_pure_amount := g_sale_line_tab(k).pure_amount;
+             -- ヘッダ単位、税率単位の最大本体金額のレコードの添え字を保持
+             g_tax_amount_sum_type_tab(a).max_pure_amount_idx := k;
+           END IF;
 --
-      -- 現在処理中の販売実績明細の本体金額が、ヘッダ単位の明細内より金額が多い時
---Modify 2009.05.18 Ver1.5 Start
---      IF ( g_sale_line_tab(k).pure_amount > ln_max_amount ) THEN
-      IF ( ABS(g_sale_line_tab(k).pure_amount) > ABS(ln_max_amount )) THEN
---Modify 2009.05.18 Ver1.5 End
-        -- ヘッダ単位の本体金額を保持
-        ln_max_amount := g_sale_line_tab(k).pure_amount;
-        -- ヘッダ単位の最大本体金額のレコードの添え字を保持
-        ln_tax_index := k;
-      END IF;
+           EXIT;
+        END IF;
+      END LOOP;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
+--
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL START ******************************--
+--      -- 現在処理中の販売実績明細の本体金額が、ヘッダ単位の明細内より金額が多い時
+----Modify 2009.05.18 Ver1.5 Start
+----      IF ( g_sale_line_tab(k).pure_amount > ln_max_amount ) THEN
+--      IF ( ABS(g_sale_line_tab(k).pure_amount) > ABS(ln_max_amount )) THEN
+----Modify 2009.05.18 Ver1.5 End
+--        -- ヘッダ単位の本体金額を保持
+--        ln_max_amount := g_sale_line_tab(k).pure_amount;
+--        -- ヘッダ単位の最大本体金額のレコードの添え字を保持
+--        ln_tax_index := k;
+--      END IF;
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL END   ******************************--
 --
       -- 現在処理中のインデックスを保存する
       ln_bfr_index := ln_now_index;
@@ -3603,9 +3912,15 @@ AS
 --
     END LOOP;
 --
-    -- 外税と内税(伝票課税)は本体金額合計から消費税金額合計を算出する
-    IF ( g_order_data_sort_tab( ln_bfr_index ).consumption_tax_class = g_tax_class_rec.tax_consumption
-      OR g_order_data_sort_tab( ln_bfr_index ).consumption_tax_class = g_tax_class_rec.tax_slip ) THEN
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+    FOR a IN 1..ln_max_index LOOP
+      -- 税率毎の消費税金額合計
+      g_tax_amount_sum_type_tab(a).tax_amount_sum  := g_tax_amount_sum_type_tab(a).pure_amount
+                                                         * g_tax_amount_sum_type_tab(a).tax_rate / 100;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
+      -- 外税と内税(伝票課税)は本体金額合計から消費税金額合計を算出する
+      IF ( g_order_data_sort_tab( ln_bfr_index ).consumption_tax_class = g_tax_class_rec.tax_consumption
+        OR g_order_data_sort_tab( ln_bfr_index ).consumption_tax_class = g_tax_class_rec.tax_slip ) THEN
 --
 --****************************** 2009/06/08 1.7 T.Kitajima MOD START ******************************--
 --      -- 消費税金額合計 ＝ 本体金額合計 × 税率
@@ -3626,38 +3941,106 @@ AS
 --      END IF;
 --/* 2009/05/18 Ver1.5 Add End */
 --
-      -- 消費税金額合計 ＝ 本体金額合計 × 税率
-      ln_tax_amount_sum := g_sale_hdr_tab(j).pure_amount_sum * g_sale_hdr_tab(j).tax_rate / 100;
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL START ******************************--
+--      -- 消費税金額合計 ＝ 本体金額合計 × 税率
+--      ln_tax_amount_sum := g_sale_hdr_tab(j).pure_amount_sum * g_sale_hdr_tab(j).tax_rate / 100;
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL END   ******************************--
+--
       --切上(金額はマイナスなので-1で切上とする)
       IF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_up ) THEN
+--
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD START ******************************--
         -- 小数点以下が存在する場合
-        IF ( ln_tax_amount_sum - TRUNC( ln_tax_amount_sum ) <> 0 ) THEN
-          g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum ) - 1;
+--        IF ( ln_tax_amount_sum - TRUNC( ln_tax_amount_sum ) <> 0 ) THEN
+        IF ( g_tax_amount_sum_type_tab(a).tax_amount_sum - TRUNC( g_tax_amount_sum_type_tab(a).tax_amount_sum ) <> 0 ) THEN
+--
+--          g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum ) - 1;
+          g_tax_amount_sum_type_tab(a).tax_amount_sum := TRUNC(  g_tax_amount_sum_type_tab(a).tax_amount_sum ) - 1;
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD END   ******************************--
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL START ******************************--
 --****************************** 2009/06/10 1.8 T.Kitajima ADD START ******************************--
-        ELSE
-          g_sale_hdr_tab(j).tax_amount_sum := ln_tax_amount_sum;
+--        ELSE
+--          g_sale_hdr_tab(j).tax_amount_sum := ln_tax_amount_sum;
 --****************************** 2009/06/10 1.8 T.Kitajima ADD  END  ******************************--
+--****************************** 2019/06/20 1.20 S.Kuwako  DEL END   ******************************--
         END IF;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+        -- 税率毎の消費税金額合計の合算
+        g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).tax_amount_sum + g_tax_amount_sum_type_tab(a).tax_amount_sum;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
       --切捨て
       ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_down ) THEN
-        g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum );
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD START ******************************--
+--        g_sale_hdr_tab(j).tax_amount_sum := TRUNC( ln_tax_amount_sum );
+        g_tax_amount_sum_type_tab(a).tax_amount_sum     := TRUNC( g_tax_amount_sum_type_tab(a).tax_amount_sum );
+        g_sale_hdr_tab(j).tax_amount_sum                := g_sale_hdr_tab(j).tax_amount_sum
+                                                             + g_tax_amount_sum_type_tab(a).tax_amount_sum;
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD END   ******************************--
       --四捨五入
       ELSIF ( g_order_data_sort_tab( ln_bfr_index ).bill_tax_round_rule = cv_amount_nearest ) THEN
-        g_sale_hdr_tab(j).tax_amount_sum := ROUND( ln_tax_amount_sum, 0 );
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD START ******************************--
+--        g_sale_hdr_tab(j).tax_amount_sum := ROUND( ln_tax_amount_sum, 0 );
+        g_tax_amount_sum_type_tab(a).tax_amount_sum     := ROUND( g_tax_amount_sum_type_tab(a).tax_amount_sum );
+        g_sale_hdr_tab(j).tax_amount_sum                := g_sale_hdr_tab(j).tax_amount_sum
+                                                             + g_tax_amount_sum_type_tab(a).tax_amount_sum;
+--****************************** 2019/06/20 1.20 S.Kuwako  MOD END   ******************************--
       END IF;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+      -- 税率毎の差額(ヘッダ．消費税金額合計 - 明細.消費税金額の合計値)
+      g_tax_amount_sum_type_tab(a).diff_amount        := g_tax_amount_sum_type_tab(a).tax_amount_sum
+                                                             - g_tax_amount_sum_type_tab(a).tax_amount;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
 --****************************** 2009/06/08 1.7 T.Kitajima MOD  END  ******************************--
     ELSE
       -- 消費税金額合計 ＝ 売上金額合計 － 本体金額合計
       g_sale_hdr_tab(j).tax_amount_sum := g_sale_hdr_tab(j).sale_amount_sum - g_sale_hdr_tab(j).pure_amount_sum;
     END IF;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+    END LOOP;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
 /* 2009/05/18 Ver1.5 Del Start */
     -- 消費税金額合計を四捨五入（端数なし）
 --    g_sale_hdr_tab(j).tax_amount_sum := ROUND( g_sale_hdr_tab(j).tax_amount_sum, 0);  
 /* 2009/05/18 Ver1.5 Del End   */
-    -- 差額分 ＝  ヘッダ単位の消費税金額 － 明細の消費税金額の積み上げ合計金額
-    ln_diff_amount := g_sale_hdr_tab(j).tax_amount_sum - ln_tax_amount;
-    -- 消費税金額 ＝ 消費税金額 － 差額
-    g_sale_line_tab(ln_tax_index).tax_amount := g_sale_line_tab(ln_tax_index).tax_amount + ln_diff_amount;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+    -- 差額計算
+    FOR a IN 1..ln_max_index LOOP
+      ln_tax_index   := 0;
+      ln_diff_amount := 0;
+--
+      -- 最大金額のインデックスおよび差額が格納されている場合
+      IF ( g_tax_amount_sum_type_tab(a).max_pure_amount_idx <> 0 )
+        AND ( g_tax_amount_sum_type_tab(a).diff_amount <> 0 )       THEN
+--
+        -- 外税または内税(伝票課税)の場合
+        IF  ( g_sale_hdr_tab(j).consumption_tax_class = g_tax_class_rec.tax_consumption )
+          OR ( g_sale_hdr_tab(j).consumption_tax_class = g_tax_class_rec.tax_slip ) THEN
+--
+          ln_tax_index   := g_tax_amount_sum_type_tab(a).max_pure_amount_idx;
+          ln_diff_amount := g_tax_amount_sum_type_tab(a).diff_amount;
+--
+          -- 消費税金額 ＝ 消費税金額 ＋ 差額
+          g_sale_line_tab(ln_tax_index).tax_amount := g_sale_line_tab(ln_tax_index).tax_amount + ln_diff_amount;
+--
+          -- 外税または内税(伝票課税)以外の場合
+        ELSE
+          -- 税率毎の消費税金額積上げ(端数処理済)をヘッダ単位の消費税金額合計として集計
+          ln_tax_amount    := ln_tax_amount + g_tax_amount_sum_type_tab(a).tax_amount;
+--
+          -- ヘッダ単位の消費税金額合計の集計が完了したら
+          IF ( a = ln_max_index ) THEN
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
+            -- 差額分 ＝  ヘッダ単位の消費税金額 － 明細の消費税金額の積み上げ合計金額
+            ln_diff_amount := g_sale_hdr_tab(j).tax_amount_sum - ln_tax_amount;
+            -- 消費税金額 ＝ 消費税金額 － 差額
+            g_sale_line_tab(ln_tax_index).tax_amount := g_sale_line_tab(ln_tax_index).tax_amount + ln_diff_amount;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD START ******************************--
+            EXIT;
+          END IF;
+        END IF;
+      END IF;
+    END LOOP;
+--****************************** 2019/06/20 1.20 S.Kuwako  ADD END   ******************************--
 --
   EXCEPTION
 --
