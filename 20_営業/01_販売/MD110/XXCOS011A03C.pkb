@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *                                       [E_本稼動_07554]受注明細の単位項目へのNVL対応
  *  2012/08/24    1.27  K.Onotsuka       [E_本稼動_09938]品目エラーメッセージのパラメータ追加対応
  *  2018/07/03    1.28  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
+ *  2019/06/25    1.29  S.Kuwako         [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -145,6 +146,9 @@ AS
 /* 2010/07/08 Ver1.22 Add Start */
   global_item_conv_expt     EXCEPTION;      -- 顧客品目チェックエラー
 /* 2010/07/08 Ver1.22 Add End */
+/* 2019/06/25 Ver1.29 Add Start */
+  global_tax_err_expt       EXCEPTION;      -- 消費税取得エラー
+/* 2019/06/25 Ver1.29 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -250,6 +254,12 @@ AS
 -- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
   cv_get_order_source_id_err CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12268';
 -- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
+-- ******* 2019/06/25 Ver1.29 Add Start *******
+  cv_msg_edi_hdr_id     CONSTANT  VARCHAR2(20)  := 'APP-XXCOS1-12270';  -- メッセージ用文字列(EDIヘッダ情報ID)
+  cv_msg_edi_chain_code CONSTANT  VARCHAR2(20)  := 'APP-XXCOS1-12271';  -- メッセージ用文字列(EDIチェーン店コード
+  cv_msg_edi_item_code  CONSTANT  VARCHAR2(20)  := 'APP-XXCOS1-00054';  -- メッセージ用文字列(品目コード)
+  cv_msg_tax_err        CONSTANT  VARCHAR2(20)  := 'APP-XXCOS1-12269';  -- 消費税率取得エラー
+-- ******* 2019/06/25 Ver1.29 Add Start *******
   -- トークンコード
   cv_tkn_in_param       CONSTANT VARCHAR2(8)   := 'IN_PARAM';          -- 入力パラメータ名
   cv_tkn_date_from      CONSTANT VARCHAR2(9)   := 'DATE_FROM';         -- 日付期間チェックの開始日
@@ -729,6 +739,15 @@ AS
   cv_emp                      CONSTANT VARCHAR2(100) := 'EMP';                           -- 従業員
   ct_enabled_flg_y            CONSTANT fnd_lookup_values.enabled_flag%TYPE := 'Y';       -- 使用可能
 /* 2010/03/19 Ver1.19 Add  End  */
+/* 2019/06/25 Ver1.29 Add Start */
+  cv_non_tax                  CONSTANT  VARCHAR(10)  := '4';         -- 非課税
+  cv_out_tax                  CONSTANT  VARCHAR(10)  := '1';         -- 外税
+  cv_ins_slip_tax             CONSTANT  VARCHAR(10)  := '2';         -- 内税(伝票課税)
+  cv_ins_bid_tax              CONSTANT  VARCHAR(10)  := '3';         -- 内税(単価込み)
+  cv_tkn_down                 CONSTANT  VARCHAR2(20) := 'DOWN';      -- 切捨て
+  cv_tkn_up                   CONSTANT  VARCHAR2(20) := 'UP';        -- 切上げ
+  cv_tkn_nearest              CONSTANT  VARCHAR2(20) := 'NEAREST';   -- 四捨五入
+/* 2019/06/25 Ver1.29 Add  End  */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -794,6 +813,10 @@ AS
 -- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
     gt_order_source_online oe_order_sources.order_source_id%TYPE;
 -- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
+-- ******* 2019/06/25 1.29 S.Kuwako ADD START ******* --
+  gv_tkn1               VARCHAR2(5000);                                -- キー情報編集用
+  gv_tax_round_rule     VARCHAR2(30);                                  -- 税金－端数処理
+-- ******* 2019/06/25 1.29 S.Kuwako ADD  END  ******* --
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル宣言
@@ -1026,7 +1049,10 @@ AS
           ,xeh.charge_name                      charge_name                    -- EDIヘッダ情報.担当者名
           ,xeh.price_tag                        price_tag                      -- EDIヘッダ情報.値札
           ,xeh.tax_type                         tax_type                       -- EDIヘッダ情報.税種
-          ,xeh.consumption_tax_class            consumption_tax_class          -- EDIヘッダ情報.消費税区分
+-- ******* 2019/06/25 Ver1.29 MOD Start *******
+--          ,xeh.consumption_tax_class            consumption_tax_class          -- EDIヘッダ情報.消費税区分
+          ,xca3.tax_div                         consumption_tax_class          -- 顧客追加情報.消費税区分
+-- ******* 2019/06/25 Ver1.29 MOD End *******
           ,xeh.brand_class                      brand_class                    -- EDIヘッダ情報.ＢＲ
           ,xeh.id_code                          id_code                        -- EDIヘッダ情報.ＩＤコード
           ,xeh.department_code                  department_code                -- EDIヘッダ情報.百貨店コード
@@ -1221,7 +1247,41 @@ AS
                )
            END                                  ordered_quantity
 -- ******* 2009/10/05 1.14 N.Maeda MOD  END  ******* --
-          ,xtrv.tax_rate                        tax_rate                       -- 消費税率ビュー.消費税率
+-- ******* 2019/06/25 1.29 S.Kuwako MOD  START  ******* --
+--          ,xtrv.tax_rate                        tax_rate                       -- 消費税率ビュー.消費税率
+          ,( CASE WHEN xca3.tax_div  = cv_non_tax THEN
+                   ( SELECT xtv1.tax_rate
+                       FROM xxcos_tax_v  xtv1
+                      WHERE xtv1.tax_class       = xca3.tax_div
+                       AND  xtv1.set_of_books_id = gn_bks_id
+                       AND  TRUNC(oola.request_date) BETWEEN NVL(xtv1.start_date_active,TRUNC(oola.request_date))
+                                                         AND NVL(xtv1.end_date_active,TRUNC(oola.request_date))
+                       AND  cn_1 = ( SELECT COUNT(*)
+                                       FROM xxcos_tax_v  xtv2
+                                      WHERE xtv2.tax_class       = xca3.tax_div
+                                        AND xtv2.set_of_books_id = gn_bks_id
+                                        AND TRUNC(oola.request_date) BETWEEN NVL(xtv2.start_date_active,TRUNC(oola.request_date))
+                                                                         AND NVL(xtv2.end_date_active,TRUNC(oola.request_date)))
+                   )
+                  WHEN xca3.tax_div != cv_non_tax THEN
+                   ( SELECT xrtr1.tax_rate
+                       FROM xxcos_reduced_tax_rate_v xrtr1
+                      WHERE xrtr1.item_code  = xel.item_code
+                        AND TRUNC(oola.request_date) BETWEEN NVL(xrtr1.start_date,TRUNC(oola.request_date))
+                                                         AND NVL(xrtr1.end_date,TRUNC(oola.request_date))
+                        AND TRUNC(oola.request_date) BETWEEN NVL(xrtr1.start_date_histories,TRUNC(oola.request_date))
+                                                         AND NVL(xrtr1.end_date_histories,TRUNC(oola.request_date))
+                        AND cn_1 = ( SELECT COUNT(*)
+                                       FROM xxcos_reduced_tax_rate_v xrtr2
+                                      WHERE xrtr2.item_code  = xel.item_code
+                                        AND TRUNC(oola.request_date) BETWEEN NVL(xrtr2.start_date,TRUNC(oola.request_date))
+                                                                         AND NVL(xrtr2.end_date,TRUNC(oola.request_date))
+                                        AND TRUNC(oola.request_date) BETWEEN NVL(xrtr2.start_date_histories,TRUNC(oola.request_date))
+                                                                         AND NVL(xrtr2.end_date_histories,TRUNC(oola.request_date)))
+                   )
+             END
+           )                                      tax_rate                       -- 消費税率ビュー.消費税率、または品目別消費税ビュー.消費税率
+-- ******* 2019/06/25 1.29 S.Kuwako MOD  END  ******* --
 --****************************** 2009/06/11 1.10 T.Kitajima ADD START ******************************--
           ,xca3.edi_forward_number              edi_forward_number             -- 顧客追加情報.EDI伝送追番
 --****************************** 2009/06/11 1.10 T.Kitajima ADD  END ******************************--
@@ -1251,7 +1311,9 @@ AS
           ,hz_cust_accounts                     hca3   -- 顧客マスタ
           ,xxcmm_cust_accounts                  xca3   -- 顧客追加情報
           ,hz_parties                           hp3    -- 顧客パーティ
-          ,xxcos_tax_rate_v                     xtrv   -- 消費税率ビュー
+-- ******* 2019/06/25 1.29 S.Kuwako Del  START  ******* --
+--          ,xxcos_tax_rate_v                     xtrv   -- 消費税率ビュー
+-- ******* 2019/06/25 1.29 S.Kuwako Del  END  ******* --
 /* 2010/06/11 Ver1.21 Delete Start */
 --          ,xxcos_login_base_info_v              xlbiv  -- 拠点(管理元)ビュー
 /* 2010/06/11 Ver1.21 Delete End */
@@ -1323,16 +1385,20 @@ AS
     AND    xca3.edi_forward_number        = gt_edi_f_number                   -- 顧客ﾏｽﾀ.EDI伝送追番=inﾊﾟﾗﾒｰﾀ.EDI伝送追番
     AND  ( gt_area_code                  IS NULL                              -- inﾊﾟﾗﾒｰﾀ.地区ｺｰﾄﾞ IS NULL
     OR     xca3.edi_district_code         = gt_area_code )                    -- 顧客ﾏｽﾀ.地区ｺｰﾄﾞ=inﾊﾟﾗﾒｰﾀ.地区ｺｰﾄﾞ
-    AND    hca3.cust_account_id           = xtrv.cust_account_id              -- 顧客ﾏｽﾀ.顧客ID=消費税率ﾋﾞｭｰ.顧客ID
-    AND    xca3.tax_div                   = xtrv.tax_div                      -- 顧客ﾏｽﾀ.消費税区分=消費税率ﾋﾞｭｰ.消費税区分
-    AND    xtrv.set_of_books_id           = gn_bks_id                         -- 消費税率ﾋﾞｭｰ.GL会計帳簿ID=[A-2].GL会計帳簿ID
-    AND    TRUNC(oola.request_date)      >= xtrv.start_date_active            -- 受注明細.要求日>=消費税率ﾋﾞｭｰ.適用開始日
-    AND    TRUNC(oola.request_date)      <= NVL(xtrv.end_date_active,         -- 受注明細.要求日<=NVL(消費税率ﾋﾞｭｰ.適用終了日,
-                                                gd_max_date)                  --                      [A-2].MAX日付)
+-- ******* 2019/06/25 1.29 S.Kuwako Del  START  ******* --
+--    AND    hca3.cust_account_id           = xtrv.cust_account_id              -- 顧客ﾏｽﾀ.顧客ID=消費税率ﾋﾞｭｰ.顧客ID
+--    AND    xca3.tax_div                   = xtrv.tax_div                      -- 顧客ﾏｽﾀ.消費税区分=消費税率ﾋﾞｭｰ.消費税区分
+--    AND    xtrv.set_of_books_id           = gn_bks_id                         -- 消費税率ﾋﾞｭｰ.GL会計帳簿ID=[A-2].GL会計帳簿ID
+--    AND    TRUNC(oola.request_date)      >= xtrv.start_date_active            -- 受注明細.要求日>=消費税率ﾋﾞｭｰ.適用開始日
+--    AND    TRUNC(oola.request_date)      <= NVL(xtrv.end_date_active,         -- 受注明細.要求日<=NVL(消費税率ﾋﾞｭｰ.適用終了日,
+--                                                gd_max_date)                  --                      [A-2].MAX日付)
+-- ******* 2019/06/25 1.29 S.Kuwako Del  END    ******* --
 /* 2009/02/25 Ver1.3 Add Start */
-    AND    TRUNC(oola.request_date)      >= xtrv.tax_start_date               -- 受注明細.要求日>=消費税率ﾋﾞｭｰ.税開始日
-    AND    TRUNC(oola.request_date)      <= NVL(xtrv.tax_end_date,            -- 受注明細.要求日<=NVL(消費税率ﾋﾞｭｰ.税終了日,
-                                                gd_max_date)                  --                      [A-2].MAX日付)
+-- ******* 2019/06/25 1.29 S.Kuwako Del  START  ******* --
+--    AND    TRUNC(oola.request_date)      >= xtrv.tax_start_date               -- 受注明細.要求日>=消費税率ﾋﾞｭｰ.税開始日
+--    AND    TRUNC(oola.request_date)      <= NVL(xtrv.tax_end_date,            -- 受注明細.要求日<=NVL(消費税率ﾋﾞｭｰ.税終了日,
+--                                                gd_max_date)                  --                      [A-2].MAX日付)
+-- ******* 2019/06/25 1.29 S.Kuwako Del  END   ******* --
 /* 2009/02/25 Ver1.3 Add  End  */
     AND    xeh.edi_chain_code             = xca2.chain_store_code             -- EDIﾍｯﾀﾞ情報.EDIﾁｪｰﾝ店ｺｰﾄﾞ=ﾁｪｰﾝ店ﾏｽﾀ.ﾁｪｰﾝ店ｺｰﾄﾞ(EDI)
     AND    hca2.customer_class_code       = cv_cust_code_chain                -- ﾁｪｰﾝ店ﾏｽﾀ.顧客区分='18'(ﾁｪｰﾝ店)
@@ -1587,6 +1653,9 @@ AS
    ,general_add_item1    xxcos_edi_lines.general_add_item1%TYPE    -- 汎用付加項目1
    ,general_add_item2    xxcos_edi_lines.general_add_item2%TYPE    -- 汎用付加項目2
    ,general_add_item3    xxcos_edi_lines.general_add_item3%TYPE    -- 汎用付加項目3
+/* 2019/06/25 Ver1.29 Add Start */
+   ,general_add_item10   xxcos_edi_lines.general_add_item10%TYPE   -- 汎用付加項目10
+/* 2019/06/25 Ver1.29 Add End   */
    ,item_code            xxcos_edi_lines.item_code%TYPE            -- 品目コード
   );
 --
@@ -3671,6 +3740,9 @@ AS
     ln_reason_id      oe_reasons.reason_id%TYPE;          --事由コード取得用(ダミー)
     lv_select_flag    fnd_lookup_values.attribute1%TYPE;  --事由コード取得用(選択可能フラグ)
 /* 2011/04/27 Ver1.24 Add End   */
+/* 2019/06/25 Ver1.29 Add Start */
+    ln_tax_rate        NUMBER;          -- 消費税率算出用
+/* 2019/06/25 Ver1.29 Add End   */
 --
     -- *** ローカル・カーソル ***
     CURSOR dummy_item_cur
@@ -3768,6 +3840,49 @@ AS
                         );
           RAISE global_api_others_expt;
       END;
+--****************************** 2019/06/25 1.29 S.Kuwako   ADD START ******************************--
+      --消費税チェック
+      BEGIN
+        IF ( gt_edi_order_tab(ln_loop_cnt).tax_rate IS NULL ) THEN
+          ln_err_chk  := cn_1;        --エラーあり
+          RAISE global_tax_err_expt;
+        END IF;
+      EXCEPTION
+        WHEN global_tax_err_expt THEN
+            gn_error_cnt := gn_error_cnt + 1;
+            gn_warn_cnt  := gn_target_cnt - gn_error_cnt;
+            -- キー情報の編集
+            xxcos_common_pkg.makeup_key_info(
+                               iv_item_name1  => xxccp_common_pkg.get_msg( cv_application,cv_msg_edi_hdr_id )
+                              ,iv_data_value1 => gt_edi_order_tab(ln_loop_cnt).edi_header_info_id
+                              ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application,cv_msg_edi_chain_code )
+                              ,iv_data_value2 => gt_edi_order_tab(ln_loop_cnt).edi_chain_code
+                              ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application,cv_msg_edi_item_code  )
+                              ,iv_data_value3 => gt_edi_order_tab(ln_loop_cnt).item_code
+                              ,ov_key_info    => gv_tkn1             -- キー情報
+                              ,ov_errbuf      => lv_errbuf           -- エラー・メッセージエラー
+                              ,ov_retcode     => lv_retcode          -- リターンコード
+                              ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
+            );
+            -- メッセージ
+            lv_errmsg  := xxccp_common_pkg.get_msg(
+                               iv_application  => cv_application     -- アプリケーション
+                              ,iv_name         => cv_msg_tax_err     -- 消費税取得エラー
+                              ,iv_token_name1  => cv_tkn_key_data    -- キー情報
+                              ,iv_token_value1 => gv_tkn1
+                          );
+            -- メッセージ出力(空行)
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => ''
+            );
+            -- メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
+      END;
+--****************************** 2019/06/25 1.29 S.Kuwako   ADD  END  ******************************--
 --****************************** 2009/06/12 1.10 T.Kitajima ADD  END  ******************************--
 -- ********* 2009/09/25 1.13 N.Maeda MOD START ********* --
       -- 「EDIヘッダ情報ID」がブレイクした場合
@@ -3823,6 +3938,21 @@ AS
       END IF;
 --
       ln_data_cnt := ln_data_cnt + cn_1;
+--
+--****************************** 2019/06/25 1.29 S.Kuwako ADD START ******************************--
+      -- 税金－端数処理取得
+      BEGIN
+        SELECT  /*+ INDEX(xchvw.cust_hier.ship_hzca_1 hz_cust_accounts_u2) */
+                xchvw.bill_tax_round_rule   bill_tax_round_rule         -- 税金－端数処理
+          INTO  gv_tax_round_rule
+          FROM  xxcos_cust_hierarchy_v  xchvw                           -- 顧客階層ビュー
+         WHERE  xchvw.ship_account_number  =  gt_edi_order_tab(ln_loop_cnt).account_number   -- 顧客階層ビュー.出荷先顧客コード＝EDI受注データ.顧客コード
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          RAISE global_api_others_expt;
+      END;
+--****************************** 2019/06/25 1.29 S.Kuwako ADD END   ******************************--
       --==============================================================
       -- 納品予定データ編集
       --==============================================================
@@ -4444,7 +4574,44 @@ AS
       gt_data_tab(ln_data_cnt)(cv_gen_add_item7)            := gt_edi_order_tab(ln_loop_cnt).general_add_item7;            -- 汎用付加項目7
       gt_data_tab(ln_data_cnt)(cv_gen_add_item8)            := gt_edi_order_tab(ln_loop_cnt).general_add_item8;            -- 汎用付加項目8
       gt_data_tab(ln_data_cnt)(cv_gen_add_item9)            := gt_edi_order_tab(ln_loop_cnt).general_add_item9;            -- 汎用付加項目9
-      gt_data_tab(ln_data_cnt)(cv_gen_add_item10)           := gt_edi_order_tab(ln_loop_cnt).general_add_item10;           -- 汎用付加項目10
+/* 2019/06/25 Ver1.29 Mod Start */
+--      gt_data_tab(ln_data_cnt)(cv_gen_add_item10)           := gt_edi_order_tab(ln_loop_cnt).general_add_item10;           -- 汎用付加項目10
+      -- 原価金額(出荷)がNULL、または0の場合
+      IF (( gt_data_tab(ln_data_cnt)(cv_ship_cost_amt) IS NULL )
+          OR ( gt_data_tab(ln_data_cnt)(cv_ship_cost_amt) = 0  ))  THEN
+            gt_data_tab(ln_data_cnt)(cv_gen_add_item10)     := gt_data_tab(ln_data_cnt)(cv_ship_cost_amt);
+      ELSE
+        -- 消費税率算出
+        ln_tax_rate := gt_data_tab(ln_data_cnt)(cv_gen_add_item1) / 100;
+        
+        -- 消費税区分が内税(単価込み)の場合
+        IF   ( gt_data_tab(ln_data_cnt)(cv_consumption_tax_class) = cv_ins_bid_tax ) THEN
+                gt_data_tab(ln_data_cnt)(cv_gen_add_item10) := gt_data_tab(ln_data_cnt)(cv_ship_cost_amt) -
+                                                                 ( gt_data_tab(ln_data_cnt)(cv_ship_cost_amt) / ( 1 + ln_tax_rate ));
+        ELSE
+        -- 消費税区分が内税(単価込み)以外の場合
+                gt_data_tab(ln_data_cnt)(cv_gen_add_item10) := gt_data_tab(ln_data_cnt)(cv_ship_cost_amt) * ln_tax_rate;
+        END IF;
+      END IF;                                                                                                              -- 汎用付加項目10
+      --端数処理
+      IF ( gt_data_tab(ln_data_cnt)(cv_gen_add_item10)  <>  TRUNC(gt_data_tab(ln_data_cnt)(cv_gen_add_item10)) ) THEN
+        IF ( gv_tax_round_rule  =  cv_tkn_down  )    THEN  -- 切捨て
+             --小終点以下の切捨て
+             gt_data_tab(ln_data_cnt)(cv_gen_add_item10)   := TRUNC( gt_data_tab(ln_data_cnt)(cv_gen_add_item10));
+        ELSIF
+           ( gv_tax_round_rule  =  cv_tkn_up    )    THEN  -- 切上げ
+             --小数点以下の切上げ
+             IF ( SIGN( gt_data_tab(ln_data_cnt)(cv_gen_add_item10) )  <>  -1 )  THEN
+               gt_data_tab(ln_data_cnt)(cv_gen_add_item10) := TRUNC( gt_data_tab(ln_data_cnt)(cv_gen_add_item10) ) + 1;
+             ELSE
+               gt_data_tab(ln_data_cnt)(cv_gen_add_item10) := TRUNC( gt_data_tab(ln_data_cnt)(cv_gen_add_item10) ) - 1;
+             END IF;
+        ELSIF
+           ( gv_tax_round_rule = cv_tkn_nearest )    THEN  -- 四捨五入
+               gt_data_tab(ln_data_cnt)(cv_gen_add_item10) := ROUND( gt_data_tab(ln_data_cnt)(cv_gen_add_item10) );
+        END IF;
+      END IF;
+/* 2019/06/25 Ver1.29 Mod End */
       gt_data_tab(ln_data_cnt)(cv_chain_pec_area_line)      := gt_edi_order_tab(ln_loop_cnt).chain_peculiar_area_line;     -- ﾁｪｰﾝ店固有ｴﾘｱ(明細)
 --
       -- フッタ
@@ -4627,6 +4794,9 @@ AS
       gt_edi_line_tab(ln_loop_cnt).general_add_item1   := gt_data_tab(ln_data_cnt)(cv_gen_add_item1);         -- 汎用付加項目1
       gt_edi_line_tab(ln_loop_cnt).general_add_item2   := gt_data_tab(ln_data_cnt)(cv_gen_add_item2);         -- 汎用付加項目2
       gt_edi_line_tab(ln_loop_cnt).general_add_item3   := gt_data_tab(ln_data_cnt)(cv_gen_add_item3);         -- 汎用付加項目3
+/* 2019/06/25 Ver1.29 Add Start */
+      gt_edi_line_tab(ln_loop_cnt).general_add_item10  := gt_data_tab(ln_data_cnt)(cv_gen_add_item10);        -- 汎用付加項目10
+/* 2019/06/25 Ver1.29 Add  End  */
       gt_edi_line_tab(ln_loop_cnt).item_code           := gt_data_tab(ln_data_cnt)(cv_prod_code_itouen);      -- 品目コード
     END LOOP edit_loop;
 --
@@ -5074,6 +5244,9 @@ AS
               ,xel.general_add_item1       = gt_edi_line_tab(ln_loop_cnt).general_add_item1    -- 汎用付加項目1
               ,xel.general_add_item2       = gt_edi_line_tab(ln_loop_cnt).general_add_item2    -- 汎用付加項目2
               ,xel.general_add_item3       = gt_edi_line_tab(ln_loop_cnt).general_add_item3    -- 汎用付加項目3
+-- ******* 2019/06/25 1.29 S.Kuwako ADD  START  ******* --
+              ,xel.general_add_item10      = gt_edi_line_tab(ln_loop_cnt).general_add_item10   -- 汎用付加項目10
+-- ******* 2019/06/25 1.29 S.Kuwako ADD  END    ******* --
               ,xel.item_code               = gt_edi_line_tab(ln_loop_cnt).item_code            -- 品目コード
               ,xel.last_updated_by         = cn_last_updated_by                                -- 最終更新者
               ,xel.last_update_date        = cd_last_update_date                               -- 最終更新日
