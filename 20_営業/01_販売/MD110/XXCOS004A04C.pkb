@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,6 +75,7 @@ AS
  *  2010/10/28   1.31  K.Kiriu           [E_本稼動_05352]参照カレンダ変更対応
  *  2014/04/22   1.32  K.Nakamura        [E_本稼働_09071]消化締め後のAR入力対応
  *  2017/12/19   1.33  Y.Omuro           [E_本稼動_14486]タスク登録共通関数の引数追加
+ *  2019/06/20   1.34  E.Yazaki          [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -262,6 +263,24 @@ AS
   ct_msg_inser_control_err      CONSTANT  fnd_new_messages.message_name%TYPE
                                           :=  'APP-XXCOS1-11073';
 /* 2014/04/22 Ver1.32 Add End   */
+--****************************** 2019/06/20 1.34 E.Yazaki ADD START ********************************************
+  ct_msg_tax_warn           CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11075';               --消費税取得時警告メッセージ
+  ct_msg_tax_err            CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11076';               --消費税取得時エラーメッセージ
+  ct_msg_col_txt            CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11074';               --メッセージ用文字列(消化VD用消化計算ヘッダID)
+  ct_msg_tax_class_txt      CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11534';               --メッセージ用文字列(消費税区分)
+  ct_msg_item_code_txt      CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-00054';               --メッセージ用文字列(品目コード)
+  ct_msg_ref_date_txt       CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-13558';               --メッセージ用文字列(基準日)
+  ct_msg_tax_code_txt       CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-11511';               --メッセージ用文字列(税金コード)
+  ct_msg_tax_rate_txt       CONSTANT  fnd_new_messages.message_name%TYPE
+                                      := 'APP-XXCOS1-10175';               --メッセージ用文字列(消費税率)
+--****************************** 2019/06/20 1.34 E.Yazaki ADD  EMD  ********************************************
   --クイックコードタイプ
   ct_qct_regular_type          CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_REGULAR_ANY_CLASS';       --定期随時
@@ -475,6 +494,13 @@ AS
 /* 2009/08/10 Ver1.19 Mod Start */
   ct_lang                       CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG'); -- 言語
 /* 2009/08/10 Ver1.19 Mod Start */
+--****************************** 2019/06/20 1.34 E.Yazaki ADD START   ******************************--
+  cv_non_tax                CONSTANT  VARCHAR(10) := '4';         -- 非課税
+  cv_out_tax                CONSTANT  VARCHAR(10) := '1';         -- 外税
+  cv_ins_slip_tax           CONSTANT  VARCHAR(10) := '2';         -- 内税(伝票課税)
+  cv_ins_bid_tax            CONSTANT  VARCHAR(10) := '3';         -- 内税(単価込み)
+--****************************** 2019/06/20 1.34 E.Yazaki ADD  END    ******************************--
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -518,9 +544,15 @@ AS
       sold_out_time               xxcos_vd_digestion_lns.sold_out_time%TYPE,               --売切時間
       tax_div                     xxcmm_cust_accounts.tax_div%TYPE,                        --消費税区分
       tax_uchizei_flag            fnd_lookup_values.attribute5%TYPE,                       --内税フラグ
-      tax_rate                    ar_vat_tax_all_b.tax_rate%TYPE,                          --消費税率
+--****************************** 2019/06/20 1.34 E.Yazaki MOD START   ******************************--
+--      tax_rate                    ar_vat_tax_all_b.tax_rate%TYPE,                          --消費税率
+      tax_rate                    xxcos_reduced_tax_rate_v.tax_rate%TYPE,                    --消費税率
+--****************************** 2019/06/20 1.34 E.Yazaki MOD  END    ******************************--
       tax_rounding_rule           hz_cust_site_uses_all.tax_rounding_rule%TYPE,            --税金－端数処理
-      tax_code                    ar_vat_tax_all_b.tax_code%TYPE,                          --AR税コード
+--****************************** 2019/06/20 1.34 E.Yazaki MOD START   ******************************--
+--      tax_code                    ar_vat_tax_all_b.tax_code%TYPE,                          --AR税コード
+      tax_code                    xxcos_reduced_tax_rate_v.tax_class_suppliers_outside%TYPE, --税コード
+--****************************** 2019/06/20 1.34 E.Yazaki MOD  END    ******************************--
       cash_receiv_base_code       xxcfr_cust_hierarchy_v.cash_receiv_base_code%TYPE,       --入金拠点コード
       party_id                    hz_cust_accounts.party_id%TYPE,                          --パーティID
       party_name                  hz_parties.party_name%TYPE,                              --顧客名
@@ -2034,10 +2066,144 @@ AS
              xsdl.sold_out_class                sold_out_class,                   --売切区分
              xsdl.sold_out_time                 sold_out_time,                    --売切時間
              xxca.tax_div                       tax_div,                          --消費税区分
-             flv.attribute5                     tax_uchizei_flag,                 --内税フラグ
-             avta.tax_rate                      tax_rate,                         --消費税率
+-- 2019/06/20 Ver.1.34 Mod Start
+--             flv.attribute5                     tax_uchizei_flag,                 --内税フラグ
+             (SELECT flv1.attribute5            attribute5
+              FROM   fnd_lookup_values         flv1
+              WHERE  xxca.tax_div        = flv1.attribute3                               --顧客マスタ. 消費税区分 = 税コード特定マスタ.LOOKUPコード
+              AND    flv1.lookup_type    = ct_qct_tax_type2
+              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
+                                         AND     NVL( flv1.end_date_active, gd_business_date )
+              AND    flv1.enabled_flag   = ct_enabled_flag_yes
+              AND    flv1.language       = ct_lang
+              AND    cv_1 = ( SELECT COUNT(*)  count
+                              FROM   fnd_lookup_values         flv2
+                              WHERE  xxca.tax_div       = flv2.attribute3
+                              AND    flv2.lookup_type    = ct_qct_tax_type2
+                              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
+                                                         AND     NVL( flv1.end_date_active, gd_business_date )
+                              AND    flv2.enabled_flag   = ct_enabled_flag_yes
+                              AND    flv2.language       = ct_lang
+                            )
+             )                                  tax_uchizei_flag,                 --内税フラグ
+--             avta.tax_rate                      tax_rate,                         --消費税率
+             (CASE WHEN xxca.tax_div  = cv_non_tax THEN   -- 非課税の場合
+                     ( SELECT xtv3.tax_rate  tax_rate
+                       FROM   xxcos_tax_v xtv3                        --消費税VIEW
+                       WHERE  xtv3.tax_class       = xxca.tax_div
+                       AND    xtv3.set_of_books_id = gn_gl_id
+                       AND    gd_business_date   BETWEEN NVL( xtv3.start_date_active, gd_business_date )
+                                                 AND     NVL( xtv3.end_date_active, gd_business_date )
+                       AND    cv_1 =  ( SELECT COUNT(*)  tax_cnt
+                                        FROM   xxcos_tax_v xtv4
+                                        WHERE  xtv4.tax_class       = xxca.tax_div
+                                        AND    xtv4.set_of_books_id = gn_gl_id
+                                        AND    gd_business_date   BETWEEN NVL( xtv4.start_date_active, gd_business_date )
+                                                                  AND     NVL( xtv4.end_date_active, gd_business_date )
+                                      )
+                       UNION
+                       -- 対象データなしの場合、0を設定
+                       SELECT 0  dual_cnt
+                       FROM   dual
+                       WHERE  NOT EXISTS ( SELECT xtv5.tax_rate  tax_rate
+                                           FROM   xxcos_tax_v xtv5    --消費税VIEW
+                                           WHERE  xtv5.tax_class       = xxca.tax_div
+                                           AND    xtv5.set_of_books_id = gn_gl_id
+                                           AND    gd_business_date   BETWEEN NVL( xtv5.start_date_active, gd_business_date )
+                                                                     AND     NVL( xtv5.end_date_active, gd_business_date )
+                                           AND    cv_1 <= ( SELECT COUNT(*)  tax_cnt
+                                                            FROM   xxcos_tax_v xtv6
+                                                            WHERE  xtv6.tax_class       = xxca.tax_div
+                                                            AND    xtv6.set_of_books_id = gn_gl_id
+                                                            AND    gd_business_date   BETWEEN NVL( xtv6.start_date_active, gd_business_date )
+                                                                                      AND     NVL( xtv6.end_date_active, gd_business_date )
+                                                          )
+                                         )
+                     )
+                   WHEN xxca.tax_div != cv_non_tax THEN   -- 課税の場合
+                     ( SELECT xrtr3.tax_rate  tax_rate
+                       FROM   xxcos_reduced_tax_rate_v xrtr3                      --品目別消費税取得VIEW
+                       WHERE  xrtr3.item_code      = xsdl.item_code
+                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date, gd_business_date )
+                                               AND     NVL( xrtr3.end_date, gd_business_date )
+                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date_histories, gd_business_date )
+                                               AND     NVL( xrtr3.end_date_histories, gd_business_date )
+                       AND    cv_1 =  ( SELECT COUNT(*)  reduced_tax_rate_cnt
+                                        FROM   xxcos_reduced_tax_rate_v xrtr4
+                                        WHERE  xrtr4.item_code    = xsdl.item_code
+                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date, gd_business_date )
+                                                                AND     NVL( xrtr4.end_date, gd_business_date )
+                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date_histories, gd_business_date )
+                                                                AND     NVL( xrtr4.end_date_histories, gd_business_date )
+                                      )
+                       UNION
+                       -- 対象データなしの場合、0を設定
+                       SELECT 0  dual_cnt
+                       FROM   dual
+                       WHERE  NOT EXISTS ( SELECT xrtr5.tax_rate  reduced_tax_rate
+                                           FROM   xxcos_reduced_tax_rate_v xrtr5  --品目別消費税取得VIEW
+                                           WHERE  xrtr5.item_code = xsdl.item_code
+                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date, gd_business_date )
+                                                                   AND     NVL( xrtr5.end_date, gd_business_date )
+                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date_histories, gd_business_date )
+                                                                   AND     NVL( xrtr5.end_date_histories, gd_business_date )
+                                           AND    cv_1 <= ( SELECT COUNT(*)  reduced_tax_rate_cnt
+                                                            FROM   xxcos_reduced_tax_rate_v xrtr6
+                                                            WHERE  xrtr6.item_code = xsdl.item_code
+                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date, gd_business_date )
+                                                                                    AND     NVL( xrtr6.end_date, gd_business_date )
+                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date_histories, gd_business_date )
+                                                                                    AND     NVL( xrtr6.end_date_histories, gd_business_date )
+                                                          )
+                                         )
+                     )
+              END
+             )                                  tax_rate,                         --消費税率
+-- 2019/06/20 Ver.1.34 Mod End
              xchv.bill_tax_round_rule           bill_tax_round_rule,              --税金－端数処理
-             avta.tax_code                      tax_code,                         --AR税コード
+-- 2019/06/20 Ver.1.34 Mod Start
+--             avta.tax_code                      tax_code,                         --AR税コード
+             (CASE WHEN xxca.tax_div  = cv_non_tax THEN   -- 非課税の場合
+                     ( SELECT xtv1.tax_code  tax_code
+                       FROM   xxcos_tax_v xtv1                     --消費税VIEW
+                       WHERE  xtv1.tax_class       = xxca.tax_div
+                       AND    xtv1.set_of_books_id = gn_gl_id
+                       AND    gd_business_date   BETWEEN NVL( xtv1.start_date_active, gd_business_date )
+                                                 AND     NVL( xtv1.end_date_active, gd_business_date )
+                       AND    cv_1  = ( SELECT COUNT(*)  tax_cnt
+                                        FROM   xxcos_tax_v xtv2
+                                        WHERE  xtv2.tax_class       = xxca.tax_div
+                                        AND    xtv2.set_of_books_id = gn_gl_id
+                                        AND    gd_business_date   BETWEEN  NVL( xtv2.start_date_active, gd_business_date )
+                                                                  AND      NVL( xtv2.end_date_active, gd_business_date )
+                                      )
+                     )
+                   WHEN xxca.tax_div != cv_non_tax THEN   -- 課税の場合
+                     ( SELECT CASE xxca.tax_div WHEN cv_out_tax      THEN
+                                                 xrtr1.tax_class_sales_outside
+                                               WHEN cv_ins_slip_tax THEN
+                                                 xrtr1.tax_class_sales_inside
+                                               WHEN cv_ins_bid_tax  THEN
+                                                 xrtr1.tax_class_sales_inside
+                              END
+                       FROM   xxcos_reduced_tax_rate_v xrtr1     -- 品目別消費税取得VIEW
+                       WHERE  xrtr1.item_code = xsdl.item_code
+                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date, gd_business_date )
+                                               AND     NVL( xrtr1.end_date, gd_business_date )
+                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date_histories, gd_business_date )
+                                               AND     NVL( xrtr1.end_date_histories, gd_business_date )
+                       AND    cv_1  = ( SELECT COUNT(*)  reduced_tax_rate_cnt
+                                        FROM   xxcos_reduced_tax_rate_v xrtr2
+                                        WHERE  xrtr2.item_code    = xsdl.item_code
+                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date, gd_business_date )
+                                                                AND     NVL( xrtr2.end_date, gd_business_date )
+                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date_histories, gd_business_date )
+                                                                AND     NVL( xrtr2.end_date_histories, gd_business_date )
+                                      )
+                     )
+              END
+             )                                  tax_code,                         --税コード
+-- 2019/06/20 Ver.1.34 Mod End
              xchv.cash_receiv_base_code         cash_receiv_base_code,            --入金拠点コード
              hnas.party_id                      party_id,                         --パーティID
              part.party_name                    party_name,                       --パーティ名（正式名称）
@@ -2056,13 +2222,17 @@ AS
 --             xxcfr_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
              xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
 /* 2009/08/10 Ver1.19 Mod End   */
-             ar_vat_tax_all_b          avta,    -- AR税金マスタ
+-- 2019/06/20 Ver.1.34 Del Start
+--             ar_vat_tax_all_b          avta,    -- AR税金マスタ
+-- 2019/06/20 Ver.1.34 Del End
              hz_parties                part,    -- 顧客マスタ
 /* 2009/08/10 Ver1.19 Del Start */
 --             fnd_application           fa,
 --             fnd_lookup_types          flt,
 /* 2009/08/10 Ver1.19 Del End   */
-             fnd_lookup_values         flv,
+-- 2019/06/20 Ver.1.34 Del Start
+--             fnd_lookup_values         flv,
+-- 2019/06/20 Ver.1.34 Del End
              (
               SELECT hca.account_number  account_number         --顧客コード
               FROM   hz_cust_accounts    hca,                   --顧客マスタ
@@ -2249,30 +2419,34 @@ AS
       AND    xsdh.digestion_due_date        <= gd_delay_date              --ヘッダ.消化計算締年月日    <= 業務日付－猶予日数
       AND    xsdh.cust_account_id            = hnas.cust_account_id       --ヘッダ.顧客ID               = 顧客マスタ.顧客ID
       AND    hnas.cust_account_id            = xxca.customer_id           --顧客マスタ.顧客ID           = アドオン.顧客ID
-      AND    xxca.tax_div                    = flv.attribute3             --顧客マスタ. 消費税区分      = 税コード特定マスタ.LOOKUPコード
-      AND    flv.attribute2                  = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
-      AND    avta.set_of_books_id            = gn_gl_id                   --AR税金マスタ.セットブックス = GL会計帳簿ID
-      AND    avta.start_date                <= xsdh.digestion_due_date                --AR税金マスタ.開始日 <= 消化ＶＤ用消化計算ヘッダ.消化計算締年月日
-      AND    NVL( avta.end_date, xsdh.digestion_due_date ) >= xsdh.digestion_due_date --AR税金マスタ.終了日 >= 消化ＶＤ用消化計算ヘッダ.消化計算締年月日
-      AND    avta.enabled_flag               = ct_tax_enabled_yes         --AR税金マスタ.有効           = 'Y'
+--******************************* 2019/06/20 1.34 E.Yazaki DEL START ******************************--
+--      AND    xxca.tax_div                    = flv.attribute3             --顧客マスタ. 消費税区分      = 税コード特定マスタ.LOOKUPコード
+--      AND    flv.attribute2                  = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
+--      AND    avta.set_of_books_id            = gn_gl_id                   --AR税金マスタ.セットブックス = GL会計帳簿ID
+--      AND    avta.start_date                <= xsdh.digestion_due_date                --AR税金マスタ.開始日 <= 消化ＶＤ用消化計算ヘッダ.消化計算締年月日
+--      AND    NVL( avta.end_date, xsdh.digestion_due_date ) >= xsdh.digestion_due_date --AR税金マスタ.終了日 >= 消化ＶＤ用消化計算ヘッダ.消化計算締年月日
+--      AND    avta.enabled_flag               = ct_tax_enabled_yes         --AR税金マスタ.有効           = 'Y'
+--******************************* 2019/06/20 1.34 E.Yazaki DEL  END  ******************************--
       AND    xsdh.cust_account_id            = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
       AND    xsdh.customer_number            = NVL( iv_customer_number,xsdh.customer_number )
                                                                           --消化ＶＤ用消化計算ヘッダ.顧客コード = INパラ(顧客コード)
+-- 2019/06/20 Ver.1.34 Del Start
 /* 2009/08/10 Ver1.19 Mod Start */
---      AND    fa.application_id               = flt.application_id
---      AND    flt.lookup_type                 = flv.lookup_type
---      AND    fa.application_short_name       = ct_xxcos_appl_short_name
+----      AND    fa.application_id               = flt.application_id
+----      AND    flt.lookup_type                 = flv.lookup_type
+----      AND    fa.application_short_name       = ct_xxcos_appl_short_name
+----      AND    flv.lookup_type                 = ct_qct_tax_type2
+----      AND    flv.start_date_active          <= xsdh.digestion_due_date
+----      AND    NVL( flv.end_date_active, xsdh.digestion_due_date ) >= xsdh.digestion_due_date
+----      AND    flv.enabled_flag                = ct_enabled_flag_yes
+----      AND    flv.language                    = USERENV( 'LANG' )
 --      AND    flv.lookup_type                 = ct_qct_tax_type2
---      AND    flv.start_date_active          <= xsdh.digestion_due_date
---      AND    NVL( flv.end_date_active, xsdh.digestion_due_date ) >= xsdh.digestion_due_date
+--      AND    xsdh.digestion_due_date         BETWEEN NVL( flv.start_date_active, xsdh.digestion_due_date )
+--                                             AND     NVL( flv.end_date_active, xsdh.digestion_due_date )
 --      AND    flv.enabled_flag                = ct_enabled_flag_yes
---      AND    flv.language                    = USERENV( 'LANG' )
-      AND    flv.lookup_type                 = ct_qct_tax_type2
-      AND    xsdh.digestion_due_date         BETWEEN NVL( flv.start_date_active, xsdh.digestion_due_date )
-                                             AND     NVL( flv.end_date_active, xsdh.digestion_due_date )
-      AND    flv.enabled_flag                = ct_enabled_flag_yes
-      AND    flv.language                    = ct_lang
+--      AND    flv.language                    = ct_lang
 /* 2009/08/10 Ver1.19 Mod End   */
+-- 2019/06/20 Ver.1.34 Del End
       AND    hnas.party_id                   = part.party_id               --顧客マスタ.顧客ID = 顧客マスタ.顧客ID
 --****************************** 2009/05/07 1.14 T.Kitajima ADD START ******************************--
       AND    xsdl.sales_quantity            != cn_0
@@ -2369,10 +2543,144 @@ AS
              xsdl.sold_out_class                sold_out_class,                   --売切区分
              xsdl.sold_out_time                 sold_out_time,                    --売切時間
              xxca.tax_div                       tax_div,                          --消費税区分
-             flv.attribute5                     tax_uchizei_flag,                 --内税フラグ
-             avta.tax_rate                      tax_rate,                         --消費税率
+-- 2019/06/20 Ver.1.34 Mod Start
+--             flv.attribute5                     tax_uchizei_flag,                 --内税フラグ
+             (SELECT flv1.attribute5            attribute5
+              FROM   fnd_lookup_values         flv1
+              WHERE  xxca.tax_div       = flv1.attribute3                               --顧客マスタ. 消費税区分 = 税コード特定マスタ.LOOKUPコード
+              AND    flv1.lookup_type    = ct_qct_tax_type2
+              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
+                                         AND     NVL( flv1.end_date_active, gd_business_date )
+              AND    flv1.enabled_flag   = ct_enabled_flag_yes
+              AND    flv1.language       = ct_lang
+              AND    cv_1 = ( SELECT COUNT(*)  count
+                              FROM   fnd_lookup_values         flv2
+                              WHERE  xxca.tax_div       = flv2.attribute3
+                              AND    flv2.lookup_type    = ct_qct_tax_type2
+                              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
+                                                         AND     NVL( flv1.end_date_active, gd_business_date )
+                              AND    flv2.enabled_flag   = ct_enabled_flag_yes
+                              AND    flv2.language       = ct_lang
+                            )
+             )                                  tax_uchizei_flag,                 --内税フラグ
+--             avta.tax_rate                      tax_rate,                         --消費税率
+             (CASE WHEN xxca.tax_div  = cv_non_tax THEN   -- 非課税の場合
+                     ( SELECT xtv3.tax_rate  tax_rate
+                       FROM   xxcos_tax_v xtv3                        --消費税VIEW
+                       WHERE  xtv3.tax_class       = xxca.tax_div
+                       AND    xtv3.set_of_books_id = gn_gl_id
+                       AND    gd_business_date   BETWEEN NVL( xtv3.start_date_active, gd_business_date )
+                                                 AND     NVL( xtv3.end_date_active, gd_business_date )
+                       AND    cv_1 =  ( SELECT COUNT(*)  tax_cnt
+                                        FROM   xxcos_tax_v xtv4
+                                        WHERE  xtv4.tax_class       = xxca.tax_div
+                                        AND    xtv4.set_of_books_id = gn_gl_id
+                                        AND    gd_business_date   BETWEEN NVL( xtv4.start_date_active, gd_business_date )
+                                                                  AND     NVL( xtv4.end_date_active, gd_business_date )
+                                      )
+                       UNION
+                       -- 対象データなしの場合、0を設定
+                       SELECT 0  dual_cnt
+                       FROM   dual
+                       WHERE  NOT EXISTS ( SELECT xtv5.tax_rate  tax_rate
+                                           FROM   xxcos_tax_v xtv5    --消費税VIEW
+                                           WHERE  xtv5.tax_class       = xxca.tax_div
+                                           AND    xtv5.set_of_books_id = gn_gl_id
+                                           AND    gd_business_date   BETWEEN NVL( xtv5.start_date_active, gd_business_date )
+                                                                     AND     NVL( xtv5.end_date_active, gd_business_date )
+                                           AND    cv_1 <= ( SELECT COUNT(*)  tax_cnt
+                                                            FROM   xxcos_tax_v xtv6
+                                                            WHERE  xtv6.tax_class       = xxca.tax_div
+                                                            AND    xtv6.set_of_books_id = gn_gl_id
+                                                            AND    gd_business_date   BETWEEN NVL( xtv6.start_date_active, gd_business_date )
+                                                                                      AND     NVL( xtv6.end_date_active, gd_business_date )
+                                                          )
+                                         )
+                     )
+                   WHEN xxca.tax_div != cv_non_tax THEN   -- 課税の場合
+                     ( SELECT xrtr3.tax_rate  tax_rate
+                       FROM   xxcos_reduced_tax_rate_v xrtr3                      --品目別消費税取得VIEW
+                       WHERE  xrtr3.item_code      = xsdl.item_code
+                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date, gd_business_date )
+                                               AND     NVL( xrtr3.end_date, gd_business_date )
+                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date_histories, gd_business_date )
+                                               AND     NVL( xrtr3.end_date_histories, gd_business_date )
+                       AND    cv_1 =  ( SELECT COUNT(*)  reduced_tax_rate_cnt
+                                        FROM   xxcos_reduced_tax_rate_v xrtr4
+                                        WHERE  xrtr4.item_code    = xsdl.item_code
+                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date, gd_business_date )
+                                                                AND     NVL( xrtr4.end_date, gd_business_date )
+                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date_histories, gd_business_date )
+                                                                AND     NVL( xrtr4.end_date_histories, gd_business_date )
+                                      )
+                       UNION
+                       -- 対象データなしの場合、0を設定
+                       SELECT 0  dual_cnt
+                       FROM   dual
+                       WHERE  NOT EXISTS ( SELECT xrtr5.tax_rate  reduced_tax_rate
+                                           FROM   xxcos_reduced_tax_rate_v xrtr5  --品目別消費税取得VIEW
+                                           WHERE  xrtr5.item_code = xsdl.item_code
+                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date, gd_business_date )
+                                                                   AND     NVL( xrtr5.end_date, gd_business_date )
+                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date_histories, gd_business_date )
+                                                                   AND     NVL( xrtr5.end_date_histories, gd_business_date )
+                                           AND    cv_1 <= ( SELECT COUNT(*)  reduced_tax_rate_cnt
+                                                            FROM   xxcos_reduced_tax_rate_v xrtr6
+                                                            WHERE  xrtr6.item_code = xsdl.item_code
+                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date, gd_business_date )
+                                                                                    AND     NVL( xrtr6.end_date, gd_business_date )
+                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date_histories, gd_business_date )
+                                                                                    AND     NVL( xrtr6.end_date_histories, gd_business_date )
+                                                          )
+                                         )
+                     )
+              END
+             )                                  tax_rate,                         --消費税率
+-- 2019/06/20 Ver.1.34 Mod End
              xchv.bill_tax_round_rule           bill_tax_round_rule,              --税金－端数処理
-             avta.tax_code                      tax_code,                         --AR税コード
+-- 2019/06/20 Ver.1.34 Mod Start
+--             avta.tax_code                      tax_code,                         --AR税コード
+             (CASE WHEN xxca.tax_div  = cv_non_tax THEN   -- 非課税の場合
+                     ( SELECT xtv1.tax_code  tax_code
+                       FROM   xxcos_tax_v xtv1                     --消費税VIEW
+                       WHERE  xtv1.tax_class       = xxca.tax_div
+                       AND    xtv1.set_of_books_id = gn_gl_id
+                       AND    gd_business_date   BETWEEN NVL( xtv1.start_date_active, gd_business_date )
+                                                 AND     NVL( xtv1.end_date_active, gd_business_date )
+                       AND    cv_1  = ( SELECT COUNT(*)  tax_cnt
+                                        FROM   xxcos_tax_v xtv2
+                                        WHERE  xtv2.tax_class       = xxca.tax_div
+                                        AND    xtv2.set_of_books_id = gn_gl_id
+                                        AND    gd_business_date   BETWEEN  NVL( xtv2.start_date_active, gd_business_date )
+                                                                  AND      NVL( xtv2.end_date_active, gd_business_date )
+                                      )
+                     )
+                   WHEN xxca.tax_div != cv_non_tax THEN   -- 課税の場合
+                     ( SELECT CASE xxca.tax_div WHEN cv_out_tax      THEN
+                                                 xrtr1.tax_class_sales_outside
+                                               WHEN cv_ins_slip_tax THEN
+                                                 xrtr1.tax_class_sales_inside
+                                               WHEN cv_ins_bid_tax  THEN
+                                                 xrtr1.tax_class_sales_inside
+                              END
+                       FROM   xxcos_reduced_tax_rate_v xrtr1     -- 品目別消費税取得VIEW
+                       WHERE  xrtr1.item_code = xsdl.item_code
+                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date, gd_business_date )
+                                               AND     NVL( xrtr1.end_date, gd_business_date )
+                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date_histories, gd_business_date )
+                                               AND     NVL( xrtr1.end_date_histories, gd_business_date )
+                       AND    cv_1  = ( SELECT COUNT(*)  reduced_tax_rate_cnt
+                                        FROM   xxcos_reduced_tax_rate_v xrtr2
+                                        WHERE  xrtr2.item_code    = xsdl.item_code
+                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date, gd_business_date )
+                                                                AND     NVL( xrtr2.end_date, gd_business_date )
+                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date_histories, gd_business_date )
+                                                                AND     NVL( xrtr2.end_date_histories, gd_business_date )
+                                      )
+                     )
+              END
+             )                                  tax_code,                         --税コード
+-- 2019/06/20 Ver.1.34 Mod End
              xchv.cash_receiv_base_code         cash_receiv_base_code,            --入金拠点コード
              hnas.party_id                      party_id,                         --パーティID
              part.party_name                    party_name,                       --パーティ名（正式名称）
@@ -2391,13 +2699,17 @@ AS
 --             xxcfr_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
              xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
 /* 2009/08/10 Ver1.19 Mod End   */
-             ar_vat_tax_all_b          avta,    -- AR税金マスタ
+-- 2019/06/20 Ver.1.34 Del Start
+--             ar_vat_tax_all_b          avta,    -- AR税金マスタ
+-- 2019/06/20 Ver.1.34 Del End
              hz_parties                part,    -- 顧客マスタ
 /* 2009/08/10 Ver1.19 Del Start */
 --             fnd_application           fa,
 --             fnd_lookup_types          flt,
 /* 2009/08/10 Ver1.19 Del End   */
-             fnd_lookup_values         flv,
+-- 2019/06/20 Ver.1.34 Del Start
+--             fnd_lookup_values         flv,
+-- 2019/06/20 Ver.1.34 Del End
              (
               SELECT hca.account_number  account_number         --顧客コード
               FROM   hz_cust_accounts    hca,                   --顧客マスタ
@@ -2579,30 +2891,34 @@ AS
       AND    xsdh.uncalculate_class          = ct_un_calc_flag_0          --ヘッダ.未計算区分           = 0
       AND    xsdh.cust_account_id            = hnas.cust_account_id       --ヘッダ.顧客ID               = 顧客マスタ.顧客ID
       AND    hnas.cust_account_id            = xxca.customer_id           --顧客マスタ.顧客ID           = アドオン.顧客ID
-      AND    xxca.tax_div                    = flv.attribute3             --顧客マスタ. 消費税区分      = 税コード特定マスタ.LOOKUPコード
-      AND    flv.attribute2                  = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
-      AND    avta.set_of_books_id            = gn_gl_id                   --AR税金マスタ.セットブックス = GL会計帳簿ID
-      AND    avta.start_date                <= xsdh.digestion_due_date                --AR税金マスタ.開始日 <= 消化ＶＤ用消化計算ヘッダ.消化計算締年月日
-      AND    NVL( avta.end_date, xsdh.digestion_due_date ) >= xsdh.digestion_due_date --AR税金マスタ.終了日 >= 消化ＶＤ用消化計算ヘッダ.消化計算締年月日
-      AND    avta.enabled_flag               = ct_tax_enabled_yes         --AR税金マスタ.有効           = 'Y'
+-- 2019/06/20 Ver.1.34 Del Start
+--      AND    xxca.tax_div                    = flv.attribute3             --顧客マスタ. 消費税区分      = 税コード特定マスタ.LOOKUPコード
+--      AND    flv.attribute2                  = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
+--      AND    avta.set_of_books_id            = gn_gl_id                   --AR税金マスタ.セットブックス = GL会計帳簿ID
+--      AND    avta.start_date                <= xsdh.digestion_due_date                --AR税金マスタ.開始日 <= 消化ＶＤ用消化計算ヘッダ.消化計算締年月日
+--      AND    NVL( avta.end_date, xsdh.digestion_due_date ) >= xsdh.digestion_due_date --AR税金マスタ.終了日 >= 消化ＶＤ用消化計算ヘッダ.消化計算締年月日
+--      AND    avta.enabled_flag               = ct_tax_enabled_yes         --AR税金マスタ.有効           = 'Y'
+-- 2019/06/20 Ver.1.34 Del End
       AND    xsdh.cust_account_id            = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
       AND    xsdh.customer_number            = NVL( iv_customer_number,xsdh.customer_number )
                                                                           --消化ＶＤ用消化計算ヘッダ.顧客コード = INパラ(顧客コード)
+-- 2019/06/20 Ver.1.34 Del Start
 /* 2009/08/10 Ver1.19 Mod Start */
---      AND    fa.application_id               = flt.application_id
---      AND    flt.lookup_type                 = flv.lookup_type
---      AND    fa.application_short_name       = ct_xxcos_appl_short_name
+----      AND    fa.application_id               = flt.application_id
+----      AND    flt.lookup_type                 = flv.lookup_type
+----      AND    fa.application_short_name       = ct_xxcos_appl_short_name
+----      AND    flv.lookup_type                 = ct_qct_tax_type2
+----      AND    flv.start_date_active          <= xsdh.digestion_due_date
+----      AND    NVL( flv.end_date_active, xsdh.digestion_due_date ) >= xsdh.digestion_due_date
+----      AND    flv.enabled_flag                = ct_enabled_flag_yes
+----      AND    flv.language                    = USERENV( 'LANG' )
 --      AND    flv.lookup_type                 = ct_qct_tax_type2
---      AND    flv.start_date_active          <= xsdh.digestion_due_date
---      AND    NVL( flv.end_date_active, xsdh.digestion_due_date ) >= xsdh.digestion_due_date
+--      AND    xsdh.digestion_due_date         BETWEEN NVL( flv.start_date_active, xsdh.digestion_due_date )
+--                                             AND     NVL( flv.end_date_active, xsdh.digestion_due_date )
 --      AND    flv.enabled_flag                = ct_enabled_flag_yes
---      AND    flv.language                    = USERENV( 'LANG' )
-      AND    flv.lookup_type                 = ct_qct_tax_type2
-      AND    xsdh.digestion_due_date         BETWEEN NVL( flv.start_date_active, xsdh.digestion_due_date )
-                                             AND     NVL( flv.end_date_active, xsdh.digestion_due_date )
-      AND    flv.enabled_flag                = ct_enabled_flag_yes
-      AND    flv.language                    = ct_lang
+--      AND    flv.language                    = ct_lang
 /* 2009/08/10 Ver1.19 Mod End   */
+-- 2019/06/20 Ver.1.34 Del End
       AND    hnas.party_id                   = part.party_id               --顧客マスタ.顧客ID = 顧客マスタ.顧客ID
  --****************************** 2009/05/07 1.14 T.Kitajima ADD START ******************************--
       AND    xsdl.sales_quantity            != cn_0
@@ -2850,6 +3166,11 @@ AS
 --    ln_diff_pure_amount          NUMBER;
 /* 2010/01/27 Ver1.23 Del End */
 /* 2010/01/12 Ver1.22 Add End */
+-- 2019/06/20 Ver.1.34 Add Start
+    lv_msg_txt             VARCHAR2(5000);   --メッセージ編集用
+    lv_tax_code_header     VARCHAR2(50);     --ヘッダ設定用(税コード)
+    lv_tax_rate_header     NUMBER;           --ヘッダ設定用(税率)
+-- 2019/06/20 Ver.1.34 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -2903,6 +3224,79 @@ AS
     -- ループ開始
     <<keisan_loop>>
     FOR ln_i IN 1..gn_target_cnt LOOP
+---****************************** 2019/06/20 1.34 E.Yazaki ADD START ******************************--
+      -- 消費税情報チェック
+      IF ( gt_tab_work_data(ln_i).tax_code IS NULL ) THEN  -- 税コードがNULLの場合
+        
+        -- キー情報編集
+        xxcos_common_pkg.makeup_key_info(
+           iv_item_name1  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_col_txt )       -- 項目名称１
+          ,iv_data_value1 => gt_tab_work_data(ln_i).vd_digestion_hdr_id
+          ,iv_item_name2  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_tax_class_txt ) -- 項目名称２
+          ,iv_data_value2 => gt_tab_work_data(ln_i).tax_div
+          ,iv_item_name3  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_item_code_txt ) -- 項目名称３
+          ,iv_data_value3 => gt_tab_work_data(ln_i).item_code
+          ,iv_item_name4  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_ref_date_txt  ) -- 項目名称４
+          ,iv_data_value4 => gd_business_date
+          ,iv_item_name5  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_tax_code_txt  ) -- 項目名称４
+          ,iv_data_value5 => NVL( TO_CHAR(gt_tab_work_data(ln_i).tax_code),'NULL')
+          ,iv_item_name6  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_tax_rate_txt  ) -- 項目名称５
+          ,iv_data_value6 => NVL( TO_CHAR(gt_tab_work_data(ln_i).tax_rate),'NULL')
+          ,ov_key_info    => lv_msg_txt         -- キー情報
+          ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+          ,ov_retcode     => lv_retcode         -- リターンコード
+          ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+          );
+        
+        -- 消費税率がNULLの場合(エラー)
+        IF ( gt_tab_work_data(ln_i).tax_rate IS NULL ) THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          ov_errmsg    := xxccp_common_pkg.get_msg(
+                                         iv_application   => ct_xxcos_appl_short_name      --アプリケーション短縮名
+                                        ,iv_name          => ct_msg_tax_err                --メッセージコード
+                                        ,iv_token_name1   => cv_tkn_key_data               --トークンコード1
+                                        ,iv_token_value1  => lv_msg_txt                    --トークン値1
+                                        );
+          
+          RAISE global_api_others_expt;
+          
+        -- 消費税率がNULL以外の場合(警告)
+        ELSIF  ( gt_tab_work_data(ln_i).tax_rate IS NOT NULL ) THEN
+          lv_err_work   := cv_status_warn;
+          gn_warn_cnt   := gn_warn_cnt + 1;
+          ov_errmsg  := xxccp_common_pkg.get_msg(
+                                         iv_application   => ct_xxcos_appl_short_name      --アプリケーション短縮名
+                                        ,iv_name          => ct_msg_tax_warn               --メッセージコード
+                                        ,iv_token_name1   => cv_tkn_key_data               --トークンコード1
+                                        ,iv_token_value1  => lv_msg_txt                    --トークン値1
+                                        );
+        
+        END IF;
+        
+        -- ユーザーエラーメッセージ
+        FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+             ,buff   => ''  -- 空行
+        );
+        
+        FND_FILE.PUT_LINE(
+              which  => FND_FILE.OUTPUT
+             ,buff   => ov_errmsg
+        );
+        
+        -- エラーメッセージ
+        FND_FILE.PUT_LINE(
+              which  => FND_FILE.LOG
+             ,buff   => ''  -- 空行
+        );
+        
+        FND_FILE.PUT_LINE(
+              which  => FND_FILE.LOG
+             ,buff   => ov_errmsg
+        );
+      
+      END IF;
+--****************************** 2019/06/20 1.34 E.Yazaki ADD  END  ******************************--
 --
 --****************************** 2010/02/08 1.25 N.Maeda ADD START ******************************--
       -- 随時実行時のみチェック処理を実行
@@ -2916,7 +3310,6 @@ AS
         END IF;
       END IF;
 --****************************** 2010/02/08 1.25 N.Maeda ADD  END  ******************************--
-
       --正常時のみ納品形態、単位換算を行う。
       IF ( lv_err_work = cv_status_normal ) THEN
 --**************************** 2009/03/23 1.9  T.kitajima MOD START ****************************
@@ -3541,7 +3934,9 @@ AS
 --**************************** 2009/03/30 1.10 T.kitajima MOD START ****************************
 --        gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := gt_tab_work_data(ln_i).vd_digestion_ln_id;          --納品明細番号
         gt_tab_sales_exp_lines(ln_m).dlv_invoice_line_number      := ln_line_index;                                      --納品明細番号
-        ln_line_index                                             := ln_line_index + 1;
+--**************************** 2019/06/20 1.34 E.Yazaki DEL START   ******************************--
+--        ln_line_index                                             := ln_line_index + 1;
+--**************************** 2019/06/20 1.34 E.Yazaki DEL  END    ******************************--
 --**************************** 2009/03/30 1.10 T.kitajima MOD  END  ****************************
         gt_tab_sales_exp_lines(ln_m).order_invoice_line_number    := NULL;                                               --注文明細番号
 --**************************** 2009/05/07 1.14 T.kitajima MOD START ****************************
@@ -3640,6 +4035,10 @@ AS
           gt_tab_sales_exp_lines(ln_m).red_black_flag             := ct_red_black_flag_1;                                --黒
         END IF;
         --
+--**************************** 2019/06/20 1.34 E.Yazaki ADD START   ******************************--
+        gt_tab_sales_exp_lines(ln_m).tax_code                     := gt_tab_work_data(ln_i).tax_code;                    --税コード
+        gt_tab_sales_exp_lines(ln_m).tax_rate                     := gt_tab_work_data(ln_i).tax_rate;                    --消費税率
+--**************************** 2019/06/20 1.34 E.Yazaki ADD  END    ******************************--
         gt_tab_sales_exp_lines(ln_m).cash_and_card                := cn_0;                                               --現金/カード併用額
 --**************************** 2009/03/23 1.9  T.kitajima MOD START ****************************
 --        gt_tab_sales_exp_lines(ln_m).ship_from_subinventory_code  := gt_tab_work_data(ln_i).ship_from_subinventory_code; --出荷元保管場所
@@ -3675,7 +4074,6 @@ AS
 /* 2010/01/27 Ver1.23 Del End */
 /* 2010/01/12 Ver1.22 Add End */
         --最大の消化計算掛率済み品目別販売金額と読み込んだテーブルインデックスと書き出したテーブルインデックスを保存
-
 --****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
 --        IF ( ln_amount_work_max <= ln_amount_work ) THEN
         IF   ( ln_amount_work_max <= ln_amount_work )
@@ -3691,6 +4089,14 @@ AS
 /* 2014/04/22 Ver1.32 Del End   */
           ln_m_max := ln_m; --現在の書出テーブルインデックス
         END IF;
+--****************************** 2019/06/20 1.34 E.Yazaki ADD START   ******************************--
+        --ヘッダデータ設定用 税コードおよび消費税率の保持
+        IF ( ln_line_index = cv_1 ) THEN
+          lv_tax_code_header := gt_tab_work_data(ln_i).tax_code;  --税コード
+          lv_tax_rate_header := gt_tab_work_data(ln_i).tax_rate;  --消費税率
+        END IF;
+        ln_line_index        := ln_line_index + 1;
+--****************************** 2019/06/20 1.34 E.Yazaki ADD  END    ******************************--
         --
       ELSE --共通関数エラーの場合
         --明細エラーフラグを立てる
@@ -3842,8 +4248,12 @@ AS
 --          gt_tab_sales_exp_headers(ln_h).tax_amount_sum              := gt_tab_work_data(ln_i).tax_amount;               --消費税金額合計
 --****************************** 2009/04/27 1.13 N.Maeda    ADD  END  ******************************--
           gt_tab_sales_exp_headers(ln_h).consumption_tax_class       := gt_tab_work_data(ln_i).tax_div;                  --消費税区分
-          gt_tab_sales_exp_headers(ln_h).tax_code                    := gt_tab_work_data(ln_i).tax_code;                 --税金コード
-          gt_tab_sales_exp_headers(ln_h).tax_rate                    := gt_tab_work_data(ln_i).tax_rate;                 --消費税率
+--****************************** 2019/06/20 1.34 E.Yazaki MOD START   ******************************--
+--          gt_tab_sales_exp_headers(ln_h).tax_code                    := gt_tab_work_data(ln_i).tax_code;                 --税金コード
+--          gt_tab_sales_exp_headers(ln_h).tax_rate                    := gt_tab_work_data(ln_i).tax_rate;                 --消費税率
+          gt_tab_sales_exp_headers(ln_h).tax_code                    := lv_tax_code_header;                              --税金コード
+          gt_tab_sales_exp_headers(ln_h).tax_rate                    := lv_tax_rate_header;                              --消費税率
+--****************************** 2019/06/20 1.34 E.Yazaki MOD  END    ******************************--
           gt_tab_sales_exp_headers(ln_h).results_employee_code       := lt_performance_by_code;                          --成績計上者コード
           gt_tab_sales_exp_headers(ln_h).receiv_base_code            := gt_tab_work_data(ln_i).cash_receiv_base_code;    --入金拠点コード
           gt_tab_sales_exp_headers(ln_h).order_source_id             := NULL;                                            --受注ソースID
@@ -3993,7 +4403,6 @@ AS
 --          ln_diff_pure_amount     := cn_0;
 /* 2010/01/27 Ver1.23 Del End */
 /* 2010/01/12 Ver1.22 Add Start */
-
           --消化計算掛率済み品目別販売合計金額の初期化
           ln_amount_work_total   := cn_0;
           --差額の初期化
