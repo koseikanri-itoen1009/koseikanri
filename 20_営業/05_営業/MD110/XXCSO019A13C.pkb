@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO019A13C(body)
  * Description      : ルートNo／営業員一括更新アップロード
  * MD.050           : 見積書アップロード MD050_CSO_017_A07
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2018/04/19    1.0   K.Kiriu          新規作成(E_本稼動_14722)
+ *  2019/04/25    1.1   T.Kawaguchi      E_本稼動_15683【営業】ルート一括更新障害対応
  *
  *****************************************************************************************/
 --
@@ -1610,8 +1611,11 @@ AS
               ) THEN
              -- 顧客の売上拠点
              lt_check_base_code := lt_sale_base_code;
-             -- 判定日は業務日付
-             ld_judgment_date   := gd_process_date;
+-- Ver1.1 Mod Start
+             -- 判定日は業務日付翌月1日
+--             ld_judgment_date   := gd_process_date;
+             ld_judgment_date   := gd_next_month_date;
+-- Ver1.1 Mod End
            -- ②.翌月1日 >= 予約日
            ELSE
              -- 顧客の予約売上拠点
