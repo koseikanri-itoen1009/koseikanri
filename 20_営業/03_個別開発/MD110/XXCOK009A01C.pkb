@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 1.9
+ * Version          : 2.0
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  * 2011/02/02     1.8   SCS S.OCHIAI     [障害E_本稼動_05918]共通関数(会計カレンダ取得、会計期間チェック)の
  *                                                           対象アプリケーションを「AR」から「GL」変更
  * 2013/12/30     1.9   SCSK S.NIKI      [障害E_本稼動_02011]入金時値引の勘定科目変更
+ * 2019/07/03     2.0   SCSK N.Miyamoto  [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
   --===============================
@@ -77,9 +78,13 @@ AS
   cv_aff6_compuny_dummy       CONSTANT VARCHAR2(100) := 'XXCOK1_AFF6_COMPANY_DUMMY';        -- 企業コードのダミー値
   cv_aff7_preliminary1_dummy  CONSTANT VARCHAR2(100) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';   -- 予備1のダミー値
   cv_aff8_preliminary2_dummy  CONSTANT VARCHAR2(100) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';   -- 予備2のダミー値
-  cv_selling_without_tax_code CONSTANT VARCHAR2(100) := 'XXCOK1_SELLING_WITHOUT_TAX_CODE';  -- 課税売上外税消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--  cv_selling_without_tax_code CONSTANT VARCHAR2(100) := 'XXCOK1_SELLING_WITHOUT_TAX_CODE';  -- 課税売上外税消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
-  cv_payment_discounts_code   CONSTANT VARCHAR2(100) := 'XXCOS1_PAYMENT_DISCOUNTS_CODE';    -- 入金値引コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--  cv_payment_discounts_code   CONSTANT VARCHAR2(100) := 'XXCOS1_PAYMENT_DISCOUNTS_CODE';    -- 入金値引コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
   cv_acct_payment_discount    CONSTANT VARCHAR2(100) := 'XXCOK1_AFF3_ALLOWANCE_PAYMENT';    -- 入金値引高
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 -- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
@@ -88,6 +93,9 @@ AS
   --参照タイプ・有効フラグ
   cv_enable                   CONSTANT VARCHAR2(1)   := 'Y'; -- 有効
 -- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  cv_lookup_type_02           CONSTANT VARCHAR2(50)  := 'XXCMM1_PAYMENT_DISCOUNTS_CODE';    -- 入金値引
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
   --メッセージ
   cv_lock_err_msg             CONSTANT VARCHAR2(50)  := 'APP-XXCOK1-10049';                 -- ロックエラーメッセージ
   cv_concurrent_msg           CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90008';                 -- パラメータなしメッセージ
@@ -169,9 +177,13 @@ AS
   gv_aff6_compuny_dummy       VARCHAR2(100)  DEFAULT NULL;   -- 企業コードのダミー値
   gv_aff7_preliminary1_dummy  VARCHAR2(100)  DEFAULT NULL;   -- 予備1のダミー値
   gv_aff8_preliminary2_dummy  VARCHAR2(100)  DEFAULT NULL;   -- 予備2のダミー値
-  gv_selling_without_tax_code VARCHAR2(100)  DEFAULT NULL;   -- 課税売上外税消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--  gv_selling_without_tax_code VARCHAR2(100)  DEFAULT NULL;   -- 課税売上外税消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
-  gv_payment_discounts_code   VARCHAR2(100)  DEFAULT NULL;   -- 入金値引コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--  gv_payment_discounts_code   VARCHAR2(100)  DEFAULT NULL;   -- 入金値引コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
   gv_acct_payment_discount    VARCHAR2(100)  DEFAULT NULL;   -- 入金値引高
   gv_slip_num_normal_item     VARCHAR2(100)  DEFAULT NULL;   -- 伝票番号保持用
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
@@ -244,12 +256,25 @@ AS
 -- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
            , CASE
-               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+               WHEN NOT EXISTS (SELECT  1
+                                FROM    fnd_lookup_values_vl
+                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+                                  AND   meaning           = xsti.item_code
+                                  AND   enabled_flag      = cv_enable
+                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+                                                              AND NVL( end_date_active  , gd_operation_date )
+                               ) THEN
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
                 cv_discounts_item_flag_off  --通常品目
                ELSE
                 cv_discounts_item_flag_on   --入金値引
              END                        AS discount_flag
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+           , xsti.tax_code                                               -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
     WHERE    xsti.selling_date           >=              TRUNC( gd_selling_date,'MM' )      -- A-2で取得した売上計上日
     AND      xsti.selling_date            <  ADD_MONTHS( TRUNC( gd_selling_date,'MM' ), 1 ) -- A-2で取得した売上計上日+1ヶ月
@@ -265,9 +290,22 @@ AS
            , xsti.selling_from_cust_code
            , xsti.base_code
            , xsti.delivery_base_code
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+           , xsti.tax_code                  -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
            , CASE
-               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+               WHEN NOT EXISTS (SELECT  1
+                                FROM    fnd_lookup_values_vl
+                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+                                  AND   meaning           = xsti.item_code
+                                  AND   enabled_flag      = cv_enable
+                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+                                                              AND NVL( end_date_active  , gd_operation_date )
+                               ) THEN
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
                 cv_discounts_item_flag_off  --通常品目
                ELSE
                 cv_discounts_item_flag_on   --入金値引
@@ -280,8 +318,21 @@ AS
 --           , xsti.delivery_base_code;
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama REPAIR END
            , xsti.delivery_base_code
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+           , xsti.tax_code                  -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
            , CASE
-               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+               WHEN NOT EXISTS (SELECT  1
+                                FROM    fnd_lookup_values_vl
+                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+                                  AND   meaning           = xsti.item_code
+                                  AND   enabled_flag      = cv_enable
+                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+                                                              AND NVL( end_date_active  , gd_operation_date )
+                               ) THEN
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
                 cv_discounts_item_flag_off  --通常品目
                ELSE
                 cv_discounts_item_flag_on   --入金値引
@@ -660,7 +711,17 @@ AS
       AND    xsti.selling_from_cust_code = i_get_rec.selling_from_cust_code -- 売上振替元顧客コード
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
       AND    CASE
-               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+               WHEN NOT EXISTS (SELECT  1
+                                FROM    fnd_lookup_values_vl
+                                WHERE   lookup_type       = cv_lookup_type_02 --XXCMM1_PAYMENT_DISCOUNTS_CODE
+                                  AND   meaning           = xsti.item_code
+                                  AND   enabled_flag      = cv_enable
+                                  AND   gd_operation_date BETWEEN NVL( start_date_active, gd_operation_date )
+                                                              AND NVL( end_date_active  , gd_operation_date )
+                               ) THEN
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
                 cv_discounts_item_flag_off  --通常品目
                ELSE
                 cv_discounts_item_flag_on   --入金値引
@@ -814,6 +875,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
   , iv_sales_staff_code IN VARCHAR2                               -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  , iv_tax_code        IN VARCHAR2                               -- 消費税コード(売上実績振替情報テーブルの消費税コード)
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
   )
   IS
     --===============================
@@ -893,7 +957,10 @@ AS
       , gv_slip_number                                 -- A-4で取得した伝票番号
       , gv_period_name                                 -- A-2で取得した会計期間名
       , gn_group_id                                    -- A-1で取得したグループID
-      , gv_selling_without_tax_code                    -- A-1で取得した課税売上外税消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--      , gv_selling_without_tax_code                    -- A-1で取得した課税売上外税消費税コード
+      , iv_tax_code                                    -- A-3で取得した消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto MOD END
       , gv_slip_number                                 -- A-4で取得した伝票番号
       , iv_base_code                                   -- A-3で取得した売上振替先拠点コード
 -- 2009/09/08 Ver.1.3 [障害0001318] SCS K.Yamaguchi REPAIR START
@@ -1005,6 +1072,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
       , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+      , iv_tax_code        => i_get_rec.tax_code           -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -1027,6 +1097,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
       , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+      , iv_tax_code        => i_get_rec.tax_code           -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -1061,6 +1134,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
       , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+      , iv_tax_code        => i_get_rec.tax_code           -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -1087,6 +1163,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
       , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+      , iv_tax_code        => i_get_rec.tax_code           -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
       );
 --
       IF( lv_retcode = cv_status_error ) THEN
@@ -1128,6 +1207,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
         , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+        , iv_tax_code        => i_get_rec.tax_code           -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
         );
 --
         IF( lv_retcode = cv_status_error ) THEN
@@ -1150,6 +1232,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
         , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+        , iv_tax_code        => i_get_rec.tax_code           -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
         );
 --
         IF( lv_retcode = cv_status_error ) THEN
@@ -1191,6 +1276,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
         , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+        , iv_tax_code        => i_get_rec.tax_code           -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
         );
 --
         IF( lv_retcode = cv_status_error ) THEN
@@ -1217,6 +1305,9 @@ AS
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
         , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+        , iv_tax_code        => i_get_rec.tax_code           -- 消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto ADD END
         );
 --
         IF( lv_retcode = cv_status_error ) THEN
@@ -1794,9 +1885,13 @@ AS
     gv_aff6_compuny_dummy       := FND_PROFILE.VALUE( cv_aff6_compuny_dummy       ); -- 企業コードのダミー値
     gv_aff7_preliminary1_dummy  := FND_PROFILE.VALUE( cv_aff7_preliminary1_dummy  ); -- 予備1のダミー値
     gv_aff8_preliminary2_dummy  := FND_PROFILE.VALUE( cv_aff8_preliminary2_dummy  ); -- 予備2のダミー値
-    gv_selling_without_tax_code := FND_PROFILE.VALUE( cv_selling_without_tax_code ); -- 課税売上外税消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--    gv_selling_without_tax_code := FND_PROFILE.VALUE( cv_selling_without_tax_code ); -- 課税売上外税消費税コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
-    gv_payment_discounts_code   := FND_PROFILE.VALUE( cv_payment_discounts_code   ); -- 入金値引コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--    gv_payment_discounts_code   := FND_PROFILE.VALUE( cv_payment_discounts_code   ); -- 入金値引コード
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
     gv_acct_payment_discount    := FND_PROFILE.VALUE( cv_acct_payment_discount    ); -- 勘定科目_入金時値引高
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 --
@@ -1856,14 +1951,18 @@ AS
       lv_token_value := cv_aff8_preliminary2_dummy;
       RAISE profile_expt;
 --
-    ELSIF( gv_selling_without_tax_code IS NULL ) THEN
-      lv_token_value := cv_selling_without_tax_code;
-      RAISE profile_expt;
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--    ELSIF( gv_selling_without_tax_code IS NULL ) THEN
+--      lv_token_value := cv_selling_without_tax_code;
+--      RAISE profile_expt;
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
 -- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
-    -- 入金値引コード
-    ELSIF( gv_payment_discounts_code IS NULL ) THEN
-      lv_token_value := cv_payment_discounts_code;
-      RAISE profile_expt;
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--    -- 入金値引コード
+--    ELSIF( gv_payment_discounts_code IS NULL ) THEN
+--      lv_token_value := cv_payment_discounts_code;
+--      RAISE profile_expt;
+-- 2019/07/03 Ver.2.0 [E_本稼動_15472] SCSK N.Miyamoto DEL END
 --
     -- 勘定科目_入金時値引高
     ELSIF( gv_acct_payment_discount IS NULL ) THEN
