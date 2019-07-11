@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 売上実績振替情報の作成（振替割合） MD050_COK_008_A06
- * Version          : 2.8
+ * Version          : 2.9
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2010/02/08    2.6   K.Kiriu          [E_本稼動_01550]会計期間取得時の参照カレンダー変更(AR⇒INV)
  *  2013/08/12    2.7   K.Kiriu          [E_本稼動_02011]入金時値引の反映対応
  *  2017/06/27    2.8   K.Kiriu          [E_本稼動_14382]伝票Noシーケンス桁あふれ対応
+ *  2019/07/01    2.9   N.Miyamoto       [E_本稼動_15472]軽減税率対応
  *  
  *****************************************************************************************/
   --==================================================
@@ -217,6 +218,11 @@ AS
   cn_sales_exp                     CONSTANT NUMBER(1)       := 1;           -- 販売実績
   cn_payment_discounts             CONSTANT NUMBER(1)       := 2;           -- 入金値引
 -- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  cv_payment_discounts_code_type   CONSTANT VARCHAR2(50)    := 'XXCMM1_PAYMENT_DISCOUNTS_CODE';     -- 入金値引
+  --参照タイプ・有効フラグ
+  cv_enable                        CONSTANT VARCHAR2(1)     := 'Y';         -- 有効
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -238,6 +244,9 @@ AS
   gt_uom_code                      mtl_system_items_b.primary_uom_code%TYPE DEFAULT NULL;          -- 入金値引の基準単位
   gt_supplier_dummy                xxcok_cond_bm_support.supplier_code%TYPE DEFAULT NULL;          -- 仕入先ダミーコード
 -- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  gn_organization_id               NUMBER        DEFAULT NULL;   -- 在庫組織ID
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD END
   --==================================================
   -- 共通例外
   --==================================================
@@ -309,8 +318,12 @@ AS
 --           )                                                            AS sales_cost_sum           -- 売上原価
          , xsel.business_cost                                           AS business_cost            -- 営業原価
 -- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR END
-         , xseh.tax_code                                                AS tax_code                 -- 税金コード
-         , xseh.tax_rate                                                AS tax_rate                 -- 消費税率
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--         , xseh.tax_code                                                AS tax_code                 -- 税金コード
+--         , xseh.tax_rate                                                AS tax_rate                 -- 消費税率
+         , DECODE(xsel.tax_code, NULL, xseh.tax_code, xsel.tax_code )   AS tax_code                 -- 税金コード
+         , DECODE(xsel.tax_rate, NULL, xseh.tax_rate, xsel.tax_rate )   AS tax_rate                 -- 消費税率
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto MOD END
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
          , xsel.dlv_unit_price                                          AS dlv_unit_price           -- 納品単価
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD END
@@ -421,8 +434,12 @@ AS
 -- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD START
          , xsel.business_cost
 -- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD END
-         , xseh.tax_code
-         , xseh.tax_rate
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--         , xseh.tax_code
+--         , xseh.tax_rate
+         , DECODE(xsel.tax_code, NULL, xseh.tax_code, xsel.tax_code )
+         , DECODE(xsel.tax_rate, NULL, xseh.tax_rate, xsel.tax_rate )
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto MOD END
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
 --         -- 販売実績明細の売上金額÷販売数量（単価）が違う場合は別レコードとする
 --         , ( xsel.sale_amount / xsel.dlv_qty )
@@ -448,9 +465,15 @@ AS
            )                                                            AS sales_staff_code         -- 売上振替元担当営業コード
          , ship_xca2.business_low_type                                  AS ship_cust_gyotai_sho     -- 業態（小分類）
          , xcbs.demand_to_cust_code                                     AS bill_cust_code           -- 請求先顧客コード
-         , gt_item_code                                                 AS item_code                -- 品目コード
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--         , gt_item_code                                                 AS item_code                -- 品目コード
+         , msib.segment1                                                AS item_code                -- 品目コード
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto MOD END
          , cn_dlv_qty                                                   AS dlv_qty_sum              -- 納品数量
-         , gt_uom_code                                                  AS dlv_uom_code             -- 納品単位
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--         , gt_uom_code                                                  AS dlv_uom_code             -- 納品単位
+         , msib.primary_uom_code                                        AS dlv_uom_code             -- 納品単位
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto MOD END
          , SUM( xcbs.csh_rcpt_discount_amt )                            AS sales_amount_sum         -- 売上金額
          , SUM( xcbs.csh_rcpt_discount_amt
                      - xcbs.csh_rcpt_discount_amt_tax )                 AS pure_amount_sum          -- 本体金額
@@ -464,6 +487,13 @@ AS
        , hz_cust_accounts          ship_hca2        -- 【出荷先】顧客マスタ
        , hz_parties                ship_hp2         -- 【出荷先】顧客パーティ
        , xxcmm_cust_accounts       ship_xca2        -- 【出荷先】顧客追加情報
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+       , xxcmm_system_items_b      xsib             -- DISC品目マスタアドオン
+       , mtl_system_items_b        msib             -- DISC品目マスタ
+       , xxcos_reduced_tax_rate_v  xrtrv            -- 品目別消費税率VIEW
+       , fnd_lookup_values_vl      flvv             -- クイックコード
+       , ar_vat_tax_all_b          avtab            -- 税率マスタ
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     WHERE gv_param_info_class           = cv_info_class_decision --情報種別が1(確定)
       AND xsfi2.selling_from_base_code  = xcbs.base_code
       AND xsfi2.selling_from_cust_code  = xcbs.delivery_cust_code
@@ -481,6 +511,28 @@ AS
                                          )
       AND ship_hca2.cust_account_id      = ship_xca2.customer_id
       AND ship_xca2.selling_transfer_div = cv_xca_transfer_div_on
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+      AND msib.organization_id           = gn_organization_id     -- 在庫組織ID
+      AND msib.segment1                  = xsib.item_code
+      AND xsib.item_code                 = xrtrv.item_code
+      AND avtab.tax_code                 = xcbs.tax_code
+      AND avtab.enabled_flag             = cv_enable
+      AND avtab.set_of_books_id          = gn_set_of_books_id
+      AND flvv.lookup_type               = cv_payment_discounts_code_type
+      AND flvv.meaning                   = xsib.item_code
+      AND flvv.enabled_flag              = cv_enable
+      AND xcbs.tax_code                  IN ( xrtrv.tax_class_sales_outside
+                                           ,  xrtrv.tax_class_sales_inside
+                                         )
+      --税率マスタのDFF3がNULL(旧税率)の場合は値引品目コードをプロファイルで取得した値に固定する
+      AND ( ( avtab.attribute3 IS NULL
+          AND msib.segment1    = gt_item_code 
+            )
+      --税率マスタのDFF3に値がある(新税率)の場合は税コードから逆引きした値引品目コードを使用
+        OR  ( avtab.attribute3 IS NOT NULL
+            )
+          )
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD END
       AND EXISTS ( SELECT 'X'
                    FROM hz_cust_acct_sites   ship_hcas2   -- 【出荷先】顧客所在地
                       , hz_party_sites       ship_hps2    -- 【出荷先】顧客パーティサイト
@@ -553,6 +605,10 @@ AS
            )
          , ship_xca2.business_low_type
          , xcbs.demand_to_cust_code
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+         , msib.segment1
+         , msib.primary_uom_code
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD END
          , xcbs.tax_code
          , xcbs.tax_rate
 -- 2013/08/12 Ver.2.7 [E_本稼動_02011] SCSK K.Kiriu ADD END
@@ -2105,6 +2161,9 @@ AS
                       );
         RAISE error_proc_expt;
       END IF;
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+      gn_organization_id := ln_organization_id;
+-- 2019/07/01 Ver.2.9 [E_本稼動_15472] SCSK N.Miyamoto ADD END
       --プロファイル(仕入先ダミーコード)
       gt_supplier_dummy := FND_PROFILE.VALUE( cv_profile_name_04 );
       IF( gt_supplier_dummy IS NULL ) THEN
