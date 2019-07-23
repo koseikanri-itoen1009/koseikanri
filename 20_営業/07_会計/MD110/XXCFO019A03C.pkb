@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A03C(body)
  * Description      : 電子帳簿販売実績の情報系システム連携
  * MD.050           : 電子帳簿販売実績の情報系システム連携 <MD050_CFO_019_A03>
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2014/01/29    1.5   S.Niki           E_本稼動_11449対応 消費税区分名称の取得条件を納品日⇒オリジナル納品日に変更
  *  2015/08/21    1.6   Y.Shoji          E_本稼動_13255対応(夜間バッチ遅延_電子帳簿販売実績の情報系システム連携)
  *  2016/10/21    1.7   K.Kiriu          E_本稼動_13879対応(VD業務委託対応)
+ *  2019/07/16    1.8   N.Abe            E_本稼動_15472対応(軽減税率対応)
  *
  *****************************************************************************************/
 --
@@ -2150,8 +2151,12 @@ AS
                 AND       flv.attribute3                =         xseh.consumption_tax_class)
 -- Ver.1.4 Mod End
                                                         AS  consumption_tax_class_name          --消費税区分名
-              , xseh.tax_code                           AS  tax_code                            --税金コード
-              , xseh.tax_rate                           AS  tax_rate                            --消費税率
+-- 2019/07/16 Ver.1.8 Mod Start
+--              , xseh.tax_code                           AS  tax_code                            --税金コード
+--              , xseh.tax_rate                           AS  tax_rate                            --消費税率
+              , NVL(xsel.tax_code, xseh.tax_code)       AS  tax_code                            --税金コード
+              , NVL(xsel.tax_rate, xseh.tax_rate)       AS  tax_rate                            --消費税率
+-- 2019/07/16 Ver.1.8 Mod End
               , xseh.results_employee_code              AS  results_employee_code               --成績計上者コード
               ,(SELECT    papf.full_name                AS  employee_name
                 FROM      per_all_people_f              papf
@@ -2414,8 +2419,12 @@ AS
                 AND       flv.attribute3                =         xseh.consumption_tax_class)
 -- Ver.1.4 Mod End
                                                         AS  consumption_tax_class_name          --消費税区分名
-              , xseh.tax_code                           AS  tax_code                            --税金コード
-              , xseh.tax_rate                           AS  tax_rate                            --消費税率
+-- 2019/07/16 Ver.1.8 Mod Start
+--              , xseh.tax_code                           AS  tax_code                            --税金コード
+--              , xseh.tax_rate                           AS  tax_rate                            --消費税率
+              , NVL(xsel.tax_code, xseh.tax_code)       AS  tax_code                            --税金コード
+              , NVL(xsel.tax_rate, xseh.tax_rate)       AS  tax_rate                            --消費税率
+-- 2019/07/16 Ver.1.8 Mod End
               , xseh.results_employee_code              AS  results_employee_code               --成績計上者コード
               ,(SELECT    papf.full_name                AS  employee_name
                 FROM      per_all_people_f              papf
@@ -2673,8 +2682,12 @@ AS
                 AND       flv.attribute3                =         xseh.consumption_tax_class)
 -- Ver.1.4 Mod End
                                                         AS  consumption_tax_class_name          --消費税区分名
-              , xseh.tax_code                           AS  tax_code                            --税金コード
-              , xseh.tax_rate                           AS  tax_rate                            --消費税率
+-- 2019/07/16 Ver.1.8 Mod Start
+--              , xseh.tax_code                           AS  tax_code                            --税金コード
+--              , xseh.tax_rate                           AS  tax_rate                            --消費税率
+              , NVL(xsel.tax_code, xseh.tax_code)       AS  tax_code                            --税金コード
+              , NVL(xsel.tax_rate, xseh.tax_rate)       AS  tax_rate                            --消費税率
+-- 2019/07/16 Ver.1.8 Mod End
               , xseh.results_employee_code              AS  results_employee_code               --成績計上者コード
               ,(SELECT    papf.full_name                AS  employee_name
                 FROM      per_all_people_f              papf
