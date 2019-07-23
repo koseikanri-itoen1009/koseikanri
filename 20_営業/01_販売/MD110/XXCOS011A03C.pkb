@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2012/08/24    1.27  K.Onotsuka       [E_本稼動_09938]品目エラーメッセージのパラメータ追加対応
  *  2018/07/03    1.28  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *  2019/06/25    1.29  S.Kuwako         [E_本稼動_15472]軽減税率対応
+ *  2019/07/16    1.30  S.Kuwako         [E_本稼動_15472]軽減税率対応_商品コード変換エラー対応
  *
  *****************************************************************************************/
 --
@@ -1266,14 +1267,20 @@ AS
                   WHEN xca3.tax_div != cv_non_tax THEN
                    ( SELECT xrtr1.tax_rate
                        FROM xxcos_reduced_tax_rate_v xrtr1
-                      WHERE xrtr1.item_code  = xel.item_code
+-- ******* 2019/07/16 1.30 S.Kuwako MOD  START  ******* --
+--                      WHERE xrtr1.item_code  = xel.item_code
+                      WHERE xrtr1.item_code  = oola.ordered_item
+-- ******* 2019/07/16 1.30 S.Kuwako MOD  END    ******* --
                         AND TRUNC(oola.request_date) BETWEEN NVL(xrtr1.start_date,TRUNC(oola.request_date))
                                                          AND NVL(xrtr1.end_date,TRUNC(oola.request_date))
                         AND TRUNC(oola.request_date) BETWEEN NVL(xrtr1.start_date_histories,TRUNC(oola.request_date))
                                                          AND NVL(xrtr1.end_date_histories,TRUNC(oola.request_date))
                         AND cn_1 = ( SELECT COUNT(*)
                                        FROM xxcos_reduced_tax_rate_v xrtr2
-                                      WHERE xrtr2.item_code  = xel.item_code
+-- ******* 2019/07/16 1.30 S.Kuwako MOD  START  ******* --
+--                                      WHERE xrtr2.item_code  = xel.item_code
+                                      WHERE xrtr2.item_code  = oola.ordered_item
+-- ******* 2019/07/16 1.30 S.Kuwako MOD  END    ******* --
                                         AND TRUNC(oola.request_date) BETWEEN NVL(xrtr2.start_date,TRUNC(oola.request_date))
                                                                          AND NVL(xrtr2.end_date,TRUNC(oola.request_date))
                                         AND TRUNC(oola.request_date) BETWEEN NVL(xrtr2.start_date_histories,TRUNC(oola.request_date))
