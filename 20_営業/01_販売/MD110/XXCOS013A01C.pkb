@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.33
+ * Version          : 1.34
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -76,6 +76,7 @@ AS
  *  2010/10/20    1.31  K.Kiriu          [E_本稼動_05091]請求書金額重複障害対応
  *  2013/02/25    1.32  T.Nakano         [E_本稼動_10410]支払条件変更時障害対応
  *  2013/07/18    1.33  T.Shimoji        [E_本稼動_10904]消費税増税対応
+ *  2019/07/16    1.34  N.Miyamoto       [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -321,6 +322,9 @@ AS
   cv_qct_mkorg_cls          CONSTANT  VARCHAR2(50) := 'XXCOS1_MK_ORG_CLS_MST_013_A01';  -- 作成元区分特定マスタ
   cv_qct_dlv_slp_cls        CONSTANT  VARCHAR2(50) := 'XXCOS1_DLV_SLP_CLS_MST_013_A01'; -- 納品伝票区分特定マスタ
   cv_qcv_tax_cls            CONSTANT  VARCHAR2(50) := 'XXCOS1_CONSUMPTION_TAX_CLASS';   -- 消費税区分特定マスタ
+-- 2019/07/16 Ver1.34 Add Start
+  cv_qcv_tax_code_hist      CONSTANT  VARCHAR2(50) := 'XXCFO1_TAX_CODE_HISTORIES';      -- 消費税履歴マスタ
+-- 2019/07/16 Ver1.34 Add End
   cv_qct_cust_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_CUS_CLASS_MST_013_A01';   -- 顧客区分特定マスタ
   cv_qct_item_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_ITEM_DTL_MST_013_A01';    -- AR品目明細摘要特定マスタ
   cv_qct_jour_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_JOUR_CLS_MST_013_A01';    -- AR会計配分仕訳特定マスタ
@@ -494,6 +498,13 @@ AS
     , xseh_rowid                ROWID                                               -- ROWID
   );
 /* 2009/10/02 Ver1.24 Add End   */
+-- 2019/07/16 Ver1.34 Add Start
+  TYPE gr_tax_code_type IS RECORD(
+      tax_code_in               fnd_lookup_values.attribute5%TYPE                   --消費税コード-内税
+    , tax_code_out              fnd_lookup_values.attribute4%TYPE                   --消費税コード-外税
+  );
+  TYPE g_tax_code_ttype   IS TABLE OF gr_tax_code_type INDEX BY BINARY_INTEGER;
+-- 2019/07/16 Ver1.34 Add End
 --
   -- 販売実績ワークテーブル型定義
   TYPE g_sales_exp_ttype IS TABLE OF gr_sales_exp_rec INDEX BY BINARY_INTEGER;
@@ -581,10 +592,16 @@ AS
   gt_tax_c_tab                       g_tax_c_ttyep;
 /* 2010/10/20 Var1.31 Add End   */
 -- 2013/07/18 Ver1.33 Add Start
-  TYPE g_tab_in_tax_ttyep IS TABLE OF fnd_lookup_values.attribute2%TYPE INDEX BY fnd_lookup_values.attribute2%TYPE;   --税金コード判定用(内税)
+-- 2019/07/16 Ver1.34 Mod Start
+--  TYPE g_tab_in_tax_ttyep IS TABLE OF fnd_lookup_values.attribute2%TYPE INDEX BY fnd_lookup_values.attribute2%TYPE;   --税金コード判定用(内税)
+  TYPE g_tab_in_tax_ttyep IS TABLE OF fnd_lookup_values.attribute4%TYPE INDEX BY fnd_lookup_values.attribute4%TYPE;   --税金コード判定用(内税)
+-- 2019/07/16 Ver1.34 Mod End
   gt_in_tax                          g_tab_in_tax_ttyep;
 --
-  TYPE g_tab_out_tax_ttype IS TABLE OF fnd_lookup_values.attribute2%TYPE INDEX BY fnd_lookup_values.attribute2%TYPE;   --税金コード判定用(外税)
+-- 2019/07/16 Ver1.34 Mod Start
+--  TYPE g_tab_out_tax_ttype IS TABLE OF fnd_lookup_values.attribute2%TYPE INDEX BY fnd_lookup_values.attribute2%TYPE;   --税金コード判定用(外税)
+  TYPE g_tab_out_tax_ttype IS TABLE OF fnd_lookup_values.attribute5%TYPE INDEX BY fnd_lookup_values.attribute5%TYPE;   --税金コード判定用(外税)
+-- 2019/07/16 Ver1.34 Mod End
   gt_out_tax                         g_tab_out_tax_ttype;
 -- 2013/07/18 Ver1.33 Add End
 --
@@ -689,6 +706,10 @@ AS
   gt_item_code_ar_brk3                xxcos_sales_exp_lines.item_code%TYPE;                -- 品目コード(ブレーク処理用)
   gt_prod_cls_ar_brk3                 xxcos_good_prod_class_v.goods_prod_class_code%TYPE;  -- 品目区分（製品・商品）(ブレーク処理用)
 --**/* 2010/08/11 Ver1.29 Mod End   */
+--**/* 2019/07/16 Ver1.34 Add Start */
+  gt_tax_code_brk2                    xxcos_sales_exp_lines.tax_code%TYPE;                 -- 税コード(ブレーク処理用)
+  gt_tax_code_ar_brk3                 xxcos_sales_exp_lines.tax_code%TYPE;                 -- 税コード(ブレーク処理用)
+--**/* 2019/07/16 Ver1.34 Add End */
 /* 2010/07/12 Ver1.28 Del Start */
 --  --出荷先顧客チェック用(大手のみ)
 --  gn_key_trx_number                   ra_interface_lines_all.trx_number%TYPE;                   --AR取引番号(収益行)
@@ -708,8 +729,10 @@ AS
   gt_gyotai_fvd                       fnd_lookup_values.meaning%TYPE;               -- 業態小分類-フルVD:'25'
   gt_vd_xiaoka                        fnd_lookup_values.meaning%TYPE;               -- 業態小分類-消化VD:'27'
   gt_no_tax_cls                       fnd_lookup_values.attribute3%TYPE;            -- 消費区分-非課税:4
-  gt_in_tax_cls                       fnd_lookup_values.attribute2%TYPE;            -- 消費区分-内税:2205
-  gt_out_tax_cls                      fnd_lookup_values.attribute2%TYPE;            -- 消費区分-外税:2105
+-- 2019/07/16 Ver1.34 Del Start
+--  gt_in_tax_cls                       fnd_lookup_values.attribute2%TYPE;            -- 消費区分-内税:2205
+--  gt_out_tax_cls                      fnd_lookup_values.attribute2%TYPE;            -- 消費区分-外税:2105
+-- 2019/07/16 Ver1.34 Del End
   gn_aroif_cnt                        NUMBER;                                       -- 正常件数（AR請求取引OIF）
   gn_ardis_cnt                        NUMBER;                                       -- 正常件数（AR会計配分OIF）
   gn_warn_flag                        VARCHAR2(1) DEFAULT 'N';                      -- 警告フラグ
@@ -798,6 +821,9 @@ AS
             ,xseaw.cust_gyotai_sho     --業態小分類
             ,xseaw.sales_exp_header_id --販売実績ヘッダID
             ,xseaw.card_sale_class     --カード売り区分
+-- 2019/07/16 Ver1.34 Add Start
+            ,xseaw.tax_code            --消費税コード
+-- 2019/07/16 Ver1.34 Add End
             ,xseaw.goods_prod_cls      --品目区分
 /* 2010/03/08 Ver1.27 Add Start   */
             ,xseaw.item_code           --品目コード
@@ -1139,8 +1165,13 @@ AS
     lv_param_name            VARCHAR2(50);                     -- パラメータ名
 /* 2009/10/02 Ver1.24 Add End   */
 -- 2013/07/18 Ver1.33 Add Start
-  lt_in_tax                  fnd_lookup_values.attribute2%TYPE;  -- 消費税コード(内税)
-  lt_out_tax                 fnd_lookup_values.attribute2%TYPE;  -- 消費税コード(外税)
+-- 2019/07/16 Ver1.34 Mod Start
+--  lt_in_tax                  fnd_lookup_values.attribute2%TYPE;  -- 消費税コード(内税)
+  lt_tax                     gr_tax_code_type;  -- 消費税コード
+-- 2019/07/16 Ver1.34 Mod End
+-- 2019/07/16 Ver1.34 Del Start
+--  lt_out_tax                 fnd_lookup_values.attribute2%TYPE;  -- 消費税コード(外税)
+-- 2019/07/16 Ver1.34 Del End
 -- 2013/07/18 Ver1.33 Add End
 --
     -- *** ローカル例外 ***
@@ -1165,26 +1196,41 @@ AS
 
 /* 2010/03/08 Ver1.27 Add End   */
 -- 2013/07/18 Ver1.33 Add Start
-   -- 消費税コード(内税)取得
-  CURSOR get_in_tax_cur
+-- 2019/07/16 Ver1.34 Mod Start
+   ---- 消費税コード(内税)取得
+   -- 消費税コード取得
+--  CURSOR get_in_tax_cur
+  CURSOR get_tax_cur
+-- 2019/07/16 Ver1.34 Mod End
   IS
-    SELECT flvl.attribute2
+-- 2019/07/16 Ver1.34 Mod Start
+--    SELECT flvl.attribute2
+    SELECT flvl.attribute5           AS tax_code_in
+          ,flvl.attribute4           AS tax_code_out
+-- 2019/07/16 Ver1.34 Mod End
     FROM   fnd_lookup_values         flvl
-    WHERE  flvl.lookup_type          = cv_qcv_tax_cls
-      AND  flvl.attribute3           = cv_attribute_2
+-- 2019/07/16 Ver1.34 Mod Start
+--    WHERE  flvl.lookup_type          = cv_qcv_tax_cls
+    WHERE  flvl.lookup_type          = cv_qcv_tax_code_hist
+-- 2019/07/16 Ver1.34 Mod End
+-- 2019/07/16 Ver1.34 Del Start
+--      AND  flvl.attribute3           = cv_attribute_2
+-- 2019/07/16 Ver1.34 Del End
       AND  flvl.enabled_flag         = cv_enabled_yes
       AND  flvl.language             = ct_lang
     ;
+-- 2019/07/16 Ver1.34 Del Start
    -- 消費税コード(外税)取得
-  CURSOR get_out_tax_cur
-  IS
-    SELECT flvl.attribute2
-    FROM   fnd_lookup_values         flvl
-    WHERE  flvl.lookup_type          = cv_qcv_tax_cls
-      AND  flvl.attribute3           = cv_attribute_1
-      AND  flvl.enabled_flag         = cv_enabled_yes
-      AND  flvl.language             = ct_lang
-    ;
+--  CURSOR get_out_tax_cur
+--  IS
+--    SELECT flvl.attribute2
+--    FROM   fnd_lookup_values         flvl
+--    WHERE  flvl.lookup_type          = cv_qcv_tax_cls
+--      AND  flvl.attribute3           = cv_attribute_1
+--      AND  flvl.enabled_flag         = cv_enabled_yes
+--      AND  flvl.language             = ct_lang
+--    ;
+-- 2019/07/16 Ver1.34 Del End
 -- 2013/07/18 Ver1.33 Add End
 --
     -- *** ローカル・レコード ***
@@ -1676,19 +1722,36 @@ AS
 --        lv_errbuf := lv_errmsg;
 --        RAISE global_no_lookup_expt;
       -- 配列初期化
-      lt_in_tax := NULL;
+-- 2019/07/16 Ver1.34 Mod Start
+--      lt_in_tax := NULL;
+      lt_tax := NULL;
+-- 2019/07/16 Ver1.34 Mod End
       gt_in_tax.DELETE;
       -- カーソルOPEN
-      OPEN  get_in_tax_cur;
+-- 2019/07/16 Ver1.34 Mod Start
+--      OPEN  get_in_tax_cur;
+      OPEN  get_tax_cur;
+-- 2019/07/16 Ver1.34 Mod End
       -- カーソルフェッチ
       LOOP
-        FETCH get_in_tax_cur INTO lt_in_tax;
-        EXIT WHEN get_in_tax_cur%NOTFOUND;
+-- 2019/07/16 Ver1.34 Mod Start
+--        FETCH get_in_tax_cur INTO lt_in_tax;
+--        EXIT WHEN get_in_tax_cur%NOTFOUND;
+        FETCH get_tax_cur INTO lt_tax;
+        EXIT WHEN get_tax_cur%NOTFOUND;
+-- 2019/07/16 Ver1.34 Mod End
         -- 配列へ格納
-        gt_in_tax(lt_in_tax) := lt_in_tax;
+-- 2019/07/16 Ver1.34 Mod Start
+--        gt_in_tax(lt_in_tax) := lt_in_tax;
+        gt_in_tax(lt_tax.tax_code_in)   := lt_tax.tax_code_in;
+        gt_out_tax(lt_tax.tax_code_out) := lt_tax.tax_code_out;
+-- 2019/07/16 Ver1.34 Mod End
       END LOOP;
       -- カーソルCLOSE
-      CLOSE get_in_tax_cur;
+-- 2019/07/16 Ver1.34 Mod Start
+--      CLOSE get_in_tax_cur;
+      CLOSE get_tax_cur;
+-- 2019/07/16 Ver1.34 Mod End
       -- 取得件数チェック
       IF ( gt_in_tax.COUNT = 0 ) THEN
           -- クイックコード取得出来ない場合
@@ -1696,9 +1759,14 @@ AS
                           iv_application   => cv_xxcos_short_nm
                         , iv_name          => cv_tax_in_msg
                         , iv_token_name1   => cv_tkn_lookup_type
-                        , iv_token_value1  => cv_qcv_tax_cls
-                        , iv_token_name2   => cv_tkn_lookup_dff3
-                        , iv_token_value2  => cv_attribute_2
+-- 2019/07/16 Ver1.34 Mod Start
+--                        , iv_token_value1  => cv_qcv_tax_cls
+                        , iv_token_value1  => cv_qcv_tax_code_hist
+-- 2019/07/16 Ver1.34 Mod End
+-- 2019/07/16 Ver1.34 Del Start
+--                        , iv_token_name2   => cv_tkn_lookup_dff3
+--                        , iv_token_value2  => cv_attribute_2
+-- 2019/07/16 Ver1.34 Del End
                        );
           lv_errbuf := lv_errmsg;
           RAISE global_no_lookup_expt;
@@ -1707,25 +1775,53 @@ AS
 -- 2013/07/18 Ver1.33 Mod End
     END;
 --
--- 2013/07/18 Ver1.33 Mod Start
-    -- 消費税区分=外税の税コードを取得
-    BEGIN
---      SELECT flvl.attribute2
---      INTO   gt_out_tax_cls
---      FROM   fnd_lookup_values           flvl
---      WHERE  flvl.lookup_type            = cv_qcv_tax_cls
---        AND  flvl.attribute3             = cv_attribute_1
---        AND  flvl.enabled_flag           = cv_enabled_yes
---/* 2009/07/27 Ver1.21 Mod Start */
-----        AND  flvl.language               = USERENV( 'LANG' )
---        AND  flvl.language               = ct_lang
---/* 2009/07/27 Ver1.21 Mod End   */
---        AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
---                             AND         NVL( flvl.end_date_active,   gd_process_date );
-----
---    -- クイックコード取得出来ない場合
---      EXCEPTION
---        WHEN NO_DATA_FOUND THEN
+-- 2019/07/16 Ver1.34 Del Start
+---- 2013/07/18 Ver1.33 Mod Start
+--    -- 消費税区分=外税の税コードを取得
+--    BEGIN
+----      SELECT flvl.attribute2
+----      INTO   gt_out_tax_cls
+----      FROM   fnd_lookup_values           flvl
+----      WHERE  flvl.lookup_type            = cv_qcv_tax_cls
+----        AND  flvl.attribute3             = cv_attribute_1
+----        AND  flvl.enabled_flag           = cv_enabled_yes
+----/* 2009/07/27 Ver1.21 Mod Start */
+------        AND  flvl.language               = USERENV( 'LANG' )
+----        AND  flvl.language               = ct_lang
+----/* 2009/07/27 Ver1.21 Mod End   */
+----        AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+----                             AND         NVL( flvl.end_date_active,   gd_process_date );
+------
+----    -- クイックコード取得出来ない場合
+----      EXCEPTION
+----        WHEN NO_DATA_FOUND THEN
+----          lv_errmsg := xxccp_common_pkg.get_msg(
+----                          iv_application   => cv_xxcos_short_nm
+----                        , iv_name          => cv_tax_out_msg
+----                        , iv_token_name1   => cv_tkn_lookup_type
+----                        , iv_token_value1  => cv_qcv_tax_cls
+----                        , iv_token_name2   => cv_tkn_lookup_dff3
+----                        , iv_token_value2  => cv_attribute_1
+----                      );
+----          lv_errbuf := lv_errmsg;
+----        RAISE global_no_lookup_expt;
+--      -- 配列初期化
+--      lt_out_tax := NULL;
+--      gt_out_tax.DELETE;
+--      -- カーソルOPEN
+--      OPEN  get_out_tax_cur;
+--      -- カーソルフェッチ
+--      LOOP
+--        FETCH get_out_tax_cur INTO lt_out_tax;
+--        EXIT WHEN get_out_tax_cur%NOTFOUND;
+--        -- 配列へ格納
+--        gt_out_tax(lt_out_tax) := lt_out_tax;
+--      END LOOP;
+--      -- カーソルCLOSE
+--      CLOSE get_out_tax_cur;
+--      -- 取得件数チェック
+--      IF ( gt_out_tax.COUNT = 0 ) THEN
+--          -- クイックコード取得出来ない場合
 --          lv_errmsg := xxccp_common_pkg.get_msg(
 --                          iv_application   => cv_xxcos_short_nm
 --                        , iv_name          => cv_tax_out_msg
@@ -1735,37 +1831,11 @@ AS
 --                        , iv_token_value2  => cv_attribute_1
 --                      );
 --          lv_errbuf := lv_errmsg;
---        RAISE global_no_lookup_expt;
-      -- 配列初期化
-      lt_out_tax := NULL;
-      gt_out_tax.DELETE;
-      -- カーソルOPEN
-      OPEN  get_out_tax_cur;
-      -- カーソルフェッチ
-      LOOP
-        FETCH get_out_tax_cur INTO lt_out_tax;
-        EXIT WHEN get_out_tax_cur%NOTFOUND;
-        -- 配列へ格納
-        gt_out_tax(lt_out_tax) := lt_out_tax;
-      END LOOP;
-      -- カーソルCLOSE
-      CLOSE get_out_tax_cur;
-      -- 取得件数チェック
-      IF ( gt_out_tax.COUNT = 0 ) THEN
-          -- クイックコード取得出来ない場合
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                          iv_application   => cv_xxcos_short_nm
-                        , iv_name          => cv_tax_out_msg
-                        , iv_token_name1   => cv_tkn_lookup_type
-                        , iv_token_value1  => cv_qcv_tax_cls
-                        , iv_token_name2   => cv_tkn_lookup_dff3
-                        , iv_token_value2  => cv_attribute_1
-                      );
-          lv_errbuf := lv_errmsg;
-          RAISE global_no_lookup_expt;
-      END IF;
--- 2013/07/18 Ver1.33 Mod End
-    END;
+--          RAISE global_no_lookup_expt;
+--      END IF;
+---- 2013/07/18 Ver1.33 Mod End
+--    END;
+-- 2019/07/16 Ver1.34 Del End
 --
     -- 消費税区分(対象外)
     BEGIN
@@ -2181,8 +2251,14 @@ AS
            , xsehv.delivery_date                delivery_date          -- 納品日
            , xsehv.inspect_date                 inspect_date           -- 検収日
            , xsehv.ship_to_customer_code        ship_to_customer_code  -- 顧客【納品先】
-           , xsehv.tax_code                     tax_code               -- 税金コード
-           , xsehv.tax_rate                     tax_rate               -- 消費税率
+-- 2019/07/16 Ver1.34 Mod Start
+--           , xsehv.tax_code                     tax_code               -- 税金コード
+--           , xsehv.tax_rate                     tax_rate               -- 消費税率
+           , NVL( xsel.tax_code, xsehv.tax_code )
+                                                tax_code                 -- 税金コード
+           , NVL( xsel.tax_rate, xsehv.tax_rate )
+                                                tax_rate                 -- 消費税率
+-- 2019/07/16 Ver1.34 Mod End
            , xsehv.consumption_tax_class        consumption_tax_class  -- 消費税区分
            , xsehv.results_employee_code        results_employee_code  -- 成績計上者コード
            , xsehv.sales_base_code              sales_base_code        -- 売上拠点コード
@@ -4074,6 +4150,11 @@ AS
                 )
               )
             )
+-- 2019/07/16 Ver1.34 Add Start
+         OR (
+              NVL( gt_tax_code_ar_brk3, 'X' ) <> NVL( gt_sales_norm_tbl( sale_norm_idx ).tax_code, 'X' )
+            )
+-- 2019/07/16 Ver1.34 Add End
          )
 /* 2010/10/20 Ver1.31 Mod End   */
 /* 2009/10/02 Ver1.24 Mod End   */
@@ -4158,6 +4239,9 @@ AS
       gt_prod_cls_ar_brk3     := gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls;  -- 品目区分（製品・商品）
       gt_item_code_ar_brk3    := gt_sales_norm_tbl( sale_norm_idx ).item_code;       -- 品目コード
 --**/* 2010/08/11 Ver1.29 Mod End   */
+-- 2019/07/16 Ver1.34 Add Start
+      gt_tax_code_ar_brk3     := gt_sales_norm_tbl( sale_norm_idx ).tax_code;        -- 税コード
+-- 2019/07/16 Ver1.34 Add End
 --
       -- AR取引番号
       gt_sales_norm_tbl( sale_norm_idx ).oif_trx_number   := gv_trx_number;
@@ -4204,6 +4288,9 @@ AS
       gt_header_id_brk2   := gt_sales_norm_tbl( 1 ).sales_exp_header_id;   -- 販売実績ヘッダID
       gt_item_code_brk2   := gt_sales_norm_tbl( 1 ).item_code;             -- 品目コード
       gt_prod_cls_brk2    := gt_sales_norm_tbl( 1 ).goods_prod_cls;        -- 商品区分
+-- 2019/07/16 Ver1.34 Add Start
+      gt_tax_code_brk2    := gt_sales_norm_tbl( 1 ).tax_code;        -- 消費税コード
+-- 2019/07/16 Ver1.34 Add End
     END IF;
     -- 2回目以降のBUKL処理の場合、保持していた前レコードをインサート用変数に移す
     IF ( gt_sales_sum_tbl_brk.COUNT <> 0 ) THEN
@@ -4324,11 +4411,20 @@ AS
                    AND gt_item_code_brk2 = gt_sales_norm_tbl( sale_norm_idx ).item_code  -- 品目コード
                    )
                  )
+-- 2019/07/16 Ver1.34 Add Start
+                AND gt_tax_code_brk2 = gt_sales_norm_tbl( sale_norm_idx ).tax_code  -- 
+-- 2019/07/16 Ver1.34 Add End
                )
                -- 消費税コードが外税、非課税のときは品目区分（製品・商品）を集約キーとして考慮しない。
 -- 2013/07/18 Ver1.33 Mod Start
 --            OR ( gt_sales_norm_tbl( sale_norm_idx ).tax_code <> gt_in_tax_cls  -- 消費税コードが内税じゃない
-            OR ( NOT( gt_in_tax.EXISTS( gt_sales_norm_tbl( sale_norm_idx ).tax_code ))  -- 消費税コードが内税じゃない
+-- 2019/07/16 Ver1.34 Mod Start
+--            OR ( NOT( gt_in_tax.EXISTS( gt_sales_norm_tbl( sale_norm_idx ).tax_code ))  -- 消費税コードが内税じゃない
+            OR ( ( NOT( gt_in_tax.EXISTS( gt_sales_norm_tbl( sale_norm_idx ).tax_code ))  -- 消費税コードが内税じゃない
+                 )
+                  AND ( gt_tax_code_brk2 = gt_sales_norm_tbl( sale_norm_idx ).tax_code  -- 
+                      )
+-- 2019/07/16 Ver1.34 Mod End
 -- 2013/07/18 Ver1.33 Mod End
                )
              )
@@ -5417,6 +5513,9 @@ AS
 --**/* 2010/08/11 Ver1.29 Mod Start */
         gt_prod_cls_brk2   := gt_sales_norm_tbl( sale_norm_idx ).goods_prod_cls;  -- 品目区分（商品・製品）
         gt_item_code_brk2  := gt_sales_norm_tbl( sale_norm_idx ).item_code;       -- 品目コード
+-- 2019/07/16 Ver1.34 Add Start
+        gt_tax_code_brk2   := gt_sales_norm_tbl( sale_norm_idx ).tax_code;        -- 
+-- 2019/07/16 Ver1.34 Add End
 --**/* 2010/08/11 Ver1.29 Mod End   */
         --非課税の場合、消費税は0
         IF ( gt_sales_norm_tbl( sale_norm_idx ).consumption_tax_class != gt_no_tax_cls ) THEN
