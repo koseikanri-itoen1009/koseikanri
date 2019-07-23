@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2018/03/07    1.20  H.Sasaki         [E_本稼動_14882] 削除明細を表示する
  *  2018/07/27    1.21  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *  2019/06/25    1.22  N.Miyamoto       [E_本稼動_15472]軽減税率対応
+ *  2019/07/16    1.23  S.Kuwako         [E_本稼動_15472]軽減税率対応_商品コード変換エラー対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2727,7 +2728,10 @@ AS
             ,xeh_l.xel_general_succeeded_item8                                 general_succeeded_item8       --汎用引継ぎ項目８
             ,xeh_l.xel_general_succeeded_item9                                 general_succeeded_item9       --汎用引継ぎ項目９
             ,xeh_l.xel_general_succeeded_item10                                general_succeeded_item10      --汎用引継ぎ項目１０
-            ,TO_CHAR(xeh_l.avtab_tax_rate)                                           general_add_item1             --汎用付加項目１(税率)
+-- 2019/07/16 V1.23 S.Kuwako MOD START
+--            ,TO_CHAR(xeh_l.avtab_tax_rate)                                           general_add_item1             --汎用付加項目１(税率)
+            ,TO_CHAR( NVL( xeh_l.avtab_tax_rate,xrtrv.tax_rate ))                    general_add_item1             --汎用付加項目１(税率)
+-- 2019/07/16 V1.23 S.Kuwako MOD END
             ,SUBSTRB(xeh_l.cdm_phone_number, 1, 10)                                  general_add_item2             --汎用付加項目２
             ,SUBSTRB(xeh_l.cdm_phone_number, 11, 10)                                 general_add_item3             --汎用付加項目３
             ,xeh_l.xel_general_add_item4                                       general_add_item4             --汎用付加項目４
@@ -3189,12 +3193,17 @@ AS
                     ,xca.torihikisaki_code              xca_torihikisaki_code           -- 取引先コード
                     ,xca.tax_div                        xca_tax_div                     -- 消費税区分
                     ,xca.delivery_base_code             xca_delivery_base_code          --
--- 2019/06/25 V1.22 N.Miyamoto MOD START
---                    ,avtab.tax_rate                     avtab_tax_rate                  -- 税率
+-- 2019/07/16 V1.23 S.Kuwako MOD START
+---- 2019/06/25 V1.22 N.Miyamoto MOD START
+----                    ,avtab.tax_rate                     avtab_tax_rate                  -- 税率
+--                    ,DECODE( xlvv2.attribute4, cv_attribute_y                           -- 顧客税区分が非課税(税コードマスタ.非課税区分=Y)の場合は
+--                           , avtab.tax_rate                                             -- 税率マスタより取得
+--                           , xrtrv.tax_rate )           avtab_tax_rate                  -- 非課税以外は品目別消費税率より取得
+---- 2019/06/25 V1.22 N.Miyamoto MOD END
                     ,DECODE( xlvv2.attribute4, cv_attribute_y                           -- 顧客税区分が非課税(税コードマスタ.非課税区分=Y)の場合は
                            , avtab.tax_rate                                             -- 税率マスタより取得
-                           , xrtrv.tax_rate )           avtab_tax_rate                  -- 非課税以外は品目別消費税率より取得
--- 2019/06/25 V1.22 N.Miyamoto MOD END
+                           , NULL  )                    avtab_tax_rate                  -- 非課税以外はNULL
+-- 2019/07/16 V1.23 s.Kuwako MOD END
                     ,cdm.account_number                 cdm_account_number
                     ,DECODE(cdm.account_number
                            ,NULL
@@ -3227,9 +3236,11 @@ AS
 /* 2010/06/11 Ver1.17 Del End */
                     ,xxcos_lookup_values_v                  xlvv2                         --税コードマスタ
                     ,ar_vat_tax_all_b                       avtab                         --税率マスタ
--- 2019/06/25 V1.22 N.Miyamoto ADD START
-                    ,xxcos_reduced_tax_rate_v               xrtrv                         --品目別消費税率view
+-- 2019/07/16 V1.23 S.Kuwako DEL START
+---- 2019/06/25 V1.22 N.Miyamoto ADD START
+--                    ,xxcos_reduced_tax_rate_v               xrtrv                         --品目別消費税率view
 -- 2019/06/25 V1.22 N.Miyamoto ADD END
+-- 2019/07/16 V1.23 S.Kuwako DEL END
                     ,(
                       SELECT hca.account_number                                                  account_number               --顧客コード
                             ,hp.party_name                                                       base_name                    --顧客名称
@@ -3303,15 +3314,17 @@ AS
 --               BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
 --               AND     NVL( avtab.end_date   ,i_other_rec.process_date )
 /* 2009/09/08 Ver1.12 Del End   */
--- 2019/06/25 V1.22 N.Miyamoto ADD START
-             AND xel.item_code = xrtrv.item_code(+)                                            -- EDI明細.品目=品目別消費税率.品目
-             AND TRUNC( xeh.shop_delivery_date )                                               -- EDIヘッダ.店舗納品日
-               BETWEEN NVL( xrtrv.start_date, TRUNC( xeh.shop_delivery_date ) )                -- 品目別消費税率V.税率キー_開始日
-                   AND NVL( xrtrv.end_date,   TRUNC( xeh.shop_delivery_date ) )                -- 品目別消費税率V.税率キー_終了日
-             AND TRUNC( xeh.shop_delivery_date )                                               -- EDIヘッダ.店舗納品日
-               BETWEEN NVL( xrtrv.start_date_histories, TRUNC( xeh.shop_delivery_date ) )      -- 品目別消費税率V.消費税履歴_開始日
-                   AND NVL( xrtrv.end_date_histories,   TRUNC( xeh.shop_delivery_date ) )      -- 品目別消費税率V.消費税履歴_終了日
+-- 2019/07/16 V1.23 S.Kuwako DEL START
+---- 2019/06/25 V1.22 N.Miyamoto ADD START
+--             AND xel.item_code = xrtrv.item_code(+)                                            -- EDI明細.品目=品目別消費税率.品目
+--             AND TRUNC( xeh.shop_delivery_date )                                               -- EDIヘッダ.店舗納品日
+--               BETWEEN NVL( xrtrv.start_date, TRUNC( xeh.shop_delivery_date ) )                -- 品目別消費税率V.税率キー_開始日
+--                   AND NVL( xrtrv.end_date,   TRUNC( xeh.shop_delivery_date ) )                -- 品目別消費税率V.税率キー_終了日
+--             AND TRUNC( xeh.shop_delivery_date )                                               -- EDIヘッダ.店舗納品日
+--               BETWEEN NVL( xrtrv.start_date_histories, TRUNC( xeh.shop_delivery_date ) )      -- 品目別消費税率V.消費税履歴_開始日
+--                   AND NVL( xrtrv.end_date_histories,   TRUNC( xeh.shop_delivery_date ) )      -- 品目別消費税率V.消費税履歴_終了日
 -- 2019/06/25 V1.22 N.Miyamoto ADD END
+-- 2019/07/16 V1.23 S.Kuwako DEL END
              --
              AND xca.delivery_base_code = cdm.account_number
 -- ************ 2009/08/12 N.Maeda 1.11 ADD START ***************** --
@@ -3858,6 +3871,9 @@ AS
 -- ************ 2009/08/12 N.Maeda 1.11 DEL START ***************** --
 --            ,xxcos_head_prod_class_v                                            xhpc                          --本社商品区分ビュー
 -- ************ 2009/08/12 N.Maeda 1.11 DEL  END  ***************** --
+-- ************ 2019/07/16 S.Kuwako 1.23 ADD START ***************** --
+            ,xxcos_reduced_tax_rate_v                                           xrtrv                         --品目別消費税率view
+-- ************ 2019/07/16 S.Kuwako 1.23 ADD END   ***************** --
 --
 -- ************ 2009/08/12 N.Maeda 1.11 MOD START ***************** --
 --      WHERE  xeh_l.xeh_data_type_code = i_input_rec.data_type_code                                            --データ種コード
@@ -3939,6 +3955,15 @@ AS
 --                                             '1')
                                              cv_select_block_1)
 /* 2009/09/15 Ver1.12 Mod End   */
+-- ************ 2019/07/16 S.Kuwako 1.23 ADD START ***************** --
+      AND ixe.item_code = xrtrv.item_code(+)                                                    -- EDI明細.品目=品目別消費税率.品目
+      AND TRUNC( xeh_l.xeh_shop_delivery_date )                                                 -- EDIヘッダ.店舗納品日
+               BETWEEN NVL( xrtrv.start_date, TRUNC( xeh_l.xeh_shop_delivery_date ) )           -- 品目別消費税率V.税率キー_開始日
+                   AND NVL( xrtrv.end_date,   TRUNC( xeh_l.xeh_shop_delivery_date ) )           -- 品目別消費税率V.税率キー_終了日
+      AND TRUNC( xeh_l.xeh_shop_delivery_date )                                                 -- EDIヘッダ.店舗納品日
+               BETWEEN NVL( xrtrv.start_date_histories, TRUNC( xeh_l.xeh_shop_delivery_date ) ) -- 品目別消費税率V.消費税履歴_開始日
+                   AND NVL( xrtrv.end_date_histories,   TRUNC( xeh_l.xeh_shop_delivery_date ) ) -- 品目別消費税率V.消費税履歴_終了日
+-- ************ 2019/07/16 S.Kuwako 1.23 ADD END   ***************** --
       ORDER BY xeh_l.xeh_shop_code, xeh_l.xeh_invoice_number, xeh_l.xel_line_no
 --****************************** 2009/06/18 1.11 N.Maeda MOD  END    ******************************--
 /* 2009/06/11 Ver1.10 Mod End   */
