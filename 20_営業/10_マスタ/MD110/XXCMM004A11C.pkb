@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A11C(body)
  * Description      : 品目マスタIF出力（情報系）
  * MD.050           : 品目マスタIF出力（情報系） CMM_004_A11
- * Version          : Issue3.4
+ * Version          : Issue3.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/05/12    1.4   H.Yoshikawa      障害T1_0905,T1_0906対応
  *  2009/06/15    1.5   H.Yoshikawa      障害T1_1455対応
  *  2010/02/02    1.6   Shigeto.Niki     E_本稼動_01420対応 
+ *  2019/07/16    1.7   Kawaguchi.Takuya E_本稼動_15472対応 
  *
  *****************************************************************************************/
 --
@@ -295,6 +296,10 @@ AS
     -- 略称                              文字型(20)
 --    ,item_short_name            xxcmm_opmmtl_items_v.item_short_name%TYPE       --
     ,item_short_name            xxcmn_item_mst_b.item_short_name%TYPE           -- VARCHAR2(20)
+-- Ver1.7 Add Start 
+    --食品区分                           文字型(4)
+    ,class_for_variable_tax     xxcmm_system_items_b.class_for_variable_tax%TYPE-- VARCHAR2(4)
+-- Ver1.7 Add End
     -- 連携日時【YYYYMMDDHH24MISS】      文字型(14)
     ,trans_date                 VARCHAR2(14)                                    -- VARCHAR2(14)
   );
@@ -595,6 +600,9 @@ AS
                                       AS crowd_code_apply_date                -- 群コード適用開始日
                  ,xoiv.acnt_vessel_group                                      -- 経理容器群
                  ,xoiv.brand_group                                            -- ブランド群
+-- Ver1.7 Add Start
+                 ,xoiv.class_for_variable_tax AS class_for_variable_tax       -- 軽減税率用税種別（食品区分）
+-- Ver1.7 Add End
 -- End
       FROM        xxcmm_opmmtl_items_v    xoiv                                -- 品目ビュー
                  ,ic_item_mst_b           iimb                                -- OPM品目（親商品コード取得用）
@@ -968,6 +976,12 @@ AS
       lv_step := 'A-2.item_short_name';
       lv_message_token := '略称';
       lt_csv_item_tab( ln_data_index ).item_short_name      := l_csv_item_rec.item_short_name;
+-- Ver1.7 Add Start 
+      lv_step := 'A-2.class_for_variable_tax';
+      lv_message_token := '食品区分';
+      lt_csv_item_tab( ln_data_index ).class_for_variable_tax
+                                                            := l_csv_item_rec.class_for_variable_tax;
+-- Ver1.7 Add End
       lv_step := 'A-2.trans_date';
       lv_message_token := '連携日時';
       lt_csv_item_tab( ln_data_index ).trans_date           := gv_trans_date;
@@ -1283,6 +1297,14 @@ AS
                            cv_dqu ||
                            lt_csv_item_tab( ln_index ).item_short_name ||
                            cv_dqu;
+-- Ver1.7 Add Start 
+        -- 食品区分
+        lv_step := 'A-3.class_for_variable_tax';
+        lv_out_csv_line := lv_out_csv_line || cv_sep ||
+                           cv_dqu ||
+                           lt_csv_item_tab( ln_index ).class_for_variable_tax ||
+                           cv_dqu;
+-- Ver1.7 Add End
         -- 連携日時【YYYYMMDDHH24MISS】
         lv_step := 'A-3.trans_date';
         lv_out_csv_line := lv_out_csv_line || cv_sep ||
