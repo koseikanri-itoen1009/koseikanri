@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.22
+ * Version          : 2.23
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *  2011/03/30    2.20  Y.Nishino        [E_本稼動_04976]情報系への連携項目追加
  *  2014/04/14    2.21  K.Nakamura       [E_本稼働_09071]消化締め後のAR入力対応
  *  2018/04/26    2.22  K.Kiriu          [E_本稼働_15061]会計帳簿不具合対応
+ *  2019/07/16    2.23  N.Miyamoto       [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -400,8 +401,12 @@ AS
            ,xseh.delivery_date                  xseh_delivery_date             -- 納品日
            ,xsel.standard_unit_price            xsel_standard_unit_price       -- 税抜基準単価
            ,xsel.standard_uom_code              xsel_standard_uom_code         -- 基準単位
-           ,xseh.tax_rate                       xseh_tax_rate                  -- 消費税率
-           ,xseh.tax_code                       xseh_tax_code                  -- 税コード
+-- V2.23 N.Miyamoto MOD START
+--           ,xseh.tax_rate                       xseh_tax_rate                  -- 消費税率
+--           ,xseh.tax_code                       xseh_tax_code                  -- 税コード
+           ,NVL( xsel.tax_rate ,xseh.tax_rate ) xseh_tax_rate                  -- 消費税率
+           ,NVL( xsel.tax_code ,xseh.tax_code ) xseh_tax_code                  -- 税コード
+-- V2.23 N.Miyamoto MOD END
 --****************************** 2009/04/23 2.3 4 T.Kitajima MOD START ******************************--
 --           ,xsel.standard_unit_price_excluded   xsel_std_unit_price_excluded   -- 税抜基準単価
            ,DECODE(
@@ -499,7 +504,10 @@ AS
            ,xsel.standard_unit_price            xsel_standard_unit_price       -- 税抜基準単価
            ,xsel.standard_uom_code              xsel_standard_uom_code         -- 基準単位
            ,NULL                                xseh_tax_rate                  -- 消費税率
-           ,xseh.tax_code                       xseh_tax_code                  -- 税コード
+-- V2.23 N.Miyamoto MOD START
+--           ,xseh.tax_code                       xseh_tax_code                  -- 税コード
+           ,NVL( xsel.tax_code ,xseh.tax_code ) xseh_tax_code                  -- 税コード
+-- V2.23 N.Miyamoto MOD END
            ,NULL                                xsel_std_unit_price_excluded   -- 税抜基準単価
            ,NVL(hca_r.account_number,
                 xseh.ship_to_customer_code)     xchv_bill_account_number       -- 請求先顧客コード
