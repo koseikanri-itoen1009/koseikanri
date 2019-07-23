@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2018/07/03    1.27  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *  2018/07/27    1.28  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *  2019/06/25    1.29  N.Miyamoto       [E_本稼動_15472]軽減税率対応
+ *  2019/07/16    1.30  S.Kuwako         [E_本稼動_15472]軽減税率対応_商品コード変換エラー対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -2967,7 +2968,10 @@ AS
 --                    ,xel.general_succeeded_item9                                        general_succeeded_item9       --汎用引継ぎ項目９
 --                    ,xel.general_succeeded_item10                                       general_succeeded_item10      --汎用引継ぎ項目１０
 --******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
-                    ,TO_CHAR(xeh.tax_rate)                                              general_add_item1             --汎用付加項目１(税率)
+--******************************************* 2019/07/16 1.30 S.Kuwako MOD START *************************************
+--                    ,TO_CHAR(xeh.tax_rate)                                              general_add_item1             --汎用付加項目１(税率)
+                    ,TO_CHAR( NVL( xeh.tax_rate,xrtrv.tax_rate ))                        general_add_item1             --汎用付加項目１(税率)
+--******************************************* 2019/07/16 1.30 S.Kuwako MOD END   *************************************
 -- ********* 2009/10/06 1.14 N.Maeda MOD START ********* --
                     ,SUBSTRB(xeh.phone_number, 1, 10)                                   general_add_item2             --汎用付加項目２
                     ,SUBSTRB(xeh.phone_number, 11, 10)                                  general_add_item3             --汎用付加項目３
@@ -3277,12 +3281,17 @@ AS
                             ,xeh.l3_column                                               l3_column                     --Ｌ－３欄
                             ,xeh.chain_peculiar_area_header                              chain_peculiar_area_header    --チェーン店固有エリア（ヘッダー）
                             ,xeh.order_connection_number                                 order_connection_number       --受注関連番号（仮）
--- 2019/06/25 V1.29 N.Miyamoto MOD START
---                            ,avtab.tax_rate                                              tax_rate                      --汎用付加項目１(税率)
-                            ,DECODE( xlvv2.attribute4, cv_attribute_y                                                  -- 顧客税区分が非課税(税コードマスタ.非課税区分=Y)の場合は
+--******************************************* 2019/07/16 1.30 S.Kuwako MOD START *************************************
+---- 2019/06/25 V1.29 N.Miyamoto MOD START
+----                            ,avtab.tax_rate                                              tax_rate                      --汎用付加項目１(税率)
+--                            ,DECODE( xlvv2.attribute4, cv_attribute_y                                                  -- 顧客税区分が非課税(税コードマスタ.非課税区分=Y)の場合は
+--                                   , avtab.tax_rate                                                                    -- 税率マスタより取得
+--                                   , xrtrv.tax_rate )                                    tax_rate                      -- 非課税以外は品目別消費税率より取得
+---- 2019/06/25 V1.29 N.Miyamoto MOD END
+                            ,DECODE( xlvv2.attribute4, cv_attribute_y                                                  -- 顧客税区分が非課税(税コードマスタ.非課税区分=Y)の場合
                                    , avtab.tax_rate                                                                    -- 税率マスタより取得
-                                   , xrtrv.tax_rate )                                    tax_rate                      -- 非課税以外は品目別消費税率より取得
--- 2019/06/25 V1.29 N.Miyamoto MOD END
+                                   , NULL )                                              tax_rate                      -- 非課税以外はNULL
+--******************************************* 2019/07/16 1.30 S.Kuwako MOD END   *************************************
                             ,xeh.total_indv_order_qty                                    total_indv_order_qty          --（総合計）発注数量（バラ）
                             ,xeh.total_case_order_qty                                    total_case_order_qty          --（総合計）発注数量（ケース）
                             ,xeh.total_ball_order_qty                                    total_ball_order_qty          --（総合計）発注数量（ボール）
@@ -3421,9 +3430,11 @@ AS
 --******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
                             ,xxcos_edi_lines                                             xel                           --EDI明細情報テーブル
 --******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
--- 2019/06/25 V1.29 N.Miyamoto ADD START
-                            ,xxcos_reduced_tax_rate_v                                    xrtrv                         --品目別消費税率view
--- 2019/06/25 V1.29 N.Miyamoto ADD END
+--******************************************* 2019/07/16 1.30 S.Kuwako DEL START *************************************
+---- 2019/06/25 V1.29 N.Miyamoto ADD START
+--                            ,xxcos_reduced_tax_rate_v                                    xrtrv                         --品目別消費税率view
+---- 2019/06/25 V1.29 N.Miyamoto ADD END
+--******************************************* 2019/07/16 1.30 S.Kuwako DEL END   *************************************
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
                             ,(SELECT
                                       hca1.account_number            base_account_number
@@ -3548,43 +3559,45 @@ AS
                                          ,NVL(xeh.order_date
                                              ,xeh.data_creation_date_edi_data))))
 -- 2013/07/26 v1.24 R.Watanabe Mod End E_本稼動_10904
--- 2019/06/25 V1.29 N.Miyamoto ADD START
-                      AND    xel.item_code = xrtrv.item_code(+)                          -- EDI明細.品目=品目別消費税率.品目
-                      AND    COALESCE ( xeh.shop_delivery_date                           -- EDIヘッダ.店舗納品日
-                                       ,xeh.center_delivery_date                         -- EDIヘッダ.センター納品日
-                                       ,xeh.order_date                                   -- EDIヘッダ.発注日
-                                       ,xeh.data_creation_date_edi_data                  -- EDIヘッダ.データ作成日
-                                      )
-                                      BETWEEN COALESCE ( xrtrv.start_date                -- 品目別消費税率.税率キー_開始日
-                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
-                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
-                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
-                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
-                                                       )
-                                          AND COALESCE ( xrtrv.end_date                  -- 品目別消費税率.税率キー_終了日
-                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
-                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
-                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
-                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
-                                                       )
-                      AND    COALESCE ( xeh.shop_delivery_date                           -- EDIヘッダ.店舗納品日
-                                       ,xeh.center_delivery_date                         -- EDIヘッダ.センター納品日
-                                       ,xeh.order_date                                   -- EDIヘッダ.発注日
-                                       ,xeh.data_creation_date_edi_data                  -- EDIヘッダ.データ作成日
-                                      )
-                                      BETWEEN COALESCE ( xrtrv.start_date_histories      -- 品目別消費税率.消費税履歴_開始日
-                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
-                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
-                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
-                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
-                                                       )
-                                          AND COALESCE ( xrtrv.end_date_histories        -- 品目別消費税率.消費税履歴_終了日
-                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
-                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
-                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
-                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
-                                                       )
--- 2019/06/25 V1.29 N.Miyamoto ADD END
+--******************************************* 2019/07/16 1.30 S.Kuwako DEL START *************************************
+---- 2019/06/25 V1.29 N.Miyamoto ADD START
+--                      AND    xel.item_code = xrtrv.item_code(+)                          -- EDI明細.品目=品目別消費税率.品目
+--                      AND    COALESCE ( xeh.shop_delivery_date                           -- EDIヘッダ.店舗納品日
+--                                       ,xeh.center_delivery_date                         -- EDIヘッダ.センター納品日
+--                                       ,xeh.order_date                                   -- EDIヘッダ.発注日
+--                                       ,xeh.data_creation_date_edi_data                  -- EDIヘッダ.データ作成日
+--                                      )
+--                                      BETWEEN COALESCE ( xrtrv.start_date                -- 品目別消費税率.税率キー_開始日
+--                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+--                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+--                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
+--                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+--                                                       )
+--                                          AND COALESCE ( xrtrv.end_date                  -- 品目別消費税率.税率キー_終了日
+--                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+--                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+--                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
+--                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+--                                                       )
+--                      AND    COALESCE ( xeh.shop_delivery_date                           -- EDIヘッダ.店舗納品日
+--                                       ,xeh.center_delivery_date                         -- EDIヘッダ.センター納品日
+--                                       ,xeh.order_date                                   -- EDIヘッダ.発注日
+--                                       ,xeh.data_creation_date_edi_data                  -- EDIヘッダ.データ作成日
+--                                      )
+--                                      BETWEEN COALESCE ( xrtrv.start_date_histories      -- 品目別消費税率.消費税履歴_開始日
+--                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+--                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+--                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
+--                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+--                                                       )
+--                                          AND COALESCE ( xrtrv.end_date_histories        -- 品目別消費税率.消費税履歴_終了日
+--                                                        ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+--                                                        ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+--                                                        ,xeh.order_date                  -- EDIヘッダ.発注日
+--                                                        ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+--                                                       )
+---- 2019/06/25 V1.29 N.Miyamoto ADD END
+--******************************************* 2019/07/16 1.30 S.Kuwako DEL END   *************************************
 -- ********* 2009/10/06 1.14 N.Maeda ADD START ********* --
                       AND xca.delivery_base_code = cdm.base_account_number
 -- ********* 2009/10/06 1.14 N.Maeda ADD  END  ********* --
@@ -4062,6 +4075,9 @@ AS
 -- ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
                      ,xxcos_lookup_values_v                                     xlvv_t                         -- プルーフ帳票情報マスタ
 -- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
+--******************************************* 2019/07/16 1.30 S.Kuwako MOD START *************************************
+                     ,xxcos_reduced_tax_rate_v                                  xrtrv                         --品目別消費税率view
+--******************************************* 2019/07/16 1.30 S.Kuwako MOD END   *************************************
               --EDI明細情報テーブル抽出条件
               WHERE
 --******************************************* 2009/08/27 1.13 N.Maeda DEL START *************************************
@@ -4227,6 +4243,43 @@ AS
               AND   ooha.request_date    < TO_DATE(i_input_rec.shop_delivery_date_to  ,cv_date_fmt) + 1  -- 
 -- ******************** 2010/03/24 1.17 M.Hirose INS END   ************************* --
 -- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
+--******************************************* 2019/07/16 1.30 S.Kuwako ADD START *************************************
+              AND    oola.ordered_item = xrtrv.item_code(+)                          -- EDI明細.品目=品目別消費税率.品目
+              AND    COALESCE ( xeh.shop_delivery_date                           -- EDIヘッダ.店舗納品日
+                               ,xeh.center_delivery_date                         -- EDIヘッダ.センター納品日
+                               ,xeh.order_date                                   -- EDIヘッダ.発注日
+                               ,xeh.data_creation_date_edi_data                  -- EDIヘッダ.データ作成日
+                               )
+                              BETWEEN COALESCE ( xrtrv.start_date                -- 品目別消費税率.税率キー_開始日
+                                                ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+                                                ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+                                                ,xeh.order_date                  -- EDIヘッダ.発注日
+                                                ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+                                               )
+                                  AND COALESCE ( xrtrv.end_date                  -- 品目別消費税率.税率キー_終了日
+                                                ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+                                                ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+                                                ,xeh.order_date                  -- EDIヘッダ.発注日
+                                                ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+                                               )
+              AND    COALESCE ( xeh.shop_delivery_date                           -- EDIヘッダ.店舗納品日
+                               ,xeh.center_delivery_date                         -- EDIヘッダ.センター納品日
+                               ,xeh.order_date                                   -- EDIヘッダ.発注日
+                               ,xeh.data_creation_date_edi_data                  -- EDIヘッダ.データ作成日
+                              )
+                              BETWEEN COALESCE ( xrtrv.start_date_histories      -- 品目別消費税率.消費税履歴_開始日
+                                                ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+                                                ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+                                                ,xeh.order_date                  -- EDIヘッダ.発注日
+                                                ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+                                               )
+                                  AND COALESCE ( xrtrv.end_date_histories        -- 品目別消費税率.消費税履歴_終了日
+                                                ,xeh.shop_delivery_date          -- EDIヘッダ.店舗納品日
+                                                ,xeh.center_delivery_date        -- EDIヘッダ.センター納品日
+                                                ,xeh.order_date                  -- EDIヘッダ.発注日
+                                                ,xeh.data_creation_date_edi_data -- EDIヘッダ.データ作成日
+                                               )
+--******************************************* 2019/07/16 1.30 S.Kuwako ADD END   *************************************
 -- 2009/06/22 1.11 M.Sano MOD End
               UNION ALL
 -- ******************** 2010/03/24 1.17 M.Hirose MOD START ************************* --
