@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.18
+ * Version          : 1.19
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -49,6 +49,7 @@ AS
  *  2016/10/25    1.17  N.Koyama         [E_本稼動_13874] 伝票入力者設定項目変更(再対応)
  *                                                        Ver.1.6の対応は完全戻しであり、処理部分削除の為、修正履歴なし
  *  2017/10/24    1.18  N.Koyama         [E_本稼動_14674] VD未収金仮勘定｣の場合、消費税コードを｢0000｣とする
+ *  2019/07/16    1.19  N.Miyamoto       [E_本稼動_15472]軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -77,6 +78,9 @@ AS
 --
   gv_out_msg       VARCHAR2(2000);            -- 出力メッセージ
   gn_target_cnt    NUMBER;                    -- 対象件数
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  gn_groupby_cnt   NUMBER;                    -- 集約後件数
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
@@ -105,6 +109,9 @@ AS
   global_select_data_expt   EXCEPTION;         -- データ取得例外
   global_insert_data_expt   EXCEPTION;         -- 登録処理例外
   global_update_data_expt   EXCEPTION;         -- 更新処理例外
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  global_delete_data_expt   EXCEPTION;         -- 削除処理例外
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
   global_get_profile_expt   EXCEPTION;         -- プロファイル取得例外
   global_no_data_expt       EXCEPTION;         -- 対象データ０件エラー
 --
@@ -124,6 +131,10 @@ AS
   cv_table_lock_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00001'; -- ロックエラーメッセージ（販売実績TB）
   cv_data_insert_msg        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00010'; -- データ登録エラーメッセージ
   cv_data_update_msg        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00011'; -- データ更新エラーメッセージ
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  cv_data_delete_msg        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00012'; -- データ削除エラーメッセージ
+  cv_dis_item_cd_msg        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12770'; -- 売上値引品目
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
   cv_card_sale_cls_msg      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12851'; -- カード売区分取得エラー
   cv_tax_cls_msg            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12852'; -- 消費税区分取得エラー
   cv_jour_nodata_msg        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12853'; -- 仕訳パターン取得エラー
@@ -169,7 +180,9 @@ AS
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
 --
 /* 2010/03/01 Ver1.13 Add Start */
-  cv_pf_discount_item_code       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12892'; -- 値引品目
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--  cv_pf_discount_item_code       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12892'; -- 値引品目
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto DEL END
 /* 2010/03/01 Ver1.13 Add End */
 --***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
   cv_param_err_msg          CONSTANT  VARCHAR2(20) := 'APP-XXCOS1-00019'; -- パラメータ指定エラーメッセージ
@@ -262,6 +275,9 @@ AS
 --******************************* 2009/11/17 1.11 M.Sano ADD START *******************************--
   ct_tax_code_null         CONSTANT  VARCHAR2(10)  := '0000';                           -- 税金コード(0000)
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  cv_gl_oif_status_fix     CONSTANT  VARCHAR2(10)  := 'FIX';
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 --****************************** 2009/09/14 1.9 Atsushiba     ADD START ******************************--
 --
   -- その他
@@ -427,6 +443,10 @@ AS
   --
   TYPE g_sales_header_ttype IS TABLE OF NUMBER INDEX BY VARCHAR(100);
   gt_sales_header_tbl                 g_sales_header_ttype;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  TYPE g_discnt_item_ttype  IS TABLE OF VARCHAR2(9) INDEX BY VARCHAR2( 9 );
+  gt_discount_item_tbl                g_discnt_item_ttype;                          -- 値引品目
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 --
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
   -- ===============================
@@ -456,23 +476,41 @@ AS
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
 --
 /* 2010/03/01 Ver1.13 Add Start */
-  gt_discount_item_code               fnd_profile_option_values.profile_option_value%TYPE;      -- 値引品目
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--  gt_discount_item_code               fnd_profile_option_values.profile_option_value%TYPE;      -- 値引品目
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto DEL END
 /* 2010/03/01 Ver1.13 Add End */
 --
 --****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
 --
   CURSOR sales_data_cur
   IS
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    WITH xchv AS
+    (
+    -- 顧客階層ビューを取得しておく
+    SELECT   /*+ INDEX(xchvw.cust_hier.ship_hzca_1 hz_cust_accounts_u2) */
+             xchvw.ship_account_number
+            ,xchvw.bill_tax_round_rule
+    FROM     xxcos_cust_hierarchy_v xchvw
+    )
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     SELECT
           /*+ LEADING(xseh)
               INDEX(xseh xxcos_sales_exp_headers_n05 )
               USE_NL(xseh xsel msib )
-              USE_NL(xseh hca avta gcct )
-              USE_NL(xseh xchv)
-              INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u2)
-              INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u2)
-              INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u2)
-              INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u2)
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+              USE_NL(xseh hca )
+              USE_NL(xsel avta gcct )
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--              USE_NL(xseh hca avta gcct )
+--              USE_NL(xseh xchv)
+--              INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u2)
+--              INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u2)
+--              INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u2)
+--              INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u2)
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto DEL END
            */
            xseh.sales_exp_header_id          sales_exp_header_id      -- 販売実績ヘッダID
          , xseh.dlv_invoice_number           dlv_invoice_number       -- 納品伝票番号
@@ -481,8 +519,14 @@ AS
          , xseh.delivery_date                delivery_date            -- 納品日
          , xseh.inspect_date                 inspect_date             -- 検収日
          , xseh.ship_to_customer_code        ship_to_customer_code    -- 顧客【納品先】
-         , xseh.tax_code                     tax_code                 -- 税金コード
-         , xseh.tax_rate                     tax_rate                 -- 消費税率
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--         , xseh.tax_code                     tax_code                 -- 税金コード
+--         , xseh.tax_rate                     tax_rate                 -- 消費税率
+         , NVL( xsel.tax_code, xseh.tax_code )
+                                             tax_code                 -- 税金コード
+         , NVL( xsel.tax_rate, xseh.tax_rate )
+                                             tax_rate                 -- 消費税率
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
          , xseh.consumption_tax_class        consumption_tax_class    -- 消費区分
          , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
          , xseh.sales_base_code              sales_base_code          -- 売上拠点コード
@@ -507,7 +551,10 @@ AS
          , gl_code_combinations              gcct                     -- 勘定科目組合せマスタ（TAX用）
          , ar_vat_tax_all_b                  avta                     -- 税金マスタ
          , hz_cust_accounts                  hca                      -- 顧客区分
-         , xxcos_cust_hierarchy_v            xchv                     -- 顧客階層ビュー
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--         , xxcos_cust_hierarchy_v            xchv                     -- 顧客階層ビュー
+         ,                                   xchv                     -- WITH句で取得した顧客階層ビュー
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
     WHERE
         xseh.sales_exp_header_id             = xsel.sales_exp_header_id
     AND xseh.dlv_invoice_number              = xsel.dlv_invoice_number
@@ -577,13 +624,20 @@ AS
         )
     AND msib.organization_id                 = gv_org_id
     AND xsel.item_code                       = msib.segment1
-    AND avta.tax_code                        = xseh.tax_code
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+    --AND avta.tax_code                        = xseh.tax_code
+    AND avta.tax_code                        = NVL( xsel.tax_code, xseh.tax_code )
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
     AND gcct.code_combination_id             = avta.tax_account_id
     AND avta.set_of_books_id                 = TO_NUMBER( gv_set_bks_id )
     AND avta.enabled_flag                    = ct_enabled_yes
 /* 2010/03/01 Ver1.13 Mod Start */
     ORDER BY  xseh.sales_exp_header_id
-             ,xsel.red_black_flag;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--             ,xsel.red_black_flag;
+             ,xsel.red_black_flag
+             ,xsel.tax_code;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
 --    ORDER BY xseh.sales_exp_header_id;
 /* 2010/03/01 Ver1.13 Mod End */
 --
@@ -655,7 +709,7 @@ AS
     ct_journal_batch_count   CONSTANT VARCHAR2(30) := 'XXCOS1_JOURNAL_BATCH_COUNT'; -- 仕訳バッチ作成件数
 --****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 /* 2010/03/01 Ver1.13 Add Start */
-    ct_discount_item_cd      CONSTANT VARCHAR2(30) := 'XXCOS1_DISCOUNT_ITEM_CODE';    -- XXCOS:売上値引品目
+    ct_discount_item_cd      CONSTANT VARCHAR2(30) := 'XXCOS1_DISCOUNT_ITEM_CODE';    -- 値引品目
 /* 2010/03/01 Ver1.13 Add End */
 --***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
     ct_013a03_start_months   CONSTANT VARCHAR2(30) := 'XXCOS1_013A03_START_MONTHS';   -- XXCOS:GLへの販売実績データ連携対象開始月
@@ -688,11 +742,27 @@ AS
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 -- Ver1.18 Add End
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    -- 値引品目取得カーソル
+    CURSOR discount_item_cur
+    IS
+      SELECT flv.lookup_code             item_code
+      FROM   fnd_lookup_values           flv
+      WHERE  flv.lookup_type             = ct_discount_item_cd
+      AND    flv.language                = ct_lang
+      AND    flv.attribute2              = cv_y_flag
+      AND    flv.enabled_flag            = ct_enabled_yes
+      AND    gd_process_date BETWEEN     NVL( flv.start_date_active, gd_process_date )
+                             AND         NVL( flv.end_date_active,   gd_process_date );
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 --
     -- *** ローカル・レコード ***
 -- Ver1.18 Add Start
     get_acnt_title_rec  get_acnt_title_cur%ROWTYPE;
 -- Ver1.18 Add End
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    discount_item_rec   discount_item_cur%ROWTYPE;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 --
   BEGIN
 --
@@ -1132,27 +1202,57 @@ AS
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
 --
 /* 2010/03/01 Ver1.13 Add Start */
-      --==================================
-      -- XXCOS:値引品目
-      --==================================
-      gt_discount_item_code := FND_PROFILE.VALUE( ct_discount_item_cd );
---
-      -- プロファイルが取得できない場合はエラー
-      IF ( gt_discount_item_code IS NULL ) THEN
-        lv_profile_name := xxccp_common_pkg.get_msg(
-           iv_application => cv_xxcos_short_nm                -- アプリケーション短縮名
-          ,iv_name        => cv_pf_discount_item_code         -- メッセージID
-        );
-        lv_errmsg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_xxcos_short_nm
-                       , iv_name         => cv_pro_msg
-                       , iv_token_name1  => cv_tkn_pro
-                       , iv_token_value1 => lv_profile_name
-                     );
-        lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
-      END IF;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto DEL START
+--      --==================================
+--      -- XXCOS:値引品目
+--      --==================================
+--      gt_discount_item_code := FND_PROFILE.VALUE( ct_discount_item_cd );
+----
+--      -- プロファイルが取得できない場合はエラー
+--      IF ( gt_discount_item_code IS NULL ) THEN
+--        lv_profile_name := xxccp_common_pkg.get_msg(
+--           iv_application => cv_xxcos_short_nm                -- アプリケーション短縮名
+--          ,iv_name        => cv_pf_discount_item_code         -- メッセージID
+--        );
+--        lv_errmsg := xxccp_common_pkg.get_msg(
+--                         iv_application  => cv_xxcos_short_nm
+--                       , iv_name         => cv_pro_msg
+--                       , iv_token_name1  => cv_tkn_pro
+--                       , iv_token_value1 => lv_profile_name
+--                     );
+--        lv_errbuf := lv_errmsg;
+--        RAISE global_api_expt;
+--      END IF;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto DEL END
 /* 2010/03/01 Ver1.13 Add End */
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+      --=====================================
+      -- 値引品目の取得
+      --=====================================
+      OPEN  discount_item_cur;
+      --
+      <<discount_item_loop>>
+      LOOP
+        FETCH discount_item_cur INTO discount_item_rec;
+        EXIT WHEN discount_item_cur%NOTFOUND;
+        --
+        gt_discount_item_tbl(discount_item_rec.item_code) := discount_item_rec.item_code;
+        --
+      END LOOP discount_item_loop;
+      --
+      CLOSE discount_item_cur;
+      IF ( gt_discount_item_tbl.COUNT = 0 ) THEN
+        -- エラーメッセージ作成
+        lv_errmsg    := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_xxcos_short_nm
+                         , iv_name         => cv_dis_item_cd_msg
+                         , iv_token_name1  => cv_tkn_lookup_type
+                         , iv_token_value1 => ct_discount_item_cd
+                       );
+        lv_errbuf := lv_errmsg;
+        RAISE non_lookup_value_expt;
+      END IF;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 --***************************** 2012/11/13 1.15 K.Nakamura ADD START *****************************--
     END IF;
 --***************************** 2012/11/13 1.15 K.Nakamura ADD END   *****************************--
@@ -1979,7 +2079,10 @@ AS
     END IF;
 --
     -- 一般会計OIFの値セット
-    gt_gl_interface_tbl( in_gl_idx ).status                := ct_status;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--    gt_gl_interface_tbl( in_gl_idx ).status                := ct_status;
+    gt_gl_interface_tbl( in_gl_idx ).status                := cv_gl_oif_status_fix;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
                                                               -- ステータス
     gt_gl_interface_tbl( in_gl_idx ).set_of_books_id       := gv_set_bks_id;
                                                               -- 会計帳簿ID
@@ -2213,6 +2316,9 @@ AS
 --
     --仕訳パターン用
     lt_card_sale_class      xxcos_sales_exp_headers.card_sale_class%TYPE;     -- カード売り区分
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    lt_tax_code             xxcos_sales_exp_headers.tax_code%TYPE;            -- 集計キー：税金コード
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     lt_red_black_flag       xxcos_sales_exp_lines.red_black_flag%TYPE;        -- 赤黒フラグ
 --******************************* 2009/11/17 1.11 M.Sano ADD START *******************************--
     lt_dlv_invoice_class    xxcos_sales_exp_headers.dlv_invoice_class%TYPE;   -- 納品伝票区分
@@ -2230,6 +2336,9 @@ AS
 --    lt_gccs_segment3_card   gl_code_combinations.segment3%TYPE;             -- 集計キー：売上勘定科目コード
 --    lt_tax_code_card        xxcos_sales_exp_headers.tax_code%TYPE;          -- 集計キー：税金コード
     lt_sales_exp_header_id_card  xxcos_sales_exp_headers.sales_exp_header_id%TYPE; -- 集計キー：販売実績ヘッダ
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    lt_tax_code_card             xxcos_sales_exp_lines.tax_code%TYPE; -- 集計キー：税コード
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 --
     --仕訳パターン用
     lt_red_black_flag_card       xxcos_sales_exp_lines.red_black_flag%TYPE;        -- 赤黒フラグ
@@ -2519,6 +2628,9 @@ AS
 --******************************* 2009/11/17 1.11 M.Sano ADD START *******************************--
     lt_dlv_invoice_class    := gt_sales_exp_tbl( 1 ).dlv_invoice_class;     --納品伝票区分
 --******************************* 2009/11/17 1.11 M.Sano ADD  END  *******************************--
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    lt_tax_code             := gt_sales_exp_tbl( 1 ).tax_code;            --消費税コード
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     lt_card_sale_class      := gt_sales_exp_tbl( 1 ).card_sale_class;     --カード売り区分
     lv_sum_flag             := cv_y_flag;                                 --OIF出力フラグ
 --****************************** 2009/05/13 1.6 T.Kitajima MOD  END  ******************************--
@@ -2639,7 +2751,11 @@ AS
 /* 2010/03/01 Ver1.13 Mod Start */
       ELSIF  (     ( lt_sales_exp_header_id  <> gt_sales_exp_tbl( lnsale_idx_plus ).sales_exp_header_id )
                OR ( ( lt_sales_exp_header_id = gt_sales_exp_tbl( lnsale_idx_plus ).sales_exp_header_id )
-                    AND (lt_red_black_flag <> gt_sales_exp_tbl( lnsale_idx_plus ).red_black_flag)
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--                    AND (lt_red_black_flag <> gt_sales_exp_tbl( lnsale_idx_plus ).red_black_flag)
+                    AND ((lt_red_black_flag <> gt_sales_exp_tbl( lnsale_idx_plus ).red_black_flag)
+                    OR  (lt_tax_code <> gt_sales_exp_tbl( lnsale_idx_plus ).tax_code))
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
                   )
              )
       THEN
@@ -2650,7 +2766,10 @@ AS
       END IF;
 --
 /* 2010/03/01 Ver1.13 Add Start */
-      IF (  gt_sales_exp_tbl( sale_idx ).item_code = gt_discount_item_code ) THEN
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--      IF (  gt_sales_exp_tbl( sale_idx ).item_code = gt_discount_item_code ) THEN
+      IF ( gt_discount_item_tbl.EXISTS(gt_sales_exp_tbl(sale_idx).item_code) ) THEN
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
         -- 品目コードが売上値引きの場合
         -- 本体金額を集約する
         ln_gl_discount_amount := ln_gl_discount_amount + gt_sales_exp_tbl( sale_idx ).pure_amount;
@@ -2677,6 +2796,9 @@ AS
       IF (lv_sum_flag = cv_n_flag AND ln_card_pt <= gt_sales_card_tbl.COUNT) THEN
         -- 生成したカードレコードだけの集約
         lt_sales_exp_header_id_card := gt_sales_exp_tbl( sale_idx ).sales_exp_header_id;   --販売実績ヘッダID
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+        lt_tax_code_card            := gt_sales_exp_tbl( sale_idx ).tax_code;              --税コード
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
         --仕訳パターン用
         lt_red_black_flag_card      := gt_sales_exp_tbl( sale_idx ).red_black_flag;        --赤黒フラグ
 --******************************* 2009/11/17 1.11 M.Sano ADD START *******************************--
@@ -2685,7 +2807,12 @@ AS
 --
         -- 生成したカードレコードだけの集約開始
         FOR i IN ln_card_pt .. gt_sales_card_tbl.COUNT LOOP
-          IF (  lt_sales_exp_header_id_card = gt_sales_card_tbl( i ).sales_exp_header_id ) THEN
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--          IF (  lt_sales_exp_header_id_card = gt_sales_card_tbl( i ).sales_exp_header_id ) THEN
+          IF (  (  lt_sales_exp_header_id_card = gt_sales_card_tbl( i ).sales_exp_header_id ) 
+            AND (  lt_tax_code_card            = gt_sales_card_tbl( i ).tax_code) )
+          THEN
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
             -- 本体金額を集約する
             ln_gl_amount_card := ln_gl_amount_card + gt_sales_card_tbl( i ).pure_amount;
             -- カードレコードの現ポイントをカウントする
@@ -3120,6 +3247,9 @@ AS
           lt_sales_exp_header_id  := gt_sales_exp_tbl( lnsale_idx_plus ).sales_exp_header_id; --販売実績ヘッダ
           --仕訳パターン用
           lt_red_black_flag       := gt_sales_exp_tbl( lnsale_idx_plus ).red_black_flag;      --赤黒フラグ
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+          lt_tax_code             := gt_sales_exp_tbl( lnsale_idx_plus ).tax_code;            --赤黒フラグ
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
           lt_dlv_invoice_class    := gt_sales_exp_tbl( lnsale_idx_plus ).dlv_invoice_class;   --納品伝票区分
           lt_card_sale_class      := gt_sales_exp_tbl( lnsale_idx_plus ).card_sale_class;     --カード売り区分
           lv_sum_flag             := cv_y_flag;                                               --OIF出力フラグ
@@ -3340,6 +3470,559 @@ AS
         RAISE global_insert_data_expt;
     END;
 --
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    -- 登録した一般会計OIFテーブルのデータを集約する
+    BEGIN
+      --登録したデータを借方金額、貸方金額で集約し、再登録する。
+      INSERT INTO
+        gl_interface
+      SELECT   ct_status
+              ,set_of_books_id
+              ,accounting_date
+              ,currency_code
+              ,date_created
+              ,created_by
+              ,actual_flag
+              ,user_je_category_name
+              ,user_je_source_name
+              ,currency_conversion_date
+              ,encumbrance_type_id
+              ,budget_version_id
+              ,user_currency_conversion_type
+              ,currency_conversion_rate
+              ,average_journal_flag
+              ,originating_bal_seg_value
+              ,segment1
+              ,segment2
+              ,segment3
+              ,segment4
+              ,segment5
+              ,segment6
+              ,segment7
+              ,segment8
+              ,segment9
+              ,segment10
+              ,segment11
+              ,segment12
+              ,segment13
+              ,segment14
+              ,segment15
+              ,segment16
+              ,segment17
+              ,segment18
+              ,segment19
+              ,segment20
+              ,segment21
+              ,segment22
+              ,segment23
+              ,segment24
+              ,segment25
+              ,segment26
+              ,segment27
+              ,segment28
+              ,segment29
+              ,segment30
+              ,sum(entered_dr)
+              ,NULL
+              ,accounted_dr
+              ,accounted_cr
+              ,transaction_date
+              ,reference1
+              ,reference2
+              ,reference3
+              ,reference4
+              ,reference5
+              ,reference6
+              ,reference7
+              ,reference8
+              ,reference9
+              ,reference10
+              ,reference11
+              ,reference12
+              ,reference13
+              ,reference14
+              ,reference15
+              ,reference16
+              ,reference17
+              ,reference18
+              ,reference19
+              ,reference20
+              ,reference21
+              ,reference22
+              ,reference23
+              ,reference24
+              ,reference25
+              ,reference26
+              ,reference27
+              ,reference28
+              ,reference29
+              ,reference30
+              ,je_batch_id
+              ,period_name
+              ,je_header_id
+              ,je_line_num
+              ,chart_of_accounts_id
+              ,functional_currency_code
+              ,code_combination_id
+              ,date_created_in_gl
+              ,warning_code
+              ,status_description
+              ,stat_amount
+              ,group_id
+              ,request_id
+              ,subledger_doc_sequence_id
+              ,subledger_doc_sequence_value
+              ,attribute1
+              ,attribute2
+              ,gl_sl_link_id
+              ,gl_sl_link_table
+              ,attribute3
+              ,attribute4
+              ,attribute5
+              ,attribute6
+              ,attribute7
+              ,attribute8
+              ,attribute9
+              ,attribute10
+              ,attribute11
+              ,attribute12
+              ,attribute13
+              ,attribute14
+              ,attribute15
+              ,attribute16
+              ,attribute17
+              ,attribute18
+              ,attribute19
+              ,attribute20
+              ,context
+              ,context2
+              ,invoice_date
+              ,tax_code
+              ,invoice_identifier
+              ,invoice_amount
+              ,context3
+              ,ussgl_transaction_code
+              ,descr_flex_error_message
+              ,jgzz_recon_ref
+              ,reference_date
+      FROM    gl_interface
+      WHERE   request_id  = cn_request_id
+        AND   status      = cv_gl_oif_status_fix
+        AND   entered_cr  IS NULL
+      GROUP BY
+               set_of_books_id
+              ,accounting_date
+              ,currency_code
+              ,date_created
+              ,created_by
+              ,actual_flag
+              ,user_je_category_name
+              ,user_je_source_name
+              ,currency_conversion_date
+              ,encumbrance_type_id
+              ,budget_version_id
+              ,user_currency_conversion_type
+              ,currency_conversion_rate
+              ,average_journal_flag
+              ,originating_bal_seg_value
+              ,segment1
+              ,segment2
+              ,segment3
+              ,segment4
+              ,segment5
+              ,segment6
+              ,segment7
+              ,segment8
+              ,segment9
+              ,segment10
+              ,segment11
+              ,segment12
+              ,segment13
+              ,segment14
+              ,segment15
+              ,segment16
+              ,segment17
+              ,segment18
+              ,segment19
+              ,segment20
+              ,segment21
+              ,segment22
+              ,segment23
+              ,segment24
+              ,segment25
+              ,segment26
+              ,segment27
+              ,segment28
+              ,segment29
+              ,segment30
+              ,entered_cr
+              ,accounted_dr
+              ,accounted_cr
+              ,transaction_date
+              ,reference1
+              ,reference2
+              ,reference3
+              ,reference4
+              ,reference5
+              ,reference6
+              ,reference7
+              ,reference8
+              ,reference9
+              ,reference10
+              ,reference11
+              ,reference12
+              ,reference13
+              ,reference14
+              ,reference15
+              ,reference16
+              ,reference17
+              ,reference18
+              ,reference19
+              ,reference20
+              ,reference21
+              ,reference22
+              ,reference23
+              ,reference24
+              ,reference25
+              ,reference26
+              ,reference27
+              ,reference28
+              ,reference29
+              ,reference30
+              ,je_batch_id
+              ,period_name
+              ,je_header_id
+              ,je_line_num
+              ,chart_of_accounts_id
+              ,functional_currency_code
+              ,code_combination_id
+              ,date_created_in_gl
+              ,warning_code
+              ,status_description
+              ,stat_amount
+              ,group_id
+              ,request_id
+              ,subledger_doc_sequence_id
+              ,subledger_doc_sequence_value
+              ,attribute1
+              ,attribute2
+              ,gl_sl_link_id
+              ,gl_sl_link_table
+              ,attribute3
+              ,attribute4
+              ,attribute5
+              ,attribute6
+              ,attribute7
+              ,attribute8
+              ,attribute9
+              ,attribute10
+              ,attribute11
+              ,attribute12
+              ,attribute13
+              ,attribute14
+              ,attribute15
+              ,attribute16
+              ,attribute17
+              ,attribute18
+              ,attribute19
+              ,attribute20
+              ,context
+              ,context2
+              ,invoice_date
+              ,tax_code
+              ,invoice_identifier
+              ,invoice_amount
+              ,context3
+              ,ussgl_transaction_code
+              ,descr_flex_error_message
+              ,jgzz_recon_ref
+              ,reference_date
+      UNION ALL
+      SELECT   ct_status
+              ,set_of_books_id
+              ,accounting_date
+              ,currency_code
+              ,date_created
+              ,created_by
+              ,actual_flag
+              ,user_je_category_name
+              ,user_je_source_name
+              ,currency_conversion_date
+              ,encumbrance_type_id
+              ,budget_version_id
+              ,user_currency_conversion_type
+              ,currency_conversion_rate
+              ,average_journal_flag
+              ,originating_bal_seg_value
+              ,segment1
+              ,segment2
+              ,segment3
+              ,segment4
+              ,segment5
+              ,segment6
+              ,segment7
+              ,segment8
+              ,segment9
+              ,segment10
+              ,segment11
+              ,segment12
+              ,segment13
+              ,segment14
+              ,segment15
+              ,segment16
+              ,segment17
+              ,segment18
+              ,segment19
+              ,segment20
+              ,segment21
+              ,segment22
+              ,segment23
+              ,segment24
+              ,segment25
+              ,segment26
+              ,segment27
+              ,segment28
+              ,segment29
+              ,segment30
+              ,NULL
+              ,sum(entered_cr)
+              ,accounted_dr
+              ,accounted_cr
+              ,transaction_date
+              ,reference1
+              ,reference2
+              ,reference3
+              ,reference4
+              ,reference5
+              ,reference6
+              ,reference7
+              ,reference8
+              ,reference9
+              ,reference10
+              ,reference11
+              ,reference12
+              ,reference13
+              ,reference14
+              ,reference15
+              ,reference16
+              ,reference17
+              ,reference18
+              ,reference19
+              ,reference20
+              ,reference21
+              ,reference22
+              ,reference23
+              ,reference24
+              ,reference25
+              ,reference26
+              ,reference27
+              ,reference28
+              ,reference29
+              ,reference30
+              ,je_batch_id
+              ,period_name
+              ,je_header_id
+              ,je_line_num
+              ,chart_of_accounts_id
+              ,functional_currency_code
+              ,code_combination_id
+              ,date_created_in_gl
+              ,warning_code
+              ,status_description
+              ,stat_amount
+              ,group_id
+              ,request_id
+              ,subledger_doc_sequence_id
+              ,subledger_doc_sequence_value
+              ,attribute1
+              ,attribute2
+              ,gl_sl_link_id
+              ,gl_sl_link_table
+              ,attribute3
+              ,attribute4
+              ,attribute5
+              ,attribute6
+              ,attribute7
+              ,attribute8
+              ,attribute9
+              ,attribute10
+              ,attribute11
+              ,attribute12
+              ,attribute13
+              ,attribute14
+              ,attribute15
+              ,attribute16
+              ,attribute17
+              ,attribute18
+              ,attribute19
+              ,attribute20
+              ,context
+              ,context2
+              ,invoice_date
+              ,tax_code
+              ,invoice_identifier
+              ,invoice_amount
+              ,context3
+              ,ussgl_transaction_code
+              ,descr_flex_error_message
+              ,jgzz_recon_ref
+              ,reference_date
+      FROM    gl_interface
+      WHERE   request_id  = cn_request_id
+        AND   status      = cv_gl_oif_status_fix
+        AND   entered_dr  IS NULL
+      GROUP BY
+               set_of_books_id
+              ,accounting_date
+              ,currency_code
+              ,date_created
+              ,created_by
+              ,actual_flag
+              ,user_je_category_name
+              ,user_je_source_name
+              ,currency_conversion_date
+              ,encumbrance_type_id
+              ,budget_version_id
+              ,user_currency_conversion_type
+              ,currency_conversion_rate
+              ,average_journal_flag
+              ,originating_bal_seg_value
+              ,segment1
+              ,segment2
+              ,segment3
+              ,segment4
+              ,segment5
+              ,segment6
+              ,segment7
+              ,segment8
+              ,segment9
+              ,segment10
+              ,segment11
+              ,segment12
+              ,segment13
+              ,segment14
+              ,segment15
+              ,segment16
+              ,segment17
+              ,segment18
+              ,segment19
+              ,segment20
+              ,segment21
+              ,segment22
+              ,segment23
+              ,segment24
+              ,segment25
+              ,segment26
+              ,segment27
+              ,segment28
+              ,segment29
+              ,segment30
+              ,entered_dr
+              ,accounted_dr
+              ,accounted_cr
+              ,transaction_date
+              ,reference1
+              ,reference2
+              ,reference3
+              ,reference4
+              ,reference5
+              ,reference6
+              ,reference7
+              ,reference8
+              ,reference9
+              ,reference10
+              ,reference11
+              ,reference12
+              ,reference13
+              ,reference14
+              ,reference15
+              ,reference16
+              ,reference17
+              ,reference18
+              ,reference19
+              ,reference20
+              ,reference21
+              ,reference22
+              ,reference23
+              ,reference24
+              ,reference25
+              ,reference26
+              ,reference27
+              ,reference28
+              ,reference29
+              ,reference30
+              ,je_batch_id
+              ,period_name
+              ,je_header_id
+              ,je_line_num
+              ,chart_of_accounts_id
+              ,functional_currency_code
+              ,code_combination_id
+              ,date_created_in_gl
+              ,warning_code
+              ,status_description
+              ,stat_amount
+              ,group_id
+              ,request_id
+              ,subledger_doc_sequence_id
+              ,subledger_doc_sequence_value
+              ,attribute1
+              ,attribute2
+              ,gl_sl_link_id
+              ,gl_sl_link_table
+              ,attribute3
+              ,attribute4
+              ,attribute5
+              ,attribute6
+              ,attribute7
+              ,attribute8
+              ,attribute9
+              ,attribute10
+              ,attribute11
+              ,attribute12
+              ,attribute13
+              ,attribute14
+              ,attribute15
+              ,attribute16
+              ,attribute17
+              ,attribute18
+              ,attribute19
+              ,attribute20
+              ,context
+              ,context2
+              ,invoice_date
+              ,tax_code
+              ,invoice_identifier
+              ,invoice_amount
+              ,context3
+              ,ussgl_transaction_code
+              ,descr_flex_error_message
+              ,jgzz_recon_ref
+              ,reference_date
+      ;
+--
+    --集約後登録した件数(正常件数submainで加算する件数)
+    gn_groupby_cnt := SQL%ROWCOUNT;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := SQLERRM;
+        RAISE global_insert_data_expt;
+    END;
+--
+    BEGIN
+      --集約登録前のレコードをOIFから削除する。
+      DELETE  gl_interface
+      WHERE   request_id = cn_request_id
+        AND   status     = cv_gl_oif_status_fix
+      ;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := SQLERRM;
+        RAISE global_delete_data_expt;
+    END;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -3366,6 +4049,25 @@ AS
 --******************************* 2009/11/17 1.11 M.Sano MOD  END   *******************************--
       ov_retcode := cv_status_error;
 --
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    WHEN global_delete_data_expt THEN
+      -- 削除に失敗した場合
+      lv_tbl_nm  := xxccp_common_pkg.get_msg(
+                        iv_application       => cv_xxcos_short_nm               -- アプリ短縮名
+                      , iv_name              => cv_tkn_gloif_msg                -- メッセージID
+                    );
+      ov_errmsg    := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcos_short_nm
+                        , iv_name         => cv_data_delete_msg
+                        , iv_token_name1  => cv_tkn_tbl_nm
+                        , iv_token_value1 => lv_tbl_nm
+                        , iv_token_name2  => cv_tkn_key_data
+                        , iv_token_value2 => cv_blank
+                      );
+      ov_errbuf    := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode   := cv_status_error;
+--
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -3673,6 +4375,9 @@ AS
 --
     -- グローバル変数の初期化
     gn_target_cnt    := 0;                  -- 対象件数
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    gn_groupby_cnt   := 0;                  -- 集約件数
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     gn_normal_cnt    := 0;                  -- 正常件数
     gn_error_cnt     := 0;                  -- エラー件数
 --****************************** 2009/07/06 1.7 T.Tominaga ADL START ******************************
@@ -3838,7 +4543,11 @@ AS
               END IF;
               --
               -- 正常処理件数設定
-              gn_normal_cnt := gn_normal_cnt + gt_gl_interface_tbl2.COUNT;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--              gn_normal_cnt := gn_normal_cnt + gt_gl_interface_tbl2.COUNT;
+              gn_normal_cnt  := gn_normal_cnt + gn_groupby_cnt;
+              gn_groupby_cnt := 0;
+-- 2019/07/16 Ver.1.19 [E_本稼動_15472] SCSK N.Miyamoto MOD END
               --
               -- 警告件数設定
               ln_warn_wk_cnt := ln_warn_wk_cnt + gn_warn_cnt;
