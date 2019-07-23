@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.18
+ * Version          : 3.19
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -81,6 +81,7 @@ AS
  *  2012/10/01    3.16  K.Kiriu          [E_本稼動_10133] パフォーマンス改善対応(ヒント句固定化)
  *  2012/10/18    3.17  K.Kiriu          [E_本稼動_10133] パフォーマンス改善追加対応(ヒント句固定化)
  *  2018/12/26    3.18  E.Yazaki         [E_本稼動_15349] 【営業・個別】仕入先CD制御
+ *  2019/07/16    3.19  K.Nara           [E_本稼動_15472] 軽減税率対応
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -284,6 +285,9 @@ AS
   cv_bm_proc_flag_4                CONSTANT VARCHAR2(1)     := '4';  -- 販売実績更新処理
   cv_bm_proc_flag_5                CONSTANT VARCHAR2(1)     := '5';  -- 計算対象顧客一時表削除
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+-- Ver.3.19 SCSK K.Nara ADD START
+  cv_tax_div_no_tax                CONSTANT VARCHAR2(2)     := '4';  -- 非課税
+-- Ver.3.19 SCSK K.Nara ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -788,8 +792,22 @@ AS
                        , xsel.tax_amount                        AS tax_amount                  -- 消費税金額
                        , xsel.dlv_unit_price                    AS dlv_unit_price              -- 売価金額
                        , xt0c.tax_div                           AS tax_div                     -- 消費税区分
-                       , xt0c.tax_code                          AS tax_code                    -- 税金コード
-                       , xt0c.tax_rate                          AS tax_rate                    -- 消費税率
+-- Ver.3.19 SCSK K.Nara MOD START
+--                       , xt0c.tax_code                          AS tax_code                    -- 税金コード
+--                       , xt0c.tax_rate                          AS tax_rate                    -- 消費税率
+                       , CASE 
+                           WHEN ( xt0c.tax_div = cv_tax_div_no_tax OR xt0c.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+                             xt0c.tax_code
+                           ELSE 
+                             NVL(xsel.tax_code, xseh.tax_code)
+                         END                                    AS tax_code                    -- 税金コード
+                       , CASE 
+                           WHEN ( xt0c.tax_div = cv_tax_div_no_tax OR xt0c.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+                             xt0c.tax_rate
+                           ELSE 
+                             NVL(xsel.tax_rate, xseh.tax_rate)
+                         END                                    AS tax_rate                    -- 消費税率
+-- Ver.3.19 SCSK K.Nara MOD END
                        , xt0c.tax_rounding_rule                 AS tax_rounding_rule           -- 端数処理区分
                        , xt0c.term_name                         AS term_name                   -- 支払条件
                        , xt0c.closing_date                      AS closing_date                -- 締め日
@@ -1063,8 +1081,22 @@ AS
                        , xsel.tax_amount                    AS tax_amount                      -- 消費税金額
                        , xsel.dlv_unit_price                AS dlv_unit_price                  -- 売価金額
                        , xt0c.tax_div                       AS tax_div                         -- 消費税区分
-                       , xt0c.tax_code                      AS tax_code                        -- 税金コード
-                       , xt0c.tax_rate                      AS tax_rate                        -- 消費税率
+-- Ver.3.19 SCSK K.Nara MOD START
+--                       , xt0c.tax_code                      AS tax_code                        -- 税金コード
+--                       , xt0c.tax_rate                      AS tax_rate                        -- 消費税率
+                       , CASE 
+                           WHEN ( xt0c.tax_div = cv_tax_div_no_tax OR xt0c.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+                             xt0c.tax_code
+                           ELSE 
+                             NVL(xsel.tax_code, xseh.tax_code)
+                         END                                    AS tax_code                    -- 税金コード
+                       , CASE 
+                           WHEN ( xt0c.tax_div = cv_tax_div_no_tax OR xt0c.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+                             xt0c.tax_rate
+                           ELSE 
+                             NVL(xsel.tax_rate, xseh.tax_rate)
+                         END                                    AS tax_rate                    -- 消費税率
+-- Ver.3.19 SCSK K.Nara MOD END
                        , xt0c.tax_rounding_rule             AS tax_rounding_rule               -- 端数処理区分
                        , xt0c.term_name                     AS term_name                       -- 支払条件
                        , xt0c.closing_date                  AS closing_date                    -- 締め日
@@ -1241,8 +1273,22 @@ AS
          , NULL                                                                    AS container_code           -- 容器区分コード
          , NULL                                                                    AS dlv_unit_price           -- 売価金額
          , xt0c.tax_div                                                            AS tax_div                  -- 消費税区分
-         , xt0c.tax_code                                                           AS tax_code                 -- 税金コード
-         , xt0c.tax_rate                                                           AS tax_rate                 -- 消費税率
+-- Ver.3.19 SCSK K.Nara MOD START
+--         , xt0c.tax_code                                                           AS tax_code                 -- 税金コード
+--         , xt0c.tax_rate                                                           AS tax_rate                 -- 消費税率
+         , CASE 
+             WHEN ( xt0c.tax_div = cv_tax_div_no_tax OR xt0c.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+               xt0c.tax_code
+             ELSE 
+               NVL(xsel.tax_code, xseh.tax_code)
+           END                                                                     AS tax_code                 -- 税金コード
+         , CASE 
+             WHEN ( xt0c.tax_div = cv_tax_div_no_tax OR xt0c.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+               xt0c.tax_rate
+             ELSE 
+               NVL(xsel.tax_rate, xseh.tax_rate)
+           END                                                                     AS tax_rate                 -- 消費税率
+-- Ver.3.19 SCSK K.Nara MOD END
          , xt0c.tax_rounding_rule                                                  AS tax_rounding_rule        -- 端数処理区分
          , xt0c.term_name                                                          AS term_name                -- 支払条件
          , xt0c.closing_date                                                       AS closing_date             -- 締め日
@@ -1360,8 +1406,22 @@ AS
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR END
            , xsel.dlv_uom_code
            , xt0c.tax_div
-           , xt0c.tax_code
-           , xt0c.tax_rate
+-- Ver.3.19 SCSK K.Nara MOD START
+--           , xt0c.tax_code
+--           , xt0c.tax_rate
+           , CASE 
+               WHEN ( xt0c.tax_div = cv_tax_div_no_tax OR xt0c.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+                 xt0c.tax_code
+               ELSE 
+                 NVL(xsel.tax_code, xseh.tax_code)
+             END
+           , CASE 
+               WHEN ( xt0c.tax_div = cv_tax_div_no_tax OR xt0c.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
+                 xt0c.tax_rate
+               ELSE 
+                 NVL(xsel.tax_rate, xseh.tax_rate)
+             END
+-- Ver.3.19 SCSK K.Nara MOD END
            , xt0c.tax_rounding_rule
            , xt0c.term_name
            , xt0c.closing_date
@@ -2772,8 +2832,22 @@ GROUP BY CASE
          , NULL                                                                                  AS container_code           -- 容器区分コード
          , NULL                                                                                  AS dlv_unit_price           -- 売価金額
          , xt0c.tax_div                                                                          AS tax_div                  -- 消費税区分
-         , xt0c.tax_code                                                                         AS tax_code                 -- 税金コード
-         , xt0c.tax_rate                                                                         AS tax_rate                 -- 消費税率
+-- Ver.3.19 SCSK K.Nara MOD START
+--         , xt0c.tax_code                                                                         AS tax_code                 -- 税金コード
+--         , xt0c.tax_rate                                                                         AS tax_rate                 -- 消費税率
+         , CASE xt0c.tax_div
+             WHEN cv_tax_div_no_tax THEN
+               xt0c.tax_code
+             ELSE 
+               NVL(xsel.tax_code, xseh.tax_code)
+           END                                                                                   AS tax_code                 -- 税金コード
+         , CASE xt0c.tax_div
+             WHEN cv_tax_div_no_tax THEN
+               xt0c.tax_rate
+             ELSE 
+               NVL(xsel.tax_rate, xseh.tax_rate)
+           END                                                                                   AS tax_rate                 -- 消費税率
+-- Ver.3.19 SCSK K.Nara MOD END
          , xt0c.tax_rounding_rule                                                                AS tax_rounding_rule        -- 端数処理区分
          , xt0c.term_name                                                                        AS term_name                -- 支払条件
          , xt0c.closing_date                                                                     AS closing_date             -- 締め日
@@ -2887,8 +2961,22 @@ GROUP BY CASE
            , TO_CHAR( xt0c.closing_date, 'RRRRMM' )
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR END
            , xt0c.tax_div
-           , xt0c.tax_code
-           , xt0c.tax_rate
+-- Ver.3.19 SCSK K.Nara MOD START
+--           , xt0c.tax_code
+--           , xt0c.tax_rate
+           , CASE xt0c.tax_div
+               WHEN cv_tax_div_no_tax THEN
+                 xt0c.tax_code
+               ELSE 
+                 NVL(xsel.tax_code, xseh.tax_code)
+             END
+           , CASE xt0c.tax_div
+               WHEN cv_tax_div_no_tax THEN
+                 xt0c.tax_rate
+               ELSE 
+                 NVL(xsel.tax_rate, xseh.tax_rate)
+             END
+-- Ver.3.19 SCSK K.Nara MOD END
            , xt0c.tax_rounding_rule
            , xt0c.term_name
            , xt0c.closing_date
