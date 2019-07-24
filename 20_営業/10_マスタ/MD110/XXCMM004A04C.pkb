@@ -7,7 +7,7 @@ AS
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Issue3.14
+ * Version          : Issue3.16
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2014/03/27    1.19  K.Nakamura       障害対応(本稼動_11556) 取引存在チェック条件修正
  *  2017/08/04    1.20  N.Watanabe       障害対応(本稼動_14300) 品目ステータスDにおけるチェック条件変更
  *  2019/06/04    1.21  N.Abe            障害対応(本稼動_15472) 軽減税率対応
+ *  2019/07/22    1.22  N.Abe            障害対応(本稼動_15825) 子品目の場合に親の政策群を参照するよう修正
  *
  *****************************************************************************************/
 --
@@ -2833,7 +2834,10 @@ AS
 -- 2009/10/16 Ver1.13 障害0001423 add end by Y.Kuboshima
 -- 2019/06/04 Ver1.21 N.Abe Add Start
     lv_pol_class_tax           mtl_categories_b.attribute4%TYPE;      -- 軽減税率用税種別（政策群コード）
--- 2019/06/04 Ver1.21 N.Abe Add Start
+-- 2019/06/04 Ver1.21 N.Abe Add End
+-- 2019/07/22 Ver1.22 N.Abe Add Start
+    lv_parent_policy_code      xxcmm_opmmtl_items_v.crowd_code_new%TYPE;  -- 親品目の政策群コード
+-- 2019/07/22 Ver1.22 N.Abe Add End
     --
     -- ===============================
     -- ユーザー定義例外
@@ -2861,7 +2865,7 @@ AS
     tran_status_chk_expt       EXCEPTION;    -- 品目ステータス取引作成済エラー
     inv_status_chk_expt        EXCEPTION;    -- 品目ステータス拠点在庫存在エラー
 -- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
--- 2019/06/04 Ver1.21 N.Abe Add End
+-- 2019/06/04 Ver1.21 N.Abe Add Start
     get_class_tax_expt         EXCEPTION;    -- 軽減税率用税種別取得エラー（政策群コード）
     chk_gun_corr_expt          EXCEPTION;    -- 政策群コード相関チェックエラー
 -- 2019/06/04 Ver1.21 N.Abe Add End
@@ -3461,6 +3465,19 @@ AS
 -- 2019/06/04 Ver1.21 N.Abe Add Start
     -- 変更後ステータスが「30：本登録」の場合
     IF ( i_update_item_rec.item_status = cn_itm_status_regist ) THEN
+-- 2019/07/22 Ver1.22 N.Abe Add Start
+      -- 子品目の場合、親の政策群を取得
+      IF   ( i_update_item_rec.item_div = '2' ) THEN
+        --親品目の政策群の取得
+        lv_step := 'STEP-07601';
+        SELECT      xoiv.crowd_code_new   AS policy_code                         -- 政策群コード
+        INTO        lv_parent_policy_code
+        FROM        xxcmm_opmmtl_items_v  xoiv                                   -- 品目ビュー
+        WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id   -- 親品目ID
+        AND         xoiv.start_date_active <= gd_process_date                    -- 適用開始日
+        AND         xoiv.end_date_active   >= gd_process_date;                   -- 適用終了日
+      END IF;
+-- 2019/07/22 Ver1.22 N.Abe Add End
       lv_step := 'STEP-07600';
       -- 政策群コードに紐付く軽減税率用税種別を取得
       BEGIN
@@ -3473,7 +3490,10 @@ AS
         AND    mcst.language = USERENV('LANG')
         AND    mcst.category_set_id = mcsb.category_set_id
         AND    mcb.structure_id = mcsb.structure_id
-        AND    mcb.segment1 = NVL(i_update_item_rec.policy_group, i_update_item_rec.crowd_code_new)
+-- 2019/07/22 Ver1.22 N.Abe Add Start
+--        AND    mcb.segment1 = NVL(i_update_item_rec.policy_group, i_update_item_rec.crowd_code_new)
+        AND    mcb.segment1 = COALESCE(i_update_item_rec.policy_group, i_update_item_rec.crowd_code_new, lv_parent_policy_code)
+-- 2019/07/22 Ver1.22 N.Abe Add End
         ;
       EXCEPTION
         WHEN OTHERS THEN
@@ -3618,7 +3638,7 @@ AS
       ov_retcode := cv_status_error;
 -- 2012/04/17 Ver1.18 本稼動_07669 add end by K.Nakamura
 --
--- 2019/06/04 Ver1.21 N.Abe Add End
+-- 2019/06/04 Ver1.21 N.Abe Add Start
     -- *** 軽減税率用税種別取得例外ハンドラ ***
     WHEN get_class_tax_expt THEN
       lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -3626,6 +3646,10 @@ AS
                      ,iv_name         => cv_msg_xxcmm_10493                       -- メッセージコード
                      ,iv_token_name1  => cv_tkn_gun_code                          -- トークンコード1
                      ,iv_token_value1 => i_update_item_rec.policy_group           -- トークン値1
+-- 2019/07/22 Ver1.22 N.Abe Add Start
+                     ,iv_token_name2  => cv_tkn_item_code                         -- トークンコード2
+                     ,iv_token_value2 => i_update_item_rec.item_no                -- トークン値
+-- 2019/07/22 Ver1.22 N.Abe Add End
                     );
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
