@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.150
+ * Version          : 1.160
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2013/01/17    1.130 SCSK 中野 徹也  [障害本稼動09964] 請求書再作成時の仕様見直し対応
  *  2013/06/10    1.140 SCSK 中野 徹也  [障害本稼動09964再対応] 請求書再作成時の仕様見直し対応
  *  2016/03/02    1.150 SCSK 小路 恭弘  [障害本稼動13510] 請求書に表示されない品目がある
+ *  2019/07/26    1.160 SCSK 箕浦 健治  [E_本稼動_15472] 軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -1277,6 +1278,9 @@ AS
 -- 2011/10/11 A.Shirakawa Ver.1.110 ADD START
           ,inlv.bms_header_data              bms_header_data                -- 流通ＢＭＳヘッダデータ
 -- 2011/10/11 A.Shirakawa Ver.1.110 ADD END
+-- Add 2019.07.26 Ver1.160 START
+          ,inlv.tax_code                     tax_code                       -- 税金コード
+-- Add 2019.07.26 Ver1.160 END
     FROM   (--請求明細データ(AR部門入力) 
             SELECT /*+ FIRST_ROWS
 -- Modify 2009.09.29 Ver1.5 Start
@@ -1389,6 +1393,9 @@ AS
 -- 2011/10/11 A.Shirakawa Ver.1.110 ADD START
                   ,NULL                                           bms_header_data         -- 流通ＢＭＳヘッダデータ
 -- 2011/10/11 A.Shirakawa Ver.1.110 ADD END
+-- Add 2019.07.26 Ver1.160 START
+                  ,arta.tax_code                                  tax_code                -- 税金コード
+-- Add 2019.07.26 Ver1.160 END
             FROM   
                    xxcfr_invoice_headers         xih,               -- アドオン請求書ヘッダ
                    ra_customer_trx               rcta,              -- 取引テーブル
@@ -1532,7 +1539,10 @@ AS
                    xxel.standard_unit_price_excluded               standard_unit_price_excluded, -- 税抜基準単価
                    xxel.business_cost                              business_cost,                -- 営業原価
                    xxel.tax_amount                                 tax_amount,              -- 消費税金額
-                   xxeh.tax_rate                                   tax_rate,                -- 消費税率
+-- Modify 2019.07.26 Ver1.160 Start
+--                   xxeh.tax_rate                                   tax_rate,                -- 消費税率
+                   xxel.tax_rate                                   tax_rate,                -- 消費税率
+-- Modify 2019.07.26 Ver1.160 End
                    xxel.pure_amount                                ship_amount,             -- 納品金額
                    xxel.sale_amount                                sold_amount,             -- 売上金額
                    NULL                                            red_black_slip_type,     -- 赤伝黒伝区分
@@ -1562,6 +1572,9 @@ AS
 -- 2011/10/11 A.Shirakawa Ver.1.110 ADD START
                   ,xedh.bms_header_data                            bms_header_data          -- 流通ＢＭＳヘッダデータ
 -- 2011/10/11 A.Shirakawa Ver.1.110 ADD END
+-- Add 2019.07.26 Ver1.160 START
+                  ,xxel.tax_code                                   tax_code                 -- 税金コード
+-- Add 2019.07.26 Ver1.160 END
             FROM   
                    xxcfr_invoice_headers         xih,            -- アドオン請求書ヘッダ
                    ra_customer_trx               rcta,           -- 取引テーブル
@@ -1749,6 +1762,9 @@ AS
            inlv.medium_class                 medium_class,                  -- 受注ソース
            inlv.delivery_chain_code          delivery_chain_code            -- 納品先チェーンコード
           ,inlv.bms_header_data              bms_header_data                -- 流通ＢＭＳヘッダデータ
+-- Add 2019.07.26 Ver1.160 START
+          ,inlv.tax_code                     tax_code                       -- 税金コード
+-- Add 2019.07.26 Ver1.160 END
     FROM   (--請求明細データ(AR部門入力) 
             SELECT /*+ FIRST_ROWS
                        LEADING(xih rcta hzca hp_ship xxca hc_sold hp_sold hzsa rlli rlta rgda arta fnvd)
@@ -1840,6 +1856,9 @@ AS
                    NULL                                           medium_class,           -- 受注ソース
                    xxca.delivery_chain_code                       delivery_chain_code     -- 納品先チェーンコード
                   ,NULL                                           bms_header_data         -- 流通ＢＭＳヘッダデータ
+-- Add 2019.07.26 Ver1.160 START
+                  ,arta.tax_code                                  tax_code                -- 税金コード
+-- Add 2019.07.26 Ver1.160 END
             FROM   
                    xxcfr_invoice_headers         xih,               -- アドオン請求書ヘッダ
                    ra_customer_trx               rcta,              -- 取引テーブル
@@ -1986,7 +2005,10 @@ AS
                    xxel.standard_unit_price_excluded               standard_unit_price_excluded, -- 税抜基準単価
                    xxel.business_cost                              business_cost,                -- 営業原価
                    xxel.tax_amount                                 tax_amount,              -- 消費税金額
-                   xxeh.tax_rate                                   tax_rate,                -- 消費税率
+-- Modify 2019.07.26 Ver1.160 Start
+--                   xxeh.tax_rate                                   tax_rate,                -- 消費税率
+                   xxel.tax_rate                                   tax_rate,                -- 消費税率
+-- Modify 2019.07.26 Ver1.160 End
                    xxel.pure_amount                                ship_amount,             -- 納品金額
                    xxel.sale_amount                                sold_amount,             -- 売上金額
                    NULL                                            red_black_slip_type,     -- 赤伝黒伝区分
@@ -2008,6 +2030,9 @@ AS
                    NVL( xedh.medium_class , cv_medium_class_mnl)   medium_class,            -- 受注ソース
                    xxca.delivery_chain_code                        delivery_chain_code      -- 納品先チェーンコード
                   ,xedh.bms_header_data                            bms_header_data          -- 流通ＢＭＳヘッダデータ
+-- Add 2019.07.26 Ver1.160 START
+                  ,xxel.tax_code                                   tax_code                 -- 税金コード
+-- Add 2019.07.26 Ver1.160 END
             FROM   
                    xxcfr_invoice_headers         xih,            -- アドオン請求書ヘッダ
                    ra_customer_trx               rcta,           -- 取引テーブル
