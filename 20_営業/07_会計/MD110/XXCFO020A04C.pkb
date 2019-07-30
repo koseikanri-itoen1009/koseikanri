@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A04C(body)
  * Description      : 有償支給仕訳IF作成
  * MD.050           : 有償支給仕訳IF作成<MD050_CFO_020_A04>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2015-11-18    1.3   Y.Shoji          E_本稼動_13335対応
  *  2017-12-05    1.4   S.Niki           E_本稼動_14674対応
  *                                       ・未収入金勘定の場合、税コードにNULLを設定。
+ *  2019-07-26    1.5   Y.Shoji          E_本稼動_15786対応
  *
  *****************************************************************************************/
 --
@@ -2031,8 +2032,11 @@ AS
     -- ***************************************
 --
     -- 共通関数からOPM在庫会計期間CLOSE年月を取得し、終了日を設定
-    ld_opminv_date := LAST_DAY(TO_DATE(xxcmn_common_pkg.get_opminv_close_period ||
-                            cv_fdy || cv_e_time,cv_dt_format));
+-- 2019.07.26 Ver1.5 Mod Start
+--    ld_opminv_date := LAST_DAY(TO_DATE(xxcmn_common_pkg.get_opminv_close_period ||
+--                            cv_fdy || cv_e_time,cv_dt_format));
+    ld_opminv_date := LAST_DAY(TO_DATE(xxcmn_common_pkg.get_opminv_close_period || cv_fdy,cv_d_format));
+-- 2019.07.26 Ver1.5 Mod End
 --
     -- ===============================
     -- 1.抽出カーソルをフェッチし、ループ処理を行う
