@@ -150,6 +150,13 @@ SELECT   iimb.item_no                      AS item_no                       -- •
 -- 2019/6/4 E_–{‰Ò“®_15472 add start by N.Abe
         ,xsib.class_for_variable_tax       AS food_type_code                -- H•i‹æ•ª
 -- 2019/6/4 E_–{‰Ò“®_15472 add end by N.Abe
+-- 2019/07/02 E_–{‰Ò“®_15625 add start by N.Abe
+        ,xsib.item_dtl_status              AS item_dtl_status               -- •i–ÚÚ×ƒXƒe[ƒ^ƒX
+        ,CASE WHEN xsib.item_dtl_status IS NULL THEN NULL
+              ELSE xsib.item_dtl_status || ':' || hss.item_dtl_status_name
+              END                          AS item_dtl_status_name          -- •i–ÚÚ×ƒXƒe[ƒ^ƒX–¼
+        ,xsib.remarks                      AS remarks                       -- ”õl
+-- 2019/07/02 E_–{‰Ò“®_15625 add end   by N.Abe
 FROM     ic_item_mst_b      iimb        -- OPM•i–Úƒ}ƒXƒ^
         ,xxcmn_item_mst_b   ximb        -- OPM•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
         ,xxcmm_system_items_b xsib      -- Disc•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
@@ -313,6 +320,13 @@ FROM     ic_item_mst_b      iimb        -- OPM•i–Úƒ}ƒXƒ^
           FROM        fnd_lookup_values_vl flv_sen
           WHERE       flv_sen.lookup_type  = 'XXCMM_ITM_SENMONTEN_SHIIRESAKI'
         ) sen    -- ê–å“Xd“üæ—p
+-- 2019/07/02 E_–{‰Ò“®_15625 add start by N.Abe
+        ,(SELECT      flv_hss.lookup_code  AS item_dtl_status
+                     ,flv_hss.meaning      AS item_dtl_status_name
+          FROM        fnd_lookup_values_vl flv_hss
+          WHERE       flv_hss.lookup_type  = 'XXCMM_ITM_DTL_STATUS'
+        ) hss    -- •i–ÚÚ×ƒXƒe[ƒ^ƒX—p
+-- 2019/07/02 E_–{‰Ò“®_15625 add end   by N.Abe
 WHERE   iimb.item_id                 = ximb.item_id
 -- 2009/08/20 modify start by Yutaka.Kuboshima
 --AND     ximb.start_date_active(+)   <= TRUNC(SYSDATE)
@@ -363,6 +377,9 @@ AND     xsib.sp_supplier_code        = sen.sp_supplier_code(+)
 --AND     LENGTHB(iimb.item_no) = 7
 --AND     iimb.item_no BETWEEN '0000001' AND '3999999'
 -- 2009/05/12 áŠQT1_0317 delete end by Yutaka.Kuboshima
+-- 2019/07/02 E_–{‰Ò“®_15625 add start by N.Abe
+AND     xsib.item_dtl_status         = hss.item_dtl_status(+)
+-- 2019/07/02 E_–{‰Ò“®_15625 add end   by N.Abe
 /
 COMMENT ON TABLE APPS.XXCMM_ITEM_SCREEN_V IS '•i–Ú“o˜^‰æ–Êƒrƒ…['
 /
@@ -614,3 +631,11 @@ COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.lot_reversal_type IS 'ƒƒbƒg‹t“]‹æ•ª'
 COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.food_type_code IS 'H•i‹æ•ª'
 /
 -- 2019/6/4 E_–{‰Ò“®_15472 add end by N.Abe
+-- 2019/07/02 E_–{‰Ò“®_15625 add start by N.Abe
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.item_dtl_status IS '•i–ÚÚ×ƒXƒe[ƒ^ƒX'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.item_dtl_status_name IS '•i–ÚÚ×ƒXƒe[ƒ^ƒX–¼'
+/
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.remarks IS '”õl'
+/
+-- 2019/07/02 E_–{‰Ò“®_15625 add end   by N.Abe
