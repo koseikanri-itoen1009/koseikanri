@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
  * Description     : ¿‹–¾×î•ñƒe[ƒuƒ‹
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.4
+ * Version         : 1.5
  * 	
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -16,6 +16,7 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
  *  2009/10/20    1.2  SCS œA£ ^²l[IE535]‹¤’Ê‰Û‘è‘Î‰
  *  2009/11/02    1.3  SCS œA£ ^²l[IE603]‹¤’Ê‰Û‘è‘Î‰
  *  2011/10/11    1.4  SCS ”’ì “Äj  [E_–{‰Ò“®_07906]—¬’ÊBMS‘Î‰
+ *  2019/07/26    1.5  SCSK –¥‰Y Œ’¡ [E_–{‰Ò“®_15472]ŒyŒ¸Å—¦‘Î‰
  ************************************************************************/
 ( 
   invoice_id                   NUMBER         NOT NULL  ,     -- ˆêŠ‡¿‹‘ID
@@ -90,6 +91,9 @@ CREATE TABLE xxcfr.xxcfr_invoice_lines
 /* 2011.10.11 Ver1.4 Add Start */
   bms_header_data              VARCHAR2(2000)           ,     -- —¬’Ê‚a‚l‚rƒwƒbƒ_ƒf[ƒ^
 /* 2011.10.11 Ver1.4 Add End   */
+/* 2019.07.26 Ver1.5 Add Start */
+  tax_code                     VARCHAR2(50)             ,     -- Å‹àƒR[ƒh
+/* 2019.07.26 Ver1.5 Add End   */
   CONSTRAINT xxcfr_invoice_lines_pk PRIMARY KEY ( invoice_id, invoice_detail_num )
   USING INDEX TABLESPACE xxidx2
 )
@@ -170,5 +174,8 @@ COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.delivery_chain_code          IS '”[•
 /* 2011.10.11 Ver1.4 Add Start */
 COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.bms_header_data              IS '—¬’Ê‚a‚l‚rƒwƒbƒ_ƒf[ƒ^';
 /* 2011.10.11 Ver1.4 Add End   */
+/* 2019.07.26 Ver1.5 Add Start */
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_lines.tax_code                     IS  'Å‹àƒR[ƒh'
+/* 2019.07.26 Ver1.5 Add End */
 --
 COMMENT ON TABLE  xxcfr.xxcfr_invoice_lines IS '¿‹–¾×î•ñƒe[ƒuƒ‹';
