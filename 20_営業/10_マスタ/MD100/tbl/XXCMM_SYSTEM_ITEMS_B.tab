@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_system_items_b
  * Description     : Disc品目アドオン
  * MD.070          : 
- * Version         : 1.4
+ * Version         : 1.5
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -14,6 +14,7 @@
  *  2009/05/07    1.2  H.Yoshikawa   【T1_0906】ケース換算入数の追加
  *  2009/07/09    1.3  K.Ito         【0000493】ストレージ句の見直し対応
  *  2019/06/04    1.4  N.Abe         【E_本稼動_15472】軽減税率用税種別の追加
+ *  2019/07/02    1.5  N.Abe         【E_本稼動_15625】品目詳細ステータス、備考の追加
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_system_items_b
 (
@@ -47,6 +48,10 @@ CREATE TABLE xxcmm.xxcmm_system_items_b
 -- End
 -- Ver1.4  2019/06/04  MOD E_本稼動_15472
     class_for_variable_tax         VARCHAR2(4),
+-- End
+-- Ver1.5  2019/07/02  ADD E_本稼動_15625
+    item_dtl_status                VARCHAR2(2),
+    remarks                        VARCHAR2(50),
 -- End
     created_by                     NUMBER(15,0) NOT NULL,
     creation_date                  DATE NOT NULL,
@@ -108,6 +113,12 @@ COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.case_conv_inc_num      IS 'ケース換
 -- End
 -- Ver1.4  2019/06/04  MOD E_本稼動_15472
 COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.class_for_variable_tax IS '軽減税率用税種別'
+/
+-- End
+-- Ver1.5  2019/07/02  ADD E_本稼動_15625
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.item_dtl_status        IS '品目詳細ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.remarks                IS '備考'
 /
 -- End
 COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.created_by             IS '作成者'
