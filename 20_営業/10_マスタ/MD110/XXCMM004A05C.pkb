@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A05C(body)
  * Description      : 品目一括登録ワークテーブルに取込まれた品目一括登録データを品目テーブルに登録します。
  * MD.050           : 品目一括登録 CMM_004_A05
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *  2016/09/13    1.22  Shigeto.Niki     E_本稼動_13703 適用開始日 < 前年度開始日の場合エラーとする
  *                                                      適用開始日および業務日付時点の年度の標準原価を作成する
  *  2019/06/04    1.23  N.Abe            E_本稼動_15472 INPUT用CSV、品目一括登録ワークへの軽減税率用税種別の追加
+ *  2019/07/02    1.24  N.Abe            E_本稼動_15625 品目詳細ステータス、備考の追加
  *
  *****************************************************************************************/
 --
@@ -331,6 +332,9 @@ AS
   cv_pol_cd              CONSTANT VARCHAR2(60)  := 'XXCMM:政策群コード';                            -- XXCMM:政策群コード
   cv_lang                CONSTANT VARCHAR2(5)   := USERENV('LANG');                                 -- 言語コード
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add start by N.Abe
+  cv_lookup_itm_dtl_sts  CONSTANT VARCHAR2(30)  := 'XXCMM_ITM_DTL_STATUS';                          -- 品目詳細ステータス
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add end   by N.Abe
 --
   -- TABLE NAME
   cv_table_flv           CONSTANT VARCHAR2(30)  := 'LOOKUP表';                                      -- FND_LOOKUP_VALUES_VL
@@ -2600,6 +2604,10 @@ AS
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
        ,class_for_variable_tax
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add start by N.Abe
+       ,item_dtl_status
+       ,remarks
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add end   by N.Abe
        ,created_by
        ,creation_date
        ,last_updated_by
@@ -2641,6 +2649,10 @@ AS
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
        ,l_set_parent_item_rec.class_for_variable_tax       -- 軽減税率用税種別
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add start by N.Abe
+       ,i_wk_item_rec.item_dtl_status             -- 品目詳細ステータス
+       ,i_wk_item_rec.remarks                     -- 備考
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add end   by N.Abe
        ,cn_created_by                             -- 作成者
        ,cd_creation_date                          -- 作成日
        ,cn_last_updated_by                        -- 最終更新者
@@ -2988,6 +3000,10 @@ AS
     l_validate_item_tab(47) := i_wk_item_rec.class_for_variable_tax;  -- 軽減税率用税種別
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
 -- 2010/03/09 Ver1.20 E_本稼動_01619 modigy end by Y.Kuboshima
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add start by N.Abe
+    l_validate_item_tab(48) := i_wk_item_rec.item_dtl_status;         -- 品目詳細ステータス
+    l_validate_item_tab(49) := i_wk_item_rec.remarks;                 -- 備考
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add end   by N.Abe
     --
     -- カウンタの初期化
     ln_check_cnt := 0;
@@ -5219,6 +5235,33 @@ AS
 -- 2009/09/07 Ver1.15 障害0001258 add end by Y.Kuboshima
 --
     --
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add start by N.Abe
+    --==============================================================
+    -- A-4.46 品目詳細ステータスチェック
+    -- NULLの場合はチェックしない
+    --==============================================================
+    lv_step := 'A-4.46';
+      IF ( i_wk_item_rec.item_dtl_status IS NOT NULL ) THEN
+      -- LOOKUP表存在チェック
+      -- 初期化
+      l_lookup_rec := NULL;
+      l_lookup_rec.lookup_type := cv_lookup_itm_dtl_sts;
+      l_lookup_rec.lookup_code := i_wk_item_rec.item_dtl_status;
+      l_lookup_rec.line_no     := i_wk_item_rec.line_no;
+      l_lookup_rec.item_code   := i_wk_item_rec.item_code;
+      -- LOOKUP表存在チェック
+      chk_exists_lookup(
+        io_lookup_rec => l_lookup_rec
+       ,ov_errbuf     => lv_errbuf
+       ,ov_retcode    => lv_retcode
+       ,ov_errmsg     => lv_errmsg
+      );
+      -- 処理結果チェック
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        lv_check_flag := cv_status_error;
+      END IF;
+    END IF;
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add end   by N.Abe
     --==============================================================
 -- 2019/06/04 Ver1.23 E_本稼動_15472 mod start by N.Abe
 --    -- A-4.44 処理件数加算
@@ -5372,6 +5415,10 @@ AS
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
                 ,TRIM(xwibr.class_for_variable_tax)  AS class_for_variable_tax  -- 軽減税率用税種別
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add start by N.Abe
+                ,TRIM(xwibr.item_dtl_status)         AS item_dtl_status         -- 品目詳細ステータス
+                ,TRIM(xwibr.remarks)                 AS remarks                 -- 備考
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add end   by N.Abe
       FROM       xxcmm_wk_item_batch_regist  xwibr                              -- 品目一括登録ワーク
       WHERE      xwibr.request_id = cn_request_id                               -- 要求ID
       ORDER BY   file_seq                                                       -- ファイルシーケンス
@@ -5774,6 +5821,10 @@ AS
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
          ,class_for_variable_tax        -- 軽減税率用税種別
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add start by N.Abe
+         ,item_dtl_status               -- 品目詳細ステータス
+         ,remarks                       -- 備考
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add end   by N.Abe
          ,created_by                    -- 作成者
          ,creation_date                 -- 作成日
          ,last_updated_by               -- 最終更新者
@@ -5878,6 +5929,10 @@ AS
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add start by N.Abe
          ,l_wk_item_tab(47)             -- 軽減税率用税種別
 -- 2019/06/04 Ver1.23 E_本稼動_15472 add end by N.Abe
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add start by N.Abe
+         ,l_wk_item_tab(48)             -- 品目詳細ステータス
+         ,l_wk_item_tab(49)             -- 備考
+-- 2019/07/02 Ver1.24 E_本稼動_15625 add end   by N.Abe
 -- 2010/03/09 Ver1.20 E_本稼動_01619 modify end by Y.Kuboshima
          ,cn_created_by                 -- 作成者
          ,cd_creation_date              -- 作成日
