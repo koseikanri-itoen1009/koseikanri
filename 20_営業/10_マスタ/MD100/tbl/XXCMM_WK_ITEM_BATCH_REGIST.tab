@@ -64,6 +64,10 @@ CREATE TABLE xxcmm.xxcmm_wk_item_batch_regist
 -- Ver1.3  2019/06/04  Add E_本稼動_15472対応
    ,class_for_variable_tax         VARCHAR2(100)
 -- End
+-- Ver1.4  2019/07/02  Add E_本稼動_15625対応
+   ,item_dtl_status                VARCHAR2(100)
+   ,remarks                        VARCHAR2(100)
+-- End
 )
 /
 COMMENT ON TABLE xxcmm.xxcmm_wk_item_batch_regist                         IS '品目一括登録ワーク'
@@ -170,6 +174,12 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.sp_supplier_code       IS '専
 /
 -- Ver1.3  2019/06/04  Add E_本稼動_15472対応
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.class_for_variable_tax IS '軽減税率用税種別'
+/
+-- End
+-- Ver1.4  2019/07/02  Add E_本稼動_15625対応
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.item_dtl_status        IS '品目詳細ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.remarks                IS '備考'
 /
 -- End
 COMMENT ON COLUMN xxcmm.xxcmm_wk_item_batch_regist.created_by             IS '作成者'
