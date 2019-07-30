@@ -101,6 +101,13 @@ CREATE OR REPLACE VIEW APPS.XXSKY_品目マスタ_基本_V
 ,ロット逆転区分
 ,ロット逆転区分名称
 -- 2018/10/29 N.Koyama Add End   E_本稼動_15277
+-- 2019/07/02 N.Abe Add Start E_本稼動_15625
+,品目ステータス
+,品目ステータス名称
+,品目詳細ステータス
+,品目詳細ステータス名称
+,備考
+-- 2019/07/02 N.Abe Add End   E_本稼動_15625
 ,作成者
 ,作成日
 ,最終更新者
@@ -361,6 +368,23 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
            AND FLV19.lookup_code = XIMB.lot_reversal_type         --クイックコード
        ) lot_reversal_name
 -- 2018/10/29 N.Koyama Add End  E_本稼動_15277
+-- 2019/07/02 N.Abe Add Start E_本稼動_15625
+       ,XSIB.item_status         --品目ステータス
+       ,(SELECT FLV20.meaning
+         FROM fnd_lookup_values FLV20                             --クイックコード(品目ステータス名称)
+         WHERE FLV20.language    = 'JA'                           --言語
+           AND FLV20.lookup_type = 'XXCMM_ITM_STATUS'             --クイックコードタイプ
+           AND FLV20.lookup_code = XSIB.item_status               --クイックコード
+       ) item_status_name
+       ,XSIB.item_dtl_status     --品目詳細ステータス
+       ,(SELECT FLV21.meaning
+         FROM fnd_lookup_values FLV21                             --クイックコード(品目詳細ステータス名称)
+         WHERE FLV21.language    = 'JA'                           --言語
+           AND FLV21.lookup_type = 'XXCMM_ITM_DTL_STATUS'         --クイックコードタイプ
+           AND FLV21.lookup_code = XSIB.item_dtl_status               --クイックコード
+       ) item_detail_status_name
+       ,XSIB.remarks             --備考
+-- 2019/07/02 N.Abe Add End   E_本稼動_15625
 -- 2010/01/28 T.Yoshimoto Mod Start 本稼動#1168
        --,FU_CB.user_name               created_by_name             --CREATED_BYのユーザー名(ログイン時の入力コード)
        ,(SELECT FU_CB.user_name
@@ -394,6 +418,9 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
        ,xxcmn_item_mst_b      XIMB2                               --品目マスタアドオン(倉庫品目取得用)
        ,ic_item_mst_b         IIMB3                               --OPM品目マスタ     (親品目取得用)
        ,xxcmn_item_mst_b      XIMB3                               --品目マスタアドオン(親品目取得用)
+-- 2019/07/02 N.Abe Add Start E_本稼動_15625
+       ,xxcmm_system_items_b  XSIB                                --Disc品目アドオンマスタ
+-- 2019/07/02 N.Abe Add End   E_本稼動_15625
 -- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
        --,fnd_lookup_values     FLV01                               --クイックコード(売上対象区分名)
        --,fnd_lookup_values     FLV02                               --クイックコード(重量容積区分名)
@@ -425,6 +452,9 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
    AND  XIMB.parent_item_id = XIMB3.item_id(+)                    --親品目
    AND  XIMB3.start_date_active <= TRUNC(SYSDATE)                 --適用開始日
    AND  XIMB3.end_date_active   >= TRUNC(SYSDATE)                 --適用終了日
+-- 2019/07/02 N.Abe Add Start E_本稼動_15625
+   AND  IIMB.item_no = XSIB.item_code(+)                          --品目コード
+-- 2019/07/02 N.Abe Add End   E_本稼動_15625
    --クイックコード：売上対象区分名取得
 -- 2010/01/28 T.Yoshimoto Del Start 本稼動#1168
    --AND  FLV01.language(+) = 'JA'                                  --言語
@@ -695,6 +725,18 @@ COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.ロット逆転区分         IS 'ロット
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.ロット逆転区分名称     IS 'ロット逆転区分名称'
 /
 -- 2018/10/29 N.Koyama Add End   E_本稼動_15277
+-- 2019/07/02 N.Abe Add Start E_本稼動_15625
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.品目ステータス         IS '品目ステータス'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.品目ステータス名称     IS '品目ステータス名称'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.品目詳細ステータス     IS '品目詳細ステータス'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.品目詳細ステータス名称 IS '品目詳細ステータス名称'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.備考                   IS '備考'
+/
+-- 2019/07/02 N.Abe Add End   E_本稼動_15625
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.作成者                 IS '作成者'
 /
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.作成日                 IS '作成日'
