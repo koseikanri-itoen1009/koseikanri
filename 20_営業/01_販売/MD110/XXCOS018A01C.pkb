@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS018A01C(body)
  * Description      : CSVデータアップロード（販売実績）
  * MD.050           : MD050_COS_018_A01_CSVデータアップロード（販売実績）
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2016/11/01    1.0   S.Niki           新規作成
  *  2016/12/19    1.1   S.Niki           E_本稼動_13879追加対応
  *  2019/06/20    1.2   S.Kuwako         E_本稼動_15472軽減税率対応
+ *  2019/07/25    1.3   N.Koyama         E_本稼動_15472軽減税率対応(障害対応)
  *
  *****************************************************************************************/
 --
@@ -2921,6 +2922,9 @@ AS
            AND id_delivery_date     >= NVL( xtv.start_date_active ,id_delivery_date )
            AND id_delivery_date     <= NVL( xtv.end_date_active ,gd_max_date )
            ;
+-- Ver.1.3 INS START
+           lv_retcode := cv_status_normal;
+-- Ver.1.3 INS START
         -- 
         ELSE
         
@@ -3057,7 +3061,9 @@ AS
             FROM xxcos_tax_v  xtv                          -- 消費税view
            WHERE xtv.hht_tax_class     = lv_tax_class
              AND xtv.set_of_books_id   = gn_bks_id
-             AND xtv.tax_rate          = on_tax_rate
+-- Ver.1.3 Del START
+--             AND xtv.tax_rate          = on_tax_rate
+-- Ver.1.3 Del END
              AND id_delivery_date     >= NVL( xtv.start_date_active ,id_delivery_date )
              AND id_delivery_date     <= NVL( xtv.end_date_active ,gd_max_date )
           ;
