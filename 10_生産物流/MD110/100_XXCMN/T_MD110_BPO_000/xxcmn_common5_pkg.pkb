@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common5_pkg(body)
  * Description            : 共通関数5
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数5.xls
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -20,6 +20,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2018/02/22    1.0   H.Sasaki        新規作成(E_本稼動_14859)
  *  2018/06/18    1.1   H.Sasaki        不具合対応(E_本稼動_15154)
+ *  2019/07/25    1.2   E.Yazaki        不具合対応(E_本稼動_15550)
  *
  *****************************************************************************************/
 --
@@ -133,6 +134,9 @@ AS
 --
     -- *** ローカル変数 ***
     ld_use_by_date      DATE;       --  (戻り値)賞味期限
+--  V1.2 2019/07/25 Modified START
+    lv_use_by_date      VARCHAR2(10); --  賞味期限(製造日より、「賞味期間(月)」ヶ月後同日編集用)
+--  V1.2 2019/07/25 Modified END
 --
     -- *** ローカル・カーソル ***
 --
@@ -147,6 +151,10 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+--  V1.2 2019/07/25 Modified START
+    -- 変数初期化
+    lv_use_by_date := NULL;
+--  V1.2 2019/07/25 Modified END
 --
     IF ( in_expiration_month IS NULL OR iv_expiration_type IS NULL ) THEN
       --  表示区分、賞味期間(月）がNULL
@@ -182,15 +190,37 @@ AS
       --  表示区分：同日
       --  製造日より、「賞味期間(月)」ヶ月後の同日を賞味期限とする
       --  ただし、同日が存在しない場合月末日を取得
-      --  月末日の場合の同日とは、日付によらず月末日を指す(4/30と同日なのは5/30ではなく5/31(4月月末日の同日は5月月末日))
-      ld_use_by_date  :=  TRUNC( ADD_MONTHS( id_producted_date, in_expiration_month ) );
+--  V1.2 2019/07/25 Modified START
+--      --  月末日の場合の同日とは、日付によらず月末日を指す(4/30と同日なのは5/30ではなく5/31(4月月末日の同日は5月月末日))
+--      ld_use_by_date  :=  TRUNC( ADD_MONTHS( id_producted_date, in_expiration_month ) );
+      lv_use_by_date  :=  TO_CHAR( ADD_MONTHS( id_producted_date, in_expiration_month ), 'YYYY/MM' ) || TO_CHAR( id_producted_date, '/DD' );
+      BEGIN
+        ld_use_by_date  :=  TO_DATE( lv_use_by_date, 'YYYY/MM/DD' );
+      EXCEPTION
+        WHEN OTHERS THEN
+          --  日付型変換に失敗した場合（存在しない日付の場合）、製造日より「賞味期間(月)」ヶ月後の月末日を賞味期限とする
+          ld_use_by_date  :=  ADD_MONTHS( id_producted_date, in_expiration_month );
+      END;
+--  V1.2 2019/07/25 Modified END
       --
     ELSIF ( iv_expiration_type = cv_type_40 ) THEN
       --  表示区分：同日 -1
       --  製造日より、「賞味期間(月)」ヶ月後の同日の前日を賞味期限とする
       --  ただし、同日が存在しない場合月末日を取得
-      --  月末日の場合の同日とは、日付によらず月末日を指す(4/30と同日なのは5/30ではなく5/31(4月月末日の同日は5月月末日))
-      ld_use_by_date  :=  TRUNC( ADD_MONTHS( id_producted_date, in_expiration_month ) ) - 1;
+--  V1.2 2019/07/25 Modified START
+--      --  月末日の場合の同日とは、日付によらず月末日を指す(4/30と同日なのは5/30ではなく5/31(4月月末日の同日は5月月末日))
+--      ld_use_by_date  :=  TRUNC( ADD_MONTHS( id_producted_date, in_expiration_month ) ) - 1;
+      lv_use_by_date  :=  TO_CHAR( ADD_MONTHS( id_producted_date, in_expiration_month ), 'YYYY/MM' ) || TO_CHAR( id_producted_date, '/DD' );
+      BEGIN
+        ld_use_by_date  :=  TO_DATE( lv_use_by_date, 'YYYY/MM/DD' );
+      EXCEPTION
+        WHEN OTHERS THEN
+          --  日付型変換に失敗した場合（存在しない日付の場合）、製造日より「賞味期間(月)」ヶ月後の月末日を賞味期限とする
+          ld_use_by_date  :=  ADD_MONTHS( id_producted_date, in_expiration_month );
+      END;
+      --  -1日
+      ld_use_by_date  :=  ld_use_by_date - 1;
+--  V1.2 2019/07/25 Modified END
     ELSE
       --  上記以外
       --  製造日より、「賞味期間」日後を賞味期限とする
