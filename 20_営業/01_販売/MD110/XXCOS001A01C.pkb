@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2016/03/01    1.28  S.Niki           [E_本稼動_13480] 納品書チェックリスト対応
  *  2017/04/19    1.29  N.Watanabe       [E_本稼動_14025] HHTからのシステム日付連携追加
  *  2017/12/18    1.30  S.Yamashita      [E_本稼動_14486] HHTからの訪問区分連携追加
+ *  2019/07/26    1.31  S.Kuwako         [E_本稼動_15472] 軽減税率対応(HHT追加対応)
  *
  *****************************************************************************************/
 --
@@ -224,6 +225,10 @@ AS
 --****************************** 2010/01/18 1.21 M.Uehara ADD START *******************************--
   cv_msg_card_company CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13512';     -- カード会社未設定エラーメッセージ
 --****************************** 2010/01/18 1.21 M.Uehara ADD END   *******************************--
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+  cv_msg_discnt_tax  CONSTANT VARCHAR2(30)  := 'APP-XXCOS1-00222';     -- 値引税区分
+  cv_err_msg_discnt_tax       CONSTANT VARCHAR2(30)  := 'APP-XXCOS1-13518'; -- 値引税区分エラー
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
   -- トークン
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE';                -- テーブル名
   cv_tkn_colmun      CONSTANT VARCHAR2(20)  := 'COLMUN';               -- テーブル列名
@@ -278,6 +283,9 @@ AS
   cv_qck_typ_sale    CONSTANT VARCHAR2(30)  := 'XXCOS1_SALE_CLASS';               -- 売上区分
   cv_qck_typ_hc      CONSTANT VARCHAR2(30)  := 'XXCOS1_HC_CLASS';                 -- H/C
   cv_qck_typ_cus     CONSTANT VARCHAR2(30)  := 'XXCOS1_CUS_CLASS_MST_001_A01';    -- 顧客区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+  cv_qck_typ_tax_cd  CONSTANT VARCHAR2(30)  := 'XXCFO1_TAX_CODE';                -- 消費税コード（軽減税率対応用）
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 --
   --フォーマット
   cv_fmt_date        CONSTANT VARCHAR2(10)  := 'RRRR/MM/DD';                      -- DATE形式
@@ -331,6 +339,9 @@ AS
      ,visit_class4      xxcos_dlv_headers_work.visit_class4%TYPE        -- 訪問区分4
      ,visit_class5      xxcos_dlv_headers_work.visit_class5%TYPE        -- 訪問区分5
 -- Ver.1.30 ADD End
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+     ,discount_tax_class xxcos_dlv_headers_work.discount_tax_class%TYPE -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 -- 2011/03/16 Ver.1.26 S.Ochiai MOD End
     );
   TYPE g_tab_headwk_data IS TABLE OF g_rec_headwk_data INDEX BY PLS_INTEGER;
@@ -465,6 +476,10 @@ AS
     INDEX BY PLS_INTEGER;   -- 入力区分
   TYPE g_tab_head_tax_class         IS TABLE OF xxcos_dlv_headers.consumption_tax_class%TYPE
     INDEX BY PLS_INTEGER;   -- 消費税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+  TYPE g_tab_head_discnt_tax_class  IS TABLE OF xxcos_dlv_headers.discount_tax_class%TYPE
+    INDEX BY PLS_INTEGER;   -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
   TYPE g_tab_head_total_amount      IS TABLE OF xxcos_dlv_headers.total_amount%TYPE
     INDEX BY PLS_INTEGER;   -- 合計金額
   TYPE g_tab_head_sale_discount     IS TABLE OF xxcos_dlv_headers.sale_discount_amount%TYPE
@@ -507,6 +522,10 @@ AS
   TYPE g_tab_head_visit_class5      IS TABLE OF xxcos_dlv_headers_work.visit_class5%TYPE
     INDEX BY PLS_INTEGER;   -- 訪問区分5
 -- Ver.1.30 ADD End
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+  TYPE g_tab_head_discount_tax_class IS TABLE OF xxcos_dlv_headers_work.discount_tax_class%TYPE
+    INDEX BY PLS_INTEGER;   -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 --
   -- 納品明細データ登録用変数
   TYPE g_tab_line_order_no_hht     IS TABLE OF xxcos_dlv_lines.order_no_hht%TYPE
@@ -620,6 +639,11 @@ AS
   TYPE g_tab_qck_sale     IS TABLE OF  xxcos_dlv_lines.sale_class%TYPE                INDEX BY PLS_INTEGER;
   -- H/C格納用変数
   TYPE g_tab_qck_hc       IS TABLE OF  xxcos_dlv_lines.h_and_c%TYPE                   INDEX BY PLS_INTEGER;
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+  -- 値引税区分用変数
+  TYPE g_tab_qck_discnt_tax_class
+                          IS TABLE OF  xxcos_dlv_headers.discount_tax_class%TYPE      INDEX BY PLS_INTEGER;
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -668,6 +692,9 @@ AS
   gt_head_visit_class4      g_tab_head_visit_class4;        -- 訪問区分4
   gt_head_visit_class5      g_tab_head_visit_class5;        -- 訪問区分5
 -- Ver.1.30 ADD End
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+  gt_head_discount_tax_class g_tab_head_discount_tax_class; -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 --
   -- 納品明細テーブル登録データ
   gt_line_order_no_hht      g_tab_line_order_no_hht;        -- 受注No.（HHT）
@@ -736,6 +763,9 @@ AS
   gt_qck_item               g_tab_qck_item;                 -- 品目ステータス
   gt_qck_sale               g_tab_qck_sale;                 -- 売上区分
   gt_qck_hc                 g_tab_qck_hc;                   -- H/C
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+  gt_qck_discnt_tax_class   g_tab_qck_discnt_tax_class;     -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
   gn_purge_date             NUMBER;                         -- パージ処理基準日
   gn_orga_id                NUMBER;                         -- 在庫組織ID
   gd_max_date               DATE;                           -- MAX日付
@@ -1019,6 +1049,9 @@ AS
             ,headers.visit_class4                    visit_class4              -- 訪問区分4
             ,headers.visit_class5                    visit_class5              -- 訪問区分5
 -- Ver.1.30 ADD End
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+            ,headers.discount_tax_class              discount_tax_class        -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 -- 2011/03/16 Ver.1.26 S.Ochiai MOD End
       FROM   xxcos_dlv_headers_work           headers                   -- 納品ヘッダワークテーブル
       ORDER BY order_no_hht
@@ -1471,6 +1504,18 @@ AS
 --      AND     gd_process_date      <= NVL(look_val.end_date_active, gd_max_date)
 --      AND     look_val.enabled_flag = cv_tkn_yes;
 -- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+    -- クイックコード取得：値引税区分
+    CURSOR get_discnt_tax_class_cur
+    IS
+      SELECT  lookup_val.lookup_code lookup_code
+      FROM    fnd_lookup_values     lookup_val
+      WHERE   lookup_val.language = cv_user_lang
+      AND     lookup_val.lookup_type  = cv_qck_typ_tax_cd
+      AND     gd_process_date      >= NVL(lookup_val.start_date_active, gd_process_date)
+      AND     gd_process_date      <= NVL(lookup_val.end_date_active, gd_max_date)
+      ;
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 --
   BEGIN
 --
@@ -1807,6 +1852,29 @@ AS
         RAISE lookup_types_expt;
     END;
 --
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+    -- クイックコード取得：値引税区分
+    BEGIN
+      -- カーソルOPEN
+      OPEN  get_discnt_tax_class_cur;
+      -- バルクフェッチ
+      FETCH get_discnt_tax_class_cur BULK COLLECT INTO gt_qck_discnt_tax_class;
+      -- カーソルCLOSE
+      CLOSE get_discnt_tax_class_cur;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- カーソルCLOSE：クイックコード取得：値引税区分
+        IF ( get_discnt_tax_class_cur%ISOPEN ) THEN
+          CLOSE get_discnt_tax_class_cur;
+        END IF;
+--
+        gv_tkn2 := xxccp_common_pkg.get_msg( cv_application, cv_qck_typ_tax_cd );
+        gv_tkn3 := xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_tax );
+        RAISE lookup_types_expt;
+    END;
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
+--
     --==============================================================
     -- 納品ヘッダワークテーブルデータ取得
     --==============================================================
@@ -2026,6 +2094,9 @@ AS
     lt_visit_class4         xxcos_dlv_headers_work.visit_class4%TYPE;        -- 訪問区分4
     lt_visit_class5         xxcos_dlv_headers_work.visit_class5%TYPE;        -- 訪問区分5
 -- Ver.1.30 ADD End
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+    lt_discnt_tax_class     xxcos_dlv_headers.DISCOUNT_TAX_CLASS%TYPE;       -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 --
     -- 納品明細データ変数
     lt_order_nol_hht        xxcos_dlv_lines.order_no_hht%TYPE;                 -- 受注No.(HHT)
@@ -2108,6 +2179,10 @@ AS
 --****************************** 2011/02/03 1.25 Y.Kanami ADD START *****************************-- 
     lv_index_key            VARCHAR2(15);                                       -- 顧客情報検索時のKEY
 --****************************** 2011/02/03 1.25 Y.Kanami ADD END *******************************--
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+    lv_qck_idx              NUMBER;
+    lv_err_flag_discnt_tax  VARCHAR2(1)  DEFAULT  '0';                         -- エラーフラグ(値引税区分判定)
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 --
     -- *** ローカル・カーソル ***
 --
@@ -2171,6 +2246,9 @@ AS
       lt_visit_class4     := gt_headers_work_data(ck_no).visit_class4;        -- 訪問区分4
       lt_visit_class5     := gt_headers_work_data(ck_no).visit_class5;        -- 訪問区分5
 -- Ver.1.30 ADD End
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+      lt_discnt_tax_class := gt_headers_work_data(ck_no).discount_tax_class;  -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
 --
   /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
       -- 初期化 --
@@ -3534,6 +3612,81 @@ AS
           lv_err_flag := cv_hit;
       END;
 --
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+      --==============================================================
+      --「値引税区分」の妥当性チェック（ヘッダ部）
+      --==============================================================
+      --エラーフラグ初期化
+      lv_err_flag_discnt_tax := cv_default;
+--
+      --有効値チェック
+      FOR lv_qck_idx IN 1..gt_qck_discnt_tax_class.COUNT LOOP
+        IF ( lt_discnt_tax_class = gt_qck_discnt_tax_class(lv_qck_idx) ) 
+        OR ( lt_discnt_tax_class IS NULL )                               THEN
+          lv_err_flag_discnt_tax := cv_default;
+          EXIT;
+        ELSE
+          lv_err_flag_discnt_tax := cv_hit;
+        END IF;
+      END LOOP;
+--
+      IF ( lv_err_flag_discnt_tax = cv_hit ) THEN
+        -- ログ出力
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_tax );
+        lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_use, cv_tkn_colmun, gv_tkn1 );
+        FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+        ov_retcode := cv_status_warn;
+        -- エラー変数への格納
+        gt_err_base_name(ln_err_no)        := lt_base_name;                     -- 拠点名称
+        gt_err_data_name(ln_err_no)        := lt_data_name;                     -- データ名称
+        gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;                 -- 受注NO(HHT)
+        gt_err_line_no(ln_err_no)          := NULL;                             -- 行NO
+        gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;                 -- 受注NO(EBS)
+        gt_err_customer_name(ln_err_no)    := lt_customer_name;                 -- 顧客名
+        gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                      -- 入金/納品日
+        gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);        -- 拠点コード
+        gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);  -- 伝票NO
+        gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);  -- 顧客コード
+        gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5); -- 成績者コード
+        gt_err_item_code(ln_err_no)        := NULL;                             -- 品目コード
+        gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );      -- エラー内容
+        ln_err_no := ln_err_no + 1;
+        -- エラーフラグ更新
+        lv_err_flag := cv_hit;
+--
+      ELSIF ( lv_err_flag_discnt_tax = cv_default ) THEN
+        --売上値引額との整合性チェック
+        IF ( lt_sale_discount = 0 ) 
+        OR ( lt_sale_discount IS NULL ) THEN
+          lv_err_flag_discnt_tax := cv_default;
+        ELSIF ( lt_sale_discount > 0 ) AND ( lt_discnt_tax_class IS NOT NULL ) THEN
+          lv_err_flag_discnt_tax := cv_default;
+        ELSE
+          -- ログ出力
+          lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_err_msg_discnt_tax );
+          FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+          ov_retcode := cv_status_warn;
+          -- エラー変数への格納
+          gt_err_base_name(ln_err_no)        := lt_base_name;                     -- 拠点名称
+          gt_err_data_name(ln_err_no)        := lt_data_name;                     -- データ名称
+          gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;                 -- 受注NO(HHT)
+          gt_err_line_no(ln_err_no)          := NULL;                             -- 行NO
+          gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;                 -- 受注NO(EBS)
+          gt_err_customer_name(ln_err_no)    := lt_customer_name;                 -- 顧客名
+          gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                      -- 入金/納品日
+          gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);        -- 拠点コード
+          gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);  -- 伝票NO
+          gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);  -- 顧客コード
+          gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5); -- 成績者コード
+          gt_err_item_code(ln_err_no)        := NULL;                             -- 品目コード
+          gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );      -- エラー内容
+          ln_err_no := ln_err_no + 1;
+          -- エラーフラグ更新
+          lv_err_flag := cv_hit;
+        END IF;
+      END IF;
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
+--
       -- ループ開始：明細部
       FOR line_no IN ln_line_cnt..in_line_cnt LOOP
 --
@@ -4035,6 +4188,9 @@ AS
         gt_head_system_class(ln_header_ok_no)    := lt_bus_low_type;         -- 業態区分
         gt_head_input_class(ln_header_ok_no)     := lt_input_class;          -- 入力区分
         gt_head_tax_class(ln_header_ok_no)       := lt_tax_class;            -- 消費税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+        gt_head_discount_tax_class(ln_header_ok_no) := lt_discnt_tax_class;  -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
         gt_head_total_amount(ln_header_ok_no)    := lt_total_amount;         -- 合計金額
         gt_head_sale_discount(ln_header_ok_no)   := lt_sale_discount;        -- 売上値引額
         gt_head_sales_tax(ln_header_ok_no)       := lt_sales_tax;            -- 売上消費税額
@@ -4397,6 +4553,9 @@ AS
             system_class,
             input_class,
             consumption_tax_class,
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+            discount_tax_class,
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
             total_amount,
             sale_discount_amount,
             sales_consumption_tax,
@@ -4453,6 +4612,9 @@ AS
             gt_head_system_class(i),                     -- 業態区分
             gt_head_input_class(i),                      -- 入力区分
             gt_head_tax_class(i),                        -- 消費税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD START ********* --
+            gt_head_discount_tax_class(i),               -- 値引税区分
+-- ******* 2019/07/26 ver.1.31 S.Kuwako ADD END   ********* --
             gt_head_total_amount(i),                     -- 合計金額
             gt_head_sale_discount(i),                    -- 売上値引額
             gt_head_sales_tax(i),                        -- 売上消費税額
