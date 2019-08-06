@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.30
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -74,6 +74,8 @@ AS
  *  2013/12/16    1.28  K.Nakamura       [E_本稼動_11236] 明細消費税額（内税伝票課税かつHHTからのデータ）の端数処理の修正
  *  2014/01/27    1.29  K.Nakamura       [E_本稼動_11449] 消費税率取得基準日を納品日・検収日⇒オリジナル納品日・オリジナル検収日に変更
  *  2017/04/19    1.30  N.Watanabe       [E_本稼動_14025] HHTからのシステム日付連携追加
+ *  2019/02/06    1.31  S.Kuwako         [E_本稼動_15472] 軽減税率対応
+ *  2019/07/26    1.32  S.Kuwako         [E_本稼動_15472] 軽減税率対応(HHT追加対応)
  *
  *****************************************************************************************/
 --
@@ -144,6 +146,10 @@ AS
   no_complet_expt          EXCEPTION;
   -- 抽出エラー
   data_extract_err_expt    EXCEPTION;
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+  -- 売上値引品目取得例外
+  discnt_item_expt         EXCEPTION;
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -204,6 +210,9 @@ AS
   cv_msg_tab_xxcos_sal_exp_line CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00087';  -- 販売実績明細
   cv_msg_tab_ins_err          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10351';   -- 登録エラー
   cv_msg_update_err           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00011';   -- 更新エラー
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+  cv_msg_common_err             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10402'; -- 共通関数エラーメッセージ
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END  ************ --
 -- 2010/09/10 Ver.1.24 S.Arizumi Mod Start --
 --  cv_msg_target_no_data       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00083';   -- 入力対象データなしメッセージ
   cv_msg_target_no_data       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00003';   -- 入力対象データなしメッセージ
@@ -226,6 +235,10 @@ AS
   cv_msg_order_num_hht    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00191';
   cv_msg_digestion_number CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00192';
 -- ************ 2009/09/03 1.18 N.Maeda MOD  END  ************ --
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+  cv_msg_line_num             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11955';        -- 行番号
+  cv_msg_rec_date             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13558';        -- 基準日
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END  ************ --
 -- 2010/09/10 Ver.1.24 S.Arizumi Add Start --
   cv_msg_xxcos_10401          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10401';    -- パラメータ出力メッセージ
   cv_msg_xxcos_00216          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00216';    -- キー項目（受注番号、基準日、伝票番号、顧客コード）
@@ -243,6 +256,13 @@ AS
   cv_xxcos_001_a05_01         CONSTANT VARCHAR2(50)  := 'XXCOS_001_A05_01';
   cv_xxcos_001_a05_05         CONSTANT VARCHAR2(50)  := 'XXCOS_001_A05_05';
   cv_xxcos_001_a05_09         CONSTANT VARCHAR2(50)  := 'XXCOS_001_A05_09';
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+  ct_tax_code_history_type    CONSTANT VARCHAR2(50)  := 'XXCFO1_TAX_CODE_HISTORIES';   -- 消費税履歴（軽減税率対応用）
+  cv_xxcfo1_tax_code          CONSTANT VARCHAR2(50)  := 'XXCFO1_TAX_CODE';             -- 消費税コード（軽減税率対応用）
+  cv_msg_discnt_item          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00090';            -- 売上値引品目コード
+  cv_msg_discnt_tax           CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00222';            -- 値引税区分
+  cv_msg_discnt_item_err      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10262';            -- 売上値引品目取得エラー
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --******************************* 2009/05/15 N.Maeda Var1.14 ADD START ***************************************
 -- 2010/09/10 Ver.1.24 S.Arizumi Mod Start --
 --  ct_msg_fiscal_period_err    CONSTANT fnd_new_messages.message_name%TYPE
@@ -307,6 +327,9 @@ AS
   cn_cancel_class             CONSTANT NUMBER  := 2;                          -- 取消・訂正区分(取消)
   cv_black_flag               CONSTANT NUMBER  := 1;                          -- 赤・黒フラグ(黒) 
   cv_red_flag                 CONSTANT NUMBER  := 0;                          -- 赤・黒フラグ(赤)
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+  cn_line_no_1                CONSTANT NUMBER  := 1;                          -- 納品明細番号（最小値）
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
 --
 -- 2010/09/10 Ver.1.24 S.Arizumi Add Start --
   -- 汎用エラーリスト出力フラグ
@@ -333,6 +356,9 @@ AS
   cv_tkn_table_name           CONSTANT VARCHAR2(20) := 'TABLE_NAME';          -- トークン'TABLE_NAME'
   cv_tkn_table_na             CONSTANT VARCHAR2(20) := 'TABLE _NAME';         -- トークン'TABLE _NAME'
   cv_key_data                 CONSTANT VARCHAR2(20) := 'KEY_DATA';            -- トークン'KEY_DATA'
+-- ****************** 2019/02/06 1.31 S.Kuwako ADD START **************
+  cv_err_msg                  CONSTANT VARCHAR2(20) := 'ERR_MSG';             -- トークン'ERR_MSG'
+-- ****************** 2019/02/06 1.31 S.Kuwako ADD END   **************
 --******************************* 2009/06/29 T.Kitajima 1.16 ADD START ***************************************
   cv_invoice_no               CONSTANT VARCHAR2(20)  := 'INVOICE_NO';           -- HHT伝票番号
 --******************************* 2009/06/29 T.Kitajima 1.16 ADD  END  ***************************************
@@ -340,6 +366,11 @@ AS
   cv_cust_code     CONSTANT VARCHAR2(20)  := 'CUST_CODE';
   cv_dlv_date      CONSTANT VARCHAR2(20)  := 'DLV_DATE';
 -- ************* 2009/08/21 1.17 N.Maeda ADD  END  *************--
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+  cv_tkn_type                 CONSTANT VARCHAR2(20) := 'TYPE';
+  cv_tkn_colmun               CONSTANT VARCHAR2(20) := 'COLMUN';
+  cv_discnt_tax_class         CONSTANT VARCHAR2(4)  := '01';                  -- 値引税区分（01：食品／軽減税率（8％）)
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
 -- ************** 2009/08/12 N.Maeda  1.17 ADD START ******************** --
   ct_user_lang                CONSTANT fnd_lookup_values.language%TYPE := USERENV( 'LANG' );
 -- ************** 2009/08/12 N.Maeda  1.17 ADD  END  ******************** --
@@ -440,6 +471,10 @@ AS
      sale_amount             xxcos_sales_exp_lines.sale_amount%TYPE,              -- 売上金額
      pure_amount             xxcos_sales_exp_lines.pure_amount%TYPE,              -- 本体金額
      tax_amount              xxcos_sales_exp_lines.tax_amount%TYPE,               -- 消費税金額
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+     tax_code                xxcos_sales_exp_lines.tax_code%TYPE,                 -- 税金コード
+     tax_rate                xxcos_sales_exp_lines.tax_rate%TYPE,                 -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
      cash_and_card           xxcos_sales_exp_lines.cash_and_card%TYPE,            -- 現金・カード併用額
      ship_from_subinventory_code  xxcos_sales_exp_lines.ship_from_subinventory_code%TYPE,      -- 出荷元保管場所
      delivery_base_code      xxcos_sales_exp_lines.delivery_base_code%TYPE,       -- 納品拠点コード
@@ -456,6 +491,23 @@ AS
      );
   TYPE g_tab_accumulation_data IS TABLE OF g_rec_accumulation_data INDEX BY PLS_INTEGER;
 --******************************* 2009/04/23 N.Maeda Var1.12 ADD END ***************************************
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+  -- 税率単位の消費税金額
+  TYPE tax_amount_sum_rtype IS RECORD(
+     tax_rate                     xxcos_sales_exp_headers.tax_rate%TYPE        -- 税率
+    ,max_tax_amount               xxcos_sales_exp_lines.sale_amount%TYPE       -- 最大消費税金額
+    ,max_tax_amount_idx           NUMBER                                       -- 最大消費税金額のインデックス
+    ,sale_amount                  xxcos_sales_exp_headers.pure_amount_sum%TYPE -- 明細本体金額積上げ
+    ,tax_amount                   xxcos_sales_exp_headers.tax_amount_sum%TYPE  -- 明細消費税金額積上げ(端数処理後)
+    ,tax_amount_sum               NUMBER                                       -- 消費税金額合計
+    ,diff_amount                  NUMBER                                       -- 差額
+  );
+  -- 売上値引品目コード
+  TYPE sale_discount_item_rtype   IS RECORD(
+     discount_tax_class           xxcos_dlv_headers.discount_tax_class%TYPE    -- 値引税区分
+    ,discnt_item_code             VARCHAR2(50)                                 -- 売上値引品目コード
+  );
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -578,6 +630,12 @@ AS
     INDEX BY PLS_INTEGER;   -- 本体金額
   TYPE g_tab_line_tax_amount        IS TABLE OF xxcos_sales_exp_lines.tax_amount%TYPE
     INDEX BY PLS_INTEGER;   -- 消費税金額
+--******************************* 2019/02/06 1.31 S.Kuwako ADD START ***************************************
+  TYPE g_tab_line_tax_code          IS TABLE OF xxcos_sales_exp_lines.tax_code%TYPE
+    INDEX BY PLS_INTEGER;   -- 税金コード
+  TYPE g_tab_line_tax_rate          IS TABLE OF xxcos_sales_exp_lines.tax_rate%TYPE
+    INDEX BY PLS_INTEGER;   -- 消費税率
+--******************************* 2019/02/06 1.31 S.Kuwako ADD END   ***************************************
   TYPE g_tab_line_cash_and_card     IS TABLE OF xxcos_sales_exp_lines.cash_and_card%TYPE
     INDEX BY PLS_INTEGER;   -- 現金・カード併用額
   TYPE g_tab_line_ship_from_subinv_co IS TABLE OF xxcos_sales_exp_lines.ship_from_subinventory_code%TYPE
@@ -611,6 +669,12 @@ AS
   -- 汎用エラーリスト出力用
   TYPE g_gen_err_list_ttype IS TABLE OF xxcos_gen_err_list%ROWTYPE INDEX BY BINARY_INTEGER;
 -- 2010/09/10 Ver.1.24 S.Arizumi Add End   --
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+  TYPE g_tax_amount_sum_ttype IS TABLE OF tax_amount_sum_rtype
+    INDEX BY PLS_INTEGER;
+  TYPE sale_discount_item_ttype IS TABLE OF sale_discount_item_rtype
+    INDEX BY PLS_INTEGER;
+--************** 2019/07/26 S.Kuwako Var1.32 MOD END   **************
 --
   -- 抽出データ格納変数
   gt_dlv_headers_data         g_tab_dlv_head_data;            -- 納品ヘッダテーブル抽出データ
@@ -681,6 +745,10 @@ AS
   gt_line_sale_amount             g_tab_line_sale_amount;            -- 売上金額
   gt_line_pure_amount             g_tab_line_pure_amount;            -- 本体金額
   gt_line_tax_amount              g_tab_line_tax_amount;             -- 消費税金額
+--******************************* 2019/02/06 1.31 S.Kuwako ADD START ***************************************
+  gt_line_tax_code                g_tab_line_tax_code;               -- 税金コード
+  gt_line_tax_rate                g_tab_line_tax_rate;               -- 消費税率
+--******************************* 2019/02/06 1.31 S.Kuwako ADD END   ***************************************
   gt_line_cash_and_card           g_tab_line_cash_and_card;          -- 現金・カード併用額
   gt_line_ship_from_subinv_co     g_tab_line_ship_from_subinv_co;    -- 出荷元保管場所
   gt_line_delivery_base_code      g_tab_line_delivery_base_code;     -- 納品拠点コード
@@ -707,6 +775,10 @@ AS
   gt_head_open_dlv_date           g_tab_head_dlv_date;             -- 納品日
   gt_head_open_inspect_date       g_tab_head_inspect_date;         -- 検収日(売上計上日)
 --******************************* 2009/05/18 N.Maeda Var1.15 ADD END   ***************************************
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START***************************************
+  g_tax_amount_sum_type_tab       g_tax_amount_sum_ttype;             -- 消費税金額（税率毎）
+  g_sales_discount_item_tab       sale_discount_item_ttype;           -- 売上値引品目コード
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END  ***************************************
 --
 --******************************* 2009/04/23 N.Maeda Var1.12 ADD START ***************************************
   gn_wae_data_num     NUMBER := 0;                        -- 警告データ格納用
@@ -732,7 +804,25 @@ AS
 --******************************* 2009/05/18 N.Maeda Var1.14 ADD START ***************************************
   gn_wae_data_count   NUMBER := 0;                       -- 警告件数カウント
 --******************************* 2009/05/18 N.Maeda Var1.14 ADD END   ***************************************
---******************************* 2009/05/18 N.Maeda Var1.14 ADD START ***************************************
+--
+--******************************* 2019/02/06 1.31 S.Kuwako ADD START ***************************************
+  gv_tax_code_header              VARCHAR2(50);                      -- 税コード（ヘッダ設定用）
+  gv_tax_rate_header              NUMBER;                            -- 消費税率（ヘッダ設定用）
+  gv_gen_common_err               VARCHAR2(5000);                    -- 共通関数用エラーメッセージ格納変数
+  gv_class_for_variable_tax       VARCHAR2(4);                       -- 軽減税率用税種別
+  gv_tax_name                     VARCHAR2(80);                      -- 税率キー名称
+  gv_tax_description              VARCHAR2(240);                     -- 摘要
+  gv_tax_histories_code           VARCHAR2(80);                      -- 消費税履歴コード
+  gv_tax_histories_description    VARCHAR2(240);                     -- 消費税履歴名称
+  gd_tax_start_date               DATE;                              -- 税率キー_開始日
+  gd_tax_end_date                 DATE;                              -- 税率キー_終了日
+  gd_tax_start_date_histories     DATE;                              -- 消費税履歴_開始日
+  gd_tax_end_date_histories       DATE;                              -- 消費税履歴_終了日
+  gv_tax_class_suppliers_outside  VARCHAR2(150);                     -- 税区分_仕入外税
+  gv_tax_class_suppliers_inside   VARCHAR2(150);                     -- 税区分_仕入内税
+  gv_tax_class_sales_outside      VARCHAR2(150);                     -- 税区分_売上外税
+  gv_tax_class_sales_inside       VARCHAR2(150);                     -- 税区分_売上内税
+--******************************* 2019/02/06 1.31 S.Kuwako ADD END   ***************************************
 --
 --******************************* 2009/06/01 N.Maeda Var1.15 ADD START ***************************************
   gn_disc_count       NUMBER := 0;                       -- 値引明細件数カウント
@@ -1449,6 +1539,10 @@ AS
                         sale_amount,                        -- 17.売上金額
                         pure_amount,                        -- 18.本体金額
                         tax_amount,                         -- 19.消費税金額
+--******************************* 2019/02/06 S.Kuwako Var1.31 ADD START ***************************************
+                        tax_code,                           -- 40.税金コード
+                        tax_rate,                           -- 41.消費税率
+--******************************* 2019/02/06 S.Kuwako Var1.31 ADD END *****************************************
                         cash_and_card,                      -- 20.現金・カード併用額
                         ship_from_subinventory_code,        -- 21.出荷元保管場所
                         delivery_base_code,                 -- 22.納品拠点コード
@@ -1489,6 +1583,10 @@ AS
                         gt_line_sale_amount( i ),           -- 17.売上金額
                         gt_line_pure_amount( i ),           -- 18.本体金額
                         gt_line_tax_amount( i ),            -- 19.消費税金額
+--******************************* 2019/02/06 S.Kuwako Var1.31 ADD START ***************************************
+                        gt_line_tax_code( i ),              -- 40.税金コード
+                        gt_line_tax_rate( i ),              -- 41.消費税率
+--******************************* 2019/02/06 S.Kuwako Var1.31 ADD END *****************************************
                         gt_line_cash_and_card( i ),         -- 20.現金・カード併用額
                         gt_line_ship_from_subinv_co( i ),   -- 21.出荷元保管場所
                         gt_line_delivery_base_code( i ),    -- 22.納品拠点コード
@@ -1598,6 +1696,9 @@ AS
     lt_system_class              xxcos_dlv_headers.system_class%TYPE;        -- 業態区分
     lt_input_class               xxcos_dlv_headers.input_class%TYPE;         -- 入力区分
     lt_consumption_tax_class     xxcos_dlv_headers.consumption_tax_class%TYPE; -- 消費税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START ***************************************
+    lt_discnt_tax_class          xxcos_dlv_headers.discount_tax_class%TYPE;  -- 値引税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   ***************************************
     lt_total_amount              xxcos_dlv_headers.total_amount%TYPE;        -- 合計金額
     lt_sale_discount_amount      xxcos_dlv_headers.sale_discount_amount%TYPE;-- 売上値引額
     lt_sales_consumption_tax     xxcos_dlv_headers.sales_consumption_tax%TYPE; -- 売上消費税額
@@ -1719,6 +1820,11 @@ AS
 -- ************* 2013/10/24 1.27 K.Nakamura ADD START *************--
   ld_tax_date                     DATE; -- 消費税取得基準日
 -- ************* 2013/10/24 1.27 K.Nakamura ADD  END  *************--
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+    a                               NUMBER;
+    ln_max_index                    NUMBER;
+    ln_line_count                   NUMBER;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
 --
     -- *** ローカル・カーソル ***
@@ -1754,6 +1860,9 @@ AS
                dhs.system_class,              -- 業態区分
                dhs.input_class,               -- 入力区分
                dhs.consumption_tax_class,     -- 消費税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START ***************************************
+               dhs.discount_tax_class,        -- 値引税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   ***************************************
                dhs.total_amount,              -- 合計金額
                dhs.sale_discount_amount,      -- 売上値引額
                dhs.sales_consumption_tax,     -- 売上消費税額
@@ -1818,6 +1927,54 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+    a                 := 0;
+    ln_max_index      := 1;
+--
+    -- 税率(全種)取得
+    BEGIN
+      SELECT xxtax.tax_rate AS tax_rate
+            ,0              AS max_pure_amount
+            ,0              AS max_pure_amount_idx
+            ,0              AS pure_amount
+            ,0              AS tax_amount
+            ,0              AS tax_amount_sum
+            ,0              AS diff_amount
+      BULK COLLECT INTO
+             g_tax_amount_sum_type_tab
+      FROM   (
+               SELECT  tax.rate   AS tax_rate
+               FROM   ( SELECT    TO_NUMBER(flv.attribute1) AS rate
+                        FROM      fnd_lookup_values flv
+                        WHERE     lookup_type  = ct_tax_code_history_type
+                        AND       language     = ct_user_lang
+                        AND       enabled_flag = cv_tkn_yes
+--
+                        UNION
+--
+                        SELECT    xtv.tax_rate  AS rate
+                        FROM      xxcos_tax_v  xtv
+                        WHERE     xtv.set_of_books_id = TO_NUMBER( gv_bks_id )
+                      ) tax
+                GROUP BY  tax.rate
+             ) xxtax
+      ORDER BY xxtax.tax_rate DESC
+      ;
+--
+      IF ( g_tax_amount_sum_type_tab.COUNT = 0 ) THEN
+        RAISE NO_DATA_FOUND;
+      ELSE
+         ln_max_index := g_tax_amount_sum_type_tab.COUNT;
+      END IF;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE global_api_others_expt;
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+--
 -- ループ開始：ヘッダ部
     <<header_loop>>
     FOR ck_no IN 1..gn_inp_target_cnt LOOP
@@ -1848,6 +2005,21 @@ AS
       -- 明細本体金額合計
       ln_line_pure_amount_sum         := 0;
 --******************************* 2009/05/15 N.Maeda Var1.14 ADD END *****************************************
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+      -- 売上値引品目コードの初期化
+      gv_disc_item := NULL;
+      -- 消費税金額合計(ヘッダ)の初期化
+      lt_tax_amount_sum := 0;
+      -- 消費税金額（税率毎）の初期化
+      FOR a IN 1..ln_max_index LOOP
+        g_tax_amount_sum_type_tab(a).max_tax_amount     := 0;
+        g_tax_amount_sum_type_tab(a).max_tax_amount_idx := 0;
+        g_tax_amount_sum_type_tab(a).sale_amount        := 0;
+        g_tax_amount_sum_type_tab(a).tax_amount         := 0;
+        g_tax_amount_sum_type_tab(a).tax_amount_sum     := 0;
+        g_tax_amount_sum_type_tab(a).diff_amount        := 0;
+      END LOOP;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
 --****************************** 2009/06/29 1.16 T.Kitajima ADD START ******************************--
       -- 受注No.（HHT）(ロックエラー時の出力の為)
@@ -1882,6 +2054,9 @@ AS
         lt_system_class             := l_get_headers_cur.system_class;              -- 業態区分
         lt_input_class              := l_get_headers_cur.input_class;               -- 入力区分
         lt_consumption_tax_class    := l_get_headers_cur.consumption_tax_class;     -- 消費税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START ***************************************
+        lt_discnt_tax_class         := NVL( l_get_headers_cur.discount_tax_class,cv_discnt_tax_class );  -- 値引税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   ***************************************
         lt_total_amount             := l_get_headers_cur.total_amount;              -- 合計金額
         lt_sale_discount_amount     := l_get_headers_cur.sale_discount_amount;      -- 売上値引額
         lt_sales_consumption_tax    := l_get_headers_cur.sales_consumption_tax;     -- 売上消費税額
@@ -2180,41 +2355,42 @@ AS
 --        END;
 -- ********** 2009/09/04 1.19 N.Maeda DEL  END  ************** --
 --
-        --====================
-        --消費税マスタ情報取得
-        --====================
--- ************* 2013/10/24 1.27 K.Nakamura ADD START *************--
-        -- 内税（伝票課税）の場合
-        IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
-          -- 納品日
--- ************* 2014/01/27 1.29 K.Nakamura MOD START *************--
---          ld_tax_date := lt_open_dlv_date;
-          ld_tax_date := lt_dlv_date;
--- ************* 2014/01/27 1.29 K.Nakamura MOD END   *************--
-        ELSE
-          -- 検収日
--- ************* 2014/01/27 1.29 K.Nakamura MOD START *************--
---          ld_tax_date := lt_open_inspect_date;
-          ld_tax_date := lt_inspect_date;
--- ************* 2014/01/27 1.29 K.Nakamura MOD END   *************--
-        END IF;
--- ************* 2013/10/24 1.27 K.Nakamura ADD  END  *************--
-        BEGIN
--- ********** 2009/09/04 1.19 N.Maeda MOD START ************** --
-          SELECT  xtv.tax_rate             -- 消費税率
-                 ,xtv.tax_class            -- 販売実績連携消費税区分
-                 ,xtv.tax_code             -- 税金コード
-          INTO    lt_tax_consum
-                 ,lt_consum_type
-                 ,lt_consum_code
-          FROM   xxcos_tax_v   xtv         -- 消費税view
-          WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
-          AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
--- ************* 2013/10/24 1.27 K.Nakamura MOD START *************--
---          AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
---          AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
-          AND    NVL( xtv.start_date_active, ld_tax_date ) <= ld_tax_date
-          AND    NVL( xtv.end_date_active, gd_max_date )   >= ld_tax_date;
+-- ********** 2019/02/06 1.31 S.Kuwako DEL START  ************** --
+--        --====================
+--        --消費税マスタ情報取得
+--        --====================
+---- ************* 2013/10/24 1.27 K.Nakamura ADD START *************--
+--        -- 内税（伝票課税）の場合
+--        IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+--          -- 納品日
+---- ************* 2014/01/27 1.29 K.Nakamura MOD START *************--
+----          ld_tax_date := lt_open_dlv_date;
+--          ld_tax_date := lt_dlv_date;
+---- ************* 2014/01/27 1.29 K.Nakamura MOD END   *************--
+--        ELSE
+--          -- 検収日
+---- ************* 2014/01/27 1.29 K.Nakamura MOD START *************--
+----          ld_tax_date := lt_open_inspect_date;
+--          ld_tax_date := lt_inspect_date;
+---- ************* 2014/01/27 1.29 K.Nakamura MOD END   *************--
+--        END IF;
+---- ************* 2013/10/24 1.27 K.Nakamura ADD  END  *************--
+--        BEGIN
+---- ********** 2009/09/04 1.19 N.Maeda MOD START ************** --
+--          SELECT  xtv.tax_rate             -- 消費税率
+--                 ,xtv.tax_class            -- 販売実績連携消費税区分
+--                 ,xtv.tax_code             -- 税金コード
+--          INTO    lt_tax_consum
+--                 ,lt_consum_type
+--                 ,lt_consum_code
+--          FROM   xxcos_tax_v   xtv         -- 消費税view
+--          WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
+--          AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+---- ************* 2013/10/24 1.27 K.Nakamura MOD START *************--
+----          AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
+----          AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
+--          AND    NVL( xtv.start_date_active, ld_tax_date ) <= ld_tax_date
+--          AND    NVL( xtv.end_date_active, gd_max_date )   >= ld_tax_date;
 -- ************* 2013/10/24 1.27 K.Nakamura MOD  END  *************--
 --          SELECT avtab.tax_rate           -- 消費税率
 --          INTO   lt_tax_consum 
@@ -2225,38 +2401,40 @@ AS
 --          AND    NVL( avtab.end_date, gd_max_date ) >= gd_process_date
 --          AND    avtab.enabled_flag = cv_tkn_yes;
 -- ********** 2009/09/04 1.19 N.Maeda MOD  END  ************** --
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            -- ログ出力
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
-            --キー編集処理
-            lv_state_flg    := cv_status_warn;
-            gn_wae_data_num := gn_wae_data_num + 1 ;
-            xxcos_common_pkg.makeup_key_info(
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+--            -- ログ出力
+--            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+--            --キー編集処理
+--            lv_state_flg    := cv_status_warn;
+--            gn_wae_data_num := gn_wae_data_num + 1 ;
+--            xxcos_common_pkg.makeup_key_info(
 -- ****************** 2009/09/04 1.19 N.Maeda MOD START ************** --
 --              iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax ), -- 項目名称１
 --              iv_data_value1 => lt_consum_code,         -- データの値１
-                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht ), -- 項目名称１
-                iv_data_value1 => lt_order_no_hht,
-                iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number ), -- 項目名称
-                iv_data_value2 => lt_digestion_ln_number,
-                iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称
-                iv_data_value3 => lt_consumption_tax_class,
+--                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht ), -- 項目名称１
+--                iv_data_value1 => lt_order_no_hht,
+--                iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number ), -- 項目名称
+--                iv_data_value2 => lt_digestion_ln_number,
+--                iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称
+--                iv_data_value3 => lt_consumption_tax_class,
 -- ****************** 2009/09/04 1.19 N.Maeda MOD  END  ************** --
-              ov_key_info    => gv_tkn2,              -- キー情報
-              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
-              ov_retcode     => lv_retcode,           -- リターン・コード
-              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
-            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                                  iv_application   => cv_application,    --アプリケーション短縮名
-                                                  iv_name          => cv_msg_no_data,    --メッセージコード
-                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
-                                                  iv_token_value1  => gv_tkn1,           --トークン値1
-                                                  iv_token_name2   => cv_key_data,       --トークンコード2
-                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
-        END;
-        -- 消費税率算出
-        ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+--              ov_key_info    => gv_tkn2,              -- キー情報
+--              ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+--              ov_retcode     => lv_retcode,           -- リターン・コード
+--              ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+--            gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                                  iv_application   => cv_application,    --アプリケーション短縮名
+--                                                  iv_name          => cv_msg_no_data,    --メッセージコード
+--                                                  iv_token_name1   => cv_tkn_table_name, --トークンコード1
+--                                                  iv_token_value1  => gv_tkn1,           --トークン値1
+--                                                  iv_token_name2   => cv_key_data,       --トークンコード2
+--                                                  iv_token_value2  => gv_tkn2 );         --トークン値2
+--        END;
+--        -- 消費税率算出
+--        ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+--
+-- ********** 2019/02/06 1.31 S.Kuwako DEL END  ************** --
 --
         -- =========================
         -- HHT納品入力日時の成型処理
@@ -2803,6 +2981,230 @@ AS
 --
           IF ( lv_state_flg <> cv_status_warn ) THEN
             ln_line_data_count := ln_line_data_count + 1;
+--
+-- ********** 2019/02/06 1.31 S.Kuwako DEL START  ************** --
+            -- ====================
+            -- 消費税情報取得
+            -- ====================
+            -- 非課税の場合
+            IF ( lt_consumption_tax_class = cv_non_tax ) THEN
+              -- 検収日 取得
+              ld_tax_date := lt_inspect_date;
+              
+              BEGIN
+                SELECT  xtv.tax_rate             -- 消費税率
+                       ,xtv.tax_class            -- 販売実績連携消費税区分
+                       ,xtv.tax_code             -- 税金コード
+                INTO    lt_tax_consum
+                       ,lt_consum_type
+                       ,lt_consum_code
+                FROM    xxcos_tax_v   xtv         -- 消費税view
+                WHERE   xtv.hht_tax_class    = lt_consumption_tax_class
+                AND     xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+                AND     NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+                AND     NVL( xtv.end_date_active, gd_max_date )    >= ld_tax_date
+                ;
+                
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                   
+                   lv_state_flg     := cv_status_warn;
+                   gn_wae_data_num  := gn_wae_data_num + 1;
+                   gn_warn_cnt      := gn_warn_cnt + 1;
+                   
+                   -- トークン（テーブル名）取得
+                   gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+                   
+                   -- キー編集処理
+                   xxcos_common_pkg.makeup_key_info(
+                     iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                    ,iv_data_value1 => lt_order_no_hht
+                    ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                    ,iv_data_value2 => lt_state_line_no_hht
+                    ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                    ,iv_data_value3 => lt_consumption_tax_class
+                    ,ov_key_info    => gv_tkn2            -- キー情報
+                    ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                    ,ov_retcode     => lv_retcode         -- リターンコード
+                    ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                    );
+                   
+                   gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                         iv_application   => cv_application    --アプリケーション短縮名
+                                                        ,iv_name          => cv_msg_no_data    --メッセージコード
+                                                        ,iv_token_name1   => cv_tkn_table_name --トークンコード1
+                                                        ,iv_token_value1  => gv_tkn1           --トークン値1
+                                                        ,iv_token_name2   => cv_key_data       --トークンコード2
+                                                        ,iv_token_value2  => gv_tkn2           --トークン値2
+                                                        );
+              END;
+              
+            ELSE
+              IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+                -- 納品日 取得
+                ld_tax_date := lt_dlv_date;
+              ELSIF ( lt_consumption_tax_class <> cv_ins_slip_tax ) THEN
+                -- 検収日 取得
+                ld_tax_date := lt_inspect_date;
+              END IF;
+              
+              BEGIN
+                -- 販売実績連携消費税区分
+                SELECT  xtv.tax_class            -- 販売実績連携消費税区分
+                INTO    lt_consum_type
+                FROM    xxcos_tax_v   xtv         -- 消費税view
+                WHERE   xtv.hht_tax_class    = lt_consumption_tax_class
+                AND     xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+                AND     NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+                AND     NVL( xtv.end_date_active, gd_max_date )    >= ld_tax_date
+                ;
+                
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                   
+                   lv_state_flg     := cv_status_warn;
+                   gn_wae_data_num  := gn_wae_data_num + 1;
+                   gn_warn_cnt      := gn_warn_cnt + 1;
+                   
+                   -- トークン（テーブル名）取得
+                   gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+                   
+                   -- キー編集処理
+                   xxcos_common_pkg.makeup_key_info(
+                     iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                    ,iv_data_value1 => lt_order_no_hht
+                    ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                    ,iv_data_value2 => lt_state_line_no_hht
+                    ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                    ,iv_data_value3 => lt_consumption_tax_class
+                    ,ov_key_info    => gv_tkn2            -- キー情報
+                    ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                    ,ov_retcode     => lv_retcode         -- リターンコード
+                    ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                    );
+                   
+                   gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                          iv_application   => cv_application    --アプリケーション短縮名
+                                                         ,iv_name          => cv_msg_no_data    --メッセージコード
+                                                         ,iv_token_name1   => cv_tkn_table_name --トークンコード1
+                                                         ,iv_token_value1  => gv_tkn1           --トークン値1
+                                                         ,iv_token_name2   => cv_key_data       --トークンコード2
+                                                         ,iv_token_value2  => gv_tkn2           --トークン値2
+                                                         );
+                   
+              END;
+              
+              -- 品目別消費税率取得関数コール
+              xxcos_common_pkg.get_tax_rate_info(
+                iv_item_code                    => lt_state_item_code_self           -- 品目コード
+               ,id_base_date                    => ld_tax_date                     -- 基準日（オリジナル検収日、またはオリジナル納品日）
+               ,ov_class_for_variable_tax       => gv_class_for_variable_tax       -- 軽減税率用税種別
+               ,ov_tax_name                     => gv_tax_name                     -- 税率キー名称
+               ,ov_tax_description              => gv_tax_description              -- 摘要
+               ,ov_tax_histories_code           => gv_tax_histories_code           -- 消費税履歴コード
+               ,ov_tax_histories_description    => gv_tax_histories_description    -- 消費税履歴名称
+               ,od_start_date                   => gd_tax_start_date               -- 税率キー_開始日
+               ,od_end_date                     => gd_tax_end_date                 -- 税率キー_終了日
+               ,od_start_date_histories         => gd_tax_start_date_histories     -- 消費税履歴_開始日
+               ,od_end_date_histories           => gd_tax_end_date_histories       -- 消費税履歴_終了日
+               ,on_tax_rate                     => lt_tax_consum                   -- 税率
+               ,ov_tax_class_suppliers_outside  => gv_tax_class_suppliers_outside  -- 税区分_仕入外税
+               ,ov_tax_class_suppliers_inside   => gv_tax_class_suppliers_inside   -- 税区分_仕入内税
+               ,ov_tax_class_sales_outside      => gv_tax_class_sales_outside      -- 税区分_売上外税
+               ,ov_tax_class_sales_inside       => gv_tax_class_sales_inside       -- 税区分_売上内税
+               ,ov_errbuf                       => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+               ,ov_retcode                      => lv_retcode                      -- リターン・コード               #固定#
+               ,ov_errmsg                       => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+              );
+              
+              
+              -- 税コードのセット
+              CASE lt_consumption_tax_class WHEN cv_ins_slip_tax THEN              -- 内税（伝票課税）の場合
+                                              lt_consum_code := gv_tax_class_sales_inside;
+                                            WHEN cv_ins_bid_tax  THEN              -- 内税（単価込み）の場合
+                                              lt_consum_code := gv_tax_class_sales_inside;
+                                            WHEN cv_out_tax      THEN              -- 外税の場合
+                                              lt_consum_code := gv_tax_class_sales_outside;
+                                            ELSE
+                                              NULL;
+              END CASE;
+              
+              -- 品目別消費税率取得関数(警告の場合)
+              IF ( lv_retcode = cv_status_warn ) THEN
+                
+                lv_state_flg      := cv_status_warn;
+                gn_wae_data_num   := gn_wae_data_num + 1;
+                gn_warn_cnt       := gn_warn_cnt + 1;
+                gv_gen_common_err := lv_errmsg;
+                
+                -- キー編集処理
+                xxcos_common_pkg.makeup_key_info(
+                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                 ,iv_data_value1 => lt_order_no_hht
+                 ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                 ,iv_data_value2 => lt_state_line_no_hht
+                 ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                 ,iv_data_value3 => lt_consumption_tax_class
+                 ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称４
+                 ,iv_data_value4 => ld_tax_date
+                 ,iv_item_name5  => xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code )        -- 項目名称５
+                 ,iv_data_value5 => lt_state_item_code_self
+                 ,ov_key_info    => gv_tkn1            -- キー情報
+                 ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                 ,ov_retcode     => lv_retcode         -- リターンコード
+                 ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                );
+                
+                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                      iv_application   => cv_application      --アプリケーション短縮名
+                                                     ,iv_name          => cv_msg_common_err   --メッセージコード
+                                                     ,iv_token_name1   => cv_err_msg          --トークンコード1
+                                                     ,iv_token_value1  => gv_gen_common_err   --トークン値1
+                                                     ,iv_token_name2   => cv_key_data         --トークンコード2
+                                                     ,iv_token_value2  => gv_tkn1             --トークン値2
+                                                    );
+                
+              -- 品目別消費税率取得関数(エラーの場合)
+              ELSIF (lv_retcode = cv_status_error ) THEN
+                gv_gen_common_err := lv_errmsg;
+                
+                -- キー編集処理
+                xxcos_common_pkg.makeup_key_info(
+                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                 ,iv_data_value1 => lt_order_no_hht
+                 ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                 ,iv_data_value2 => lt_state_line_no_hht
+                 ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                 ,iv_data_value3 => lt_consumption_tax_class
+                 ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称４
+                 ,iv_data_value4 => ld_tax_date
+                 ,iv_item_name5  => xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code )        -- 項目名称５
+                 ,iv_data_value5 => lt_state_item_code_self
+                 ,ov_key_info    => gv_tkn1            -- キー情報
+                 ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                 ,ov_retcode     => lv_retcode         -- リターンコード
+                 ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                );
+                
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                               iv_application   => cv_application      --アプリケーション短縮名
+                              ,iv_name          => cv_msg_common_err   --メッセージコード
+                              ,iv_token_name1   => cv_err_msg          --トークンコード1
+                              ,iv_token_value1  => gv_gen_common_err   --トークン値1
+                              ,iv_token_name2   => cv_key_data         --トークンコード2
+                              ,iv_token_value2  => gv_tkn1             --トークン値2
+                             );
+                
+                RAISE global_api_expt;
+                
+              END IF;
+              
+            END IF;
+              -- 消費税率算出
+              ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+              
+-- ********** 2019/02/06 1.31 S.Kuwako DEL END    ************** --
+--
             -- ==============
             -- 明細金額算出
             -- ==============
@@ -2897,7 +3299,7 @@ AS
 --
             END IF; 
 --
-            --対照データが非課税でないときのとき
+            --対象データが非課税でないとき
             IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
               --消費税合計積上げ
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
@@ -2906,6 +3308,26 @@ AS
                 ln_max_tax_data := lt_tax_amount;
                 ln_max_no_data  := ln_line_data_count;
               END IF;
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+              -- 税率単位の各種金額積上げ
+              FOR a IN 1..ln_max_index LOOP
+                IF ( g_tax_amount_sum_type_tab(a).tax_rate = lt_tax_consum ) THEN
+                  -- 売上金額積上げ
+                  g_tax_amount_sum_type_tab(a).sale_amount := g_tax_amount_sum_type_tab(a).sale_amount + lt_sale_amount;
+                  -- 消費税金額積上げ
+                  g_tax_amount_sum_type_tab(a).tax_amount  := g_tax_amount_sum_type_tab(a).tax_amount + lt_tax_amount;
+--
+                  -- 処理中の消費税金額が税率ごとの最大消費税金額より多い場合
+                  IF ( ABS(g_tax_amount_sum_type_tab(a).max_tax_amount) < ABS(lt_tax_amount) ) THEN
+                    -- 最大金額を保持
+                    g_tax_amount_sum_type_tab(a).max_tax_amount     := lt_tax_amount;
+                    -- 最大消費税金額のレコードの添え字を保持
+                    g_tax_amount_sum_type_tab(a).max_tax_amount_idx := ln_line_data_count;
+                  END IF;
+                  EXIT;
+                END IF;
+              END LOOP;
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
             END IF;
             -- 明細本体金額合計
             ln_line_pure_amount_sum    := ln_line_pure_amount_sum + lt_pure_amount;
@@ -2931,6 +3353,15 @@ AS
               -- 消費税金額
               lt_set_tax_amount_data := ( lt_tax_amount * ( -1 ) );
             END IF;
+--
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+            -- ヘッダ設定用税コード、消費税率の保持
+            IF ( lt_state_line_no_hht = cn_line_no_1 ) THEN
+              gv_tax_code_header := lt_consum_code;
+              gv_tax_rate_header := lt_tax_consum;
+            END IF;
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
+--
             -- =================================
             -- 販売実績明細用登録データの変数セット
             -- =================================
@@ -2952,6 +3383,10 @@ AS
             gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount_data;            -- 売上金額
             gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount_data;            -- 本体金額
             gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount_data;             -- 消費税金額
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+            gt_accumulation_data(ln_line_data_count).tax_code                   := lt_consum_code;                     -- 税金コード
+            gt_accumulation_data(ln_line_data_count).tax_rate                   := lt_tax_consum;                      -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
             gt_accumulation_data(ln_line_data_count).cash_and_card              := lt_state_cash_and_card;          -- 現金・カード併用額
             gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
             gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
@@ -2975,51 +3410,350 @@ AS
         -- 値引発生時
         IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
 --
-          -- ====================================
-          -- 営業原価の導出(販売実績明細(コラム))
-          -- ====================================
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+          -- 売上値引品目コード取得
           BEGIN
-            SELECT ic_item.attribute7,              -- 旧営業原価
-                   ic_item.attribute8,              -- 新営業原価
-                   ic_item.attribute9,              -- 営業原価適用開始日
-                   mtl_item.primary_unit_of_measure,     -- 基準単位
-                   cmm_item.inc_num                  -- 内訳入数
-            INTO   lt_old_sales_cost,
-                   lt_new_sales_cost,
-                   lt_st_sales_cost,
-                   lt_stand_unit,
-                   lt_inc_num
-            FROM   mtl_system_items_b    mtl_item,    -- 品目
-                   ic_item_mst_b         ic_item,     -- OPM品目
-                   xxcmm_system_items_b  cmm_item     -- Disc品目アドオン
-            WHERE  mtl_item.organization_id   = gn_orga_id
-            AND  mtl_item.segment1 = gv_disc_item
-            AND  mtl_item.segment1 = ic_item.item_no
-            AND  mtl_item.segment1 = cmm_item.item_code
-            AND  cmm_item.item_id  = ic_item.item_id
-            AND    NVL( mtl_item.start_date_active, gd_process_date) <= gd_process_date
-            AND    NVL( mtl_item.end_date_active, gd_max_date ) >= gd_process_date;
+            FOR a IN 1..g_sales_discount_item_tab.COUNT LOOP
+              IF ( g_sales_discount_item_tab(a).discount_tax_class = lt_discnt_tax_class ) THEN
+                gv_disc_item := g_sales_discount_item_tab(a).discnt_item_code;
+                EXIT;
+              END IF;
+            END LOOP;
+--
+            IF ( gv_disc_item IS NULL ) THEN
+              RAISE discnt_item_expt;
+            END IF;
+--
           EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-            --キー編集処理
-              -- ログ出力          
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
-              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
-              lv_key_data1 := gv_disc_item;
-              lv_key_data2 := gn_orga_id;
-              RAISE no_data_extract;
+            WHEN discnt_item_expt THEN
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+--
+              xxcos_common_pkg.makeup_key_info(
+                 iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称1
+                ,iv_data_value1 => lt_order_no_hht                                                     -- 受注No.(HHT)
+                ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number ) -- 項目名称2
+                ,iv_data_value2 => lt_digestion_ln_number                                              -- 枝番
+                ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code )         -- 項目名称3
+                ,iv_data_value3 => lt_customer_number                                                  -- 消費税区分
+                ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_tax )       -- 項目名称4
+                ,iv_data_value4 => lt_discnt_tax_class
+                ,ov_key_info    => gv_tkn1              -- キー情報
+                ,ov_errbuf      => lv_errbuf            -- エラー・メッセージエラー
+                ,ov_retcode     => lv_retcode           -- リターン・コード
+                ,ov_errmsg      => lv_errmsg            -- ユーザー・エラー・メッセージ
+              );
+              gv_tkn2         := xxccp_common_pkg.get_msg(
+                                    iv_application  => cv_application
+                                   ,iv_name         => cv_msg_discnt_item_err
+                                   ,iv_token_name1  => cv_tkn_table
+                                   ,iv_token_value1 => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst )   -- クイックコードマスタ
+                                   ,iv_token_name2  => cv_tkn_type
+                                   ,iv_token_value2 => cv_xxcfo1_tax_code  -- 参照タイプ
+                                   ,iv_token_name3  => cv_tkn_colmun
+                                   ,iv_token_value3 => xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_item )  -- 売上値引品目コード
+                                   ,iv_token_name4  => cv_key_data
+                                   ,iv_token_value4 => gv_tkn1
+                                 );
+--
+              gt_msg_war_data(gn_wae_data_num) := gv_tkn2;
+--
           END;
-          -- ===================================
-          -- 営業原価判定
-          -- ===================================
-          IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
-            lt_sales_cost := lt_old_sales_cost;
-          ELSE
-            lt_sales_cost := lt_new_sales_cost;
-          END IF;
 --
           IF ( lv_state_flg <> cv_status_warn ) THEN
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
+--
+            -- ====================================
+            -- 営業原価の導出(販売実績明細(コラム))
+            -- ====================================
+            BEGIN
+              SELECT ic_item.attribute7,              -- 旧営業原価
+                     ic_item.attribute8,              -- 新営業原価
+                     ic_item.attribute9,              -- 営業原価適用開始日
+                     mtl_item.primary_unit_of_measure,     -- 基準単位
+                     cmm_item.inc_num                  -- 内訳入数
+              INTO   lt_old_sales_cost,
+                     lt_new_sales_cost,
+                     lt_st_sales_cost,
+                     lt_stand_unit,
+                     lt_inc_num
+              FROM   mtl_system_items_b    mtl_item,    -- 品目
+                     ic_item_mst_b         ic_item,     -- OPM品目
+                     xxcmm_system_items_b  cmm_item     -- Disc品目アドオン
+              WHERE  mtl_item.organization_id   = gn_orga_id
+                AND  mtl_item.segment1 = gv_disc_item
+                AND  mtl_item.segment1 = ic_item.item_no
+                AND  mtl_item.segment1 = cmm_item.item_code
+                AND  cmm_item.item_id  = ic_item.item_id
+                AND    NVL( mtl_item.start_date_active, gd_process_date) <= gd_process_date
+                AND    NVL( mtl_item.end_date_active, gd_max_date ) >= gd_process_date;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+              --キー編集処理
+                -- ログ出力
+                gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
+                lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
+                lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
+                lv_key_data1 := gv_disc_item;
+                lv_key_data2 := gn_orga_id;
+                RAISE no_data_extract;
+            END;
+            -- ===================================
+            -- 営業原価判定
+            -- ===================================
+            IF ( TO_DATE(lt_st_sales_cost,cv_short_day) > lt_dlv_date ) THEN
+              lt_sales_cost := lt_old_sales_cost;
+            ELSE
+              lt_sales_cost := lt_new_sales_cost;
+            END IF;
+--
+--************** 2019/07/26 S.Kuwako Var1.32 DEL START **************
+--          IF ( lv_state_flg <> cv_status_warn ) THEN
+--************** 2019/07/26 S.Kuwako Var1.32 DEL END   **************
+--
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+            -- 明細行のカウント
+            BEGIN
+              SELECT COUNT(*)
+              INTO   ln_line_count
+              FROM   xxcos_dlv_headers xdh
+              WHERE  xdh.order_no_hht        = lt_order_no_hht
+              AND    xdh.digestion_ln_number = lt_digestion_ln_number
+              AND  NOT EXISTS ( SELECT cv_tkn_yes
+                                FROM   xxcos_dlv_lines xdl
+                                WHERE  xdl.order_no_hht        = xdh.order_no_hht
+                                AND    xdl.digestion_ln_number = xdh.digestion_ln_number
+                              );
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                RAISE global_api_others_expt;
+            END;
+--
+            -- 明細行がない場合（値引のみ）
+            IF ( ln_line_count <> 0 ) THEN
+              -- 基準日の取得
+              IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN  -- 内税（伝票課税）
+                ld_tax_date := lt_dlv_date;
+              ELSE  -- 上記以外
+                ld_tax_date := lt_inspect_date;
+              END IF;
+--
+              BEGIN
+                -- 販売実績連携消費税区分の取得
+                SELECT xtv.tax_class       -- 販売実績連携消費税区分
+                INTO   lt_consum_type
+                FROM   xxcos_tax_v   xtv   -- 消費税VIEW
+                WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
+                AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+                AND    NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+                AND    NVL( xtv.end_date_active,   gd_max_date )  >= ld_tax_date
+                ;
+--
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                  lv_state_flg     := cv_status_warn;
+                  gn_wae_data_num  := gn_wae_data_num + 1;
+                  gn_warn_cnt      := gn_warn_cnt + 1;
+--
+                  -- トークン（テーブル名）取得
+                  gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+--
+                  --キー編集処理
+                  xxcos_common_pkg.makeup_key_info(
+                    iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                   ,iv_data_value1 => lt_order_no_hht
+                   ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number )         -- 項目名称２
+                   ,iv_data_value2 => lt_digestion_ln_number
+                   ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                   ,iv_data_value3 => lt_consumption_tax_class
+                   ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称４
+                   ,iv_data_value4 => ld_tax_date
+                   ,ov_key_info    => gv_tkn2            -- キー情報
+                   ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                   ,ov_retcode     => lv_retcode         -- リターンコード
+                   ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                    );
+--
+                  gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                         iv_application   => cv_application               --アプリケーション短縮名
+                                                        ,iv_name          => cv_msg_no_data               --メッセージコード
+                                                        ,iv_token_name1   => cv_tkn_table_name            --トークンコード1
+                                                        ,iv_token_value1  => gv_tkn1                      --トークン値1
+                                                        ,iv_token_name2   => cv_key_data                  --トークンコード2
+                                                        ,iv_token_value2  => gv_tkn2                      --トークン値2
+                                                        );
+--
+              END;
+            END IF;
+--
+            -- 課税の場合
+            IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
+              -- 共通関数から消費税の情報を取得
+              xxcos_common_pkg.get_tax_rate_info(
+                 iv_item_code                   =>  gv_disc_item                    -- 品目コード
+                ,id_base_date                   =>  ld_tax_date                     -- 基準日
+                ,ov_class_for_variable_tax      =>  gv_class_for_variable_tax       -- 軽減税率用税種別
+                ,ov_tax_name                    =>  gv_tax_name                     -- 税率キー名称
+                ,ov_tax_description             =>  gv_tax_description              -- 摘要
+                ,ov_tax_histories_code          =>  gv_tax_histories_code           -- 消費税履歴コード
+                ,ov_tax_histories_description   =>  gv_tax_histories_description    -- 消費税履歴名称
+                ,od_start_date                  =>  gd_tax_start_date               -- 税率キー_開始日
+                ,od_end_date                    =>  gd_tax_end_date                 -- 税率キー_終了日
+                ,od_start_date_histories        =>  gd_tax_start_date_histories     -- 消費税履歴_開始日
+                ,od_end_date_histories          =>  gd_tax_end_date_histories       -- 消費税履歴_終了日
+                ,on_tax_rate                    =>  lt_tax_consum                   -- 税率
+                ,ov_tax_class_suppliers_outside =>  gv_tax_class_suppliers_outside  -- 税区分_仕入外税
+                ,ov_tax_class_suppliers_inside  =>  gv_tax_class_suppliers_inside   -- 税区分_仕入内税
+                ,ov_tax_class_sales_outside     =>  gv_tax_class_sales_outside      -- 税区分_売上外税
+                ,ov_tax_class_sales_inside      =>  gv_tax_class_sales_inside       -- 税区分_売上内税
+                ,ov_errbuf                      =>  lv_errbuf                       -- エラー・メッセージエラー       #固定#
+                ,ov_retcode                     =>  lv_retcode                      -- リターン・コード               #固定#
+                ,ov_errmsg                      =>  lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+              );
+--
+              -- 共通関数<警告>
+              IF    ( lv_retcode = cv_status_warn  ) THEN
+                lv_state_flg      := cv_status_warn;
+                gn_wae_data_num   := gn_wae_data_num + 1;
+                gn_warn_cnt       := gn_warn_cnt + 1;
+                gv_gen_common_err := lv_errmsg;
+--
+                -- キー編集処理
+                xxcos_common_pkg.makeup_key_info(
+                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )      -- 項目名称１
+                 ,iv_data_value1 => lt_order_no_hht
+                 ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )        -- 項目名称２
+                 ,iv_data_value2 => lt_consumption_tax_class
+                 ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )           -- 項目名称３
+                 ,iv_data_value3 => ld_tax_date
+                 ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_item )        -- 項目名称４
+                 ,iv_data_value4 => gv_disc_item
+                 ,ov_key_info    => gv_tkn1            -- キー情報
+                 ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                 ,ov_retcode     => lv_retcode         -- リターンコード
+                 ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                );
+--
+                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                       iv_application   => cv_application               --アプリケーション短縮名
+                                                      ,iv_name          => cv_msg_common_err            --メッセージコード
+                                                      ,iv_token_name1   => cv_err_msg                   --トークンコード1
+                                                      ,iv_token_value1  => gv_gen_common_err            --トークン値1
+                                                      ,iv_token_name2   => cv_key_data                  --トークンコード2
+                                                      ,iv_token_value2  => gv_tkn1                      --トークン値2
+                                                    );
+--
+              -- 共通関数<異常>
+              ELSIF ( lv_retcode = cv_status_error ) THEN
+                gv_gen_common_err := lv_errmsg;
+--
+                -- キー編集処理
+                xxcos_common_pkg.makeup_key_info(
+                    iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                   ,iv_data_value1 => lt_order_no_hht
+                   ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称２
+                   ,iv_data_value2 => lt_consumption_tax_class
+                   ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称３
+                   ,iv_data_value3 => ld_tax_date
+                   ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_item )      -- 項目名称４
+                   ,iv_data_value4 => gv_disc_item
+                   ,ov_key_info    => gv_tkn1            -- キー情報
+                   ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                   ,ov_retcode     => lv_retcode         -- リターンコード
+                   ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                );
+--
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application   => cv_application              --アプリケーション短縮名
+                               ,iv_name          => cv_msg_common_err           --メッセージコード
+                               ,iv_token_name1   => cv_err_msg                  --トークンコード1
+                               ,iv_token_value1  => gv_gen_common_err           --トークン値1
+                               ,iv_token_name2   => cv_key_data                 --トークンコード2
+                               ,iv_token_value2  => gv_tkn1                     --トークン値2
+                             );
+--
+                 RAISE global_api_expt;
+--
+              -- 共通関数<正常>
+              ELSE
+                -- 税コード取得
+                CASE lt_consumption_tax_class WHEN cv_ins_slip_tax THEN              -- 内税（伝票課税）の場合
+                                                lt_consum_code := gv_tax_class_sales_inside;
+                                              WHEN cv_ins_bid_tax  THEN              -- 内税（単価込み）の場合
+                                                lt_consum_code := gv_tax_class_sales_inside;
+                                              WHEN cv_out_tax      THEN              -- 外税の場合
+                                                lt_consum_code := gv_tax_class_sales_outside;
+                                              ELSE
+                                                NULL;
+                END CASE;
+                -- 消費税率の算出
+                ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+              END IF;
+--
+            -- 非課税の場合
+            ELSIF ( lt_consumption_tax_class = cv_non_tax ) THEN
+                BEGIN
+                  -- 消費税情報取得（非課税）
+                  SELECT xtv.tax_rate        -- 消費税率
+                        ,xtv.tax_code        -- 税金コード
+                  INTO   lt_tax_consum
+                        ,lt_consum_code
+                  FROM   xxcos_tax_v   xtv   -- 消費税VIEW
+                  WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
+                  AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+                  AND    NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+                  AND    NVL( xtv.end_date_active,   gd_max_date )  >= ld_tax_date
+                  ;
+    --
+                EXCEPTION
+                  WHEN NO_DATA_FOUND THEN
+    --
+                    lv_state_flg     := cv_status_warn;
+                    gn_wae_data_num  := gn_wae_data_num + 1;
+                    gn_warn_cnt      := gn_warn_cnt + 1;
+    --
+                    -- トークン（テーブル名）取得
+                    gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+    --
+                    --キー編集処理
+                    xxcos_common_pkg.makeup_key_info(
+                      iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                     ,iv_data_value1 => lt_order_no_hht
+                     ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                     ,iv_data_value2 => lt_state_line_no_hht
+                     ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                     ,iv_data_value3 => lt_consumption_tax_class
+                     ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称４
+                     ,iv_data_value4 => ld_tax_date
+                     ,ov_key_info    => gv_tkn2            -- キー情報
+                     ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                     ,ov_retcode     => lv_retcode         -- リターンコード
+                     ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                      );
+    --
+                    gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                          iv_application   => cv_application      --アプリケーション短縮名
+                                                         ,iv_name          => cv_msg_no_data      --メッセージコード
+                                                         ,iv_token_name1   => cv_tkn_table_name   --トークンコード1
+                                                         ,iv_token_value1  => gv_tkn1             --トークン値1
+                                                         ,iv_token_name2   => cv_key_data         --トークンコード2
+                                                         ,iv_token_value2  => gv_tkn2             --トークン値2
+                                                         );
+                END;
+    --
+            END IF;
+            -- 明細行がない場合（値引のみ）
+            IF ( ln_line_count <> 0 ) THEN
+              -- ヘッダ税コード、税率の設定(明細行なしの場合)
+              IF ( gv_tax_code_header IS NULL )
+              OR ( gv_tax_rate_header IS NULL ) THEN
+                -- 売上値引品目に紐付く税情報を代入
+                gv_tax_code_header  := lt_consum_code;
+                gv_tax_rate_header  := lt_tax_consum;
+              END IF;
+            END IF;
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
+--
             -- ========================
             -- 値引明細金額算出
             -- ========================
@@ -3143,6 +3877,10 @@ AS
             gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount_data;            -- 売上金額
             gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount_data;            -- 本体金額
             gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount_data;             -- 消費税金額
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+            gt_accumulation_data(ln_line_data_count).tax_code                   := lt_consum_code;                     -- 税金コード
+            gt_accumulation_data(ln_line_data_count).tax_rate                   := lt_tax_consum;                      -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
             gt_accumulation_data(ln_line_data_count).cash_and_card              := cn_tkn_zero;                   -- 現金・カード併用額
             gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
             gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
@@ -3171,51 +3909,51 @@ AS
             -- 消費税金額合計
             lt_tax_amount_sum  := NVL( lt_sales_consumption_tax, cn_tkn_zero );
           ELSE
-           --値引発生時
+            --値引発生時
             IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
 --
               IF ( lt_consumption_tax_class = cv_out_tax ) THEN      -- 外税
 --
                 -- 売上金額合計
                 ln_amount_deta := ( lt_total_amount - lt_sale_discount_amount );
-                  IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
-                    IF ( lt_tax_odd = cv_amount_up ) THEN
-                      IF ( SIGN (ln_amount_deta) <> -1 ) THEN
-                        lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
-                      ELSE
-                        lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
-                      END IF;
-                    -- 切捨て
-                    ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                      lt_sale_amount_sum := TRUNC( ln_amount_deta );
-                    -- 四捨五入
-                    ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                      lt_sale_amount_sum := ROUND( ln_amount_deta );
+                IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                  IF ( lt_tax_odd = cv_amount_up ) THEN
+                    IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+                      lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                    ELSE
+                      lt_sale_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
                     END IF;
-                  ELSE
-                    lt_sale_amount_sum := ln_amount_deta;
+                  -- 切捨て
+                  ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                    lt_sale_amount_sum := TRUNC( ln_amount_deta );
+                  -- 四捨五入
+                  ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                    lt_sale_amount_sum := ROUND( ln_amount_deta );
                   END IF;
-                  -- 本体金額合計
-                  lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
-                  -- 消費税金額合計
-                  ln_amount_deta  := ( lt_sale_amount_sum  * ( ln_tax_data - 1 ) );
-                  IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
-                    IF ( lt_tax_odd = cv_amount_up ) THEN
-                      IF ( SIGN (ln_amount_deta) <> -1 ) THEN
-                        lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
-                      ELSE
-                        lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+                ELSE
+                  lt_sale_amount_sum := ln_amount_deta;
+                END IF;
+                -- 本体金額合計
+                lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
+                -- 消費税金額合計
+                    ln_amount_deta  := ( lt_sale_amount_sum  * ( ln_tax_data - 1 ) );
+                    IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                      IF ( lt_tax_odd = cv_amount_up ) THEN
+                        IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+                          lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                        ELSE
+                          lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+                        END IF;
+                      -- 切捨て
+                      ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                        lt_tax_amount_sum := TRUNC( ln_amount_deta );
+                      -- 四捨五入
+                      ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                        lt_tax_amount_sum := ROUND( ln_amount_deta );
                       END IF;
-                    -- 切捨て
-                    ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                      lt_tax_amount_sum := TRUNC( ln_amount_deta );
-                    -- 四捨五入
-                    ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                    lt_tax_amount_sum := ROUND( ln_amount_deta );
+                    ELSE
+                      lt_tax_amount_sum := ln_amount_deta;
                     END IF;
-                  ELSE
-                    lt_tax_amount_sum := ln_amount_deta;
-                  END IF;
 --
               ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
@@ -3229,6 +3967,34 @@ AS
                   lt_pure_amount_sum :=  - (lt_sale_discount_amount );
                   -- 消費税金額合計  =  売上値引明細の消費税額
                   lt_tax_amount_sum  :=  - (lt_tax_amount );
+--
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                  FOR a IN 1..ln_max_index LOOP
+                    ln_amount_deta := 0;
+                    IF  ( g_tax_amount_sum_type_tab(a).sale_amount <> 0 )
+                    AND ( g_tax_amount_sum_type_tab(a).tax_amount  <> 0 ) THEN
+                      -- 税率ごとの消費税金額合計の算出
+                      ln_amount_deta  := g_tax_amount_sum_type_tab(a).sale_amount *
+                                                   ((( 100 + g_tax_amount_sum_type_tab(a).tax_rate ) / 100 ) - 1 );
+                      -- 端数処理
+                      IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+                        IF ( lt_tax_odd = cv_amount_up ) THEN          -- 切上
+                          IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+                            g_tax_amount_sum_type_tab(a).tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                          ELSE
+                            g_tax_amount_sum_type_tab(a).tax_amount_sum := TRUNC( ln_amount_deta ) - 1;
+                          END IF;
+                        ELSIF ( lt_tax_odd = cv_amount_down ) THEN     -- 切捨て
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum   := TRUNC( ln_amount_deta );
+                        ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN  -- 四捨五入
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum   := ROUND( ln_amount_deta );
+                        END IF;
+                      ELSE
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum     := ln_amount_deta;
+                      END IF;
+                    END IF;
+                  END LOOP;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
                 -- 上記以外の場合
                 ELSE
@@ -3277,24 +4043,45 @@ AS
                 -- 本体金額合計
                 lt_pure_amount_sum := lt_total_amount;
                 -- 消費税金額合計
-                ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
-                IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
-                  IF ( lt_tax_odd = cv_amount_up ) THEN
-                    IF ( SIGN (ln_amount_deta) <> -1 ) THEN
-                      lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                FOR  a IN 1..ln_max_index LOOP
+                  ln_amount_deta := 0;
+                  IF  ( g_tax_amount_sum_type_tab(a).sale_amount <> 0 )
+                  AND ( g_tax_amount_sum_type_tab(a).tax_amount  <> 0 ) THEN
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+--******************************* 2019/07/26 S.Kuwako Var1.32 MOD START **************************************
+--                    ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+                    ln_amount_deta  := ( g_tax_amount_sum_type_tab(a).sale_amount *
+                                           ((( 100 + g_tax_amount_sum_type_tab(a).tax_rate ) / 100 ) - 1 ) ) * ( -1 );
+                    IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                      IF ( lt_tax_odd = cv_amount_up ) THEN
+                        IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+--                          lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                        ELSE
+--                          lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+                        END IF;
+                      -- 切捨て
+                      ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--                        lt_tax_amount_sum := TRUNC( ln_amount_deta );
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := TRUNC( ln_amount_deta );
+                      -- 四捨五入
+                      ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--                        lt_tax_amount_sum := ROUND( ln_amount_deta );
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := ROUND( ln_amount_deta );
+                      END IF;
                     ELSE
-                      lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+--                      lt_tax_amount_sum   := ln_amount_deta;
+                      g_tax_amount_sum_type_tab(a).tax_amount_sum     := ln_amount_deta;
                     END IF;
-                  -- 切捨て
-                  ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                    lt_tax_amount_sum := TRUNC( ln_amount_deta );
-                  -- 四捨五入
-                  ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                    lt_tax_amount_sum := ROUND( ln_amount_deta );
+--******************************* 2019/07/26 S.Kuwako Var1.32 MOD END   **************************************
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                    -- 消費税金額集計
+                    lt_tax_amount_sum  := lt_tax_amount_sum + g_tax_amount_sum_type_tab(a).tax_amount_sum;
                   END IF;
-                ELSE
-                  lt_tax_amount_sum   := ln_amount_deta;
-                END IF;
+                END LOOP;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
               ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
@@ -3304,6 +4091,35 @@ AS
                 lt_pure_amount_sum := lt_total_amount;
                 -- 消費税金額合計
                 lt_tax_amount_sum  := lt_sales_consumption_tax;
+--
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                FOR a IN 1..ln_max_index LOOP
+                  ln_amount_deta := 0;
+                  IF  ( g_tax_amount_sum_type_tab(a).sale_amount <> 0 )
+                  AND ( g_tax_amount_sum_type_tab(a).tax_amount  <> 0 ) THEN
+                    -- 税率ごとの消費税金額合計の算出
+                    ln_amount_deta  := ( g_tax_amount_sum_type_tab(a).sale_amount *
+                                                 ((( 100 + g_tax_amount_sum_type_tab(a).tax_rate ) / 100 ) - 1 )) * ( -1 );
+                    -- 端数処理
+                    IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                      IF ( lt_tax_odd = cv_amount_up ) THEN          -- 切上
+                        IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                        ELSE
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := TRUNC( ln_amount_deta ) - 1;
+                        END IF;
+                      ELSIF ( lt_tax_odd = cv_amount_down ) THEN     -- 切捨て
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := TRUNC( ln_amount_deta );
+                      ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN  -- 四捨五入
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := ROUND( ln_amount_deta );
+                      END IF;
+                    ELSE
+                      g_tax_amount_sum_type_tab(a).tax_amount_sum     := ln_amount_deta;
+                    END IF;
+                  END IF;
+                END LOOP;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+--
               ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
                 -- 本体金額合計
@@ -3327,16 +4143,45 @@ AS
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
             END IF;
             --
-            IF ( ABS( lt_tax_amount_sum ) <> ABS( ln_all_tax_amount ) ) THEN
+--******************************* 2019/07/26 S.Kuwako Var1.32 DEL START **************************************
+--            IF ( ABS( lt_tax_amount_sum ) <> ABS( ln_all_tax_amount ) ) THEN
+--******************************* 2019/07/26 S.Kuwako Var1.32 DEL END   **************************************
               IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
-                IF ( lt_red_black_flag = cv_black_flag ) THEN
-                  gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data - ( lt_tax_amount_sum + ln_all_tax_amount ) );
-                ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-                  gt_accumulation_data(ln_max_no_data).tax_amount := ( ( ln_max_tax_data 
-                                                            - ( lt_tax_amount_sum + ln_all_tax_amount ) ) * ( -1 ) );
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                -- 値引発生時
+                IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+                  IF ( lt_red_black_flag = cv_black_flag ) THEN
+                    gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data - ( lt_tax_amount_sum + ln_all_tax_amount ) );
+                  ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+                    gt_accumulation_data(ln_max_no_data).tax_amount := ( ( ln_max_tax_data 
+                                                                                  - ( lt_tax_amount_sum + ln_all_tax_amount ) ) * ( -1 ) );
+                  END IF;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                -- 値引未発生時
+                ELSE
+                  -- 税率ごとの差額計算
+                  FOR a IN 1..ln_max_index LOOP
+                    IF ( g_tax_amount_sum_type_tab(a).tax_amount_sum <> g_tax_amount_sum_type_tab(a).tax_amount ) THEN
+                      g_tax_amount_sum_type_tab(a).diff_amount := ( g_tax_amount_sum_type_tab(a).tax_amount_sum + g_tax_amount_sum_type_tab(a).tax_amount ) * ( -1 );
+                    END IF;
+                  END LOOP;
+--
+                  -- 差額調整
+                  FOR a IN 1..ln_max_index LOOP
+                    IF ( g_tax_amount_sum_type_tab(a).diff_amount <> 0 ) THEN
+                      ln_max_no_data        := g_tax_amount_sum_type_tab(a).max_tax_amount_idx;
+                      ln_max_tax_data       := g_tax_amount_sum_type_tab(a).max_tax_amount;
+                      IF ( lt_red_black_flag = cv_black_flag ) THEN
+                        gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+                      ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+                        gt_accumulation_data(ln_max_no_data).tax_amount := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount ) * ( -1 ));
+                      END IF;
+                    END IF;
+                  END LOOP;
                 END IF;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
               END IF;
-            END IF;
           END IF;
 --
           -- 返品実績データ用符号変換処理
@@ -3493,8 +4338,12 @@ AS
           gt_head_total_amount( gn_head_no )         := lt_set_pure_amount_sum;     -- 本体金額合計
           gt_head_sales_consump_tax( gn_head_no )    := lt_set_tax_amount_sum;      -- 消費税金額合計
           gt_head_consump_tax_class( gn_head_no )    := lt_consum_type;             -- 消費税区分
-          gt_head_tax_code( gn_head_no )             := lt_consum_code;             -- 税金コード
-          gt_head_tax_rate( gn_head_no )             := lt_tax_consum;              -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako MOD START ************ --
+          --gt_head_tax_code( gn_head_no )             := lt_consum_code;             -- 税金コード
+          --gt_head_tax_rate( gn_head_no )             := lt_tax_consum;              -- 消費税率
+          gt_head_tax_code( gn_head_no )             := gv_tax_code_header;         -- 税金コード
+          gt_head_tax_rate( gn_head_no )             := gv_tax_rate_header;         -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako MOD END   ************ --
           gt_head_performance_by_code( gn_head_no )  := lt_performance_by_code;     -- 成績計上者コード
           gt_head_sales_base_code( gn_head_no )      := lt_sale_base_code;          -- 売上拠点コード
           gt_head_order_source_id( gn_head_no )      := cv_tkn_null;                -- 受注ソースID
@@ -3540,6 +4389,10 @@ AS
             gt_line_sale_amount( gt_line_set_no )             := gt_accumulation_data(in_data_num).sale_amount;           -- 売上金額
             gt_line_pure_amount( gt_line_set_no )             := gt_accumulation_data(in_data_num).pure_amount;           -- 本体金額
             gt_line_tax_amount( gt_line_set_no )              := gt_accumulation_data(in_data_num).tax_amount;            -- 消費税金額
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+            gt_line_tax_code( gt_line_set_no )                := gt_accumulation_data(in_data_num).tax_code;       -- 税金コード
+            gt_line_tax_rate( gt_line_set_no )                := gt_accumulation_data(in_data_num).tax_rate;       -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
             gt_line_cash_and_card( gt_line_set_no )           := gt_accumulation_data(in_data_num).cash_and_card;         -- 現金・カード併用額
             gt_line_ship_from_subinv_co( gt_line_set_no )     := gt_accumulation_data(in_data_num).ship_from_subinventory_code; -- 出荷元保管場所
             gt_line_delivery_base_code( gt_line_set_no )      := gt_accumulation_data(in_data_num).delivery_base_code;    -- 納品拠点コード
@@ -5789,6 +6642,9 @@ AS
     lt_system_class              xxcos_dlv_headers.system_class%TYPE;        -- 業態区分
     lt_input_class               xxcos_dlv_headers.input_class%TYPE;         -- 入力区分
     lt_consumption_tax_class     xxcos_dlv_headers.consumption_tax_class%TYPE; -- 消費税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+    lt_discnt_tax_class          xxcos_dlv_headers.discount_tax_class%TYPE;    -- 値引税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
     lt_total_amount              xxcos_dlv_headers.total_amount%TYPE;        -- 合計金額
     lt_sale_discount_amount      xxcos_dlv_headers.sale_discount_amount%TYPE;-- 売上値引額
     lt_sales_consumption_tax     xxcos_dlv_headers.sales_consumption_tax%TYPE; -- 売上消費税額
@@ -5912,6 +6768,11 @@ AS
 -- ************* 2013/10/24 1.27 K.Nakamura ADD START *************--
     ld_tax_date                     DATE; -- 消費税取得基準日
 -- ************* 2013/10/24 1.27 K.Nakamura ADD  END  *************--
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+    a                               NUMBER;
+    ln_max_index                    NUMBER;
+    ln_line_count                   NUMBER;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
     -- *** ローカル・カーソル ***
   CURSOR get_sales_exp_cur
@@ -5945,6 +6806,9 @@ AS
                dhs.system_class,              -- 業態区分
                dhs.input_class,               -- 入力区分
                dhs.consumption_tax_class,     -- 消費税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+               dhs.discount_tax_class,        -- 値引税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
                dhs.total_amount,              -- 合計金額
                dhs.sale_discount_amount,      -- 売上値引額
                dhs.sales_consumption_tax,     -- 売上消費税額
@@ -6010,6 +6874,54 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+    a                 := 0;
+    ln_max_index      := 1;
+--
+    -- 税率(全種)取得
+    BEGIN
+      SELECT xxtax.tax_rate AS tax_rate
+            ,0              AS max_pure_amount
+            ,0              AS max_pure_amount_idx
+            ,0              AS pure_amount
+            ,0              AS tax_amount
+            ,0              AS tax_amount_sum
+            ,0              AS diff_amount
+      BULK COLLECT INTO
+             g_tax_amount_sum_type_tab
+      FROM   (
+               SELECT  tax.rate   AS tax_rate
+               FROM   ( SELECT    TO_NUMBER(flv.attribute1) AS rate
+                        FROM      fnd_lookup_values flv
+                        WHERE     lookup_type  = ct_tax_code_history_type
+                        AND       language     = ct_user_lang
+                        AND       enabled_flag = cv_tkn_yes
+--
+                        UNION
+--
+                        SELECT    xtv.tax_rate  AS rate
+                        FROM      xxcos_tax_v  xtv
+                        WHERE     xtv.set_of_books_id = TO_NUMBER( gv_bks_id )
+                      ) tax
+                GROUP BY  tax.rate
+             ) xxtax
+      ORDER BY xxtax.tax_rate DESC
+      ;
+--
+      IF ( g_tax_amount_sum_type_tab.COUNT = 0 ) THEN
+        RAISE NO_DATA_FOUND;
+      ELSE
+         ln_max_index := g_tax_amount_sum_type_tab.COUNT;
+      END IF;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE global_api_others_expt;
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+--
 -- ループ開始：ヘッダ部
     <<header_loop>>
     FOR ck_no IN 1..gn_target_cnt LOOP
@@ -6040,6 +6952,21 @@ AS
       -- 明細本体金額合計
       ln_line_pure_amount_sum         := 0;
 --******************************* 2009/05/15 N.Maeda Var1.14 ADD END *****************************************
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+      -- 売上値引品目コードの初期化
+      gv_disc_item := NULL;
+      -- 消費税金額合計(ヘッダ)の初期化
+      lt_tax_amount_sum := 0;
+      -- 消費税金額（税率毎）の初期化
+      FOR a IN 1..ln_max_index LOOP
+        g_tax_amount_sum_type_tab(a).max_tax_amount     := 0;
+        g_tax_amount_sum_type_tab(a).max_tax_amount_idx := 0;
+        g_tax_amount_sum_type_tab(a).sale_amount        := 0;
+        g_tax_amount_sum_type_tab(a).tax_amount         := 0;
+        g_tax_amount_sum_type_tab(a).tax_amount_sum     := 0;
+        g_tax_amount_sum_type_tab(a).diff_amount        := 0;
+      END LOOP;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
 --****************************** 2009/06/29 1.16 T.Kitajima ADD START ******************************--
       BEGIN
@@ -6082,6 +7009,9 @@ AS
         lt_system_class             := l_get_headers_cur.system_class;                         -- 業態区分
         lt_input_class              := l_get_headers_cur.input_class;                          -- 入力区分
         lt_consumption_tax_class    := l_get_headers_cur.consumption_tax_class;                -- 消費税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START ***************************************
+        lt_discnt_tax_class         := NVL( l_get_headers_cur.discount_tax_class,cv_discnt_tax_class );     -- 値引税区分
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   ***************************************
         lt_total_amount             := l_get_headers_cur.total_amount;                         -- 合計金額
         lt_sale_discount_amount     := l_get_headers_cur.sale_discount_amount;                 -- 売上値引額
         lt_sales_consumption_tax    := l_get_headers_cur.sales_consumption_tax;                -- 売上消費税額
@@ -6370,45 +7300,46 @@ AS
 ----
 -- ****************** 2009/09/03 1.18 N.Maeda DEL  END  ************** --
 --
-          --====================
-          --消費税マスタ情報取得
-          --====================
+-- ****************** 2019/02/06 1.31 S.Kuwako DEL START  ************** --
+--          --====================
+--          --消費税マスタ情報取得
+--          --====================
 -- ************* 2013/10/24 1.27 K.Nakamura ADD START *************--
-          -- 内税（伝票課税）の場合
-          IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
-            -- 納品日
+--          -- 内税（伝票課税）の場合
+--          IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+--            -- 納品日
 -- ************* 2014/01/27 1.29 K.Nakamura MOD START *************--
 --            ld_tax_date := lt_open_dlv_date;
-            ld_tax_date := lt_dlv_date;
+--            ld_tax_date := lt_dlv_date;
 -- ************* 2014/01/27 1.29 K.Nakamura MOD END   *************--
-          ELSE
-            -- 検収日
+--          ELSE
+--            -- 検収日
 -- ************* 2014/01/27 1.29 K.Nakamura MOD START *************--
 --            ld_tax_date := lt_open_inspect_date;
-            ld_tax_date := lt_inspect_date;
--- ************* 2014/01/27 1.29 K.Nakamura MOD END   *************--
-          END IF;
+--            ld_tax_date := lt_inspect_date;
+---- ************* 2014/01/27 1.29 K.Nakamura MOD END   *************--
+--          END IF;
 -- ************* 2013/10/24 1.27 K.Nakamura ADD  END  *************--
-          BEGIN
+--          BEGIN
 -- ********** 2009/09/04 1.19 N.Maeda MOD START ************* --
-            SELECT  xtv.tax_rate             -- 消費税率
-                   ,xtv.tax_class            -- 販売実績連携消費税区分
-                   ,xtv.tax_code             -- 税金コード
-            INTO    lt_tax_consum
-                   ,lt_consum_type
-                   ,lt_consum_code
-            FROM   xxcos_tax_v   xtv         -- 消費税view
-            WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
-            AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+--            SELECT  xtv.tax_rate             -- 消費税率
+--                   ,xtv.tax_class            -- 販売実績連携消費税区分
+--                   ,xtv.tax_code             -- 税金コード
+--            INTO    lt_tax_consum
+--                   ,lt_consum_type
+--                   ,lt_consum_code
+--            FROM   xxcos_tax_v   xtv         -- 消費税view
+--            WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
+--            AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
 -- ************* 2013/10/24 1.27 K.Nakamura MOD START *************--
 ----******************************* 2010/03/01 1.23 N.Maeda ADD START ***************************************
 ----            AND    NVL( xtv.start_date_active, lt_inspect_date )  <= lt_inspect_date
 ----            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_inspect_date;
 --            AND    NVL( xtv.start_date_active, lt_open_inspect_date )  <= lt_open_inspect_date
 --            AND    NVL( xtv.end_date_active, gd_max_date ) >= lt_open_inspect_date;
---******************************* 2010/03/01 1.23 N.Maeda ADD  END  ***************************************
-            AND    NVL( xtv.start_date_active, ld_tax_date ) <= ld_tax_date
-            AND    NVL( xtv.end_date_active, gd_max_date )   >= ld_tax_date;
+----******************************* 2010/03/01 1.23 N.Maeda ADD  END  ***************************************
+--            AND    NVL( xtv.start_date_active, ld_tax_date ) <= ld_tax_date
+--            AND    NVL( xtv.end_date_active, gd_max_date )   >= ld_tax_date;
 -- ************* 2013/10/24 1.27 K.Nakamura MOD  END  *************--
 --            SELECT avtab.tax_rate           -- 消費税率
 --            INTO   lt_tax_consum 
@@ -6419,38 +7350,40 @@ AS
 --            AND    NVL( avtab.end_date, gd_max_date ) >= gd_process_date
 --            AND    avtab.enabled_flag = cv_tkn_yes;
 -- ********** 2009/09/04 1.19 N.Maeda MOD  END  ************* --
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              -- ログ出力          
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
-              --キー編集処理
-              lv_state_flg    := cv_status_warn;
-              gn_wae_data_num := gn_wae_data_num + 1 ;
-              xxcos_common_pkg.makeup_key_info(
+--          EXCEPTION
+--            WHEN NO_DATA_FOUND THEN
+--              -- ログ出力          
+--              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+--              --キー編集処理
+--              lv_state_flg    := cv_status_warn;
+--              gn_wae_data_num := gn_wae_data_num + 1 ;
+--              xxcos_common_pkg.makeup_key_info(
 ---- ********** 2009/09/04 1.19 N.Maeda MOD START ************* --
 --                iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_tax ), -- 項目名称１
 --                iv_data_value1 => lt_consum_code,         -- データの値１
-                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht ), -- 項目名称１
-                  iv_data_value1 => lt_order_no_hht,
-                  iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number ), -- 項目名称
-                  iv_data_value2 => lt_digestion_ln_number,
-                  iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称
-                  iv_data_value3 => lt_consumption_tax_class,
+--                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht ), -- 項目名称１
+--                  iv_data_value1 => lt_order_no_hht,
+--                  iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number ), -- 項目名称
+--                  iv_data_value2 => lt_digestion_ln_number,
+--                  iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code ), -- 項目名称
+--                  iv_data_value3 => lt_consumption_tax_class,
 ---- ********** 2009/09/04 1.19 N.Maeda MOD  END  ************* --
-                ov_key_info    => gv_tkn2,              -- キー情報
-                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
-                ov_retcode     => lv_retcode,           -- リターン・コード
-                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
-              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
-                                                    iv_application   => cv_application,    --アプリケーション短縮名
-                                                    iv_name          => cv_msg_no_data,    --メッセージコード
-                                                    iv_token_name1   => cv_tkn_table_name, --トークンコード1
-                                                    iv_token_value1  => gv_tkn1,           --トークン値1
-                                                    iv_token_name2   => cv_key_data,       --トークンコード2
-                                                    iv_token_value2  => gv_tkn2 );         --トークン値2
-          END;
-          -- 消費税率算出
-          ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+--                ov_key_info    => gv_tkn2,              -- キー情報
+--                ov_errbuf      => lv_errbuf,            -- エラー・メッセージエラー
+--                ov_retcode     => lv_retcode,           -- リターン・コード
+--                ov_errmsg      => lv_errmsg);            -- ユーザー・エラー・メッセージ
+--              gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+--                                                    iv_application   => cv_application,    --アプリケーション短縮名
+--                                                    iv_name          => cv_msg_no_data,    --メッセージコード
+--                                                    iv_token_name1   => cv_tkn_table_name, --トークンコード1
+--                                                    iv_token_value1  => gv_tkn1,           --トークン値1
+--                                                    iv_token_name2   => cv_key_data,       --トークンコード2
+--                                                    iv_token_value2  => gv_tkn2 );         --トークン値2
+--          END;
+--          -- 消費税率算出
+--          ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+--
+-- ****************** 2019/02/06 1.31 S.Kuwako DEL END  ************** --
 --
         -- =========================
         -- HHT納品入力日時の成型処理
@@ -6953,6 +7886,228 @@ AS
               lt_sales_cost := lt_new_sales_cost;
             END IF;
 --
+-- ****************** 2019/02/06 1.31 S.Kuwako ADD START ************** --
+            -- ====================
+            -- 消費税情報取得
+            -- ====================
+            -- 非課税の場合
+            IF ( lt_consumption_tax_class = cv_non_tax ) THEN
+              -- 検収日 取得
+              ld_tax_date := lt_inspect_date;
+--
+              BEGIN
+                SELECT  xtv.tax_rate             -- 消費税率
+                       ,xtv.tax_class            -- 販売実績連携消費税区分
+                       ,xtv.tax_code             -- 税金コード
+                INTO    lt_tax_consum
+                       ,lt_consum_type
+                       ,lt_consum_code
+                FROM    xxcos_tax_v   xtv         -- 消費税view
+                WHERE   xtv.hht_tax_class    = lt_consumption_tax_class
+                AND     xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+                AND     NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+                AND     NVL( xtv.end_date_active, gd_max_date )    >= ld_tax_date
+                ;
+--
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+--
+                   lv_state_flg     := cv_status_warn;
+                   gn_wae_data_num  := gn_wae_data_num + 1;
+                   gn_warn_cnt      := gn_warn_cnt + 1;
+--
+                   -- トークン（テーブル名）取得
+                   gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+--
+                   -- キー編集処理
+                   xxcos_common_pkg.makeup_key_info(
+                     iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                    ,iv_data_value1 => lt_order_no_hht
+                    ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                    ,iv_data_value2 => lt_state_line_no_hht
+                    ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                    ,iv_data_value3 => lt_consumption_tax_class
+                    ,ov_key_info    => gv_tkn2            -- キー情報
+                    ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                    ,ov_retcode     => lv_retcode         -- リターンコード
+                    ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                    );
+--
+                   gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                         iv_application   => cv_application    --アプリケーション短縮名
+                                                        ,iv_name          => cv_msg_no_data    --メッセージコード
+                                                        ,iv_token_name1   => cv_tkn_table_name --トークンコード1
+                                                        ,iv_token_value1  => gv_tkn1           --トークン値1
+                                                        ,iv_token_name2   => cv_key_data       --トークンコード2
+                                                        ,iv_token_value2  => gv_tkn2           --トークン値2
+                                                        );
+              END;
+--
+            ELSE
+              IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
+                -- 納品日 取得
+                ld_tax_date := lt_dlv_date;
+              ELSIF ( lt_consumption_tax_class <> cv_ins_slip_tax ) THEN
+                -- 検収日 取得
+                ld_tax_date := lt_inspect_date;
+              END IF;
+--
+              BEGIN
+                -- 販売実績連携消費税区分
+                SELECT  xtv.tax_class            -- 販売実績連携消費税区分
+                INTO    lt_consum_type
+                FROM    xxcos_tax_v   xtv         -- 消費税view
+                WHERE   xtv.hht_tax_class    = lt_consumption_tax_class
+                AND     xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+                AND     NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+                AND     NVL( xtv.end_date_active, gd_max_date )    >= ld_tax_date
+                ;
+--
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+--
+                   lv_state_flg     := cv_status_warn;
+                   gn_wae_data_num  := gn_wae_data_num + 1;
+                   gn_warn_cnt      := gn_warn_cnt + 1;
+--
+                   -- トークン（テーブル名）取得
+                   gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+--
+                   -- キー編集処理
+                   xxcos_common_pkg.makeup_key_info(
+                     iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                    ,iv_data_value1 => lt_order_no_hht
+                    ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                    ,iv_data_value2 => lt_state_line_no_hht
+                    ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                    ,iv_data_value3 => lt_consumption_tax_class
+                    ,ov_key_info    => gv_tkn2            -- キー情報
+                    ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                    ,ov_retcode     => lv_retcode         -- リターンコード
+                    ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                    );
+--
+                   gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                          iv_application   => cv_application    --アプリケーション短縮名
+                                                         ,iv_name          => cv_msg_no_data    --メッセージコード
+                                                         ,iv_token_name1   => cv_tkn_table_name --トークンコード1
+                                                         ,iv_token_value1  => gv_tkn1           --トークン値1
+                                                         ,iv_token_name2   => cv_key_data       --トークンコード2
+                                                         ,iv_token_value2  => gv_tkn2           --トークン値2
+                                                         );
+--
+              END;
+--
+              -- 品目別消費税率取得関数コール
+              xxcos_common_pkg.get_tax_rate_info(
+                iv_item_code                    => lt_state_item_code_self         -- 品目コード
+               ,id_base_date                    => ld_tax_date                     -- 基準日（オリジナル検収日、またはオリジナル納品日）
+               ,ov_class_for_variable_tax       => gv_class_for_variable_tax       -- 軽減税率用税種別
+               ,ov_tax_name                     => gv_tax_name                     -- 税率キー名称
+               ,ov_tax_description              => gv_tax_description              -- 摘要
+               ,ov_tax_histories_code           => gv_tax_histories_code           -- 消費税履歴コード
+               ,ov_tax_histories_description    => gv_tax_histories_description    -- 消費税履歴名称
+               ,od_start_date                   => gd_tax_start_date               -- 税率キー_開始日
+               ,od_end_date                     => gd_tax_end_date                 -- 税率キー_終了日
+               ,od_start_date_histories         => gd_tax_start_date_histories     -- 消費税履歴_開始日
+               ,od_end_date_histories           => gd_tax_end_date_histories       -- 消費税履歴_終了日
+               ,on_tax_rate                     => lt_tax_consum                   -- 税率
+               ,ov_tax_class_suppliers_outside  => gv_tax_class_suppliers_outside  -- 税区分_仕入外税
+               ,ov_tax_class_suppliers_inside   => gv_tax_class_suppliers_inside   -- 税区分_仕入内税
+               ,ov_tax_class_sales_outside      => gv_tax_class_sales_outside      -- 税区分_売上外税
+               ,ov_tax_class_sales_inside       => gv_tax_class_sales_inside       -- 税区分_売上内税
+               ,ov_errbuf                       => lv_errbuf                       -- エラー・メッセージエラー       #固定#
+               ,ov_retcode                      => lv_retcode                      -- リターン・コード               #固定#
+               ,ov_errmsg                       => lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+              );
+--
+              -- 税コードのセット
+              CASE lt_consumption_tax_class WHEN cv_ins_slip_tax THEN              -- 内税（伝票課税）の場合
+                                              lt_consum_code := gv_tax_class_sales_inside;
+                                            WHEN cv_ins_bid_tax  THEN              -- 内税（単価込み）の場合
+                                              lt_consum_code := gv_tax_class_sales_inside;
+                                            WHEN cv_out_tax      THEN              -- 外税の場合
+                                              lt_consum_code := gv_tax_class_sales_outside;
+                                            ELSE
+                                              NULL;
+              END CASE;
+--
+              -- 品目別消費税率取得関数(警告の場合)
+              IF ( lv_retcode = cv_status_warn ) THEN
+--
+                lv_state_flg      := cv_status_warn;
+                gn_wae_data_num   := gn_wae_data_num + 1;
+                gn_warn_cnt       := gn_warn_cnt + 1;
+                gv_gen_common_err := lv_errmsg;
+--
+                -- キー編集処理
+                xxcos_common_pkg.makeup_key_info(
+                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                 ,iv_data_value1 => lt_order_no_hht
+                 ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                 ,iv_data_value2 => lt_state_line_no_hht
+                 ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                 ,iv_data_value3 => lt_consumption_tax_class
+                 ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称４
+                 ,iv_data_value4 => ld_tax_date
+                 ,iv_item_name5  => xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code )        -- 項目名称５
+                 ,iv_data_value5 => lt_state_item_code_self
+                 ,ov_key_info    => gv_tkn1            -- キー情報
+                 ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                 ,ov_retcode     => lv_retcode         -- リターンコード
+                 ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                );
+--
+                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                      iv_application   => cv_application      --アプリケーション短縮名
+                                                     ,iv_name          => cv_msg_common_err   --メッセージコード
+                                                     ,iv_token_name1   => cv_err_msg          --トークンコード1
+                                                     ,iv_token_value1  => gv_gen_common_err   --トークン値1
+                                                     ,iv_token_name2   => cv_key_data         --トークンコード2
+                                                     ,iv_token_value2  => gv_tkn1             --トークン値2
+                                                    );
+--
+              -- 品目別消費税率取得関数(エラーの場合)
+              ELSIF (lv_retcode = cv_status_error ) THEN
+                gv_gen_common_err := lv_errmsg;
+--
+                -- キー編集処理
+                xxcos_common_pkg.makeup_key_info(
+                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                 ,iv_data_value1 => lt_order_no_hht
+                 ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                 ,iv_data_value2 => lt_state_line_no_hht
+                 ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                 ,iv_data_value3 => lt_consumption_tax_class
+                 ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称４
+                 ,iv_data_value4 => ld_tax_date
+                 ,iv_item_name5  => xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code )        -- 項目名称５
+                 ,iv_data_value5 => lt_state_item_code_self
+                 ,ov_key_info    => gv_tkn1            -- キー情報
+                 ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                 ,ov_retcode     => lv_retcode         -- リターンコード
+                 ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                );
+--
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                               iv_application   => cv_application      --アプリケーション短縮名
+                              ,iv_name          => cv_msg_common_err   --メッセージコード
+                              ,iv_token_name1   => cv_err_msg          --トークンコード1
+                              ,iv_token_value1  => gv_gen_common_err   --トークン値1
+                              ,iv_token_name2   => cv_key_data         --トークンコード2
+                              ,iv_token_value2  => gv_tkn1             --トークン値2
+                             );
+--
+                RAISE global_api_expt;
+--
+              END IF;
+--
+            END IF;
+              -- 消費税率算出
+              ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+--
+-- ****************** 2019/02/06 1.31 S.Kuwako ADD END   ************** --
+--
             -- ==============
             -- 明細金額算出
             -- ==============
@@ -7051,7 +8206,7 @@ AS
             -- 明細本体金額合計
             ln_line_pure_amount_sum    := ln_line_pure_amount_sum + lt_pure_amount;
 --
-            --対照データが非課税でないときのとき
+            --対象データが非課税でないとき
             IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
               --消費税合計積上げ
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
@@ -7060,6 +8215,26 @@ AS
                 ln_max_tax_data := lt_tax_amount;
                 ln_max_no_data  := ln_line_data_count;
               END IF;
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+              -- 税率単位の各種金額積上げ
+              FOR a IN 1..ln_max_index LOOP
+                IF ( g_tax_amount_sum_type_tab(a).tax_rate = lt_tax_consum ) THEN
+                  -- 売上金額積上げ
+                  g_tax_amount_sum_type_tab(a).sale_amount := g_tax_amount_sum_type_tab(a).sale_amount + lt_sale_amount;
+                  -- 消費税金額積上げ
+                  g_tax_amount_sum_type_tab(a).tax_amount  := g_tax_amount_sum_type_tab(a).tax_amount + lt_tax_amount;
+--
+                  -- 処理中の消費税金額が税率ごとの最大消費税金額より多い場合
+                  IF ( ABS(g_tax_amount_sum_type_tab(a).max_tax_amount) < ABS(lt_tax_amount) ) THEN
+                    -- 最大金額を保持
+                    g_tax_amount_sum_type_tab(a).max_tax_amount     := lt_tax_amount;
+                    -- 最大消費税金額のレコードの添え字を保持
+                    g_tax_amount_sum_type_tab(a).max_tax_amount_idx := ln_line_data_count;
+                  END IF;
+                  EXIT;
+                END IF;
+              END LOOP;
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
             END IF;
 --
             -- 赤・黒の金額換算
@@ -7084,6 +8259,15 @@ AS
               -- 消費税金額
               lt_set_tax_amount_data := ( lt_tax_amount * ( -1 ) );
             END IF;
+--
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+            -- ヘッダ設定用税コード、消費税率の保持
+            IF ( lt_state_line_number_ebs = cn_line_no_1 ) THEN
+              gv_tax_code_header := lt_consum_code;
+              gv_tax_rate_header := lt_tax_consum;
+            END IF;
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
+--
             -- =================================
             -- 販売実績明細用登録データの変数セット
             -- =================================
@@ -7105,6 +8289,10 @@ AS
             gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount_data;            -- 売上金額
             gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount_data;            -- 本体金額
             gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount_data;             -- 消費税金額
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+            gt_accumulation_data(ln_line_data_count).tax_code                   := lt_consum_code;                     -- 税金コード
+            gt_accumulation_data(ln_line_data_count).tax_rate                   := lt_tax_consum;                      -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
             gt_accumulation_data(ln_line_data_count).cash_and_card              := lt_state_cash_and_card;          -- 現金・カード併用額
             gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
             gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
@@ -7126,42 +8314,96 @@ AS
 --
         -- 値引発生時
         IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
-          -- ====================================
-          -- 営業原価の導出(販売実績明細(コラム))
-          -- ====================================
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+          -- 売上値引品目コード取得
           BEGIN
-            SELECT ic_item.attribute7,              -- 旧営業原価
-                   ic_item.attribute8,              -- 新営業原価
-                   ic_item.attribute9,              -- 営業原価適用開始日
-                   mtl_item.primary_unit_of_measure,     -- 基準単位
-                   cmm_item.inc_num                  -- 内訳入数
-            INTO   lt_old_sales_cost,
-                   lt_new_sales_cost,
-                   lt_st_sales_cost,
-                   lt_stand_unit,
-                   lt_inc_num
-            FROM   mtl_system_items_b    mtl_item,    -- 品目
-                   ic_item_mst_b         ic_item,     -- OPM品目
-                   xxcmm_system_items_b  cmm_item     -- Disc品目アドオン
-            WHERE  mtl_item.organization_id   = gn_orga_id
-            AND  mtl_item.segment1 = gv_disc_item
-            AND  mtl_item.segment1 = ic_item.item_no
-            AND  mtl_item.segment1 = cmm_item.item_code
-            AND  cmm_item.item_id  = ic_item.item_id
-            AND    NVL( mtl_item.start_date_active, gd_process_date) <= gd_process_date
-            AND    NVL( mtl_item.end_date_active, gd_max_date ) >= gd_process_date;
+            FOR a IN 1..g_sales_discount_item_tab.COUNT LOOP
+              IF ( g_sales_discount_item_tab(a).discount_tax_class = lt_discnt_tax_class ) THEN
+                gv_disc_item := g_sales_discount_item_tab(a).discnt_item_code;
+                EXIT;
+              END IF;
+            END LOOP;
+--
+            IF ( gv_disc_item IS NULL ) THEN
+              RAISE discnt_item_expt;
+            END IF;
+--
           EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-            --キー編集処理
-              -- ログ出力          
-              gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
-              lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
-              lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
-              lv_key_data1 := gv_disc_item;
-              lv_key_data2 := gn_orga_id;
-              RAISE no_data_extract;
+            WHEN discnt_item_expt THEN
+              lv_state_flg    := cv_status_warn;
+              gn_wae_data_num := gn_wae_data_num + 1 ;
+--
+              xxcos_common_pkg.makeup_key_info(
+                 iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称1
+                ,iv_data_value1 => lt_order_no_hht                                                     -- 受注No.(HHT)
+                ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number ) -- 項目名称2
+                ,iv_data_value2 => lt_digestion_ln_number                                              -- 枝番
+                ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_cus_code )         -- 項目名称3
+                ,iv_data_value3 => lt_customer_number                                                  -- 消費税区分
+                ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_tax )       -- 項目名称4
+                ,iv_data_value4 => lt_discnt_tax_class
+                ,ov_key_info    => gv_tkn1              -- キー情報
+                ,ov_errbuf      => lv_errbuf            -- エラー・メッセージエラー
+                ,ov_retcode     => lv_retcode           -- リターン・コード
+                ,ov_errmsg      => lv_errmsg            -- ユーザー・エラー・メッセージ
+              );
+              gv_tkn2         := xxccp_common_pkg.get_msg(
+                                    iv_application  => cv_application
+                                   ,iv_name         => cv_msg_discnt_item_err
+                                   ,iv_token_name1  => cv_tkn_table
+                                   ,iv_token_value1 => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_mst )   -- クイックコードマスタ
+                                   ,iv_token_name2  => cv_tkn_type
+                                   ,iv_token_value2 => cv_xxcfo1_tax_code  -- 参照タイプ
+                                   ,iv_token_name3  => cv_tkn_colmun
+                                   ,iv_token_value3 => xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_item )  -- 売上値引品目コード
+                                   ,iv_token_name4  => cv_key_data
+                                   ,iv_token_value4 => gv_tkn1
+                                 );
+--
+              gt_msg_war_data(gn_wae_data_num) := gv_tkn2;
+--
           END;
+--
           IF ( lv_state_flg <> cv_status_warn ) THEN
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
+            -- ====================================
+            -- 営業原価の導出(販売実績明細(コラム))
+            -- ====================================
+            BEGIN
+              SELECT ic_item.attribute7,              -- 旧営業原価
+                     ic_item.attribute8,              -- 新営業原価
+                     ic_item.attribute9,              -- 営業原価適用開始日
+                     mtl_item.primary_unit_of_measure,     -- 基準単位
+                     cmm_item.inc_num                  -- 内訳入数
+              INTO   lt_old_sales_cost,
+                     lt_new_sales_cost,
+                     lt_st_sales_cost,
+                     lt_stand_unit,
+                     lt_inc_num
+              FROM   mtl_system_items_b    mtl_item,    -- 品目
+                     ic_item_mst_b         ic_item,     -- OPM品目
+                     xxcmm_system_items_b  cmm_item     -- Disc品目アドオン
+              WHERE  mtl_item.organization_id   = gn_orga_id
+                AND  mtl_item.segment1 = gv_disc_item
+                AND  mtl_item.segment1 = ic_item.item_no
+                AND  mtl_item.segment1 = cmm_item.item_code
+                AND  cmm_item.item_id  = ic_item.item_id
+                AND    NVL( mtl_item.start_date_active, gd_process_date) <= gd_process_date
+              AND    NVL( mtl_item.end_date_active, gd_max_date ) >= gd_process_date;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+              --キー編集処理
+                -- ログ出力
+                gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_inv_item_mst );
+                lv_key_name1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_item_code );
+                lv_key_name2 := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_id );
+                lv_key_data1 := gv_disc_item;
+                lv_key_data2 := gn_orga_id;
+                RAISE no_data_extract;
+            END;
+--************** 2019/07/26 S.Kuwako Var1.32 DEL START **************
+--          IF ( lv_state_flg <> cv_status_warn ) THEN
+--************** 2019/07/26 S.Kuwako Var1.32 DEL END   **************
             -- ===================================
             -- 営業原価判定
             -- ===================================
@@ -7170,6 +8412,249 @@ AS
             ELSE
               lt_sales_cost := lt_new_sales_cost;
             END IF;
+--
+--************** 2019/07/26 S.Kuwako Var1.32 ADD START **************
+            -- 明細行のカウント
+            BEGIN
+              SELECT COUNT(*)
+              INTO   ln_line_count
+              FROM   xxcos_dlv_headers xdh
+              WHERE  xdh.order_no_hht        = lt_order_no_hht
+              AND    xdh.digestion_ln_number = lt_digestion_ln_number
+              AND  NOT EXISTS ( SELECT cv_tkn_yes
+                                FROM   xxcos_dlv_lines xdl
+                                WHERE  xdl.order_no_hht        = xdh.order_no_hht
+                                AND    xdl.digestion_ln_number = xdh.digestion_ln_number
+                              );
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                RAISE global_api_others_expt;
+            END;
+--
+            -- 明細行がない場合（値引のみ）
+            IF ( ln_line_count <> 0 ) THEN
+              -- 基準日の取得
+              IF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN  -- 内税（伝票課税）
+                ld_tax_date := lt_dlv_date;
+              ELSE  -- 上記以外
+                ld_tax_date := lt_inspect_date;
+              END IF;
+--
+              BEGIN
+                -- 販売実績連携消費税区分の取得
+                SELECT xtv.tax_class       -- 販売実績連携消費税区分
+                INTO   lt_consum_type
+                FROM   xxcos_tax_v   xtv   -- 消費税VIEW
+                WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
+                AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+                AND    NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+                AND    NVL( xtv.end_date_active,   gd_max_date )  >= ld_tax_date
+                ;
+--
+              EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                  lv_state_flg     := cv_status_warn;
+                  gn_wae_data_num  := gn_wae_data_num + 1;
+                  gn_warn_cnt      := gn_warn_cnt + 1;
+--
+                  -- トークン（テーブル名）取得
+                  gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+--
+                  --キー編集処理
+                  xxcos_common_pkg.makeup_key_info(
+                    iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                   ,iv_data_value1 => lt_order_no_hht
+                   ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_digestion_number )         -- 項目名称２
+                   ,iv_data_value2 => lt_digestion_ln_number
+                   ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                   ,iv_data_value3 => lt_consumption_tax_class
+                   ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称４
+                   ,iv_data_value4 => ld_tax_date
+                   ,ov_key_info    => gv_tkn2            -- キー情報
+                   ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                   ,ov_retcode     => lv_retcode         -- リターンコード
+                   ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                    );
+--
+                  gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                         iv_application   => cv_application               --アプリケーション短縮名
+                                                        ,iv_name          => cv_msg_no_data               --メッセージコード
+                                                        ,iv_token_name1   => cv_tkn_table_name            --トークンコード1
+                                                        ,iv_token_value1  => gv_tkn1                      --トークン値1
+                                                        ,iv_token_name2   => cv_key_data                  --トークンコード2
+                                                        ,iv_token_value2  => gv_tkn2                      --トークン値2
+                                                        );
+--
+              END;
+            END IF;
+--
+            -- 課税の場合
+            IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
+              -- 共通関数から消費税の情報を取得
+              xxcos_common_pkg.get_tax_rate_info(
+                 iv_item_code                   =>  gv_disc_item                    -- 品目コード
+                ,id_base_date                   =>  ld_tax_date                     -- 基準日
+                ,ov_class_for_variable_tax      =>  gv_class_for_variable_tax       -- 軽減税率用税種別
+                ,ov_tax_name                    =>  gv_tax_name                     -- 税率キー名称
+                ,ov_tax_description             =>  gv_tax_description              -- 摘要
+                ,ov_tax_histories_code          =>  gv_tax_histories_code           -- 消費税履歴コード
+                ,ov_tax_histories_description   =>  gv_tax_histories_description    -- 消費税履歴名称
+                ,od_start_date                  =>  gd_tax_start_date               -- 税率キー_開始日
+                ,od_end_date                    =>  gd_tax_end_date                 -- 税率キー_終了日
+                ,od_start_date_histories        =>  gd_tax_start_date_histories     -- 消費税履歴_開始日
+                ,od_end_date_histories          =>  gd_tax_end_date_histories       -- 消費税履歴_終了日
+                ,on_tax_rate                    =>  lt_tax_consum                   -- 税率
+                ,ov_tax_class_suppliers_outside =>  gv_tax_class_suppliers_outside  -- 税区分_仕入外税
+                ,ov_tax_class_suppliers_inside  =>  gv_tax_class_suppliers_inside   -- 税区分_仕入内税
+                ,ov_tax_class_sales_outside     =>  gv_tax_class_sales_outside      -- 税区分_売上外税
+                ,ov_tax_class_sales_inside      =>  gv_tax_class_sales_inside       -- 税区分_売上内税
+                ,ov_errbuf                      =>  lv_errbuf                       -- エラー・メッセージエラー       #固定#
+                ,ov_retcode                     =>  lv_retcode                      -- リターン・コード               #固定#
+                ,ov_errmsg                      =>  lv_errmsg                       -- ユーザー・エラー・メッセージ   #固定#
+              );
+--
+              -- 共通関数<警告>
+              IF    ( lv_retcode = cv_status_warn  ) THEN
+                lv_state_flg      := cv_status_warn;
+                gn_wae_data_num   := gn_wae_data_num + 1;
+                gn_warn_cnt       := gn_warn_cnt + 1;
+                gv_gen_common_err := lv_errmsg;
+--
+                -- キー編集処理
+                xxcos_common_pkg.makeup_key_info(
+                  iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                 ,iv_data_value1 => lt_order_no_hht
+                 ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称２
+                 ,iv_data_value2 => lt_consumption_tax_class
+                 ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称３
+                 ,iv_data_value3 => ld_tax_date
+                 ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_item )      -- 項目名称４
+                 ,iv_data_value4 => gv_disc_item
+                 ,ov_key_info    => gv_tkn1            -- キー情報
+                 ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                 ,ov_retcode     => lv_retcode         -- リターンコード
+                 ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                );
+--
+                gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                       iv_application   => cv_application               --アプリケーション短縮名
+                                                      ,iv_name          => cv_msg_common_err            --メッセージコード
+                                                      ,iv_token_name1   => cv_err_msg                   --トークンコード1
+                                                      ,iv_token_value1  => gv_gen_common_err            --トークン値1
+                                                      ,iv_token_name2   => cv_key_data                  --トークンコード2
+                                                      ,iv_token_value2  => gv_tkn1                      --トークン値2
+                                                    );
+--
+              -- 共通関数<異常>
+              ELSIF ( lv_retcode = cv_status_error ) THEN
+                gv_gen_common_err := lv_errmsg;
+--
+                -- キー編集処理
+                xxcos_common_pkg.makeup_key_info(
+                    iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                   ,iv_data_value1 => lt_order_no_hht
+                   ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )         -- 項目名称２
+                   ,iv_data_value2 => lt_consumption_tax_class
+                   ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )      -- 項目名称３
+                   ,iv_data_value3 => ld_tax_date
+                   ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_discnt_item )         -- 項目名称４
+                   ,iv_data_value4 => gv_disc_item
+                   ,ov_key_info    => gv_tkn1            -- キー情報
+                   ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                   ,ov_retcode     => lv_retcode         -- リターンコード
+                   ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                );
+--
+                lv_errmsg := xxccp_common_pkg.get_msg(
+                                iv_application   => cv_application              --アプリケーション短縮名
+                               ,iv_name          => cv_msg_common_err           --メッセージコード
+                               ,iv_token_name1   => cv_err_msg                  --トークンコード1
+                               ,iv_token_value1  => gv_gen_common_err           --トークン値1
+                               ,iv_token_name2   => cv_key_data                 --トークンコード2
+                               ,iv_token_value2  => gv_tkn1                     --トークン値2
+                             );
+--
+                RAISE global_api_expt;
+--
+              -- 共通関数<正常>
+              ELSE
+                -- 税コード取得
+                CASE lt_consumption_tax_class WHEN cv_ins_slip_tax THEN              -- 内税（伝票課税）の場合
+                                                lt_consum_code := gv_tax_class_sales_inside;
+                                              WHEN cv_ins_bid_tax  THEN              -- 内税（単価込み）の場合
+                                                lt_consum_code := gv_tax_class_sales_inside;
+                                              WHEN cv_out_tax      THEN              -- 外税の場合
+                                                lt_consum_code := gv_tax_class_sales_outside;
+                                              ELSE
+                                                NULL;
+                END CASE;
+                -- 消費税率の算出
+                ln_tax_data := ( (100 + lt_tax_consum) / 100 );
+              END IF;
+--
+            -- 非課税の場合
+            ELSIF ( lt_consumption_tax_class = cv_non_tax ) THEN
+                BEGIN
+                  -- 消費税情報取得（非課税）
+                  SELECT xtv.tax_rate        -- 消費税率
+                        ,xtv.tax_code        -- 税金コード
+                  INTO   lt_tax_consum
+                        ,lt_consum_code
+                  FROM   xxcos_tax_v   xtv   -- 消費税VIEW
+                  WHERE  xtv.hht_tax_class    = lt_consumption_tax_class
+                  AND    xtv.set_of_books_id  = TO_NUMBER( gv_bks_id )
+                  AND    NVL( xtv.start_date_active, ld_tax_date )  <= ld_tax_date
+                  AND    NVL( xtv.end_date_active,   gd_max_date )  >= ld_tax_date
+                  ;
+--
+                EXCEPTION
+                  WHEN NO_DATA_FOUND THEN
+--
+                    lv_state_flg     := cv_status_warn;
+                    gn_wae_data_num  := gn_wae_data_num + 1;
+                    gn_warn_cnt      := gn_warn_cnt + 1;
+--
+                    -- トークン（テーブル名）取得
+                    gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_ar_tax_mst );
+--
+                    --キー編集処理
+                    xxcos_common_pkg.makeup_key_info(
+                      iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_order_num_hht )    -- 項目名称１
+                     ,iv_data_value1 => lt_order_no_hht
+                     ,iv_item_name2  => xxccp_common_pkg.get_msg( cv_application, cv_msg_line_num )         -- 項目名称２
+                     ,iv_data_value2 => lt_state_line_no_hht
+                     ,iv_item_name3  => xxccp_common_pkg.get_msg( cv_application, cv_msg_lookup_code )      -- 項目名称３
+                     ,iv_data_value3 => lt_consumption_tax_class
+                     ,iv_item_name4  => xxccp_common_pkg.get_msg( cv_application, cv_msg_rec_date )         -- 項目名称４
+                     ,iv_data_value4 => ld_tax_date
+                     ,ov_key_info    => gv_tkn2            -- キー情報
+                     ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+                     ,ov_retcode     => lv_retcode         -- リターンコード
+                     ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+                      );
+--
+                    gt_msg_war_data(gn_wae_data_num) := xxccp_common_pkg.get_msg(
+                                                          iv_application   => cv_application      --アプリケーション短縮名
+                                                         ,iv_name          => cv_msg_no_data      --メッセージコード
+                                                         ,iv_token_name1   => cv_tkn_table_name   --トークンコード1
+                                                         ,iv_token_value1  => gv_tkn1             --トークン値1
+                                                         ,iv_token_name2   => cv_key_data         --トークンコード2
+                                                         ,iv_token_value2  => gv_tkn2             --トークン値2
+                                                         );
+--
+                END;
+            END IF;
+            -- 明細行がない場合（値引のみ）
+            IF ( ln_line_count <> 0 ) THEN
+              -- ヘッダ税コード、税率の設定(明細行なしの場合)
+              IF ( gv_tax_code_header IS NULL )
+              OR ( gv_tax_rate_header IS NULL ) THEN
+                -- 売上値引品目に紐付く税情報を代入
+                gv_tax_code_header  := lt_consum_code;
+                gv_tax_rate_header  := lt_tax_consum;
+              END IF;
+            END IF;
+--************** 2019/07/26 S.Kuwako Var1.32 ADD END   **************
 --
             -- ========================
             -- 値引明細金額算出
@@ -7312,6 +8797,10 @@ AS
             gt_accumulation_data(ln_line_data_count).sale_amount                := lt_set_sale_amount_data;            -- 売上金額
             gt_accumulation_data(ln_line_data_count).pure_amount                := lt_set_pure_amount_data;            -- 本体金額
             gt_accumulation_data(ln_line_data_count).tax_amount                 := lt_set_tax_amount_data;             -- 消費税金額
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+            gt_accumulation_data(ln_line_data_count).tax_code                   := lt_consum_code;                     -- 税金コード
+            gt_accumulation_data(ln_line_data_count).tax_rate                   := lt_tax_consum;                      -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
             gt_accumulation_data(ln_line_data_count).cash_and_card              := cn_tkn_zero;                   -- 現金・カード併用額
             gt_accumulation_data(ln_line_data_count).ship_from_subinventory_code := lt_secondary_inventory_name;  -- 出荷元保管場所
             gt_accumulation_data(ln_line_data_count).delivery_base_code         := lt_dlv_base_code;              -- 納品拠点コード
@@ -7350,24 +8839,24 @@ AS
                   -- 本体金額合計
                   lt_pure_amount_sum := lt_tax_include;
                   -- 消費税金額合計
-                  ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
-                IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
-                  IF ( lt_tax_odd = cv_amount_up ) THEN
-                  IF ( SIGN (ln_amount_deta) <> -1 ) THEN
-                    lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
-                  ELSE
-                    lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
-                  END IF;
-                  -- 切捨て
-                  ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                    lt_tax_amount_sum := TRUNC( ln_amount_deta );
-                  -- 四捨五入
-                  ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                     lt_tax_amount_sum:= ROUND( ln_amount_deta );
-                  END IF;
-                ELSE
-                  lt_tax_amount_sum := ln_amount_deta;
-                END IF;
+                    ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+                    IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                      IF ( lt_tax_odd = cv_amount_up ) THEN
+                        IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+                          lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                        ELSE
+                          lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+                        END IF;
+                      -- 切捨て
+                      ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+                        lt_tax_amount_sum := TRUNC( ln_amount_deta );
+                      -- 四捨五入
+                      ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+                        lt_tax_amount_sum:= ROUND( ln_amount_deta );
+                      END IF;
+                    ELSE
+                      lt_tax_amount_sum := ln_amount_deta;
+                    END IF;
 --
               ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
@@ -7377,6 +8866,33 @@ AS
                 lt_pure_amount_sum := ( lt_tax_include - lt_sales_consumption_tax );
                 -- 消費税金額合計
                 lt_tax_amount_sum  := lt_sales_consumption_tax;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                FOR a IN 1..ln_max_index LOOP
+                  ln_amount_deta := 0;
+                  IF  ( g_tax_amount_sum_type_tab(a).sale_amount <> 0 )
+                  AND ( g_tax_amount_sum_type_tab(a).tax_amount  <> 0 ) THEN
+                    -- 税率ごとの消費税金額合計の算出
+                    ln_amount_deta  := g_tax_amount_sum_type_tab(a).sale_amount *
+                                                 ((( 100 + g_tax_amount_sum_type_tab(a).tax_rate ) / 100 ) - 1 );
+                    -- 端数処理
+                    IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                      IF ( lt_tax_odd = cv_amount_up ) THEN          -- 切上
+                        IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                        ELSE
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := TRUNC( ln_amount_deta ) - 1;
+                        END IF;
+                      ELSIF ( lt_tax_odd = cv_amount_down ) THEN     -- 切捨て
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := TRUNC( ln_amount_deta );
+                      ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN  -- 四捨五入
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := ROUND( ln_amount_deta );
+                      END IF;
+                    ELSE
+                      g_tax_amount_sum_type_tab(a).tax_amount_sum     := ln_amount_deta;
+                    END IF;
+                  END IF;
+                END LOOP;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
               ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
@@ -7417,24 +8933,45 @@ AS
                 -- 本体金額合計
                 lt_pure_amount_sum := lt_total_amount;
                 -- 消費税金額合計
-                ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
-                IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
-                  IF ( lt_tax_odd = cv_amount_up ) THEN
-                    IF ( SIGN (ln_amount_deta) <> -1 ) THEN
-                      lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                FOR  a IN 1..ln_max_index LOOP
+                  ln_amount_deta := 0;
+                  IF  ( g_tax_amount_sum_type_tab(a).sale_amount <> 0 )
+                  AND ( g_tax_amount_sum_type_tab(a).tax_amount  <> 0 ) THEN
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+--******************************* 2019/07/26 S.Kuwako Var1.32 MOD START **************************************
+--                    ln_amount_deta  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+                    ln_amount_deta  := ( g_tax_amount_sum_type_tab(a).sale_amount *
+                                                 ((( 100 + g_tax_amount_sum_type_tab(a).tax_rate ) / 100 ) - 1 )) * ( -1 );
+                    IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                      IF ( lt_tax_odd = cv_amount_up ) THEN
+                        IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+--                          lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                        ELSE
+--                          lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+                        END IF;
+                      -- 切捨て
+                      ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+--                        lt_tax_amount_sum := TRUNC( ln_amount_deta );
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := TRUNC( ln_amount_deta );
+                      -- 四捨五入
+                      ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+--                        lt_tax_amount_sum := ROUND( ln_amount_deta );
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := ROUND( ln_amount_deta );
+                      END IF;
                     ELSE
-                      lt_tax_amount_sum := ( TRUNC( ln_amount_deta ) - 1 );
+--                      lt_tax_amount_sum   := ln_amount_deta;
+                      g_tax_amount_sum_type_tab(a).tax_amount_sum     := ln_amount_deta;
                     END IF;
-                  -- 切捨て
-                  ELSIF ( lt_tax_odd = cv_amount_down ) THEN
-                    lt_tax_amount_sum := TRUNC( ln_amount_deta );
-                  -- 四捨五入
-                  ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
-                    lt_tax_amount_sum := ROUND( ln_amount_deta );
+--******************************* 2019/07/26 S.Kuwako Var1.32 MOD END   **************************************
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                    -- 消費税金額集計
+                    lt_tax_amount_sum  := lt_tax_amount_sum + g_tax_amount_sum_type_tab(a).tax_amount_sum;
                   END IF;
-                ELSE
-                  lt_tax_amount_sum   := ln_amount_deta;
-                END IF;
+                END LOOP;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
               ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
@@ -7444,6 +8981,34 @@ AS
                 lt_pure_amount_sum := lt_total_amount;
                 -- 消費税金額合計
                 lt_tax_amount_sum  := lt_sales_consumption_tax;
+--
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                FOR a IN 1..ln_max_index LOOP
+                  ln_amount_deta := 0;
+                  IF  ( g_tax_amount_sum_type_tab(a).sale_amount <> 0 )
+                  AND ( g_tax_amount_sum_type_tab(a).tax_amount  <> 0 ) THEN
+                    -- 税率ごとの消費税金額合計の算出
+                    ln_amount_deta   := ( g_tax_amount_sum_type_tab(a).sale_amount * 
+                                                              ( ( ( 100 + g_tax_amount_sum_type_tab(a).tax_rate ) / 100 ) - 1 ) ) * ( -1 );
+                    -- 端数処理
+                    IF ( ln_amount_deta <> TRUNC( ln_amount_deta ) ) THEN
+                      IF ( lt_tax_odd = cv_amount_up ) THEN          -- 切上
+                        IF ( SIGN (ln_amount_deta) <> -1 ) THEN
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := ( TRUNC( ln_amount_deta ) + 1 );
+                        ELSE
+                          g_tax_amount_sum_type_tab(a).tax_amount_sum := TRUNC( ln_amount_deta ) - 1;
+                        END IF;
+                      ELSIF ( lt_tax_odd = cv_amount_down ) THEN     -- 切捨て
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := TRUNC( ln_amount_deta );
+                      ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN  -- 四捨五入
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum   := ROUND( ln_amount_deta );
+                      END IF;
+                    ELSE
+                      g_tax_amount_sum_type_tab(a).tax_amount_sum := ln_amount_deta;
+                    END IF;
+                  END IF;
+                END LOOP;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
 --
               ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
 --
@@ -7469,16 +9034,45 @@ AS
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
             END IF;
 --
-            IF ( ABS( lt_tax_amount_sum ) <> ABS( ln_all_tax_amount ) ) THEN
+--******************************* 2019/07/26 S.Kuwako Var1.32 DEL START **************************************
+--            IF ( ABS( lt_tax_amount_sum ) <> ABS( ln_all_tax_amount ) ) THEN
+--******************************* 2019/07/26 S.Kuwako Var1.32 DEL END   **************************************
               IF ( lt_consumption_tax_class = cv_out_tax ) OR ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN
-                IF ( lt_red_black_flag = cv_black_flag ) THEN
-                  gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data - ( lt_tax_amount_sum + ln_all_tax_amount ) );
-                ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-                  gt_accumulation_data(ln_max_no_data).tax_amount := ( ( ln_max_tax_data 
-                                                            - ( lt_tax_amount_sum + ln_all_tax_amount ) ) * ( -1 ) );
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                -- 値引発生時
+                IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+                  IF ( lt_red_black_flag = cv_black_flag ) THEN
+                    gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data - ( lt_tax_amount_sum + ln_all_tax_amount ) );
+                  ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+                    gt_accumulation_data(ln_max_no_data).tax_amount := ( ( ln_max_tax_data 
+                                                                             - ( lt_tax_amount_sum + ln_all_tax_amount ) ) * ( -1 ) );
+                  END IF;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD START **************************************
+                -- 値引未発生時
+                ELSE
+                  -- 税率ごとの差額計算
+                  FOR a IN 1..ln_max_index LOOP
+                    IF ( g_tax_amount_sum_type_tab(a).tax_amount_sum <> g_tax_amount_sum_type_tab(a).tax_amount ) THEN
+                      g_tax_amount_sum_type_tab(a).diff_amount := ( g_tax_amount_sum_type_tab(a).tax_amount_sum + g_tax_amount_sum_type_tab(a).tax_amount ) * ( -1 );
+                    END IF;
+                  END LOOP;
+--
+                  -- 差額調整
+                  FOR a IN 1..ln_max_index LOOP
+                    IF ( g_tax_amount_sum_type_tab(a).diff_amount <> 0 ) THEN
+                      ln_max_no_data        := g_tax_amount_sum_type_tab(a).max_tax_amount_idx;
+                      ln_max_tax_data       := g_tax_amount_sum_type_tab(a).max_tax_amount;
+                      IF ( lt_red_black_flag = cv_black_flag ) THEN
+                        gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+                      ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+                        gt_accumulation_data(ln_max_no_data).tax_amount := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount ) * ( -1 ));
+                      END IF;
+                    END IF;
+                  END LOOP;
                 END IF;
+--******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
               END IF;
-            END IF;
           END IF;
 --
           -- 返品実績データ用符号変換処理
@@ -7615,7 +9209,7 @@ AS
           gt_head_id( gn_head_no )                   := ln_actual_id;               --  販売実績ヘッダID
 -- 2011/03/24 Ver.1.25 Y.Nishino Mod Start --
 --          gt_head_order_invoice_number( gn_head_no ) := cv_tkn_null;                --  注文伝票番号
-          gt_head_order_invoice_number( gn_head_no ) := lt_order_number;                --  注文伝票番号
+          gt_head_order_invoice_number( gn_head_no ) := lt_order_number;            --  注文伝票番号
 -- 2011/03/24 Ver.1.25 Y.Nishino Mod End   --
           gt_head_order_no_ebs( gn_head_no )         := lt_order_no_ebs;            --  受注番号
           gt_head_order_no_hht( gn_head_no )         := lt_order_no_hht;            --  受注No（HHT)
@@ -7633,14 +9227,18 @@ AS
           gt_head_total_amount( gn_head_no )         := lt_set_pure_amount_sum;     -- 本体金額合計
           gt_head_sales_consump_tax( gn_head_no )    := lt_set_tax_amount_sum;      -- 消費税金額合計
           gt_head_consump_tax_class( gn_head_no )    := lt_consum_type;             -- 消費税区分
-          gt_head_tax_code( gn_head_no )             := lt_consum_code;             -- 税金コード
-          gt_head_tax_rate( gn_head_no )             := lt_tax_consum;              -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako MOD START ************ --
+          -- gt_head_tax_code( gn_head_no )             := lt_consum_code;             -- 税金コード
+          -- gt_head_tax_rate( gn_head_no )             := lt_tax_consum;              -- 消費税率
+          gt_head_tax_code( gn_head_no )             := gv_tax_code_header;             -- 税金コード
+          gt_head_tax_rate( gn_head_no )             := gv_tax_rate_header;              -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako MOD END   ************ --
           gt_head_performance_by_code( gn_head_no )  := lt_performance_by_code;     -- 成績計上者コード
           gt_head_sales_base_code( gn_head_no )      := lt_sale_base_code;          -- 売上拠点コード
           gt_head_order_source_id( gn_head_no )      := cv_tkn_null;                -- 受注ソースID
           gt_head_card_sale_class( gn_head_no )      := lt_card_sale_class;         -- カード売り区分
-          gt_head_sales_classification( gn_head_no ) := lt_sales_invoice;    -- 伝票区分
-          gt_head_invoice_class( gn_head_no )        := lt_sales_classification;           -- 伝票分類コード
+          gt_head_sales_classification( gn_head_no ) := lt_sales_invoice;           -- 伝票区分
+          gt_head_invoice_class( gn_head_no )        := lt_sales_classification;    -- 伝票分類コード
           gt_head_receiv_base_code( gn_head_no )     := lt_cash_receiv_base_code;   -- 入金拠点コード(導出)
           gt_head_change_out_time_100( gn_head_no )  := lt_change_out_time_100;     -- つり銭切れ時間１００円
           gt_head_change_out_time_10( gn_head_no )   := lt_change_out_time_10;      -- つり銭切れ時間１０円
@@ -7685,6 +9283,10 @@ AS
             gt_line_sale_amount( gt_line_set_no )             := gt_accumulation_data(in_data_num).sale_amount;           -- 売上金額
             gt_line_pure_amount( gt_line_set_no )             := gt_accumulation_data(in_data_num).pure_amount;           -- 本体金額
             gt_line_tax_amount( gt_line_set_no )              := gt_accumulation_data(in_data_num).tax_amount;            -- 消費税金額
+-- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
+            gt_line_tax_code( gt_line_set_no )                := gt_accumulation_data(in_data_num).tax_code;              -- 税金コード
+            gt_line_tax_rate( gt_line_set_no )                := gt_accumulation_data(in_data_num).tax_rate;              -- 消費税率
+-- ************ 2019/02/06 1.31 S.Kuwako ADD END   ************ --
             gt_line_cash_and_card( gt_line_set_no )           := gt_accumulation_data(in_data_num).cash_and_card;         -- 現金・カード併用額
             gt_line_ship_from_subinv_co( gt_line_set_no )     := gt_accumulation_data(in_data_num).ship_from_subinventory_code; -- 出荷元保管場所
             gt_line_delivery_base_code( gt_line_set_no )      := gt_accumulation_data(in_data_num).delivery_base_code;    -- 納品拠点コード
@@ -9669,11 +11271,13 @@ AS
 ----
 --****************************** 2009/06/29 1.16 T.Kitajima DEL  END ******************************--
     END LOOP header_loop;
+--
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
 --
   EXCEPTION
+--
     WHEN no_data_extract THEN
       --キー編集関数
       xxcos_common_pkg.makeup_key_info(
@@ -10351,14 +11955,51 @@ AS
   --=======================
   -- 売上値引品目コード取得
   --=======================
-  gv_disc_item := FND_PROFILE.VALUE( cv_disc_item_code );
+--************** 2019/07/26 S.Kuwako Var1.32 MOD START **************
+--  gv_disc_item := FND_PROFILE.VALUE( cv_disc_item_code );
 --
-  IF ( gv_disc_item IS NULL ) THEN
-    gv_tkn1   := xxccp_common_pkg.get_msg( cv_application,cv_msg_disc_item );
-    lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_pro, cv_tkn_profile, gv_tkn1 );
---    lv_errbuf := lv_errmsg;
-    RAISE global_api_expt;
+--  IF ( gv_disc_item IS NULL ) THEN
+--    gv_tkn1   := xxccp_common_pkg.get_msg( cv_application,cv_msg_disc_item );
+--    lv_errmsg := xxccp_common_pkg.get_msg( cv_application,cv_msg_pro, cv_tkn_profile, gv_tkn1 );
+----    lv_errbuf := lv_errmsg;
+--    RAISE global_api_expt;
+--  END IF;
+--
+  SELECT flv.lookup_code   discount_tax_class  -- 値引税区分
+        ,flv.attribute1    discnt_item_code    -- 売上値引品目
+  BULK COLLECT INTO
+         g_sales_discount_item_tab
+  FROM   fnd_lookup_values flv
+  WHERE  flv.lookup_type   = cv_xxcfo1_tax_code
+  AND    flv.language      = ct_user_lang
+  AND    flv.enabled_flag  = cv_tkn_yes
+  ORDER BY flv.lookup_code
+  ;
+--
+  IF ( g_sales_discount_item_tab.COUNT = 0 ) THEN
+      -- キー編集処理
+      xxcos_common_pkg.makeup_key_info(
+        iv_item_name1  => xxccp_common_pkg.get_msg( cv_application, cv_msg_type )        -- 項目名称１
+       ,iv_data_value1 => cv_xxcfo1_tax_code
+       ,ov_key_info    => gv_tkn1            -- キー情報
+       ,ov_errbuf      => lv_errbuf          -- エラー・メッセージエラー
+       ,ov_retcode     => lv_retcode         -- リターンコード
+       ,ov_errmsg      => lv_errmsg          -- ユーザー・エラー・メッセージ
+      );
+--
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                       iv_application   => cv_application              --アプリケーション短縮名
+                      ,iv_name          => cv_msg_no_data              --メッセージコード
+                      ,iv_token_name1   => cv_tkn_table_name           --トークンコード1
+                      ,iv_token_value1  => xxccp_common_pkg.get_msg( cv_application,cv_msg_lookup_type )
+                                                                       --トークン値1
+                      ,iv_token_name2   => cv_key_data                 --トークンコード2
+                      ,iv_token_value2  => gv_tkn1                     --トークン値2
+                    );
+      RAISE global_api_expt;
   END IF;
+--
+--************** 2019/07/26 S.Kuwako Var1.32 MOD END   **************
 --
   --=======================
   -- 業務日付取得
@@ -10507,7 +12148,7 @@ AS
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
       IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
+          RAISE global_process_expt;
       END IF;
     END IF;
 --
@@ -10520,7 +12161,7 @@ AS
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
       IF (lv_retcode <> cv_status_normal) THEN
-        RAISE global_process_expt;
+          RAISE global_process_expt;
       END IF;
     END IF;
     IF ( ( gt_head_id.COUNT ) <> 0 ) AND ( gt_line_sales_exp_line_id.COUNT <> 0 ) THEN
