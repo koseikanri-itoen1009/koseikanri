@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : 納品伝票ヘッダ情報ビュー
- * Version         : 1.10
+ * Version         : 1.11
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -23,6 +23,7 @@
  *  2011/03/22    1.9   M.Hirose         [E_本稼動_06590]オーダーNoの追加
  *  2011/04/18    1.10  M.Hirose         [E_本稼動_07075]営業担当員ビューの削除
  *                                                       ヒント句修正
+ *  2019/07/30    1.11  N.Abe            [E_本稼動_15472]軽減税率対応(HHT関連追加対応)
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
 (
@@ -84,6 +85,9 @@ CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
 /* 2011/03/22 Ver1.9 Add Start */
   ,order_number
 /* 2011/03/22 Ver1.9 Add End   */
+-- 2019/07/30 Ver1.11 Add Start
+  ,food_type
+-- 2019/07/30 Ver1.11 Add End
 )
 AS
 SELECT
@@ -194,6 +198,9 @@ SELECT
 /* 2011/03/22 Ver1.9 Add Start */
        ,xdh.order_number                                          -- オーダーNo
 /* 2011/03/22 Ver1.9 Add End   */
+-- 2019/07/30 Ver1.11 Add Start
+       ,xdh.discount_tax_class                                    -- 値引税区分
+-- 2019/07/30 Ver1.11 Add End
 FROM
        xxcos_dlv_headers    xdh,                                  --納品ヘッダテーブル
        xxcmm_cust_accounts  custadd,                              --顧客アドオン
@@ -537,5 +544,8 @@ COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.resource_id                 IS  'リ
 /* 2011/03/22 Ver1.9 Add Start */
 COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.order_number                IS  'オーダーNo';
 /* 2011/03/22 Ver1.9 Add End   */
+-- 2019/07/30 Ver1.11 Add Start
+COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.food_type                   IS  '食品区分';
+-- 2019/07/30 Ver1.11 Add End
 --
 COMMENT ON  TABLE   xxcos_dlv_headers_info_v                             IS  '納品伝票ヘッダ情報ビュー';
