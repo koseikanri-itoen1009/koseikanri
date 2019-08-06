@@ -5,7 +5,7 @@
 -- Description   : HHT納品データ取込（ヘッダ） SQL*Loader処理
 -- MD.050        : 
 -- MD.070        : なし
--- Version       : 1.4
+-- Version       : 1.5
 --
 -- Target Table  : XXCOS_DLV_HEADERS_WORK
 --
@@ -18,6 +18,7 @@
 --  2016/02/15    1.2     仁木 重人        [E_本稼動_13480] 納品書チェックリスト対応
 --  2017/04/19    1.3     渡邊 直樹        [E_本稼動_14025] HHTからのシステム日付連携追加
 --  2017/12/18    1.4     山下 翔太        [E_本稼動_14486] HHTからの訪問区分連携追加
+--  2019/07/26    1.5     桑子 駿介        [E_本稼動_15472] 軽減税率対応(HHT追加対応)
 --
 -- ************************************************************************************************
 LOAD DATA
@@ -72,6 +73,9 @@ TRAILING NULLCOLS
     VISIT_CLASS4                 CHAR,                              -- 訪問区分4
     VISIT_CLASS5                 CHAR,                              -- 訪問区分5
 -- Ver.1.4 ADD End
+-- Ver.1.5 ADD Start
+    DISCOUNT_TAX_CLASS           CHAR,                              -- 値引税区分
+-- Ver.1.5 ADD End
     CREATED_BY                   CONSTANT "-1",                     -- 作成者
     CREATION_DATE                SYSDATE,                           -- 作成日
     LAST_UPDATED_BY              CONSTANT "-1",                     -- 最終更新者
