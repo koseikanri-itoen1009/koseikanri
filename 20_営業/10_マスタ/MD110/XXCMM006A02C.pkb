@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM006A02C(body)
  * Description      : 管理マスタIF出力(HHT)
  * MD.050           : 管理マスタIF出力(HHT) MD050_CMM_006_A02
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/25    1.0   SCS 福間 貴子    初回作成
  *  2013/07/19    1.1   SCSK 渡辺良介    E_本稼動_10937 対応
+ *  2019/07/30    1.2   SCSK N.Miyamoto  E_本稼動_15472 軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -72,6 +73,9 @@ AS
   cv_filepath               CONSTANT VARCHAR2(30)  := 'XXCMM1_HHT_OUT_DIR';         -- HHTCSVファイル出力先
   cv_filename               CONSTANT VARCHAR2(30)  := 'XXCMM1_006A02_OUT_FILE';     -- 連携用CSVファイル名
   cv_cal_code               CONSTANT VARCHAR2(30)  := 'XXCMM1_006A02_SYS_CAL_CODE'; -- システム稼働日カレンダコード値
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  cv_prf_org_id             CONSTANT VARCHAR2(30)  := 'ORG_ID';                     -- 営業単位ID
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD END
   -- トークン
   cv_tkn_profile            CONSTANT VARCHAR2(10)  := 'NG_PROFILE';                 -- プロファイル名
   cv_tkn_filepath_nm        CONSTANT VARCHAR2(20)  := 'CSVファイル出力先';
@@ -105,7 +109,10 @@ AS
   cv_msg_00007              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00007';           -- ファイルアクセス権限エラー
   cv_msg_00009              CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00009';           -- CSVデータ出力エラー
   -- 固定値(設定値、抽出条件)
-  cv_tax_flg                CONSTANT VARCHAR2(1)   := '0';                          -- 税フラグ
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto MOD START
+--  cv_tax_flg                CONSTANT VARCHAR2(1)   := '0';                          -- 税フラグ
+  cv_tax_flg                CONSTANT VARCHAR2(1)   := '1';                          -- 税フラグ
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto MOD END
   cv_where_name             CONSTANT VARCHAR2(2)   := '21';                         -- 抽出対象レコード(課税売上(外税)のレコード)
   cv_on_flg                 CONSTANT VARCHAR2(1)   := 'Y';
   cv_off_flg                CONSTANT VARCHAR2(1)   := 'N';
@@ -135,6 +142,9 @@ AS
   gn_all_cnt                NUMBER;               -- 取得データ件数
   gv_warn_flg               VARCHAR2(1);          -- 警告フラグ
   gv_param_output_flg       VARCHAR2(1);          -- 入力パラメータ出力フラグ(出力前:0、出力後:1)
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+  gt_org_id                 ap_tax_codes_all.org_id%TYPE; -- 営業単位ID
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -150,6 +160,9 @@ AS
     FROM     ap_tax_codes_all
     WHERE    name LIKE cv_where_name || '%'
     AND      enabled_flag = cv_on_flg
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    AND      org_id       = gt_org_id
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD END
 -- 2013/07/19 v1.1 R.Watanabe Mod Start E_本稼動_10937
 --    ORDER BY start_date DESC
     ORDER BY attribute3 DESC
@@ -387,6 +400,22 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+    -- =========================================================
+    --  営業単位
+    -- =========================================================
+    gt_org_id := FND_PROFILE.VALUE(cv_prf_org_id);
+    IF ( gt_org_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_msg_kbn_cmm           -- 'XXCMM'
+                   , iv_name         => cv_msg_00002             -- プロファイル取得エラー
+                   , iv_token_name1  => cv_tkn_profile           -- トークン(NG_PROFILE)
+                   , iv_token_value1 => cv_prf_org_id            -- プロファイル名
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD END
     -- =========================================================
     --  固定出力(I/Fファイル名部)
     -- =========================================================
@@ -811,6 +840,9 @@ AS
       WHERE  last_update_date >= gd_select_start_datetime
       AND    last_update_date <= gd_select_end_datetime
       AND    enabled_flag = cv_on_flg
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD START
+      AND    org_id       = gt_org_id
+-- 2019/07/30 Ver.1.2 [E_本稼動_15472] SCSK N.Miyamoto ADD END
       AND    ROWNUM = 1;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
