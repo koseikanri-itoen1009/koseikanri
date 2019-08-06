@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2013/07/25    1.12  Shigeto.Niki     障害E_本稼動_10904の対応(消費税増税対応)
  *  2013/09/18    1.12  Shigeto.Niki     障害E_本稼動_10904の再対応(消費税増税対応)
  *  2017/08/29    1.13  Shigeto.Niki     障害E_本稼動_14486の対応
+ *  2019/07/30    1.14  N.Koyama         障害E_本稼動_15472の追加対応
  *
  *****************************************************************************************/
 --
@@ -867,6 +868,9 @@ AS
 -- Ver1.13 add start
              xca.business_low_type                                       business_low_type,           --業態コード
 -- Ver1.13 add end
+-- Ver1.14 add start
+             hcsu.tax_rounding_rule                                      tax_rounding_rule,           --税金端数処理
+-- Ver1.14 add end
              hp.duns_number_c                                            duns_number_c,               --顧客ステータスコード
              xca.change_amount                                           change_amount,               --つり銭
              hp.organization_name_phonetic                               org_name_phonetic,           --顧客名カナ
@@ -1386,6 +1390,9 @@ AS
 -- Ver1.13 add start
         lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.business_low_type, 1, 2), cv_date_null)       || cv_dqu;  --業態コード
 -- Ver1.13 add end
+-- Ver1.14 add start
+        lv_output_str := lv_output_str || cv_comma || cv_dqu || NVL(SUBSTRB(cust_data_rec.tax_rounding_rule, 1, 7), cv_date_null)       || cv_dqu;  --税金端数処理
+-- Ver1.14 add end
 --
         --文字列出力
         BEGIN
