@@ -8,7 +8,7 @@ AS
  *                      営業品目として登録された品目（カテゴリマスタの商品製品区分が2:製品）のみを抽出し、
  *                      HHT向けのCSVファイルを提供します。
  * MD.050           : 品目マスタIF出力（HHT） CMM_004_A12
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *                                                         品目コードの先導２桁が「00」に変更
  *  2009/09/03    1.9   Y.Kuboshima      障害0001255の対応 メインカーソルにヒント句を追加
  *  2017/08/29    1.10  S.Niki           E_本稼動_14486の対応
+ *  2019/07/30    1.11  N.Abe            E_本稼動_15472 軽減税率対応
  *
  *****************************************************************************************/
 --
@@ -594,6 +595,16 @@ AS
                  ,xoiv.crowd_code_new        AS crowd_code                   -- 政策群コード
                  ,xoiv.renewal_item_code     AS renewal_item_code            -- リニューアル元商品コード
 --End 1.10
+-- Ver1.11 2019/07/30 Add Start
+                 ,(SELECT xrtrv.tax_rate
+                   FROM   xxcos_reduced_tax_rate_v xrtrv                     -- 品目別消費税率View
+                   WHERE  xoiv.item_code                                 = xrtrv.item_code
+                   AND    xrtrv.start_date                              <= gd_date_to + 1
+                   AND    NVL(xrtrv.end_date, gd_date_to + 1)           >= gd_date_to + 1
+                   AND    xrtrv.start_date_histories                    <= gd_date_to + 1
+                   AND    NVL(xrtrv.end_date_histories, gd_date_to + 1) >= gd_date_to + 1
+                  )                          AS tax_rate                     -- 消費税率
+-- Ver1.11 2019/07/30 Add End
       FROM        xxcmm_opmmtl_items_v    xoiv                               --
                  ,ic_item_mst_b           parent_iimb                        -- OPM品目（親品目）
 -- Ver1.8  2009/05/22 Del  商品製品区分の条件を削除
@@ -732,7 +743,10 @@ AS
       l_csv_item_tab( ln_data_index ).price_new            := TO_CHAR( l_csv_item_rec.price_new );  -- 定価（新）
       lv_step := 'A-2.tax_rate';
       lv_message_token := '消費税率';
-      l_csv_item_tab( ln_data_index ).tax_rate             := cn_tax_rate;                          -- 消費税
+-- Ver1.11 2019/07/30 Add Start
+--      l_csv_item_tab( ln_data_index ).tax_rate             := cn_tax_rate;                          -- 消費税
+      l_csv_item_tab( ln_data_index ).tax_rate             := l_csv_item_rec.tax_rate;              -- 消費税
+-- Ver1.11 2019/07/30 Add End
       lv_step := 'A-2.num_of_cases';
       lv_message_token := 'ケース入数';
       l_csv_item_tab( ln_data_index ).num_of_cases         := TO_CHAR( l_csv_item_rec.num_of_cases );
