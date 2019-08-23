@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.34
+ * Version          : 1.35
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2014/04/22   1.32  K.Nakamura        [E_本稼働_09071]消化締め後のAR入力対応
  *  2017/12/19   1.33  Y.Omuro           [E_本稼動_14486]タスク登録共通関数の引数追加
  *  2019/06/20   1.34  E.Yazaki          [E_本稼動_15472]軽減税率対応
+ *  2019/08/20   1.35  S.Kuwako          [E_本稼動_15472]軽減税率対応_追加対応
  *
  *****************************************************************************************/
 --
@@ -2072,16 +2073,24 @@ AS
               FROM   fnd_lookup_values         flv1
               WHERE  xxca.tax_div        = flv1.attribute3                               --顧客マスタ. 消費税区分 = 税コード特定マスタ.LOOKUPコード
               AND    flv1.lookup_type    = ct_qct_tax_type2
-              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
-                                         AND     NVL( flv1.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
+--                                         AND     NVL( flv1.end_date_active, gd_business_date )
+              AND    xsdh.digestion_due_date BETWEEN NVL( flv1.start_date_active, xsdh.digestion_due_date )
+                                             AND     NVL( flv1.end_date_active,  xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
               AND    flv1.enabled_flag   = ct_enabled_flag_yes
               AND    flv1.language       = ct_lang
               AND    cv_1 = ( SELECT COUNT(*)  count
                               FROM   fnd_lookup_values         flv2
                               WHERE  xxca.tax_div       = flv2.attribute3
                               AND    flv2.lookup_type    = ct_qct_tax_type2
-                              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
-                                                         AND     NVL( flv1.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
+--                                                         AND     NVL( flv1.end_date_active, gd_business_date )
+                              AND    xsdh.digestion_due_date BETWEEN NVL( flv2.start_date_active, xsdh.digestion_due_date )
+                                                             AND     NVL( flv2.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                               AND    flv2.enabled_flag   = ct_enabled_flag_yes
                               AND    flv2.language       = ct_lang
                             )
@@ -2092,14 +2101,22 @@ AS
                        FROM   xxcos_tax_v xtv3                        --消費税VIEW
                        WHERE  xtv3.tax_class       = xxca.tax_div
                        AND    xtv3.set_of_books_id = gn_gl_id
-                       AND    gd_business_date   BETWEEN NVL( xtv3.start_date_active, gd_business_date )
-                                                 AND     NVL( xtv3.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                       AND    gd_business_date   BETWEEN NVL( xtv3.start_date_active, gd_business_date )
+--                                                 AND     NVL( xtv3.end_date_active, gd_business_date )
+                       AND    xsdh.digestion_due_date  BETWEEN NVL( xtv3.start_date_active, xsdh.digestion_due_date )
+                                                       AND     NVL( xtv3.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                        AND    cv_1 =  ( SELECT COUNT(*)  tax_cnt
                                         FROM   xxcos_tax_v xtv4
                                         WHERE  xtv4.tax_class       = xxca.tax_div
                                         AND    xtv4.set_of_books_id = gn_gl_id
-                                        AND    gd_business_date   BETWEEN NVL( xtv4.start_date_active, gd_business_date )
-                                                                  AND     NVL( xtv4.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                        AND    gd_business_date   BETWEEN NVL( xtv4.start_date_active, gd_business_date )
+--                                                                  AND     NVL( xtv4.end_date_active, gd_business_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xtv4.start_date_active, xsdh.digestion_due_date )
+                                                                       AND     NVL( xtv4.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                       )
                        UNION
                        -- 対象データなしの場合、0を設定
@@ -2109,14 +2126,22 @@ AS
                                            FROM   xxcos_tax_v xtv5    --消費税VIEW
                                            WHERE  xtv5.tax_class       = xxca.tax_div
                                            AND    xtv5.set_of_books_id = gn_gl_id
-                                           AND    gd_business_date   BETWEEN NVL( xtv5.start_date_active, gd_business_date )
-                                                                     AND     NVL( xtv5.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                           AND    gd_business_date   BETWEEN NVL( xtv5.start_date_active, gd_business_date )
+--                                                                     AND     NVL( xtv5.end_date_active, gd_business_date )
+                                           AND    xsdh.digestion_due_date  BETWEEN  NVL( xtv5.start_date_active, xsdh.digestion_due_date )
+                                                                           AND      NVL( xtv5.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                            AND    cv_1 <= ( SELECT COUNT(*)  tax_cnt
                                                             FROM   xxcos_tax_v xtv6
                                                             WHERE  xtv6.tax_class       = xxca.tax_div
                                                             AND    xtv6.set_of_books_id = gn_gl_id
-                                                            AND    gd_business_date   BETWEEN NVL( xtv6.start_date_active, gd_business_date )
-                                                                                      AND     NVL( xtv6.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                                            AND    gd_business_date   BETWEEN NVL( xtv6.start_date_active, gd_business_date )
+--                                                                                      AND     NVL( xtv6.end_date_active, gd_business_date )
+                                                            AND    xsdh.digestion_due_date BETWEEN NVL( xtv6.start_date_active, xsdh.digestion_due_date )
+                                                                                           AND     NVL( xtv6.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                                           )
                                          )
                      )
@@ -2124,17 +2149,29 @@ AS
                      ( SELECT xrtr3.tax_rate  tax_rate
                        FROM   xxcos_reduced_tax_rate_v xrtr3                      --品目別消費税取得VIEW
                        WHERE  xrtr3.item_code      = xsdl.item_code
-                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date, gd_business_date )
-                                               AND     NVL( xrtr3.end_date, gd_business_date )
-                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date_histories, gd_business_date )
-                                               AND     NVL( xrtr3.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date, gd_business_date )
+--                                               AND     NVL( xrtr3.end_date, gd_business_date )
+--                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date_histories, gd_business_date )
+--                                               AND     NVL( xrtr3.end_date_histories, gd_business_date )
+                       AND    xsdh.digestion_due_date BETWEEN NVL( xrtr3.start_date, xsdh.digestion_due_date )
+                                                      AND     NVL( xrtr3.end_date, xsdh.digestion_due_date )
+                       AND    xsdh.digestion_due_date BETWEEN NVL( xrtr3.start_date_histories, xsdh.digestion_due_date )
+                                                      AND     NVL( xrtr3.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                        AND    cv_1 =  ( SELECT COUNT(*)  reduced_tax_rate_cnt
                                         FROM   xxcos_reduced_tax_rate_v xrtr4
                                         WHERE  xrtr4.item_code    = xsdl.item_code
-                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date, gd_business_date )
-                                                                AND     NVL( xrtr4.end_date, gd_business_date )
-                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date_histories, gd_business_date )
-                                                                AND     NVL( xrtr4.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date, gd_business_date )
+--                                                                AND     NVL( xrtr4.end_date, gd_business_date )
+--                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date_histories, gd_business_date )
+--                                                                AND     NVL( xrtr4.end_date_histories, gd_business_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xrtr4.start_date, xsdh.digestion_due_date )
+                                                                       AND     NVL( xrtr4.end_date, xsdh.digestion_due_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xrtr4.start_date_histories, xsdh.digestion_due_date )
+                                                                       AND     NVL( xrtr4.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                       )
                        UNION
                        -- 対象データなしの場合、0を設定
@@ -2143,17 +2180,29 @@ AS
                        WHERE  NOT EXISTS ( SELECT xrtr5.tax_rate  reduced_tax_rate
                                            FROM   xxcos_reduced_tax_rate_v xrtr5  --品目別消費税取得VIEW
                                            WHERE  xrtr5.item_code = xsdl.item_code
-                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date, gd_business_date )
-                                                                   AND     NVL( xrtr5.end_date, gd_business_date )
-                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date_histories, gd_business_date )
-                                                                   AND     NVL( xrtr5.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date, gd_business_date )
+--                                                                   AND     NVL( xrtr5.end_date, gd_business_date )
+--                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date_histories, gd_business_date )
+--                                                                   AND     NVL( xrtr5.end_date_histories, gd_business_date )
+                                           AND    xsdh.digestion_due_date BETWEEN NVL( xrtr5.start_date, xsdh.digestion_due_date )
+                                                                          AND     NVL( xrtr5.end_date, xsdh.digestion_due_date )
+                                           AND    xsdh.digestion_due_date BETWEEN NVL( xrtr5.start_date_histories, xsdh.digestion_due_date )
+                                                                          AND     NVL( xrtr5.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                            AND    cv_1 <= ( SELECT COUNT(*)  reduced_tax_rate_cnt
                                                             FROM   xxcos_reduced_tax_rate_v xrtr6
                                                             WHERE  xrtr6.item_code = xsdl.item_code
-                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date, gd_business_date )
-                                                                                    AND     NVL( xrtr6.end_date, gd_business_date )
-                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date_histories, gd_business_date )
-                                                                                    AND     NVL( xrtr6.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date, gd_business_date )
+--                                                                                    AND     NVL( xrtr6.end_date, gd_business_date )
+--                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date_histories, gd_business_date )
+--                                                                                    AND     NVL( xrtr6.end_date_histories, gd_business_date )
+                                                            AND    xsdh.digestion_due_date BETWEEN NVL( xrtr6.start_date, xsdh.digestion_due_date )
+                                                                                           AND     NVL( xrtr6.end_date, xsdh.digestion_due_date )
+                                                            AND    xsdh.digestion_due_date BETWEEN NVL( xrtr6.start_date_histories, xsdh.digestion_due_date )
+                                                                                           AND     NVL( xrtr6.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                                           )
                                          )
                      )
@@ -2168,14 +2217,22 @@ AS
                        FROM   xxcos_tax_v xtv1                     --消費税VIEW
                        WHERE  xtv1.tax_class       = xxca.tax_div
                        AND    xtv1.set_of_books_id = gn_gl_id
-                       AND    gd_business_date   BETWEEN NVL( xtv1.start_date_active, gd_business_date )
-                                                 AND     NVL( xtv1.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                       AND    gd_business_date   BETWEEN NVL( xtv1.start_date_active, gd_business_date )
+--                                                 AND     NVL( xtv1.end_date_active, gd_business_date )
+                       AND    xsdh.digestion_due_date   BETWEEN NVL( xtv1.start_date_active, xsdh.digestion_due_date )
+                                                        AND     NVL( xtv1.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                        AND    cv_1  = ( SELECT COUNT(*)  tax_cnt
                                         FROM   xxcos_tax_v xtv2
                                         WHERE  xtv2.tax_class       = xxca.tax_div
                                         AND    xtv2.set_of_books_id = gn_gl_id
-                                        AND    gd_business_date   BETWEEN  NVL( xtv2.start_date_active, gd_business_date )
-                                                                  AND      NVL( xtv2.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                        AND    gd_business_date   BETWEEN  NVL( xtv2.start_date_active, gd_business_date )
+--                                                                  AND      NVL( xtv2.end_date_active, gd_business_date )
+                                        AND    xsdh.digestion_due_date   BETWEEN  NVL( xtv2.start_date_active, xsdh.digestion_due_date )
+                                                                         AND      NVL( xtv2.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                       )
                      )
                    WHEN xxca.tax_div != cv_non_tax THEN   -- 課税の場合
@@ -2188,17 +2245,29 @@ AS
                               END
                        FROM   xxcos_reduced_tax_rate_v xrtr1     -- 品目別消費税取得VIEW
                        WHERE  xrtr1.item_code = xsdl.item_code
-                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date, gd_business_date )
-                                               AND     NVL( xrtr1.end_date, gd_business_date )
-                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date_histories, gd_business_date )
-                                               AND     NVL( xrtr1.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date, gd_business_date )
+--                                               AND     NVL( xrtr1.end_date, gd_business_date )
+--                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date_histories, gd_business_date )
+--                                               AND     NVL( xrtr1.end_date_histories, gd_business_date )
+                       AND    xsdh.digestion_due_date BETWEEN NVL( xrtr1.start_date, xsdh.digestion_due_date )
+                                                      AND     NVL( xrtr1.end_date, xsdh.digestion_due_date )
+                       AND    xsdh.digestion_due_date BETWEEN NVL( xrtr1.start_date_histories, xsdh.digestion_due_date )
+                                                      AND     NVL( xrtr1.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                        AND    cv_1  = ( SELECT COUNT(*)  reduced_tax_rate_cnt
                                         FROM   xxcos_reduced_tax_rate_v xrtr2
                                         WHERE  xrtr2.item_code    = xsdl.item_code
-                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date, gd_business_date )
-                                                                AND     NVL( xrtr2.end_date, gd_business_date )
-                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date_histories, gd_business_date )
-                                                                AND     NVL( xrtr2.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date, gd_business_date )
+--                                                                AND     NVL( xrtr2.end_date, gd_business_date )
+--                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date_histories, gd_business_date )
+--                                                                AND     NVL( xrtr2.end_date_histories, gd_business_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xrtr2.start_date, xsdh.digestion_due_date )
+                                                                AND     NVL( xrtr2.end_date, xsdh.digestion_due_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xrtr2.start_date_histories, xsdh.digestion_due_date )
+                                                                AND     NVL( xrtr2.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                       )
                      )
               END
@@ -2549,16 +2618,24 @@ AS
               FROM   fnd_lookup_values         flv1
               WHERE  xxca.tax_div       = flv1.attribute3                               --顧客マスタ. 消費税区分 = 税コード特定マスタ.LOOKUPコード
               AND    flv1.lookup_type    = ct_qct_tax_type2
-              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
-                                         AND     NVL( flv1.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
+--                                         AND     NVL( flv1.end_date_active, gd_business_date )
+              AND    xsdh.digestion_due_date    BETWEEN NVL( flv1.start_date_active, xsdh.digestion_due_date )
+                                                AND     NVL( flv1.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
               AND    flv1.enabled_flag   = ct_enabled_flag_yes
               AND    flv1.language       = ct_lang
               AND    cv_1 = ( SELECT COUNT(*)  count
                               FROM   fnd_lookup_values         flv2
                               WHERE  xxca.tax_div       = flv2.attribute3
                               AND    flv2.lookup_type    = ct_qct_tax_type2
-                              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
-                                                         AND     NVL( flv1.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                              AND    gd_business_date    BETWEEN NVL( flv1.start_date_active, gd_business_date )
+--                                                         AND     NVL( flv1.end_date_active, gd_business_date )
+                              AND    xsdh.digestion_due_date  BETWEEN NVL( flv1.start_date_active, xsdh.digestion_due_date )
+                                                              AND     NVL( flv1.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                               AND    flv2.enabled_flag   = ct_enabled_flag_yes
                               AND    flv2.language       = ct_lang
                             )
@@ -2569,14 +2646,22 @@ AS
                        FROM   xxcos_tax_v xtv3                        --消費税VIEW
                        WHERE  xtv3.tax_class       = xxca.tax_div
                        AND    xtv3.set_of_books_id = gn_gl_id
-                       AND    gd_business_date   BETWEEN NVL( xtv3.start_date_active, gd_business_date )
-                                                 AND     NVL( xtv3.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                       AND    gd_business_date   BETWEEN NVL( xtv3.start_date_active, gd_business_date )
+--                                                 AND     NVL( xtv3.end_date_active, gd_business_date )
+                       AND    xsdh.digestion_due_date   BETWEEN NVL( xtv3.start_date_active, xsdh.digestion_due_date )
+                                                        AND     NVL( xtv3.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                        AND    cv_1 =  ( SELECT COUNT(*)  tax_cnt
                                         FROM   xxcos_tax_v xtv4
                                         WHERE  xtv4.tax_class       = xxca.tax_div
                                         AND    xtv4.set_of_books_id = gn_gl_id
-                                        AND    gd_business_date   BETWEEN NVL( xtv4.start_date_active, gd_business_date )
-                                                                  AND     NVL( xtv4.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                        AND    gd_business_date   BETWEEN NVL( xtv4.start_date_active, gd_business_date )
+--                                                                  AND     NVL( xtv4.end_date_active, gd_business_date )
+                                        AND    xsdh.digestion_due_date   BETWEEN NVL( xtv4.start_date_active, xsdh.digestion_due_date )
+                                                                         AND     NVL( xtv4.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                       )
                        UNION
                        -- 対象データなしの場合、0を設定
@@ -2586,14 +2671,22 @@ AS
                                            FROM   xxcos_tax_v xtv5    --消費税VIEW
                                            WHERE  xtv5.tax_class       = xxca.tax_div
                                            AND    xtv5.set_of_books_id = gn_gl_id
-                                           AND    gd_business_date   BETWEEN NVL( xtv5.start_date_active, gd_business_date )
-                                                                     AND     NVL( xtv5.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                           AND    gd_business_date   BETWEEN NVL( xtv5.start_date_active, gd_business_date )
+--                                                                     AND     NVL( xtv5.end_date_active, gd_business_date )
+                                           AND    xsdh.digestion_due_date   BETWEEN NVL( xtv5.start_date_active, xsdh.digestion_due_date )
+                                                                            AND     NVL( xtv5.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                            AND    cv_1 <= ( SELECT COUNT(*)  tax_cnt
                                                             FROM   xxcos_tax_v xtv6
                                                             WHERE  xtv6.tax_class       = xxca.tax_div
                                                             AND    xtv6.set_of_books_id = gn_gl_id
-                                                            AND    gd_business_date   BETWEEN NVL( xtv6.start_date_active, gd_business_date )
-                                                                                      AND     NVL( xtv6.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                                            AND    gd_business_date   BETWEEN NVL( xtv6.start_date_active, gd_business_date )
+--                                                                                      AND     NVL( xtv6.end_date_active, gd_business_date )
+                                                            AND    xsdh.digestion_due_date   BETWEEN NVL( xtv6.start_date_active, xsdh.digestion_due_date )
+                                                                                      AND     NVL( xtv6.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                                           )
                                          )
                      )
@@ -2601,17 +2694,29 @@ AS
                      ( SELECT xrtr3.tax_rate  tax_rate
                        FROM   xxcos_reduced_tax_rate_v xrtr3                      --品目別消費税取得VIEW
                        WHERE  xrtr3.item_code      = xsdl.item_code
-                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date, gd_business_date )
-                                               AND     NVL( xrtr3.end_date, gd_business_date )
-                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date_histories, gd_business_date )
-                                               AND     NVL( xrtr3.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date, gd_business_date )
+--                                               AND     NVL( xrtr3.end_date, gd_business_date )
+--                       AND    gd_business_date BETWEEN NVL( xrtr3.start_date_histories, gd_business_date )
+--                                               AND     NVL( xrtr3.end_date_histories, gd_business_date )
+                       AND    xsdh.digestion_due_date BETWEEN NVL( xrtr3.start_date, xsdh.digestion_due_date )
+                                                      AND     NVL( xrtr3.end_date, xsdh.digestion_due_date )
+                       AND    xsdh.digestion_due_date BETWEEN NVL( xrtr3.start_date_histories, xsdh.digestion_due_date )
+                                                      AND     NVL( xrtr3.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                        AND    cv_1 =  ( SELECT COUNT(*)  reduced_tax_rate_cnt
                                         FROM   xxcos_reduced_tax_rate_v xrtr4
                                         WHERE  xrtr4.item_code    = xsdl.item_code
-                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date, gd_business_date )
-                                                                AND     NVL( xrtr4.end_date, gd_business_date )
-                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date_histories, gd_business_date )
-                                                                AND     NVL( xrtr4.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date, gd_business_date )
+--                                                                AND     NVL( xrtr4.end_date, gd_business_date )
+--                                        AND    gd_business_date BETWEEN NVL( xrtr4.start_date_histories, gd_business_date )
+--                                                                AND     NVL( xrtr4.end_date_histories, gd_business_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xrtr4.start_date, xsdh.digestion_due_date )
+                                                                AND     NVL( xrtr4.end_date, xsdh.digestion_due_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xrtr4.start_date_histories, xsdh.digestion_due_date )
+                                                                AND     NVL( xrtr4.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                       )
                        UNION
                        -- 対象データなしの場合、0を設定
@@ -2620,17 +2725,29 @@ AS
                        WHERE  NOT EXISTS ( SELECT xrtr5.tax_rate  reduced_tax_rate
                                            FROM   xxcos_reduced_tax_rate_v xrtr5  --品目別消費税取得VIEW
                                            WHERE  xrtr5.item_code = xsdl.item_code
-                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date, gd_business_date )
-                                                                   AND     NVL( xrtr5.end_date, gd_business_date )
-                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date_histories, gd_business_date )
-                                                                   AND     NVL( xrtr5.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date, gd_business_date )
+--                                                                   AND     NVL( xrtr5.end_date, gd_business_date )
+--                                           AND    gd_business_date BETWEEN NVL( xrtr5.start_date_histories, gd_business_date )
+--                                                                   AND     NVL( xrtr5.end_date_histories, gd_business_date )
+                                           AND    xsdh.digestion_due_date BETWEEN NVL( xrtr5.start_date, xsdh.digestion_due_date )
+                                                                          AND     NVL( xrtr5.end_date, xsdh.digestion_due_date )
+                                           AND    xsdh.digestion_due_date BETWEEN NVL( xrtr5.start_date_histories, xsdh.digestion_due_date )
+                                                                          AND     NVL( xrtr5.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                            AND    cv_1 <= ( SELECT COUNT(*)  reduced_tax_rate_cnt
                                                             FROM   xxcos_reduced_tax_rate_v xrtr6
                                                             WHERE  xrtr6.item_code = xsdl.item_code
-                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date, gd_business_date )
-                                                                                    AND     NVL( xrtr6.end_date, gd_business_date )
-                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date_histories, gd_business_date )
-                                                                                    AND     NVL( xrtr6.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date, gd_business_date )
+--                                                                                    AND     NVL( xrtr6.end_date, gd_business_date )
+--                                                            AND    gd_business_date BETWEEN NVL( xrtr6.start_date_histories, gd_business_date )
+--                                                                                    AND     NVL( xrtr6.end_date_histories, gd_business_date )
+                                                            AND    xsdh.digestion_due_date BETWEEN NVL( xrtr6.start_date, xsdh.digestion_due_date )
+                                                                                           AND     NVL( xrtr6.end_date, xsdh.digestion_due_date )
+                                                            AND    xsdh.digestion_due_date BETWEEN NVL( xrtr6.start_date_histories, xsdh.digestion_due_date )
+                                                                                           AND     NVL( xrtr6.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                                           )
                                          )
                      )
@@ -2645,14 +2762,22 @@ AS
                        FROM   xxcos_tax_v xtv1                     --消費税VIEW
                        WHERE  xtv1.tax_class       = xxca.tax_div
                        AND    xtv1.set_of_books_id = gn_gl_id
-                       AND    gd_business_date   BETWEEN NVL( xtv1.start_date_active, gd_business_date )
-                                                 AND     NVL( xtv1.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                       AND    gd_business_date   BETWEEN NVL( xtv1.start_date_active, gd_business_date )
+--                                                 AND     NVL( xtv1.end_date_active, gd_business_date )
+                       AND    xsdh.digestion_due_date   BETWEEN NVL( xtv1.start_date_active, xsdh.digestion_due_date )
+                                                        AND     NVL( xtv1.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                        AND    cv_1  = ( SELECT COUNT(*)  tax_cnt
                                         FROM   xxcos_tax_v xtv2
                                         WHERE  xtv2.tax_class       = xxca.tax_div
                                         AND    xtv2.set_of_books_id = gn_gl_id
-                                        AND    gd_business_date   BETWEEN  NVL( xtv2.start_date_active, gd_business_date )
-                                                                  AND      NVL( xtv2.end_date_active, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                        AND    gd_business_date   BETWEEN  NVL( xtv2.start_date_active, gd_business_date )
+--                                                                  AND      NVL( xtv2.end_date_active, gd_business_date )
+                                        AND    xsdh.digestion_due_date   BETWEEN  NVL( xtv2.start_date_active, xsdh.digestion_due_date )
+                                                                         AND      NVL( xtv2.end_date_active, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                       )
                      )
                    WHEN xxca.tax_div != cv_non_tax THEN   -- 課税の場合
@@ -2665,17 +2790,29 @@ AS
                               END
                        FROM   xxcos_reduced_tax_rate_v xrtr1     -- 品目別消費税取得VIEW
                        WHERE  xrtr1.item_code = xsdl.item_code
-                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date, gd_business_date )
-                                               AND     NVL( xrtr1.end_date, gd_business_date )
-                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date_histories, gd_business_date )
-                                               AND     NVL( xrtr1.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date, gd_business_date )
+--                                               AND     NVL( xrtr1.end_date, gd_business_date )
+--                       AND    gd_business_date BETWEEN NVL( xrtr1.start_date_histories, gd_business_date )
+--                                               AND     NVL( xrtr1.end_date_histories, gd_business_date )
+                       AND    xsdh.digestion_due_date BETWEEN NVL( xrtr1.start_date, xsdh.digestion_due_date )
+                                                      AND     NVL( xrtr1.end_date, xsdh.digestion_due_date )
+                       AND    xsdh.digestion_due_date BETWEEN NVL( xrtr1.start_date_histories, xsdh.digestion_due_date )
+                                                      AND     NVL( xrtr1.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                        AND    cv_1  = ( SELECT COUNT(*)  reduced_tax_rate_cnt
                                         FROM   xxcos_reduced_tax_rate_v xrtr2
                                         WHERE  xrtr2.item_code    = xsdl.item_code
-                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date, gd_business_date )
-                                                                AND     NVL( xrtr2.end_date, gd_business_date )
-                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date_histories, gd_business_date )
-                                                                AND     NVL( xrtr2.end_date_histories, gd_business_date )
+-- 2019/08/20 Ver.1.35 Mod Start
+--                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date, gd_business_date )
+--                                                                AND     NVL( xrtr2.end_date, gd_business_date )
+--                                        AND    gd_business_date BETWEEN NVL( xrtr2.start_date_histories, gd_business_date )
+--                                                                AND     NVL( xrtr2.end_date_histories, gd_business_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xrtr2.start_date, xsdh.digestion_due_date )
+                                                                       AND     NVL( xrtr2.end_date, xsdh.digestion_due_date )
+                                        AND    xsdh.digestion_due_date BETWEEN NVL( xrtr2.start_date_histories, xsdh.digestion_due_date )
+                                                                       AND     NVL( xrtr2.end_date_histories, xsdh.digestion_due_date )
+-- 2019/08/20 Ver.1.35 Mod End
                                       )
                      )
               END
@@ -3237,7 +3374,10 @@ AS
           ,iv_item_name3  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_item_code_txt ) -- 項目名称３
           ,iv_data_value3 => gt_tab_work_data(ln_i).item_code
           ,iv_item_name4  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_ref_date_txt  ) -- 項目名称４
-          ,iv_data_value4 => gd_business_date
+-- 2019/08/20 Ver.1.35 Mod Start
+--          ,iv_data_value4 => gd_business_date
+          ,iv_data_value4 => gt_tab_work_data(ln_i).digestion_due_date
+-- 2019/08/20 Ver.1.35 Mod End
           ,iv_item_name5  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_tax_code_txt  ) -- 項目名称４
           ,iv_data_value5 => NVL( TO_CHAR(gt_tab_work_data(ln_i).tax_code),'NULL')
           ,iv_item_name6  => xxccp_common_pkg.get_msg( ct_xxcos_appl_short_name, ct_msg_tax_rate_txt  ) -- 項目名称５
