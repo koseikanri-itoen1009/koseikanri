@@ -31,6 +31,7 @@ AS
  *  2009/10/14    1.4   S.Moriyama       [変更依頼I_E_573]仕入先名称、住所の設定内容変更対応
  *  2011/02/02    1.5   M.Watanabe       [E_本稼動_05408,05409]年次切替対応
  *  2018/11/15    1.6   E.Yazaki         [E_本稼動_15367]年号変更対応（営業・個別・販売）
+ *  2019/08/08    1.7   Y.Koh            [E_本稼動_15784]
  *
  *****************************************************************************************/
   --==================================================
@@ -83,6 +84,9 @@ AS
   -- 参照タイプ名
   cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCMM_YOKI_KUBUN';    -- 容器区分
   cv_lookup_type_02                CONSTANT VARCHAR2(30)    := 'XXCOK1_BM_CALC_TYPE'; -- 販手計算条件
+-- 2019/08/08 Ver1.7 ADD Start
+  cv_lookup_type_03                CONSTANT VARCHAR2(30)    := 'XXCOK1_TAX_INCLUDED_COMMENT'; -- 税込コメント
+-- 2019/08/08 Ver1.7 ADD End
   -- 共通関数メッセージ出力区分
   cv_which_log                     CONSTANT VARCHAR2(10)    := 'LOG';
   -- SVF起動パラメータ
@@ -494,6 +498,9 @@ AS
     , bm_index_2                        -- 合計見出し2
     , bm_amt_2                          -- 合計手数料2
     , payment_amt_tax                   -- 支払金額（税込）
+-- 2019/08/08 Ver1.7 ADD Start
+    , tax_included_comment              -- 税込コメント
+-- 2019/08/08 Ver1.7 ADD Start
     , created_by                        -- 作成者
     , creation_date                     -- 作成日
     , last_updated_by                   -- 最終更新者
@@ -550,6 +557,9 @@ AS
              electric_amt
            END                          AS bm_amt_2
          , payment_amt_tax              AS payment_amt_tax
+-- 2019/08/08 Ver1.7 ADD Start
+         , flv.MEANING
+-- 2019/08/08 Ver1.7 ADD Start
          , cn_created_by                AS created_by
          , SYSDATE                      AS creation_date
          , cn_last_updated_by           AS last_updated_by
@@ -733,7 +743,15 @@ AS
                   , hca.base_area_code
                   , hca.base_address1
                   , hca.base_phone_num
-         )
+-- 2019/08/08 Ver1.7 MOD Start
+--         )
+         )                 xbbp,
+         fnd_lookup_values flv
+    WHERE flv.lookup_type  = cv_lookup_type_03
+      AND flv.language     = USERENV( 'LANG' )
+      AND flv.enabled_flag = 'Y'
+      AND xbbp.closing_date BETWEEN to_date(flv.ATTRIBUTE1,'YYYY/MM/DD') and to_date(flv.ATTRIBUTE2,'YYYY/MM/DD')
+-- 2019/08/08 Ver1.7 MOD End
 -- 2009/10/14 Ver.1.4 [変更依頼I_E_573] SCS S.Moriyama UPD END
     ;
 --
