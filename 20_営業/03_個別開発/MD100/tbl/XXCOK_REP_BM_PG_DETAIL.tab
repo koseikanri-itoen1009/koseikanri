@@ -16,6 +16,7 @@
  *  2010/03/16    1.4   S.Moriyama       [E_本稼動_01897]振込手数料出力対応
  *  2011/01/05    1.5   S.Niki           [E_本稼動_01950]出力順変更対応
  *  2018/07/06    1.6   K.Nara           [E_本稼動_15005]支払案内書、販売報告書一括出力
+ *  2019/08/08    1.7   Y.Koh            [E_本稼動_15784]
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_PG_DETAIL
@@ -95,6 +96,9 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_PG_DETAIL
 -- Ver.1.6 [障害E_本稼動_15005] SCSK K.Nara ADD START
    OUTPUT_NUM             NUMBER,
 -- Ver.1.6 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- 2019/08/08 Ver1.7 ADD Start
+   TAX_INCLUDED_COMMENT   VARCHAR2(400),
+-- 2019/08/08 Ver1.7 ADD End
    CREATED_BY             NUMBER(15,0)   NOT NULL,
    CREATION_DATE          DATE           NOT NULL,
    LAST_UPDATED_BY        NUMBER(15,0)   NOT NULL,
@@ -219,6 +223,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.START_TRAN_DATE        IS '初回取
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.OUTPUT_NUM             IS '出力番号'
 /
 -- Ver.1.6 [障害E_本稼動_15005] SCSK K.Nara ADD END
+-- 2019/08/08 Ver1.7 ADD Start
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.TAX_INCLUDED_COMMENT  IS '税込コメント'
+/
+-- 2019/08/08 Ver1.7 ADD End
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.CREATED_BY             IS '作成者'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_PG_DETAIL.CREATION_DATE          IS '作成日'
