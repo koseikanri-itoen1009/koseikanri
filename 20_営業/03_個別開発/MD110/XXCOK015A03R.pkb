@@ -48,7 +48,8 @@ AS
  *  2018/03/15    1.15  Y.Sekine         [障害E_本稼動_14900] 事務センター案件（支払案内書出力変更）
  *  2018/07/17    1.16  K.Nara           [障害E_本稼動_15005] 事務センター案件（支払案内書、販売報告書一括出力）
  *  2018/08/07    1.17  K.Nara           [障害E_本稼動_15202] 出力対象無し警告終了対応
- *  2018/11/15    1.18   E.Yazaki        [障害E_本稼動_15367]年号変更対応（営業・個別・販売）
+ *  2018/11/15    1.18  E.Yazaki         [障害E_本稼動_15367]年号変更対応（営業・個別・販売）
+ *  2019/08/08    1.19  Y.Koh            [障害E_本稼動_15784]
  *
  *****************************************************************************************/
   --==================================================
@@ -132,6 +133,9 @@ AS
   cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCSO1_SP_RULE_BOTTLE'; -- 容器区分
 -- End   2009/03/03 M.Hiruta
   cv_lookup_type_02                CONSTANT VARCHAR2(30)    := 'XXCOK1_BM_CALC_TYPE';   -- 販手計算条件
+-- 2019/08/08 Ver1.19 ADD Start
+  cv_lookup_type_03                CONSTANT VARCHAR2(30)    := 'XXCOK1_TAX_INCLUDED_COMMENT'; -- 税込コメント
+-- 2019/08/08 Ver1.19 ADD End
   -- 共通関数メッセージ出力区分
   cv_which_log                     CONSTANT VARCHAR2(10)    := 'LOG';
   -- SVF起動パラメータ
@@ -736,6 +740,15 @@ AS
                                           g_summary_tab(i).bm_amt_3 * -1
                                      ELSE NULL END
 -- 2010/03/16 Ver.1.9 [障害E_本稼動_01897] SCS S.Moriyama ADD END
+-- 2019/08/08 Ver1.19 ADD Start
+        , xrbpd.tax_included_comment = ( SELECT flv.MEANING
+                                         FROM   fnd_lookup_values flv
+                                         WHERE flv.lookup_type  = cv_lookup_type_03
+                                           AND flv.language     = USERENV( 'LANG' )
+                                           AND flv.enabled_flag = 'Y'
+                                           AND g_summary_tab(i).closing_date BETWEEN to_date(flv.ATTRIBUTE1,'YYYY/MM/DD') and to_date(flv.ATTRIBUTE2,'YYYY/MM/DD')
+                                       ) 
+-- 2019/08/08 Ver1.19 ADD End
       WHERE xrbpd.request_id       = cn_request_id
 -- Ver.1.16 [障害E_本稼動_15005] SCSK K.Nara ADD START
         AND xrbpd.output_num       = gt_upload_output_num
