@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.160
+ * Version          : 1.170
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2013/06/10    1.140 SCSK 中野 徹也  [障害本稼動09964再対応] 請求書再作成時の仕様見直し対応
  *  2016/03/02    1.150 SCSK 小路 恭弘  [障害本稼動13510] 請求書に表示されない品目がある
  *  2019/07/26    1.160 SCSK 箕浦 健治  [E_本稼動_15472] 軽減税率対応
+ *  2019/09/06    1.170 SCSK 渡邊 直樹  [E_本稼動_15472] 軽減税率対応 追加対応
  *
  *****************************************************************************************/
 --
@@ -1541,7 +1542,10 @@ AS
                    xxel.tax_amount                                 tax_amount,              -- 消費税金額
 -- Modify 2019.07.26 Ver1.160 Start
 --                   xxeh.tax_rate                                   tax_rate,                -- 消費税率
-                   xxel.tax_rate                                   tax_rate,                -- 消費税率
+-- Modify Ver1.170 Start
+--                   xxel.tax_rate                                   tax_rate,                -- 消費税率
+                   NVL(xxel.tax_rate,xxeh.tax_rate)                tax_rate,                -- 消費税率
+-- Modify Ver1.170 End
 -- Modify 2019.07.26 Ver1.160 End
                    xxel.pure_amount                                ship_amount,             -- 納品金額
                    xxel.sale_amount                                sold_amount,             -- 売上金額
@@ -1573,7 +1577,10 @@ AS
                   ,xedh.bms_header_data                            bms_header_data          -- 流通ＢＭＳヘッダデータ
 -- 2011/10/11 A.Shirakawa Ver.1.110 ADD END
 -- Add 2019.07.26 Ver1.160 START
-                  ,xxel.tax_code                                   tax_code                 -- 税金コード
+-- Modify Ver1.170 Start
+--                  ,xxel.tax_code                                   tax_code                 -- 税金コード
+                  ,NVL(xxel.tax_code,xxeh.tax_code)                tax_code                 -- 税金コード
+-- Modify Ver1.170 End
 -- Add 2019.07.26 Ver1.160 END
             FROM   
                    xxcfr_invoice_headers         xih,            -- アドオン請求書ヘッダ
@@ -2007,7 +2014,10 @@ AS
                    xxel.tax_amount                                 tax_amount,              -- 消費税金額
 -- Modify 2019.07.26 Ver1.160 Start
 --                   xxeh.tax_rate                                   tax_rate,                -- 消費税率
-                   xxel.tax_rate                                   tax_rate,                -- 消費税率
+-- Modify Ver1.170 Start
+--                   xxel.tax_rate                                   tax_rate,                -- 消費税率
+                   NVL(xxel.tax_rate,xxeh.tax_rate)                tax_rate,                -- 消費税率
+-- Modify Ver1.170 End
 -- Modify 2019.07.26 Ver1.160 End
                    xxel.pure_amount                                ship_amount,             -- 納品金額
                    xxel.sale_amount                                sold_amount,             -- 売上金額
@@ -2031,7 +2041,10 @@ AS
                    xxca.delivery_chain_code                        delivery_chain_code      -- 納品先チェーンコード
                   ,xedh.bms_header_data                            bms_header_data          -- 流通ＢＭＳヘッダデータ
 -- Add 2019.07.26 Ver1.160 START
-                  ,xxel.tax_code                                   tax_code                 -- 税金コード
+-- Modify Ver1.170 Start
+--                  ,xxel.tax_code                                   tax_code                 -- 税金コード
+                  ,NVL(xxel.tax_code,xxeh.tax_code)                tax_code                 -- 税金コード
+-- Modify Ver1.170 End
 -- Add 2019.07.26 Ver1.160 END
             FROM   
                    xxcfr_invoice_headers         xih,            -- アドオン請求書ヘッダ
