@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2017/08/08    1.21  K.Kiriu          [E_本稼働_14500]パフォーマンス対応
  *  2017/09/12    1.22  K.Kiriu          [E_本稼働_14598]パフォーマンス対応２次
  *  2019/06/20    1.23  S.Kuwako         [E_本稼働_15472]軽減税率対応
+ *  2019/09/06    1.24  N.Koyama         [E_本稼働_15903]パフォーマンス対応３次
  *
  *****************************************************************************************/
 --
@@ -1930,10 +1931,15 @@ AS
               END
              )                                  tax_rate,                         --消費税率
 -- Ver.1.23 Mod End
-             xchv.cash_receiv_base_code         cash_receiv_base_code               --入金拠点コード
+-- Ver.1.24 Del Start
+--             xchv.cash_receiv_base_code         cash_receiv_base_code               --入金拠点コード
+             NULL                                 cash_receiv_base_code               --入金拠点コード
+-- Ver.1.24 Del End
       FROM   xxcos_shop_digestion_hdrs xsdh,    -- 店舗別用消化計算ヘッダテーブル
              xxcos_shop_digestion_lns  xsdl,    -- 店舗別用消化計算明細テーブル
-             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+-- Ver.1.24 Del Start
+--             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+-- Ver.1.24 Del End
 -- Ver.1.23 Del Start
 --             ar_vat_tax_all_b          avta,    -- AR税金マスタ
 --             fnd_lookup_values         flv,
@@ -2036,7 +2042,9 @@ AS
 --      AND    avta.start_date                          <= gd_last_month_date         --AR税金マスタ.有効日自      <= 消化計算締日
 --      AND    NVL( avta.end_date, gd_last_month_date ) >= gd_last_month_date         --AR税金マスタ.有効日至      >= 消化計算締日
 -- Ver.1.23 Del End
-      AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+-- Ver.1.24 Del Start
+--      AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+-- Ver.1.24 Del End
       AND    xsdl.sales_quantity                      != cn_sales_zero
       AND   NOT EXISTS(
                         SELECT flv.lookup_code               not_inv_code
@@ -2204,10 +2212,15 @@ AS
               END
              )                                  tax_rate,                         --消費税率
 -- Ver.1.23 Mod End
-             xchv.cash_receiv_base_code         cash_receiv_base_code               --入金拠点コード
+-- Ver.1.24 Mod Start
+--             xchv.cash_receiv_base_code         cash_receiv_base_code               --入金拠点コード
+             NULL                               cash_receiv_base_code               --入金拠点コード
+-- Ver.1.24 Mod End
       FROM   xxcos_shop_digestion_hdrs xsdh,    -- 店舗別用消化計算ヘッダテーブル
              xxcos_shop_digestion_lns  xsdl,    -- 店舗別用消化計算明細テーブル
-             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+-- Ver.1.24 Del Start
+--             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+-- Ver.1.24 Del End
 -- Ver.1.23 Del Start
 --             ar_vat_tax_all_b          avta,    -- AR税金マスタ
 --             fnd_lookup_values         flv,
@@ -2308,7 +2321,9 @@ AS
 --      AND    avta.start_date                          <= gd_last_month_date         --AR税金マスタ.有効日自      <= 消化計算締日
 --      AND    NVL( avta.end_date, gd_last_month_date ) >= gd_last_month_date         --AR税金マスタ.有効日至      >= 消化計算締日
 -- Ver.1.23 Del End
-      AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+-- Ver.1.24 Del Start
+--      AND    xsdh.cust_account_id                      = xchv.ship_account_id       --ヘッダ.顧客ID               = 顧客階層VIEW.出荷先顧客ID
+-- Ver.1.24 Del End
       AND    xsdl.sales_quantity                      != cn_sales_zero
       AND   NOT EXISTS(
                         SELECT flv.lookup_code               not_inv_code
@@ -2432,7 +2447,10 @@ AS
         IF ( iv_customer_number IS NOT NULL ) THEN
           OPEN get_data_cur_cust;
           -- バルクフェッチ
-          FETCH get_data_cur_cust BULK COLLECT INTO gt_tab_work_data;
+-- Var.1.24 Mod Start
+--          FETCH get_data_cur_cust BULK COLLECT INTO gt_tab_work_data;
+          FETCH get_data_cur_cust BULK COLLECT INTO lt_tab_wart_data;
+-- Var.1.24 Mod End
           --取得件数
           gn_list_cnt := get_data_cur_cust%ROWCOUNT;
           -- カーソルCLOSE
@@ -2440,12 +2458,85 @@ AS
         ELSE
           OPEN get_data_cur_base;
           -- バルクフェッチ
-          FETCH get_data_cur_base BULK COLLECT INTO gt_tab_work_data;
+-- Var.1.24 Mod Start
+--          FETCH get_data_cur_base BULK COLLECT INTO gt_tab_work_data;
+          FETCH get_data_cur_base BULK COLLECT INTO lt_tab_wart_data;
+-- Var.1.24 Mod End
           --取得件数
           gn_list_cnt := get_data_cur_base%ROWCOUNT;
           -- カーソルCLOSE
           CLOSE get_data_cur_base;
         END IF;
+        -- Var.1.24 Add Start
+        -- 入金拠点コードの取得(パフォーマンス対応の為、ロジックで取得)
+        << r_base_code_loop2 >>
+        FOR i IN 1.. lt_tab_wart_data.COUNT LOOP
+--
+          -- 初回、もしくは、前レコードから出荷先顧客が変わった場合
+          IF (
+               ( lt_customer_id IS NULL )
+               OR
+               ( lt_customer_id <> lt_tab_wart_data(i).cust_account_id )
+             )
+          THEN
+--
+            -- 初期化
+            lv_err_flag              := cv_no;
+            lt_cash_receiv_base_code := NULL;
+--
+            -- 顧客階層ビューより入金拠点コードを取得
+            BEGIN
+              SELECT xchv.cash_receiv_base_code
+              INTO   lt_cash_receiv_base_code
+              FROM   xxcos_cust_hierarchy_v xchv
+              WHERE  xchv.ship_account_id = lt_tab_wart_data(i).cust_account_id
+              ;
+            EXCEPTION
+              -- その他例外
+              WHEN OTHERS THEN
+                -- 取得エラーとする(チェックは全レコード行う)
+                lv_err_flag      := cv_yes;
+                -- 1顧客でも当エラーとなった場合、該当データのみスキップするが処理結果はエラーとする
+                gv_proc_err_flag := cv_yes;
+                -- 警告件数カウント
+                gn_warn_cnt      := gn_warn_cnt + 1;
+                -- メッセー生成
+                lv_errmsg        := xxccp_common_pkg.get_msg(
+                                      iv_application        => ct_xxcos_appl_short_name,
+                                      iv_name               => ct_msg_c_base_code_err,
+                                      iv_token_name1        => cv_tkn_parm_data1,
+                                      iv_token_value1       => lt_tab_wart_data(i).customer_number,
+                                      iv_token_name2        => cv_tkn_err_msg,
+                                      iv_token_value2       => SQLERRM
+                                    );
+                -- メッセージ出力
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.OUTPUT
+                  ,buff   => lv_errmsg
+                );
+            END;
+--
+          END IF;
+--
+          -- 取得エラーで無い場合のみ、処理用の配列にデータを格納
+          IF ( lv_err_flag = cv_no ) THEN
+            -- 処理用配列の添え字のカウントアップ
+            ln_data_cnt                               := ln_data_cnt + 1;
+            -- 入金拠点コードをデータ取得用の配列に設定
+            lt_tab_wart_data(i).cash_receiv_base_code := lt_cash_receiv_base_code;
+            -- 処理用の配列にデータ取得用の配列データを設定
+            gt_tab_work_data(ln_data_cnt)             := lt_tab_wart_data(i);
+          END IF;
+--
+          -- ブレーク変数の設定
+          lt_customer_id := lt_tab_wart_data(i).cust_account_id;
+--
+        END LOOP r_base_code_loop2;
+--
+        --取得件数
+        gn_list_cnt := ln_data_cnt;
+--
+        -- Var.1.24 Add End
       END IF;
 -- Ver.1.21 Add End
     EXCEPTION
