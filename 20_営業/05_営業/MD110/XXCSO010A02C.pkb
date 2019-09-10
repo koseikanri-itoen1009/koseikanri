@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -88,6 +88,7 @@ AS
  *  2015-06-10    1.21  S.Yamashita      E_本稼働_12984対応
  *  2015-11-24    1.22  K.Kiriu          E_本稼働_13345対応
  *  2016-02-02    1.23  H.Okada          E_本稼働_13456対応
+ *  2019-06-14    1.24  N.Miyamoto       E_本稼動_15472軽減税率対応
  *
  *****************************************************************************************/
   --
@@ -198,6 +199,9 @@ AS
   cv_vdms_interface_flag_ta CONSTANT xxcso_contract_managements.vdms_interface_flag%TYPE := '0';         -- 自販機S連携フラグ＝対象
   cv_vdms_interface_flag_tg CONSTANT xxcso_contract_managements.vdms_interface_flag%TYPE := '1';         -- 自販機S連携フラグ＝未連携
   /* 2016.02.02 H.Okada E_本稼働_13456 END */
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+  ct_prf_elec_fee_item_code CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE'; --XXCOS:変動電気代品目コード
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
   --
   -- メッセージコード
   cv_tkn_number_01 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011'; -- 業務処理日付取得エラー
@@ -223,6 +227,9 @@ AS
   /* 2015.02.25 H.Wajima E_本稼動_12565 START */
   cv_tkn_number_19 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00722'; -- 消費税率取得エラーメッセージ
   /* 2015.02.25 H.Wajima E_本稼動_12565 END */
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+  cv_tkn_number_20 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00014'; -- プロファイルオプション値取得エラーメッセージ
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
   --
   -- トークンコード
   cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM';
@@ -240,6 +247,9 @@ AS
   cv_tkn_err_msg          CONSTANT VARCHAR2(20) := 'ERR_MSG';
   cv_tkn_sequence         CONSTANT VARCHAR2(20) := 'SEQUENCE';
   cv_tkn_src_tran_type    CONSTANT VARCHAR2(20) := 'SRC_TRAN_TYPE';
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+  cv_tkn_prf              CONSTANT VARCHAR2(20) := 'PROF_NAME';                             --プロファイル
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
   --
   -- DEBUG_LOG用メッセージ
   cv_debug_msg1  CONSTANT VARCHAR2(200) := '<< 業務処理日付取得処理 >>';
@@ -355,6 +365,13 @@ AS
   /* 2015.02.25 H.Wajima E_本稼動_12565 START */
   gt_tax_rate                xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;              -- 消費税率
   /* 2015.02.25 H.Wajima E_本稼動_12565 END */
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+  gt_prf_elec_fee_item_code  xxcso_qt_ap_tax_rate_v.item_code%TYPE;                -- 変動電気代品目コード
+  gd_new_tax_start_date      DATE;
+  gd_old_tax_end_date        DATE;
+  gt_new_tax_rate            xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;
+  gt_old_tax_rate            xxcso_qt_ap_tax_rate_v.ap_tax_rate%TYPE;
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -571,16 +588,63 @@ AS
     -- *** DEBUG_LOG END ***
     /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
     --
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+    --==============================================================
+    -- プロファイルの取得(XXCOS:変動電気代品目コード)
+    --==============================================================
+    gt_prf_elec_fee_item_code := FND_PROFILE.VALUE(ct_prf_elec_fee_item_code);
+    IF (gt_prf_elec_fee_item_code IS NULL) THEN
+      lv_errbuf := xxccp_common_pkg.get_msg(
+                     cv_sales_appl_short_name
+                    ,cv_tkn_number_20
+                    ,cv_tkn_prf
+                    ,ct_prf_elec_fee_item_code
+                   );
+      RAISE global_api_expt;
+    END IF;
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
     /* 2015.02.25 H.Wajima E_本稼動_12565 START */
     -- ================================
     -- 消費税率取得
     -- ================================
     BEGIN
-      SELECT  xqatrv.ap_tax_rate tax_rate
-      INTO    gt_tax_rate
-      FROM    xxcso_qt_ap_tax_rate_v xqatrv
-      WHERE   xqatrv.start_date  <= cd_process_date
-      AND     NVL( xqatrv.end_date, cd_process_date ) >= cd_process_date
+-- 2019/06/14 V1.24 N.Miyamoto MOD START
+--      SELECT  xqatrv.ap_tax_rate tax_rate
+--      INTO    gt_tax_rate
+--      FROM    xxcso_qt_ap_tax_rate_v xqatrv
+--      WHERE   xqatrv.start_date  <= cd_process_date
+--      AND     NVL( xqatrv.end_date, cd_process_date ) >= cd_process_date
+      WITH
+      q AS
+        (
+        --サブクエリ：電気代品目コードの消費税履歴のうち最大の開始日付を取得する
+        SELECT  item_code                         AS item_code
+               ,MAX(xqatrv1.start_date_histories) AS max_start_date_histories
+        FROM    xxcso_qt_ap_tax_rate_v xqatrv1
+        WHERE   xqatrv1.item_code = gt_prf_elec_fee_item_code
+          AND   cd_process_date   BETWEEN xqatrv1.start_date AND NVL(xqatrv1.end_date, cd_process_date)
+        GROUP BY
+                item_code
+        )
+      -- メインクエリ：新税率開始日、旧税率終了日、新税率、旧税率を取得する
+      SELECT  xqatrv2.start_date_histories        AS new_tax_start_date -- 新税率開始日
+             ,xqatrv2.start_date_histories - 1    AS old_tax_end_date   -- 旧税率終了日
+             ,xqatrv2.ap_tax_rate                 AS new_tax_rate       -- 新税率
+             ,xqatrv3.ap_tax_rate                 AS old_tax_rate       -- 旧税率
+      INTO    gd_new_tax_start_date
+             ,gd_old_tax_end_date
+             ,gt_new_tax_rate
+             ,gt_old_tax_rate
+      FROM    xxcso_qt_ap_tax_rate_v xqatrv2
+             ,xxcso_qt_ap_tax_rate_v xqatrv3
+             ,                       q
+      WHERE   xqatrv2.item_code             = q.item_code
+        AND   xqatrv3.item_code             = q.item_code
+        AND   xqatrv2.start_date_histories  = q.max_start_date_histories      --開始日付最大は新税率開始日
+        AND   xqatrv3.end_date_histories    = q.max_start_date_histories - 1  --開始日付最大の前日は旧税率の終了日
+        AND   cd_process_date BETWEEN xqatrv2.start_date AND NVL(xqatrv2.end_date, cd_process_date)
+        AND   cd_process_date BETWEEN xqatrv3.start_date AND NVL(xqatrv3.end_date, cd_process_date)
+-- 2019/06/14 V1.24 N.Miyamoto MOD END
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -2292,6 +2356,9 @@ AS
   PROCEDURE reg_backmargin(
      it_sp_decision_header_id  IN         xxcso_contract_managements.sp_decision_header_id%TYPE  -- ＳＰ専決ヘッダＩＤ
     ,it_install_account_number IN         xxcso_contract_managements.install_account_number%TYPE -- 設置先顧客コード
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+    ,it_contract_effect_date   IN         xxcso_contract_managements.contract_effect_date%TYPE   -- 契約書発効日
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
     ,ov_errbuf                 OUT NOCOPY VARCHAR2                                               -- エラー・メッセージ           --# 固定 #
     ,ov_retcode                OUT NOCOPY VARCHAR2                                               -- リターン・コード             --# 固定 #
     ,ov_errmsg                 OUT NOCOPY VARCHAR2                                               -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2472,6 +2539,21 @@ AS
       lt_tax_type              := lt_sp_decision_rec.tax_type;
       -- 税区分が税抜きの場合、電気代＊消費税の計算を行う
       IF (lt_tax_type = cv_tax_type_2) THEN
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+        -- 業務日付が新税率開始日以降の場合は新税率
+        IF ( cd_process_date >= gd_new_tax_start_date ) THEN
+          gt_tax_rate := gt_new_tax_rate;
+        -- 業務日付が旧税率終了日以前の場合は契約書発効日で比較
+        ELSIF ( cd_process_date <= gd_old_tax_end_date ) THEN
+          -- 契約書発効日が新税率開始日以降の場合は新税率
+          IF ( it_contract_effect_date >= gd_new_tax_start_date ) THEN
+            gt_tax_rate := gt_new_tax_rate;
+          -- 契約書発効日が旧税率終了日以前の場合は旧税率
+          ELSIF ( it_contract_effect_date <= gd_old_tax_end_date ) THEN
+            gt_tax_rate := gt_old_tax_rate;
+          END IF;
+        END IF;
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
         lt_electricity_amount  := TRUNC(lt_sp_decision_rec.electricity_amount * gt_tax_rate);
       ELSE
         lt_electricity_amount  := lt_sp_decision_rec.electricity_amount;
@@ -4274,6 +4356,9 @@ AS
     lv_vendor_err_flag        VARCHAR2(1);
     lv_mst_err_flag           VARCHAR2(1);
     lt_party_id               hz_parties.party_id%TYPE;
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+    lt_contract_effect_date   xxcso_contract_managements.contract_effect_date%TYPE;
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
     --
     -- *** ローカル・カーソル ***
     -- A-3,A-8用カーソル
@@ -4292,6 +4377,9 @@ AS
             ,xcm.install_address2       install_address2       -- 設置先住所２
             ,xcm.install_date           install_date           -- 設置日
             ,xcm.install_code           install_code           -- 物件コード
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+            ,xcm.contract_effect_date   contract_effect_date   -- 契約書発効日
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
       FROM   xxcso_contract_managements xcm -- 契約管理テーブル
       WHERE  xcm.status            = cv_status                -- ステータス
       AND    xcm.cooperate_flag    = cv_un_cooperate          -- マスタ連携フラグ
@@ -4583,6 +4671,9 @@ AS
         lt_mst_regist_info_rec.install_address2       := lt_contract_management_rec.install_address2;
         lt_mst_regist_info_rec.install_date           := lt_contract_management_rec.install_date;
         lt_mst_regist_info_rec.install_code           := lt_contract_management_rec.install_code;
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+        lt_contract_effect_date                       := lt_contract_management_rec.contract_effect_date;
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
         --
         -- ===================================
         -- A-8.仕入先情報登録/更新エラー時処理
@@ -4641,6 +4732,9 @@ AS
             reg_backmargin(
                it_sp_decision_header_id  => lt_contract_management_rec.sp_decision_header_id  -- ＳＰ専決ヘッダＩＤ
               ,it_install_account_number => lt_contract_management_rec.install_account_number -- 設置先顧客コード
+-- 2019/06/14 V1.24 N.Miyamoto ADD START
+              ,it_contract_effect_date   => lt_contract_effect_date                           -- 契約書発効日
+-- 2019/06/14 V1.24 N.Miyamoto ADD END
               ,ov_errbuf                 => lv_errbuf                                         -- エラー・メッセージ           --# 固定 #
               ,ov_retcode                => lv_retcode                                        -- リターン・コード             --# 固定 #
               ,ov_errmsg                 => lv_errmsg                                         -- ユーザー・エラー・メッセージ --# 固定 #
