@@ -7,7 +7,7 @@ AS
  * Description      : イセトー請求書データ作成
  * MD.050           : MD050_CFR_003_A17_イセトー請求書データ作成
  * MD.070           : MD050_CFR_003_A17_イセトー請求書データ作成
- * Version          : 1.50
+ * Version          : 1.60
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,6 +16,7 @@ AS
  *  init                   p 初期処理                                (A-1)
  *  get_profile_value      p プロファイル取得処理                    (A-2)
  *  insert_work_table      p ワークテーブルデータ登録                (A-3)
+ *  update_work_table      p ワークテーブルデータ更新                (A-10)
  *  chk_account_data       p 口座情報取得チェック                    (A-4)
  *  chk_line_cnt_limit     p 請求書明細件数チェック                  (A-5)
  *  csv_file_output        p ファイル出力処理                        (A-6)
@@ -33,6 +34,7 @@ AS
  *  2009-12-11    1.30 SCS 安川 智博     障害「E_本稼動_00423」対応
  *  2010-01-07    1.40 SCS 安川 智博     障害「E_本稼動_00951」対応
  *  2010-02-02    1.50 SCS 安川 智博     障害「E_本稼動_01503」対応
+ *  2019-09-09    1.60 SCSK 石井 裕幸    障害「E_本稼動_15472」対応
  *
  *****************************************************************************************/
 --
@@ -114,6 +116,9 @@ AS
   cv_msg_xxcfr_00081  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00081';            -- 顧客コード複数指定メッセージ
   cv_msg_xxcfr_00082  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00082';            -- 統括請求書用顧客存在なしメッセージ
 -- Modify 2009-09-29 Ver1.10 End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+  cv_msg_xxcfr_00017  CONSTANT VARCHAR2(20)  := 'APP-XXCFR1-00017';            -- テーブル更新エラー
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
 -- トークン
   cv_tkn_func         CONSTANT VARCHAR2(15)  := 'FUNC_NAME';                   -- 共通関数名
@@ -217,6 +222,10 @@ AS
   cv_layout_kbn1  VARCHAR2(1) := '1'; -- 店舗別内訳なし
   cv_layout_kbn2  VARCHAR2(1) := '2'; -- 店舗別内訳あり
 -- Modify 2009-09-29 Ver1.10 End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+  -- 使用可能フラグ
+  cv_enable_yes CONSTANT VARCHAR2(1) := 'Y';       -- 有効
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -649,6 +658,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+    -- 参照タイプ
+    cv_lookup_type  CONSTANT VARCHAR2(30) := 'XXCFR1_TAX_CATEGORY';  -- 税分類
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
     -- *** ローカル変数 ***
 --
@@ -1086,7 +1099,13 @@ AS
              ,col103           -- 入金先顧客コード(非出力項目)
              ,col104           -- 入金先顧客名(非出力項目)
 -- Modify 2009-11-20 Ver1.20 Start
-             ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--             ,col105)          -- 請求書印刷単位(非出力項目)
+             ,col105           -- 請求書印刷単位(非出力項目)
+             ,col30            -- 摘要
+             ,col106           -- 内訳分類(編集用)
+              )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
             SELECT cn_request_id                                              request_id         -- 要求ID
                   ,TO_NUMBER(NULL)                                            seq                -- 出力順
@@ -1188,6 +1207,10 @@ AS
 -- Modify 2009-11-20 Ver1.20 Start
                   ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
 -- Modify 2009-11-20 Ver1.20 Start End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                  ,flva.attribute1                                                  description       -- 摘要
+                  ,flva.attribute2                                                  category          -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  hz_cust_accounts               hzca , -- 顧客10顧客マスタ
@@ -1215,6 +1238,15 @@ AS
                     AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
                     AND  arma.org_id            = gn_org_id
                     AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                ,(SELECT flv.attribute1                attribute1
+                        ,flv.attribute2                attribute2
+                        ,flv.lookup_code               lookup_code
+                    FROM fnd_lookup_values              flv
+                   WHERE flv.lookup_type        = cv_lookup_type
+                     AND flv.language           = USERENV( 'LANG' )
+                     AND flv.enabled_flag       = cv_enable_yes)  flva
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             WHERE xih.invoice_id = xil.invoice_id
               AND xil.cutoff_date = gd_target_date
               AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
@@ -1223,6 +1255,9 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+              AND xil.tax_code   = flva.lookup_code(+)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             GROUP BY xih.inv_creation_date,                                               -- 発行日付
                      xih.object_month,                                                    -- 対象年月
                      xih.term_name,                                                       -- 支払条件
@@ -1287,7 +1322,13 @@ AS
                                    ,xil.delivery_date
                                    ,xil.acceptance_date)
                                    ,cv_format_date_yyyymmdd),                             -- 伝票日付
-                     xil.slip_num;                                                        -- 伝票番号
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--                     xil.slip_num;                                                        -- 伝票番号
+                     xil.slip_num                                                         -- 伝票番号
+                    ,flva.attribute1                                                      -- 摘要
+                    ,flva.attribute2                                                      -- 内訳分類(編集用)
+                     ;
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
             gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -1349,7 +1390,13 @@ AS
                ,col103           -- 入金先顧客コード(非出力項目)
                ,col104           -- 入金先顧客名(非出力項目)
 -- Modify 2009-11-20 Ver1.20 Start
-               ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--             ,col105)            -- 請求書印刷単位(非出力項目)
+               ,col105           -- 請求書印刷単位(非出力項目)
+               ,col30            -- 摘要
+               ,col106           -- 内訳分類(編集用)
+                )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
               SELECT cn_request_id                                              request_id         -- 要求ID
                     ,TO_NUMBER(NULL)                                            seq                -- 出力順
@@ -1451,6 +1498,10 @@ AS
 -- Modify 2009-11-20 Ver1.20 Start
                     ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
 -- Modify 2009-11-20 Ver1.20 End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                    ,flva.attribute1                                                  description       -- 摘要
+                    ,flva.attribute2                                                  category          -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    hz_cust_accounts               hzca , -- 顧客20顧客マスタ
@@ -1479,6 +1530,15 @@ AS
                       AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
                       AND  arma.org_id            = gn_org_id
                       AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                  ,(SELECT flv.attribute1                attribute1
+                          ,flv.attribute2                attribute2
+                          ,flv.lookup_code               lookup_code
+                      FROM fnd_lookup_values              flv
+                     WHERE flv.lookup_type        = cv_lookup_type
+                       AND flv.language           = USERENV( 'LANG' )
+                       AND flv.enabled_flag       = cv_enable_yes)  flva
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               WHERE xih.invoice_id = xil.invoice_id
                 AND xil.cutoff_date = gd_target_date
                 AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
@@ -1488,6 +1548,9 @@ AS
                 AND xxca.customer_id = all_account_rec.customer_id
                 AND hzca.account_number = xxca.invoice_code
                 AND hzp.party_id = hzca.party_id
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                AND xil.tax_code   = flva.lookup_code(+)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               GROUP BY xih.inv_creation_date,                                               -- 発行日付
                        xih.object_month,                                                    -- 対象年月
                        xih.term_name,                                                       -- 支払条件
@@ -1552,7 +1615,13 @@ AS
                                      ,xil.delivery_date
                                      ,xil.acceptance_date)
                                      ,cv_format_date_yyyymmdd),                             -- 伝票日付
-                       xil.slip_num;                                                        -- 伝票番号
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--                       xil.slip_num;                                                        -- 伝票番号
+                       xil.slip_num                                                         -- 伝票番号
+                      ,flva.attribute1                                                      -- 摘要
+                      ,flva.attribute2                                                      -- 内訳分類(編集用)
+                       ;
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
               gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -1617,7 +1686,13 @@ AS
                ,col103           -- 入金先顧客コード(非出力項目)
                ,col104           -- 入金先顧客名(非出力項目)
 -- Modify 2009-11-20 Ver1.20 Start
-               ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--             ,col105)          -- 請求書印刷単位(非出力項目)
+               ,col105           -- 請求書印刷単位(非出力項目)
+               ,col30            -- 摘要
+               ,col106           -- 内訳分類(編集用)
+                )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
               SELECT cn_request_id                                              request_id         -- 要求ID
                     ,TO_NUMBER(NULL)                                            seq                -- 出力順
@@ -1719,6 +1794,10 @@ AS
 -- Modify 2009-11-20 Ver1.20 Start
                     ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
 -- Modify 2009-11-20 Ver1.20 End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                    ,flva.attribute1                                                  description       -- 摘要
+                    ,flva.attribute2                                                  category          -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    hz_cust_accounts               hzca , -- 顧客10顧客マスタ
@@ -1746,6 +1825,15 @@ AS
                       AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
                       AND  arma.org_id            = gn_org_id
                       AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                  ,(SELECT flv.attribute1                attribute1
+                          ,flv.attribute2                attribute2
+                          ,flv.lookup_code               lookup_code
+                      FROM fnd_lookup_values              flv
+                     WHERE flv.lookup_type        = cv_lookup_type
+                       AND flv.language           = USERENV( 'LANG' )
+                       AND flv.enabled_flag       = cv_enable_yes)  flva
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               WHERE xih.invoice_id = xil.invoice_id
                 AND xil.cutoff_date = gd_target_date
                 AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
@@ -1754,6 +1842,9 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                AND xil.tax_code   = flva.lookup_code(+)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               GROUP BY xih.inv_creation_date,                                               -- 発行日付
                        xih.object_month,                                                    -- 対象年月
                        xih.term_name,                                                       -- 支払条件
@@ -1818,7 +1909,13 @@ AS
                                      ,xil.delivery_date
                                      ,xil.acceptance_date)
                                      ,cv_format_date_yyyymmdd),                             -- 伝票日付
-                       xil.slip_num;                                                        -- 伝票番号
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--                       xil.slip_num;                                                        -- 伝票番号
+                       xil.slip_num                                                         -- 伝票番号
+                      ,flva.attribute1                                                      -- 摘要
+                      ,flva.attribute2                                                      -- 内訳分類(編集用)
+                       ;
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
               gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -1868,7 +1965,13 @@ AS
              ,col103           -- 入金先顧客コード(非出力項目)
              ,col104           -- 入金先顧客名(非出力項目)
 -- Modify 2009-11-20 Ver1.20 Start
-             ,col105)          -- 請求書印刷単位
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--             ,col105)          -- 請求書印刷単位
+             ,col105           -- 請求書印刷単位
+             ,col30            -- 摘要
+             ,col106           -- 内訳分類(編集用)
+              )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
             SELECT cn_request_id                                              request_id         -- 要求ID
                   ,TO_NUMBER(NULL)                                            seq                -- 出力順
@@ -1970,6 +2073,10 @@ AS
 -- Modify 2009-11-20 Ver1.20 Start
                   ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
 -- Modify 2009-11-20 Ver1.20 End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                  ,flva.attribute1                                                  description  -- 摘要
+                  ,flva.attribute2                                                  category     -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  (SELECT all_account_rec.customer_code ship_cust_code
@@ -1995,12 +2102,24 @@ AS
                     AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
                     AND  arma.org_id            = gn_org_id
                     AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                ,(SELECT flv.attribute1                attribute1
+                        ,flv.attribute2                attribute2
+                        ,flv.lookup_code               lookup_code
+                    FROM fnd_lookup_values              flv
+                   WHERE flv.lookup_type        = cv_lookup_type
+                     AND flv.language           = USERENV( 'LANG' )
+                     AND flv.enabled_flag       = cv_enable_yes)  flva
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             WHERE xih.invoice_id = xil.invoice_id
               AND xil.cutoff_date = gd_target_date
               AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
               AND xih.set_of_books_id = gn_set_of_bks_id
               AND xih.org_id = gn_org_id
               AND xil.ship_cust_code = all_account_rec.customer_code
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+              AND xil.tax_code   = flva.lookup_code(+)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             GROUP BY xih.inv_creation_date,                                               -- 発行日付
                      xil.ship_cust_code,                                                  -- 顧客コード
                      xih.object_month,                                                    -- 対象年月
@@ -2064,7 +2183,13 @@ AS
                                    ,xil.delivery_date
                                    ,xil.acceptance_date)
                                    ,cv_format_date_yyyymmdd),                             -- 伝票日付
-                     xil.slip_num;                                                        -- 伝票番号
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--                     xil.slip_num;                                                        -- 伝票番号
+                     xil.slip_num                                                         -- 伝票番号
+                    ,flva.attribute1                                                      -- 摘要
+                    ,flva.attribute2                                                      -- 内訳分類(編集用)
+                     ;
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
             gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -2110,7 +2235,13 @@ AS
              ,col103           -- 入金先顧客コード(非出力項目)
              ,col104           -- 入金先顧客名(非出力項目)
 -- Modify 2009-11-20 Ver1.20 Start
-             ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--             ,col105)          -- 請求書印刷単位(非出力項目)
+             ,col105           -- 請求書印刷単位(非出力項目)
+             ,col30            -- 摘要
+             ,col106           -- 内訳分類(編集用)
+              )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
             SELECT cn_request_id                                              request_id         -- 要求ID
                   ,TO_NUMBER(NULL)                                            seq                -- 出力順
@@ -2212,6 +2343,10 @@ AS
 -- Modify 2009-11-20 Ver1.20 Start
                   ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
 -- Modify 2009-11-20 Ver1.20 End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                  ,flva.attribute1                                                  description       -- 摘要
+                  ,flva.attribute2                                                  category          -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  (SELECT all_account_rec.customer_code ship_cust_code
@@ -2237,12 +2372,24 @@ AS
                     AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
                     AND  arma.org_id            = gn_org_id
                     AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                ,(SELECT flv.attribute1                attribute1
+                        ,flv.attribute2                attribute2
+                        ,flv.lookup_code               lookup_code
+                    FROM fnd_lookup_values              flv
+                   WHERE flv.lookup_type        = cv_lookup_type
+                     AND flv.language           = USERENV( 'LANG' )
+                     AND flv.enabled_flag       = cv_enable_yes)  flva
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             WHERE xih.invoice_id = xil.invoice_id
               AND xil.cutoff_date = gd_target_date
               AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
               AND xih.set_of_books_id = gn_set_of_bks_id
               AND xih.org_id = gn_org_id
               AND xil.ship_cust_code = all_account_rec.customer_code
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+              AND xil.tax_code   = flva.lookup_code(+)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             GROUP BY xih.inv_creation_date,                                               -- 発行日付
                      xih.object_month,                                                    -- 対象年月
                      xih.term_name,                                                       -- 支払条件
@@ -2305,7 +2452,13 @@ AS
                                    ,xil.delivery_date
                                    ,xil.acceptance_date)
                                    ,cv_format_date_yyyymmdd),                             -- 伝票日付
-                     xil.slip_num;                                                        -- 伝票番号
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--                     xil.slip_num;                                                        -- 伝票番号
+                     xil.slip_num                                                         -- 伝票番号
+                    ,flva.attribute1                                                      -- 摘要
+                    ,flva.attribute2                                                      -- 内訳分類(編集用)
+                     ;
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
             gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -2366,7 +2519,13 @@ AS
                ,col103           -- 入金先顧客コード(非出力項目)
                ,col104           -- 入金先顧客名(非出力項目)
 -- Modify 2009-11-20 Ver1.20 Start
-               ,col105)          -- 請求書印刷単位
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--               ,col105)          -- 請求書印刷単位
+               ,col105           -- 請求書印刷単位
+               ,col30            -- 摘要
+               ,col106           -- 内訳分類(編集用)
+                )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
               SELECT cn_request_id                                              request_id         -- 要求ID
                     ,TO_NUMBER(NULL)                                            seq                -- 出力順
@@ -2468,6 +2627,10 @@ AS
 -- Modify 2009-11-20 Ver1.20 Start
                     ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
 -- Modify 2009-11-20 Ver1.20 End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                    ,flva.attribute1                                                  description       -- 摘要
+                    ,flva.attribute2                                                  category          -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    (SELECT all_account_rec.customer_code ship_cust_code
@@ -2493,12 +2656,24 @@ AS
                       AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
                       AND  arma.org_id            = gn_org_id
                       AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                  ,(SELECT flv.attribute1                attribute1
+                          ,flv.attribute2                attribute2
+                          ,flv.lookup_code               lookup_code
+                      FROM fnd_lookup_values              flv
+                     WHERE flv.lookup_type        = cv_lookup_type
+                       AND flv.language           = USERENV( 'LANG' )
+                       AND flv.enabled_flag       = cv_enable_yes)  flva
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               WHERE xih.invoice_id = xil.invoice_id
                 AND xil.cutoff_date = gd_target_date
                 AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
                 AND xih.set_of_books_id = gn_set_of_bks_id
                 AND xih.org_id = gn_org_id
                 AND xil.ship_cust_code = all_account_rec.customer_code
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                AND xil.tax_code   = flva.lookup_code(+)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
               GROUP BY xih.inv_creation_date,                                               -- 発行日付
                        xih.object_month,                                                    -- 対象年月
                        xih.term_name,                                                       -- 支払条件
@@ -2561,7 +2736,13 @@ AS
                                      ,xil.delivery_date
                                      ,xil.acceptance_date)
                                      ,cv_format_date_yyyymmdd),                             -- 伝票日付
-                       xil.slip_num;                                                        -- 伝票番号
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--                       xil.slip_num;                                                        -- 伝票番号
+                       xil.slip_num                                                         -- 伝票番号
+                      ,flva.attribute1                                                      -- 摘要
+                      ,flva.attribute2                                                      -- 内訳分類(編集用)
+                       ;
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
               gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -2639,7 +2820,13 @@ AS
              ,col103           -- 入金先顧客コード(非出力項目)
              ,col104           -- 入金先顧客名(非出力項目)
 -- Modify 2009-11-20 Ver1.20 Start
-             ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--             ,col105)          -- 請求書印刷単位(非出力項目)
+             ,col105           -- 請求書印刷単位(非出力項目)
+             ,col30            -- 摘要
+             ,col106           -- 内訳分類(編集用)
+              )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 -- Modify 2009-11-20 Ver1.20 End
             SELECT cn_request_id                                              request_id         -- 要求ID
                   ,TO_NUMBER(NULL)                                            seq                -- 出力順
@@ -2751,6 +2938,10 @@ AS
 -- Modify 2009-11-20 Ver1.20 Start
                   ,all_account_rec.invoice_printing_unit                             invoice_printing_unit -- 請求書印刷単位
 -- Modify 2009-11-20 Ver1.20 End
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                  ,flva.attribute1                                                   description       -- 摘要
+                  ,flva.attribute2                                                   category          -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                   xxcfr_invoice_lines            xil  , -- 請求明細
                   xxcmm_cust_accounts            xxca , -- 顧客10追加情報
@@ -2777,6 +2968,15 @@ AS
                     AND  abaa.bank_branch_id    = abb.bank_branch_id(+)
                     AND  arma.org_id            = gn_org_id
                     AND  abaa.org_id            = gn_org_id) bank            -- 銀行口座ビュー
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+                 ,(SELECT flv.attribute1                attribute1
+                         ,flv.attribute2                attribute2
+                         ,flv.lookup_code               lookup_code
+                     FROM fnd_lookup_values             flv
+                    WHERE flv.lookup_type       = cv_lookup_type
+                      AND flv.language          = USERENV( 'LANG' )
+                      AND flv.enabled_flag      = cv_enable_yes)  flva
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             WHERE xih.invoice_id = xil.invoice_id
               AND xil.cutoff_date = gd_target_date
               AND xil.ship_cust_code = bank.ship_cust_code(+)                -- 外部結合のためのダミー結合
@@ -2784,6 +2984,9 @@ AS
               AND xih.org_id = gn_org_id
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND xxca.customer_code = all_account_rec.customer_code
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+              AND xil.tax_code   = flva.lookup_code(+)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
             GROUP BY xih.inv_creation_date,                                               -- 発行日付
                      xil.ship_cust_code,                                                  -- 顧客コード
                      xih.object_month,                                                    -- 対象年月
@@ -2851,7 +3054,13 @@ AS
                                    ,xil.delivery_date
                                    ,xil.acceptance_date)
                                    ,cv_format_date_yyyymmdd),                             -- 伝票日付
-                     xil.slip_num;                                                        -- 伝票番号
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--                     xil.slip_num;                                                        -- 伝票番号
+                     xil.slip_num                                                         -- 伝票番号
+                    ,flva.attribute1                                                      -- 摘要
+                    ,flva.attribute2                                                      -- 内訳分類(編集用)
+                     ;
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
 --
             gn_target_cnt := gn_target_cnt + SQL%ROWCOUNT;
 --
@@ -2894,7 +3103,13 @@ AS
         ,col26            -- 伝票日付
         ,col27            -- 伝票No
         ,col28            -- 伝票金額
-        ,col29)           -- レイアウト区分
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--        ,col29)           -- レイアウト区分
+        ,col29            -- レイアウト区分
+        ,col30            -- 摘要
+        ,col106           -- 内訳分類(編集用)
+         )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
       SELECT cn_request_id                                              request_id         -- 要求ID
             ,TO_NUMBER(NULL)                                            seq                -- 出力順
             ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
@@ -2929,6 +3144,10 @@ AS
             ,NULL                                                       slip_num           -- 伝票番号
             ,SUM(TO_NUMBER(xxcot.col28))                                slip_sum           -- 伝票金額
             ,cv_layout_kbn2                                             layout_kbn         -- レイアウト区分
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+            ,NULL                                                       description        -- 摘要
+            ,NULL                                                       category           -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
       FROM xxcfr_csv_outs_temp          xxcot  -- CSV出力ワークテーブル
       WHERE xxcot.request_id = cn_request_id
         AND xxcot.col29 = cv_layout_kbn2       -- レイアウト区分 = '2'(店舗別内訳レイアウト)
@@ -2977,7 +3196,13 @@ AS
         ,col28            -- 伝票金額
         ,col29            -- レイアウト区分
         ,col103           -- 入金先顧客コード(非出力項目)
-        ,col104)          -- 入金先顧客名(非出力項目)
+-- Modify 2019-09-09 Ver1.60 Start ----------------------------------------------
+--        ,col104)          -- 入金先顧客名(非出力項目)
+        ,col104           -- 入金先顧客名(非出力項目)
+        ,col30            -- 摘要
+        ,col106           -- 内訳分類(編集用)
+         )
+-- Modify 2019-09-09 Ver1.60 End   ----------------------------------------------
       SELECT cn_request_id                                              request_id         -- 要求ID
             ,TO_NUMBER(NULL)                                            seq                -- 出力順
             ,cv_header_kbn                                              header_line_kbn    -- ヘッダ/明細区分
@@ -3026,6 +3251,10 @@ AS
             ,xxcot.col29                                                layout_kbn         -- レイアウト区分
             ,NVL(xxcot.col103,xxcot.col8)                               payment_cust_code  -- 入金先顧客ビュー(単独店の場合顧客コードをセット)
             ,NVL(xxcot.col104,hzpa.party_name)                          payment_cust_name  -- 入金先顧客名(単独店の場合顧客名をセット)
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+            ,NULL                                                       description        -- 摘要
+            ,NULL                                                       category           -- 内訳分類(編集用)
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
       FROM xxcfr_csv_outs_temp          xxcot,  -- CSV出力ワークテーブル
            xxcmm_cust_accounts          xxca,   -- 顧客追加情報
            hz_cust_accounts             hzca,   -- 顧客マスタ
@@ -3401,6 +3630,185 @@ AS
 --
   END insert_work_table;
 --
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+  /**********************************************************************************
+   * Procedure Name   : update_work_table
+   * Description      : ワークテーブルデータ更新(A-10)
+   ***********************************************************************************/
+  PROCEDURE update_work_table(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_work_table'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル変数 ***
+    lt_bill_cust_code  xxcfr_rep_invoice_list.bill_cust_code%TYPE;
+    ln_cust_cnt        PLS_INTEGER;
+    ln_int             PLS_INTEGER := 0;
+--
+    -- *** ローカル・カーソル ***
+    CURSOR update_work_cur
+    IS
+      SELECT  xcot.col8                       bill_cust_code      , --顧客コード
+              xcot.col106                     category            , --内訳分類(編集用)
+              SUM( TO_NUMBER( xcot.col101 ) ) tax_rate_by_sum     , --税別お買上げ額
+              SUM( TO_NUMBER( xcot.col102 ) ) tax_rate_by_tax_sum   --税別消費税額
+      FROM    xxcfr_csv_outs_temp xcot
+      WHERE   xcot.request_id = cn_request_id
+      AND     xcot.col1       = cv_line_kbn                         --ヘッダ/明細区分
+      AND     xcot.col2       = cv_record_kbn1                      --レコード区分
+      AND     xcot.col106      IS NOT NULL                          --内訳分類(編集用)
+      GROUP BY
+              xcot.col8   , -- 顧客コード
+              xcot.col106   -- 内訳分類(編集用)
+      ORDER BY
+              xcot.col8   , -- 顧客コード
+              xcot.col106   -- 内訳分類(編集用)
+      ;
+--
+    -- *** ローカル・レコード ***
+    update_work_rec  update_work_cur%ROWTYPE;
+--
+    -- *** ローカル・タイプ ***
+    TYPE l_bill_cust_code_ttype IS TABLE OF xxcfr_rep_invoice_list.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
+    TYPE l_category_ttype       IS TABLE OF xxcfr_rep_invoice_list.category1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_ex_tax_charge_ttype  IS TABLE OF xxcfr_rep_invoice_list.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
+    TYPE l_tax_sum_ttype        IS TABLE OF xxcfr_rep_invoice_list.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
+--
+    l_bill_cust_code_tab     l_bill_cust_code_ttype;  --顧客コード
+    l_category1_tab          l_category_ttype;        --内訳分類１
+    l_ex_tax_charge1_tab     l_ex_tax_charge_ttype;   --当月お買上げ額１
+    l_tax_sum1_tab           l_tax_sum_ttype;         --消費税額１
+    l_category2_tab          l_category_ttype;        --内訳分類２
+    l_ex_tax_charge2_tab     l_ex_tax_charge_ttype;   --当月お買上げ額２
+    l_tax_sum2_tab           l_tax_sum_ttype;         --消費税額２
+    l_category3_tab          l_category_ttype;        --内訳分類３
+    l_ex_tax_charge3_tab     l_ex_tax_charge_ttype;   --当月お買上げ額３
+    l_tax_sum3_tab           l_tax_sum_ttype;         --消費税額３
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    <<edit_loop>>
+    FOR update_work_rec IN update_work_cur LOOP
+--
+      --初回、又は、顧客コードがブレーク
+      IF (
+           ( lt_bill_cust_code IS NULL )
+           OR
+           ( lt_bill_cust_code <> update_work_rec.bill_cust_code )
+         )
+      THEN
+        --初期化、及び、１レコード目の税別項目設定
+        ln_cust_cnt                   := 1;                                   --顧客毎レコード件数初期化
+        ln_int                        := ln_int + 1;                          --配列カウントアップ
+        l_bill_cust_code_tab(ln_int)  := update_work_rec.bill_cust_code;      --顧客コード
+        l_category1_tab(ln_int)       := update_work_rec.category;            --内訳分類１
+        l_ex_tax_charge1_tab(ln_int)  := update_work_rec.tax_rate_by_sum;     --当月お買上げ額１
+        l_tax_sum1_tab(ln_int)        := update_work_rec.tax_rate_by_tax_sum; --消費税額１
+        l_category2_tab(ln_int)       := NULL;                                --内訳分類２
+        l_ex_tax_charge2_tab(ln_int)  := NULL;                                --当月お買上げ額２
+        l_tax_sum2_tab(ln_int)        := NULL;                                --消費税額２
+        l_category3_tab(ln_int)       := NULL;                                --内訳分類３
+        l_ex_tax_charge3_tab(ln_int)  := NULL;                                --当月お買上げ額３
+        l_tax_sum3_tab(ln_int)        := NULL;                                --消費税額３
+        lt_bill_cust_code             := update_work_rec.bill_cust_code;      --ブレークコード設定
+      ELSE
+        ln_cust_cnt := ln_cust_cnt + 1;  --顧客毎レコード件数カウントアップ
+        --1顧客につき最大3レコードの税別項目を設定(4レコード以上は設定しない)
+        IF ( ln_cust_cnt = 2 ) THEN
+          --2レコード目
+          l_category2_tab(ln_int)      := update_work_rec.category;            --内訳分類２
+          l_ex_tax_charge2_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額２
+          l_tax_sum2_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --消費税額２
+        END IF;
+        IF ( ln_cust_cnt = 3 ) THEN
+          --3レコード目
+          l_category3_tab(ln_int)      := update_work_rec.category;            --内訳分類３
+          l_ex_tax_charge3_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額３
+          l_tax_sum3_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --消費税額３
+        END IF;
+      END IF;
+--
+    END LOOP edit_loop;
+--
+    --一括更新
+    BEGIN
+      <<update_loop>>
+      FORALL i IN l_bill_cust_code_tab.FIRST..l_bill_cust_code_tab.LAST
+        UPDATE  xxcfr_csv_outs_temp xcot
+        SET     xcot.col31  = l_category1_tab(i)                          --内訳分類１
+               ,xcot.col32  = l_ex_tax_charge1_tab(i)                     --当月お買上げ額１
+               ,xcot.col33  = l_tax_sum1_tab(i)                           --消費税額１
+               ,xcot.col34  = l_ex_tax_charge1_tab(i) + l_tax_sum1_tab(i) --当月ご請求額１
+               ,xcot.col35  = l_category2_tab(i)                          --内訳分類２
+               ,xcot.col36  = l_ex_tax_charge2_tab(i)                     --当月お買上げ額２
+               ,xcot.col37  = l_tax_sum2_tab(i)                           --消費税額２
+               ,xcot.col38  = l_ex_tax_charge2_tab(i) + l_tax_sum2_tab(i) --当月ご請求額２
+               ,xcot.col39  = l_category3_tab(i)                          --内訳分類３
+               ,xcot.col40  = l_ex_tax_charge3_tab(i)                     --当月お買上げ額３
+               ,xcot.col41  = l_tax_sum3_tab(i)                           --消費税額３
+               ,xcot.col42  = l_ex_tax_charge3_tab(i) + l_tax_sum3_tab(i) --当月ご請求額３
+        WHERE   xcot.request_id = cn_request_id
+        AND     xcot.col1       = cv_header_kbn           --ヘッダ/明細区分
+        AND     xcot.col8       = l_bill_cust_code_tab(i) --顧客コード
+        ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg( cv_msg_kbn_cfr       -- 'XXCFR'
+                                                       ,cv_msg_xxcfr_00017   -- テーブル更新エラー
+                                                       ,cv_tkn_table         -- トークン'TABLE'
+                                                       ,xxcfr_common_pkg.get_table_comment(cv_table))
+                                                      -- CSV出力ワークテーブル
+                             ,1
+                             ,5000);
+        lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_api_expt;
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_work_table;
+--
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
   /**********************************************************************************
    * Procedure Name   : chk_account_data
    * Description      : 口座情報取得チェック (A-4)
@@ -3980,6 +4388,23 @@ AS
 -- Modify 2009-09-29 Ver1.10 End
     END IF;
 --
+-- Add 2019-09-09 Ver1.60 Start ----------------------------------------------
+    -- =====================================================
+    --  ワークテーブルデータ更新  (A-10)
+    -- =====================================================
+    update_work_table(
+       lv_errbuf             -- エラー・メッセージ           --# 固定 #
+      ,lv_retcode            -- リターン・コード             --# 固定 #
+      ,lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF (lv_retcode = cv_status_error) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    ELSIF  (lv_retcode = cv_status_warn) THEN
+      ov_retcode := cv_status_warn;
+    END IF;
+--
+-- Add 2019-09-09 Ver1.60 End   ----------------------------------------------
     -- =====================================================
     --  口座情報取得チェック (A-4)
     -- =====================================================
