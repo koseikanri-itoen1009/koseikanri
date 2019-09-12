@@ -6,7 +6,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
  * Description     : 汎用商品（全明細）請求データ作成
  * MD.050          : MD050_CFR_003_A08_汎用商品（全明細）請求データ作成
  * MD.070          : MD050_CFR_003_A08_汎用商品（全明細）請求データ作成
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -26,6 +26,7 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
  *  2008-12-02    1.0   SCS 寺内 真紀 初回作成
  *  2009-10-01    1.1   SCS 窪   和重 AR仕様変更IE535対応
  *  2010-01-29    1.2   SCS 安川 智博 障害「E_本稼動_01503」対応
+ *  2019-07-26    1.3   SCSK 石井 裕幸 障害「E_本稼動_15472」対応
  ************************************************************************/
 
 --
@@ -77,7 +78,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
   cv_prof_name_org_id         CONSTANT fnd_profile_options_tl.profile_option_name%TYPE := 'ORG_ID';
   
   -- 参照タイプ
-  cv_lookup_type_out       CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFR1_003A06_BILL_DATA_SET';  -- 汎用請求出力用参照タイプ名
+-- Modify 2019-07-26 Ver1.3 Start ----------------------------------------------
+--  cv_lookup_type_out       CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFR1_003A06_BILL_DATA_SET';  -- 汎用請求出力用参照タイプ名
+  cv_lookup_type_out       CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCFR1_003A06_BILL_DATA_SET_1';  -- 汎用請求出力用参照タイプ名1
+-- Modify 2019-07-26 Ver1.3 End   ----------------------------------------------
   
   -- 請求書全社出力権限判定関数INパラーメータ値
   cv_invoice_type  CONSTANT VARCHAR2(1) := 'G';  -- 請求書タイプ(G:汎用請求書)
@@ -113,6 +117,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
   cv_cons_inv_flag CONSTANT VARCHAR2(1) := 'Y';  -- 有効
 
 -- Modify 2009-10-01 Ver1.1 End   ----------------------------------------------
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+  -- 使用可能フラグ
+  cv_enable_yes CONSTANT VARCHAR2(1) := 'Y';       -- 有効
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
   
   --===============================================================
   -- グローバル変数
@@ -508,7 +516,10 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
     -- VD顧客区分値
     cv_is_vd     CONSTANT VARCHAR2(1) := '1';  -- VD顧客
     cv_is_not_vd CONSTANT VARCHAR2(1) := '0';  -- VD顧客以外
-    
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+    -- 参照タイプ
+    cv_lookup_type  CONSTANT VARCHAR2(30) := 'XXCFR1_TAX_CATEGORY';  -- 税分類
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
 -- Modify 2009-10-01 Ver1.1 Start ----------------------------------------------
 --    -- 請求書出力形式
 --    cv_inv_prt_type CONSTANT VARCHAR2(1) := '2';  -- 汎用請求書
@@ -655,6 +666,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
 --    (SELECT conc_request_id,
       col60                                             -- 分類区分
      ,col101                                            -- 伝票明細NO
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+     ,col61                                             -- 摘要
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
      )
     (SELECT (conc_request_id * -1),
 -- Modify 2009-10-01 Ver1.1 End   ----------------------------------------------
@@ -723,6 +737,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
             classify_type
            ,note_line_id
 -- Modify 2009-10-01 Ver1.1 End   ----------------------------------------------
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+           ,description
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
      FROM (SELECT FND_GLOBAL.CONC_REQUEST_ID                       conc_request_id,          -- 要求ID
                   ''                                               sort_num,                 -- 出力順
                   xih.itoen_name                                   itoen_name,               -- 取引先名
@@ -845,8 +862,19 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
 -- Modify 2009-10-01 Ver1.1 Start ----------------------------------------------
                  ,xil.note_line_id                                 note_line_id              -- 伝票明細NO
 -- Modify 2009-10-01 Ver1.1 End   ----------------------------------------------
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+                 ,flva.attribute1                                  description               -- 摘要
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
            FROM xxcfr_invoice_headers xih,
                 xxcfr_invoice_lines   xil
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+               ,(SELECT flv.attribute1   attribute1
+                       ,flv.lookup_code  lookup_code
+                   FROM fnd_lookup_values     flv
+                  WHERE flv.lookup_type   = cv_lookup_type
+                    AND flv.language      = USERENV( 'LANG' )
+                    AND flv.enabled_flag  = cv_enable_yes)  flva
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
 -- Modify 2009-10-01 Ver1.1 Start ----------------------------------------------
 --           WHERE xih.invoice_id = xil.invoice_id
 --             AND EXISTS (SELECT 'X'
@@ -882,6 +910,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
 --                          ),                                     -- 伝票NO
 --                    xil.note_line_id                             -- 伝票明細NO
 -- Modify 2009-10-01 Ver1.1 End   ----------------------------------------------
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+             AND xil.tax_code       = flva.lookup_code(+)
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
           )
     );
 -- Modify 2009-10-01 Ver1.1 Start ----------------------------------------------
@@ -950,7 +981,11 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
       col57,
       col58,
       col59,
-      col60)
+-- Modify 2019-07-26 Ver1.3 Start ----------------------------------------------
+--      col60)
+      col60,
+      col61)
+-- Modify 2019-07-26 Ver1.3 End   ----------------------------------------------
       (SELECT FND_GLOBAL.CONC_REQUEST_ID,
           ROWNUM,
           col1,
@@ -1013,6 +1048,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
           col58,
           col59,
           col60
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+         ,col61
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
        FROM (SELECT col1,
                col2,
                col3,
@@ -1073,6 +1111,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
                col58,
                col59,
                col60
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+              ,col61
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
              FROM xxcfr_csv_outs_temp
              WHERE request_id = FND_GLOBAL.CONC_REQUEST_ID * -1
              ORDER BY 
@@ -1083,6 +1124,9 @@ CREATE OR REPLACE PACKAGE BODY XXCFR003A08C AS
                 ,col31                -- 納品日
                 ,col32                -- 伝票NO
                 ,col101               -- 伝票明細NO
+-- Add 2019-07-26 Ver1.3 Start ----------------------------------------------
+                ,col61 NULLS FIRST    -- 摘要
+-- Add 2019-07-26 Ver1.3 End   ----------------------------------------------
              )
       );
     -- 税込請求金額の算出
