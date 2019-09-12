@@ -5,7 +5,7 @@ CREATE TABLE xxcfr.xxcfr_rep_invoice_list
  * Description     : ¿‹‹àŠzˆê——•\’ •[ƒ[ƒNƒe[ƒuƒ‹
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : MD.050_LDM_CFR_001
- * Version         : 1.1
+ * Version         : 1.2
  * 	
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@ CREATE TABLE xxcfr.xxcfr_rep_invoice_list
  * ------------- ----- ------------ -------------------------------------
  *  2008/10/31    1.0  SCS ‘åì Œb    ‰‰ñì¬
  *  2014/10/30    1.1  SCSK ’|‰º º”Í E_–{‰Ò“®_12310‘Î‰
+ *  2019/07/25    1.2  SCSK Šs —Li   E_–{‰Ò“®_15472‘Î‰
  ************************************************************************/
 ( 
   report_id                    VARCHAR2(20)                   ,     -- ’ •[ID
@@ -43,6 +44,18 @@ CREATE TABLE xxcfr.xxcfr_rep_invoice_list
   inv_amount_no_tax            NUMBER                         ,     -- Å”²¿‹Šz‡Œv
   tax_amount_sum               NUMBER                         ,     -- ÅŠz‡Œv
 -- 2014/10/30 Ver1.1 ADD End
+-- 2019/07/25 Ver1.2 ADD Start
+  category                     VARCHAR2(30)                   ,     -- “à–ó•ª—Ş(•ÒW—p)
+  category1                    VARCHAR2(30)                   ,     -- “à–ó•ª—Ş‚P
+  ex_tax_charge1               NUMBER                         ,     -- “–Œ‚¨”ƒã‚°Šz‚P
+  tax_sum1                     NUMBER                         ,     -- Á”ïÅŠz‚P
+  category2                    VARCHAR2(30)                   ,     -- “à–ó•ª—Ş‚Q
+  ex_tax_charge2               NUMBER                         ,     -- “–Œ‚¨”ƒã‚°Šz‚Q
+  tax_sum2                     NUMBER                         ,     -- Á”ïÅŠz‚Q
+  category3                    VARCHAR2(30)                   ,     -- “à–ó•ª—Ş‚R
+  ex_tax_charge3               NUMBER                         ,     -- “–Œ‚¨”ƒã‚°Šz‚R
+  tax_sum3                     NUMBER                         ,     -- Á”ïÅŠz‚R
+-- 2019/07/25 Ver1.2 ADD End
   created_by                   NUMBER(15)    NOT NULL         ,     -- ì¬Ò
   creation_date                DATE          NOT NULL         ,     -- ì¬“ú
   last_updated_by              NUMBER(15)    NOT NULL         ,     -- ÅIXVÒ
@@ -79,10 +92,22 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ship_amount               IS '‹àŠ
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_amount                IS 'ÅŠz';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.data_empty_message        IS '0ŒƒƒbƒZ[ƒW';
 -- 2014/10/14 Ver1.1 ADD Start
-COMMENT ON COLUMN xxcvr.xxcfr_rep_invoice_list.output_standard           IS 'o—ÍŠî€';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.output_standard           IS 'o—ÍŠî€';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.inv_amount_no_tax         IS 'Å”²¿‹Šz‡Œv';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_amount_sum            IS 'ÅŠz‡Œv';
 -- 2014/10/14 Ver1.1 ADD End
+-- 2019/07/25 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.category                  IS '“à–ó•ª—Ş(•ÒW—p)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.category1                 IS '“à–ó•ª—Ş‚P';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ex_tax_charge1            IS '“–Œ‚¨”ƒã‚°Šz‚P';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_sum1                  IS 'Á”ïÅŠz‚P';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.category2                 IS '“à–ó•ª—Ş‚Q';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ex_tax_charge2            IS '“–Œ‚¨”ƒã‚°Šz‚Q';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_sum2                  IS 'Á”ïÅŠz‚Q';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.category3                 IS '“à–ó•ª—Ş‚R';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ex_tax_charge3            IS '“–Œ‚¨”ƒã‚°Šz‚R';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_sum3                  IS 'Á”ïÅŠz‚R';
+-- 2019/07/25 Ver1.2 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.created_by                IS 'ì¬Ò';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.creation_date             IS 'ì¬“ú';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.last_updated_by           IS 'ÅIXVÒ';
