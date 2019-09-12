@@ -7,7 +7,7 @@ AS
  * Description      : 請求金額一覧表出力
  * MD.050           : MD050_CFR_003_A05_請求金額一覧表出力
  * MD.070           : MD050_CFR_003_A05_請求金額一覧表出力
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  insert_work_table      p ワークテーブルデータ登録                (A-5)
  *  start_svf_api          p SVF起動                                 (A-6)
  *  delete_work_table      p ワークテーブルデータ削除                (A-7)
+ *  update_work_table      p ワークテーブルデータ更新                (A-9)
  *  submain                p メイン処理プロシージャ
  *  main                   p コンカレント実行ファイル登録プロシージャ
  *
@@ -35,6 +36,7 @@ AS
  *  2009/10/02    1.4  SCS 安川 智博    共通課題「IE535」対応
  *  2009/12/24    1.5  SCS 廣瀬 真佐人  [障害本稼動_00606] 期間中の顧客階層変更対応
  *  2014/11/05    1.6  SCSK 竹下 昭範   E_本稼動_12310 対応
+ *  2019/07/25    1.7  SCSK 郭 有司     E_本稼動_15472 対応
  *
  *****************************************************************************************/
 --
@@ -114,6 +116,9 @@ AS
   cv_msg_003a05_016  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00024'; -- 帳票０件ログメッセージ
   cv_msg_003a05_017  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00015'; -- 値取得エラーメッセージ
   cv_msg_003a05_018  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00010'; -- 共通関数エラーメッセージ
+-- 2019/07/25 Ver1.7 ADD Start
+  cv_msg_003a05_019  CONSTANT VARCHAR2(20) := 'APP-XXCFR1-00017'; -- テーブル更新エラー
+-- 2019/07/25 Ver1.7 ADD End
 --
 -- トークン
   cv_tkn_prof        CONSTANT VARCHAR2(15) := 'PROF_NAME';        -- プロファイル名
@@ -577,6 +582,183 @@ AS
 --
   END chk_inv_all_dept;
 --
+-- 2019/07/25 Ver1.7 ADD Start
+  /**********************************************************************************
+   * Procedure Name   : update_work_table
+   * Description      : ワークテーブルデータ更新(A-9)
+   ***********************************************************************************/
+  PROCEDURE update_work_table(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_work_table'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_no_tax          CONSTANT NUMBER := 0;
+--
+    -- *** ローカル変数 ***
+    lt_bill_cust_code  xxcfr_rep_invoice_list.bill_cust_code%TYPE;
+    ln_cust_cnt        PLS_INTEGER;
+    ln_int             PLS_INTEGER := 0;
+--
+    -- *** ローカル・カーソル ***
+    CURSOR update_work_cur
+    IS
+      SELECT xril.bill_cust_code      bill_cust_code      ,  --顧客コード
+             xril.category            category            ,  --内訳分類(編集用)
+             SUM( xril.ship_amount )  tax_rate_by_sum     ,  --税別お買上げ額
+             SUM( xril.tax_amount )   tax_rate_by_tax_sum    --税別消費税額
+      FROM   xxcfr_rep_invoice_list  xril
+      WHERE  xril.request_id  = cn_request_id
+      AND    xril.category   IS NOT NULL                     --内訳分類(編集用)
+      GROUP BY
+             xril.bill_cust_code, -- 顧客コード
+             xril.category        -- 内訳分類(編集用)
+      ORDER BY
+             xril.bill_cust_code, -- 顧客コード
+             xril.category        -- 内訳分類(編集用)
+      ;
+--
+    -- *** ローカル・レコード ***
+    update_work_rec  update_work_cur%ROWTYPE;
+--
+    -- *** ローカル・タイプ ***
+    TYPE l_bill_cust_code_ttype IS TABLE OF xxcfr_rep_invoice_list.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
+    TYPE l_category_ttype       IS TABLE OF xxcfr_rep_invoice_list.category1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_ex_tax_charge_ttype  IS TABLE OF xxcfr_rep_invoice_list.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
+    TYPE l_tax_sum_ttype        IS TABLE OF xxcfr_rep_invoice_list.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
+--
+    l_bill_cust_code_tab     l_bill_cust_code_ttype;  --顧客コード
+    l_category1_tab          l_category_ttype;        --内訳分類１
+    l_ex_tax_charge1_tab     l_ex_tax_charge_ttype;   --当月お買上げ額１
+    l_tax_sum1_tab           l_tax_sum_ttype;         --消費税額１
+    l_category2_tab          l_category_ttype;        --内訳分類２
+    l_ex_tax_charge2_tab     l_ex_tax_charge_ttype;   --当月お買上げ額２
+    l_tax_sum2_tab           l_tax_sum_ttype;         --消費税額２
+    l_category3_tab          l_category_ttype;        --内訳分類３
+    l_ex_tax_charge3_tab     l_ex_tax_charge_ttype;   --当月お買上げ額３
+    l_tax_sum3_tab           l_tax_sum_ttype;         --消費税額３
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    <<edit_loop>>
+    FOR update_work_rec IN update_work_cur LOOP
+--
+      --初回、又は、顧客コードがブレーク
+      IF (
+           ( lt_bill_cust_code IS NULL )
+           OR
+           ( lt_bill_cust_code <> update_work_rec.bill_cust_code )
+         )
+      THEN
+        --初期化、及び、１レコード目の税別項目設定
+        ln_cust_cnt                   := 1;                                   --顧客毎レコード件数初期化
+        ln_int                        := ln_int + 1;                          --配列カウントアップ
+        l_bill_cust_code_tab(ln_int)  := update_work_rec.bill_cust_code;      --顧客コード
+        l_category1_tab(ln_int)       := update_work_rec.category;            --内訳分類１
+        l_ex_tax_charge1_tab(ln_int)  := update_work_rec.tax_rate_by_sum;     --当月お買上げ額１
+        l_tax_sum1_tab(ln_int)        := update_work_rec.tax_rate_by_tax_sum; --消費税額１
+        l_category2_tab(ln_int)       := NULL;                                --内訳分類２
+        l_ex_tax_charge2_tab(ln_int)  := NULL;                                --当月お買上げ額２
+        l_tax_sum2_tab(ln_int)        := NULL;                                --消費税額２
+        l_category3_tab(ln_int)       := NULL;                                --内訳分類３
+        l_ex_tax_charge3_tab(ln_int)  := NULL;                                --当月お買上げ額３
+        l_tax_sum3_tab(ln_int)        := NULL;                                --消費税額３
+        lt_bill_cust_code             := update_work_rec.bill_cust_code;      --ブレークコード設定
+      ELSE
+        ln_cust_cnt := ln_cust_cnt + 1;  --顧客毎レコード件数カウントアップ
+        --1顧客につき最大2レコードの税別項目を設定(3レコード以上は設定しない)
+        IF ( ln_cust_cnt = 2 ) THEN
+          --2レコード目
+          l_category2_tab(ln_int)      := update_work_rec.category;            --内訳分類２
+          l_ex_tax_charge2_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額２
+          l_tax_sum2_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --消費税額２
+        END IF;
+        IF ( ln_cust_cnt = 3 ) THEN
+          --3レコード目
+          l_category3_tab(ln_int)      := update_work_rec.category;            --内訳分類３
+          l_ex_tax_charge3_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額３
+          l_tax_sum3_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --消費税額３
+        END IF;
+      END IF;
+--
+    END LOOP edit_loop;
+--
+    --一括更新
+    BEGIN
+      <<update_loop>>
+      FORALL i IN l_bill_cust_code_tab.FIRST..l_bill_cust_code_tab.LAST
+        UPDATE  xxcfr_rep_invoice_list  xril
+        SET     xril.category1        = l_category1_tab(i)        --内訳分類１
+               ,xril.ex_tax_charge1   = l_ex_tax_charge1_tab(i)   --当月お買上げ額１
+               ,xril.tax_sum1         = l_tax_sum1_tab(i)         --消費税額１
+               ,xril.category2        = l_category2_tab(i)        --内訳分類２
+               ,xril.ex_tax_charge2   = l_ex_tax_charge2_tab(i)   --当月お買上げ額２
+               ,xril.tax_sum2         = l_tax_sum2_tab(i)         --消費税額２
+               ,xril.category3        = l_category3_tab(i)        --内訳分類３
+               ,xril.ex_tax_charge3   = l_ex_tax_charge3_tab(i)   --当月お買上げ額３
+               ,xril.tax_sum3         = l_tax_sum3_tab(i)         --消費税額３
+        WHERE   xril.bill_cust_code   = l_bill_cust_code_tab(i)
+        AND     xril.request_id       = cn_request_id
+        ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg( cv_msg_kbn_cfr       -- 'XXCFR'
+                                                       ,cv_msg_003a05_019    -- テーブル更新エラー
+                                                       ,cv_tkn_table         -- トークン'TABLE'
+                                                       ,xxcfr_common_pkg.get_table_comment(cv_table))
+                                                      -- 標準請求書税抜帳票ワークテーブル
+                             ,1
+                             ,5000);
+        lv_errbuf := lv_errmsg ||cv_msg_part|| SQLERRM;
+        RAISE global_api_expt;
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_work_table;
+--
+-- 2019/07/25 Ver1.7 ADD End
   /**********************************************************************************
    * Procedure Name   : insert_work_table
    * Description      : ワークテーブルデータ登録 (A-5)
@@ -609,6 +791,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_lookup_tax_type  CONSTANT VARCHAR2(30) := 'XXCMM_CSUT_SYOHIZEI_KBN'; -- 消費税区分
+-- 2019/07/25 Ver1.7 ADD Start
+    cv_lookup_type      CONSTANT VARCHAR2(30) := 'XXCFR1_TAX_CATEGORY';     -- 税分類
+-- 2019/07/25 Ver1.7 ADD End
     cv_value_set_name   CONSTANT VARCHAR2(30) := 'XX03_DEPARTMENT' ;        -- 所属部門値セット名
 --
     -- *** ローカル変数 ***
@@ -639,6 +824,10 @@ AS
 --
     lt_upd_rep_inv_rec    upd_rep_inv_cur%ROWTYPE;
 -- Add Ver1.6 End
+-- 2019/07/25 Ver1.7 ADD Start
+    -- *** ローカル例外 ***
+    update_work_expt  EXCEPTION;
+-- 2019/07/25 Ver1.7 ADD End
 --
   BEGIN
 --
@@ -685,6 +874,9 @@ AS
       ,ship_amount            -- 金額
       ,tax_amount             -- 税額
       ,data_empty_message     -- 0件メッセージ
+-- 2019/07/25 Ver1.7 ADD Start
+      ,category               -- 内訳分類(編集用)
+-- 2019/07/25 Ver1.7 ADD End
       ,created_by             -- 作成者
       ,creation_date          -- 作成日
       ,last_updated_by        -- 最終更新者
@@ -704,7 +896,6 @@ AS
 -- Modify Ver1.6 Start
 --    SELECT cv_pkg_name,                                    -- 帳票ID
     SELECT /*+ LEADING(xih)
-               USE_NL(xih xil flv ffvs ffvb2 xxca)
                INDEX(xih XXCFR_INVOICE_HEADERS_U01)
            */
            cv_pkg_name,                                    -- 帳票ID
@@ -801,6 +992,9 @@ AS
            SUM(xil.ship_amount)      ship_amount,           -- 金額
            SUM(xil.tax_amount)       tax_amount,            -- 税額
            NULL,                                           -- 0件メッセージ
+-- 2019/07/25 Ver1.7 ADD Start
+           flv2.attribute2           category,             -- 内訳分類
+-- 2019/07/25 Ver1.7 ADD End
            cn_created_by,                                  -- 作成者
            cd_creation_date,                               -- 作成日
            cn_last_updated_by,                             -- 最終更新者
@@ -904,7 +1098,17 @@ AS
           WHERE  flva.lookup_type  = cv_lookup_tax_type
             AND flva.language  = USERENV( 'LANG' )
             AND flva.enabled_flag  = cv_enabled_yes
-         )                               flv  -- 参照表（消費税区分）
+-- 2019/07/25 Ver1.7 MOD Start
+--         )                               flv  -- 参照表（消費税区分）
+         )                               flv, -- 参照表（消費税区分）
+         (SELECT flva.lookup_code,
+                 flva.attribute2
+          FROM   fnd_lookup_values     flva
+          WHERE  flva.lookup_type  = cv_lookup_type
+            AND flva.language  = USERENV( 'LANG' )
+            AND flva.enabled_flag  = cv_enabled_yes
+         )                               flv2 -- 参照表（税分類）
+-- 2019/07/25 Ver1.7 MOD End
     WHERE xih.invoice_id = xil.invoice_id  -- 一括請求書ID
       AND xih.cutoff_date = gd_target_date -- パラメータ．締日
 -- Delete Ver1.6 Start
@@ -965,6 +1169,9 @@ AS
 -- ADD Ver1.6 End
       AND xih.set_of_books_id = gn_set_of_bks_id
       AND xih.org_id = gn_org_id
+-- 2019/07/25 Ver1.7 ADD Start
+      AND flv2.lookup_code(+) = xil.tax_code -- 税コード
+-- 2019/07/25 Ver1.7 ADD End
     GROUP BY  cv_pkg_name,
               gv_output_date,
               xih.cutoff_date           , -- 締日
@@ -1059,8 +1266,14 @@ AS
                                         , -- 伝票日付
               xih.inv_amount_no_tax     , -- 本体額合計
               xih.tax_amount_sum        , -- 税額合計
-              gv_output_standard          -- 出力基準
+-- 2019/07/25 Ver1.7 DEL Start
+--              gv_output_standard          -- 出力基準
+-- 2019/07/25 Ver1.7 DEL End
 -- Modify Ver1.6 End
+-- 2019/07/25 Ver1.7 ADD Start
+              gv_output_standard        , -- 出力基準
+              flv2.attribute2             -- 内訳分類
+-- 2019/07/25 Ver1.7 ADD End
       ;
 --
     -- 対象件数
@@ -1140,9 +1353,29 @@ AS
 --
         ov_retcode := cv_status_warn;
 --
+-- 2019/07/25 Ver1.7 ADD Start
+      ELSE
+        -- =====================================================
+        --  ワークテーブルデータ更新  (A-9)
+        -- =====================================================
+        update_work_table(
+           lv_errbuf             -- エラー・メッセージ           --# 固定 #
+          ,lv_retcode            -- リターン・コード             --# 固定 #
+          ,lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          --(エラー処理)
+          RAISE update_work_expt;
+        END IF;
+-- 2019/07/25 Ver1.7 ADD End
       END IF;
 --
     EXCEPTION
+-- 2019/07/25 Ver1.7 ADD Start
+      --ワーク更新例外
+      WHEN update_work_expt THEN
+        RAISE global_api_expt;
+-- 2019/07/25 Ver1.7 ADD End
       WHEN OTHERS THEN  -- 登録時エラー
 -- Add Ver1.6 Start
         IF ( upd_rep_inv_cur%ISOPEN ) THEN
