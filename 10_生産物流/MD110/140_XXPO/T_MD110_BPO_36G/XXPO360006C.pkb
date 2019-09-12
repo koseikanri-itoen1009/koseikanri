@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2009/08/10    1.30  T.Yoshimoto      本番障害#1596対応
  *  2009/09/24    1.31  T.Yoshimoto      本番障害#1523対応
  *  2010/01/12    1.32  T.Yoshimoto      E_本稼動#892対応
+ *  2019/04/08    1.33  Y.Sasaki         E_本稼動_15601(生産_軽減税率)対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -824,8 +825,10 @@ AS
     cv_approved            CONSTANT VARCHAR2( 10) := '''APPROVED'''; --承認済み     引用符付
     cv_kakutei             CONSTANT VARCHAR2(  5) := '''35''';       --金額確定     引用符付
     cv_torikesi            CONSTANT VARCHAR2(  5) := '''99''';       --取消         引用符付
-    cv_type_tax_rate       CONSTANT VARCHAR2(100) := '''XXCMN_CONSUMPTION_TAX_RATE''' ;
-                                                                     --消費税
+-- V1.33 Y.Sasaki Deleted START
+--    cv_type_tax_rate       CONSTANT VARCHAR2(100) := '''XXCMN_CONSUMPTION_TAX_RATE''' ;
+--                                                                     --消費税
+-- V1.33 Y.Sasaki Deleted END
     cv_type_kousen         CONSTANT VARCHAR2(100) := '''XXPO_KOUSEN_TYPE''' ;     --口銭区分
     cv_type_fukakin        CONSTANT VARCHAR2(100) := '''XXPO_FUKAKIN_TYPE''' ;    --賦課金区分
     cv_ja                  CONSTANT VARCHAR2(100) := '''JA''' ;                   --日本語
@@ -989,7 +992,16 @@ AS
     ELSE
 */
 -- 2009/05/20 v1.26 T.Yoshimoto Del End 本番#1478
-      lv_select := 'SELECT ';
+-- V1.33 Y.Sasaki Modified START
+--      lv_select := 'SELECT '
+      lv_select := 'SELECT '
+          || '             /*+ '
+          || '                 USE_NL(xrart xvv_assen.pv) '
+          || '                 PUSH_PRED(xitrv_u) '
+          || '                 PUSH_PRED(xitrv_p) '
+          || '                 PUSH_PRED(xvv_med) '
+          || '              */ ' ;
+-- V1.33 Y.Sasaki Modified END
 -- 2009/06/02 v1.27 T.Yoshimoto Add Start 本番#1515
       --入力パラメータ＝3.集計の場合
       IF (gr_param_rec.out_flg = gv_out_syukei) THEN
@@ -1131,8 +1143,12 @@ AS
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.fukakin_rate_or_unit_price '
         ||                          ','|| cv_type_hen  || ', xrart.fukakin_rate_or_unit_price '
         ||       ' , pll.attribute7)          fukakin '      --賦課金'
-        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
-        ||       ' , NVL(flv_p_tax.lookup_code, 0))   zeiritu '      --税率'
+-- V1.33 Y.Sasaki Modified START
+--        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
+--        ||       ' , NVL(flv_p_tax.lookup_code, 0))   zeiritu '      --税率'
+        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(xitrv_u.tax, 0) '
+        ||       ' , NVL(xitrv_p.tax, 0))   zeiritu '      --税率'
+-- V1.33 Y.Sasaki Modified END
         || ',DECODE( xic6.item_class_code '
         ||       ' , '|| cv_item_class || ', ilm.attribute1||ilm.attribute2 '
         ||       ' ,ilm.lot_no )              order1 '       --表示順'
@@ -1167,8 +1183,12 @@ AS
 --        ||       ' , pll.attribute2),0)  * '
         ||       ' , pl.unit_price),0)  * '
 -- 2008/12/05 v1.19 UPDATE END
-        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
-        || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   siire_tax '
+-- V1.33 Y.Sasaki Modified START
+--        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
+--        || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   siire_tax '
+        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(xitrv_u.tax, 0) '
+        || '   , NVL(xitrv_p.tax, 0)) / 100,0)   siire_tax '
+-- V1.33 Y.Sasaki Modified END
 -- 2009/04/23 v1.25 UPDATE START
 --        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.kousen_rate_or_unit_price '
 --        ||                          ','|| cv_type_hen  || ', xrart.kousen_rate_or_unit_price '
@@ -1176,8 +1196,12 @@ AS
         ||                          ','|| cv_type_hen  || ', xrart.kousen_price * -1'
 -- 2009/04/23 v1.25 UPDATE END
         ||       ' , pll.attribute5) * '
-        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
-        || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   kousen_tax '
+-- V1.33 Y.Sasaki Modified START
+--        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
+--        || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   kousen_tax '
+        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(xitrv_u.tax, 0) '
+        || '   , NVL(xitrv_p.tax, 0)) / 100,0)   kousen_tax '
+-- V1.33 Y.Sasaki Modified END
         -- 2008/12/02 ADD END
         ;
 -- 2009/05/26 v1.26 T.Yoshimoto Del Start 本番#1478
@@ -1225,11 +1249,17 @@ AS
       ||  ' ON (  xvv_assen.vendor_id = xrart.assen_vendor_id '
       ||    ' AND xvv_assen.start_date_active <= xrart.txns_date '
       ||    ' AND xvv_assen.end_date_active   >= xrart.txns_date ) '
-      || 'INNER JOIN fnd_lookup_values flv_u_tax '                --クイックコード(消費税)
-      ||  ' ON (  flv_u_tax.lookup_type = ' || cv_type_tax_rate
-      ||    ' AND flv_u_tax.language = ' || cv_ja
-      ||    ' AND flv_u_tax.start_date_active <= xrart.txns_date '
-      ||    ' AND NVL(flv_u_tax.end_date_active, xrart.txns_date)  >= xrart.txns_date ) '
+-- V1.33 Y.Sasaki Modified START
+--      || 'INNER JOIN fnd_lookup_values flv_u_tax '                --クイックコード(消費税)
+--      ||  ' ON (  flv_u_tax.lookup_type = ' || cv_type_tax_rate
+--      ||    ' AND flv_u_tax.language = ' || cv_ja
+--      ||    ' AND flv_u_tax.start_date_active <= xrart.txns_date '
+--      ||    ' AND NVL(flv_u_tax.end_date_active, xrart.txns_date)  >= xrart.txns_date ) '
+      || 'INNER JOIN xxcmm_item_tax_rate_v xitrv_u '              --消費税率ビュー
+      ||  ' ON (  xrart.item_id = xitrv_u.item_id '
+      ||    ' AND xitrv_u.start_date_active <= xrart.txns_date '
+      ||    ' AND NVL(xitrv_u.end_date_active, xrart.txns_date)  >= xrart.txns_date ) '
+-- V1.33 Y.Sasaki Modified END
       || 'LEFT JOIN fnd_lookup_values flv_u_kosen '              --クイックコード(口銭区分)
       ||  ' ON (  flv_u_kosen.lookup_type = '||cv_type_kousen
       ||    ' AND flv_u_kosen.language = ' || cv_ja
@@ -1263,13 +1293,23 @@ AS
       ||                  ' <= ph.attribute4 '
       ||              ' AND TO_CHAR(xvv_med.end_date_active,  '''||gc_char_d_format||''')'
       ||                  ' >= ph.attribute4 ) '
-      || '          INNER JOIN fnd_lookup_values flv_p_tax '     --クイックコード(消費税)
-      ||            ' ON (  flv_p_tax.lookup_type = ' || cv_type_tax_rate
-      ||              ' AND flv_p_tax.language = '|| cv_ja
-      ||              ' AND TO_CHAR(flv_p_tax.start_date_active,'''||gc_char_d_format||''')'
+-- V1.33 Y.Sasaki Modified START
+--      || '          INNER JOIN fnd_lookup_values flv_p_tax '     --クイックコード(消費税)
+--      ||            ' ON (  flv_p_tax.lookup_type = ' || cv_type_tax_rate
+--      ||              ' AND flv_p_tax.language = '|| cv_ja
+--      ||              ' AND TO_CHAR(flv_p_tax.start_date_active,'''||gc_char_d_format||''')'
+--      ||                  ' <= ph.attribute4 '
+--      ||              ' AND NVL(TO_CHAR(flv_p_tax.end_date_active, '''||gc_char_d_format||'''),'
+--      ||                  ' ph.attribute4) >= ph.attribute4 )'
+      || '          INNER JOIN xxcmn_item_mst_v ximv_p '           --OPM品目情報VIEW
+      ||            ' ON ( pl.item_id = ximv_p.inventory_item_id ) '
+      || '          INNER JOIN xxcmm_item_tax_rate_v xitrv_p '     --消費税率ビュー
+      ||            ' ON ( ximv_p.item_id = xitrv_p.item_id '
+      ||              ' AND TO_CHAR(xitrv_p.start_date_active,'''||gc_char_d_format||''')'
       ||                  ' <= ph.attribute4 '
-      ||              ' AND NVL(TO_CHAR(flv_p_tax.end_date_active, '''||gc_char_d_format||'''),'
+      ||              ' AND NVL(TO_CHAR(xitrv_p.end_date_active, '''||gc_char_d_format||'''),'
       ||                  ' ph.attribute4) >= ph.attribute4 )'
+-- V1.33 Y.Sasaki Modified END
       || '          LEFT JOIN fnd_lookup_values flv_p_kosen '   --クイックコード(口銭区分)
       ||            ' ON (  flv_p_kosen.lookup_type = '|| cv_type_kousen
       ||              ' AND flv_p_kosen.language = '|| cv_ja
@@ -1282,9 +1322,15 @@ AS
       ||            ' ON (  flv_p_fuka.lookup_type = '||cv_type_fukakin
       ||              ' AND flv_p_fuka.language = '|| cv_ja
       ||              ' AND flv_p_fuka.lookup_code = pll.attribute6 '
-      ||              ' AND TO_CHAR(flv_p_tax.start_date_active,'''||gc_char_d_format||''')'
+-- V1.33 Y.Sasaki Modified START
+--      ||              ' AND TO_CHAR(flv_p_tax.start_date_active,'''||gc_char_d_format||''')'
+      ||              ' AND TO_CHAR(flv_p_fuka.start_date_active,'''||gc_char_d_format||''')'
+-- V1.33 Y.Sasaki Modified END
       ||                  ' <= ph.attribute4 '
-      ||              ' AND NVL(TO_CHAR(flv_p_tax.end_date_active, '''||gc_char_d_format||'''), '
+-- V1.33 Y.Sasaki Modified START
+--      ||              ' AND NVL(TO_CHAR(flv_p_tax.end_date_active, '''||gc_char_d_format||'''), '
+      ||              ' AND NVL(TO_CHAR(flv_p_fuka.end_date_active, '''||gc_char_d_format||'''), '
+-- V1.33 Y.Sasaki Modified END
       ||                  ' ph.attribute4) >= ph.attribute4 )'
       || '          ) ' ----left joinの括り終了
       || '  ON (  xrart.source_document_number = ph.segment1 '
