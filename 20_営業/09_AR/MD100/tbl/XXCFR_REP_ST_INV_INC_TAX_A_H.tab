@@ -5,13 +5,14 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_a_h
  * Description     : 標準請求書税込帳票内訳印刷単位Aワークテーブルヘッダ
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2015/7/2      1.0  SCSK 小路恭弘  初回作成
+ *  2019/9/3      1.1  SCSK 桑子駿介  [E_本稼動_15472]対応
  ************************************************************************/
 ( 
   report_id               VARCHAR2(20)          , -- 帳票ID
@@ -42,6 +43,12 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_a_h
   inc_tax_charge1         NUMBER                , -- 当月お買上げ額１
   tax_rate2               NUMBER                , -- 消費税率２
   inc_tax_charge2         NUMBER                , -- 当月お買上げ額２
+-- 2019/09/03 Ver1.1 ADD Start
+  category1               VARCHAR2(30)          , -- 内訳分類１
+  category2               VARCHAR2(30)          , -- 内訳分類２
+  category3               VARCHAR2(30)          , -- 内訳分類３
+  inc_tax_charge3         NUMBER                , -- 当月お買上げ額３
+-- 2019/09/03 Ver1.1 ADD End
   outsourcing_flag        VARCHAR2(1)           , -- 業者委託フラグ
   data_empty_message      VARCHAR2(100)         , -- 0件メッセージ
   created_by              NUMBER(15)   NOT NULL , -- 作成者
@@ -84,6 +91,12 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.tax_rate1                  
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.inc_tax_charge1            IS '当月お買上げ額１';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.tax_rate2                  IS '消費税率２';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.inc_tax_charge2            IS '当月お買上げ額２';
+-- 2019/09/03 Ver1.1 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.category1                  IS '内訳分類１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.category2                  IS '内訳分類２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.category3                  IS '内訳分類３';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.inc_tax_charge3            IS '当月お買上げ額３';
+-- 2019/09/03 Ver1.1 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.outsourcing_flag           IS '業者委託フラグ';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.data_empty_message         IS '0件メッセージ';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_a_h.created_by                 IS '作成者';
