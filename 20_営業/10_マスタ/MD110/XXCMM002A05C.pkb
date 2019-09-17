@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A05C(body)
  * Description      : 仕入先マスタデータ連携
  * MD.050           : 仕入先マスタデータ連携 MD050_CMM_002_A05
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *                                        ・再雇用者に対する処理の追加
  *                                        ・仕入先マスタの無効日の設定の変更
  *  2019/04/04    1.6   SCSK 佐々木大和   E_本稼動_15620 経費精算を4つの支払グループに分割
+ *  2019/09/03    1.7   SCSK 佐々木宏之   E_本稼動_15845 新規登録時の支払グループ決定
  *
  *****************************************************************************************/
 --
@@ -2849,6 +2850,9 @@ AS
     lv_pay_group        VARCHAR2(50);             -- 支払グループコード
     lv_ret_flg          VARCHAR2(1);              -- 支払グループコード取得処理用フラグ
     lv_employee_number  VARCHAR2(22);             -- 従業員番号重複チェック用
+--  V1.7 Added START
+    ln_count            NUMBER;                   --  本社振込対象部署取得件数
+--  V1.7 Added END
 --
     -- *** ローカル・カーソル ***
 --
@@ -2940,23 +2944,50 @@ AS
           AND      NVL(attribute3, cv_n_flag) = cv_n_flag
 -- 2010/04/12 Ver1.5 E_本稼動_02240 modify end by Y.Kuboshima
           AND      ROWNUM = 1;
-          IF (gt_i_people_data(ln_loop_cnt).ass_attribute3 = gv_pay_bumon_cd) THEN
--- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
---            lv_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
-            lv_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
--- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+--  V1.7 Modified START
+--          IF (gt_i_people_data(ln_loop_cnt).ass_attribute3 = gv_pay_bumon_cd) THEN
+---- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+----            lv_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+--            lv_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+---- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+--          ELSE
+---- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+----            lv_pay_group := gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm || '/' || gv_pay_type_nm;
+--            lv_pay_group := gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm;
+---- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+--          END IF;
+--
+          --  本社振込対象部署として登録されているか
+          SELECT  COUNT(1)
+          INTO    ln_count
+          FROM    fnd_lookup_values     flv
+          WHERE   flv.lookup_type         =   cv_xxcfo1_pay_dept_code                       -- 本社振込対象部署
+          AND     flv.lookup_code         =   gt_i_people_data(ln_loop_cnt).ass_attribute3
+          AND     flv.language            =   USERENV( 'LANG' )
+          AND     flv.enabled_flag        =   cv_y_flag
+          AND     flv.start_date_active                       <=  gd_process_date
+          AND     NVL(flv.end_date_active, gd_process_date)   >=  gd_process_date
+          ;
+          --  支払グループの決定
+          --  ①部門が「PAY GROUP」に登録されている
+          IF ( ln_count > 0 ) THEN
+            --  ②本社振込対象部署として登録されている場合は、ダミー支払グループを設定
+            lv_pay_group  :=  gt_pay_group_data( gv_bank_num ).pay_group;
           ELSE
--- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
---            lv_pay_group := gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm || '/' || gv_pay_type_nm;
-            lv_pay_group := gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm;
--- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+            --  ②本社振込対象部署と定義されていない場合、部門ごとの小口支払を設定
+            lv_pay_group  :=  gt_i_people_data(ln_loop_cnt).ass_attribute3 || '-' || gv_koguti_genkin_nm;
           END IF;
+--  V1.7 Modified END
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
--- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
---            lv_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
-            lv_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
--- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+--  V1.7 Modified START
+---- 2009/10/02 Ver1.4 modify start by Yutaka.Kuboshima
+----            lv_pay_group := gv_pay_bumon_nm || '-' || gv_pay_method_nm || '/' || gv_pay_bank|| '/' || gv_pay_type_nm;
+--            lv_pay_group := gv_pay_bumon_cd || '-' || gv_pay_method_nm || '-' || gv_pay_bank;
+---- 2009/10/02 Ver1.4 modify end by Yutaka.Kuboshima
+            --  ①部門が「PAY GROUP」に登録されていない場合、ダミー支払グループを設定
+            lv_pay_group  :=  gt_pay_group_data( gv_bank_num ).pay_group;
+--  V1.7 Modified END
           WHEN OTHERS THEN
             RAISE global_api_others_expt;
         END;
