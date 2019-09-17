@@ -5,13 +5,14 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_c_l
  * Description     : 標準請求書税込帳票内訳印刷単位Cワークテーブル明細
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2016/3/10     1.0  SCSK 小路恭弘  初回作成
+ *  2019/9/3      1.1  SCSK 桑子駿介  [E_本稼動_15472]対応
  ************************************************************************/
 ( 
   report_id               VARCHAR2(20)          , -- 帳票ID
@@ -45,6 +46,10 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_inc_tax_c_l
   inc_tax_charge1         NUMBER                , -- 当月お買上げ額１
   tax_rate2               NUMBER                , -- 消費税率２
   inc_tax_charge2         NUMBER                , -- 当月お買上げ額２
+-- 2019/09/03 Ver1.1 ADD Start
+  description             VARCHAR2(10)          , -- 摘要
+  category                VARCHAR2(30)          , -- 内訳分類(編集用)
+-- 2019/09/03 Ver1.1 ADD End
   outsourcing_flag        VARCHAR2(1)           , -- 業者委託フラグ
   created_by              NUMBER(15)   NOT NULL , -- 作成者
   creation_date           DATE         NOT NULL , -- 作成日
@@ -89,6 +94,10 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.tax_rate1                  
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.inc_tax_charge1            IS '当月お買上げ額１';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.tax_rate2                  IS '消費税率２';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.inc_tax_charge2            IS '当月お買上げ額２';
+-- 2019/09/03 Ver1.1 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.description                IS '摘要';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.category                   IS '内訳分類(編集用)';
+-- 2019/09/03 Ver1.1 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.outsourcing_flag           IS '業者委託フラグ';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.created_by                 IS '作成者';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_inc_tax_c_l.creation_date              IS '作成日';
