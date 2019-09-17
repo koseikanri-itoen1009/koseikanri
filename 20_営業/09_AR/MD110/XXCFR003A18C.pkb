@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税込(店舗別内訳)
  * MD.050           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
  * MD.070           : MD050_CFR_003_A18_標準請求書税込(店舗別内訳)
- * Version          : 1.92
+ * Version          : 1.93
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2016/03/31    1.90 SCSK 小路 恭弘   障害「E_本稼動_13511」対応
  *  2016/09/06    1.91 SCSK 小路 恭弘   障害「E_本稼動_13849」対応
  *  2018/10/25    1.92 SCSK 奈良 和宏   障害「E_本稼動_15307」対応
+ *  2019/09/03    1.93 SCSK 桑子 駿介   障害「E_本稼動_15472」対応
  *
  *****************************************************************************************/
 --
@@ -928,19 +929,31 @@ AS
     IS
       SELECT xrsi.bill_cust_code      bill_cust_code      ,  --顧客コード
              xrsi.location_code       location_code       ,  --担当拠点コード
-             xrsi.tax_rate            tax_rate            ,  --税率
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsi.tax_rate            tax_rate            ,  --税率
+             xrsi.category            category            ,  --内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
              SUM( xrsi.slip_sum ) + SUM( xrsi.slip_tax_sum ) tax_rate_by_sum  --税率別お買上げ金額
       FROM   xxcfr_rep_st_invoice_inc_tax_d  xrsi
       WHERE  xrsi.request_id  = cn_request_id
-      AND    xrsi.tax_rate   <> cn_no_tax                    --非課税（税率0%)以外
+-- Modify 2019.09.03 Ver1.93 Start
+--      AND    xrsi.tax_rate   <> cn_no_tax                    --非課税（税率0%)以外
+      AND    xrsi.category   IS NOT NULL                     --内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       GROUP BY
              xrsi.bill_cust_code, -- 顧客コード
              xrsi.location_code,  -- 担当拠点コード
-             xrsi.tax_rate        -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsi.tax_rate        -- 消費税率(編集用)
+             xrsi.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ORDER BY
              xrsi.bill_cust_code, -- 顧客コード
              xrsi.location_code,  -- 担当拠点コード
-             xrsi.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsi.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+             xrsi.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ;
 --
 -- Add 2015.07.31 Ver1.80 Start
@@ -948,19 +961,31 @@ AS
     IS
       SELECT xrsial.bill_cust_code                               bill_cust_code ,  -- 顧客コード
              xrsial.location_code                                location_code  ,  -- 担当拠点コード
-             xrsial.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsial.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+             xrsial.category                                     category       ,  -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
              SUM( xrsial.slip_sum ) + SUM( xrsial.slip_tax_sum ) tax_rate_by_sum   -- 税別お買上げ額
       FROM   xxcfr_rep_st_inv_inc_tax_a_l  xrsial
       WHERE  xrsial.request_id  = cn_request_id
-      AND    xrsial.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+-- Modify 2019.09.03 Ver1.93 Start
+--      AND    xrsial.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+      AND    xrsial.category   IS NOT NULL                     --内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       GROUP BY
              xrsial.bill_cust_code, -- 顧客コード
              xrsial.location_code,  -- 担当拠点コード
-             xrsial.tax_rate        -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsial.tax_rate        -- 消費税率(編集用)
+             xrsial.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ORDER BY
              xrsial.bill_cust_code, -- 顧客コード
              xrsial.location_code,  -- 担当拠点コード
-             xrsial.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsial.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+             xrsial.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ;
 --
     CURSOR update_work_3_cur
@@ -968,21 +993,33 @@ AS
       SELECT xrsial.bill_cust_code                               bill_cust_code ,  -- 顧客コード
              xrsial.location_code                                location_code  ,  -- 担当拠点コード
              xrsial.ship_cust_code                               ship_cust_code ,  -- 納品先顧客コード
-             xrsial.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsial.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+             xrsial.category                                     category       ,  -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
              SUM( xrsial.slip_sum ) + SUM( xrsial.slip_tax_sum ) tax_rate_by_sum   -- 税別お買上げ額
       FROM   xxcfr_rep_st_inv_inc_tax_a_l  xrsial
       WHERE  xrsial.request_id  = cn_request_id
-      AND    xrsial.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+-- Modify 2019.09.03 Ver1.93 Start
+--      AND    xrsial.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+      AND    xrsial.category   IS NOT NULL                     --内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       GROUP BY
              xrsial.bill_cust_code, -- 顧客コード
              xrsial.location_code,  -- 担当拠点コード
              xrsial.ship_cust_code, -- 納品先顧客コード
-             xrsial.tax_rate        -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsial.tax_rate        -- 消費税率(編集用)
+             xrsial.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ORDER BY
              xrsial.bill_cust_code, -- 顧客コード
              xrsial.location_code,  -- 担当拠点コード
              xrsial.ship_cust_code, -- 納品先顧客コード
-             xrsial.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsial.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+             xrsial.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ;
 --
     CURSOR update_work_4_cur
@@ -1007,19 +1044,31 @@ AS
     IS
       SELECT xrsibl.bill_cust_code                               bill_cust_code ,  -- 顧客コード
              xrsibl.location_code                                location_code  ,  -- 担当拠点コード
-             xrsibl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsibl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+             xrsibl.category                                     category       ,  -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
              SUM( xrsibl.slip_sum ) + SUM( xrsibl.slip_tax_sum ) tax_rate_by_sum   -- 税別お買上げ額
       FROM   xxcfr_rep_st_inv_inc_tax_b_l  xrsibl
       WHERE  xrsibl.request_id  = cn_request_id
-      AND    xrsibl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+-- Modify 2019.09.03 Ver1.93 Start
+--      AND    xrsibl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+      AND    xrsibl.category   IS NOT NULL                     --内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       GROUP BY
              xrsibl.bill_cust_code, -- 顧客コード
              xrsibl.location_code,  -- 担当拠点コード
-             xrsibl.tax_rate        -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsibl.tax_rate        -- 消費税率(編集用)
+             xrsibl.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ORDER BY
              xrsibl.bill_cust_code, -- 顧客コード
              xrsibl.location_code,  -- 担当拠点コード
-             xrsibl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsibl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+             xrsibl.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ;
 --
     CURSOR update_work_6_cur
@@ -1027,21 +1076,33 @@ AS
       SELECT xrsibl.bill_cust_code                               bill_cust_code ,  -- 顧客コード
              xrsibl.location_code                                location_code  ,  -- 担当拠点コード
              xrsibl.ship_cust_code                               ship_cust_code ,  -- 納品先顧客コード
-             xrsibl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsibl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+             xrsibl.category                                     category       ,  -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
              SUM( xrsibl.slip_sum ) + SUM( xrsibl.slip_tax_sum ) tax_rate_by_sum   -- 税別お買上げ額
       FROM   xxcfr_rep_st_inv_inc_tax_b_l  xrsibl
       WHERE  xrsibl.request_id  = cn_request_id
-      AND    xrsibl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+-- Modify 2019.09.03 Ver1.93 Start
+--      AND    xrsibl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+      AND    xrsibl.category   IS NOT NULL                     --内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       GROUP BY
              xrsibl.bill_cust_code, -- 顧客コード
              xrsibl.location_code,  -- 担当拠点コード
              xrsibl.ship_cust_code, -- 納品先顧客コード
-             xrsibl.tax_rate        -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsibl.tax_rate        -- 消費税率(編集用)
+             xrsibl.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ORDER BY
              xrsibl.bill_cust_code, -- 顧客コード
              xrsibl.location_code,  -- 担当拠点コード
              xrsibl.ship_cust_code, -- 納品先顧客コード
-             xrsibl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsibl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+             xrsibl.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ;
 --
     CURSOR update_work_7_cur
@@ -1068,19 +1129,31 @@ AS
     IS
       SELECT xrsicl.bill_cust_code                               bill_cust_code ,  -- 顧客コード
              xrsicl.location_code                                location_code  ,  -- 担当拠点コード
-             xrsicl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsicl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+             xrsicl.category                                     category       ,  -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
              SUM( xrsicl.slip_sum ) + SUM( xrsicl.slip_tax_sum ) tax_rate_by_sum   -- 税別お買上げ額
       FROM   xxcfr_rep_st_inv_inc_tax_c_l  xrsicl
       WHERE  xrsicl.request_id  = cn_request_id
-      AND    xrsicl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+-- Modify 2019.09.03 Ver1.93 Start
+--      AND    xrsicl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+      AND    xrsicl.category   IS NOT NULL                     --内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       GROUP BY
              xrsicl.bill_cust_code, -- 顧客コード
              xrsicl.location_code,  -- 担当拠点コード
-             xrsicl.tax_rate        -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsicl.tax_rate        -- 消費税率(編集用)
+             xrsicl.category        --  内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ORDER BY
              xrsicl.bill_cust_code, -- 顧客コード
              xrsicl.location_code,  -- 担当拠点コード
-             xrsicl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsicl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+             xrsicl.category        --  内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ;
 --
 -- Add 2016.03.31 Ver1.90 End
@@ -1091,21 +1164,33 @@ AS
       SELECT xrsidl.bill_cust_code                               bill_cust_code ,  -- 顧客コード
              xrsidl.location_code                                location_code  ,  -- 担当拠点コード
              xrsidl.ship_cust_code                               ship_cust_code ,  -- 納品先顧客コード
-             xrsidl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsidl.tax_rate                                     tax_rate       ,  -- 消費税率(編集用)
+             xrsidl.category                                     category       ,  -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
              SUM( xrsidl.slip_sum ) + SUM( xrsidl.slip_tax_sum ) tax_rate_by_sum   -- 税別お買上げ額
       FROM   xxcfr_rep_st_inv_inc_tax_d_l  xrsidl
       WHERE  xrsidl.request_id  = cn_request_id
-      AND    xrsidl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+-- Modify 2019.09.03 Ver1.93 Start
+--      AND    xrsidl.tax_rate   <> cn_no_tax                    -- 非課税（税率0%)以外
+      AND    xrsidl.category   IS NOT NULL                     --内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       GROUP BY
              xrsidl.bill_cust_code, -- 顧客コード
              xrsidl.location_code,  -- 担当拠点コード
              xrsidl.ship_cust_code, -- 納品先顧客コード
-             xrsidl.tax_rate        -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsidl.tax_rate        -- 消費税率(編集用)
+             xrsidl.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ORDER BY
              xrsidl.bill_cust_code, -- 顧客コード
              xrsidl.location_code,  -- 担当拠点コード
              xrsidl.ship_cust_code, -- 納品先顧客コード
-             xrsidl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+-- Modify 2019.09.03 Ver1.93 Start
+--             xrsidl.tax_rate        -- 消費税率(編集用) ※税率の小さい順に設定
+             xrsidl.category        -- 内訳分類(編集用)
+-- Modify 2019.09.03 Ver1.93 End
       ;
 --
     --単位D明細の当月ご請求額更新用
@@ -1149,19 +1234,28 @@ AS
     -- *** ローカル・タイプ ***
     TYPE l_bill_cust_code_ttype IS TABLE OF xxcfr_rep_st_invoice_inc_tax_d.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_location_code_ttype  IS TABLE OF xxcfr_rep_st_invoice_inc_tax_d.location_code%TYPE   INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_ttype       IS TABLE OF xxcfr_rep_st_invoice_inc_tax_d.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 Start
+--    TYPE l_tax_rate_ttype       IS TABLE OF xxcfr_rep_st_invoice_inc_tax_d.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+    TYPE l_category_ttype       IS TABLE OF xxcfr_rep_st_invoice_inc_tax_d.category1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 End
     TYPE l_inc_tax_charge_ttype IS TABLE OF xxcfr_rep_st_invoice_inc_tax_d.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
 -- Add 2015.07.31 Ver1.80 Start
 --
     TYPE l_bill_cust_code_2_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_location_code_2_ttype  IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.location_code%TYPE   INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_2_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 Start
+--    TYPE l_tax_rate_2_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+    TYPE l_category_2_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.category1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 End
     TYPE l_inc_tax_charge_2_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
 --
     TYPE l_bill_cust_code_3_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_location_code_3_ttype  IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.location_code%TYPE   INDEX BY PLS_INTEGER;
     TYPE l_ship_cust_code_3_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.ship_cust_code%TYPE  INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_3_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 Start
+--    TYPE l_tax_rate_3_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+    TYPE l_category_3_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.category1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 End
     TYPE l_inc_tax_charge_3_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
 --
     TYPE l_bill_cust_code_4_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_a_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
@@ -1171,13 +1265,19 @@ AS
 --
     TYPE l_bill_cust_code_5_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_location_code_5_ttype  IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.location_code%TYPE   INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_5_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 Start
+--    TYPE l_tax_rate_5_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+    TYPE l_category_5_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.category1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 End
     TYPE l_inc_tax_charge_5_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
 --
     TYPE l_bill_cust_code_6_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_location_code_6_ttype  IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.location_code%TYPE   INDEX BY PLS_INTEGER;
     TYPE l_ship_cust_code_6_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.ship_cust_code%TYPE  INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_6_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 Start
+--    TYPE l_tax_rate_6_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+    TYPE l_category_6_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.category1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 End
     TYPE l_inc_tax_charge_6_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
 --
     TYPE l_bill_cust_code_7_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_b_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
@@ -1189,7 +1289,10 @@ AS
 --
     TYPE l_bill_cust_code_8_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_c_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_location_code_8_ttype  IS TABLE OF xxcfr_rep_st_inv_inc_tax_c_l.location_code%TYPE   INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_8_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_c_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 Start
+--    TYPE l_tax_rate_8_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_c_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+    TYPE l_category_8_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_c_l.category%TYPE        INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 End
     TYPE l_inc_tax_charge_8_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_c_l.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
 -- Add 2016.03.31 Ver1.90 End
 -- Ver.1.92 [障害E_本稼動_15307] ADD START
@@ -1197,7 +1300,10 @@ AS
     TYPE l_bill_cust_code_9_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_location_code_9_ttype  IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.location_code%TYPE   INDEX BY PLS_INTEGER;
     TYPE l_ship_cust_code_9_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.ship_cust_code%TYPE  INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_9_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 Start
+--    TYPE l_tax_rate_9_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.tax_rate1%TYPE       INDEX BY PLS_INTEGER;
+    TYPE l_category_9_ttype       IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.category1%TYPE       INDEX BY PLS_INTEGER;
+-- Modify 2019.09.03 Ver1.93 End
     TYPE l_inc_tax_charge_9_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.inc_tax_charge1%TYPE INDEX BY PLS_INTEGER;
 --
     TYPE l_bill_cust_code_10_ttype IS TABLE OF xxcfr_rep_st_inv_inc_tax_d_l.bill_cust_code%TYPE  INDEX BY PLS_INTEGER;
@@ -1208,26 +1314,56 @@ AS
 --
     l_bill_cust_code_tab     l_bill_cust_code_ttype;  --顧客コード
     l_location_code_tab      l_location_code_ttype;   --担当拠点コード
-    l_tax_rate1_tab          l_tax_rate_ttype;        --消費税率１
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate1_tab          l_tax_rate_ttype;        --消費税率１
+    l_category1_tab          l_category_ttype;        --内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge1_tab    l_inc_tax_charge_ttype;  --当月お買上げ額１
-    l_tax_rate2_tab          l_tax_rate_ttype;        --消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate2_tab          l_tax_rate_ttype;        --消費税率２
+    l_category2_tab          l_category_ttype;        --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge2_tab    l_inc_tax_charge_ttype;  --当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+    l_category3_tab          l_category_ttype;        --内訳分類３
+    l_inc_tax_charge3_tab    l_inc_tax_charge_ttype;  --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
 --
 -- Add 2015.07.31 Ver1.80 Start
     l_bill_cust_code_2_tab   l_bill_cust_code_2_ttype;  -- 顧客コード
     l_location_code_2_tab    l_location_code_2_ttype;   -- 担当拠点コード
-    l_tax_rate1_2_tab        l_tax_rate_2_ttype;        -- 消費税率１
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate1_2_tab        l_tax_rate_2_ttype;        -- 消費税率１
+    l_category1_2_tab        l_category_2_ttype;        --内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge1_2_tab  l_inc_tax_charge_2_ttype;  -- 当月お買上げ額１
-    l_tax_rate2_2_tab        l_tax_rate_2_ttype;        -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate2_2_tab        l_tax_rate_2_ttype;        -- 消費税率２
+    l_category2_2_tab        l_category_2_ttype;        --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge2_2_tab  l_inc_tax_charge_2_ttype;  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+    l_category3_2_tab        l_category_2_ttype;        --内訳分類３
+    l_inc_tax_charge3_2_tab  l_inc_tax_charge_2_ttype;  --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
 --
     l_bill_cust_code_3_tab   l_bill_cust_code_3_ttype;  -- 顧客コード
     l_location_code_3_tab    l_location_code_3_ttype;   -- 担当拠点コード
     l_ship_cust_code_3_tab   l_ship_cust_code_3_ttype;  -- 納品先顧客コード
-    l_tax_rate1_3_tab        l_tax_rate_3_ttype;        -- 消費税率１
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate1_3_tab        l_tax_rate_3_ttype;        -- 消費税率１
+    l_category1_3_tab        l_category_3_ttype;        --内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge1_3_tab  l_inc_tax_charge_3_ttype;  -- 当月お買上げ額１
-    l_tax_rate2_3_tab        l_tax_rate_3_ttype;        -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate2_3_tab        l_tax_rate_3_ttype;        -- 消費税率２
+    l_category2_3_tab        l_category_3_ttype;        --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge2_3_tab  l_inc_tax_charge_3_ttype;  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+    l_category3_3_tab        l_category_3_ttype;        --内訳分類３
+    l_inc_tax_charge3_3_tab  l_inc_tax_charge_3_ttype;  --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
 --
     l_bill_cust_code_4_tab   l_bill_cust_code_4_ttype;  -- 顧客コード
     l_location_code_4_tab    l_location_code_4_ttype;   -- 担当拠点コード
@@ -1236,18 +1372,38 @@ AS
 --
     l_bill_cust_code_5_tab   l_bill_cust_code_5_ttype;  -- 顧客コード
     l_location_code_5_tab    l_location_code_5_ttype;   -- 担当拠点コード
-    l_tax_rate1_5_tab        l_tax_rate_5_ttype;        -- 消費税率１
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate1_5_tab        l_tax_rate_5_ttype;        -- 消費税率１
+    l_category1_5_tab        l_category_5_ttype;        --内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge1_5_tab  l_inc_tax_charge_5_ttype;  -- 当月お買上げ額１
-    l_tax_rate2_5_tab        l_tax_rate_5_ttype;        -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate2_5_tab        l_tax_rate_5_ttype;        -- 消費税率２
+    l_category2_5_tab        l_category_5_ttype;        --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge2_5_tab  l_inc_tax_charge_5_ttype;  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+    l_category3_5_tab        l_category_5_ttype;        --内訳分類３
+    l_inc_tax_charge3_5_tab  l_inc_tax_charge_5_ttype;  --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
 --
     l_bill_cust_code_6_tab   l_bill_cust_code_6_ttype;  -- 顧客コード
     l_location_code_6_tab    l_location_code_6_ttype;   -- 担当拠点コード
     l_ship_cust_code_6_tab   l_ship_cust_code_6_ttype;  -- 納品先顧客コード
-    l_tax_rate1_6_tab        l_tax_rate_6_ttype;        -- 消費税率１
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate1_6_tab        l_tax_rate_6_ttype;        -- 消費税率１
+    l_category1_6_tab        l_category_6_ttype;        --内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge1_6_tab  l_inc_tax_charge_6_ttype;  -- 当月お買上げ額１
-    l_tax_rate2_6_tab        l_tax_rate_6_ttype;        -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate2_6_tab        l_tax_rate_6_ttype;        -- 消費税率２
+    l_category2_6_tab        l_category_6_ttype;        --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge2_6_tab  l_inc_tax_charge_6_ttype;  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+    l_category3_6_tab        l_category_6_ttype;        --内訳分類３
+    l_inc_tax_charge3_6_tab  l_inc_tax_charge_6_ttype;  --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
 --
     l_bill_cust_code_7_tab   l_bill_cust_code_7_ttype;  -- 顧客コード
     l_location_code_7_tab    l_location_code_7_ttype;   -- 担当拠点コード
@@ -1258,20 +1414,40 @@ AS
 --
     l_bill_cust_code_8_tab   l_bill_cust_code_8_ttype;  -- 顧客コード
     l_location_code_8_tab    l_location_code_8_ttype;   -- 担当拠点コード
-    l_tax_rate1_8_tab        l_tax_rate_8_ttype;        -- 消費税率１
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate1_8_tab        l_tax_rate_8_ttype;        -- 消費税率１
+    l_category1_8_tab        l_category_8_ttype;        --内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge1_8_tab  l_inc_tax_charge_8_ttype;  -- 当月お買上げ額１
-    l_tax_rate2_8_tab        l_tax_rate_8_ttype;        -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate2_8_tab        l_tax_rate_8_ttype;        -- 消費税率２
+    l_category2_8_tab        l_category_8_ttype;        --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge2_8_tab  l_inc_tax_charge_8_ttype;  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+    l_category3_8_tab        l_category_8_ttype;        --内訳分類３
+    l_inc_tax_charge3_8_tab  l_inc_tax_charge_8_ttype;  --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2016.03.31 Ver1.90 End
 -- Ver.1.92 [障害E_本稼動_15307] ADD START
 --
     l_bill_cust_code_9_tab   l_bill_cust_code_9_ttype;  -- 顧客コード
     l_location_code_9_tab    l_location_code_9_ttype;   -- 担当拠点コード
     l_ship_cust_code_9_tab   l_ship_cust_code_9_ttype;  -- 納品先顧客コード
-    l_tax_rate1_9_tab        l_tax_rate_9_ttype;        -- 消費税率１
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate1_9_tab        l_tax_rate_9_ttype;        -- 消費税率１
+    l_category1_9_tab        l_category_9_ttype;        --内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge1_9_tab  l_inc_tax_charge_9_ttype;  -- 当月お買上げ額１
-    l_tax_rate2_9_tab        l_tax_rate_9_ttype;        -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--    l_tax_rate2_9_tab        l_tax_rate_9_ttype;        -- 消費税率２
+    l_category2_9_tab        l_category_9_ttype;        --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
     l_inc_tax_charge2_9_tab  l_inc_tax_charge_9_ttype;  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+    l_category3_9_tab        l_category_9_ttype;        --内訳分類３
+    l_inc_tax_charge3_9_tab  l_inc_tax_charge_9_ttype;  --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
 --
     l_bill_cust_code_10_tab  l_bill_cust_code_10_ttype;  -- 顧客コード
     l_location_code_10_tab   l_location_code_10_ttype;   -- 担当拠点コード
@@ -1371,20 +1547,39 @@ AS
           ln_int                        := ln_int + 1;                          --配列カウントアップ
           l_bill_cust_code_tab(ln_int)  := update_work_rec.bill_cust_code;      --顧客コード
           l_location_code_tab(ln_int)   := update_work_rec.location_code;       --担当拠点コード
-          l_tax_rate1_tab(ln_int)       := update_work_rec.tax_rate;            --消費税率1
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate1_tab(ln_int)       := update_work_rec.tax_rate;            --消費税率1
+          l_category1_tab(ln_int)       := update_work_rec.category;            --内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge1_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --当月お買上げ額１
-          l_tax_rate2_tab(ln_int)       := NULL;                                --消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate2_tab(ln_int)       := NULL;                                --消費税率２
+          l_category2_tab(ln_int)       := NULL;                                --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge2_tab(ln_int) := NULL;                                --当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          l_category3_tab(ln_int)       := NULL;                                --内訳分類３
+          l_inc_tax_charge3_tab(ln_int) := NULL;                                --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           lt_bill_cust_code             := update_work_rec.bill_cust_code;      --ブレークコード設定(顧客コード)
           lt_location_code              := update_work_rec.location_code;       --ブレークコード設定(担当拠点コード)
         ELSE
-          --同一顧客・担当拠点で2レコード目以降(2レコード以上は設定しない)
+          --同一顧客・担当拠点で2レコード目以降(3レコード以上は設定しない)
           ln_cust_cnt := ln_cust_cnt + 1;  --ブレーク毎件数カウントアップ
           --1顧客につき最大２つの税別項目を設定
           IF ( ln_cust_cnt = 2 ) THEN
             --２レコード目
-            l_tax_rate2_tab(ln_int)       := update_work_rec.tax_rate;          --消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--            l_tax_rate2_tab(ln_int)       := update_work_rec.tax_rate;          --消費税率２
+            l_category2_tab(ln_int)       := update_work_rec.category;          --内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
             l_inc_tax_charge2_tab(ln_int) := update_work_rec.tax_rate_by_sum;   --当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          ELSIF ( ln_cust_cnt = 3 ) THEN
+            --３レコード目
+            l_category3_tab(ln_int)       := update_work_rec.category;          --内訳分類３
+            l_inc_tax_charge3_tab(ln_int) := update_work_rec.tax_rate_by_sum;   --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           END IF;
         END IF;
 --
@@ -1395,10 +1590,18 @@ AS
         <<update_loop>>
         FORALL i IN l_bill_cust_code_tab.FIRST..l_bill_cust_code_tab.LAST
           UPDATE  xxcfr_rep_st_invoice_inc_tax_d  xrsi
-          SET     xrsi.tax_rate1        = l_tax_rate1_tab(i)
+-- Modify 2019.09.03 Ver1.93 Start
+--          SET     xrsi.tax_rate1        = l_tax_rate1_tab(i)
+--                 ,xrsi.inc_tax_charge1  = l_inc_tax_charge1_tab(i)
+--                 ,xrsi.tax_rate2        = l_tax_rate2_tab(i)
+--                 ,xrsi.inc_tax_charge2  = l_inc_tax_charge2_tab(i)
+          SET     xrsi.category1        = l_category1_tab(i)
                  ,xrsi.inc_tax_charge1  = l_inc_tax_charge1_tab(i)
-                 ,xrsi.tax_rate2        = l_tax_rate2_tab(i)
+                 ,xrsi.category2        = l_category2_tab(i)
                  ,xrsi.inc_tax_charge2  = l_inc_tax_charge2_tab(i)
+                 ,xrsi.category3        = l_category3_tab(i)
+                 ,xrsi.inc_tax_charge3  = l_inc_tax_charge3_tab(i)
+-- Modify 2019.09.03 Ver1.93 End
           WHERE   xrsi.bill_cust_code   = l_bill_cust_code_tab(i)
           AND     xrsi.location_code    = l_location_code_tab(i)
           AND     xrsi.request_id       = cn_request_id
@@ -1446,20 +1649,40 @@ AS
           ln_int                           := ln_int + 1;                            -- 配列カウントアップ
           l_bill_cust_code_2_tab(ln_int)   := update_work_2_rec.bill_cust_code;      -- 顧客コード
           l_location_code_2_tab(ln_int)    := update_work_2_rec.location_code;       -- 担当拠点コード
-          l_tax_rate1_2_tab(ln_int)        := update_work_2_rec.tax_rate;            -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate1_2_tab(ln_int)        := update_work_2_rec.tax_rate;            -- 消費税率(編集用)
+          l_category1_2_tab(ln_int)        := update_work_2_rec.category;            -- 内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge1_2_tab(ln_int)  := update_work_2_rec.tax_rate_by_sum;     -- 当月お買上げ額１
-          l_tax_rate2_2_tab(ln_int)        := NULL;                                  -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate2_2_tab(ln_int)        := NULL;                                  -- 消費税率２
+          l_category2_2_tab(ln_int)        := NULL;                                  -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge2_2_tab(ln_int)  := NULL;                                  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          l_category3_2_tab(ln_int)        := NULL;                                  -- 内訳分類３
+          l_inc_tax_charge3_2_tab(ln_int)  := NULL;                                  -- 当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           lt_bill_cust_code2               := update_work_2_rec.bill_cust_code;      -- ブレークコード設定(顧客コード)
           lt_location_code2                := update_work_2_rec.location_code;       -- ブレークコード設定(担当拠点コード)
         ELSE
-          --同一顧客・担当拠点で2レコード目以降(2レコード以上は設定しない)
+          --同一顧客・担当拠点で2レコード目以降(3レコード以上は設定しない)
+-- Modify 2019.09.03 Ver1.93 End
           ln_cust_cnt := ln_cust_cnt + 1;  --ブレーク毎件数カウントアップ
           --1顧客につき最大２つの税別項目を設定
           IF ( ln_cust_cnt = 2 ) THEN
             --２レコード目
-            l_tax_rate2_2_tab(ln_int)       := update_work_2_rec.tax_rate;            -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--            l_tax_rate2_2_tab(ln_int)       := update_work_2_rec.tax_rate;            -- 消費税率２
+            l_category2_2_tab(ln_int)       := update_work_2_rec.category;            -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
             l_inc_tax_charge2_2_tab(ln_int) := update_work_2_rec.tax_rate_by_sum;     -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          ELSIF ( ln_cust_cnt = 3 ) THEN
+            --３レコード目
+            l_category3_2_tab(ln_int)       := update_work_2_rec.category;            --内訳分類３
+            l_inc_tax_charge3_2_tab(ln_int) := update_work_2_rec.tax_rate_by_sum;     --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           END IF;
         END IF;
 --
@@ -1470,10 +1693,18 @@ AS
         <<update_loop2>>
         FORALL i IN l_bill_cust_code_2_tab.FIRST..l_bill_cust_code_2_tab.LAST
           UPDATE  xxcfr_rep_st_inv_inc_tax_a_h  xrsiah
-          SET     xrsiah.tax_rate1        = l_tax_rate1_2_tab(i)        -- 消費税率1
+-- Modify 2019.09.03 Ver1.93 Start
+--          SET     xrsiah.tax_rate1        = l_tax_rate1_2_tab(i)        -- 消費税率1
+--                 ,xrsiah.inc_tax_charge1  = l_inc_tax_charge1_2_tab(i)  -- 当月お買上げ額１
+--                 ,xrsiah.tax_rate2        = l_tax_rate2_2_tab(i)        -- 消費税率２
+--                 ,xrsiah.inc_tax_charge2  = l_inc_tax_charge2_2_tab(i)  -- 当月お買上げ額２
+          SET     xrsiah.category1        = l_category1_2_tab(i)        -- 内訳分類１
                  ,xrsiah.inc_tax_charge1  = l_inc_tax_charge1_2_tab(i)  -- 当月お買上げ額１
-                 ,xrsiah.tax_rate2        = l_tax_rate2_2_tab(i)        -- 消費税率２
+                 ,xrsiah.category2        = l_category2_2_tab(i)        -- 内訳分類２
                  ,xrsiah.inc_tax_charge2  = l_inc_tax_charge2_2_tab(i)  -- 当月お買上げ額２
+                 ,xrsiah.category3        = l_category3_2_tab(i)        -- 内訳分類３
+                 ,xrsiah.inc_tax_charge3  = l_inc_tax_charge3_2_tab(i)  -- 当月お買上げ額３
+-- Modify 2019.09.03 Ver1.93 End
           WHERE   xrsiah.bill_cust_code   = l_bill_cust_code_2_tab(i)
           AND     xrsiah.location_code    = l_location_code_2_tab(i)
           AND     xrsiah.request_id       = cn_request_id
@@ -1516,21 +1747,43 @@ AS
           l_bill_cust_code_3_tab(ln_int)  := update_work_3_rec.bill_cust_code;      -- 顧客コード
           l_location_code_3_tab(ln_int)   := update_work_3_rec.location_code;       -- 担当拠点コード
           l_ship_cust_code_3_tab(ln_int)  := update_work_3_rec.ship_cust_code;      -- 納品先顧客コード
-          l_tax_rate1_3_tab(ln_int)       := update_work_3_rec.tax_rate;            -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate1_3_tab(ln_int)       := update_work_3_rec.tax_rate;            -- 消費税率(編集用)
+          l_category1_3_tab(ln_int)       := update_work_3_rec.category;            -- 内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge1_3_tab(ln_int) := update_work_3_rec.tax_rate_by_sum;     -- 当月お買上げ額１
-          l_tax_rate2_3_tab(ln_int)       := NULL;                                  -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate2_3_tab(ln_int)       := NULL;                                  -- 消費税率２
+          l_category2_3_tab(ln_int)       := NULL;                                  -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge2_3_tab(ln_int) := NULL;                                  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          l_category3_3_tab(ln_int)       := NULL;                                  -- 内訳分類３
+          l_inc_tax_charge3_3_tab(ln_int) := NULL;                                  -- 当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           lt_bill_cust_code3              := update_work_3_rec.bill_cust_code;      -- ブレークコード設定(顧客コード)
           lt_location_code3               := update_work_3_rec.location_code;       -- ブレークコード設定(担当拠点コード)
           lt_ship_cust_code3              := update_work_3_rec.ship_cust_code;      -- ブレークコード設定(納品先顧客コード)
         ELSE
-          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(2レコード以上は設定しない)
+-- Modify 2019.09.03 Ver1.93 Start
+--          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(2レコード以上は設定しない)
+          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(3レコード以上は設定しない)
+-- Modify 2019.09.03 Ver1.93 End
           ln_cust_cnt := ln_cust_cnt + 1;  --ブレーク毎件数カウントアップ
           --1店舗につき最大２つの税別項目を設定
           IF ( ln_cust_cnt = 2 ) THEN
             --２レコード目
-            l_tax_rate2_3_tab(ln_int)       := update_work_3_rec.tax_rate;            -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--            l_tax_rate2_3_tab(ln_int)       := update_work_3_rec.tax_rate;            -- 消費税率２
+            l_category2_3_tab(ln_int)       := update_work_3_rec.category;            -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
             l_inc_tax_charge2_3_tab(ln_int) := update_work_3_rec.tax_rate_by_sum;     -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          ELSIF ( ln_cust_cnt = 3 ) THEN
+            --３レコード目
+            l_category3_3_tab(ln_int)       := update_work_3_rec.category;            --内訳分類３
+            l_inc_tax_charge3_3_tab(ln_int) := update_work_3_rec.tax_rate_by_sum;     --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           END IF;
         END IF;
 --
@@ -1541,10 +1794,18 @@ AS
         <<update_loop3>>
         FORALL i IN l_bill_cust_code_3_tab.FIRST..l_bill_cust_code_3_tab.LAST
           UPDATE  xxcfr_rep_st_inv_inc_tax_a_l  xrsial
-          SET     xrsial.tax_rate1        = l_tax_rate1_3_tab(i)        -- 消費税率1
-                 ,xrsial.inc_tax_charge1  = l_inc_tax_charge1_3_tab(i)  -- 当月お買上げ額１
-                 ,xrsial.tax_rate2        = l_tax_rate2_3_tab(i)        -- 消費税率２
-                 ,xrsial.inc_tax_charge2  = l_inc_tax_charge2_3_tab(i)  -- 当月お買上げ額２
+-- Modify 2019.09.03 Ver1.93 Start
+--          SET     xrsial.tax_rate1        = l_tax_rate1_3_tab(i)        -- 消費税率1
+--                 ,xrsial.inc_tax_charge1  = l_inc_tax_charge1_3_tab(i)  -- 当月お買上げ額１
+--                 ,xrsial.tax_rate2        = l_tax_rate2_3_tab(i)        -- 消費税率２
+--                 ,xrsial.inc_tax_charge2  = l_inc_tax_charge2_3_tab(i)  -- 当月お買上げ額２
+          SET      xrsial.category1       = l_category1_3_tab(i)        -- 内訳分類１
+                  ,xrsial.inc_tax_charge1 = l_inc_tax_charge1_3_tab(i)  -- 当月お買上げ額１
+                  ,xrsial.category2       = l_category2_3_tab(i)        -- 内訳分類２
+                  ,xrsial.inc_tax_charge2 = l_inc_tax_charge2_3_tab(i)  -- 当月お買上げ額２
+                  ,xrsial.category3       = l_category3_3_tab(i)        -- 内訳分類２
+                  ,xrsial.inc_tax_charge3 = l_inc_tax_charge3_3_tab(i)  -- 当月お買上げ額３
+-- Modify 2019.09.03 Ver1.93 End
           WHERE   xrsial.bill_cust_code   = l_bill_cust_code_3_tab(i)
           AND     xrsial.location_code    = l_location_code_3_tab(i)
           AND     xrsial.ship_cust_code   = l_ship_cust_code_3_tab(i)
@@ -1634,20 +1895,39 @@ AS
           ln_int                          := ln_int + 1;                            -- 配列カウントアップ
           l_bill_cust_code_5_tab(ln_int)  := update_work_5_rec.bill_cust_code;      -- 顧客コード
           l_location_code_5_tab(ln_int)   := update_work_5_rec.location_code;       -- 担当拠点コード
-          l_tax_rate1_5_tab(ln_int)       := update_work_5_rec.tax_rate;            -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate1_5_tab(ln_int)       := update_work_5_rec.tax_rate;            -- 消費税率(編集用)
+          l_category1_5_tab(ln_int)       := update_work_5_rec.category;            -- 内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge1_5_tab(ln_int) := update_work_5_rec.tax_rate_by_sum;     -- 当月お買上げ額１
-          l_tax_rate2_5_tab(ln_int)       := NULL;                                  -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate2_5_tab(ln_int)       := NULL;                                  -- 消費税率２
+          l_category2_5_tab(ln_int)       := NULL;                                  -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge2_5_tab(ln_int) := NULL;                                  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          l_category3_5_tab(ln_int)       := NULL;                                  -- 内訳分類３
+          l_inc_tax_charge3_5_tab(ln_int) := NULL;                                  -- 当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           lt_bill_cust_code5              := update_work_5_rec.bill_cust_code;      -- ブレークコード設定(顧客コード)
           lt_location_code5               := update_work_5_rec.location_code;       -- ブレークコード設定(担当拠点コード)
         ELSE
-          --同一顧客・担当拠点で2レコード目以降(2レコード以上は設定しない)
+          --同一顧客・担当拠点で2レコード目以降(3レコード以上は設定しない)
           ln_cust_cnt := ln_cust_cnt + 1;  --ブレーク毎件数カウントアップ
           --1顧客につき最大２つの税別項目を設定
           IF ( ln_cust_cnt = 2 ) THEN
             --２レコード目
-            l_tax_rate2_5_tab(ln_int)       := update_work_5_rec.tax_rate;            -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--            l_tax_rate2_5_tab(ln_int)       := update_work_5_rec.tax_rate;            -- 消費税率２
+            l_category2_5_tab(ln_int)       := update_work_5_rec.category;            -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
             l_inc_tax_charge2_5_tab(ln_int) := update_work_5_rec.tax_rate_by_sum;     -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          ELSIF ( ln_cust_cnt = 3 ) THEN
+            --３レコード目
+            l_category3_5_tab(ln_int)       := update_work_5_rec.category;            --内訳分類３
+            l_inc_tax_charge3_5_tab(ln_int) := update_work_5_rec.tax_rate_by_sum;     --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           END IF;
         END IF;
 --
@@ -1658,10 +1938,18 @@ AS
         <<update_loop5>>
         FORALL i IN l_bill_cust_code_5_tab.FIRST..l_bill_cust_code_5_tab.LAST
           UPDATE  xxcfr_rep_st_inv_inc_tax_b_h  xrsibh
-          SET     xrsibh.tax_rate1        = l_tax_rate1_5_tab(i)        -- 消費税率1
+-- Modify 2019.09.03 Ver1.93 Start
+--          SET     xrsibh.tax_rate1        = l_tax_rate1_5_tab(i)        -- 消費税率1
+--                 ,xrsibh.inc_tax_charge1  = l_inc_tax_charge1_5_tab(i)  -- 当月お買上げ額１
+--                 ,xrsibh.tax_rate2        = l_tax_rate2_5_tab(i)        -- 消費税率２
+--                 ,xrsibh.inc_tax_charge2  = l_inc_tax_charge2_5_tab(i)  -- 当月お買上げ額２
+          SET     xrsibh.category1        = l_category1_5_tab(i)        -- 内訳分類１
                  ,xrsibh.inc_tax_charge1  = l_inc_tax_charge1_5_tab(i)  -- 当月お買上げ額１
-                 ,xrsibh.tax_rate2        = l_tax_rate2_5_tab(i)        -- 消費税率２
+                 ,xrsibh.category2        = l_category2_5_tab(i)        -- 内訳分類２
                  ,xrsibh.inc_tax_charge2  = l_inc_tax_charge2_5_tab(i)  -- 当月お買上げ額２
+                 ,xrsibh.category3        = l_category3_5_tab(i)        -- 内訳分類３
+                 ,xrsibh.inc_tax_charge3  = l_inc_tax_charge3_5_tab(i)  -- 当月お買上げ額３
+-- Modify 2019.09.03 Ver1.93 End
           WHERE   xrsibh.bill_cust_code   = l_bill_cust_code_5_tab(i)
           AND     xrsibh.location_code    = l_location_code_5_tab(i)
           AND     xrsibh.request_id       = cn_request_id
@@ -1704,21 +1992,40 @@ AS
           l_bill_cust_code_6_tab(ln_int)  := update_work_6_rec.bill_cust_code;      -- 顧客コード
           l_location_code_6_tab(ln_int)   := update_work_6_rec.location_code;       -- 担当拠点コード
           l_ship_cust_code_6_tab(ln_int)  := update_work_6_rec.ship_cust_code;      -- 納品先顧客コード
-          l_tax_rate1_6_tab(ln_int)       := update_work_6_rec.tax_rate;            -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate1_6_tab(ln_int)       := update_work_6_rec.tax_rate;            -- 消費税率(編集用)
+          l_category1_6_tab(ln_int)       := update_work_6_rec.category;            -- 内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge1_6_tab(ln_int) := update_work_6_rec.tax_rate_by_sum;     -- 当月お買上げ額１
-          l_tax_rate2_6_tab(ln_int)       := NULL;                                  -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate2_6_tab(ln_int)       := NULL;                                  -- 消費税率２
+          l_category2_6_tab(ln_int)       := NULL;                                  -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge2_6_tab(ln_int) := NULL;                                  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          l_category3_6_tab(ln_int)       := NULL;                                  -- 内訳分類３
+          l_inc_tax_charge3_6_tab(ln_int) := NULL;                                  -- 当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           lt_bill_cust_code6              := update_work_6_rec.bill_cust_code;      -- ブレークコード設定(顧客コード)
           lt_location_code6               := update_work_6_rec.location_code;       -- ブレークコード設定(担当拠点コード)
           lt_ship_cust_code6              := update_work_6_rec.ship_cust_code;      -- ブレークコード設定(納品先顧客コード)
         ELSE
-          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(2レコード以上は設定しない)
+          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(3レコード以上は設定しない)
           ln_cust_cnt := ln_cust_cnt + 1;  --ブレーク毎件数カウントアップ
           --1店舗につき最大２つの税別項目を設定
           IF ( ln_cust_cnt = 2 ) THEN
             --２レコード目
-            l_tax_rate2_6_tab(ln_int)       := update_work_6_rec.tax_rate;            -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--            l_tax_rate2_6_tab(ln_int)       := update_work_6_rec.tax_rate;            -- 消費税率２
+            l_category2_6_tab(ln_int)       := update_work_6_rec.category;            -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
             l_inc_tax_charge2_6_tab(ln_int) := update_work_6_rec.tax_rate_by_sum;     -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          ELSIF ( ln_cust_cnt = 3 ) THEN
+            --３レコード目
+            l_category3_6_tab(ln_int)       := update_work_6_rec.category;            --内訳分類３
+            l_inc_tax_charge3_6_tab(ln_int) := update_work_6_rec.tax_rate_by_sum;     --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           END IF;
         END IF;
 --
@@ -1729,10 +2036,18 @@ AS
         <<update_loop6>>
         FORALL i IN l_bill_cust_code_6_tab.FIRST..l_bill_cust_code_6_tab.LAST
           UPDATE  xxcfr_rep_st_inv_inc_tax_b_l  xrsibl
-          SET     xrsibl.tax_rate1        = l_tax_rate1_6_tab(i)        -- 消費税率1
+-- Modify 2019.09.03 Ver1.93 Start
+--          SET     xrsibl.tax_rate1        = l_tax_rate1_6_tab(i)        -- 消費税率1
+--                 ,xrsibl.inc_tax_charge1  = l_inc_tax_charge1_6_tab(i)  -- 当月お買上げ額１
+--                 ,xrsibl.tax_rate2        = l_tax_rate2_6_tab(i)        -- 消費税率２
+--                 ,xrsibl.inc_tax_charge2  = l_inc_tax_charge2_6_tab(i)  -- 当月お買上げ額２
+          SET     xrsibl.category1        = l_category1_6_tab(i)        -- 内訳分類１
                  ,xrsibl.inc_tax_charge1  = l_inc_tax_charge1_6_tab(i)  -- 当月お買上げ額１
-                 ,xrsibl.tax_rate2        = l_tax_rate2_6_tab(i)        -- 消費税率２
+                 ,xrsibl.category2        = l_category2_6_tab(i)        -- 内訳分類２
                  ,xrsibl.inc_tax_charge2  = l_inc_tax_charge2_6_tab(i)  -- 当月お買上げ額２
+                 ,xrsibl.category3        = l_category3_6_tab(i)        -- 内訳分類３
+                 ,xrsibl.inc_tax_charge3  = l_inc_tax_charge3_6_tab(i)  -- 当月お買上げ額３
+-- Modify 2019.09.03 Ver1.93 End
           WHERE   xrsibl.bill_cust_code   = l_bill_cust_code_6_tab(i)
           AND     xrsibl.location_code    = l_location_code_6_tab(i)
           AND     xrsibl.ship_cust_code   = l_ship_cust_code_6_tab(i)
@@ -1825,20 +2140,39 @@ AS
           ln_int                           := ln_int + 1;                            -- 配列カウントアップ
           l_bill_cust_code_8_tab(ln_int)   := update_work_8_rec.bill_cust_code;      -- 顧客コード
           l_location_code_8_tab(ln_int)    := update_work_8_rec.location_code;       -- 担当拠点コード
-          l_tax_rate1_8_tab(ln_int)        := update_work_8_rec.tax_rate;            -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate1_8_tab(ln_int)        := update_work_8_rec.tax_rate;            -- 消費税率(編集用)
+          l_category1_8_tab(ln_int)        := update_work_8_rec.category;            -- 内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge1_8_tab(ln_int)  := update_work_8_rec.tax_rate_by_sum;     -- 当月お買上げ額１
-          l_tax_rate2_8_tab(ln_int)        := NULL;                                  -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate2_8_tab(ln_int)        := NULL;                                  -- 消費税率２
+          l_category2_8_tab(ln_int)        :=  NULL;                                 -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge2_8_tab(ln_int)  := NULL;                                  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          l_category3_8_tab(ln_int)        := NULL;                                  -- 内訳分類３
+          l_inc_tax_charge3_8_tab(ln_int)  := NULL;                                  -- 当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           lt_bill_cust_code8               := update_work_8_rec.bill_cust_code;      -- ブレークコード設定(顧客コード)
           lt_location_code8                := update_work_8_rec.location_code;       -- ブレークコード設定(担当拠点コード)
         ELSE
-          --同一顧客・担当拠点で2レコード目以降(2レコード以上は設定しない)
+          --同一顧客・担当拠点で2レコード目以降(3レコード以上は設定しない)
           ln_cust_cnt := ln_cust_cnt + 1;  --ブレーク毎件数カウントアップ
           --1顧客につき最大２つの税別項目を設定
           IF ( ln_cust_cnt = 2 ) THEN
             --２レコード目
-            l_tax_rate2_8_tab(ln_int)       := update_work_8_rec.tax_rate;            -- 消費税率２
-            l_inc_tax_charge2_8_tab(ln_int) := update_work_8_rec.tax_rate_by_sum;     -- 当月お買上げ額２
+-- Modify 2019.09.03 Ver1.93 Start
+--            l_tax_rate2_8_tab(ln_int)       := update_work_8_rec.tax_rate;            -- 消費税率２
+            l_category2_8_tab(ln_int)       := update_work_8_rec.category;           -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
+            l_inc_tax_charge2_8_tab(ln_int) := update_work_8_rec.tax_rate_by_sum;    -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          ELSIF ( ln_cust_cnt = 3 ) THEN
+            --３レコード目
+            l_category3_8_tab(ln_int)       := update_work_8_rec.category;           --内訳分類３
+            l_inc_tax_charge3_8_tab(ln_int) := update_work_8_rec.tax_rate_by_sum;     --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           END IF;
         END IF;
 --
@@ -1849,10 +2183,18 @@ AS
         <<update_loop8>>
         FORALL i IN l_bill_cust_code_8_tab.FIRST..l_bill_cust_code_8_tab.LAST
           UPDATE  xxcfr_rep_st_inv_inc_tax_c_h  xrsich
-          SET     xrsich.tax_rate1        = l_tax_rate1_8_tab(i)        -- 消費税率1
+-- Modify 2019.09.03 Ver1.93 Start
+--          SET     xrsich.tax_rate1        = l_tax_rate1_8_tab(i)        -- 消費税率1
+--                 ,xrsich.inc_tax_charge1  = l_inc_tax_charge1_8_tab(i)  -- 当月お買上げ額１
+--                 ,xrsich.tax_rate2        = l_tax_rate2_8_tab(i)        -- 消費税率２
+--                 ,xrsich.inc_tax_charge2  = l_inc_tax_charge2_8_tab(i)  -- 当月お買上げ額２
+          SET     xrsich.category1        = l_category1_8_tab(i)        -- 内訳分類１
                  ,xrsich.inc_tax_charge1  = l_inc_tax_charge1_8_tab(i)  -- 当月お買上げ額１
-                 ,xrsich.tax_rate2        = l_tax_rate2_8_tab(i)        -- 消費税率２
+                 ,xrsich.category2        = l_category2_8_tab(i)        -- 内訳分類２
                  ,xrsich.inc_tax_charge2  = l_inc_tax_charge2_8_tab(i)  -- 当月お買上げ額２
+                 ,xrsich.category3        = l_category3_8_tab(i)        -- 内訳分類３
+                 ,xrsich.inc_tax_charge3  = l_inc_tax_charge3_8_tab(i)  -- 当月お買上げ額３
+-- Modify 2019.09.03 Ver1.93 END
           WHERE   xrsich.bill_cust_code   = l_bill_cust_code_8_tab(i)
           AND     xrsich.location_code    = l_location_code_8_tab(i)
           AND     xrsich.request_id       = cn_request_id
@@ -1901,21 +2243,43 @@ AS
           l_bill_cust_code_9_tab(ln_int)  := update_work_9_rec.bill_cust_code;      -- 顧客コード
           l_location_code_9_tab(ln_int)   := update_work_9_rec.location_code;       -- 担当拠点コード
           l_ship_cust_code_9_tab(ln_int)  := update_work_9_rec.ship_cust_code;      -- 納品先顧客コード
-          l_tax_rate1_9_tab(ln_int)       := update_work_9_rec.tax_rate;            -- 消費税率(編集用)
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate1_9_tab(ln_int)       := update_work_9_rec.tax_rate;            -- 消費税率(編集用)
+          l_category1_9_tab(ln_int)       := update_work_9_rec.category;            -- 内訳分類１
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge1_9_tab(ln_int) := update_work_9_rec.tax_rate_by_sum;     -- 当月お買上げ額１
-          l_tax_rate2_9_tab(ln_int)       := NULL;                                  -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--          l_tax_rate2_9_tab(ln_int)       := NULL;                                  -- 消費税率２
+          l_category2_9_tab(ln_int)       := NULL;                                  -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
           l_inc_tax_charge2_9_tab(ln_int) := NULL;                                  -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          l_category3_9_tab(ln_int)       := NULL;                                  -- 内訳分類３
+          l_inc_tax_charge3_9_tab(ln_int) := NULL;                                  -- 当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           lt_bill_cust_code9              := update_work_9_rec.bill_cust_code;      -- ブレークコード設定(顧客コード)
           lt_location_code9               := update_work_9_rec.location_code;       -- ブレークコード設定(担当拠点コード)
           lt_ship_cust_code9              := update_work_9_rec.ship_cust_code;      -- ブレークコード設定(納品先顧客コード)
         ELSE
-          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(2レコード以上は設定しない)
+-- Modify 2019.09.03 Ver1.93 Start
+--          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(2レコード以上は設定しない)
+          --同一顧客・担当拠点・納品先顧客コードで2レコード目以降(3レコード以上は設定しない)
+-- Modify 2019.09.03 Ver1.93 End
           ln_cust_cnt := ln_cust_cnt + 1;  --ブレーク毎件数カウントアップ
           --1店舗につき最大２つの税別項目を設定
           IF ( ln_cust_cnt = 2 ) THEN
             --２レコード目
-            l_tax_rate2_9_tab(ln_int)       := update_work_9_rec.tax_rate;            -- 消費税率２
+-- Modify 2019.09.03 Ver1.93 Start
+--            l_tax_rate2_9_tab(ln_int)       := update_work_9_rec.tax_rate;            -- 消費税率２
+            l_category2_9_tab(ln_int)       := update_work_9_rec.category;            -- 内訳分類２
+-- Modify 2019.09.03 Ver1.93 End
             l_inc_tax_charge2_9_tab(ln_int) := update_work_9_rec.tax_rate_by_sum;     -- 当月お買上げ額２
+-- Add 2019.09.03 Ver1.93 Start
+          ELSIF ( ln_cust_cnt = 3 ) THEN
+            --３レコード目
+            l_category3_9_tab(ln_int)       := update_work_9_rec.category;            --内訳分類３
+            l_inc_tax_charge3_9_tab(ln_int) := update_work_9_rec.tax_rate_by_sum;     --当月お買上げ額３
+-- Add 2019.09.03 Ver1.93 End
           END IF;
         END IF;
 --
@@ -1926,10 +2290,18 @@ AS
         <<update_loop9>>
         FORALL i IN l_bill_cust_code_9_tab.FIRST..l_bill_cust_code_9_tab.LAST
           UPDATE  xxcfr_rep_st_inv_inc_tax_d_l  xrsidl
-          SET     xrsidl.tax_rate1        = l_tax_rate1_9_tab(i)        -- 消費税率1
+-- Modify 2019.09.03 Ver1.93 Start
+--          SET     xrsidl.tax_rate1        = l_tax_rate1_9_tab(i)        -- 消費税率1
+--                 ,xrsidl.inc_tax_charge1  = l_inc_tax_charge1_9_tab(i)  -- 当月お買上げ額１
+--                 ,xrsidl.tax_rate2        = l_tax_rate2_9_tab(i)        -- 消費税率２
+--                 ,xrsidl.inc_tax_charge2  = l_inc_tax_charge2_9_tab(i)  -- 当月お買上げ額２
+          SET     xrsidl.category1        = l_category1_9_tab(i)        -- 内訳分類１
                  ,xrsidl.inc_tax_charge1  = l_inc_tax_charge1_9_tab(i)  -- 当月お買上げ額１
-                 ,xrsidl.tax_rate2        = l_tax_rate2_9_tab(i)        -- 消費税率２
+                 ,xrsidl.category2        = l_category2_9_tab(i)        -- 内訳分類２
                  ,xrsidl.inc_tax_charge2  = l_inc_tax_charge2_9_tab(i)  -- 当月お買上げ額２
+                 ,xrsidl.category3        = l_category3_9_tab(i)        -- 内訳分類３
+                 ,xrsidl.inc_tax_charge3  = l_inc_tax_charge3_9_tab(i)  -- 当月お買上げ額３
+-- Modify 2019.09.03 Ver1.93 End
           WHERE   xrsidl.bill_cust_code   = l_bill_cust_code_9_tab(i)
           AND     xrsidl.location_code    = l_location_code_9_tab(i)
           AND     xrsidl.ship_cust_code   = l_ship_cust_code_9_tab(i)
@@ -2070,6 +2442,10 @@ AS
     -- 請求書出力形式
     cv_bill_invoice_type_os  CONSTANT VARCHAR2(1) := '4';                  -- 4.業者委託
 -- Add 2014.03.27 Ver1.70 End
+-- Add 2019.09.03 Ver1.93 Start
+    -- 参照タイプ
+    cv_xxcfr_tax_category    CONSTANT VARCHAR2(20) := 'XXCFR1_TAX_CATEGORY';     -- 税分類
+-- Add 2019.09.03 Ver1.93 End
 --
     -- *** ローカル変数 ***
     -- 書式整形用変数
@@ -2669,9 +3045,15 @@ AS
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
               slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-              tax_rate                , -- 消費税率(編集用)
+--              tax_rate                , -- 消費税率(編集用)
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+              description             , -- 摘要
+              category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
               outsourcing_flag        , -- 業者委託フラグ
 -- Add 2014.03.27 Ver1.70 End
@@ -2749,9 +3131,15 @@ AS
                    xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                    SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                    SUM(xil.tax_amount)                                                tax_sum          , -- 伝票税額
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                   xil.tax_rate                                                       tax_rate         , -- 消費税率
+--                   xil.tax_rate                                                       tax_rate         , -- 消費税率
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                   NVL(flvv.attribute1,' ')                                           description      , -- 摘要
+                   flvv.attribute2                                                    category         , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                    CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                      cv_os_flag_y
@@ -2804,6 +3192,9 @@ AS
                           FROM    fnd_flex_value_sets
                           WHERE   flex_value_set_name = cv_ffv_set_name_dept
                           AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
             WHERE xih.invoice_id = xil.invoice_id                        -- 一括請求書ID
               AND xil.cutoff_date = gd_target_date                       -- パラメータ．締日
               AND xil.ship_cust_code = account.ship_cust_code(+)         -- 外部結合のためのダミー結合
@@ -2813,6 +3204,11 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+              AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+              AND xil.tax_code         = flvv.lookup_code(+)
+              AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
             GROUP BY cv_pkg_name,
                      xih.inv_creation_date,
                      DECODE(get_14account_rec.bill_postal_code,
@@ -2868,7 +3264,13 @@ AS
                      xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                     xil.tax_rate
-                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     flvv.attribute1,
+                     flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -2947,9 +3349,15 @@ AS
                 slip_num                , -- 伝票No(ソート順４)
                 slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
                 slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                tax_rate                , -- 消費税率(編集用)
+--                tax_rate                , -- 消費税率(編集用)
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                description             , -- 摘要
+                category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                 outsourcing_flag        , -- 業者委託フラグ
 -- Add 2014.03.27 Ver1.70 End
@@ -3031,9 +3439,15 @@ AS
                      xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                      SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                      SUM(xil.tax_amount)                                                tax_sum          , -- 伝票税額
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                     xil.tax_rate                                                       tax_rate         , -- 消費税率
+--                     xil.tax_rate                                                       tax_rate         , -- 消費税率
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     NVL(flvv.attribute1,' ')                                           description      , -- 摘要
+                     flvv.attribute2                                                    category         , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
@@ -3087,6 +3501,9 @@ AS
                             FROM    fnd_flex_value_sets
                             WHERE   flex_value_set_name = cv_ffv_set_name_dept
                             AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                  ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
               WHERE xih.invoice_id = xil.invoice_id                        -- 一括請求書ID
                 AND xil.cutoff_date = gd_target_date                       -- パラメータ．締日
                 AND xil.ship_cust_code = account.ship_cust_code(+)         -- 外部結合のためのダミー結合
@@ -3097,6 +3514,11 @@ AS
                 AND xxca.customer_id = all_account_rec.customer_id
                 AND hzca.account_number = xxca.invoice_code
                 AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+                AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+                AND xil.tax_code         = flvv.lookup_code(+)
+                AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
               GROUP BY cv_pkg_name,
                        xih.inv_creation_date,
                        DECODE(get_21account_rec.bill_postal_code,
@@ -3154,7 +3576,13 @@ AS
                        xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                       xil.tax_rate
-                       xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                       xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                       flvv.attribute1,
+                       flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -3236,9 +3664,15 @@ AS
                 slip_num                , -- 伝票No(ソート順４)
                 slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
                 slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                tax_rate                , -- 消費税率(編集用)
+--                tax_rate                , -- 消費税率(編集用)
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                description             , -- 摘要
+                category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                 outsourcing_flag        , -- 業者委託フラグ
 -- Add 2014.03.27 Ver1.70 End
@@ -3316,9 +3750,15 @@ AS
                      xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                      SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                      SUM(xil.tax_amount)                                                tax_sum          , -- 伝票税額
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                     xil.tax_rate                                                       tax_rate         , -- 消費税率
+--                     xil.tax_rate                                                       tax_rate         , -- 消費税率
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     NVL(flvv.attribute1,' ')                                           description      , -- 摘要
+                     flvv.attribute2                                                    category         , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
@@ -3371,6 +3811,9 @@ AS
                             FROM    fnd_flex_value_sets
                             WHERE   flex_value_set_name = cv_ffv_set_name_dept
                             AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                  ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
               WHERE xih.invoice_id = xil.invoice_id                        -- 一括請求書ID
                 AND xil.cutoff_date = gd_target_date                       -- パラメータ．締日
                 AND xil.ship_cust_code = account.ship_cust_code(+)         -- 外部結合のためのダミー結合
@@ -3380,6 +3823,11 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+                AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+                AND xil.tax_code         = flvv.lookup_code(+)
+                AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
               GROUP BY cv_pkg_name,
                        xih.inv_creation_date,
                        DECODE(get_20account_rec.bill_postal_code,
@@ -3437,7 +3885,13 @@ AS
                        xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                     xil.tax_rate
-                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     flvv.attribute1,
+                     flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -3519,9 +3973,15 @@ AS
                 slip_num                , -- 伝票No(ソート順４)
                 slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
                 slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                tax_rate                , -- 消費税率(編集用)
+--                tax_rate                , -- 消費税率(編集用)
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                description             , -- 摘要
+                category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                 outsourcing_flag        , -- 業者委託フラグ
 -- Add 2014.03.27 Ver1.70 End
@@ -3603,9 +4063,15 @@ AS
                      xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                      SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                      SUM(xil.tax_amount)                                                tax_sum          , -- 伝票税額
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                     xil.tax_rate                                                       tax_rate         , -- 消費税率
+--                     xil.tax_rate                                                       tax_rate         , -- 消費税率
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     NVL(flvv.attribute1,' ')                                           description      , -- 摘要
+                     flvv.attribute2                                                    category         , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
@@ -3659,6 +4125,9 @@ AS
                             FROM    fnd_flex_value_sets
                             WHERE   flex_value_set_name = cv_ffv_set_name_dept
                             AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                  ,fnd_lookup_values_vl           flvv   -- 参照表
+-- Add 2019.09.03 Ver1.93 End
               WHERE xih.invoice_id = xil.invoice_id                        -- 一括請求書ID
                 AND xil.cutoff_date = gd_target_date                       -- パラメータ．締日
                 AND xil.ship_cust_code = account.ship_cust_code(+)         -- 外部結合のためのダミー結合
@@ -3669,6 +4138,11 @@ AS
                 AND xxca.customer_id = all_account_rec.customer_id
                 AND hzca.account_number = xxca.invoice_code
                 AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+                AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+                AND xil.tax_code         = flvv.lookup_code(+)
+                AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
               GROUP BY cv_pkg_name,
                        xih.inv_creation_date,
                        DECODE(get_21account_rec.bill_postal_code,
@@ -3726,7 +4200,13 @@ AS
                        xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                       xil.tax_rate
-                       xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                       xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                       flvv.attribute1,
+                       flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -3788,9 +4268,15 @@ AS
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
               slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-              tax_rate                , -- 消費税率(編集用)
+--              tax_rate                , -- 消費税率(編集用)
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+              description             , -- 摘要
+              category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
               outsourcing_flag        , -- 業者委託フラグ
 -- Add 2014.03.27 Ver1.70 End
@@ -3868,9 +4354,15 @@ AS
                    xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                    SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                    SUM(xil.tax_amount)                                                tax_sum          , -- 伝票税額
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                   xil.tax_rate                                                       tax_rate         , -- 消費税率
+--                   xil.tax_rate                                                       tax_rate         , -- 消費税率
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                   NVL(flvv.attribute1,' ')                                            description      , -- 摘要
+                   flvv.attribute2                                                    category         , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                    CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                      cv_os_flag_y
@@ -3923,6 +4415,9 @@ AS
                           FROM    fnd_flex_value_sets
                           WHERE   flex_value_set_name = cv_ffv_set_name_dept
                           AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
             WHERE xih.invoice_id = xil.invoice_id                        -- 一括請求書ID
               AND xil.cutoff_date = gd_target_date                       -- パラメータ．締日
               AND xil.ship_cust_code = account.ship_cust_code(+)         -- 外部結合のためのダミー結合
@@ -3932,6 +4427,11 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+              AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+              AND xil.tax_code         = flvv.lookup_code(+)
+              AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
             GROUP BY cv_pkg_name,
                      xih.inv_creation_date,
                      DECODE(get_14account_rec.bill_postal_code,
@@ -3987,7 +4487,13 @@ AS
                      xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                     xil.tax_rate
-                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     flvv.attribute1,
+                     flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -4063,9 +4569,15 @@ AS
                 slip_num                , -- 伝票No(ソート順４)
                 slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
                 slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                tax_rate                , -- 消費税率(編集用)
+--                tax_rate                , -- 消費税率(編集用)
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                description             , -- 摘要
+                category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                 outsourcing_flag        , -- 業者委託フラグ
 -- Add 2014.03.27 Ver1.70 End
@@ -4143,9 +4655,15 @@ AS
                      xil.slip_num                                                       slip_num         , -- 伝票No(ソート順４)
                      SUM(xil.ship_amount)                                               slip_sum         , -- 伝票金額(税抜額)
                      SUM(xil.tax_amount)                                                tax_sum          , -- 伝票税額
+-- Del 2019.09.03 Ver1.93 Start
 -- Add 2013.12.13 Ver1.60 Start
-                     xil.tax_rate                                                       tax_rate         , -- 消費税率
+--                     xil.tax_rate                                                       tax_rate         , -- 消費税率
 -- Add 2013.12.13 Ver1.60 End
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     NVL(flvv.attribute1,' ')                                           description      , -- 摘要
+                     flvv.attribute2                                                    category         , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
 -- Add 2014.03.27 Ver1.70 Start
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
@@ -4198,6 +4716,9 @@ AS
                             FROM    fnd_flex_value_sets
                             WHERE   flex_value_set_name = cv_ffv_set_name_dept
                             AND     flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                  ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
               WHERE xih.invoice_id = xil.invoice_id                        -- 一括請求書ID
                 AND xil.cutoff_date = gd_target_date                       -- パラメータ．締日
                 AND xil.ship_cust_code = account.ship_cust_code(+)         -- 外部結合のためのダミー結合
@@ -4207,6 +4728,11 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+                AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+                AND xil.tax_code         = flvv.lookup_code(+)
+                AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
               GROUP BY cv_pkg_name,
                        xih.inv_creation_date,
                        DECODE(get_20account_rec.bill_postal_code,
@@ -4264,7 +4790,13 @@ AS
                        xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                       xil.tax_rate
-                       xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                       xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                       flvv.attribute1,
+                       flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -4323,7 +4855,13 @@ AS
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
               slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
-              tax_rate                , -- 消費税率(編集用)
+-- Del 2019.09.03 Ver1.93 Start
+--              tax_rate                , -- 消費税率(編集用)
+-- Del 2019.09.03 Ver1.93 Start
+-- Add 2019.09.03 Ver1.93 Start
+              description             , -- 摘要
+              category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
               outsourcing_flag        , -- 業者委託フラグ
               created_by              , -- 作成者
               creation_date           , -- 作成日
@@ -4395,7 +4933,13 @@ AS
                    xil.slip_num                                                           slip_num              , -- 伝票No(ソート順４)
                    SUM(xil.ship_amount)                                                   slip_sum              , -- 伝票金額(税抜額)
                    SUM(xil.tax_amount)                                                    tax_sum               , -- 伝票税額
-                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+-- Del 2019.09.03 Ver1.93 Start
+--                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                   NVL(flvv.attribute1,' ')                                               description      , -- 摘要
+                   flvv.attribute2                                                        category         , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
                    CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                      cv_os_flag_y
                    ELSE
@@ -4444,6 +4988,9 @@ AS
                           FROM    fnd_flex_value_sets ffvs
                           WHERE   ffvs.flex_value_set_name = cv_ffv_set_name_dept
                           AND     ffvs.flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
             WHERE xih.invoice_id = xil.invoice_id                                       -- 一括請求書ID
               AND xil.cutoff_date = gd_target_date                                      -- パラメータ．締日
               AND xil.ship_cust_code = account.ship_cust_code(+)                        -- 外部結合のためのダミー結合
@@ -4453,6 +5000,11 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+              AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+              AND xil.tax_code         = flvv.lookup_code(+)
+              AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
             GROUP BY cv_pkg_name,
                      xih.inv_creation_date,
                      DECODE(get_14account_rec.bill_postal_code,
@@ -4504,7 +5056,13 @@ AS
                                     xil.acceptance_date),
                      cv_format_date_ymds2),
                      xil.slip_num,
-                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     flvv.attribute1,
+                     flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -4567,7 +5125,13 @@ AS
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
               slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
-              tax_rate                , -- 消費税率(編集用)
+-- Del 2019.09.03 Ver1.93 Start
+--              tax_rate                , -- 消費税率(編集用)
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+              description             , -- 摘要
+              category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
               outsourcing_flag        , -- 業者委託フラグ
               created_by              , -- 作成者
               creation_date           , -- 作成日
@@ -4639,7 +5203,13 @@ AS
                    xil.slip_num                                                           slip_num              , -- 伝票No(ソート順４)
                    SUM(xil.ship_amount)                                                   slip_sum              , -- 伝票金額(税抜額)
                    SUM(xil.tax_amount)                                                    tax_sum               , -- 伝票税額
-                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+-- Del 2019.09.03 Ver1.93 Start
+--                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                   NVL(flvv.attribute1,' ')                                              description           , -- 摘要
+                   flvv.attribute2                                                        category              , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
                    CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                      cv_os_flag_y
                    ELSE
@@ -4688,6 +5258,9 @@ AS
                           FROM    fnd_flex_value_sets ffvs
                           WHERE   ffvs.flex_value_set_name = cv_ffv_set_name_dept
                           AND     ffvs.flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
             WHERE xih.invoice_id = xil.invoice_id                                       -- 一括請求書ID
               AND xil.cutoff_date = gd_target_date                                      -- パラメータ．締日
               AND xil.ship_cust_code = account.ship_cust_code(+)                        -- 外部結合のためのダミー結合
@@ -4697,6 +5270,11 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+              AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+              AND xil.tax_code         = flvv.lookup_code(+)
+              AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
             GROUP BY cv_pkg_name,
                      xih.inv_creation_date,
                      DECODE(get_14account_rec.bill_postal_code,
@@ -4748,7 +5326,13 @@ AS
                                     xil.acceptance_date),
                      cv_format_date_ymds2),
                      xil.slip_num,
-                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     flvv.attribute1,
+                     flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -4813,7 +5397,13 @@ AS
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
               slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
-              tax_rate                , -- 消費税率(編集用)
+-- Del 2019.09.03 Ver1.93 Start
+--              tax_rate                , -- 消費税率(編集用)
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+              description             , -- 摘要
+              category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
               outsourcing_flag        , -- 業者委託フラグ
               created_by              , -- 作成者
               creation_date           , -- 作成日
@@ -4885,7 +5475,13 @@ AS
                    xil.slip_num                                                           slip_num              , -- 伝票No(ソート順４)
                    SUM(xil.ship_amount)                                                   slip_sum              , -- 伝票金額(税抜額)
                    SUM(xil.tax_amount)                                                    tax_sum               , -- 伝票税額
-                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+-- Del 2019.09.03 Ver1.93 Start
+--                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                   NVL(flvv.attribute1,' ')                                               description           , -- 摘要
+                   flvv.attribute2                                                        category              , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
                    CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                      cv_os_flag_y
                    ELSE
@@ -4934,6 +5530,9 @@ AS
                           FROM    fnd_flex_value_sets ffvs
                           WHERE   ffvs.flex_value_set_name = cv_ffv_set_name_dept
                           AND     ffvs.flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
             WHERE xih.invoice_id = xil.invoice_id                                       -- 一括請求書ID
               AND xil.cutoff_date = gd_target_date                                      -- パラメータ．締日
               AND xil.ship_cust_code = account.ship_cust_code(+)                        -- 外部結合のためのダミー結合
@@ -4943,6 +5542,11 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+              AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+              AND xil.tax_code         = flvv.lookup_code(+)
+              AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
             GROUP BY cv_pkg_name,
                      xih.inv_creation_date,
                      DECODE(get_14account_rec.bill_postal_code,
@@ -4994,7 +5598,13 @@ AS
                                     xil.acceptance_date),
                      cv_format_date_ymds2),
                      xil.slip_num,
-                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     flvv.attribute1,
+                     flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -5060,7 +5670,13 @@ AS
               slip_num                , -- 伝票No(ソート順４)
               slip_sum                , -- 伝票金額(伝票番号単位で集計した値)
               slip_tax_sum            , -- 伝票税額(伝票番号単位で集計した値)
-              tax_rate                , -- 消費税率(編集用)
+-- Del 2019.09.03 Ver1.93 Start
+--              tax_rate                , -- 消費税率(編集用)
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+              description             , -- 摘要
+              category                , -- 内訳分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
               outsourcing_flag        , -- 業者委託フラグ
               created_by              , -- 作成者
               creation_date           , -- 作成日
@@ -5132,7 +5748,13 @@ AS
                    xil.slip_num                                                           slip_num              , -- 伝票No(ソート順４)
                    SUM(xil.ship_amount)                                                   slip_sum              , -- 伝票金額(税抜額)
                    SUM(xil.tax_amount)                                                    tax_sum               , -- 伝票税額
-                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+-- Del 2019.09.03 Ver1.93 Start
+--                   xil.tax_rate                                                           tax_rate              , -- 消費税率
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                   NVL(flvv.attribute1,' ')                                               description           , -- 摘要
+                   flvv.attribute2                                                        category              , -- 内部分類(編集用)
+-- Add 2019.09.03 Ver1.93 End
                    CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                      cv_os_flag_y
                    ELSE
@@ -5181,6 +5803,9 @@ AS
                           FROM    fnd_flex_value_sets ffvs
                           WHERE   ffvs.flex_value_set_name = cv_ffv_set_name_dept
                           AND     ffvs.flex_value_set_id   = ffv.flex_value_set_id)) xffvv
+-- Add 2019.09.03 Ver1.93 Start
+                ,fnd_lookup_values_vl           flvv    -- 参照表
+-- Add 2019.09.03 Ver1.93 End
             WHERE xih.invoice_id = xil.invoice_id                                       -- 一括請求書ID
               AND xil.cutoff_date = gd_target_date                                      -- パラメータ．締日
               AND xil.ship_cust_code = account.ship_cust_code(+)                        -- 外部結合のためのダミー結合
@@ -5190,6 +5815,11 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- Add 2019.09.03 Ver1.93 Start
+              AND flvv.lookup_type(+)  = cv_xxcfr_tax_category
+              AND xil.tax_code         = flvv.lookup_code(+)
+              AND flvv.enabled_flag(+) = cv_enabled_yes
+-- Add 2019.09.03 Ver1.93 End
             GROUP BY cv_pkg_name,
                      xih.inv_creation_date,
                      DECODE(get_14account_rec.bill_postal_code,
@@ -5241,7 +5871,13 @@ AS
                                     xil.acceptance_date),
                      cv_format_date_ymds2),
                      xil.slip_num,
-                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 Start
+--                     xil.tax_rate,
+-- Del 2019.09.03 Ver1.93 End
+-- Add 2019.09.03 Ver1.93 Start
+                     flvv.attribute1,
+                     flvv.attribute2,
+-- Add 2019.09.03 Ver1.93 End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
