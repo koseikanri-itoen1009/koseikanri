@@ -5,13 +5,14 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_ex_tax_a_h
  * Description     : 標準請求書税抜帳票内訳印刷単位Aワークテーブルヘッダ
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2015/7/2      1.0  SCSK 小路恭弘  初回作成
+ *  2019/08/09    1.1  SCSK 郭 有司   E_本稼動_15472対応
  ************************************************************************/
 ( 
   report_id                VARCHAR2(20)                  ,     -- 帳票ID
@@ -46,6 +47,13 @@ CREATE TABLE xxcfr.xxcfr_rep_st_inv_ex_tax_a_h
   tax_sum2                 NUMBER                        ,     -- 消費税額2
   outsourcing_flag         VARCHAR2(1)                   ,     -- 業者委託フラグ
   data_empty_message       VARCHAR2(100)                 ,     -- 0件メッセージ
+-- 2019/08/09 Ver1.1 ADD Start
+  category1                VARCHAR2(30)                  ,     -- 内訳分類１
+  category2                VARCHAR2(30)                  ,     -- 内訳分類２
+  category3                VARCHAR2(30)                  ,     -- 内訳分類３
+  ex_tax_charge3           NUMBER                        ,     -- 当月お買上げ額３
+  tax_sum3                 NUMBER                        ,     -- 消費税額３
+-- 2019/08/09 Ver1.1 ADD End
   created_by               NUMBER(15)     NOT NULL       ,     -- 作成者
   creation_date            DATE           NOT NULL       ,     -- 作成日
   last_updated_by          NUMBER(15)     NOT NULL       ,     -- 最終更新者
@@ -90,6 +98,13 @@ COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.ex_tax_charge2              
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.tax_sum2                       IS '消費税額２';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.outsourcing_flag               IS '業者委託フラグ';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.data_empty_message             IS '0件メッセージ';
+-- 2019/08/09 Ver1.1 ADD Start
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.category1                      IS '内訳分類１';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.category2                      IS '内訳分類２';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.category3                      IS '内訳分類３';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.ex_tax_charge3                 IS '当月お買上げ額３';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.tax_sum3                       IS '消費税額３';
+-- 2019/08/09 Ver1.1 ADD End
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.created_by                     IS '作成者';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.creation_date                  IS '作成日';
 COMMENT ON COLUMN xxcfr.xxcfr_rep_st_inv_ex_tax_a_h.last_updated_by                IS '最終更新者';
