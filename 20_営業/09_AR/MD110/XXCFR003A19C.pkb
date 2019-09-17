@@ -7,7 +7,7 @@ AS
  * Description      : •W€¿‹‘Å”²(“X•Ü•Ê“à–ó)
  * MD.050           : MD050_CFR_003_A19_•W€¿‹‘Å”²(“X•Ü•Ê“à–ó)
  * MD.070           : MD050_CFR_003_A19_•W€¿‹‘Å”²(“X•Ü•Ê“à–ó)
- * Version          : 1.92
+ * Version          : 1.93
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2016/04/04    1.90 SCSK ¬˜H ‹±O   áŠQ•[uE_–{‰Ò“®_13511v‘Î‰
  *  2016/09/06    1.91 SCSK ¬˜H ‹±O   áŠQ•[uE_–{‰Ò“®_13849v‘Î‰
  *  2018/10/25    1.92 SCSK “Ş—Ç ˜aG   áŠQ•[uE_–{‰Ò“®_15307v‘Î‰
+ *  2019/08/09    1.93 SCSK Šs —Li     áŠQ•[uE_–{‰Ò“®_15472v‘Î‰
  *
  *****************************************************************************************/
 --
@@ -322,6 +323,9 @@ AS
   -- AFF•”–å’lƒZƒbƒg–¼
   cv_ffv_set_name_dept CONSTANT VARCHAR2(100) := 'XX03_DEPARTMENT';
 --
+-- 2019/08/09 Ver1.93 ADD Start
+  cv_lookup_type           CONSTANT VARCHAR2(30) := 'XXCFR1_TAX_CATEGORY';     -- Å•ª—Ş
+-- 2019/08/09 Ver1.93 ADD End
   -- ===============================
   -- ƒ†[ƒU[’è‹`ƒOƒ[ƒoƒ‹Œ^
   -- ===============================
@@ -928,20 +932,32 @@ AS
     IS
       SELECT xrsi.bill_cust_code      bill_cust_code      ,  --ŒÚ‹qƒR[ƒh
              xrsi.location_code       location_code       ,  --’S“–‹’“_ƒR[ƒh
-             xrsi.tax_rate            tax_rate            ,  --Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsi.tax_rate            tax_rate            ,  --Á”ïÅ—¦(•ÒW—p)
+             xrsi.category            category            ,  --“à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
              SUM( xrsi.slip_sum )     tax_rate_by_sum     ,  --Å•Ê‚¨”ƒã‚°Šz
              SUM( xrsi.slip_tax_sum ) tax_rate_by_tax_sum    --Å•ÊÁ”ïÅŠz
       FROM   xxcfr_rep_st_invoice_ex_tax_d  xrsi
       WHERE  xrsi.request_id  = cn_request_id
-      AND    xrsi.tax_rate   <> cn_no_tax                    --”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+-- 2019/08/09 Ver1.93 MOD Start
+--      AND    xrsi.tax_rate   <> cn_no_tax                    --”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+      AND    xrsi.category   IS NOT NULL                     --“à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       GROUP BY
              xrsi.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsi.location_code,  -- ’S“–‹’“_ƒR[ƒh
-             xrsi.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsi.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+             xrsi.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ORDER BY
              xrsi.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsi.location_code,  -- ’S“–‹’“_ƒR[ƒh
-             xrsi.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsi.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+             xrsi.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ;
 --
 -- Add 2015.07.31 Ver1.80 Start
@@ -949,20 +965,32 @@ AS
     IS
       SELECT xrsial.bill_cust_code      bill_cust_code      ,  -- ŒÚ‹qƒR[ƒh
              xrsial.location_code       location_code       ,  -- ’S“–‹’“_ƒR[ƒh
-             xrsial.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsial.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+             xrsial.category            category            ,  -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
              SUM( xrsial.slip_sum )     tax_rate_by_sum     ,  -- Å•Ê‚¨”ƒã‚°Šz
              SUM( xrsial.slip_tax_sum ) tax_rate_by_tax_sum    -- Å•ÊÁ”ïÅŠz
       FROM   xxcfr_rep_st_inv_ex_tax_a_l  xrsial
       WHERE  xrsial.request_id  = cn_request_id
-      AND    xrsial.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+-- 2019/08/09 Ver1.93 MOD Start
+--      AND    xrsial.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+      AND    xrsial.category   IS NOT NULL                     -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       GROUP BY
              xrsial.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsial.location_code,  -- ’S“–‹’“_ƒR[ƒh
-             xrsial.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsial.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+             xrsial.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ORDER BY
              xrsial.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsial.location_code,  -- ’S“–‹’“_ƒR[ƒh
-             xrsial.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsial.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+             xrsial.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ;
 --
     CURSOR update_work_3_cur
@@ -970,22 +998,34 @@ AS
       SELECT xrsial.bill_cust_code      bill_cust_code      ,  -- ŒÚ‹qƒR[ƒh
              xrsial.location_code       location_code       ,  -- ’S“–‹’“_ƒR[ƒh
              xrsial.ship_cust_code      ship_cust_code      ,  -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsial.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsial.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+             xrsial.category            category            ,  -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
              SUM( xrsial.slip_sum )     tax_rate_by_sum     ,  -- Å•Ê‚¨”ƒã‚°Šz
              SUM( xrsial.slip_tax_sum ) tax_rate_by_tax_sum    -- Å•ÊÁ”ïÅŠz
       FROM   xxcfr_rep_st_inv_ex_tax_a_l  xrsial
       WHERE  xrsial.request_id  = cn_request_id
-      AND    xrsial.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+-- 2019/08/09 Ver1.93 MOD Start
+--      AND    xrsial.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+      AND    xrsial.category   IS NOT NULL                     -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       GROUP BY
              xrsial.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsial.location_code,  -- ’S“–‹’“_ƒR[ƒh
              xrsial.ship_cust_code, -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsial.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsial.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+             xrsial.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ORDER BY
              xrsial.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsial.location_code,  -- ’S“–‹’“_ƒR[ƒh
              xrsial.ship_cust_code, -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsial.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsial.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+             xrsial.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ;
 --
     CURSOR update_work_4_cur
@@ -1011,20 +1051,32 @@ AS
     IS
       SELECT xrsibl.bill_cust_code      bill_cust_code      ,  -- ŒÚ‹qƒR[ƒh
              xrsibl.location_code       location_code       ,  -- ’S“–‹’“_ƒR[ƒh
-             xrsibl.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsibl.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+             xrsibl.category            category            ,  -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
              SUM( xrsibl.slip_sum )     tax_rate_by_sum     ,  -- Å•Ê‚¨”ƒã‚°Šz
              SUM( xrsibl.slip_tax_sum ) tax_rate_by_tax_sum    -- Å•ÊÁ”ïÅŠz
       FROM   xxcfr_rep_st_inv_ex_tax_b_l  xrsibl
       WHERE  xrsibl.request_id  = cn_request_id
-      AND    xrsibl.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+-- 2019/08/09 Ver1.93 MOD Start
+--      AND    xrsibl.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+      AND    xrsibl.category   IS NOT NULL                     -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       GROUP BY
              xrsibl.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsibl.location_code,  -- ’S“–‹’“_ƒR[ƒh
-             xrsibl.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsibl.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+             xrsibl.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ORDER BY
              xrsibl.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsibl.location_code,  -- ’S“–‹’“_ƒR[ƒh
-             xrsibl.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsibl.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+             xrsibl.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ;
 --
     CURSOR update_work_6_cur
@@ -1032,22 +1084,34 @@ AS
       SELECT xrsibl.bill_cust_code      bill_cust_code      ,  -- ŒÚ‹qƒR[ƒh
              xrsibl.location_code       location_code       ,  -- ’S“–‹’“_ƒR[ƒh
              xrsibl.ship_cust_code      ship_cust_code      ,  -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsibl.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsibl.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+             xrsibl.category            category            ,  -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
              SUM( xrsibl.slip_sum )     tax_rate_by_sum     ,  -- Å•Ê‚¨”ƒã‚°Šz
              SUM( xrsibl.slip_tax_sum ) tax_rate_by_tax_sum    -- Å•ÊÁ”ïÅŠz
       FROM   xxcfr_rep_st_inv_ex_tax_b_l  xrsibl
       WHERE  xrsibl.request_id  = cn_request_id
-      AND    xrsibl.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+-- 2019/08/09 Ver1.93 MOD Start
+--      AND    xrsibl.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+      AND    xrsibl.category   IS NOT NULL                     -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       GROUP BY
              xrsibl.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsibl.location_code,  -- ’S“–‹’“_ƒR[ƒh
              xrsibl.ship_cust_code, -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsibl.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsibl.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+             xrsibl.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ORDER BY
              xrsibl.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsibl.location_code,  -- ’S“–‹’“_ƒR[ƒh
              xrsibl.ship_cust_code, -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsibl.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsibl.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+             xrsibl.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ;
 --
     CURSOR update_work_7_cur
@@ -1075,20 +1139,32 @@ AS
     IS
       SELECT xrsicl.bill_cust_code      bill_cust_code      ,  -- ŒÚ‹qƒR[ƒh
              xrsicl.location_code       location_code       ,  -- ’S“–‹’“_ƒR[ƒh
-             xrsicl.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsicl.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+             xrsicl.category            category            ,  --“à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
              SUM( xrsicl.slip_sum )     tax_rate_by_sum     ,  -- Å•Ê‚¨”ƒã‚°Šz
              SUM( xrsicl.slip_tax_sum ) tax_rate_by_tax_sum    -- Å•ÊÁ”ïÅŠz
       FROM   xxcfr_rep_st_inv_ex_tax_c_l  xrsicl
       WHERE  xrsicl.request_id  = cn_request_id
-      AND    xrsicl.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+-- 2019/08/09 Ver1.93 MOD Start
+--      AND    xrsicl.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+      AND    xrsicl.category   IS NOT NULL                     --“à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       GROUP BY
              xrsicl.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsicl.location_code,  -- ’S“–‹’“_ƒR[ƒh
-             xrsicl.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsicl.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+             xrsicl.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ORDER BY
              xrsicl.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsicl.location_code,  -- ’S“–‹’“_ƒR[ƒh
-             xrsicl.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsicl.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+             xrsicl.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ;
 --
 -- Add 2016.04.04 Ver1.90 End
@@ -1099,22 +1175,34 @@ AS
       SELECT xrsidl.bill_cust_code      bill_cust_code      ,  -- ŒÚ‹qƒR[ƒh
              xrsidl.location_code       location_code       ,  -- ’S“–‹’“_ƒR[ƒh
              xrsidl.ship_cust_code      ship_cust_code      ,  -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsidl.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsidl.tax_rate            tax_rate            ,  -- Á”ïÅ—¦(•ÒW—p)
+             xrsidl.category            category            ,  --“à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
              SUM( xrsidl.slip_sum )     tax_rate_by_sum     ,  -- Å•Ê‚¨”ƒã‚°Šz
              SUM( xrsidl.slip_tax_sum ) tax_rate_by_tax_sum    -- Å•ÊÁ”ïÅŠz
       FROM   xxcfr_rep_st_inv_ex_tax_d_l  xrsidl
       WHERE  xrsidl.request_id  = cn_request_id
-      AND    xrsidl.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+-- 2019/08/09 Ver1.93 MOD Start
+--      AND    xrsidl.tax_rate   <> cn_no_tax                    -- ”ñ‰ÛÅiÅ—¦0%)ˆÈŠO
+      AND    xrsidl.category   IS NOT NULL                     --“à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       GROUP BY
              xrsidl.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsidl.location_code,  -- ’S“–‹’“_ƒR[ƒh
              xrsidl.ship_cust_code, -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsidl.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsidl.tax_rate        -- Á”ïÅ—¦(•ÒW—p)
+             xrsidl.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ORDER BY
              xrsidl.bill_cust_code, -- ŒÚ‹qƒR[ƒh
              xrsidl.location_code,  -- ’S“–‹’“_ƒR[ƒh
              xrsidl.ship_cust_code, -- ”[•iæŒÚ‹qƒR[ƒh
-             xrsidl.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+-- 2019/08/09 Ver1.93 MOD Start
+--             xrsidl.tax_rate        -- Á”ïÅ—¦(•ÒW—p) ¦Å—¦‚Ì¬‚³‚¢‡‚Éİ’è
+             xrsidl.category        -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
       ;
 --
     --’PˆÊD–¾×‚Ì“–Œ‚²¿‹ŠzXV—p
@@ -1159,21 +1247,30 @@ AS
     -- *** ƒ[ƒJƒ‹Eƒ^ƒCƒv ***
     TYPE l_bill_cust_code_ttype IS TABLE OF xxcfr_rep_st_invoice_ex_tax_d.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
     TYPE l_location_code_ttype  IS TABLE OF xxcfr_rep_st_invoice_ex_tax_d.location_code%TYPE  INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_ttype       IS TABLE OF xxcfr_rep_st_invoice_ex_tax_d.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD Start
+--    TYPE l_tax_rate_ttype       IS TABLE OF xxcfr_rep_st_invoice_ex_tax_d.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_category_ttype       IS TABLE OF xxcfr_rep_st_invoice_ex_tax_d.category%TYPE       INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD End
     TYPE l_ex_tax_charge_ttype  IS TABLE OF xxcfr_rep_st_invoice_ex_tax_d.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
     TYPE l_tax_sum_ttype        IS TABLE OF xxcfr_rep_st_invoice_ex_tax_d.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
 -- Add 2015.07.31 Ver1.80 Start
 --
     TYPE l_bill_cust_code_2_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
     TYPE l_location_code_2_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.location_code%TYPE  INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_2_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD Start
+--    TYPE l_tax_rate_2_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_category_2_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.category%TYPE       INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD End
     TYPE l_ex_tax_charge_2_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
     TYPE l_tax_sum_2_ttype        IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
 --
     TYPE l_bill_cust_code_3_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
     TYPE l_location_code_3_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.location_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_ship_cust_code_3_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.ship_cust_code%TYPE INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_3_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD Start
+--    TYPE l_tax_rate_3_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_category_3_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.category%TYPE       INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD End
     TYPE l_ex_tax_charge_3_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
     TYPE l_tax_sum_3_ttype        IS TABLE OF xxcfr_rep_st_inv_ex_tax_a_l.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
 --
@@ -1185,14 +1282,20 @@ AS
 --
     TYPE l_bill_cust_code_5_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
     TYPE l_location_code_5_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.location_code%TYPE  INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_5_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD Start
+--    TYPE l_tax_rate_5_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_category_5_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.category%TYPE       INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD End
     TYPE l_ex_tax_charge_5_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
     TYPE l_tax_sum_5_ttype        IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
 --
     TYPE l_bill_cust_code_6_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
     TYPE l_location_code_6_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.location_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_ship_cust_code_6_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.ship_cust_code%TYPE INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_6_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD Start
+--    TYPE l_tax_rate_6_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_category_6_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.category%TYPE       INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD End
     TYPE l_ex_tax_charge_6_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
     TYPE l_tax_sum_6_ttype        IS TABLE OF xxcfr_rep_st_inv_ex_tax_b_l.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
 --
@@ -1205,7 +1308,10 @@ AS
 -- Add 2016.04.04 Ver1.90 Start
     TYPE l_bill_cust_code_8_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_c_l.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
     TYPE l_location_code_8_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_c_l.location_code%TYPE  INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_8_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_c_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD Start
+--    TYPE l_tax_rate_8_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_c_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_category_8_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_c_l.category%TYPE       INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD End
     TYPE l_ex_tax_charge_8_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_c_l.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
     TYPE l_tax_sum_8_ttype        IS TABLE OF xxcfr_rep_st_inv_ex_tax_c_l.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
 -- Add 2016.04.04 Ver1.90 End
@@ -1214,7 +1320,10 @@ AS
     TYPE l_bill_cust_code_9_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_d_l.bill_cust_code%TYPE INDEX BY PLS_INTEGER;
     TYPE l_location_code_9_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_d_l.location_code%TYPE  INDEX BY PLS_INTEGER;
     TYPE l_ship_cust_code_9_ttype IS TABLE OF xxcfr_rep_st_inv_ex_tax_d_l.ship_cust_code%TYPE INDEX BY PLS_INTEGER;
-    TYPE l_tax_rate_9_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_d_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD Start
+--    TYPE l_tax_rate_9_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_d_l.tax_rate1%TYPE      INDEX BY PLS_INTEGER;
+    TYPE l_category_9_ttype       IS TABLE OF xxcfr_rep_st_inv_ex_tax_d_l.category%TYPE       INDEX BY PLS_INTEGER;
+-- 2019/08/09 Ver1.93 MOD End
     TYPE l_ex_tax_charge_9_ttype  IS TABLE OF xxcfr_rep_st_inv_ex_tax_d_l.ex_tax_charge1%TYPE INDEX BY PLS_INTEGER;
     TYPE l_tax_sum_9_ttype        IS TABLE OF xxcfr_rep_st_inv_ex_tax_d_l.tax_sum1%TYPE       INDEX BY PLS_INTEGER;
 --
@@ -1227,32 +1336,65 @@ AS
 --
     l_bill_cust_code_tab     l_bill_cust_code_ttype;  --ŒÚ‹qƒR[ƒh
     l_location_code_tab      l_location_code_ttype;   --’S“–‹’“_ƒR[ƒh
-    l_tax_rate1_tab          l_tax_rate_ttype;        --Á”ïÅ—¦‚P
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate1_tab          l_tax_rate_ttype;        --Á”ïÅ—¦‚P
+    l_category1_tab          l_category_ttype;        --“à–ó•ª—Ş‚P
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge1_tab     l_ex_tax_charge_ttype;   --“–Œ‚¨”ƒã‚°Šz‚P
     l_tax_sum1_tab           l_tax_sum_ttype;         --Á”ïÅŠz‚P
-    l_tax_rate2_tab          l_tax_rate_ttype;        --Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate2_tab          l_tax_rate_ttype;        --Á”ïÅ—¦‚Q
+    l_category2_tab          l_category_ttype;        --“à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge2_tab     l_ex_tax_charge_ttype;   --“–Œ‚¨”ƒã‚°Šz‚Q
     l_tax_sum2_tab           l_tax_sum_ttype;         --Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+    l_category3_tab          l_category_ttype;        --“à–ó•ª—Ş‚R
+    l_ex_tax_charge3_tab     l_ex_tax_charge_ttype;   --“–Œ‚¨”ƒã‚°Šz‚R
+    l_tax_sum3_tab           l_tax_sum_ttype;         --Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
 --
 -- Add 2015.07.31 Ver1.80 Start
     l_bill_cust_code_2_tab   l_bill_cust_code_2_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_2_tab    l_location_code_2_ttype;   -- ’S“–‹’“_ƒR[ƒh
-    l_tax_rate1_2_tab        l_tax_rate_2_ttype;        -- Á”ïÅ—¦‚P
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate1_2_tab        l_tax_rate_2_ttype;        -- Á”ïÅ—¦‚P
+    l_category1_2_tab        l_category_2_ttype;        -- “à–ó•ª—Ş‚P
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge1_2_tab   l_ex_tax_charge_2_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚P
     l_tax_sum1_2_tab         l_tax_sum_2_ttype;         -- Á”ïÅŠz‚P
-    l_tax_rate2_2_tab        l_tax_rate_2_ttype;        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate2_2_tab        l_tax_rate_2_ttype;        -- Á”ïÅ—¦‚Q
+    l_category2_2_tab        l_category_2_ttype;        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge2_2_tab   l_ex_tax_charge_2_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚Q
     l_tax_sum2_2_tab         l_tax_sum_2_ttype;         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+    l_category3_2_tab        l_category_2_ttype;        -- “à–ó•ª—Ş‚R
+    l_ex_tax_charge3_2_tab   l_ex_tax_charge_2_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚R
+    l_tax_sum3_2_tab         l_tax_sum_2_ttype;         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
 --
     l_bill_cust_code_3_tab   l_bill_cust_code_3_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_3_tab    l_location_code_3_ttype;   -- ’S“–‹’“_ƒR[ƒh
     l_ship_cust_code_3_tab   l_ship_cust_code_3_ttype;  -- ”[•iæŒÚ‹qƒR[ƒh
-    l_tax_rate1_3_tab        l_tax_rate_3_ttype;        -- Á”ïÅ—¦‚P
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate1_3_tab        l_tax_rate_3_ttype;        -- Á”ïÅ—¦‚P
+    l_category1_3_tab        l_category_3_ttype;        -- “à–ó•ª—Ş‚P
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge1_3_tab   l_ex_tax_charge_3_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚P
     l_tax_sum1_3_tab         l_tax_sum_3_ttype;         -- Á”ïÅŠz‚P
-    l_tax_rate2_3_tab        l_tax_rate_3_ttype;        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate2_3_tab        l_tax_rate_3_ttype;        -- Á”ïÅ—¦‚Q
+    l_category2_3_tab        l_category_3_ttype;        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge2_3_tab   l_ex_tax_charge_3_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚Q
     l_tax_sum2_3_tab         l_tax_sum_3_ttype;         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+    l_category3_3_tab        l_category_3_ttype;        -- “à–ó•ª—Ş‚R
+    l_ex_tax_charge3_3_tab   l_ex_tax_charge_3_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚R
+    l_tax_sum3_3_tab         l_tax_sum_3_ttype;         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
 --
     l_bill_cust_code_4_tab   l_bill_cust_code_4_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_4_tab    l_location_code_4_ttype;   -- ’S“–‹’“_ƒR[ƒh
@@ -1262,22 +1404,44 @@ AS
 --
     l_bill_cust_code_5_tab   l_bill_cust_code_5_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_5_tab    l_location_code_5_ttype;   -- ’S“–‹’“_ƒR[ƒh
-    l_tax_rate1_5_tab        l_tax_rate_5_ttype;        -- Á”ïÅ—¦‚P
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate1_5_tab        l_tax_rate_5_ttype;        -- Á”ïÅ—¦‚P
+    l_category1_5_tab        l_category_5_ttype;        -- “à–ó•ª—Ş‚P
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge1_5_tab   l_ex_tax_charge_5_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚P
     l_tax_sum1_5_tab         l_tax_sum_5_ttype;         -- Á”ïÅŠz‚P
-    l_tax_rate2_5_tab        l_tax_rate_5_ttype;        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate2_5_tab        l_tax_rate_5_ttype;        -- Á”ïÅ—¦‚Q
+    l_category2_5_tab        l_category_5_ttype;        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge2_5_tab   l_ex_tax_charge_5_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚Q
     l_tax_sum2_5_tab         l_tax_sum_5_ttype;         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+    l_category3_5_tab        l_category_5_ttype;        -- “à–ó•ª—Ş‚R
+    l_ex_tax_charge3_5_tab   l_ex_tax_charge_5_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚R
+    l_tax_sum3_5_tab         l_tax_sum_5_ttype;         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
 --
     l_bill_cust_code_6_tab   l_bill_cust_code_6_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_6_tab    l_location_code_6_ttype;   -- ’S“–‹’“_ƒR[ƒh
     l_ship_cust_code_6_tab   l_ship_cust_code_6_ttype;  -- ”[•iæŒÚ‹qƒR[ƒh
-    l_tax_rate1_6_tab        l_tax_rate_6_ttype;        -- Á”ïÅ—¦‚P
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate1_6_tab        l_tax_rate_6_ttype;        -- Á”ïÅ—¦‚P
+    l_category1_6_tab        l_category_6_ttype;        -- “à–ó•ª—Ş‚P
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge1_6_tab   l_ex_tax_charge_6_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚P
     l_tax_sum1_6_tab         l_tax_sum_6_ttype;         -- Á”ïÅŠz‚P
-    l_tax_rate2_6_tab        l_tax_rate_6_ttype;        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate2_6_tab        l_tax_rate_6_ttype;        -- Á”ïÅ—¦‚Q
+    l_category2_6_tab        l_category_6_ttype;        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge2_6_tab   l_ex_tax_charge_6_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚Q
     l_tax_sum2_6_tab         l_tax_sum_6_ttype;         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+    l_category3_6_tab        l_category_6_ttype;        -- “à–ó•ª—Ş‚R
+    l_ex_tax_charge3_6_tab   l_ex_tax_charge_6_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚R
+    l_tax_sum3_6_tab         l_tax_sum_6_ttype;         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
 --
     l_bill_cust_code_7_tab   l_bill_cust_code_7_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_7_tab    l_location_code_7_ttype;   -- ’S“–‹’“_ƒR[ƒh
@@ -1288,24 +1452,46 @@ AS
 -- Add 2016.04.04 Ver1.90 Start
     l_bill_cust_code_8_tab   l_bill_cust_code_8_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_8_tab    l_location_code_8_ttype;   -- ’S“–‹’“_ƒR[ƒh
-    l_tax_rate1_8_tab        l_tax_rate_8_ttype;        -- Á”ïÅ—¦‚P
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate1_8_tab        l_tax_rate_8_ttype;        -- Á”ïÅ—¦‚P
+    l_category1_8_tab        l_category_8_ttype;        -- “à–ó•ª—Ş‚P
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge1_8_tab   l_ex_tax_charge_8_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚P
     l_tax_sum1_8_tab         l_tax_sum_8_ttype;         -- Á”ïÅŠz‚P
-    l_tax_rate2_8_tab        l_tax_rate_8_ttype;        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate2_8_tab        l_tax_rate_8_ttype;        -- Á”ïÅ—¦‚Q
+    l_category2_8_tab        l_category_8_ttype;        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge2_8_tab   l_ex_tax_charge_8_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚Q
     l_tax_sum2_8_tab         l_tax_sum_8_ttype;         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+    l_category3_8_tab        l_category_8_ttype;        -- “à–ó•ª—Ş‚R
+    l_ex_tax_charge3_8_tab   l_ex_tax_charge_8_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚R
+    l_tax_sum3_8_tab         l_tax_sum_8_ttype;         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
 -- Add 2016.04.04 Ver1.90 End
 -- Ver.1.92 [áŠQE_–{‰Ò“®_15307] ADD START
 --
     l_bill_cust_code_9_tab   l_bill_cust_code_9_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_9_tab    l_location_code_9_ttype;   -- ’S“–‹’“_ƒR[ƒh
     l_ship_cust_code_9_tab   l_ship_cust_code_9_ttype;  -- ”[•iæŒÚ‹qƒR[ƒh
-    l_tax_rate1_9_tab        l_tax_rate_9_ttype;        -- Á”ïÅ—¦‚P
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate1_9_tab        l_tax_rate_9_ttype;        -- Á”ïÅ—¦‚P
+    l_category1_9_tab        l_category_9_ttype;        -- “à–ó•ª—Ş‚P
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge1_9_tab   l_ex_tax_charge_9_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚P
     l_tax_sum1_9_tab         l_tax_sum_9_ttype;         -- Á”ïÅŠz‚P
-    l_tax_rate2_9_tab        l_tax_rate_9_ttype;        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--    l_tax_rate2_9_tab        l_tax_rate_9_ttype;        -- Á”ïÅ—¦‚Q
+    l_category2_9_tab        l_category_9_ttype;        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
     l_ex_tax_charge2_9_tab   l_ex_tax_charge_9_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚Q
     l_tax_sum2_9_tab         l_tax_sum_9_ttype;         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+    l_category3_9_tab        l_category_9_ttype;        -- “à–ó•ª—Ş‚R
+    l_ex_tax_charge3_9_tab   l_ex_tax_charge_9_ttype;   -- “–Œ‚¨”ƒã‚°Šz‚R
+    l_tax_sum3_9_tab         l_tax_sum_9_ttype;         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
 --
     l_bill_cust_code_10_tab   l_bill_cust_code_10_ttype;  -- ŒÚ‹qƒR[ƒh
     l_location_code_10_tab    l_location_code_10_ttype;   -- ’S“–‹’“_ƒR[ƒh
@@ -1411,12 +1597,23 @@ AS
           ln_int                        := ln_int + 1;                          --”z—ñƒJƒEƒ“ƒgƒAƒbƒv
           l_bill_cust_code_tab(ln_int)  := update_work_rec.bill_cust_code;      --ŒÚ‹qƒR[ƒh
           l_location_code_tab(ln_int)   := update_work_rec.location_code;       --’S“–‹’“_ƒR[ƒh
-          l_tax_rate1_tab(ln_int)       := update_work_rec.tax_rate;            --Á”ïÅ—¦1
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate1_tab(ln_int)       := update_work_rec.tax_rate;            --Á”ïÅ—¦1
+          l_category1_tab(ln_int)       := update_work_rec.category;            --“à–ó•ª—Ş1
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge1_tab(ln_int)  := update_work_rec.tax_rate_by_sum;     --“–Œ‚¨”ƒã‚°Šz‚P
           l_tax_sum1_tab(ln_int)        := update_work_rec.tax_rate_by_tax_sum; --Á”ïÅŠz‚P
-          l_tax_rate2_tab(ln_int)       := NULL;                                --Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate2_tab(ln_int)       := NULL;                                --Á”ïÅ—¦‚Q
+          l_category2_tab(ln_int)       := NULL;                                --“à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge2_tab(ln_int)  := NULL;                                --“–Œ‚¨”ƒã‚°Šz‚Q
           l_tax_sum2_tab(ln_int)        := NULL;                                --Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+          l_category3_tab(ln_int)       := NULL;                                --“à–ó•ª—Ş‚R
+          l_ex_tax_charge3_tab(ln_int)  := NULL;                                --“–Œ‚¨”ƒã‚°Šz‚Q
+          l_tax_sum3_tab(ln_int)        := NULL;                                --Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD End
           lt_bill_cust_code             := update_work_rec.bill_cust_code;      --ƒuƒŒ[ƒNƒR[ƒhİ’è(ŒÚ‹qƒR[ƒh)
           lt_location_code              := update_work_rec.location_code;       --ƒuƒŒ[ƒNƒR[ƒhİ’è(’S“–‹’“_ƒR[ƒh)
         ELSE
@@ -1425,10 +1622,21 @@ AS
           --1ŒÚ‹q‚É‚Â‚«Å‘å‚Q‚Â‚ÌÅ•Ê€–Ú‚ğİ’è
           IF ( ln_cust_cnt = 2 ) THEN
             --‚QƒŒƒR[ƒh–Ú
-            l_tax_rate2_tab(ln_int)      := update_work_rec.tax_rate;            --Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--            l_tax_rate2_tab(ln_int)      := update_work_rec.tax_rate;            --Á”ïÅ—¦‚Q
+            l_category2_tab(ln_int)      := update_work_rec.category;            --“à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
             l_ex_tax_charge2_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --“–Œ‚¨”ƒã‚°Šz‚Q
             l_tax_sum2_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --Á”ïÅŠz‚Q
           END IF;
+-- 2019/08/09 Ver1.93 ADD Start
+          IF ( ln_cust_cnt = 3 ) THEN
+            --‚RƒŒƒR[ƒh–Ú
+            l_category3_tab(ln_int)      := update_work_rec.category;            --“à–ó•ª—Ş‚R
+            l_ex_tax_charge3_tab(ln_int) := update_work_rec.tax_rate_by_sum;     --“–Œ‚¨”ƒã‚°Šz‚R
+            l_tax_sum3_tab(ln_int)       := update_work_rec.tax_rate_by_tax_sum; --Á”ïÅŠz‚R
+          END IF;
+-- 2019/08/09 Ver1.93 ADD End
         END IF;
 --
       END LOOP edit_loop;
@@ -1438,12 +1646,23 @@ AS
         <<update_loop>>
         FORALL i IN l_bill_cust_code_tab.FIRST..l_bill_cust_code_tab.LAST
           UPDATE  xxcfr_rep_st_invoice_ex_tax_d  xrsi
-          SET     xrsi.tax_rate1        = l_tax_rate1_tab(i)        --Á”ïÅ—¦1
+-- 2019/08/09 Ver1.93 MOD Start
+--          SET     xrsi.tax_rate1        = l_tax_rate1_tab(i)        --Á”ïÅ—¦1
+          SET     xrsi.category1        = l_category1_tab(i)        --“à–ó•ª—Ş1
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsi.ex_tax_charge1   = l_ex_tax_charge1_tab(i)   --“–Œ‚¨”ƒã‚°Šz‚P
                  ,xrsi.tax_sum1         = l_tax_sum1_tab(i)         --Á”ïÅŠz‚P
-                 ,xrsi.tax_rate2        = l_tax_rate2_tab(i)        --Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--                 ,xrsi.tax_rate2        = l_tax_rate2_tab(i)        --Á”ïÅ—¦‚Q
+                 ,xrsi.category2        = l_category2_tab(i)        --“à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsi.ex_tax_charge2   = l_ex_tax_charge2_tab(i)   --“–Œ‚¨”ƒã‚°Šz‚Q
                  ,xrsi.tax_sum2         = l_tax_sum2_tab(i)         --Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+                 ,xrsi.category3        = l_category3_tab(i)        --“à–ó•ª—Ş‚R
+                 ,xrsi.ex_tax_charge3   = l_ex_tax_charge3_tab(i)   --“–Œ‚¨”ƒã‚°Šz‚R
+                 ,xrsi.tax_sum3         = l_tax_sum3_tab(i)         --Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
           WHERE   xrsi.bill_cust_code   = l_bill_cust_code_tab(i)
           AND     xrsi.location_code    = l_location_code_tab(i)
           AND     xrsi.request_id       = cn_request_id
@@ -1491,12 +1710,23 @@ AS
           ln_int                          := ln_int + 1;                            -- ”z—ñƒJƒEƒ“ƒgƒAƒbƒv
           l_bill_cust_code_2_tab(ln_int)  := update_work_2_rec.bill_cust_code;      -- ŒÚ‹qƒR[ƒh
           l_location_code_2_tab(ln_int)   := update_work_2_rec.location_code;       -- ’S“–‹’“_ƒR[ƒh
-          l_tax_rate1_2_tab(ln_int)       := update_work_2_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate1_2_tab(ln_int)       := update_work_2_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+          l_category1_2_tab(ln_int)       := update_work_2_rec.category;            -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge1_2_tab(ln_int)  := update_work_2_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚P
           l_tax_sum1_2_tab(ln_int)        := update_work_2_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚P
-          l_tax_rate2_2_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate2_2_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+          l_category2_2_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge2_2_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
           l_tax_sum2_2_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+          l_category3_2_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚R
+          l_ex_tax_charge3_2_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
+          l_tax_sum3_2_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD End
           lt_bill_cust_code2              := update_work_2_rec.bill_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(ŒÚ‹qƒR[ƒh)
           lt_location_code2               := update_work_2_rec.location_code;       -- ƒuƒŒ[ƒNƒR[ƒhİ’è(’S“–‹’“_ƒR[ƒh)
         ELSE
@@ -1505,10 +1735,21 @@ AS
           --1ŒÚ‹q‚É‚Â‚«Å‘å‚Q‚Â‚ÌÅ•Ê€–Ú‚ğİ’è
           IF ( ln_cust_cnt = 2 ) THEN
             --‚QƒŒƒR[ƒh–Ú
-            l_tax_rate2_2_tab(ln_int)      := update_work_2_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--            l_tax_rate2_2_tab(ln_int)      := update_work_2_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+            l_category2_2_tab(ln_int)      := update_work_2_rec.category;            -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
             l_ex_tax_charge2_2_tab(ln_int) := update_work_2_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚Q
             l_tax_sum2_2_tab(ln_int)       := update_work_2_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚Q
           END IF;
+-- 2019/08/09 Ver1.93 ADD Start
+          IF ( ln_cust_cnt = 3 ) THEN
+            --‚RƒŒƒR[ƒh–Ú
+            l_category3_2_tab(ln_int)      := update_work_2_rec.category;            -- “à–ó•ª—Ş‚R
+            l_ex_tax_charge3_2_tab(ln_int) := update_work_2_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚R
+            l_tax_sum3_2_tab(ln_int)       := update_work_2_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚R
+          END IF;
+-- 2019/08/09 Ver1.93 ADD End
         END IF;
 --
       END LOOP edit_loop2;
@@ -1518,12 +1759,23 @@ AS
         <<update_loop2>>
         FORALL i IN l_bill_cust_code_2_tab.FIRST..l_bill_cust_code_2_tab.LAST
           UPDATE  xxcfr_rep_st_inv_ex_tax_a_h  xrsiah
-          SET     xrsiah.tax_rate1        = l_tax_rate1_2_tab(i)        -- Á”ïÅ—¦1
+-- 2019/08/09 Ver1.93 MOD Start
+--          SET     xrsiah.tax_rate1        = l_tax_rate1_2_tab(i)        -- Á”ïÅ—¦1
+          SET     xrsiah.category1        = l_category1_2_tab(i)        -- “à–ó•ª—Ş1
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsiah.ex_tax_charge1   = l_ex_tax_charge1_2_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚P
                  ,xrsiah.tax_sum1         = l_tax_sum1_2_tab(i)         -- Á”ïÅŠz‚P
-                 ,xrsiah.tax_rate2        = l_tax_rate2_2_tab(i)        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--                 ,xrsiah.tax_rate2        = l_tax_rate2_2_tab(i)        -- Á”ïÅ—¦‚Q
+                 ,xrsiah.category2        = l_category2_2_tab(i)        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsiah.ex_tax_charge2   = l_ex_tax_charge2_2_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚Q
                  ,xrsiah.tax_sum2         = l_tax_sum2_2_tab(i)         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+                 ,xrsiah.category3        = l_category3_2_tab(i)        -- “à–ó•ª—Ş‚R
+                 ,xrsiah.ex_tax_charge3   = l_ex_tax_charge3_2_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚R
+                 ,xrsiah.tax_sum3         = l_tax_sum3_2_tab(i)         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
           WHERE   xrsiah.bill_cust_code   = l_bill_cust_code_2_tab(i)
           AND     xrsiah.location_code    = l_location_code_2_tab(i)
           AND     xrsiah.request_id       = cn_request_id
@@ -1566,12 +1818,23 @@ AS
           l_bill_cust_code_3_tab(ln_int)  := update_work_3_rec.bill_cust_code;      -- ŒÚ‹qƒR[ƒh
           l_location_code_3_tab(ln_int)   := update_work_3_rec.location_code;       -- ’S“–‹’“_ƒR[ƒh
           l_ship_cust_code_3_tab(ln_int)  := update_work_3_rec.ship_cust_code;      -- ”[•iæŒÚ‹qƒR[ƒh
-          l_tax_rate1_3_tab(ln_int)       := update_work_3_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate1_3_tab(ln_int)       := update_work_3_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+          l_category1_3_tab(ln_int)       := update_work_3_rec.category;            -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge1_3_tab(ln_int)  := update_work_3_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚P
           l_tax_sum1_3_tab(ln_int)        := update_work_3_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚P
-          l_tax_rate2_3_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate2_3_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+          l_category2_3_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge2_3_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
           l_tax_sum2_3_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+          l_category3_3_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚R
+          l_ex_tax_charge3_3_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
+          l_tax_sum3_3_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD End
           lt_bill_cust_code3              := update_work_3_rec.bill_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(ŒÚ‹qƒR[ƒh)
           lt_location_code3               := update_work_3_rec.location_code;       -- ƒuƒŒ[ƒNƒR[ƒhİ’è(’S“–‹’“_ƒR[ƒh)
           lt_ship_cust_code3              := update_work_3_rec.ship_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(”[•iæŒÚ‹qƒR[ƒh)
@@ -1581,10 +1844,21 @@ AS
           --1“X•Ü‚É‚Â‚«Å‘å‚Q‚Â‚ÌÅ•Ê€–Ú‚ğİ’è
           IF ( ln_cust_cnt = 2 ) THEN
             --‚QƒŒƒR[ƒh–Ú
-            l_tax_rate2_3_tab(ln_int)      := update_work_3_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--            l_tax_rate2_3_tab(ln_int)      := update_work_3_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+            l_category2_3_tab(ln_int)      := update_work_3_rec.category;            -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
             l_ex_tax_charge2_3_tab(ln_int) := update_work_3_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚Q
             l_tax_sum2_3_tab(ln_int)       := update_work_3_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚Q
           END IF;
+-- 2019/08/09 Ver1.93 ADD Start
+          IF ( ln_cust_cnt = 3 ) THEN
+            --‚RƒŒƒR[ƒh–Ú
+            l_category3_3_tab(ln_int)      := update_work_3_rec.category;            -- “à–ó•ª—Ş‚R
+            l_ex_tax_charge3_3_tab(ln_int) := update_work_3_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚R
+            l_tax_sum3_3_tab(ln_int)       := update_work_3_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚R
+          END IF;
+-- 2019/08/09 Ver1.93 ADD End
         END IF;
 --
       END LOOP edit_loop3;
@@ -1594,12 +1868,23 @@ AS
         <<update_loop3>>
         FORALL i IN l_bill_cust_code_3_tab.FIRST..l_bill_cust_code_3_tab.LAST
           UPDATE  xxcfr_rep_st_inv_ex_tax_a_l  xrsial
-          SET     xrsial.tax_rate1        = l_tax_rate1_3_tab(i)        -- Á”ïÅ—¦1
+-- 2019/08/09 Ver1.93 MOD Start
+--          SET     xrsial.tax_rate1        = l_tax_rate1_3_tab(i)        -- Á”ïÅ—¦1
+          SET     xrsial.category1        = l_category1_3_tab(i)        -- “à–ó•ª—Ş1
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsial.ex_tax_charge1   = l_ex_tax_charge1_3_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚P
                  ,xrsial.tax_sum1         = l_tax_sum1_3_tab(i)         -- Á”ïÅŠz‚P
-                 ,xrsial.tax_rate2        = l_tax_rate2_3_tab(i)        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--                 ,xrsial.tax_rate2        = l_tax_rate2_3_tab(i)        -- Á”ïÅ—¦‚Q
+                 ,xrsial.category2        = l_category2_3_tab(i)        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsial.ex_tax_charge2   = l_ex_tax_charge2_3_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚Q
                  ,xrsial.tax_sum2         = l_tax_sum2_3_tab(i)         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+                 ,xrsial.category3        = l_category3_3_tab(i)        -- “à–ó•ª—Ş‚R
+                 ,xrsial.ex_tax_charge3   = l_ex_tax_charge3_3_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚R
+                 ,xrsial.tax_sum3         = l_tax_sum3_3_tab(i)         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
           WHERE   xrsial.bill_cust_code   = l_bill_cust_code_3_tab(i)
           AND     xrsial.location_code    = l_location_code_3_tab(i)
           AND     xrsial.ship_cust_code   = l_ship_cust_code_3_tab(i)
@@ -1691,12 +1976,23 @@ AS
           ln_int                          := ln_int + 1;                            -- ”z—ñƒJƒEƒ“ƒgƒAƒbƒv
           l_bill_cust_code_5_tab(ln_int)  := update_work_5_rec.bill_cust_code;      -- ŒÚ‹qƒR[ƒh
           l_location_code_5_tab(ln_int)   := update_work_5_rec.location_code;       -- ’S“–‹’“_ƒR[ƒh
-          l_tax_rate1_5_tab(ln_int)       := update_work_5_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate1_5_tab(ln_int)       := update_work_5_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+          l_category1_5_tab(ln_int)       := update_work_5_rec.category;            -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge1_5_tab(ln_int)  := update_work_5_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚P
           l_tax_sum1_5_tab(ln_int)        := update_work_5_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚P
-          l_tax_rate2_5_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate2_5_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+          l_category2_5_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge2_5_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
           l_tax_sum2_5_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+          l_category3_5_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚R
+          l_ex_tax_charge3_5_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
+          l_tax_sum3_5_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD End
           lt_bill_cust_code5              := update_work_5_rec.bill_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(ŒÚ‹qƒR[ƒh)
           lt_location_code5               := update_work_5_rec.location_code;       -- ƒuƒŒ[ƒNƒR[ƒhİ’è(’S“–‹’“_ƒR[ƒh)
         ELSE
@@ -1705,10 +2001,21 @@ AS
           --1ŒÚ‹q‚É‚Â‚«Å‘å‚Q‚Â‚ÌÅ•Ê€–Ú‚ğİ’è
           IF ( ln_cust_cnt = 2 ) THEN
             --‚QƒŒƒR[ƒh–Ú
-            l_tax_rate2_5_tab(ln_int)      := update_work_5_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--            l_tax_rate2_5_tab(ln_int)      := update_work_5_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+            l_category2_5_tab(ln_int)      := update_work_5_rec.category;            -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
             l_ex_tax_charge2_5_tab(ln_int) := update_work_5_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚Q
             l_tax_sum2_5_tab(ln_int)       := update_work_5_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚Q
           END IF;
+-- 2019/08/09 Ver1.93 ADD Start
+          IF ( ln_cust_cnt = 3 ) THEN
+            --‚RƒŒƒR[ƒh–Ú
+            l_category3_5_tab(ln_int)      := update_work_5_rec.category;            -- “à–ó•ª—Ş‚R
+            l_ex_tax_charge3_5_tab(ln_int) := update_work_5_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚R
+            l_tax_sum3_5_tab(ln_int)       := update_work_5_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚R
+          END IF;
+-- 2019/08/09 Ver1.93 ADD End
         END IF;
 --
       END LOOP edit_loop5;
@@ -1718,12 +2025,23 @@ AS
         <<update_loop5>>
         FORALL i IN l_bill_cust_code_5_tab.FIRST..l_bill_cust_code_5_tab.LAST
           UPDATE  xxcfr_rep_st_inv_ex_tax_b_h  xrsibh
-          SET     xrsibh.tax_rate1        = l_tax_rate1_5_tab(i)        -- Á”ïÅ—¦1
+-- 2019/08/09 Ver1.93 MOD Start
+--          SET     xrsibh.tax_rate1        = l_tax_rate1_5_tab(i)        -- Á”ïÅ—¦1
+          SET     xrsibh.category1        = l_category1_5_tab(i)        -- “à–ó•ª—Ş1
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsibh.ex_tax_charge1   = l_ex_tax_charge1_5_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚P
                  ,xrsibh.tax_sum1         = l_tax_sum1_5_tab(i)         -- Á”ïÅŠz‚P
-                 ,xrsibh.tax_rate2        = l_tax_rate2_5_tab(i)        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--                 ,xrsibh.tax_rate2        = l_tax_rate2_5_tab(i)        -- Á”ïÅ—¦‚Q
+                 ,xrsibh.category2        = l_category2_5_tab(i)        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsibh.ex_tax_charge2   = l_ex_tax_charge2_5_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚Q
                  ,xrsibh.tax_sum2         = l_tax_sum2_5_tab(i)         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+                 ,xrsibh.category3        = l_category3_5_tab(i)        -- “à–ó•ª—Ş‚R
+                 ,xrsibh.ex_tax_charge3   = l_ex_tax_charge3_5_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚R
+                 ,xrsibh.tax_sum3         = l_tax_sum3_5_tab(i)         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
           WHERE   xrsibh.bill_cust_code   = l_bill_cust_code_5_tab(i)
           AND     xrsibh.location_code    = l_location_code_5_tab(i)
           AND     xrsibh.request_id       = cn_request_id
@@ -1766,12 +2084,23 @@ AS
           l_bill_cust_code_6_tab(ln_int)  := update_work_6_rec.bill_cust_code;      -- ŒÚ‹qƒR[ƒh
           l_location_code_6_tab(ln_int)   := update_work_6_rec.location_code;       -- ’S“–‹’“_ƒR[ƒh
           l_ship_cust_code_6_tab(ln_int)  := update_work_6_rec.ship_cust_code;      -- ”[•iæŒÚ‹qƒR[ƒh
-          l_tax_rate1_6_tab(ln_int)       := update_work_6_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate1_6_tab(ln_int)       := update_work_6_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+          l_category1_6_tab(ln_int)       := update_work_6_rec.category;            -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge1_6_tab(ln_int)  := update_work_6_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚P
           l_tax_sum1_6_tab(ln_int)        := update_work_6_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚P
-          l_tax_rate2_6_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate2_6_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+          l_category2_6_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge2_6_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
           l_tax_sum2_6_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+          l_category3_6_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚R
+          l_ex_tax_charge3_6_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
+          l_tax_sum3_6_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD End
           lt_bill_cust_code6              := update_work_6_rec.bill_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(ŒÚ‹qƒR[ƒh)
           lt_location_code6               := update_work_6_rec.location_code;       -- ƒuƒŒ[ƒNƒR[ƒhİ’è(’S“–‹’“_ƒR[ƒh)
           lt_ship_cust_code6              := update_work_6_rec.ship_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(”[•iæŒÚ‹qƒR[ƒh)
@@ -1781,10 +2110,21 @@ AS
           --1“X•Ü‚É‚Â‚«Å‘å‚Q‚Â‚ÌÅ•Ê€–Ú‚ğİ’è
           IF ( ln_cust_cnt = 2 ) THEN
             --‚QƒŒƒR[ƒh–Ú
-            l_tax_rate2_6_tab(ln_int)      := update_work_6_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--            l_tax_rate2_6_tab(ln_int)      := update_work_6_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+            l_category2_6_tab(ln_int)      := update_work_6_rec.category;            -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
             l_ex_tax_charge2_6_tab(ln_int) := update_work_6_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚Q
             l_tax_sum2_6_tab(ln_int)       := update_work_6_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚Q
           END IF;
+-- 2019/08/09 Ver1.93 ADD Start
+          IF ( ln_cust_cnt = 3 ) THEN
+            --‚RƒŒƒR[ƒh–Ú
+            l_category3_6_tab(ln_int)      := update_work_6_rec.category;            -- “à–ó•ª—Ş‚R
+            l_ex_tax_charge3_6_tab(ln_int) := update_work_6_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚R
+            l_tax_sum3_6_tab(ln_int)       := update_work_6_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚R
+          END IF;
+-- 2019/08/09 Ver1.93 ADD End
         END IF;
 --
       END LOOP edit_loop6;
@@ -1794,12 +2134,23 @@ AS
         <<update_loop6>>
         FORALL i IN l_bill_cust_code_6_tab.FIRST..l_bill_cust_code_6_tab.LAST
           UPDATE  xxcfr_rep_st_inv_ex_tax_b_l  xrsibl
-          SET     xrsibl.tax_rate1        = l_tax_rate1_6_tab(i)        -- Á”ïÅ—¦1
+-- 2019/08/09 Ver1.93 MOD Start
+--          SET     xrsibl.tax_rate1        = l_tax_rate1_6_tab(i)        -- Á”ïÅ—¦1
+          SET     xrsibl.category1        = l_category1_6_tab(i)        -- “à–ó•ª—Ş1
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsibl.ex_tax_charge1   = l_ex_tax_charge1_6_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚P
                  ,xrsibl.tax_sum1         = l_tax_sum1_6_tab(i)         -- Á”ïÅŠz‚P
-                 ,xrsibl.tax_rate2        = l_tax_rate2_6_tab(i)        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--                 ,xrsibl.tax_rate2        = l_tax_rate2_6_tab(i)        -- Á”ïÅ—¦‚Q
+                 ,xrsibl.category2        = l_category2_6_tab(i)        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsibl.ex_tax_charge2   = l_ex_tax_charge2_6_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚Q
                  ,xrsibl.tax_sum2         = l_tax_sum2_6_tab(i)         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+                 ,xrsibl.category3        = l_category3_6_tab(i)        -- “à–ó•ª—Ş‚R
+                 ,xrsibl.ex_tax_charge3   = l_ex_tax_charge3_6_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚R
+                 ,xrsibl.tax_sum3         = l_tax_sum3_6_tab(i)         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
           WHERE   xrsibl.bill_cust_code   = l_bill_cust_code_6_tab(i)
           AND     xrsibl.location_code    = l_location_code_6_tab(i)
           AND     xrsibl.ship_cust_code   = l_ship_cust_code_6_tab(i)
@@ -1895,12 +2246,23 @@ AS
           ln_int                          := ln_int + 1;                            -- ”z—ñƒJƒEƒ“ƒgƒAƒbƒv
           l_bill_cust_code_8_tab(ln_int)  := update_work_8_rec.bill_cust_code;      -- ŒÚ‹qƒR[ƒh
           l_location_code_8_tab(ln_int)   := update_work_8_rec.location_code;       -- ’S“–‹’“_ƒR[ƒh
-          l_tax_rate1_8_tab(ln_int)       := update_work_8_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate1_8_tab(ln_int)       := update_work_8_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+          l_category1_8_tab(ln_int)       := update_work_8_rec.category;            -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge1_8_tab(ln_int)  := update_work_8_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚P
           l_tax_sum1_8_tab(ln_int)        := update_work_8_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚P
-          l_tax_rate2_8_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate2_8_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+          l_category2_8_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge2_8_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
           l_tax_sum2_8_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+          l_category3_8_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚R
+          l_ex_tax_charge3_8_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
+          l_tax_sum3_8_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD End
           lt_bill_cust_code8              := update_work_8_rec.bill_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(ŒÚ‹qƒR[ƒh)
           lt_location_code8               := update_work_8_rec.location_code;       -- ƒuƒŒ[ƒNƒR[ƒhİ’è(’S“–‹’“_ƒR[ƒh)
         ELSE
@@ -1909,10 +2271,21 @@ AS
           --1ŒÚ‹q‚É‚Â‚«Å‘å‚Q‚Â‚ÌÅ•Ê€–Ú‚ğİ’è
           IF ( ln_cust_cnt = 2 ) THEN
             --‚QƒŒƒR[ƒh–Ú
-            l_tax_rate2_8_tab(ln_int)      := update_work_8_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--            l_tax_rate2_8_tab(ln_int)      := update_work_8_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+            l_category2_8_tab(ln_int)      := update_work_8_rec.category;            -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
             l_ex_tax_charge2_8_tab(ln_int) := update_work_8_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚Q
             l_tax_sum2_8_tab(ln_int)       := update_work_8_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚Q
           END IF;
+-- 2019/08/09 Ver1.93 ADD Start
+          IF ( ln_cust_cnt = 3 ) THEN
+            --‚RƒŒƒR[ƒh–Ú
+            l_category3_8_tab(ln_int)      := update_work_8_rec.category;            -- “à–ó•ª—Ş‚R
+            l_ex_tax_charge3_8_tab(ln_int) := update_work_8_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚R
+            l_tax_sum3_8_tab(ln_int)       := update_work_8_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚R
+          END IF;
+-- 2019/08/09 Ver1.93 ADD End
         END IF;
 --
       END LOOP edit_loop8;
@@ -1922,12 +2295,23 @@ AS
         <<update_loop8>>
         FORALL i IN l_bill_cust_code_8_tab.FIRST..l_bill_cust_code_8_tab.LAST
           UPDATE  xxcfr_rep_st_inv_ex_tax_c_h  xrsich
-          SET     xrsich.tax_rate1        = l_tax_rate1_8_tab(i)        -- Á”ïÅ—¦1
+-- 2019/08/09 Ver1.93 MOD Start
+--          SET     xrsich.tax_rate1        = l_tax_rate1_8_tab(i)        -- Á”ïÅ—¦1
+          SET     xrsich.category1        = l_category1_8_tab(i)        -- “à–ó•ª—Ş1
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsich.ex_tax_charge1   = l_ex_tax_charge1_8_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚P
                  ,xrsich.tax_sum1         = l_tax_sum1_8_tab(i)         -- Á”ïÅŠz‚P
-                 ,xrsich.tax_rate2        = l_tax_rate2_8_tab(i)        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--                 ,xrsich.tax_rate2        = l_tax_rate2_8_tab(i)        -- Á”ïÅ—¦‚Q
+                 ,xrsich.category2        = l_category2_8_tab(i)        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsich.ex_tax_charge2   = l_ex_tax_charge2_8_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚Q
                  ,xrsich.tax_sum2         = l_tax_sum2_8_tab(i)         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+                 ,xrsich.category3        = l_category3_8_tab(i)        -- “à–ó•ª—Ş‚R
+                 ,xrsich.ex_tax_charge3   = l_ex_tax_charge3_8_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚R
+                 ,xrsich.tax_sum3         = l_tax_sum3_8_tab(i)         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
           WHERE   xrsich.bill_cust_code   = l_bill_cust_code_8_tab(i)
           AND     xrsich.location_code    = l_location_code_8_tab(i)
           AND     xrsich.request_id       = cn_request_id
@@ -1975,12 +2359,23 @@ AS
           l_bill_cust_code_9_tab(ln_int)  := update_work_9_rec.bill_cust_code;      -- ŒÚ‹qƒR[ƒh
           l_location_code_9_tab(ln_int)   := update_work_9_rec.location_code;       -- ’S“–‹’“_ƒR[ƒh
           l_ship_cust_code_9_tab(ln_int)  := update_work_9_rec.ship_cust_code;      -- ”[•iæŒÚ‹qƒR[ƒh
-          l_tax_rate1_9_tab(ln_int)       := update_work_9_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate1_9_tab(ln_int)       := update_work_9_rec.tax_rate;            -- Á”ïÅ—¦(•ÒW—p)
+          l_category1_9_tab(ln_int)       := update_work_9_rec.category;            -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge1_9_tab(ln_int)  := update_work_9_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚P
           l_tax_sum1_9_tab(ln_int)        := update_work_9_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚P
-          l_tax_rate2_9_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--          l_tax_rate2_9_tab(ln_int)       := NULL;                                  -- Á”ïÅ—¦‚Q
+          l_category2_9_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
           l_ex_tax_charge2_9_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
           l_tax_sum2_9_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+          l_category3_9_tab(ln_int)       := NULL;                                  -- “à–ó•ª—Ş‚R
+          l_ex_tax_charge3_9_tab(ln_int)  := NULL;                                  -- “–Œ‚¨”ƒã‚°Šz‚Q
+          l_tax_sum3_9_tab(ln_int)        := NULL;                                  -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD End
           lt_bill_cust_code9              := update_work_9_rec.bill_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(ŒÚ‹qƒR[ƒh)
           lt_location_code9               := update_work_9_rec.location_code;       -- ƒuƒŒ[ƒNƒR[ƒhİ’è(’S“–‹’“_ƒR[ƒh)
           lt_ship_cust_code9              := update_work_9_rec.ship_cust_code;      -- ƒuƒŒ[ƒNƒR[ƒhİ’è(”[•iæŒÚ‹qƒR[ƒh)
@@ -1990,10 +2385,21 @@ AS
           --1“X•Ü‚É‚Â‚«Å‘å‚Q‚Â‚ÌÅ•Ê€–Ú‚ğİ’è
           IF ( ln_cust_cnt = 2 ) THEN
             --‚QƒŒƒR[ƒh–Ú
-            l_tax_rate2_9_tab(ln_int)      := update_work_9_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--            l_tax_rate2_9_tab(ln_int)      := update_work_9_rec.tax_rate;            -- Á”ïÅ—¦‚Q
+            l_category2_9_tab(ln_int)      := update_work_9_rec.category;            -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
             l_ex_tax_charge2_9_tab(ln_int) := update_work_9_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚Q
             l_tax_sum2_9_tab(ln_int)       := update_work_9_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚Q
           END IF;
+-- 2019/08/09 Ver1.93 ADD Start
+          IF ( ln_cust_cnt = 3 ) THEN
+            --‚RƒŒƒR[ƒh–Ú
+            l_category3_9_tab(ln_int)      := update_work_9_rec.category;            -- “à–ó•ª—Ş‚R
+            l_ex_tax_charge3_9_tab(ln_int) := update_work_9_rec.tax_rate_by_sum;     -- “–Œ‚¨”ƒã‚°Šz‚R
+            l_tax_sum3_9_tab(ln_int)       := update_work_9_rec.tax_rate_by_tax_sum; -- Á”ïÅŠz‚R
+          END IF;
+-- 2019/08/09 Ver1.93 ADD End
         END IF;
 --
       END LOOP edit_loop9;
@@ -2003,12 +2409,23 @@ AS
         <<update_loop9>>
         FORALL i IN l_bill_cust_code_9_tab.FIRST..l_bill_cust_code_9_tab.LAST
           UPDATE  xxcfr_rep_st_inv_ex_tax_d_l  xrsidl
-          SET     xrsidl.tax_rate1        = l_tax_rate1_9_tab(i)        -- Á”ïÅ—¦1
+-- 2019/08/09 Ver1.93 MOD Start
+--          SET     xrsidl.tax_rate1        = l_tax_rate1_9_tab(i)        -- Á”ïÅ—¦1
+          SET     xrsidl.category1        = l_category1_9_tab(i)        -- “à–ó•ª—Ş1
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsidl.ex_tax_charge1   = l_ex_tax_charge1_9_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚P
                  ,xrsidl.tax_sum1         = l_tax_sum1_9_tab(i)         -- Á”ïÅŠz‚P
-                 ,xrsidl.tax_rate2        = l_tax_rate2_9_tab(i)        -- Á”ïÅ—¦‚Q
+-- 2019/08/09 Ver1.93 MOD Start
+--                 ,xrsidl.tax_rate2        = l_tax_rate2_9_tab(i)        -- Á”ïÅ—¦‚Q
+                 ,xrsidl.category2        = l_category2_9_tab(i)        -- “à–ó•ª—Ş‚Q
+-- 2019/08/09 Ver1.93 MOD End
                  ,xrsidl.ex_tax_charge2   = l_ex_tax_charge2_9_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚Q
                  ,xrsidl.tax_sum2         = l_tax_sum2_9_tab(i)         -- Á”ïÅŠz‚Q
+-- 2019/08/09 Ver1.93 ADD Start
+                 ,xrsidl.category3        = l_category3_9_tab(i)        -- “à–ó•ª—Ş‚R
+                 ,xrsidl.ex_tax_charge3   = l_ex_tax_charge3_9_tab(i)   -- “–Œ‚¨”ƒã‚°Šz‚R
+                 ,xrsidl.tax_sum3         = l_tax_sum3_9_tab(i)         -- Á”ïÅŠz‚R
+-- 2019/08/09 Ver1.93 ADD End
           WHERE   xrsidl.bill_cust_code   = l_bill_cust_code_9_tab(i)
           AND     xrsidl.location_code    = l_location_code_9_tab(i)
           AND     xrsidl.ship_cust_code   = l_ship_cust_code_9_tab(i)
@@ -2749,7 +3166,11 @@ AS
               slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
               slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
 -- Add 2013.11.25 Ver1.60 Start
-              tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--              tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+              description             , -- “E—v
+              category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
               outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
@@ -2829,7 +3250,11 @@ AS
                    SUM(xil.ship_amount)                                               slip_sum         , -- “`•[‹àŠz(Å”²Šz)
                    SUM(xil.tax_amount)                                                tax_sum          , -- “`•[ÅŠz
 -- Add 2013.11.25 Ver1.60 Start
-                   xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                   xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+                   NVL(flv.attribute1,' ')                                            description      , -- “E—v
+                   flv.attribute2                                                     category         , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                    CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
@@ -2875,6 +3300,9 @@ AS
                     AND abaa.bank_branch_id = abb.bank_branch_id(+)
                     AND arma.org_id = gn_org_id
                     AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                 fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                  (SELECT flex_value,
                          description
                   FROM   fnd_flex_values_vl ffv
@@ -2892,6 +3320,12 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+              AND flv.lookup_type(+) = cv_lookup_type
+              AND flv.language(+) = USERENV( 'LANG' )
+              AND flv.lookup_code(+) = xil.tax_code
+              AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
             GROUP BY cv_pkg_name,
                      xih.inv_creation_date,
                      DECODE(get_14account_rec.bill_postal_code,
@@ -2947,7 +3381,11 @@ AS
                      xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                     xil.tax_rate
-                     xil.tax_rate,
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate,
+                     flv.attribute1,                                                    -- “E—v
+                     flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -3027,7 +3465,11 @@ AS
                 slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
                 slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
 -- Add 2013.11.25 Ver1.60 Start
-                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+                description             , -- “E—v
+                category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                 outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
@@ -3111,7 +3553,11 @@ AS
                      SUM(xil.ship_amount)                                               slip_sum         , -- “`•[‹àŠz(Å”²Šz)
                      SUM(xil.tax_amount)                                                tax_sum          , -- “`•[ÅŠz
 -- Add 2013.11.25 Ver1.60 Start
-                     xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+                     NVL(flv.attribute1,' ')                                            description      , -- “E—v
+                     flv.attribute2                                                     category         , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
@@ -3158,6 +3604,9 @@ AS
                       AND abaa.bank_branch_id = abb.bank_branch_id(+)
                       AND arma.org_id = gn_org_id
                       AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                   fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                    (SELECT flex_value,
                            description
                     FROM   fnd_flex_values_vl ffv
@@ -3176,6 +3625,12 @@ AS
                 AND xxca.customer_id = all_account_rec.customer_id
                 AND hzca.account_number = xxca.invoice_code
                 AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+                AND flv.lookup_type(+) = cv_lookup_type
+                AND flv.language(+) = USERENV( 'LANG' )
+                AND flv.lookup_code(+) = xil.tax_code
+                AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
               GROUP BY cv_pkg_name,
                        xih.inv_creation_date,
                        DECODE(get_21account_rec.bill_postal_code,
@@ -3233,7 +3688,11 @@ AS
                        xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                       xil.tax_rate
-                       xil.tax_rate,
+-- 2019/08/09 Ver1.93 MOD Start
+--                       xil.tax_rate,
+                       flv.attribute1,                                                    -- “E—v
+                       flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -3316,7 +3775,11 @@ AS
                 slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
                 slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
 -- Add 2013.11.25 Ver1.60 Start
-                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+                description             , -- “E—v
+                category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                 outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
@@ -3396,7 +3859,11 @@ AS
                      SUM(xil.ship_amount)                                               slip_sum         , -- “`•[‹àŠz(Å”²Šz)
                      SUM(xil.tax_amount)                                                tax_sum          , -- “`•[ÅŠz
 -- Add 2013.11.25 Ver1.60 Start
-                     xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+                     NVL(flv.attribute1,' ')                                            description      , -- “E—v
+                     flv.attribute2                                                     category         , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
@@ -3442,6 +3909,9 @@ AS
                       AND abaa.bank_branch_id = abb.bank_branch_id(+)
                       AND arma.org_id = gn_org_id
                       AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                   fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                    (SELECT flex_value,
                            description
                     FROM   fnd_flex_values_vl ffv
@@ -3459,6 +3929,12 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+                AND flv.lookup_type(+) = cv_lookup_type
+                AND flv.language(+) = USERENV( 'LANG' )
+                AND flv.lookup_code(+) = xil.tax_code
+                AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
               GROUP BY cv_pkg_name,
                        xih.inv_creation_date,
                        DECODE(get_20account_rec.bill_postal_code,
@@ -3516,7 +3992,11 @@ AS
                        xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                       xil.tax_rate
-                       xil.tax_rate,
+-- 2019/08/09 Ver1.93 MOD Start
+--                       xil.tax_rate,
+                       flv.attribute1,                                                    -- “E—v
+                       flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -3599,7 +4079,11 @@ AS
                 slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
                 slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
 -- Add 2013.11.25 Ver1.60 Start
-                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+                description             , -- “E—v
+                category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                 outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
@@ -3683,7 +4167,11 @@ AS
                      SUM(xil.ship_amount)                                               slip_sum         , -- “`•[‹àŠz(Å”²Šz)
                      SUM(xil.tax_amount)                                                tax_sum          , -- “`•[ÅŠz
 -- Add 2013.11.25 Ver1.60 Start
-                     xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+                     NVL(flv.attribute1,' ')                                            description      , -- “E—v
+                     flv.attribute2                                                     category         , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
@@ -3730,6 +4218,9 @@ AS
                       AND abaa.bank_branch_id = abb.bank_branch_id(+)
                       AND arma.org_id = gn_org_id
                       AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                   fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                    (SELECT flex_value,
                            description
                     FROM   fnd_flex_values_vl ffv
@@ -3748,6 +4239,12 @@ AS
                 AND xxca.customer_id = all_account_rec.customer_id
                 AND hzca.account_number = xxca.invoice_code
                 AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+                AND flv.lookup_type(+) = cv_lookup_type
+                AND flv.language(+) = USERENV( 'LANG' )
+                AND flv.lookup_code(+) = xil.tax_code
+                AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
               GROUP BY cv_pkg_name,
                        xih.inv_creation_date,
                        DECODE(get_21account_rec.bill_postal_code,
@@ -3805,7 +4302,11 @@ AS
                        xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                       xil.tax_rate
-                       xil.tax_rate,
+-- 2019/08/09 Ver1.93 MOD Start
+--                       xil.tax_rate,
+                       flv.attribute1,                                                    -- “E—v
+                       flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -3868,7 +4369,11 @@ AS
               slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
               slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
 -- Add 2013.11.25 Ver1.60 Start
-              tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--              tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+              description             , -- “E—v
+              category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
               outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
@@ -3948,7 +4453,11 @@ AS
                    SUM(xil.ship_amount)                                               slip_sum         , -- “`•[‹àŠz(Å”²Šz)
                    SUM(xil.tax_amount)                                                tax_sum          , -- “`•[ÅŠz
 -- Add 2013.11.25 Ver1.60 Start
-                   xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                   xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+                   NVL(flv.attribute1,' ')                                            description      , -- “E—v
+                   flv.attribute2                                                     category         , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                    CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
@@ -3994,6 +4503,9 @@ AS
                     AND abaa.bank_branch_id = abb.bank_branch_id(+)
                     AND arma.org_id = gn_org_id
                     AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                 fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                  (SELECT flex_value,
                          description
                   FROM   fnd_flex_values_vl ffv
@@ -4011,6 +4523,12 @@ AS
               AND xil.ship_cust_code = all_account_rec.customer_code
               AND hzca.cust_account_id = all_account_rec.customer_id
               AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+              AND flv.lookup_type(+) = cv_lookup_type
+              AND flv.language(+) = USERENV( 'LANG' )
+              AND flv.lookup_code(+) = xil.tax_code
+              AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
             GROUP BY cv_pkg_name,
                      xih.inv_creation_date,
                      DECODE(get_14account_rec.bill_postal_code,
@@ -4066,7 +4584,11 @@ AS
                      xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                     xil.tax_rate
-                     xil.tax_rate,
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate,
+                     flv.attribute1,                                                    -- “E—v
+                     flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -4143,7 +4665,11 @@ AS
                 slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
                 slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
 -- Add 2013.11.25 Ver1.60 Start
-                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+                description             , -- “E—v
+                category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                 outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
@@ -4223,7 +4749,11 @@ AS
                      SUM(xil.ship_amount)                                               slip_sum         , -- “`•[‹àŠz(Å”²Šz)
                      SUM(xil.tax_amount)                                                tax_sum          , -- “`•[ÅŠz
 -- Add 2013.11.25 Ver1.60 Start
-                     xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate                                                       tax_rate         , -- Á”ïÅ—¦
+                     NVL(flv.attribute1,' ')                                            description      , -- “E—v
+                     flv.attribute2                                                     category         , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
 -- Add 2013.11.25 Ver1.60 End
 -- Add 2014.03.27 Ver1.70 Start
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
@@ -4269,6 +4799,9 @@ AS
                       AND abaa.bank_branch_id = abb.bank_branch_id(+)
                       AND arma.org_id = gn_org_id
                       AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                   fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                    (SELECT flex_value,
                            description
                     FROM   fnd_flex_values_vl ffv
@@ -4286,6 +4819,12 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+                AND flv.lookup_type(+) = cv_lookup_type
+                AND flv.language(+) = USERENV( 'LANG' )
+                AND flv.lookup_code(+) = xil.tax_code
+                AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
               GROUP BY cv_pkg_name,
                        xih.inv_creation_date,
                        DECODE(get_20account_rec.bill_postal_code,
@@ -4343,7 +4882,11 @@ AS
                        xil.slip_num,
 -- Modify 2014.03.27 Ver1.70 Start
 --                       xil.tax_rate
-                       xil.tax_rate,
+-- 2019/08/09 Ver1.93 MOD Start
+--                       xil.tax_rate,
+                       flv.attribute1,                                                    -- “E—v
+                       flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -4402,7 +4945,11 @@ AS
                 slip_num                , -- “`•[No
                 slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
                 slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
-                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+                description             , -- “E—v
+                category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                 outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
                 created_by              , -- ì¬Ò
                 creation_date           , -- ì¬“ú
@@ -4474,7 +5021,11 @@ AS
                      xil.slip_num                                                                     slip_num              , -- “`•[No
                      SUM(xil.ship_amount)                                                             slip_sum              , -- “`•[‹àŠz(Å”²Šz)
                      SUM(xil.tax_amount)                                                              tax_sum               , -- “`•[ÅŠz
-                     xil.tax_rate                                                                     tax_rate              , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate                                                                     tax_rate              , -- Á”ïÅ—¦
+                     NVL(flv.attribute1,' ')                                                          description           , -- “E—v
+                     flv.attribute2                                                                   category              , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -4515,6 +5066,9 @@ AS
                       AND abaa.bank_branch_id = abb.bank_branch_id(+)
                       AND arma.org_id = gn_org_id
                       AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                   fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                    (SELECT ffv.flex_value  flex_value   ,
                            ffv.description description
                     FROM   fnd_flex_values_vl ffv
@@ -4532,6 +5086,12 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+                AND flv.lookup_type(+) = cv_lookup_type
+                AND flv.language(+) = USERENV( 'LANG' )
+                AND flv.lookup_code(+) = xil.tax_code
+                AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
               GROUP BY cv_report_id_06,                                                   -- ’ •[ID
                        xih.inv_creation_date,                                             -- ”­Œø“ú
                        DECODE(get_14account_rec.bill_postal_code,
@@ -4583,7 +5143,11 @@ AS
                                       xil.acceptance_date),
                                cv_format_date_ymds2),                                     -- “`•[“ú•t
                        xil.slip_num,                                                      -- “`•[”Ô†
-                       xil.tax_rate,                                                      -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                       xil.tax_rate,                                                      -- Á”ïÅ—¦
+                       flv.attribute1,                                                    -- “E—v
+                       flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -4646,7 +5210,11 @@ AS
                 slip_num                , -- “`•[No
                 slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
                 slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
-                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+                description             , -- “E—v
+                category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                 outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
                 created_by              , -- ì¬Ò
                 creation_date           , -- ì¬“ú
@@ -4718,7 +5286,11 @@ AS
                      xil.slip_num                                                                     slip_num              , -- “`•[No
                      SUM(xil.ship_amount)                                                             slip_sum              , -- “`•[‹àŠz(Å”²Šz)
                      SUM(xil.tax_amount)                                                              tax_sum               , -- “`•[ÅŠz
-                     xil.tax_rate                                                                     tax_rate              , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate                                                                     tax_rate              , -- Á”ïÅ—¦
+                     NVL(flv.attribute1,' ')                                                          description           , -- “E—v
+                     flv.attribute2                                                                   category              , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -4759,6 +5331,9 @@ AS
                       AND abaa.bank_branch_id = abb.bank_branch_id(+)
                       AND arma.org_id = gn_org_id
                       AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                   fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                    (SELECT ffv.flex_value   flex_value,
                            ffv.description  description
                     FROM   fnd_flex_values_vl ffv
@@ -4776,6 +5351,12 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+                AND flv.lookup_type(+) = cv_lookup_type
+                AND flv.language(+) = USERENV( 'LANG' )
+                AND flv.lookup_code(+) = xil.tax_code
+                AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
               GROUP BY cv_report_id_06,                                                   -- ’ •[ID
                        xih.inv_creation_date,                                             -- ”­Œø“ú
                        DECODE(get_14account_rec.bill_postal_code,
@@ -4827,7 +5408,11 @@ AS
                                       xil.acceptance_date),
                                cv_format_date_ymds2),                                     -- “`•[“ú•t
                        xil.slip_num,                                                      -- “`•[”Ô†
-                       xil.tax_rate,                                                      -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                       xil.tax_rate,                                                      -- Á”ïÅ—¦
+                       flv.attribute1,                                                    -- “E—v
+                       flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -4892,7 +5477,11 @@ AS
                 slip_num                , -- “`•[No
                 slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
                 slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
-                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+                description             , -- “E—v
+                category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                 outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
                 created_by              , -- ì¬Ò
                 creation_date           , -- ì¬“ú
@@ -4964,7 +5553,11 @@ AS
                      xil.slip_num                                                                     slip_num              , -- “`•[No
                      SUM(xil.ship_amount)                                                             slip_sum              , -- “`•[‹àŠz(Å”²Šz)
                      SUM(xil.tax_amount)                                                              tax_sum               , -- “`•[ÅŠz
-                     xil.tax_rate                                                                     tax_rate              , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate                                                                     tax_rate              , -- Á”ïÅ—¦
+                     NVL(flv.attribute1,' ')                                                          description           , -- “E—v
+                     flv.attribute2                                                                   category              , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -5005,6 +5598,9 @@ AS
                       AND abaa.bank_branch_id = abb.bank_branch_id(+)
                       AND arma.org_id = gn_org_id
                       AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                   fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                    (SELECT ffv.flex_value  flex_value   ,
                            ffv.description description
                     FROM   fnd_flex_values_vl ffv
@@ -5022,6 +5618,12 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+                AND flv.lookup_type(+) = cv_lookup_type
+                AND flv.language(+) = USERENV( 'LANG' )
+                AND flv.lookup_code(+) = xil.tax_code
+                AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
               GROUP BY cv_report_id_12,                                                   -- ’ •[ID
                        xih.inv_creation_date,                                             -- ”­Œø“ú
                        DECODE(get_14account_rec.bill_postal_code,
@@ -5073,7 +5675,11 @@ AS
                                       xil.acceptance_date),
                                cv_format_date_ymds2),                                     -- “`•[“ú•t
                        xil.slip_num,                                                      -- “`•[”Ô†
-                       xil.tax_rate,                                                      -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                       xil.tax_rate,                                                      -- Á”ïÅ—¦
+                       flv.attribute1,                                                    -- “E—v
+                       flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
@@ -5138,7 +5744,11 @@ AS
                 slip_num                , -- “`•[No
                 slip_sum                , -- “`•[‹àŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
                 slip_tax_sum            , -- “`•[ÅŠz(“`•[”Ô†’PˆÊ‚ÅWŒv‚µ‚½’l)
-                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD Start
+--                tax_rate                , -- Á”ïÅ—¦(•ÒW—p)
+                description             , -- “E—v
+                category                , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                 outsourcing_flag        , -- ‹ÆÒˆÏ‘õƒtƒ‰ƒO
                 created_by              , -- ì¬Ò
                 creation_date           , -- ì¬“ú
@@ -5210,7 +5820,11 @@ AS
                      xil.slip_num                                                                     slip_num              , -- “`•[No
                      SUM(xil.ship_amount)                                                             slip_sum              , -- “`•[‹àŠz(Å”²Šz)
                      SUM(xil.tax_amount)                                                              tax_sum               , -- “`•[ÅŠz
-                     xil.tax_rate                                                                     tax_rate              , -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                     xil.tax_rate                                                                     tax_rate              , -- Á”ïÅ—¦
+                     NVL(flv.attribute1,' ')                                                          description           , -- “E—v
+                     flv.attribute2                                                                   category              , -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                      CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                        cv_os_flag_y
                      ELSE
@@ -5251,6 +5865,9 @@ AS
                       AND abaa.bank_branch_id = abb.bank_branch_id(+)
                       AND arma.org_id = gn_org_id
                       AND abaa.org_id = gn_org_id             ) account,    -- ‹âsŒûÀƒrƒ…[
+-- 2019/08/09 Ver1.93 ADD Start
+                   fnd_lookup_values              flv  , -- QÆ•\
+-- 2019/08/09 Ver1.93 ADD End
                    (SELECT ffv.flex_value   flex_value,
                            ffv.description  description
                     FROM   fnd_flex_values_vl ffv
@@ -5268,6 +5885,12 @@ AS
                 AND xil.ship_cust_code = all_account_rec.customer_code
                 AND hzca.cust_account_id = all_account_rec.customer_id
                 AND hzp.party_id = hzca.party_id
+-- 2019/08/09 Ver1.93 ADD Start
+                AND flv.lookup_type(+) = cv_lookup_type
+                AND flv.language(+) = USERENV( 'LANG' )
+                AND flv.lookup_code(+) = xil.tax_code
+                AND flv.enabled_flag(+) = cv_enabled_yes
+-- 2019/08/09 Ver1.93 ADD End
               GROUP BY cv_report_id_06,                                                   -- ’ •[ID
                        xih.inv_creation_date,                                             -- ”­Œø“ú
                        DECODE(get_14account_rec.bill_postal_code,
@@ -5319,7 +5942,11 @@ AS
                                       xil.acceptance_date),
                                cv_format_date_ymds2),                                     -- “`•[“ú•t
                        xil.slip_num,                                                      -- “`•[”Ô†
-                       xil.tax_rate,                                                      -- Á”ïÅ—¦
+-- 2019/08/09 Ver1.93 MOD Start
+--                       xil.tax_rate,                                                      -- Á”ïÅ—¦
+                       flv.attribute1,                                                    -- “E—v
+                       flv.attribute2,                                                    -- “à–ó•ª—Ş(•ÒW—p)
+-- 2019/08/09 Ver1.93 MOD End
                        CASE WHEN iv_bill_invoice_type = cv_bill_invoice_type_os THEN
                          cv_os_flag_y
                        ELSE
