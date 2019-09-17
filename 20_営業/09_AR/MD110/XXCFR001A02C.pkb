@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績データ連携
  * MD.050           : MD050_CFR_001_A02_売上実績データ連携
  * MD.070           : MD050_CFR_001_A02_売上実績データ連携
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2011/04/19    1.11 SCS 西野 裕介    障害対応[E_本稼動_04976]
  *  2011/05/26    1.12 SCS 石渡 賢和    ＰＴ対応[E_本稼動_07413]
  *  2018/04/03    1.13 SCSK佐々木宏之   個別の営業員コード表示[E_本稼動_14952]
+ *  2019/09/11    1.14 SCSK桑子 駿介    障害対応[E_本稼動_15472]
  *
  *****************************************************************************************/
 --
@@ -131,6 +132,12 @@ AS
   --
   cv_group_name_resource  CONSTANT VARCHAR2(8)  :=  'RESOURCE';               --  グループタイプ名：RESOURCE
 --  2018/04/03 V1.13 Added END
+--
+--  2019/09/11 V1.14 Added START
+  cv_discnt_item          CONSTANT VARCHAR2(30) :=  'XXCFR1_SALES_DISCOUNT_ITEM';   --参照タイプ：売上値引品目対象コード（売上実績連携）
+  cv_receipt_discnt_item  CONSTANT VARCHAR2(30) :=  'XXCFR1_RECEIPT_DISCOUNT_ITEM'; --参照タイプ：入金値引品目対象コード（売上実績連携）
+--  2019/09/11 V1.14 Added END
+--
   -- ファイル出力
   cv_file_type_out   CONSTANT VARCHAR2(10) := 'OUTPUT';    -- メッセージ出力
   cv_file_type_log   CONSTANT VARCHAR2(10) := 'LOG';       -- ログ出力
@@ -202,6 +209,9 @@ AS
              rctta.attribute3             item_code,                -- 商品コード
              rctlgda.gl_date              gl_date,                  -- GL記帳日
              rctta.name                   trx_type_name             -- 取引タイプ名
+--  2019/09/11 V1.14 Added START
+            ,avtab.tax_rate               tax_rate                  -- 税率
+--  2019/09/11 V1.14 Added END
       FROM ra_customer_trx_all            rcta,       -- 取引ヘッダ
            ra_cust_trx_types_all          rctta,      -- 取引タイプ
            ra_customer_trx_lines_all      rctla,      -- 取引明細（本体）
@@ -684,6 +694,9 @@ AS
     lt_salesrep_code    hz_org_profiles_ext_b.c_ext_attr1%TYPE;     --  担当営業員
     ln_dummy            NUMBER;                                     --  存在チェック用ダミー変数
 --  2018/04/03 V1.13 Added END
+--  2019/09/11 V1.14 Added START
+    ln_dummy2           fnd_lookup_values.lookup_type%TYPE;         --  存在チェック用ダミー変数
+--  2019/09/11 V1.14 Added END
 --
     -- *** ローカル・カーソル ***
 --
@@ -771,6 +784,58 @@ AS
             lt_salesrep_code  :=  cv_score_member_code;
         END;
 --  2018/04/03 V1.13 Added END
+--
+--  2019/09/11 V1.14 Added START
+        BEGIN
+          --  値引品目振替：対象判定
+          SELECT flv.lookup_type  lookup_type
+          INTO   ln_dummy2
+          FROM   fnd_lookup_values  flv
+          WHERE  flv.lookup_type    IN ( cv_discnt_item,cv_receipt_discnt_item )
+          AND    flv.language        =   USERENV( 'LANG' )
+          AND    flv.enabled_flag    =   cv_flag_yes
+          AND    gd_process_date BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                 AND     NVL( flv.end_date_active, gd_process_date )
+          AND    flv.lookup_code     =   gt_sales_data(ln_loop_cnt).item_code
+          ;
+        --
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            --  参照表に品目がない(値引品目でない)場合
+            NULL;
+        END;
+        --
+        -- 値引品目である場合
+        IF ( ln_dummy2 IS NOT NULL ) THEN
+          BEGIN
+            -- 値引品目振替
+            SELECT flv.lookup_code   item_code
+            INTO   gt_sales_data(ln_loop_cnt).item_code
+            FROM   xxcos_reduced_tax_rate_v  xrtr
+                  ,fnd_lookup_values         flv
+            WHERE  xrtr.item_code      = flv.lookup_code
+            AND    flv.lookup_type     = ln_dummy2
+            AND    flv.language        = USERENV( 'LANG' )
+            AND    flv.enabled_flag    = cv_flag_yes
+            AND    gd_process_date  BETWEEN  NVL( flv.start_date_active, gd_process_date )
+                                    AND      NVL( flv.end_date_active, gd_process_date )
+            AND    gt_sales_data(ln_loop_cnt).trx_date  BETWEEN  NVL( xrtr.start_date,gt_sales_data(ln_loop_cnt).trx_date )
+                                                        AND      NVL( xrtr.end_date,gt_sales_data(ln_loop_cnt).trx_date )
+            AND    gt_sales_data(ln_loop_cnt).trx_date  BETWEEN  NVL( xrtr.start_date_histories,gt_sales_data(ln_loop_cnt).trx_date )
+                                                        AND      NVL( xrtr.end_date_histories,gt_sales_data(ln_loop_cnt).trx_date )
+            AND    xrtr.tax_rate       = gt_sales_data(ln_loop_cnt).tax_rate
+            ;
+          --
+          EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                -- 非課税の場合
+                NULL;
+              WHEN TOO_MANY_ROWS THEN
+                -- 軽減税率適用前の場合
+                NULL;
+          END;
+        END IF;
+--  2019/09/11 V1.14 Added END
 --
         -- 出力文字列作成
         lv_csv_text := cv_enclosed || gt_sales_data(ln_loop_cnt).comp_code || cv_enclosed || cv_delimiter
