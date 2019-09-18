@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -76,6 +76,7 @@ AS
  *  2017/04/19    1.30  N.Watanabe       [E_本稼動_14025] HHTからのシステム日付連携追加
  *  2019/02/06    1.31  S.Kuwako         [E_本稼動_15472] 軽減税率対応
  *  2019/07/26    1.32  S.Kuwako         [E_本稼動_15472] 軽減税率対応(HHT追加対応)
+ *  2019/09/18    1.33  S.Kuwako         [E_本稼動_15472] 軽減税率対応(追加対応)
  *
  *****************************************************************************************/
 --
@@ -8262,7 +8263,10 @@ AS
 --
 -- ************ 2019/02/06 1.31 S.Kuwako ADD START ************ --
             -- ヘッダ設定用税コード、消費税率の保持
-            IF ( lt_state_line_number_ebs = cn_line_no_1 ) THEN
+-- ************ 2019/09/18 1.33 S.Kuwako MOD START ************ --
+--            IF ( lt_state_line_number_ebs = cn_line_no_1 ) THEN
+            IF ( lt_state_line_no_hht = cn_line_no_1 ) THEN
+-- ************ 2019/09/18 1.33 S.Kuwako MOD END   ************ --
               gv_tax_code_header := lt_consum_code;
               gv_tax_rate_header := lt_tax_consum;
             END IF;
