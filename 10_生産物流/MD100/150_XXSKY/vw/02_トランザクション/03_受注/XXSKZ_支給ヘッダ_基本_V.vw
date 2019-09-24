@@ -3,13 +3,14 @@
  * View  Name      : XXSKZ_支給ヘッダ_基本_V
  * Description     : XXSKZ_支給ヘッダ_基本_V
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2012/11/22    1.0   SCSK 月野    初回作成
+ *  2019/09/04    1.1   SCSK 佐々木  E_本稼動_15601対応
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKZ_支給ヘッダ_基本_V
 (
@@ -94,6 +95,9 @@ CREATE OR REPLACE VIEW APPS.XXSKZ_支給ヘッダ_基本_V
 ,出荷日_予実
 ,着荷日
 ,着荷日_予実
+-- V1.1 Added START
+,有償支給年月_返品
+-- V1.1 Added END
 ,重量容積区分
 ,重量容積区分名
 ,実績計上済区分
@@ -237,6 +241,9 @@ SELECT
        ,XOHA.arrival_date                --着荷日
        ,NVL( XOHA.arrival_date, XOHA.schedule_arrival_date )                      --NVL( 着荷日, 着荷予定日 )
                                          --着荷日_予実
+-- V1.1 Added START
+      , TO_CHAR( xoha.sikyu_return_date, 'YYYY/MM' )                              -- 有償支給年月(返品)
+-- V1.1 Added END
        ,XOHA.weight_capacity_class       --重量容積区分
        ,FLV14.meaning                    --重量容積区分名
        ,XOHA.actual_confirm_class        --実績計上済区分
@@ -647,6 +654,10 @@ COMMENT ON COLUMN APPS.XXSKZ_支給ヘッダ_基本_V.着荷日 IS '着荷日'
 /
 COMMENT ON COLUMN APPS.XXSKZ_支給ヘッダ_基本_V.着荷日_予実 IS '着荷日_予実'
 /
+-- V1.1 Added START
+COMMENT ON COLUMN APPS.XXSKY_支給ヘッダ_基本_V.有償支給年月_返品 IS '有償支給年月_返品'
+/
+-- V1.1 Added END
 COMMENT ON COLUMN APPS.XXSKZ_支給ヘッダ_基本_V.重量容積区分 IS '重量容積区分'
 /
 COMMENT ON COLUMN APPS.XXSKZ_支給ヘッダ_基本_V.重量容積区分名 IS '重量容積区分名'
