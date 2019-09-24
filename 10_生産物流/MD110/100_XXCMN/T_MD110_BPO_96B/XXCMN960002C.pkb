@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMN960002C(body)
  * Description      : 受注アドオンバックアップ
  * MD.050           : T_MD050_BPO_96B_受注アドオンバックアップ
- * Version          : 1.00
+ * Version          : 1.01
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/16   1.00  Hiroshi.Ogawa     新規作成
+ *  2019/09/04   1.01  H.Sasaki          E_本稼動_15601対応
  *
  *****************************************************************************************/
 --
@@ -312,6 +313,9 @@ AS
              ,xoha.program_application_id         AS program_application_id
              ,xoha.program_id                     AS program_id
              ,xoha.program_update_date            AS program_update_date
+--  V1.01 Added START
+             ,xoha.sikyu_return_date              AS sikyu_return_date
+--  V1.01 Added END
       FROM    xxwsh_order_headers_all  xoha
              ,oe_order_headers_all     ooha
       WHERE   xoha.req_status    IN (cv_shipping, cv_sikyu)
@@ -428,6 +432,9 @@ AS
              ,xoha.program_application_id         AS program_application_id
              ,xoha.program_id                     AS program_id
              ,xoha.program_update_date            AS program_update_date
+--  V1.01 Added START
+             ,xoha.sikyu_return_date              AS sikyu_return_date
+--  V1.01 Added END
       FROM    xxwsh_order_headers_all  xoha
       WHERE   xoha.req_status         NOT IN (cv_shipping, cv_sikyu)
       AND     xoha.schedule_arrival_date  >= id_standard_date - in_archive_range
@@ -1023,6 +1030,9 @@ AS
       l_order_header_tbl(ln_arc_cnt_header_yet).program_update_date          := lr_header_rec.program_update_date;
       l_order_header_tbl(ln_arc_cnt_header_yet).archive_date                 := SYSDATE;
       l_order_header_tbl(ln_arc_cnt_header_yet).archive_request_id           := cn_request_id;
+-- V1.01 Added START
+      l_order_header_tbl(ln_arc_cnt_header_yet).sikyu_return_date            := lr_header_rec.sikyu_return_date;
+-- V1.01 Added END
 --
     END LOOP archive_order_header_loop;
 --
