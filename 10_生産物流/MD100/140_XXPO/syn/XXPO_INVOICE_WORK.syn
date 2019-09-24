@@ -1,0 +1,15 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : xxpo.xxpo_invoice_work
+ * Description : 有償支給相殺ワーク（シノニム）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2019/09/03    1.0   N.Abe            [E_本稼動_15601]新規作成
+ *
+ ****************************************************************************************/
+CREATE OR REPLACE SYNONYM APPS.XXPO_INVOICE_WORK FOR XXPO.XXPO_INVOICE_WORK;
