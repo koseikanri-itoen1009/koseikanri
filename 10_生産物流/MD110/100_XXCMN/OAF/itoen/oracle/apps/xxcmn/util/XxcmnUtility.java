@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcmnUtility
 * 概要説明   : 全体共通関数
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2007-12-10 1.0  二瓶大輔     新規作成
 * 2008-08-13 1.1  二瓶大輔     chkNumericメソッド不具合修正
 * 2008-12-10 1.2  伊藤ひとみ   本番障害#587対応
+* 2019-09-05 1.3  小路恭弘     E_本稼動_15601対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcmn.util;
@@ -32,6 +33,10 @@ import oracle.apps.fnd.framework.webui.OAPageContext;
 
 import oracle.jbo.domain.Date;
 import oracle.jbo.domain.Number;
+// 2019-09-05 Y.Shoji ADD START
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+// 2019-09-05 Y.Shoji ADD END
 /***************************************************************************
  * 全体共通関数クラスです。
  * @author  ORACLE 二瓶 大輔
@@ -851,4 +856,53 @@ public class XxcmnUtility
     return new BigDecimal(value);
   } // bigDecimalValue
 // 2008-12-10 H.Itou Add End
+// 2019-09-05 Y.Shoji ADD START
+  /***************************************************************************
+   * String型の値(yyyy/MM)java.sql.Date型にキャストします。
+   * @param value - String型の値
+   * @return sqldate - java.sql.Date型の値
+   ***************************************************************************
+   */
+  public static java.sql.Date dateValue(String value)
+  {
+    if (isBlankOrNull(value))
+    {
+      return null;
+    } else {
+      try{
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM");
+        java.util.Date utilDate = sdf.parse(value);
+        java.sql.Date sqlDate = new java.sql.Date(utilDate.getTime());
+        return sqlDate;
+      } catch (ParseException e) {
+          e.printStackTrace();
+        }
+      return null;
+    }
+  } // dateValue
+  /***************************************************************************
+   * String型の値(yyyy/MM)をoracle.jbo.domain.Date型にキャストします。
+   * @param value - String型の値
+   * @return date - oracle.jbo.domain.Date型の値
+   ***************************************************************************
+   */
+  public static Date dateValueOra(String value)
+  {
+    if (isBlankOrNull(value))
+    {
+      return null;
+    } else {
+      try{
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM");
+        java.util.Date utilDate = sdf.parse(value);
+        java.sql.Date sqlDate = new java.sql.Date(utilDate.getTime());
+        Date date = new Date(sqlDate);
+        return date;
+      } catch (ParseException e) {
+          e.printStackTrace();
+        }
+      return null;
+    }
+  } // dateValueOra
+// 2019-09-05 Y.Shoji ADD END
 }
