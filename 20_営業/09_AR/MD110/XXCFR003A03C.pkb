@@ -7,7 +7,7 @@ AS
  * Description      : 請求明細データ作成
  * MD.050           : MD050_CFR_003_A03_請求明細データ作成
  * MD.070           : MD050_CFR_003_A03_請求明細データ作成
- * Version          : 1.180
+ * Version          : 1.170
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,7 +46,6 @@ AS
  *  2016/03/02    1.150 SCSK 小路 恭弘  [障害本稼動13510] 請求書に表示されない品目がある
  *  2019/07/26    1.160 SCSK 箕浦 健治  [E_本稼動_15472] 軽減税率対応
  *  2019/09/06    1.170 SCSK 渡邊 直樹  [E_本稼動_15472] 軽減税率対応 追加対応
- *  2019/09/19    1.180 SCSK 郭 有司    [E_本稼動_15472] 軽減税率対応 再々対応
  *
  *****************************************************************************************/
 --
@@ -1639,23 +1638,11 @@ AS
 -- Modify 2009.12.02 Ver1.8 End
             AND    rcta.customer_trx_id = rlli.customer_trx_id
             AND    rlli.line_type = cv_line_type_line
--- 2019/09/19 Ver1.180 ADD Start
-            AND    rlli.customer_trx_line_id = (  SELECT MIN(rctla.customer_trx_line_id) customer_trx_line_id
-                                                  FROM   ra_customer_trx_lines  rctla
-                                                  WHERE  rctla.customer_trx_id           = rcta.customer_trx_id
-                                                  AND    rctla.line_type                 = cv_line_type_line
-                                                  AND    rctla.interface_line_attribute7 = rlli.interface_line_attribute7  )
--- 2019/09/19 Ver1.180 ADD End
             AND    rlli.interface_line_attribute7 = xxeh.sales_exp_header_id  -- 販売実績ヘッダ内部ID
             AND    xxeh.sales_exp_header_id = xxel.sales_exp_header_id
--- 2019/09/19 Ver1.180 ADD Start
-            AND    xxel.goods_prod_cls IS NOT NULL
--- 2019/09/19 Ver1.180 ADD End
 -- Add 2010.10.19 Ver1.100 Start
--- 2019/09/19 Ver1.180 DEL Start
---            AND   ((rlli.interface_line_attribute8 IS NULL)
---               OR  (rlli.interface_line_attribute8 = xxel.goods_prod_cls))    -- 品目区分
--- 2019/09/19 Ver1.180 DEL End
+            AND   ((rlli.interface_line_attribute8 IS NULL)
+               OR  (rlli.interface_line_attribute8 = xxel.goods_prod_cls))    -- 品目区分
 -- Add 2010.10.19 Ver1.100 End
             AND    xxeh.order_connection_number = xedh.order_connection_number(+)
             AND    xxel.item_code = mtib.segment1(+)
@@ -2101,22 +2088,10 @@ AS
             AND    hzca.cust_account_id = hzsa.cust_account_id
             AND    rcta.customer_trx_id = rlli.customer_trx_id
             AND    rlli.line_type = cv_line_type_line
--- 2019/09/19 Ver1.180 ADD Start
-            AND    rlli.customer_trx_line_id = (  SELECT MIN(rctla.customer_trx_line_id) customer_trx_line_id
-                                                  FROM   ra_customer_trx_lines  rctla
-                                                  WHERE  rctla.customer_trx_id           = rcta.customer_trx_id
-                                                  AND    rctla.line_type                 = cv_line_type_line
-                                                  AND    rctla.interface_line_attribute7 = rlli.interface_line_attribute7  )
--- 2019/09/19 Ver1.180 ADD End
             AND    rlli.interface_line_attribute7 = xxeh.sales_exp_header_id  -- 販売実績ヘッダ内部ID
             AND    xxeh.sales_exp_header_id = xxel.sales_exp_header_id
--- 2019/09/19 Ver1.180 ADD Start
-            AND    xxel.goods_prod_cls IS NOT NULL
--- 2019/09/19 Ver1.180 ADD End
--- 2019/09/19 Ver1.180 DEL Start
---            AND   ((rlli.interface_line_attribute8 IS NULL)
---               OR  (rlli.interface_line_attribute8 = xxel.goods_prod_cls))    -- 品目区分
--- 2019/09/19 Ver1.180 DEL End
+            AND   ((rlli.interface_line_attribute8 IS NULL)
+               OR  (rlli.interface_line_attribute8 = xxel.goods_prod_cls))    -- 品目区分
             AND    xxeh.order_connection_number = xedh.order_connection_number(+)
             AND    xxel.item_code = mtib.segment1(+)
             AND    mtib.organization_id(+) = gt_mtl_organization_id  -- 品目マスタ組織ID
