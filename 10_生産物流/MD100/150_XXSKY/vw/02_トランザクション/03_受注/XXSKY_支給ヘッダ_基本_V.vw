@@ -81,6 +81,9 @@ CREATE OR REPLACE VIEW APPS.XXSKY_支給ヘッダ_基本_V
 ,出荷日_予実
 ,着荷日
 ,着荷日_予実
+-- 2019/09/04 E_本稼動_15601 H.Sasaki Added START
+,有償支給年月_返品
+-- 2019/09/04 E_本稼動_15601 H.Sasaki Added END
 ,重量容積区分
 ,重量容積区分名
 ,実績計上済区分
@@ -224,6 +227,9 @@ SELECT
        ,XOHA.arrival_date                --着荷日
        ,NVL( XOHA.arrival_date, XOHA.schedule_arrival_date )                      --NVL( 着荷日, 着荷予定日 )
                                          --着荷日_予実
+-- 2019/09/04 E_本稼動_15601 H.Sasaki Added START
+      , TO_CHAR( xoha.sikyu_return_date, 'YYYY/MM' )                              -- 有償支給年月(返品)
+-- 2019/09/04 E_本稼動_15601 H.Sasaki Added END
        ,XOHA.weight_capacity_class       --重量容積区分
        ,FLV14.meaning                    --重量容積区分名
        ,XOHA.actual_confirm_class        --実績計上済区分
@@ -634,6 +640,10 @@ COMMENT ON COLUMN APPS.XXSKY_支給ヘッダ_基本_V.着荷日 IS '着荷日'
 /
 COMMENT ON COLUMN APPS.XXSKY_支給ヘッダ_基本_V.着荷日_予実 IS '着荷日_予実'
 /
+-- 2019/09/04 E_本稼動_15601 H.Sasaki Added START
+COMMENT ON COLUMN APPS.XXSKY_支給ヘッダ_基本_V.有償支給年月_返品 IS '有償支給年月_返品'
+/
+-- 2019/09/04 E_本稼動_15601 H.Sasaki Added END
 COMMENT ON COLUMN APPS.XXSKY_支給ヘッダ_基本_V.重量容積区分 IS '重量容積区分'
 /
 COMMENT ON COLUMN APPS.XXSKY_支給ヘッダ_基本_V.重量容積区分名 IS '重量容積区分名'
