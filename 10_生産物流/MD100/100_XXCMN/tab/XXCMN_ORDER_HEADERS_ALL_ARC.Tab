@@ -101,6 +101,9 @@ CREATE TABLE XXCMN.XXCMN_ORDER_HEADERS_ALL_ARC (
     ,archive_request_id             NUMBER(15)
     ,purge_date                     DATE
     ,purge_request_id               NUMBER(15)
+--  2019/09/04 E_本稼動_15601 H.Sasaki Added START
+    ,sikyu_return_date              DATE
+--  2019/09/04 E_本稼動_15601 H.Sasaki Added END
   ,CONSTRAINT xxcmn_order_headers_all_arc_pk PRIMARY KEY (order_header_id)
    USING INDEX PCTFREE 10 INITRANS 2 MAXTRANS 255 COMPUTE STATISTICS 
    STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
@@ -317,3 +320,7 @@ COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.purge_date                  
 /
 COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.purge_request_id             IS 'パージ要求ID'
 /
+--  2019/09/04 E_本稼動_15601 H.Sasaki Added START
+COMMENT ON COLUMN xxcmn.xxcmn_order_headers_all_arc.sikyu_return_date            IS '有償支給年月(返品)'
+/
+--  2019/09/04 E_本稼動_15601 H.Sasaki Added END
