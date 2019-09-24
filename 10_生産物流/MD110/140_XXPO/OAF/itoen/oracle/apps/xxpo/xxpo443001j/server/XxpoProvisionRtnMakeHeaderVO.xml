@@ -48,6 +48,10 @@ SELECT xoha.order_header_id                order_header_id           -- 受注ヘッ
       ,NULL                                freight_carrier_name      -- 運送業者名称(略称)
       ,NVL(xoha.shipped_date, xoha.schedule_ship_date)
                                            shipped_date              -- 出庫日
+-- 2019-09-05 Y.Shoji Add Start
+      ,TO_CHAR(xoha.sikyu_return_date ,'YYYY/MM')
+                                           sikyu_return_date         -- 有償支給年月(返品)
+-- 2019-09-05 Y.Shoji Add Start
       ,NVL(xoha.arrival_date, xoha.schedule_arrival_date)
                                            arrival_date              -- 入庫日
       ,xoha.arrival_time_from              arrival_time_from         -- 着荷時間fromコード
@@ -113,6 +117,10 @@ SELECT xoha.order_header_id                order_header_id           -- 受注ヘッ
                                            db_freight_carrier_code   -- 運送業者コード
       ,NVL(xoha.shipped_date, xoha.schedule_ship_date)
                                            db_shipped_date           -- 出庫日
+-- 2019-09-05 Y.Shoji Add Start
+      ,TO_CHAR(xoha.sikyu_return_date ,'YYYY/MM')
+                                           db_sikyu_return_date      -- 有償支給年月(返品)
+-- 2019-09-05 Y.Shoji Add Start
       ,NVL(xoha.arrival_date, xoha.schedule_arrival_date)
                                            db_arrival_date           -- 入庫日
       ,xoha.arrival_time_from              db_arrival_time_from      -- 着荷時間fromコード
@@ -649,6 +657,19 @@ AND    EXISTS ( SELECT 1
       AliasName="SHIPPED_DATE"
       Expression="SHIPPED_DATE"
       SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SikyuReturnDate"
+      IsPersistent="false"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SIKYU_RETURN_DATE"
+      Expression="SIKYU_RETURN_DATE"
+      SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="7" />
       </DesignTime>
@@ -1204,6 +1225,19 @@ AND    EXISTS ( SELECT 1
       AliasName="DB_SHIPPED_DATE"
       Expression="DB_SHIPPED_DATE"
       SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbSikyuReturnDate"
+      IsPersistent="false"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DB_SIKYU_RETURN_DATE"
+      Expression="DB_SIKYU_RETURN_DATE"
+      SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="7" />
       </DesignTime>
