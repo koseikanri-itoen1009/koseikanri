@@ -1,16 +1,16 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.14
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-10 1.0  伊藤ひとみ     新規作成
-* 2008-06-09 1.1  二瓶大輔　     変更要求#42対応
-* 2008-06-30 1.2  二瓶大輔　     内部変更要求#146,147対応
+* 2008-06-09 1.1  二瓶大輔       変更要求#42対応
+* 2008-06-30 1.2  二瓶大輔       内部変更要求#146,147対応
 * 2008-07-11 1.3  伊藤ひとみ     内部変更要求#153対応(メッセージ追加)
-* 2008-07-11 1.3  二瓶大輔　     ST#421対応(メッセージ追加)
+* 2008-07-11 1.3  二瓶大輔       ST#421対応(メッセージ追加)
 * 2008-07-30 1.4  伊藤ひとみ     内部変更要求#176(メッセージ追加)
 * 2008-10-23 1.5  伊藤ひとみ     T_TE08_BPO_340 指摘5
 * 2009-02-06 1.6  伊藤ひとみ     本番障害#1147対応
@@ -22,6 +22,7 @@
 * 2017-06-30 1.12 桐生  和幸     E_本稼動_14267対応
 * 2017-08-10 1.13 山下  翔太     E_本稼動_14243対応
 * 2017-12-22 1.14 佐々木宏之     E_本稼動_14243対応(メッセージ追加)
+* 2019-09-05 1.15 小路  恭弘     E_本稼動_15601対応(メッセージ追加)
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -286,6 +287,10 @@ public class XxpoConstants
   /** メッセージ：APP-XXPO-40047 訂正数量NULL更新メッセージ */
   public static final String XXPO40047   = "APP-XXPO-40047";
 // V1.14 Added END
+// V1.15 Added START
+  /** メッセージ：APP-XXPO-40049 年月エラーメッセージ */
+  public static final String XXPO40049   = "APP-XXPO-40049";
+// V1.15 Added END
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
   /** トークン：DATA */
@@ -664,6 +669,10 @@ public class XxpoConstants
   public static final String COMMA = ",";
   /** スペース */
   public static final String SPACE = " ";
+// V1.15 Added START
+  /** スラッシュ */
+  public static final String SLASH = "/";
+// V1.15 Added END
   /** 起動タイプ：11「支給指示：伊藤園用」 */
   public static final String EXE_TYPE_11  = "11";
   /** 起動タイプ：12「支給指示：パッカー・外注工場用」 */
@@ -706,29 +715,29 @@ public class XxpoConstants
   public static final String CTPTY_INV_SHIP_RSN = "XXPO_CTPTY_INV_SHIP_RSN";
   /** プロファイル：「代表価格表ID」 */
   public static final String REP_PRICE_LIST_ID = "XXPO_PRICE_LIST_ID";
-  /** レコードタイプ : 「20 : 出庫」　 */
+  /** レコードタイプ : 「20 : 出庫」   */
   public static final String REC_TYPE_20 = "20";
-  /** レコードタイプ : 「30 : 入庫」　 */
+  /** レコードタイプ : 「30 : 入庫」   */
   public static final String REC_TYPE_30 = "30";
-  /** 受領タイプ : 「5 : 一部実績有」　 */
+  /** 受領タイプ : 「5 : 一部実績有」   */
   public static final String RCV_TYPE_5 = "5";
-  /** 受領タイプ : 「4 : 配車済・引当有」　 */
+  /** 受領タイプ : 「4 : 配車済・引当有」   */
   public static final String RCV_TYPE_4 = "4";
-  /** 受領タイプ : 「3 : 配車済・未引当」　 */
+  /** 受領タイプ : 「3 : 配車済・未引当」   */
   public static final String RCV_TYPE_3 = "3";
-  /** 受領タイプ : 「2 : 引当有」　 */
+  /** 受領タイプ : 「2 : 引当有」   */
   public static final String RCV_TYPE_2 = "2";
-  /** 受領タイプ : 「1 : 発注済」　 */
+  /** 受領タイプ : 「1 : 発注済」   */
   public static final String RCV_TYPE_1 = "1";
-  /** 受領タイプ : 「0 : 未発注」　 */
+  /** 受領タイプ : 「0 : 未発注」   */
   public static final String RCV_TYPE_0 = "0";
-  /** 重量容積区分 : 「1 : 重量」　 */
+  /** 重量容積区分 : 「1 : 重量」   */
   public static final String WGHT_CAPA_CLASS_WEIGHT   = "1";
-  /** 重量容積区分 : 「2 : 容積」　 */
+  /** 重量容積区分 : 「2 : 容積」   */
   public static final String WGHT_CAPA_CLASS_CAPACITY = "2";
-  /** シーケンス : 「受注ヘッダアドオンID用」　 */
+  /** シーケンス : 「受注ヘッダアドオンID用」   */
   public static final String XXWSH_ORDER_HEADERS_ALL_S1 = "xxwsh_order_headers_all_s1";
-  /** シーケンス : 「受注明細アドオンID用」　 */
+  /** シーケンス : 「受注明細アドオンID用」   */
   public static final String XXWSH_ORDER_LINES_ALL_S1 = "xxwsh_order_lines_all_s1";
   /** 品目区分：1 原料 */
   public static final String ITEM_CLASS_MTL    = "1";
