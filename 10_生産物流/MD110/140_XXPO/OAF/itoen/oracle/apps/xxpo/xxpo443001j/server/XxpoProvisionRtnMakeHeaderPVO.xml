@@ -166,6 +166,17 @@
       SQLType="BIT" >
    </ViewAttribute>
    <ViewAttribute
+      Name="SikyuReturnDateReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      DefaultValue="False"
+      Precision="1"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
       Name="ArrivalDateReadOnly"
       IsQueriable="false"
       IsPersistent="false"
