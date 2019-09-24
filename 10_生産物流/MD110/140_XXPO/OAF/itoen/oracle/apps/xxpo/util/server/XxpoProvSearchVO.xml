@@ -242,6 +242,14 @@
       AliasName="VIEW_ATTR"
       SQLType="VARCHAR" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="SikyuReturnDate"
+      IsPersistent="false"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="RowKey" />
    </AttrArray>
