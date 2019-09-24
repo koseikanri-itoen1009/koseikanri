@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSumResultVOImpl
 * 概要説明   : 支給返品要約ビューオブジェクト
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-03-31 1.0  熊本 和郎    新規作成
-* 2009-03-13 1.1  飯田 甫      本番#1300対応
+* 2008-03-31 1.0  熊本 和郎     新規作成
+* 2009-03-13 1.1  飯田 甫       本番#1300対応
+* 2019-09-05 1.2  SCSK小路      E_本稼動_15601対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.server;
@@ -68,6 +69,9 @@ public class XxpoProvisionRtnSumResultVOImpl extends OAViewObjectImpl
 // 2009-03-13 H.Iida ADD START 本番障害#1300
     String fixClass = (String)shParams.get("fixClass"); // 金額確定
 // 2009-03-13 H.Iida ADD END
+// 2019-09-05 Y.Shoji ADD START
+    String sikyuReturnDate = (String)shParams.get("sikyuReturnDate"); // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
 
     // 起動タイプ(必須)
     XxcmnUtility.andAppend(whereClause);
@@ -210,6 +214,17 @@ public class XxpoProvisionRtnSumResultVOImpl extends OAViewObjectImpl
       parameters.add(fixClass);      
     }
 // 2009-03-13 H.Iida ADD END
+// 2019-09-05 Y.Shoji ADD START
+    // 有償支給年月(返品)が入力されていた場合
+    if (!XxcmnUtility.isBlankOrNull(sikyuReturnDate))
+    {
+      XxcmnUtility.andAppend(whereClause);
+      // Where句生成
+      whereClause.append("sikyu_return_date = :" + bindCount++);
+      //検索値をセット
+      parameters.add(sikyuReturnDate);      
+    }
+// 2019-09-05 Y.Shoji ADD END
 
     // 検索条件をVOにセット
     setWhereClause(whereClause.toString());
