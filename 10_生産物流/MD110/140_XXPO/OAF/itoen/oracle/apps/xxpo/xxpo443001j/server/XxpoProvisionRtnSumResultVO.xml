@@ -48,6 +48,10 @@ SELECT xoha.order_header_id             order_header_id         --受注ヘッダアド
                     'RequestNo')        req_no_switcher         --依頼Noリンク可不可 
       ,xvv.spare2                       list_header_id_vendor   --取引先価格表ID
       ,xlvvs.lookup_code                exe_type                --起動タイプ
+-- 2019-09-05 Y.Shoji Add Start
+      ,TO_CHAR(xoha.sikyu_return_date ,'YYYY/MM')
+                                        sikyu_return_date       --有償支給年月(返品)
+-- 2019-09-05 Y.Shoji Add End
 FROM   xxwsh_order_headers_all          xoha                    --受注ヘッダアドオン
       ,xxcmn_lookup_values_v            xlvv                    --クイックコード情報view(ステータス用)
       ,xxwsh_oe_transaction_types2_v    xottv                   --受注タイプ情報view2
@@ -440,6 +444,19 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from
       AliasName="ExeType"
       Expression="ExeType"
       SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SikyuReturnDate"
+      IsPersistent="false"
+      Precision="7"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SIKYU_RETURN_DATE"
+      Expression="SIKYU_RETURN_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="OrderHeaderId" />
