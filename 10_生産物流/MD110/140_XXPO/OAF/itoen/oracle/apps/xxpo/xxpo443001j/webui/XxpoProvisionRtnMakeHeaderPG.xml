@@ -1,6 +1,6 @@
 <?xml version = '1.0' encoding = 'UTF-8'?>
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
-<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <content>
       <oa:pageLayout id="PageLayoutRN" controllerClass="itoen.oracle.apps.xxpo.xxpo443001j.webui.XxpoProvisionRtnMakeHeaderCO" amDefName="itoen.oracle.apps.xxpo.xxpo443001j.server.XxpoProvisionRtnSummaryAM" windowTitle="(有償支給)支給返品作成" title="(有償支給)支給返品作成：ヘッダ">
          <ui:corporateBranding>
@@ -308,9 +308,19 @@
                               <oa:messageStyledText id="ShippedDatePrompt" required="uiOnly" prompt="出庫日"/>
                            </ui:contents>
                         </oa:cellFormat>
-                        <oa:cellFormat id="Cell1002" columnSpan="7">
+                        <oa:cellFormat id="Cell1002" columnSpan="1">
                            <ui:contents>
                               <oa:messageTextInput id="ShippedDate" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="ShippedDate" shortDesc="出庫日" styleClass="LegendText" columns="12" dataType="DATE" maximumLength="10" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ShippedDateReadOnly}"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1003" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="SikyuReturnDatePrompt" required="uiOnly" prompt="有償支給年月(返品)"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell1004" columnSpan="1">
+                           <ui:contents>
+                              <oa:messageTextInput id="SikyuReturnDate" viewName="XxpoProvisionRtnMakeHeaderVO1" viewAttr="SikyuReturnDate" shortDesc="有償支給年月(返品)" styleClass="LegendText" columns="9" readOnly="${oa.XxpoProvisionRtnMakeHeaderPVO1.ShippingInstructionsReadOnly}" maximumLength="7" prompt="" required="no"/>
                            </ui:contents>
                         </oa:cellFormat>
                      </ui:contents>
