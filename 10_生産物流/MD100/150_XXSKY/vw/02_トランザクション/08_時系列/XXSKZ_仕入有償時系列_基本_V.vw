@@ -3,7 +3,7 @@
  * View  Name      : XXSKZ_仕入有償時系列_基本_V
  * Description     : XXSKZ_仕入有償時系列_基本_V
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------
@@ -12,6 +12,7 @@
  *  2012/11/26    1.0   SCSK M.Nagai    初回作成
  *  2013/06/18    1.1   SCSK D.Sugahara E_本稼働_10839消費税対応
  *  2013/11/05    1.2   SCSK D.Sugahara E_本稼動_11245対応
+ *  2019/06/15    1.3   SCSK Y.Soji     E_本稼動_15601対応
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKZ_仕入有償時系列_基本_V
 (
@@ -334,7 +335,13 @@ SELECT  SMRP.year                         year                   --年度
                       -- 発注受入データ
                       --  ※帳票『仕入実績表』の消費税額と一致させる為、保留在庫トランザクションを参照
                       ----------------------------------------------
-                      SELECT  ITP.trans_date                    tran_date       --対象日(取引日)
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                      SELECT  ITP.trans_date                    tran_date       --対象日(取引日)
+                      SELECT  /*+
+                                 PUSH_PRED(xitrv)
+                               */
+                              ITP.trans_date                    tran_date       --対象日(取引日)
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                              ,PHA.attribute10                   dept_code       --部署コード
                              ,PHA.vendor_id                     vendor_id       --取引先ID
                              ,IIMB.item_no                      item_code       --品目
@@ -342,7 +349,10 @@ SELECT  SMRP.year                         year                   --年度
                              ,ITP.trans_qty                     rcv_qty         --仕入数量
                              ,ROUND( PLA.unit_price * ITP.trans_qty )
                                                                 rcv_price       --仕入金額( 実際単価【※発注明細のものを使用】 * 数量 )
-                             ,ROUND( ROUND( PLA.unit_price * ITP.trans_qty ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                             ,ROUND( ROUND( PLA.unit_price * ITP.trans_qty ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
+                             ,ROUND( ROUND( PLA.unit_price * ITP.trans_qty ) * ( TO_NUMBER( xitrv.tax ) * 0.01 ) )
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                                                                 rcv_cn_tax      --仕入消費税( 仕入金額 * (消費税率*0.01) )
                              ,0                                 pay_qty         --有償数量
                              ,0                                 inv_price       --有償在庫金額
@@ -354,7 +364,10 @@ SELECT  SMRP.year                         year                   --年度
                              ,po_lines_all                      PLA             --発注明細
                              ,ic_item_mst_b                     IIMB            --OPM品目マスタ(品目コード取得用)
                              ,ic_lots_mst                       ILTM            --ロット情報取得用
-                             ,fnd_lookup_values                 FLV01           --消費税率取得用
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                             ,fnd_lookup_values                 FLV01           --消費税率取得用
+                             ,xxcmm_item_tax_rate_v             xitrv           --消費税率VIEW
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                        WHERE
                          --保留在庫トランザクションデータ取得
                               ITP.doc_type = 'PORC'                             --購買関連
@@ -374,10 +387,15 @@ SELECT  SMRP.year                         year                   --年度
                          AND  ITP.item_id = ILTM.item_id(+)
                          AND  ITP.lot_id = ILTM.lot_id(+)
                          --消費税率取得
-                         AND  FLV01.language(+) = 'JA'
-                         AND  FLV01.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
-                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITP.trans_date
-                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITP.trans_date
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                         AND  FLV01.language(+) = 'JA'
+--                         AND  FLV01.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
+--                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITP.trans_date
+--                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITP.trans_date
+                         AND  ITP.item_id = xitrv.item_id
+                         AND  xitrv.start_date_active < ITP.trans_date
+                         AND  NVL( xitrv.end_date_active ,ITP.trans_date ) >= ITP.trans_date
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                       -- [ 発注受入データ END ] --
                     UNION ALL
                       ----------------------------------------------
@@ -385,8 +403,17 @@ SELECT  SMRP.year                         year                   --年度
                       --  ※帳票『仕入実績表』の消費税額と一致させる為、完了トランザクションを参照
                       --  ⇒ 数値・金額はマイナス値となる
                       ----------------------------------------------
-                      SELECT  ITC.trans_date                    tran_date       --対象日(取引日)
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                      SELECT  ITC.trans_date                    tran_date       --対象日(取引日)
+                      SELECT  /*+
+                                 PUSH_PRED(xitrv)
+                               */
+                              ITC.trans_date                    tran_date       --対象日(取引日)
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                              ,XRRT.department_code              dept_code       --部署コード
+-- 2019/06/15 Y.Shoji Del Start E_本稼動_15601
+--                             ,XRRT.department_code              dept_code       --部署コード
+-- 2019/06/15 Y.Shoji Del End E_本稼動_15601
                              ,XRRT.vendor_id                    vendor_id       --取引先ID
                              ,XRRT.item_code                    item_code       --品目
                              ,ILTM.attribute9                   rcv_class       --仕入形態
@@ -394,7 +421,10 @@ SELECT  SMRP.year                         year                   --年度
                              ,ITC.trans_qty                     rcv_qty         --仕入数量
                              ,ROUND( XRRT.unit_price * ITC.trans_qty )
                                                                 rcv_price       --仕入金額( 実際単価【※受入アドオンのものを使用】 * 数量 )
-                             ,ROUND( ROUND( XRRT.unit_price * ITC.trans_qty ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                             ,ROUND( ROUND( XRRT.unit_price * ITC.trans_qty ) * ( TO_NUMBER( FLV01.lookup_code ) * 0.01 ) )
+                             ,ROUND( ROUND( XRRT.unit_price * ITC.trans_qty ) * ( TO_NUMBER( xitrv.tax ) * 0.01 ) )
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                                                                 rcv_cn_tax      --仕入消費税( 仕入金額 * (消費税率*0.01) )
                              ,0                                 pay_qty         --有償数量
                              ,0                                 inv_price       --有償在庫金額
@@ -424,7 +454,10 @@ SELECT  SMRP.year                         year                   --年度
                                )                       XRRT     -- 返品元発注データ情報
 -- 2013/06/18 D.Sugahara Mod End E_本稼動_10839
                              ,ic_lots_mst                       ILTM            --ロット情報取得用
-                             ,fnd_lookup_values                 FLV01           --消費税率取得用
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                             ,fnd_lookup_values                 FLV01           --消費税率取得用
+                             ,xxcmm_item_tax_rate_v             xitrv           --消費税率VIEW
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                        WHERE
                          --完了トランザクションデータ取得
                               ITC.doc_type = 'ADJI'                             --在庫調整
@@ -443,21 +476,32 @@ SELECT  SMRP.year                         year                   --年度
                          AND  ITC.item_id = ILTM.item_id(+)
                          AND  ITC.lot_id = ILTM.lot_id(+)
                          --消費税率取得
-                         AND  FLV01.language(+) = 'JA'
-                         AND  FLV01.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
--- 2013/06/18 D.Sugahara Mod Start E_本稼動_10839
---  発注あり返品の場合は返品元発注の納入日を消費税率適用基準日とする。
---                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITC.trans_date
---                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITC.trans_date
-                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= XRRT.txns_date
-                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= XRRT.txns_date
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                         AND  FLV01.language(+) = 'JA'
+--                         AND  FLV01.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
+---- 2013/06/18 D.Sugahara Mod Start E_本稼動_10839
+----  発注あり返品の場合は返品元発注の納入日を消費税率適用基準日とする。
+----                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITC.trans_date
+----                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITC.trans_date
+--                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= XRRT.txns_date
+--                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= XRRT.txns_date
 -- 2013/06/18 D.Sugahara Mod End E_本稼動_10839
+                         AND  ITC.item_id = xitrv.item_id
+                         AND  xitrv.start_date_active < XRRT.txns_date
+                         AND  NVL( xitrv.end_date_active ,XRRT.txns_date ) >= XRRT.txns_date
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                       -- [ 発注無し返品データ END ] --
                     UNION ALL
                       ----------------------------------------------
                       -- 有償支給データ
                       ----------------------------------------------
-                      SELECT  PAY.tran_date                     tran_date       --対象日(着荷日)
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                      SELECT  PAY.tran_date                     tran_date       --対象日(着荷日)
+                      SELECT  /*+
+                                 PUSH_PRED(xitrv)
+                               */
+                              PAY.tran_date                     tran_date       --対象日(着荷日)
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                              ,PAY.dept_code                     dept_code       --部署コード
                              ,PAY.vendor_id                     vendor_id       --取引先ID
                              ,PAY.item_code                     item_code       --品目
@@ -477,7 +521,10 @@ SELECT  SMRP.year                         year                   --年度
                              ,ROUND( PAY.unit_price * PAY.quantity )
                                                                 pay_price       --有償金額( 実際単価 * 出荷数量 )
                               --有償消費税
-                             ,ROUND( ROUND( PAY.unit_price * PAY.quantity ) * ( TO_NUMBER( FLV02.lookup_code ) * 0.01 ) )
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                             ,ROUND( ROUND( PAY.unit_price * PAY.quantity ) * ( TO_NUMBER( FLV02.lookup_code ) * 0.01 ) )
+                             ,ROUND( ROUND( PAY.unit_price * PAY.quantity ) * ( TO_NUMBER( xitrv.tax ) * 0.01 ) )
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                                                                 pay_cn_tax      --有償消費税( 有償金額 * (消費税率*0.01) )
                         FROM  (  --標準単価マスタとの外部結合の為、副問い合わせとする
 -- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
@@ -518,7 +565,10 @@ SELECT  SMRP.year                         year                   --年度
                              ,ic_item_mst_b                     IIM             --OPM品目マスタ
                              ,ic_lots_mst                       ILM             --ロット情報取得用
                              ,xxpo_price_headers                XPH             --仕入/標準単価マスタ
-                             ,fnd_lookup_values                 FLV02           --消費税率取得用
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                             ,fnd_lookup_values                 FLV02           --消費税率取得用
+                             ,xxcmm_item_tax_rate_v             xitrv           --消費税率VIEW
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                        WHERE
                          --OPM品目･ロットマスタとの結合
                               PAY.item_id = IIM.item_id
@@ -530,10 +580,15 @@ SELECT  SMRP.year                         year                   --年度
                          AND  PAY.tran_date >= XPH.start_date_active(+)
                          AND  PAY.tran_date <= XPH.end_date_active(+)
                          --消費税率取得
-                         AND  FLV02.language(+) = 'JA'
-                         AND  FLV02.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
-                         AND  NVL( FLV02.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= PAY.tran_date
-                         AND  NVL( FLV02.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= PAY.tran_date
+-- 2019/06/15 Y.Shoji Mod Start E_本稼動_15601
+--                         AND  FLV02.language(+) = 'JA'
+--                         AND  FLV02.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
+--                         AND  NVL( FLV02.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= PAY.tran_date
+--                         AND  NVL( FLV02.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= PAY.tran_date
+                         AND  PAY.item_id = xitrv.item_id
+                         AND  xitrv.start_date_active < PAY.tran_date
+                         AND  NVL( xitrv.end_date_active ,PAY.tran_date ) >= PAY.tran_date
+-- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                       -- [ 有償支給データ END ] --
                    )                RVPY
                   ,ic_cldr_dtl    ICD    --在庫カレンダ
