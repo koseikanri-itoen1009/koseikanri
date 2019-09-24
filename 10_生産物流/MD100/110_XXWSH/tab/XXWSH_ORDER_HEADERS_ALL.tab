@@ -1,3 +1,18 @@
+/************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name      : xxwsh_order_headers_all
+ * Description     : 受注ヘッダアドオン
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *                1.0                    新規作成
+ *  2019/04/17    1.1   Y.Shoji          E_本稼動_15601対応
+ *
+ ************************************************************************/
 CREATE TABLE xxwsh.xxwsh_order_headers_all
 (
   order_header_id               NUMBER          NOT NULL,
@@ -89,6 +104,9 @@ CREATE TABLE xxwsh.xxwsh_order_headers_all
   registered_sequence           NUMBER,
   tightening_program_id         NUMBER(15,0),
   corrected_tighten_class       VARCHAR2(1),
+-- Ver1.1 Add Start
+  sikyu_return_date             DATE,
+-- Ver1.1 Add End
   created_by                    NUMBER(15,0)  NOT NULL,
   creation_date                 DATE          NOT NULL,
   last_updated_by               NUMBER(15,0)  NOT NULL,
@@ -191,6 +209,9 @@ CREATE TABLE xxwsh.xxwsh_order_headers_all
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.registered_sequence          IS '登録順序';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.tightening_program_id        IS '締めコンカレントID';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.corrected_tighten_class      IS '締め後修正区分';
+-- Ver1.1 Add Start
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.sikyu_return_date            IS '有償支給年月(返品)';
+-- Ver1.1 Add End
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.created_by                   IS '作成者';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.creation_date                IS '作成日';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.last_updated_by              IS '最終更新者';
