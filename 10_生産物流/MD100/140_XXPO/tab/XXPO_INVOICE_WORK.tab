@@ -1,0 +1,60 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : xxpo.xxpo_invoice_work
+ * Description : 有償支給相殺ワーク
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2019/09/03    1.0   N.Abe            [E_本稼動_15601]新規作成
+ *
+ ****************************************************************************************/
+
+CREATE TABLE XXPO.XXPO_INVOICE_WORK (
+    REQUEST_ID        NUMBER(15,0) NOT NULL ENABLE,
+    VENDOR_CODE       VARCHAR2(4),
+    VENDOR_NAME       VARCHAR2(60),
+    ZIP               VARCHAR2(8),
+    ADDRESS           VARCHAR2(60),
+    ARRIVAL_DATE      DATE,
+    SLIP_NUM          VARCHAR2(13),
+    LOT_NO            VARCHAR2(10),
+    DEPT_NAME         VARCHAR2(60),
+    ITEM_CLASS        VARCHAR2(1),
+    ITEM_CLASS_NAME   VARCHAR2(240),
+    ITEM_CODE         VARCHAR2(7),
+    ITEM_NAME         VARCHAR2(20),
+    QUANTITY          NUMBER(12,3),
+    UNIT_PRICE        NUMBER(9,2),
+    AMOUNT            NUMBER(13,0),
+    TAX               NUMBER(12,0),
+    TAX_TYPE          VARCHAR2(240),
+    TAX_INCLUDE       NUMBER(14,0),
+    YUSYO_YEAR_MONTH  VARCHAR2(7)
+);
+--
+COMMENT ON TABLE XXPO.XXPO_INVOICE_WORK IS '有償支給相殺ワーク';
+--
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.REQUEST_ID       IS '要求ID';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.VENDOR_CODE      IS '取引先コード';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.VENDOR_NAME      IS '取引先名';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.ZIP              IS '郵便番号';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.ADDRESS          IS '住所';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.ARRIVAL_DATE     IS '日付';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.SLIP_NUM         IS '伝票No';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.LOT_NO           IS 'ロットNo';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.DEPT_NAME        IS '請求管理部署';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.ITEM_CLASS       IS '品目区分';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.ITEM_CLASS_NAME  IS '品目区分名称';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.ITEM_CODE        IS '品目コード';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.ITEM_NAME        IS '品目名称';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.QUANTITY         IS '数量';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.UNIT_PRICE       IS '単価';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.AMOUNT           IS '税抜金額';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.TAX              IS '消費税額';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.TAX_TYPE         IS '税区分';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.TAX_INCLUDE      IS '税込金額';
+COMMENT ON COLUMN XXPO.XXPO_INVOICE_WORK.YUSYO_YEAR_MONTH IS '有償年月';
