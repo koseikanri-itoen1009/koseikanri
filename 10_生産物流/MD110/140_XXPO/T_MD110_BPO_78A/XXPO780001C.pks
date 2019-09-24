@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    計算書                                (T_MD070_BPO_78A)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/12/05    1.5  Tsuyoki Yoshimoto 本番障害#446
  *  2008/12/25    1.6  Takao Ohashi      本番障害#848,850
  *  2009/03/04    1.7  Akiyoshi Shiina   本番障害#1266対応
+ *  2019/09/03    1.8  N.Abe             E_本稼動_15601（生産_軽減税率対応）
  *
  *****************************************************************************************/
 --
@@ -50,6 +51,12 @@ AS
      ,iv_fiscal_ym          IN     VARCHAR2         --   01 : 〆切年月
      ,iv_dept_code          IN     VARCHAR2         --   02 : 請求管理部署
      ,iv_vendor_code        IN     VARCHAR2         --   03 : 取引先
+-- 2019/09/03 Ver1.8 Add Start
+     ,iv_item_class         IN     VARCHAR2         --   04 : 品目区分
+     ,iv_out_file_type      IN     VARCHAR2         --   05 : 出力ファイル形式
+     ,iv_out_rep_type       IN     VARCHAR2         --   06 : 出力帳票形式
+     ,iv_browser            IN     VARCHAR2         --   07 : 閲覧者
+-- 2019/09/03 Ver1.8 Add End
     ) ;
 END xxpo780001c;
 /
