@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2009/05/29    1.25  Marushita        本番障害1511対応
  *  2009/10/02    1.26  Marushita        本番障害1648対応
  *  2013/07/03    1.27  S.Niki           E_本稼動_10839対応（消費税増税対応）
+ *  2019/05/14    1.28  N.Abe            E_本稼動_15601対応（生産_軽減税率対応）
  *
  *****************************************************************************************/
 --
@@ -769,7 +770,10 @@ AS
 -- v1.27 DEL END
 --
     lv_select_main_start :=
-       ' SELECT'
+-- 2019/05/14 Ver1.28 Mod Start
+--       ' SELECT'
+       ' SELECT /*+ push_pred(xitrv) */'
+-- 2019/05/14 Ver1.28 Mod Endt
     || '  mst.group1_code AS group1_code' -- [集計1]コード
     || ' ,mst.group2_code AS group2_code' -- [集計2]コード
     || ' ,mst.group3_code AS group3_code' -- [集計3]コード
@@ -790,7 +794,10 @@ AS
     || ' ,SUM(mst.actual_price) AS actual_price' -- 実際金額
     || ' ,SUM(mst.stnd_price) AS stnd_price' -- 標準金額
     || ' ,SUM(mst.price) AS price' -- 有償金額
-    || ' ,SUM(mst.price * DECODE( NVL(mst.tax,0),0,0,(mst.tax/100) ) )'
+-- 2019/05/14 Ver1.28 Mod Start
+--    || ' ,SUM(mst.price * DECODE( NVL(mst.tax,0),0,0,(mst.tax/100) ) )'
+    || ' ,SUM(mst.price * DECODE( NVL( TO_NUMBER(xitrv.tax),0),0,0,( TO_NUMBER(xitrv.tax)/100) ) )'
+-- 2019/05/14 Ver1.28 Mod End
     || ' AS tax' -- 消費税率 
     || ' FROM ('
        ;
@@ -886,6 +893,9 @@ AS
 --    || ' ,TO_NUMBER(''' || lt_lkup_code    || ''') AS tax' 
     || ' ,TO_NUMBER(xlv2v.lookup_code) AS tax' -- 消費税率
 -- v1.27 MOD END
+-- 2019/05/14 Ver1.28 Add Start
+    || ' ,NVL(xoha.sikyu_return_date, xoha.arrival_date) AS std_date'
+-- 2019/05/14 Ver1.28 Add End
     ;
 -- 
  -- 共通SELECT group1 
@@ -1122,6 +1132,12 @@ AS
 -- 
     lv_select_main_end :=
        ' ) mst' 
+-- 2019/05/14 Ver1.28 Add Start
+    || ' ,xxcmm_item_tax_rate_v  xitrv ' -- 消費税率VIEW
+    || ' WHERE xitrv.item_no = mst.item_code' -- 品目コード
+    || ' AND xitrv.start_date_active <= mst.std_date' --適用開始日
+    || ' AND NVL(xitrv.end_date_active, mst.std_date) >= mst.std_date' --適用終了日
+-- 2019/05/14 Ver1.28 Add End
     || ' GROUP BY '
     || ' mst.group1_code' -- [集計1]コード
     || ' ,mst.group2_code' -- [集計2]コード
@@ -3833,7 +3849,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_1_hint
                          || lv_select_common
                          || lv_select_group1
@@ -3918,6 +3937,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -3935,7 +3957,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_2_hint
                          || lv_select_common
                          || lv_select_group1
@@ -4020,6 +4045,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4037,7 +4065,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group1
@@ -4122,6 +4153,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4139,7 +4173,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group1
@@ -4224,6 +4261,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4241,7 +4281,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group1
@@ -4326,6 +4369,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4343,7 +4389,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group1
@@ -4428,6 +4477,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4445,7 +4497,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group1
@@ -4530,6 +4585,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4543,7 +4601,10 @@ AS
       --受払区分          <> NULL
       ELSE
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group1
@@ -4628,6 +4689,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4652,7 +4716,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_1_hint
                          || lv_select_common
                          || lv_select_group2
@@ -4737,6 +4804,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4754,7 +4824,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod ENd
                          || lv_select_g1_po102_2_hint
                          || lv_select_common
                          || lv_select_group2
@@ -4839,6 +4912,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4856,7 +4932,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group2
@@ -4941,6 +5020,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -4958,7 +5040,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group2
@@ -5043,6 +5128,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5060,7 +5148,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group2
@@ -5145,6 +5236,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5162,7 +5256,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group2
@@ -5247,6 +5344,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5264,7 +5364,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group2
@@ -5349,6 +5452,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5362,7 +5468,10 @@ AS
       --受払区分          <> NULL
       ELSE
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group2
@@ -5447,6 +5556,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5471,7 +5583,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_1_hint
                          || lv_select_common
                          || lv_select_group3
@@ -5556,6 +5671,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5573,7 +5691,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_2_hint
                          || lv_select_common
                          || lv_select_group3
@@ -5658,6 +5779,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5675,7 +5799,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group3
@@ -5760,6 +5887,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5777,7 +5907,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group3
@@ -5862,6 +5995,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5879,7 +6015,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group3
@@ -5964,6 +6103,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -5981,7 +6123,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group3
@@ -6066,6 +6211,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6083,7 +6231,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group3
@@ -6168,6 +6319,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6181,7 +6335,10 @@ AS
       --受払区分          <> NULL
       ELSE
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group3
@@ -6266,6 +6423,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6290,7 +6450,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_1_hint
                          || lv_select_common
                          || lv_select_group4
@@ -6375,6 +6538,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6392,7 +6558,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_2_hint
                          || lv_select_common
                          || lv_select_group4
@@ -6477,6 +6646,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6494,7 +6666,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group4
@@ -6579,6 +6754,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6596,7 +6774,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group4
@@ -6681,6 +6862,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6698,7 +6882,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group4
@@ -6783,6 +6970,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6800,7 +6990,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group4
@@ -6885,6 +7078,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -6902,7 +7098,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group4
@@ -6987,6 +7186,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7000,7 +7202,10 @@ AS
       --受払区分          <> NULL
       ELSE
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group4
@@ -7085,6 +7290,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7109,7 +7317,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_1_hint
                          || lv_select_common
                          || lv_select_group5
@@ -7194,6 +7405,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7211,7 +7425,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_2_hint
                          || lv_select_common
                          || lv_select_group5
@@ -7296,6 +7513,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7313,7 +7533,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group5
@@ -7398,6 +7621,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7415,7 +7641,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group5
@@ -7500,6 +7729,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7517,7 +7749,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group5
@@ -7602,6 +7837,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7619,7 +7857,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group5
@@ -7704,6 +7945,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7721,7 +7965,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group5
@@ -7806,6 +8053,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7819,7 +8069,10 @@ AS
       --受払区分          <> NULL
       ELSE
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group5
@@ -7904,6 +8157,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -7928,7 +8184,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_1_hint
                          || lv_select_common
                          || lv_select_group6
@@ -8013,6 +8272,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8030,7 +8292,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_2_hint
                          || lv_select_common
                          || lv_select_group6
@@ -8115,6 +8380,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8132,7 +8400,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group6
@@ -8217,6 +8488,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8234,7 +8508,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group6
@@ -8319,6 +8596,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8336,7 +8616,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group6
@@ -8421,6 +8704,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8438,7 +8724,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group6
@@ -8523,6 +8812,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8540,7 +8832,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group6
@@ -8625,6 +8920,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8638,7 +8936,10 @@ AS
       --受払区分          <> NULL
       ELSE
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group6
@@ -8723,6 +9024,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8747,7 +9051,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_1_hint
                          || lv_select_common
                          || lv_select_group7
@@ -8832,6 +9139,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8849,7 +9159,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_2_hint
                          || lv_select_common
                          || lv_select_group7
@@ -8934,6 +9247,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -8951,7 +9267,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group7
@@ -9036,6 +9355,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9053,7 +9375,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group7
@@ -9138,6 +9463,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9155,7 +9483,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group7
@@ -9240,6 +9571,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9257,7 +9591,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group7
@@ -9342,6 +9679,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9359,7 +9699,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group7
@@ -9444,6 +9787,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9457,7 +9803,10 @@ AS
       --受払区分          <> NULL
       ELSE
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group7
@@ -9542,6 +9891,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9566,7 +9918,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_1_hint
                          || lv_select_common
                          || lv_select_group8
@@ -9651,6 +10006,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9668,7 +10026,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_2_hint
                          || lv_select_common
                          || lv_select_group8
@@ -9753,6 +10114,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9770,7 +10134,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group8
@@ -9855,6 +10222,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9872,7 +10242,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group8
@@ -9957,6 +10330,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -9974,7 +10350,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_3_hint
                          || lv_select_common
                          || lv_select_group8
@@ -10059,6 +10438,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -10076,7 +10458,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group8
@@ -10161,6 +10546,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -10178,7 +10566,10 @@ AS
       AND (  ir_param.rcv_pay_div IS NOT NULL )
       THEN
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_4_hint
                          || lv_select_common
                          || lv_select_group8
@@ -10263,6 +10654,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -10276,7 +10670,10 @@ AS
       --受払区分          <> NULL
       ELSE
         -- オープン
-        OPEN  get_cur01 FOR lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod Start
+--        OPEN  get_cur01 FOR lv_select_main_start
+        OPEN  get_cur01 FOR TO_CLOB(lv_select_main_start
+-- 2019/05/14 Ver1.28 Mod End
                          || lv_select_g1_po102_6_hint
                          || lv_select_common
                          || lv_select_group8
@@ -10361,6 +10758,9 @@ AS
                          || lv_select_1_om108
                          || lv_where3
                          || lv_select_main_end
+-- 2019/05/14 Ver1.28 Add Start
+                         )
+-- 2019/05/14 Ver1.28 Add End
                          ;
         -- バルクフェッチ
         FETCH get_cur01 BULK COLLECT INTO ot_data_rec ;
@@ -10377,23 +10777,35 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
-      IF (lc_ref%ISOPEN) THEN
-        CLOSE lc_ref ;
+-- 2019/05/14 Ver1.28 Mod Start
+--      IF (lc_ref%ISOPEN) THEN
+--        CLOSE lc_ref ;
+      IF (get_cur01%ISOPEN) THEN
+        CLOSE get_cur01;
+-- 2019/05/14 Ver1.28 Mod End
       END IF ;
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
-      IF (lc_ref%ISOPEN) THEN
-        CLOSE lc_ref ;
+-- 2019/05/14 Ver1.28 Mod Start
+--      IF (lc_ref%ISOPEN) THEN
+--        CLOSE lc_ref ;
+      IF (get_cur01%ISOPEN) THEN
+        CLOSE get_cur01;
+-- 2019/05/14 Ver1.28 Mod End
       END IF ;
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
-      IF (lc_ref%ISOPEN) THEN
-        CLOSE lc_ref ;
+-- 2019/05/14 Ver1.28 Mod Start
+--      IF (lc_ref%ISOPEN) THEN
+--        CLOSE lc_ref ;
+      IF (get_cur01%ISOPEN) THEN
+        CLOSE get_cur01;
+-- 2019/05/14 Ver1.28 Mod End
       END IF ;
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
