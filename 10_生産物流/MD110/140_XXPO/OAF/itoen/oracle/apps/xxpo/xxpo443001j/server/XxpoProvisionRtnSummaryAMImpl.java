@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSummaryAMImpl
 * 概要説明   : 支給返品要約:検索アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2008-10-07 1.3  伊藤ひとみ   統合テスト指摘240対応
 * 2009-01-26 1.4  吉元 強樹    本番#739対応
 * 2009-03-13 1.5  飯田 甫      本番#1300対応
+* 2019-09-05 1.6  SCSK小路     E_本稼動_15601対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.server;
@@ -30,6 +31,9 @@ import itoen.oracle.apps.xxpo.xxpo443001j.server.XxpoProvisionRtnSumResultVOImpl
 
 import java.sql.CallableStatement;
 import java.sql.SQLException;
+// 2019-09-05 Y.Shoji ADD START
+import java.text.SimpleDateFormat;
+// 2019-09-05 Y.Shoji ADD END
 
 import oracle.apps.fnd.common.MessageToken;
 import oracle.apps.fnd.framework.OAAttrValException;
@@ -125,6 +129,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
 // 2009-03-13 H.Iida ADD START 本番障害#1300
       shParams.put("fixClass", shRow.getAttribute("FixClass"));
 // 2009-03-13 H.Iida ADD END
+// 2019-09-05 Y.Shoji ADD START
+      shParams.put("sikyuReturnDate", shRow.getAttribute("SikyuReturnDate"));
+// 2019-09-05 Y.Shoji ADD END
       //支給返品結果VO取得
       XxpoProvisionRtnSumResultVOImpl vo = getXxpoProvisionRtnSumResultVO1();
 
@@ -853,11 +860,11 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
     } else 
     {
       // 以下が更新された場合
-      // ・発生区分 ・重量容積区分 ・依頼部署    ・指示部署 ・取引先
-      // ・配送先   ・出庫倉庫    ・運送業者    ・出庫日   ・入庫日
-      // ・着荷時間(From)        ・着荷時間(To)・配送区分 ・運賃区分
-      // ・引取区分 ・製造日      ・製造品目    ・製造番号 ・摘要
-      // ・指示受領 ・金額確定    ・合計数量変更フラグsumQtyFlag
+      // ・発生区分 ・重量容積区分    ・依頼部署    ・指示部署 ・取引先
+      // ・配送先   ・出庫倉庫       ・運送業者    ・出庫日   ・有償支給年月(返品)
+      // ・入庫日   ・着荷時間(From) ・着荷時間(To)・配送区分 ・運賃区分
+      // ・引取区分 ・製造日         ・製造品目    ・製造番号 ・摘要
+      // ・指示受領 ・金額確定       ・合計数量変更フラグsumQtyFlag
       if (!XxcmnUtility.isEquals(hdrRow.getAttribute("OrderTypeId"),          hdrRow.getAttribute("DbOrderTypeId"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("WeightCapacityClass"),  hdrRow.getAttribute("DbWeightCapacityClass"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ReqDeptCode"),          hdrRow.getAttribute("DbReqDeptCode"))
@@ -867,6 +874,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShipWhseCode"),         hdrRow.getAttribute("DbShipWhseCode"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("FreightCarrierCode"),   hdrRow.getAttribute("DbFreightCarrierCode"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippedDate"),          hdrRow.getAttribute("DbShippedDate"))
+// 2019-09-05 Y.Shoji ADD START
+       || !XxcmnUtility.isEquals(hdrRow.getAttribute("SikyuReturnDate"),      hdrRow.getAttribute("DbSikyuReturnDate"))
+// 2019-09-05 Y.Shoji ADD END
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalDate"),          hdrRow.getAttribute("DbArrivalDate"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeFrom"),      hdrRow.getAttribute("DbArrivalTimeFrom"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeTo"),        hdrRow.getAttribute("DbArrivalTimeTo"))
@@ -1180,6 +1190,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("  lr_hdr.vendor_site_code              := :21; "); // 取引先サイト
     sb.append("  lr_hdr.shipped_date                  := :22; "); // 出荷日
     sb.append("  lr_hdr.arrival_date                  := :23; "); // 着荷日
+// 2019-09-05 Y.Shoji ADD START
+    sb.append("  lr_hdr.sikyu_return_date             := :24; "); // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
     sb.append("  lr_hdr.created_by                    := FND_GLOBAL.USER_ID; ");  // 作成者
     sb.append("  lr_hdr.creation_date                 := SYSDATE; "); // 作成日
     sb.append("  lr_hdr.last_updated_by               := FND_GLOBAL.USER_ID; ");  // 最終更新者
@@ -1216,6 +1229,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       String vendorCode          = (String)hdrRow.getAttribute("VendorCode");            // 取引先
       Number shipToId            = (Number)hdrRow.getAttribute("ShipToId");              // 配送先ID
       String shipToCode          = (String)hdrRow.getAttribute("ShipToCode");            // 配送先
+// 2019-09-05 Y.Shoji ADD START
+      String sikyuReturnDateStr  = (String)hdrRow.getAttribute("SikyuReturnDate");       // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
 
       int i = 1;
       // パラメータ設定
@@ -1242,6 +1258,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       cstmt.setString(i++, shipToCode);                           // 配送先
       cstmt.setDate(i++, XxcmnUtility.dateValue(shippedDate));    // 出庫日
       cstmt.setDate(i++, XxcmnUtility.dateValue(shippedDate));    // 入庫日
+// 2019-09-05 Y.Shoji ADD START
+      cstmt.setDate(i++, XxcmnUtility.dateValue(sikyuReturnDateStr)); // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
 
       // PL/SQL実行
       cstmt.execute();
@@ -1312,10 +1331,16 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("       ,xoha.vendor_site_code      = :18 " ); // 取引先サイト
     sb.append("       ,xoha.shipped_date          = :19 "); // 出庫日
     sb.append("       ,xoha.arrival_date          = :20 "); // 着荷日
+// 2019-09-05 Y.Shoji ADD START
+    sb.append("       ,xoha.sikyu_return_date     = :21 "); // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
     sb.append("       ,xoha.last_updated_by       = FND_GLOBAL.USER_ID "  ); // 最終更新者
     sb.append("       ,xoha.last_update_date      = SYSDATE "             ); // 最終更新日
     sb.append("       ,xoha.last_update_login     = FND_GLOBAL.LOGIN_ID " ); // 最終更新ログイン
-    sb.append("  WHERE xoha.order_header_id = :21; "); // 受注ヘッダアドオンID
+// 2019-09-05 Y.Shoji MOD START
+//    sb.append("  WHERE xoha.order_header_id = :21; "); // 受注ヘッダアドオンID
+    sb.append("  WHERE xoha.order_header_id = :22; "); // 受注ヘッダアドオンID
+// 2019-09-05 Y.Shoji MOD END
     sb.append("END; ");
 
     // PL/SQLの設定を行います。
@@ -1348,6 +1373,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       String vendorCode          = (String)hdrRow.getAttribute("VendorCode");            // 取引先
       Number shipToId            = (Number)hdrRow.getAttribute("ShipToId");              // 配送先ID
       String shipToCode          = (String)hdrRow.getAttribute("ShipToCode");            // 配送先
+// 2019-09-05 Y.Shoji ADD START
+      String sikyuReturnDateStr  = (String)hdrRow.getAttribute("SikyuReturnDate");       // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
       Number orderHeaderId       = (Number)hdrRow.getAttribute("OrderHeaderId");         // 受注ヘッダアドオンID
       int i = 1;
       // パラメータ設定(INパラメータ)
@@ -1370,7 +1398,10 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       cstmt.setInt(i++, XxcmnUtility.intValue(shipToId));         // 配送先ID
       cstmt.setString(i++, shipToCode);                           // 配送先
       cstmt.setDate(i++, XxcmnUtility.dateValue(shippedDate));    // 出荷日  
-      cstmt.setDate(i++, XxcmnUtility.dateValue(shippedDate));    // 着荷日(=出庫日)  
+      cstmt.setDate(i++, XxcmnUtility.dateValue(shippedDate));    // 着荷日(=出庫日) 
+// 2019-09-05 Y.Shoji ADD START
+      cstmt.setDate(i++, XxcmnUtility.dateValue(sikyuReturnDateStr)); // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END 
       cstmt.setInt(i++, XxcmnUtility.intValue(orderHeaderId));    // 受注ヘッダアドオンID
 
       // PL/SQL実行
@@ -1523,6 +1554,71 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
                             XxcmnConstants.APPL_XXPO,         
                             XxpoConstants.XXPO10244));
     }
+// 2019-09-05 Y.Shoji ADD START
+    // 有償支給年月(返品)必須チェック
+    String sikyuReturnDateStr = (String)row.getAttribute("SikyuReturnDate");
+    if (XxcmnUtility.isBlankOrNull(sikyuReturnDateStr))
+    {
+      exceptions.add( new OAAttrValException(
+                  OAAttrValException.TYP_VIEW_OBJECT,
+                  vo.getName(),
+                  row.getKey(),
+                  "SikyuReturnDate",
+                  sikyuReturnDateStr,
+                  XxcmnConstants.APPL_XXPO,
+                  XxpoConstants.XXPO10002));
+    // 有償支給年月(返品)桁数チェック
+    // 有償支給年月(返品)数字型チェック
+    // 有償支給年月(返品)'/'チェック
+    } else if ( (sikyuReturnDateStr.length() != 7)
+            || !(Character.isDigit(sikyuReturnDateStr.charAt(0)))
+            || !(Character.isDigit(sikyuReturnDateStr.charAt(1)))
+            || !(Character.isDigit(sikyuReturnDateStr.charAt(2)))
+            || !(Character.isDigit(sikyuReturnDateStr.charAt(3)))
+            || !(sikyuReturnDateStr.substring(4 ,5).equals(XxpoConstants.SLASH))
+            || !(Character.isDigit(sikyuReturnDateStr.charAt(5)))
+            || !(Character.isDigit(sikyuReturnDateStr.charAt(6))))
+    {
+        exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,
+                            vo.getName(),
+                            row.getKey(),
+                            "SikyuReturnDate",
+                            sikyuReturnDateStr,
+                            XxcmnConstants.APPL_XXPO,
+                            XxpoConstants.XXPO40049));
+    } else{      
+      // 有償支給年月(返品)の日付形式（yyyy/MM）のチェック
+      SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM");
+      sdf.setLenient(false);
+      try {
+        sdf.parse(sikyuReturnDateStr);
+        Date sikyuReturnDate = XxcmnUtility.dateValueOra(sikyuReturnDateStr);
+        // 有償支給年月(返品)が出庫日より未来日の場合
+        if (!XxcmnUtility.chkCompareDate(2, shippedDate, sikyuReturnDate))
+        {
+          exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              vo.getName(),
+                              row.getKey(),
+                              "SikyuReturnDate",
+                              sikyuReturnDateStr,
+                              XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO10244));
+        }
+      } catch (Exception e)
+      {
+        exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,
+                            vo.getName(),
+                            row.getKey(),
+                            "SikyuReturnDate",
+                            sikyuReturnDateStr,
+                            XxcmnConstants.APPL_XXPO,
+                            XxpoConstants.XXPO40049));
+      }
+    }
+// 2019-09-05 Y.Shoji ADD END
   } // chkNext
 
   /***************************************************************************
@@ -2236,6 +2332,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
     prow.setAttribute("ShipWhseReadOnly"             , Boolean.FALSE); // 出庫倉庫
     prow.setAttribute("FreightCarrierReadOnly"       , Boolean.FALSE); // 運送業者
     prow.setAttribute("ShippedDateReadOnly"          , Boolean.FALSE); // 出庫日
+// 2019-09-05 Y.Shoji ADD START
+    prow.setAttribute("SikyuReturnDateReadOnly"      , Boolean.FALSE); // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
     prow.setAttribute("ArrivalDateReadOnly"          , Boolean.FALSE); // 入庫日
     prow.setAttribute("ArrivalTimeFromReadOnly"      , Boolean.FALSE); // 着荷時間From
     prow.setAttribute("ArrivalTimeToReadOnly"        , Boolean.FALSE); // 着荷時間To
@@ -2271,6 +2370,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
     prow.setAttribute("ShipWhseReadOnly"             , Boolean.TRUE); // 出庫倉庫
     prow.setAttribute("FreightCarrierReadOnly"       , Boolean.TRUE); // 運送業者
     prow.setAttribute("ShippedDateReadOnly"          , Boolean.TRUE); // 出庫日
+// 2019-09-05 Y.Shoji ADD START
+    prow.setAttribute("SikyuReturnDateReadOnly"      , Boolean.TRUE); // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
     prow.setAttribute("ArrivalDateReadOnly"          , Boolean.TRUE); // 入庫日
     prow.setAttribute("ArrivalTimeFromReadOnly"      , Boolean.TRUE); // 着荷時間From
     prow.setAttribute("ArrivalTimeToReadOnly"        , Boolean.TRUE); // 着荷時間To
@@ -2344,6 +2446,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       prow.setAttribute("ShipToReadOnly", Boolean.TRUE);      // 配送先
       prow.setAttribute("ShipWhseReadOnly", Boolean.TRUE);    // 出庫倉庫
       prow.setAttribute("ShippedDateReadOnly", Boolean.TRUE); // 出庫日
+// 2019-09-05 Y.Shoji ADD START
+      prow.setAttribute("SikyuReturnDateReadOnly", Boolean.TRUE); // 有償支給年月(返品)
+// 2019-09-05 Y.Shoji ADD END
       prow.setAttribute("ProvCancelBtnReject", Boolean.TRUE); // 支給取消ボタン
 
       // 金額確定フラグを取得
@@ -2423,6 +2528,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShipWhseCode"),         hdrRow.getAttribute("DbShipWhseCode"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("FreightCarrierCode"),   hdrRow.getAttribute("DbFreightCarrierCode"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippedDate"),          hdrRow.getAttribute("DbShippedDate"))
+// 2019-09-05 Y.Shoji ADD START
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("SikyuReturnDate"),      hdrRow.getAttribute("DbSikyuReturnDate"))
+// 2019-09-05 Y.Shoji ADD END
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalDate"),          hdrRow.getAttribute("DbArrivalDate"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeFrom"),      hdrRow.getAttribute("DbArrivalTimeFrom"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeTo"),        hdrRow.getAttribute("DbArrivalTimeTo"))
