@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A02C(body)
  * Description      : AP仕入請求情報生成（有償支給）
  * MD.050           : AP仕入請求情報生成（有償支給）<MD050_CFO_022_A02>
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,9 @@ AS
  *                                         ・処理済データ削除(A-7)の処理を削除
  *  2015-03-09    1.4   Y.Shoji          E_本稼動_12865 相良会計変更対応
  *                                         ・仕入先マスタの支払条件を考慮して相殺仕訳を発生させるように仕様変更
+ *  2019-06-15    1.5   N.Miyamoto       E_本稼動_15601 生産_軽減税率対応
+ *                                         ・税率を品目ごとに消費税率ビューから取得するよう仕様変更
+ *                                         ・前月繰越対象のロジック削除
  *
  *****************************************************************************************/
 --
@@ -167,6 +170,9 @@ AS
   cv_doc_type_prov            CONSTANT VARCHAR2(2)   := '30';                        -- 支給指示
   cv_rec_type_stck            CONSTANT VARCHAR2(2)   := '20';                        -- 出庫実績
   cn_minus                    CONSTANT NUMBER        := -1;                          -- 金額算出用
+-- 2019/06/15 Ver1.5 Add Start
+  cn_plus                     CONSTANT NUMBER        :=  1;                          -- 金額算出用
+-- 2019/06/15 Ver1.5 Add End
 --
   -- トークン値
   cv_msg_out_data_01          CONSTANT VARCHAR2(30)  := 'APP-XXCFO1-11139';          -- 相殺金額情報
@@ -1495,7 +1501,9 @@ AS
     cv_cat_set_item_class    CONSTANT VARCHAR2(10)  := '品目区分';
 --
     -- *** ローカル変数 ***
-    ln_transfer_amount       NUMBER       DEFAULT 0;                     -- 前月繰越分相殺金額
+-- 2019/06/15 Ver1.5 Del Start
+--    ln_transfer_amount       NUMBER       DEFAULT 0;                     -- 前月繰越分相殺金額
+-- 2019/06/15 Ver1.5 Del End
     ln_rcv_result_amount     NUMBER       DEFAULT 0;                     -- 仕入実績_支払金額（税込）
     --
     lv_proc_type             VARCHAR2(1)  DEFAULT NULL;                  -- 内部処理分割用
@@ -1511,31 +1519,48 @@ AS
              ,trn.vendor_site_id                              AS vendor_site_id           -- 仕入先サイトID
              ,trn.department_code                             AS department_code          -- 部門コード
              ,trn.item_class_code                             AS item_class_code          -- 品目区分
-             ,trn.target_period                               AS target_period            -- 対象年月
-             ,trn.net_amount                                  AS net_amount               -- 金額（税抜）
-             ,trn.tax_rate                                    AS tax_rate                 -- 消費税率
-             ,trn.tax_amount                                  AS tax_amount               -- 支払消費税額
-             ,NVL(trn.net_amount,0) + NVL(trn.tax_amount,0)   AS amount                   -- 金額（税込）
-             ,trn.transfer_flag                               AS transfer_flag            -- 前月繰越対象フラグ
+-- 2019/06/15 Ver1.5 Mod Start
+--             ,trn.target_period                               AS target_period            -- 対象年月
+--             ,trn.net_amount                                  AS net_amount               -- 金額（税抜）
+--             ,trn.tax_rate                                    AS tax_rate                 -- 消費税率
+--             ,trn.tax_amount                                  AS tax_amount               -- 支払消費税額
+--             ,NVL(trn.net_amount,0) + NVL(trn.tax_amount,0)   AS amount                   -- 金額（税込）
+--             ,trn.transfer_flag                               AS transfer_flag            -- 前月繰越対象フラグ
+             ,SUM(ROUND(actual_quantity * sign * unit_price)) + 
+              SUM(ROUND(actual_quantity * sign * unit_price * tax_rate / 100)) 
+                                                              AS amount                   -- 金額（税込）
+-- 2019/06/15 Ver1.5 Mod End
       FROM(-- 抽出①（有償支給）
            SELECT
+-- 2019/06/15 Ver1.5 Add Start
+                  /*+ PUSH_PRED(xitrv) */
+-- 2019/06/15 Ver1.5 Add End
                   pv.segment1                                 AS vendor_code          -- 仕入先コード
                  ,pvsa.vendor_site_code                       AS vendor_site_code     -- 仕入先サイトコード
                  ,pvsa.vendor_site_id                         AS vendor_site_id       -- 仕入先サイトID
                  ,xoha.performance_management_dept            AS department_code      -- 部門コード
                  ,mcb.segment1                                AS item_class_code      -- 品目区分
-                 ,TO_CHAR(xoha.arrival_date , 'YYYY/MM' )     AS target_period        -- 対象年月
-                 ,SUM(ROUND(CASE
-                   WHEN ( otta.order_category_code = cv_cat_cd_order  ) THEN xmld.actual_quantity
-                   WHEN ( otta.order_category_code = cv_cat_cd_return ) THEN xmld.actual_quantity * cn_minus
-                  END * xola.unit_price))                     AS net_amount           -- 金額（税抜）
-                 ,TO_NUMBER(xlv2v.lookup_code)                AS tax_rate             -- 消費税率
-                 ,SUM(ROUND(CASE
-                   WHEN ( otta.order_category_code = cv_cat_cd_order  ) THEN xmld.actual_quantity
-                   WHEN ( otta.order_category_code = cv_cat_cd_return ) THEN xmld.actual_quantity * cn_minus
-                  END * xola.unit_price * TO_NUMBER( xlv2v.lookup_code ) / 100)) 
-                                                              AS tax_amount           -- 消費税額
-                 ,cv_flag_n                                   AS transfer_flag        -- 前月繰越対象フラグ'N'
+-- 2019/06/15 Ver1.5 Mod Start
+--                 ,TO_CHAR(xoha.arrival_date , 'YYYY/MM' )     AS target_period        -- 対象年月
+--                 ,SUM(ROUND(CASE
+--                   WHEN ( otta.order_category_code = cv_cat_cd_order  ) THEN xmld.actual_quantity
+--                   WHEN ( otta.order_category_code = cv_cat_cd_return ) THEN xmld.actual_quantity * cn_minus
+--                  END * xola.unit_price))                     AS net_amount           -- 金額（税抜）
+--                 ,TO_NUMBER(xlv2v.lookup_code)                AS tax_rate             -- 消費税率
+--                 ,SUM(ROUND(CASE
+--                   WHEN ( otta.order_category_code = cv_cat_cd_order  ) THEN xmld.actual_quantity
+--                   WHEN ( otta.order_category_code = cv_cat_cd_return ) THEN xmld.actual_quantity * cn_minus
+--                  END * xola.unit_price * TO_NUMBER( xlv2v.lookup_code ) / 100)) 
+--                                                              AS tax_amount           -- 消費税額
+--                 ,cv_flag_n                                   AS transfer_flag        -- 前月繰越対象フラグ'N'
+                 ,NVL(xmld.actual_quantity, 0)                AS actual_quantity      -- 数量
+                 ,NVL(xola.unit_price, 0)                     AS unit_price           -- 単価
+                 ,TO_NUMBER(xitrv.tax)                        AS tax_rate             -- 税率 
+                 ,CASE
+                    WHEN ( order_category_code = cv_cat_cd_order  ) THEN cn_plus      --返品以外は正値
+                    WHEN ( order_category_code = cv_cat_cd_return ) THEN cn_minus     --返品は負値
+                  END                                         AS sign                 --符号
+-- 2019/06/15 Ver1.5 Mod End
            FROM   xxwsh_order_headers_all      xoha              -- 受注ヘッダアドオン
                  ,xxwsh_order_lines_all        xola              -- 受注明細アドオン
                  ,oe_transaction_types_all     otta              -- 受注タイプ
@@ -1551,7 +1576,10 @@ AS
                  ,mtl_categories_b             mcb               -- 品目カテゴリ
                  ,mtl_category_sets_b          mcsb              -- 品目カテゴリセット
                  ,mtl_category_sets_tl         mcst              -- 品目カテゴリセット（日本語）
-                 ,xxcmn_lookup_values2_v       xlv2v             -- 消費税率情報VIEW
+-- 2019/06/15 Ver1.5 Mod Start
+--                 ,xxcmn_lookup_values2_v       xlv2v             -- 消費税率情報VIEW
+                 ,xxcmm_item_tax_rate_v        xitrv             -- 消費税率情報VIEW
+-- 2019/06/15 Ver1.5 Mod End
            WHERE  xoha.order_header_id              = xola.order_header_id
            AND    xola.order_line_id                = xmld.mov_line_id
            AND    xoha.latest_external_flag         = cv_flag_y
@@ -1589,20 +1617,37 @@ AS
            AND    xoha.arrival_date                 BETWEEN xvsa.start_date_active(+) -- 着荷日で有効なデータ
                                                     AND     xvsa.end_date_active(+)
            --
-           AND    xlv2v.lookup_type                 = cv_lookup_type_01               -- 参照タイプ：消費税率マスタ
-           AND    xoha.arrival_date                 BETWEEN NVL( xlv2v.start_date_active, xoha.arrival_date )
-                                                    AND     NVL( xlv2v.end_date_active  , xoha.arrival_date )
+-- 2019/06/15 Ver1.5 Mod Start
+--           AND    xlv2v.lookup_type                 = cv_lookup_type_01               -- 参照タイプ：消費税率マスタ
+--           AND    xoha.arrival_date                 BETWEEN NVL( xlv2v.start_date_active, xoha.arrival_date )
+--                                                    AND     NVL( xlv2v.end_date_active  , xoha.arrival_date )
+--
+           AND    xitrv.item_no                     = xola.shipping_item_code
+           AND    NVL(xoha.sikyu_return_date, xoha.arrival_date ) 
+                                                    BETWEEN NVL(xitrv.start_date_active, NVL(xoha.sikyu_return_date, xoha.arrival_date ))
+                                                    AND     NVL(xitrv.end_date_active,   NVL(xoha.sikyu_return_date, xoha.arrival_date ))
+-- 2019/06/15 Ver1.5 Mod End
            AND    xoha.arrival_date                 BETWEEN gd_target_date_from
                                                     AND     gd_target_date_to
-           GROUP BY
-                  pv.segment1
-                 ,pvsa.vendor_site_code
-                 ,pvsa.vendor_site_id
-                 ,xoha.performance_management_dept
-                 ,mcb.segment1
-                 ,TO_CHAR(xoha.arrival_date , 'YYYY/MM' )
-                 ,xlv2v.lookup_code
+-- 2019/06/15 Ver1.5 Del Start
+--           GROUP BY
+--                  pv.segment1
+--                 ,pvsa.vendor_site_code
+--                 ,pvsa.vendor_site_id
+--                 ,xoha.performance_management_dept
+--                 ,mcb.segment1
+--                 ,TO_CHAR(xoha.arrival_date , 'YYYY/MM' )
+--                 ,xlv2v.lookup_code
+-- 2019/06/15 Ver1.5 Del End
           ) trn
+-- 2019/06/15 Ver1.5 Add Start
+      GROUP BY
+             vendor_code
+            ,vendor_site_code
+            ,vendor_site_id
+            ,department_code
+            ,item_class_code
+-- 2019/06/15 Ver1.5 Add End
       ORDER BY
               vendor_code                      -- 仕入先コード
              -- 2015-02-10 Ver1.2 Del Start
@@ -1731,7 +1776,9 @@ AS
         gn_this_month_amount      := 0;                   -- 請求書単位：当月相殺金額
         gn_next_month_amount      := 0;                   -- 請求書単位：翌月繰越金額
         --
-        ln_transfer_amount        := 0;                   -- 前月繰越分相殺金額
+-- 2019/06/15 Ver1.5 Del Start
+--        ln_transfer_amount        := 0;                   -- 前月繰越分相殺金額
+-- 2019/06/15 Ver1.5 Del End
         ln_rcv_result_amount      := 0;                   -- 仕入実績_支払金額（税込）
         --
       END IF;
@@ -1747,11 +1794,13 @@ AS
       gn_payment_amount_all     := NVL(gn_payment_amount_all,0) 
                                    + ap_fee_payment_rec.amount;                -- 請求書単位：相殺金額（税込）
 --
-      -- 前月繰越対象フラグが立っている場合
-      IF (ap_fee_payment_rec.transfer_flag = cv_flag_y) THEN
-        ln_transfer_amount      := NVL(ln_transfer_amount,0)
-                                   + ap_fee_payment_rec.amount;                -- 請求書単位：前月繰越分相殺金額
-      END IF;
+-- 2019/06/15 Ver1.5 Del Start
+--      -- 前月繰越対象フラグが立っている場合
+--      IF (ap_fee_payment_rec.transfer_flag = cv_flag_y) THEN
+--        ln_transfer_amount      := NVL(ln_transfer_amount,0)
+--                                   + ap_fee_payment_rec.amount;                -- 請求書単位：前月繰越分相殺金額
+--      END IF;
+-- 2019/06/15 Ver1.5 Del End
 --
     END LOOP main_loop;
 --
