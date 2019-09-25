@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.38
+ * Version          : 1.39
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -101,6 +101,7 @@ AS
  *  2017/12/19    1.36  Y.Omuro          [E_本稼動_14486] 受注ソースが｢online:手入力｣も受注クローズ対象とする
  *  2019/01/29    1.37  S.Kuwako         [E_本稼動_15472] 軽減税率対応
  *  2019/07/26    1.38  S.Kuwako         [E_本稼動_15472] 軽減税率対応(HHT追加対応)
+ *  2019/09/24    1.39  S.Kuwako         [E_本稼動_15941] 軽減税率対応(本番障害対応)
  *
  *****************************************************************************************/
 --
@@ -14615,7 +14616,10 @@ AS
                         END IF;
                       ELSE
     --                lt_tax_amount_sum := ln_amount;
-                        lt_tax_amount_sum  := lt_tax_amount_sum + g_tax_amount_sum_type_tab(a).tax_amount_sum;
+    --************** 2019/09/24 S.Kuwako Var1.39 MOD START **************
+    --                    lt_tax_amount_sum  := lt_tax_amount_sum + g_tax_amount_sum_type_tab(a).tax_amount_sum;
+                        g_tax_amount_sum_type_tab(a).tax_amount_sum := ln_amount;
+    --************** 2019/09/24 S.Kuwako Var1.39 MOD END **************
                       END IF;
     --************** 2019/07/26 S.Kuwako Var1.38 MOD END   **************
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
