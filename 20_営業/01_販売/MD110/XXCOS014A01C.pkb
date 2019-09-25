@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *  2018/07/03    1.24  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *  2018/07/27    1.25  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *  2019/06/25    1.26  T.Kawaguchi      [E_本稼動_15472]軽減税率対応
+ *  2019/09/24    1.27  SCSK 郭 有司     [E_本稼動_15934]障害対応
  *
  *****************************************************************************************/
 --
@@ -3014,29 +3015,54 @@ AS
                ( SELECT TO_CHAR(xrtrv.tax_rate)
                 FROM   xxcos_reduced_tax_rate_v xrtrv
                 WHERE  xrtrv.item_code = opm.item_no
-                AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+-- 2019/09/19 Ver1.27 MOD Start
+--                AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+--                         BETWEEN NVL(xrtrv.start_date
+--                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+--                         AND     NVL(xrtrv.end_date
+--                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+--                AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+--                         BETWEEN NVL(xrtrv.start_date_histories
+--                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+--                         AND     NVL(xrtrv.end_date_histories
+--                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+--                AND    1 = ( SELECT COUNT(*)
+--                             FROM   xxcos_reduced_tax_rate_v xrtrv_in
+--                             WHERE  xrtrv_in.item_code = opm.item_no
+--                             AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+--                                      BETWEEN NVL(xrtrv_in.start_date
+--                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+--                                      AND     NVL(xrtrv_in.end_date
+--                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+--                             AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+--                                      BETWEEN NVL(xrtrv_in.start_date_histories
+--                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+--                                      AND     NVL(xrtrv_in.end_date_histories
+--                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date))
                          BETWEEN NVL(xrtrv.start_date
-                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
                          AND     NVL(xrtrv.end_date
-                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
-                AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
+                AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date))
                          BETWEEN NVL(xrtrv.start_date_histories
-                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
                          AND     NVL(xrtrv.end_date_histories
-                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                   , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
                 AND    1 = ( SELECT COUNT(*)
                              FROM   xxcos_reduced_tax_rate_v xrtrv_in
                              WHERE  xrtrv_in.item_code = opm.item_no
-                             AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                             AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date))
                                       BETWEEN NVL(xrtrv_in.start_date
-                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
                                       AND     NVL(xrtrv_in.end_date
-                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
-                             AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
+                             AND    NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date))
                                       BETWEEN NVL(xrtrv_in.start_date_histories
-                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
                                       AND     NVL(xrtrv_in.end_date_histories
-                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                                , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
+-- 2019/09/19 Ver1.27 MOD End
                            )
                )
 /* 2009/08/12 Ver1.14 Mod Start */
@@ -3051,11 +3077,18 @@ AS
 /* 2009/09/15 Ver1.15 Mod Start */
 --               AND    ivoh.request_date           BETWEEN NVL( xlvv2.start_date_active, ivoh.request_date )
 --                                                  AND     NVL( xlvv2.end_date_active, ivoh.request_date )
-                AND    NVL( TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+-- 2019/09/19 Ver1.27 MOD Start
+--                AND    NVL( TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date)
+--                         BETWEEN NVL( xlvv2.start_date_active
+--                                    , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+--                         AND     NVL( xlvv2.end_date_active
+--                                    , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                AND    NVL( TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date))
                          BETWEEN NVL( xlvv2.start_date_active
-                                    , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                    , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
                          AND     NVL( xlvv2.end_date_active
-                                    , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), oola.request_date) )
+                                    , NVL(TO_DATE(oola.attribute4, cv_datatime_fmt), TRUNC(oola.request_date)) )
+-- 2019/09/19 Ver1.27 MOD End
 /* 2009/09/15 Ver1.15 Mod End   */
                 AND    xlvv2.attribute2            = avtab.tax_code
                 AND    avtab.set_of_books_id       = i_prf_rec.set_of_books_id
@@ -3478,9 +3511,14 @@ AS
 --       AND   xlvv.lookup_code               = oola.attribute5                                                 --売上区分
        AND   xlvv.lookup_type(+)            = ct_qc_sale_class                                                --売上区分マスタ
        AND   xlvv.lookup_code(+)            = oola.attribute5                                                 --売上区分
-       AND   oola.request_date
-               BETWEEN NVL( xlvv.start_date_active, oola.request_date )
-                   AND NVL( xlvv.end_date_active,   oola.request_date )
+-- 2019/09/19 Ver1.27 MOD Start
+--       AND   oola.request_date
+--               BETWEEN NVL( xlvv.start_date_active, oola.request_date )
+--                   AND NVL( xlvv.end_date_active,   oola.request_date )
+       AND   TRUNC(oola.request_date)
+               BETWEEN NVL( xlvv.start_date_active, TRUNC(oola.request_date) )
+                   AND NVL( xlvv.end_date_active,   TRUNC(oola.request_date) )
+-- 2019/09/19 Ver1.27 MOD End
 /* 2009/09/07 Ver1.15 Mod Start */
 /* 2009/08/12 Ver1.14 Mod End   */
        --店舗セキュリティview抽出条件
