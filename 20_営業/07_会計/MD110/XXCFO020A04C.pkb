@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A04C(body)
  * Description      : 有償支給仕訳IF作成
  * MD.050           : 有償支給仕訳IF作成<MD050_CFO_020_A04>
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  2017-12-05    1.4   S.Niki           E_本稼動_14674対応
  *                                       ・未収入金勘定の場合、税コードにNULLを設定。
  *  2019-07-26    1.5   Y.Shoji          E_本稼動_15786対応
+ *  2019-08-01    1.6   N.Miyamoto       E_本稼動_15601 生産_軽減税率対応
+ *                                         ・税率を品目ごとに消費税率ビューから取得するよう仕様変更
  *
  *****************************************************************************************/
 --
@@ -120,6 +122,9 @@ AS
   cv_msg_ccp_90004            CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90004';        -- 正常終了メッセージ
   cv_msg_ccp_90005            CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90005';        -- 警告終了メッセージ
   cv_msg_ccp_90006            CONSTANT VARCHAR2(50)  := 'APP-XXCCP1-90006';        -- エラー終了全ロールバック
+-- 2019/08/01 Ver1.6 Add Start
+  cv_msg_cfo_11155            CONSTANT VARCHAR2(50)  := 'APP-XXCFO1-11155';        -- 税コード
+-- 2019/08/01 Ver1.6 Add End
 --
   -- トークン
   cv_tkn_param_name           CONSTANT VARCHAR2(20)  := 'PARAM_NAME';              -- トークン：パラメータ名
@@ -144,10 +149,15 @@ AS
 --
   cv_profile_name_01          CONSTANT VARCHAR2(50)  := 'XXCFO1_JE_PTN_SHIPMENT';             -- 仕訳パターン：出荷実績表
   cv_profile_name_02          CONSTANT VARCHAR2(50)  := 'XXCFO1_JE_CATEGORY_MFG_FEE_PAY';     -- XXCFO:仕訳カテゴリ_有償出荷
-  cv_profile_name_03          CONSTANT VARCHAR2(50)  := 'XXCMN_CONSUMPTION_TAX_RATE';         -- XXCMN:仮受消費税
+-- 2019/08/01 Ver1.6 Del Start
+--  cv_profile_name_03          CONSTANT VARCHAR2(50)  := 'XXCMN_CONSUMPTION_TAX_RATE';         -- XXCMN:仮受消費税
+-- 2019/08/01 Ver1.6 Del End
   cv_profile_name_04          CONSTANT VARCHAR2(50)  := 'XXCMN_ITEM_CATEGORY_ITEM_CLASS';     -- XXCMN:品目区分
   cv_profile_name_05          CONSTANT VARCHAR2(50)  := 'XXCMN_ITEM_CATEGORY_PROD_CLASS';     -- XXCMN:商品区分
   cv_profile_name_06          CONSTANT VARCHAR2(50)  := 'XXCMN_ITEM_CATEGORY_CROWD_CODE';     -- XXCMN:群コード
+-- 2019/08/01 Ver1.6 Add Start
+  cv_profile_name_07          CONSTANT VARCHAR2(50)  := 'ORG_ID';                             -- MO: 営業単位
+-- 2019/08/01 Ver1.6 Add End
 --
   cv_file_type_out            CONSTANT VARCHAR2(20)  := 'OUTPUT';
   cv_file_type_log            CONSTANT VARCHAR2(20)  := 'LOG';
@@ -167,7 +177,9 @@ AS
   --
   cv_msg_out_item_01         CONSTANT VARCHAR2(30)  := '受注ヘッダID,受注明細ID';
   cv_msg_out_item_02         CONSTANT VARCHAR2(30)  := '仕入先サイトID';
-  cv_msg_out_item_03         CONSTANT VARCHAR2(30)  := '生産税率';
+-- 2019/08/01 Ver1.6 Del Start
+--  cv_msg_out_item_03         CONSTANT VARCHAR2(30)  := '生産税率';
+-- 2019/08/01 Ver1.6 Del End
 --
   -- 仕訳パターン確認用
   cv_ptn_siwake_01            CONSTANT VARCHAR2(1)   := '1';
@@ -383,6 +395,21 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2019/08/01 Ver1.6 Add Start
+    -- MO: 営業単位
+    gn_org_id_sales  := TO_NUMBER(FND_PROFILE.VALUE( cv_profile_name_07 ));
+    IF( gn_org_id_sales IS NULL ) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg(
+                      iv_application    => cv_appl_name_xxcfo      -- アプリケーション短縮名：XXCFO
+                    , iv_name           => cv_msg_cfo_00001        -- メッセージ：APP-XXCFO-00001 プロファイル取得エラー
+                    , iv_token_name1    => cv_tkn_prof_name        -- トークン：PROFILE_NAME
+                    , iv_token_value1   => cv_profile_name_07
+                          ),1,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+-- 2019/08/01 Ver1.6 Add End
     -- 入力パラメータの会計期間から、抽出対象日付FROM-TOを算出
     gd_target_date_from  := TO_DATE(REPLACE(iv_period_name,'-') || cv_fdy,cv_d_format);
     gd_target_date_to    := LAST_DAY(TO_DATE(REPLACE(iv_period_name,'-') || cv_fdy || cv_e_time,cv_dt_format));
@@ -566,6 +593,9 @@ AS
 -- 2015.11.18 Ver1.3 Add Start
     lv_prod_class_code       VARCHAR2(1)   DEFAULT NULL;                 -- 商品区分
 -- 2015.11.18 Ver1.3 Add End
+-- 2019/08/01 Ver1.6 Add Start
+    lv_tax_code              VARCHAR2(100) DEFAULT NULL;                 -- 税コード
+-- 2019/08/01 Ver1.6 Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -723,7 +753,11 @@ AS
               ,g_gl_interface_tab(ln_cnt).tax_ccid
         FROM   ap_tax_codes atc                                           -- AP税金コードマスタ
         WHERE  atc.attribute2      = cv_attribute2                        -- 課税集計区分：課税売上(仮受)
-        AND    atc.attribute4      = g_gl_interface_tab(ln_cnt).tax_rate  -- 生産税率
+-- 2019/08/01 Ver1.6 Mod Start
+--        AND    atc.attribute4      = g_gl_interface_tab(ln_cnt).tax_rate  -- 生産税率
+        AND    atc.name            = g_gl_interface_tab(ln_cnt).tax_code    -- 税コード
+        AND    atc.org_id          = gn_org_id_sales                        -- 組織ID(営業)
+-- 2019/08/01 Ver1.6 Mod End
         ;
 --
       EXCEPTION
@@ -734,9 +768,15 @@ AS
                           , iv_token_name1  => cv_tkn_data
                           , iv_token_value1 => cv_msg_out_data_05      -- AP税金コードマスタ
                           , iv_token_name2  => cv_tkn_item
-                          , iv_token_value2 => cv_msg_out_item_03      -- 生産税率
+-- 2019/08/01 Ver1.6 Mod Start
+--                          , iv_token_value2 => cv_msg_out_item_03      -- 生産税率
+                          , iv_token_value2 => cv_msg_cfo_11155
+-- 2019/08/01 Ver1.6 Mod End
                           , iv_token_name3  => cv_tkn_key
-                          , iv_token_value3 => g_gl_interface_tab(ln_cnt).tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--                          , iv_token_value3 => g_gl_interface_tab(ln_cnt).tax_rate
+                          , iv_token_value3 => g_gl_interface_tab(ln_cnt).tax_code
+-- 2019/08/01 Ver1.6 Mod End
                           );
           lv_errbuf := lv_errmsg;
           RAISE global_process_expt;
@@ -752,6 +792,10 @@ AS
         END IF;
         --借方の適用を保持する
         gv_description_dr := lv_description;
+-- 2019/08/01 Ver1.6 Add Start
+        --税コードを一度退避
+        lv_tax_code := g_gl_interface_tab(ln_cnt).tax_code;
+-- 2019/08/01 Ver1.6 Add End
 -- 2017.12.05 Ver1.4 Add Start
         --税金コード(営業)にNULLを設定
         g_gl_interface_tab(ln_cnt).tax_code := NULL;
@@ -878,6 +922,13 @@ AS
 --
       END IF;
 --
+-- 2019/08/01 Ver1.6 Add Start
+      --処理モード「未収入金」でNULLにした税コードを元に戻す
+      IF ( g_gl_interface_tab(ln_cnt).tax_code IS NULL ) THEN
+        g_gl_interface_tab(ln_cnt).tax_code := lv_tax_code;
+      END IF;
+--
+-- 2019/08/01 Ver1.6 Add End
     END LOOP insert_loop;
 --
   EXCEPTION
@@ -1099,7 +1150,9 @@ AS
     ln_count                 NUMBER        DEFAULT 0;                                  -- 抽出件数のカウント
     ln_tax_cnt               NUMBER        DEFAULT 0;                                  -- 税率カウント（税率の種類数）
     ln_out_count             NUMBER        DEFAULT 0;                                  -- 同一ブレークキー件数のカウント
-    ln_tax_rate_jdge         NUMBER        DEFAULT 0;                                  -- 消費税率(判定用)
+-- 2019/08/01 Ver1.6 Del Start
+--    ln_tax_rate_jdge         NUMBER        DEFAULT 0;                                  -- 消費税率(判定用)
+-- 2019/08/01 Ver1.6 Del End
 -- 2015.11.18 Ver1.3 Add Start
     ln_kari_kin_1            NUMBER        DEFAULT 0;                                  -- 仮受金（リーフ）
     ln_kari_kin_2            NUMBER        DEFAULT 0;                                  -- 仮受金（ドリンク）
@@ -1116,6 +1169,9 @@ AS
     lt_vendor_site_id        xxwsh_order_headers_all.vendor_site_id%TYPE;              -- 仕訳単位：出荷先ID
     -- 2015-02-18 Ver1.2 #44 Add Start
     lt_vendor_id             xxwsh_order_headers_all.vendor_id%TYPE;                    -- 仕訳単位：仕入先ID
+-- 2019/08/01 Ver1.6 Add Start
+    lt_tax_code              VARCHAR2(10);                                              -- 税コード
+-- 2019/08/01 Ver1.6 Add End
     -- 2015-02-18 Ver1.2 #44 Add End
 --
     -- ===============================
@@ -1124,7 +1180,10 @@ AS
     -- 抽出カーソル（SELECT文①～⑧をUNION ALL）
     CURSOR get_gl_interface_cur
     IS
-      SELECT
+-- 2019/08/01 Ver1.6 Mod Start
+--      SELECT
+      SELECT /*+ PUSH_PRED(xitrv) */
+-- 2019/08/01 Ver1.6 Mod End
              ROUND((CASE trn.attribute15
                        WHEN '1' THEN trn.stnd_unit_price
                        ELSE DECODE(trn.lot_ctl
@@ -1144,9 +1203,15 @@ AS
 --            ,((trn.UNIT_PRICE * trn.trans_qty)
             ,ROUND((trn.UNIT_PRICE * trn.trans_qty)
              -- 2015-02-18 Ver1.2 #46 Mod End
-              * DECODE( NVL(TO_NUMBER(trn.tax_rate),0),0,0,(TO_NUMBER(trn.tax_rate)/100) )
+-- 2019/08/01 Ver1.6 Mod Start
+--              * DECODE( NVL(TO_NUMBER(trn.tax_rate),0),0,0,(TO_NUMBER(trn.tax_rate)/100) )
+              * DECODE( NVL(TO_NUMBER(xitrv.tax),0),0,0,(TO_NUMBER(xitrv.tax)/100) )
+-- 2019/08/01 Ver1.6 Mod End
              )                                                      AS tax_kin                      --仮受消費税
-            ,trn.tax_rate                                           AS tax_rate                     --税率
+-- 2019/08/01 Ver1.6 Mod Start
+--            ,trn.tax_rate                                           AS tax_rate                     --税率
+            ,xitrv.tax_code_sales_ex                                AS tax_code                     --税コード
+-- 2019/08/01 Ver1.6 Mod End
             ,trn.department_code                                    AS department_code              --部署
             ,trn.vendor_site_id                                     AS vendor_site_id               --出荷先ID
             ,trn.vendor_site_code                                   AS vendor_site_code             --出荷先
@@ -1161,7 +1226,10 @@ AS
 -- 2015.11.18 Ver1.3 Add End
       FROM(
           --①支給依頼・仕入有償(原料・資材・半製品)
-          SELECT /*+ LEADING(flv xoha ooha otta xola wdd itp xrpm iimb gic mcb xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod Start
+--          SELECT /*+ LEADING(flv xoha ooha otta xola wdd itp xrpm iimb gic mcb xmld oola ilm xlc) 
+          SELECT /*+ LEADING(    xoha ooha otta xola wdd itp xrpm iimb gic mcb xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod End
                      USE_NL (    xoha ooha otta xola wdd itp xrpm iimb gic mcb xmld oola ilm xlc)
                      INDEX  (xoha XXWSH_OH_N32)    */
                 iimb.attribute15                                                                  AS attribute15
@@ -1180,7 +1248,11 @@ AS
                ,NVL(xlc.unit_ploce, 0)                                                            AS unit_ploce
                ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)                                       AS trans_qty
                ,xola.UNIT_PRICE                                                                   AS unit_price
-               ,flv.lookup_code                                                                   AS tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,flv.lookup_code                                                                   AS tax_rate
+               ,itp.item_id                                                                       AS item_id
+               ,xoha.arrival_date                                                                 AS target_date
+-- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
                ,xoha.vendor_site_code                                                             AS vendor_site_code
@@ -1206,7 +1278,9 @@ AS
                ,ic_lots_mst                 ilm                      --OPMロットマスタ
                ,xxcmn_lot_cost              xlc                      --ロット別原価アドオン
                ,xxcmn_rcv_pay_mst           xrpm                     --受払区分アドオンマスタ
-               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del Start
+--               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del End
                ,gmi_item_categories         gic                      --OPM品目カテゴリ割当
                ,mtl_categories_b            mcb                      --品目カテゴリマスタ
           WHERE  xoha.latest_external_flag         = cv_flag_y                  --最新フラグ：Y
@@ -1249,16 +1323,21 @@ AS
           AND    iimb.item_no                      = xola.request_item_code
           AND    xola.shipping_item_code           = xola.request_item_code
           AND    xicv.item_id                      = iimb.item_id
-          AND    flv.lookup_type                   = cv_profile_name_03
-          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
--- 2015.11.18 Ver1.3 Mod Start
---                                                   AND     flv.end_date_active
-                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
--- 2015.11.18 Ver1.3 Mod End
-          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del Start
+--          AND    flv.lookup_type                   = cv_profile_name_03
+--          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
+---- 2015.11.18 Ver1.3 Mod Start
+----                                                   AND     flv.end_date_active
+--                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
+---- 2015.11.18 Ver1.3 Mod End
+--          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del End
           UNION ALL
           --②支給返品(原料・資材・半製品)
-          SELECT /*+ LEADING(flv xoha ooha otta xola rsl itp gic mcb iimb xrpm xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod Start
+--          SELECT /*+ LEADING(flv xoha ooha otta xola rsl itp gic mcb iimb xrpm xmld oola ilm xlc) 
+          SELECT /*+ LEADING(    xoha ooha otta xola rsl itp gic mcb iimb xrpm xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod End
                      USE_NL (    xoha ooha otta xola rsl itp gic mcb iimb xrpm xmld oola ilm xlc)
                      INDEX  (xoha XXWSH_OH_N32)    */
                 iimb.attribute15                                                                  AS attribute15
@@ -1277,7 +1356,11 @@ AS
                ,NVL(xlc.unit_ploce, 0)                                                            AS unit_ploce
                ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)                                       AS trans_qty
                ,xola.UNIT_PRICE                                                                   AS unit_price
-               ,flv.lookup_code                                                                   AS tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,flv.lookup_code                                                                   AS tax_rate
+               ,itp.item_id                                                                       AS item_id
+               ,xoha.sikyu_return_date                                                            AS target_date
+-- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
                ,xoha.vendor_site_code                                                             AS vendor_site_code
@@ -1303,7 +1386,9 @@ AS
                ,ic_lots_mst                 ilm                      --OPMロットマスタ
                ,xxcmn_lot_cost              xlc                      --ロット別原価アドオン
                ,xxcmn_rcv_pay_mst           xrpm                     --受払区分アドオンマスタ
-               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del Start
+--               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del End
                ,gmi_item_categories         gic                      --OPM品目カテゴリ割当
                ,mtl_categories_b            mcb                      --品目カテゴリマスタ
           WHERE  xoha.latest_external_flag         = cv_flag_y                  --最新フラグ：Y
@@ -1348,16 +1433,21 @@ AS
           AND    iimb.item_no                      = xola.request_item_code
           AND    xola.shipping_item_code           = xola.request_item_code
           AND    xicv.item_id                      = iimb.item_id
-          AND    flv.lookup_type                   = cv_profile_name_03
-          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
--- 2015.11.18 Ver1.3 Mod Start
---                                                   AND     flv.end_date_active
-                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
--- 2015.11.18 Ver1.3 Mod End
-          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del Start
+--          AND    flv.lookup_type                   = cv_profile_name_03
+--          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
+---- 2015.11.18 Ver1.3 Mod Start
+----                                                   AND     flv.end_date_active
+--                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
+---- 2015.11.18 Ver1.3 Mod End
+--          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del End
           UNION ALL
           --③支給依頼・仕入有償(製品)
-          SELECT /*+ LEADING(flv xoha ooha otta xola wdd itp xrpm xmld oola gic mcb iimb ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod Start
+--          SELECT /*+ LEADING(flv xoha ooha otta xola wdd itp xrpm xmld oola gic mcb iimb ilm xlc) 
+          SELECT /*+ LEADING(    xoha ooha otta xola wdd itp xrpm xmld oola gic mcb iimb ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod End
                      USE_NL (    xoha ooha otta xola wdd itp xrpm xmld oola gic mcb iimb ilm xlc)
                      INDEX  (xoha XXWSH_OH_N32)    */
                 iimb.attribute15                                                                  AS attribute15
@@ -1376,7 +1466,11 @@ AS
                ,NVL(xlc.unit_ploce, 0)                                                            AS unit_ploce
                ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)                                       AS trans_qty
                ,xola.UNIT_PRICE                                                                   AS unit_price
-               ,flv.lookup_code                                                                   AS tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,flv.lookup_code                                                                   AS tax_rate
+               ,itp.item_id                                                                       AS item_id
+               ,xoha.arrival_date                                                                 AS target_date
+-- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
                ,xoha.vendor_site_code                                                             AS vendor_site_code
@@ -1402,7 +1496,9 @@ AS
                ,ic_lots_mst                 ilm                      --OPMロットマスタ
                ,xxcmn_lot_cost              xlc                      --ロット別原価アドオン
                ,xxcmn_rcv_pay_mst           xrpm                     --受払区分アドオンマスタ
-               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del Start
+--               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del End
                ,gmi_item_categories         gic                      --OPM品目カテゴリ割当
                ,mtl_categories_b            mcb                      --品目カテゴリマスタ
           WHERE  xoha.latest_external_flag         = cv_flag_y                  --最新フラグ：Y
@@ -1445,16 +1541,21 @@ AS
           AND    iimb.item_no                      = xola.request_item_code
           AND    xola.shipping_item_code           = xola.request_item_code
           AND    xicv.item_id                      = iimb.item_id
-          AND    flv.lookup_type                   = cv_profile_name_03
-          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
--- 2015.11.18 Ver1.3 Mod Start
---                                                   AND     flv.end_date_active
-                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
--- 2015.11.18 Ver1.3 Mod End
-          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del Start
+--          AND    flv.lookup_type                   = cv_profile_name_03
+--          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
+---- 2015.11.18 Ver1.3 Mod Start
+----                                                   AND     flv.end_date_active
+--                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
+---- 2015.11.18 Ver1.3 Mod End
+--          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del End
           UNION ALL
           --④支給返品(製品)
-          SELECT /*+ LEADING(flv xoha ooha otta xola rsl itp xrpm xmld oola gic mcb iimb ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod Start
+--          SELECT /*+ LEADING(flv xoha ooha otta xola rsl itp xrpm xmld oola gic mcb iimb ilm xlc) 
+          SELECT /*+ LEADING(    xoha ooha otta xola rsl itp xrpm xmld oola gic mcb iimb ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod End
                      USE_NL (    xoha ooha otta xola rsl itp xrpm xmld oola gic mcb iimb ilm xlc)
                      INDEX  (xoha XXWSH_OH_N32)    */
                 iimb.attribute15                                                                  AS attribute15
@@ -1473,7 +1574,11 @@ AS
                ,NVL(xlc.unit_ploce, 0)                                                            AS unit_ploce
                ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)                                       AS trans_qty
                ,xola.UNIT_PRICE                                                                   AS unit_price
-               ,flv.lookup_code                                                                   AS tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,flv.lookup_code                                                                   AS tax_rate
+               ,itp.item_id                                                                       AS item_id
+               ,xoha.sikyu_return_date                                                            AS target_date
+-- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
                ,xoha.vendor_site_code                                                             AS vendor_site_code
@@ -1499,7 +1604,9 @@ AS
                ,ic_lots_mst                 ilm                      --OPMロットマスタ
                ,xxcmn_lot_cost              xlc                      --ロット別原価アドオン
                ,xxcmn_rcv_pay_mst           xrpm                     --受払区分アドオンマスタ
-               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del Start
+--               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del End
                ,gmi_item_categories         gic                      --OPM品目カテゴリ割当
                ,mtl_categories_b            mcb                      --品目カテゴリマスタ
           WHERE  xoha.latest_external_flag         = cv_flag_y                  --最新フラグ：Y
@@ -1544,16 +1651,21 @@ AS
           AND    iimb.item_no                      = xola.request_item_code
           AND    xola.shipping_item_code           = xola.request_item_code
           AND    xicv.item_id                      = iimb.item_id
-          AND    flv.lookup_type                   = cv_profile_name_03
-          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
--- 2015.11.18 Ver1.3 Mod Start
---                                                   AND     flv.end_date_active
-                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
--- 2015.11.18 Ver1.3 Mod End
-          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del Start
+--          AND    flv.lookup_type                   = cv_profile_name_03
+--          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
+---- 2015.11.18 Ver1.3 Mod Start
+----                                                   AND     flv.end_date_active
+--                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
+---- 2015.11.18 Ver1.3 Mod End
+--          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del End
           UNION ALL
           --⑤支給依頼・仕入有償(振替有償)
-          SELECT /*+ LEADING(flv xoha ooha otta xola iimb gic1 mcb1 wdd itp xrpm gic2 mcb2 xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod Start
+--          SELECT /*+ LEADING(flv xoha ooha otta xola iimb gic1 mcb1 wdd itp xrpm gic2 mcb2 xmld oola ilm xlc) 
+          SELECT /*+ LEADING(    xoha ooha otta xola iimb gic1 mcb1 wdd itp xrpm gic2 mcb2 xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod End
                      USE_NL (    xoha ooha otta xola iimb gic1 mcb1 wdd itp xrpm gic2 mcb2 xmld oola ilm xlc)
                      INDEX  (xoha XXWSH_OH_N32)    */
                 iimb.attribute15                                                                  AS attribute15
@@ -1572,7 +1684,11 @@ AS
                ,NVL(xlc.unit_ploce, 0)                                                            AS unit_ploce
                ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)                                       AS trans_qty
                ,xola.UNIT_PRICE                                                                   AS unit_price
-               ,flv.lookup_code                                                                   AS tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,flv.lookup_code                                                                   AS tax_rate
+               ,itp.item_id                                                                       AS item_id
+               ,xoha.arrival_date                                                                 AS target_date
+-- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
                ,xoha.vendor_site_code                                                             AS vendor_site_code
@@ -1598,7 +1714,9 @@ AS
                ,ic_lots_mst                 ilm                      --OPMロットマスタ
                ,xxcmn_lot_cost              xlc                      --ロット別原価アドオン
                ,xxcmn_rcv_pay_mst           xrpm                     --受払区分アドオンマスタ
-               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del Start
+--               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del End
                ,gmi_item_categories         gic1                      --OPM品目カテゴリ割当
                ,mtl_categories_b            mcb1                      --品目カテゴリマスタ
                ,gmi_item_categories         gic2                      --OPM品目カテゴリ割当
@@ -1649,16 +1767,21 @@ AS
 --          AND    xicv.item_no                      = xola.shipping_item_code
           AND    xicv.item_id                      = iimb.item_id
           -- 2015-01-22 Ver1.1 Mod End
-          AND    flv.lookup_type                   = cv_profile_name_03
-          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
--- 2015.11.18 Ver1.3 Mod Start
---                                                   AND     flv.end_date_active
-                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
--- 2015.11.18 Ver1.3 Mod End
-          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del Start
+--          AND    flv.lookup_type                   = cv_profile_name_03
+--          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
+---- 2015.11.18 Ver1.3 Mod Start
+----                                                   AND     flv.end_date_active
+--                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
+---- 2015.11.18 Ver1.3 Mod End
+--          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del End
           UNION ALL
           --⑥支給返品(振替有償)
-          SELECT /*+ LEADING(flv xoha ooha otta xola iimb gic1 mcb1 rsl itp xrpm gic2 mcb2 xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod Start
+--          SELECT /*+ LEADING(flv xoha ooha otta xola iimb gic1 mcb1 rsl itp xrpm gic2 mcb2 xmld oola ilm xlc) 
+          SELECT /*+ LEADING(    xoha ooha otta xola iimb gic1 mcb1 rsl itp xrpm gic2 mcb2 xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod End
                      USE_NL (    xoha ooha otta xola iimb gic1 mcb1 rsl itp xrpm gic2 mcb2 xmld oola ilm xlc)
                      INDEX  (xoha XXWSH_OH_N32)    */
                 iimb.attribute15                                                                  AS attribute15
@@ -1677,7 +1800,11 @@ AS
                ,NVL(xlc.unit_ploce, 0)                                                            AS unit_ploce
                ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)                                       AS trans_qty
                ,xola.UNIT_PRICE                                                                   AS unit_price
-               ,flv.lookup_code                                                                   AS tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,flv.lookup_code                                                                   AS tax_rate
+               ,itp.item_id                                                                       AS item_id
+               ,xoha.sikyu_return_date                                                            AS target_date
+-- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
                ,xoha.vendor_site_code                                                             AS vendor_site_code
@@ -1703,7 +1830,9 @@ AS
                ,ic_lots_mst                 ilm                      --OPMロットマスタ
                ,xxcmn_lot_cost              xlc                      --ロット別原価アドオン
                ,xxcmn_rcv_pay_mst           xrpm                     --受払区分アドオンマスタ
-               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del Start
+--               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del End
                ,gmi_item_categories         gic1                      --OPM品目カテゴリ割当
                ,mtl_categories_b            mcb1                      --品目カテゴリマスタ
                ,gmi_item_categories         gic2                      --OPM品目カテゴリ割当
@@ -1756,16 +1885,21 @@ AS
 --          AND    xicv.item_no                      = xola.shipping_item_code
           AND    xicv.item_id                      = iimb.item_id
           -- 2015-01-22 Ver1.1 Mod End
-          AND    flv.lookup_type                   = cv_profile_name_03
-          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
--- 2015.11.18 Ver1.3 Mod Start
---                                                   AND     flv.end_date_active
-                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
--- 2015.11.18 Ver1.3 Mod End
-          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del Start
+--          AND    flv.lookup_type                   = cv_profile_name_03
+--          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
+---- 2015.11.18 Ver1.3 Mod Start
+----                                                   AND     flv.end_date_active
+--                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
+---- 2015.11.18 Ver1.3 Mod End
+--          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del End
           UNION ALL
           --⑦支給依頼・仕入有償(商品振替有償)
-          SELECT /*+ LEADING(flv xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 gic3 mcb3 rsl itp xrpm gic4 mcb4 gic5 mcb5 xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod Start
+--          SELECT /*+ LEADING(flv xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 gic3 mcb3 rsl itp xrpm gic4 mcb4 gic5 mcb5 xmld oola ilm xlc) 
+          SELECT /*+ LEADING(    xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 gic3 mcb3 rsl itp xrpm gic4 mcb4 gic5 mcb5 xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod End
                      USE_NL (    xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 gic3 mcb3 rsl itp xrpm gic4 mcb4 gic5 mcb5 xmld oola ilm xlc)
                      INDEX  (xoha XXWSH_OH_N32)    */
                 iimb.attribute15                                                                  AS attribute15
@@ -1784,7 +1918,11 @@ AS
                ,NVL(xlc.unit_ploce, 0)                                                            AS unit_ploce
                ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)                                       AS trans_qty
                ,xola.UNIT_PRICE                                                                   AS unit_price
-               ,flv.lookup_code                                                                   AS tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,flv.lookup_code                                                                   AS tax_rate
+               ,itp.item_id                                                                       AS item_id
+               ,xoha.arrival_date                                                                 AS target_date
+-- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
                ,xoha.vendor_site_code                                                             AS vendor_site_code
@@ -1810,7 +1948,9 @@ AS
                ,ic_lots_mst                 ilm                      --OPMロットマスタ
                ,xxcmn_lot_cost              xlc                      --ロット別原価アドオン
                ,xxcmn_rcv_pay_mst           xrpm                     --受払区分アドオンマスタ
-               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del Start
+--               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del End
                ,gmi_item_categories         gic1                      --OPM品目カテゴリ割当
                ,mtl_categories_b            mcb1                      --品目カテゴリマスタ
                ,gmi_item_categories         gic2                      --OPM品目カテゴリ割当
@@ -1877,16 +2017,21 @@ AS
 --          AND    xicv.item_no                      = xola.shipping_item_code
           AND    xicv.item_id                      = iimb.item_id
           -- 2015-01-22 Ver1.1 Mod End
-          AND    flv.lookup_type                   = cv_profile_name_03
-          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
--- 2015.11.18 Ver1.3 Mod Start
---                                                   AND     flv.end_date_active
-                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
--- 2015.11.18 Ver1.3 Mod End
-          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del Start
+--          AND    flv.lookup_type                   = cv_profile_name_03
+--          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
+---- 2015.11.18 Ver1.3 Mod Start
+----                                                   AND     flv.end_date_active
+--                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
+---- 2015.11.18 Ver1.3 Mod End
+--          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del End
           UNION ALL
           --⑧支給返品(商品振替有償)
-          SELECT /*+ LEADING(flv xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 rsl itp xrpm gic3 mcb3 gic4 mcb4 xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod Start
+--          SELECT /*+ LEADING(flv xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 rsl itp xrpm gic3 mcb3 gic4 mcb4 xmld oola ilm xlc) 
+          SELECT /*+ LEADING(    xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 rsl itp xrpm gic3 mcb3 gic4 mcb4 xmld oola ilm xlc) 
+-- 2019/08/01 Ver1.6 Mod End
                      USE_NL (    xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 rsl itp xrpm gic3 mcb3 gic4 mcb4 xmld oola ilm xlc)
                      INDEX  (xoha XXWSH_OH_N32)    */
                 iimb.attribute15                                                                  AS attribute15
@@ -1905,7 +2050,11 @@ AS
                ,NVL(xlc.unit_ploce, 0)                                                            AS unit_ploce
                ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)                                       AS trans_qty
                ,xola.UNIT_PRICE                                                                   AS unit_price
-               ,flv.lookup_code                                                                   AS tax_rate
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,flv.lookup_code                                                                   AS tax_rate
+               ,itp.item_id                                                                       AS item_id
+               ,xoha.sikyu_return_date                                                            AS target_date
+-- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
                ,xoha.vendor_site_code                                                             AS vendor_site_code
@@ -1931,7 +2080,9 @@ AS
                ,ic_lots_mst                 ilm                      --OPMロットマスタ
                ,xxcmn_lot_cost              xlc                      --ロット別原価アドオン
                ,xxcmn_rcv_pay_mst           xrpm                     --受払区分アドオンマスタ
-               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del Start
+--               ,fnd_lookup_values           flv                      --lookup表
+-- 2019/08/01 Ver1.6 Del End
                ,gmi_item_categories         gic1                      --OPM品目カテゴリ割当
                ,mtl_categories_b            mcb1                      --品目カテゴリマスタ
                ,gmi_item_categories         gic2                      --OPM品目カテゴリ割当
@@ -1995,14 +2146,22 @@ AS
 --          AND    xicv.item_no                      = xola.shipping_item_code
           AND    xicv.item_id                      = iimb.item_id
           -- 2015-01-22 Ver1.1 Mod End
-          AND    flv.lookup_type                   = cv_profile_name_03
-          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
--- 2015.11.18 Ver1.3 Mod Start
---                                                   AND     flv.end_date_active
-                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
--- 2015.11.18 Ver1.3 Mod End
-          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del Start
+--          AND    flv.lookup_type                   = cv_profile_name_03
+--          AND    xoha.arrival_date                 BETWEEN flv.start_date_active
+---- 2015.11.18 Ver1.3 Mod Start
+----                                                   AND     flv.end_date_active
+--                                                   AND     NVL(flv.end_date_active, xoha.arrival_date)
+---- 2015.11.18 Ver1.3 Mod End
+--          AND    flv.language                      = cv_lang
+-- 2019/08/01 Ver1.6 Del End
           ) trn
+-- 2019/08/01 Ver1.6 Add Start
+         ,xxcmm_item_tax_rate_v                    xitrv                     -- 消費税率情報VIEW
+      WHERE      xitrv.item_id                     = trn.item_id
+      AND        trn.target_date                   BETWEEN NVL(xitrv.start_date_active, trn.target_date)
+                                                   AND     NVL(xitrv.end_date_active,   trn.target_date)
+-- 2019/08/01 Ver1.6 Add End
       ORDER BY
                 department_code                   -- 部門
                 -- 2015-02-18 Ver1.2 #44 Mod Start
@@ -2010,7 +2169,10 @@ AS
                ,vendor_id                         -- 仕入先
                 -- 2015-02-18 Ver1.2 #44 Mod End
                ,item_class_code                   -- 品目区分
-               ,tax_rate                          -- 税率
+-- 2019/08/01 Ver1.6 Mod Start
+--               ,tax_rate                          -- 税率
+               ,tax_code                          -- 税コード
+-- 2019/08/01 Ver1.6 Mod End
                ,header_id                         -- 受注ヘッダID
                ,line_id                           -- 受注明細ID
     ;
@@ -2058,16 +2220,24 @@ AS
         -- 2015-02-18 Ver1.2 #44 Mod Start
 --        OR ( NVL(lt_vendor_site_id,gl_interface_tab(ln_count).vendor_site_id)    <> gl_interface_tab(ln_count).vendor_site_id )
         OR ( NVL(lt_vendor_id,gl_interface_tab(ln_count).vendor_id)    <> gl_interface_tab(ln_count).vendor_id )
+-- 2019/08/01 Ver1.6 Add Start
+        OR ( NVL(lt_tax_code,gl_interface_tab(ln_count).tax_code)    <> gl_interface_tab(ln_count).tax_code )
+-- 2019/08/01 Ver1.6 Add End
         -- 2015-02-18 Ver1.2 #44 Mod End
         OR ( NVL(lt_item_class_code,gl_interface_tab(ln_count).item_class_code)  <> gl_interface_tab(ln_count).item_class_code ) )
-        AND g_gl_interface_tab(ln_tax_cnt).misyu_kin <> 0
+-- 2019/08/01 Ver1.6 Del Start
+--        AND g_gl_interface_tab(ln_tax_cnt).misyu_kin <> 0
+-- 2019/08/01 Ver1.6 Del End
       THEN
+-- 2019/08/01 Ver1.6 Add Start
+        IF ( g_gl_interface_tab(ln_tax_cnt).misyu_kin <> 0 ) THEN
+-- 2019/08/01 Ver1.6 Add End
 --
-        -- ===============================
-        -- 出荷先情報を取得
-        -- ===============================
-        BEGIN
-          -- 2015-01-22 Ver1.1 Mod Start
+          -- ===============================
+          -- 出荷先情報を取得
+          -- ===============================
+          BEGIN
+            -- 2015-01-22 Ver1.1 Mod Start
 --          SELECT xvsa.vendor_site_short_name                  -- 仕入先略称
 --          INTO   lt_vendor_site_name
 --          FROM   xxcmn_vendor_sites_all xvsa                  -- 仕入先サイトアドオンマスタ
@@ -2078,100 +2248,100 @@ AS
 -- 2015.11.18 Ver1.3 Mod Start
 --          SELECT pv.segment1
 --                ,xv.vendor_name
-          SELECT pv.segment1       vendor_code
-                ,xv.vendor_name    vendor_name
+            SELECT pv.segment1       vendor_code
+                  ,xv.vendor_name    vendor_name
 -- 2015.11.18 Ver1.3 Mod End
-          INTO   lt_vendor_code
-                ,lt_vendor_name
-          FROM   po_vendors           pv
-                ,po_vendor_sites_all  pvsa
-                ,xxcmn_vendors        xv
-          WHERE  pvsa.vendor_site_id = lt_vendor_site_id
-          AND    pv.vendor_id        = pvsa.vendor_id
-          AND    pv.vendor_id        = xv.vendor_id
-          AND    ld_opminv_date      BETWEEN xv.start_date_active
-                                     AND     NVL(xv.end_date_active,trunc(sysdate))
-          AND    ld_opminv_date      <= NVL(pv.end_date_active,ld_opminv_date);
-          -- 2015-01-22 Ver1.1 Mod End
+            INTO   lt_vendor_code
+                  ,lt_vendor_name
+            FROM   po_vendors           pv
+                  ,po_vendor_sites_all  pvsa
+                  ,xxcmn_vendors        xv
+            WHERE  pvsa.vendor_site_id = lt_vendor_site_id
+            AND    pv.vendor_id        = pvsa.vendor_id
+            AND    pv.vendor_id        = xv.vendor_id
+            AND    ld_opminv_date      BETWEEN xv.start_date_active
+                                       AND     NVL(xv.end_date_active,trunc(sysdate))
+            AND    ld_opminv_date      <= NVL(pv.end_date_active,ld_opminv_date);
+            -- 2015-01-22 Ver1.1 Mod End
 --
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errmsg    := xxccp_common_pkg.get_msg(
-                              iv_application  => cv_appl_name_xxcfo
-                            , iv_name         => cv_msg_cfo_10035        -- データ取得エラー
-                            , iv_token_name1  => cv_tkn_data
-                            , iv_token_value1 => cv_msg_out_data_04      -- 仕入先サイトアドオンマスタ
-                            , iv_token_name2  => cv_tkn_item
-                            , iv_token_value2 => cv_msg_out_item_02      -- 仕入先サイトID
-                            , iv_token_name3  => cv_tkn_key
-                            , iv_token_value3 => lt_vendor_site_id
-                            );
-            lv_errbuf := lv_errmsg;
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_errmsg    := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_appl_name_xxcfo
+                              , iv_name         => cv_msg_cfo_10035        -- データ取得エラー
+                              , iv_token_name1  => cv_tkn_data
+                              , iv_token_value1 => cv_msg_out_data_04      -- 仕入先サイトアドオンマスタ
+                              , iv_token_name2  => cv_tkn_item
+                              , iv_token_value2 => cv_msg_out_item_02      -- 仕入先サイトID
+                              , iv_token_name3  => cv_tkn_key
+                              , iv_token_value3 => lt_vendor_site_id
+                              );
+              lv_errbuf := lv_errmsg;
+              RAISE global_process_expt;
+          END;
+--
+          -- ===============================
+          -- 仕訳OIF登録(未収入金(A-5))
+          -- ===============================
+          ins_gl_interface(
+            in_prc_mode              => cn_prc_mode1,        -- 1.処理モード（未収入金）
+            it_department_code       => lt_department_code,  -- 2.部門コード
+            it_item_class_code       => lt_item_class_code,  -- 3.品目区分
+            -- 2015-01-22 Ver1.1 Mod Start
+--            it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--            it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+            it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+            it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+            -- 2015-01-22 Ver1.1 Mod End
+            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+--
+          IF (lv_retcode <> cv_status_normal) THEN
             RAISE global_process_expt;
-        END;
+          END IF;
 --
-        -- ===============================
-        -- 仕訳OIF登録(未収入金(A-5))
-        -- ===============================
-        ins_gl_interface(
-          in_prc_mode              => cn_prc_mode1,        -- 1.処理モード（未収入金）
-          it_department_code       => lt_department_code,  -- 2.部門コード
-          it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          -- 2015-01-22 Ver1.1 Mod Start
---          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
---          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
-          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
-          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
-          -- 2015-01-22 Ver1.1 Mod End
-          ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-          ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-          ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+          -- ===============================
+          -- 仕訳OIF登録(仮受消費税(A-6))
+          -- ===============================
+          ins_gl_interface(
+            in_prc_mode              => cn_prc_mode2,        -- 1.処理モード（仮受消費税）
+            it_department_code       => lt_department_code,  -- 2.部門コード
+            it_item_class_code       => lt_item_class_code,  -- 3.品目区分
+            -- 2015-01-22 Ver1.1 Mod Start
+--            it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--            it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+            it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+            it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+            -- 2015-01-22 Ver1.1 Mod End
+            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
 --
-        IF (lv_retcode <> cv_status_normal) THEN
-          RAISE global_process_expt;
-        END IF;
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
 --
-        -- ===============================
-        -- 仕訳OIF登録(仮受消費税(A-6))
-        -- ===============================
-        ins_gl_interface(
-          in_prc_mode              => cn_prc_mode2,        -- 1.処理モード（仮受消費税）
-          it_department_code       => lt_department_code,  -- 2.部門コード
-          it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          -- 2015-01-22 Ver1.1 Mod Start
---          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
---          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
-          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
-          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
-          -- 2015-01-22 Ver1.1 Mod End
-          ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-          ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-          ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+          -- ===============================
+          -- 仕訳OIF登録(有償支給(A-6))
+          -- ===============================
+          ins_gl_interface(
+            in_prc_mode              => cn_prc_mode3,        -- 1.処理モード（有償支給）
+            it_department_code       => lt_department_code,  -- 2.部門コード
+            it_item_class_code       => lt_item_class_code,  -- 3.品目区分
+            -- 2015-01-22 Ver1.1 Mod Start
+--            it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
+--            it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
+            it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+            it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+            -- 2015-01-22 Ver1.1 Mod End
+            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
 --
-        IF (lv_retcode <> cv_status_normal) THEN
-          RAISE global_process_expt;
-        END IF;
---
-        -- ===============================
-        -- 仕訳OIF登録(有償支給(A-6))
-        -- ===============================
-        ins_gl_interface(
-          in_prc_mode              => cn_prc_mode3,        -- 1.処理モード（有償支給）
-          it_department_code       => lt_department_code,  -- 2.部門コード
-          it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-          -- 2015-01-22 Ver1.1 Mod Start
---          it_vendor_site_code      => lt_vendor_site_code, -- 4.出荷先コード
---          it_vendor_site_name      => lt_vendor_site_name, -- 5.出荷先名
-          it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
-          it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
-          -- 2015-01-22 Ver1.1 Mod End
-          ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-          ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-          ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
---
-        IF (lv_retcode <> cv_status_normal) THEN
-          RAISE global_process_expt;
-        END IF;
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
 --
 -- 2015.11.18 Ver1.3 Mod Start
 --        -- ===============================
@@ -2194,64 +2364,67 @@ AS
 --        IF (lv_retcode <> cv_status_normal) THEN
 --          RAISE global_process_expt;
 --        END IF;
-        -- 仮受金（リーフ）が0以外の場合
-        IF ( ln_kari_kin_1 <> 0 ) THEN
-          -- 仮受金（リーフ）を設定
-          g_gl_interface_tab(ln_tax_cnt).kari_kin    := ln_kari_kin_1;
+          -- 仮受金（リーフ）が0以外の場合
+          IF ( ln_kari_kin_1 <> 0 ) THEN
+            -- 仮受金（リーフ）を設定
+            g_gl_interface_tab(ln_tax_cnt).kari_kin    := ln_kari_kin_1;
 --
-          -- ===============================
-          -- 仕訳OIF登録(仮受金（リーフ）(A-6))
-          -- ===============================
-          ins_gl_interface(
-            in_prc_mode              => cn_prc_mode41,       -- 1.処理モード（仮受金（リーフ））
-            it_department_code       => lt_department_code,  -- 2.部門コード
-            it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-            it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
-            it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
-            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+            -- ===============================
+            -- 仕訳OIF登録(仮受金（リーフ）(A-6))
+            -- ===============================
+            ins_gl_interface(
+              in_prc_mode              => cn_prc_mode41,       -- 1.処理モード（仮受金（リーフ））
+              it_department_code       => lt_department_code,  -- 2.部門コード
+              it_item_class_code       => lt_item_class_code,  -- 3.品目区分
+              it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+              it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+              ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+              ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+              ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
 --
-          IF (lv_retcode <> cv_status_normal) THEN
-            RAISE global_process_expt;
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
           END IF;
-        END IF;
 --
-        -- 仮受金（ドリンク）が0以外の場合
-        IF ( ln_kari_kin_2 <> 0 ) THEN
-          -- 仮受金（ドリンク）を設定
-          g_gl_interface_tab(ln_tax_cnt).kari_kin    := ln_kari_kin_2;
+          -- 仮受金（ドリンク）が0以外の場合
+          IF ( ln_kari_kin_2 <> 0 ) THEN
+            -- 仮受金（ドリンク）を設定
+            g_gl_interface_tab(ln_tax_cnt).kari_kin    := ln_kari_kin_2;
 --
-          -- ===============================
-          -- 仕訳OIF登録(仮受金（ドリンク）(A-6))
-          -- ===============================
-          ins_gl_interface(
-            in_prc_mode              => cn_prc_mode42,       -- 1.処理モード（仮受金（ドリンク））
-            it_department_code       => lt_department_code,  -- 2.部門コード
-            it_item_class_code       => lt_item_class_code,  -- 3.品目区分
-            it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
-            it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
-            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+            -- ===============================
+            -- 仕訳OIF登録(仮受金（ドリンク）(A-6))
+            -- ===============================
+            ins_gl_interface(
+              in_prc_mode              => cn_prc_mode42,       -- 1.処理モード（仮受金（ドリンク））
+              it_department_code       => lt_department_code,  -- 2.部門コード
+              it_item_class_code       => lt_item_class_code,  -- 3.品目区分
+              it_vendor_code           => lt_vendor_code,      -- 4.出荷先コード
+              it_vendor_name           => lt_vendor_name,      -- 5.出荷先名
+              ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+              ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+              ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
 --
-          IF (lv_retcode <> cv_status_normal) THEN
-            RAISE global_process_expt;
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
           END IF;
-        END IF;
 -- 2015.11.18 Ver1.3 Mod End
 --
-        -- ===============================
-        -- 生産取引データ更新(A-7)
-        -- ===============================
-        upd_inv_trn_data(
-          ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
-          ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
-          ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
+          -- ===============================
+          -- 生産取引データ更新(A-7)
+          -- ===============================
+          upd_inv_trn_data(
+            ov_errbuf                => lv_errbuf,        -- エラー・メッセージ           --# 固定 #
+            ov_retcode               => lv_retcode,       -- リターン・コード             --# 固定 #
+            ov_errmsg                => lv_errmsg);       -- ユーザー・エラー・メッセージ --# 固定 #
 --
-        IF (lv_retcode <> cv_status_normal) THEN
-          RAISE global_process_expt;
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE global_process_expt;
+          END IF;
+-- 2019/08/01 Ver1.6 Add Start
         END IF;
+-- 2019/08/01 Ver1.6 Add End
 --
         -- 仕訳単位の情報を持つ変数の初期化を実施
         lt_department_code         := NULL;                -- 仕訳単位：部門コード
@@ -2267,13 +2440,18 @@ AS
         gv_description_dr          := NULL;                -- 仕訳単位：摘要（借方）
         -- 2015-02-18 Ver1.2 #44 Add Start
         lt_vendor_id               := NULL;                -- 仕訳単位：仕入先ID
+-- 2019/08/01 Ver1.6 Add Start
+        lt_tax_code                := NULL;                -- 税コード
+-- 2019/08/01 Ver1.6 Add End
         -- 2015-02-18 Ver1.2 #44 Add End
 -- 2015.11.18 Ver1.3 Add Start
         ln_kari_kin_1              := 0;                   -- 仮受金（リーフ）
         ln_kari_kin_2              := 0;                   -- 仮受金（ドリンク）
 -- 2015.11.18 Ver1.3 Add End
 --
-        ln_tax_rate_jdge           := 0;                   -- 消費税率(判定用)
+-- 2019/08/01 Ver1.6 Del Start
+--        ln_tax_rate_jdge           := 0;                   -- 消費税率(判定用)
+-- 2019/08/01 Ver1.6 Del End
         ln_tax_cnt                 := 0;
         ln_out_count               := 0;
         g_gl_interface_tab.DELETE;                         -- 有償支給金額情報格納用PL/SQL表
@@ -2287,16 +2465,22 @@ AS
         -- 処理対象件数カウント
         gn_target_cnt := gn_target_cnt +1;
 --
-        -- 消費税率ごとの積み上げを行う。
-        IF (NVL(ln_tax_rate_jdge,0) = 0) THEN
-          ln_tax_cnt := 1;
-          g_gl_interface_tab(ln_tax_cnt).tax_rate    := gl_interface_tab(ln_count).tax_rate;    -- 仕訳単位：税コード
-        --
-        ELSIF (NVL(ln_tax_rate_jdge,0) <> gl_interface_tab(ln_count).tax_rate) THEN
-          ln_tax_cnt := NVL(ln_tax_cnt,0) + 1;
-          g_gl_interface_tab(ln_tax_cnt).tax_rate    := gl_interface_tab(ln_count).tax_rate;    -- 仕訳単位：税コード
-        --
-        END IF;
+-- 2019/08/01 Ver1.6 Del Start
+--        -- 消費税率ごとの積み上げを行う。
+--        IF (NVL(ln_tax_rate_jdge,0) = 0) THEN
+--          ln_tax_cnt := 1;
+--          g_gl_interface_tab(ln_tax_cnt).tax_rate    := gl_interface_tab(ln_count).tax_rate;    -- 仕訳単位：税コード
+--        --
+--        ELSIF (NVL(ln_tax_rate_jdge,0) <> gl_interface_tab(ln_count).tax_rate) THEN
+--          ln_tax_cnt := NVL(ln_tax_cnt,0) + 1;
+--          g_gl_interface_tab(ln_tax_cnt).tax_rate    := gl_interface_tab(ln_count).tax_rate;    -- 仕訳単位：税コード
+--        --
+--        END IF;
+-- 2019/08/01 Ver1.6 Del End
+-- 2019/08/01 Ver1.6 Add Start
+        ln_tax_cnt := 1;
+        g_gl_interface_tab(ln_tax_cnt).tax_code    := gl_interface_tab(ln_count).tax_code;    -- 仕訳単位：税コード
+-- 2019/08/01 Ver1.6 Add End
         -- 消費税率ごとに金額の積み上げを行う
         g_gl_interface_tab(ln_tax_cnt).jitu_kin    := NVL(g_gl_interface_tab(ln_tax_cnt).jitu_kin,0) + gl_interface_tab(ln_count).jitu_kin;       -- 仕訳単位：有償支給
 -- 2015.11.18 Ver1.3 Mod Start
@@ -2318,8 +2502,10 @@ AS
 -- 2015.11.18 Ver1.3 Mod End
                                                       + g_gl_interface_tab(ln_tax_cnt).tax_kin;      -- 仕訳単位：未収入金
 --
-        -- 消費税率(判定用)を保持
-        ln_tax_rate_jdge                           := gl_interface_tab(ln_count).tax_rate;
+-- 2019/08/01 Ver1.6 Del Start
+--        -- 消費税率(判定用)を保持
+--        ln_tax_rate_jdge                           := gl_interface_tab(ln_count).tax_rate;
+-- 2019/08/01 Ver1.6 Del End
 --
         -- 仕訳単位の情報を保持
         lt_department_code           := gl_interface_tab(ln_count).department_code;                 -- 仕訳単位：部門
@@ -2328,6 +2514,9 @@ AS
         -- 2015-02-18 Ver1.2 #44 Add Start
         lt_vendor_id                 :=gl_interface_tab(ln_count).vendor_id;                   -- 仕訳単位：仕入先ID
         -- 2015-02-18 Ver1.2 #44 Add End
+-- 2019/08/01 Ver1.6 Add Start
+        lt_tax_code                  := gl_interface_tab(ln_count).tax_code;                        -- 税コード
+-- 2019/08/01 Ver1.6 Add End
 --
         -- 「取引ID」を配列に保持
         ln_out_count :=  ln_out_count + 1;
