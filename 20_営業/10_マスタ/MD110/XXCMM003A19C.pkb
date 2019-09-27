@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2013/09/18    1.12  Shigeto.Niki     障害E_本稼動_10904の再対応(消費税増税対応)
  *  2017/08/29    1.13  Shigeto.Niki     障害E_本稼動_14486の対応
  *  2019/07/30    1.14  N.Koyama         障害E_本稼動_15472の追加対応
+ *  2019/09/26    1.15  N.Koyama         障害E_本稼動_15949の対応
  *
  *****************************************************************************************/
 --
@@ -476,6 +477,9 @@ AS
     ld_process_date_next_f         DATE;                                        --翌業務月１日
     ld_process_date_next_l         DATE;                                        --翌業務月最終日
 -- 2009/08/24 Ver1.5 add end by Yutaka.Kuboshima
+-- Ver1.15 add Start
+    lt_tax_rounding_rule    xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE;
+-- Ver1.15 add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1331,6 +1335,24 @@ AS
           -- 予約売上拠点コードを管理元拠点コードに設定
           cust_data_rec.rsv_sale_base_code  := serch_base_rec.management_base_code;
         END IF;
+-- Ver1.15 Add Start
+        -- 顧客階層ビューより端数処理区分を取得
+        lt_tax_rounding_rule := NULL;
+        BEGIN
+          SELECT xchv.bill_tax_round_rule                                      tax_rounding_rule           --税金端数処理
+          INTO   lt_tax_rounding_rule
+          FROM   xxcos_cust_hierarchy_v xchv
+          WHERE  xchv.ship_account_id = def_cust_rec.customer_id
+          ;
+          cust_data_rec.tax_rounding_rule := lt_tax_rounding_rule;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+             NULL;
+          -- その他例外
+          WHEN OTHERS THEN
+            RAISE global_api_others_expt;
+        END;
+-- Ver1.15 Add End
         -- 変数初期化
         serch_base_rec := NULL;
         -- ===============================
