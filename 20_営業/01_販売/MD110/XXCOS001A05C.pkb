@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.39
+ * Version          : 1.40
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -102,6 +102,7 @@ AS
  *  2019/01/29    1.37  S.Kuwako         [E_本稼動_15472] 軽減税率対応
  *  2019/07/26    1.38  S.Kuwako         [E_本稼動_15472] 軽減税率対応(HHT追加対応)
  *  2019/09/24    1.39  S.Kuwako         [E_本稼動_15941] 軽減税率対応(本番障害対応)
+ *  2019/09/26    1.40  S.Kuwako         [E_本稼動_15941] 軽減税率対応(T4障害対応)
  *
  *****************************************************************************************/
 --
@@ -3495,6 +3496,10 @@ AS
   ln_max_index                    NUMBER;
   ln_line_count                   NUMBER;
 --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+--************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+  ln_max_no_data_hht              NUMBER;
+  ln_max_tax_data_hht             NUMBER;
+--************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -3731,6 +3736,10 @@ AS
         g_tax_amount_sum_type_tab(a).diff_amount        := 0;
       END LOOP;
 --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+--************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+      ln_max_no_data_hht              := 0;
+      ln_max_tax_data_hht             := 0;
+--************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
 --
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
 --      lt_row_id                    := gt_dlv_edi_headers_data( ck_no ).row_id;                   -- 行ID
@@ -5508,10 +5517,12 @@ AS
               IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
                 --消費税合計積上げ
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
-                -- 値引発生時
-                IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+    --            -- 値引発生時
+    --            IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
     --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
                   --明細別最大消費税算出
                   IF ( ABS( ln_max_tax_data ) < ABS( lt_tax_amount ) ) THEN
                     ln_max_tax_data := lt_tax_amount;
@@ -5521,8 +5532,10 @@ AS
     --******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
                   END IF;
-                -- 値引未発生時
-                ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
+    --            -- 値引未発生時
+    --            ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
                   -- 税率単位の各種金額積上げ
                   FOR a IN 1..ln_max_index LOOP
                     IF ( g_tax_amount_sum_type_tab(a).tax_rate = lt_tax_consum ) THEN
@@ -5542,7 +5555,9 @@ AS
                     END IF;
                   END LOOP;
     --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
-                END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
+    --            END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
               END IF;
     --
               -- 最大明細行No取得
@@ -6846,6 +6861,11 @@ AS
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
                   -- 値引未発生時
                   ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                    -- 最大明細番号、最大税額の保持
+                    ln_max_no_data_hht  := ln_max_no_data;
+                    ln_max_tax_data_hht := ln_max_tax_data;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                     -- 税率ごとの差額計算
                     FOR a IN 1..ln_max_index LOOP
                       IF ( g_tax_amount_sum_type_tab(a).tax_amount_sum <> g_tax_amount_sum_type_tab(a).tax_amount ) THEN
@@ -6861,12 +6881,38 @@ AS
     --
                         IF ( lt_red_black_flag = cv_black_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+                            ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+                          END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         ELSIF ( lt_red_black_flag = cv_red_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+                            ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+                          END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         END IF;
                       END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                      -- 消費税合計積上げに対して、税率ごとの差額調整
+                      ln_all_tax_amount := ln_all_tax_amount + g_tax_amount_sum_type_tab(a).diff_amount;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                     END LOOP;
     --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                    --  内税(伝票課税)、かつ、HHT売上消費税額と消費税金額積上げ(税率ごとの差額調整後)が相違する場合
+                    IF  ( lt_consumption_tax_class = cv_ins_slip_tax )
+                    AND ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
+                        -- HHT売上消費税額と消費税金額積上げ(税率ごとの差額調整後)の差額調整
+                      IF ( lt_red_black_flag = cv_black_flag) THEN
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                      ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) ;
+                      END IF;
+                    END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                   END IF;
                 END IF;
             END IF;
@@ -7531,6 +7577,10 @@ AS
   ln_max_index                    NUMBER;
   ln_line_count                   NUMBER;
 --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+--************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+  ln_max_no_data_hht              NUMBER;
+  ln_max_tax_data_hht             NUMBER;
+--************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
 --
     -- *** ローカル・カーソル ***
   CURSOR get_sales_exp_cur
@@ -7772,6 +7822,10 @@ AS
         g_tax_amount_sum_type_tab(a).diff_amount        := 0;
       END LOOP;
 --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+--************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+      ln_max_no_data_hht              := 0;
+      ln_max_tax_data_hht             := 0;
+--************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
 --
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
       lt_row_id                    := gt_inp_dlv_hht_headers_data( ck_no ).row_id;                   -- 行ID
@@ -9564,10 +9618,12 @@ AS
               IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
                 -- 消費税合計積上げ
                   ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
-                -- 値引発生時
-                IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+    --            -- 値引発生時
+    --            IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
     --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
                   -- 明細最大消費税取得
                   IF ( ABS( ln_max_tax_data ) < ABS( lt_tax_amount ) ) THEN
                     ln_max_tax_data := lt_tax_amount;
@@ -9576,8 +9632,10 @@ AS
                     ln_max_no_data  := ln_line_data_count;
     --******************************* 2009/04/21 N.Maeda Var1.10 MOD END   ***************************************
                   END IF;
-                -- 値引未発生時
-                ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
+    --            -- 値引未発生時
+    --            ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
                   -- 税率単位の各種金額積上げ
                   FOR a IN 1..ln_max_index LOOP
                     IF ( g_tax_amount_sum_type_tab(a).tax_rate = lt_tax_consum ) THEN
@@ -9597,7 +9655,9 @@ AS
                     END IF;
                   END LOOP;
     --************** 2019/07/26 S.Kuwako Var1.38 MOD END   **************
-                END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
+    --            END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
               END IF;
     --
               -- 明細最大行No確認
@@ -10941,6 +11001,11 @@ AS
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
                   -- 値引未発生時
                   ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                    -- 最大明細番号、最大税額の保持
+                    ln_max_no_data_hht  := ln_max_no_data;
+                    ln_max_tax_data_hht := ln_max_tax_data;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                     -- 税率ごとの差額計算
                     FOR a IN 1..ln_max_index LOOP
                       IF ( g_tax_amount_sum_type_tab(a).tax_amount_sum <> g_tax_amount_sum_type_tab(a).tax_amount ) THEN
@@ -10956,12 +11021,38 @@ AS
     --
                         IF ( lt_red_black_flag = cv_black_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+                            ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+                          END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         ELSIF ( lt_red_black_flag = cv_red_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+                            ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+                          END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         END IF;
                       END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                      -- 消費税合計積上げに対して、税率ごとの差額調整
+                      ln_all_tax_amount := ln_all_tax_amount + g_tax_amount_sum_type_tab(a).diff_amount;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                     END LOOP;
     --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                    --  内税(伝票課税)、かつ、HHT売上消費税額と消費税金額積上げ(税率ごとの差額調整後)が相違する場合
+                    IF  ( lt_consumption_tax_class = cv_ins_slip_tax )
+                    AND ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
+                        -- HHT売上消費税額と消費税金額積上げ(税率ごとの差額調整後)の差額調整
+                      IF ( lt_red_black_flag = cv_black_flag) THEN
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                      ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( ( lt_tax_amount_sum - ln_all_tax_amount )  * ( -1 ) ) );
+                      END IF;
+                    END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                   END IF;
                 END IF;
             END IF;
@@ -11576,6 +11667,10 @@ AS
   ln_max_index                    NUMBER;
   ln_line_count                   NUMBER;
 --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+--************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+  ln_max_no_data_hht              NUMBER;
+  ln_max_tax_data_hht             NUMBER;
+--************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
 --
     -- *** ローカル・カーソル ***
 --******************************* 2009/06/23 N.Maeda Var1.17 ADD START ***************************************
@@ -11731,6 +11826,10 @@ AS
         g_tax_amount_sum_type_tab(a).diff_amount        := 0;
       END LOOP;
 --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+--************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+      ln_max_no_data_hht              := 0;
+      ln_max_tax_data_hht             := 0;
+--************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
 --
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
 ----******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
@@ -13407,10 +13506,12 @@ AS
               IF ( lt_consumption_tax_class <> cv_non_tax ) THEN
                 -- 消費税合計積上げ
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
-                -- 値引発生時
-                IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
+    --            -- 値引発生時
+    --            IF ( lt_sale_discount_amount <> 0 ) AND ( lt_sale_discount_amount IS NOT NULL ) THEN
     --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
                   -- 明細最大消費税取得
                   IF ( ABS( ln_max_tax_data ) < ABS( lt_tax_amount ) ) THEN
                     ln_max_tax_data := lt_tax_amount;
@@ -13420,8 +13521,10 @@ AS
     --******************************* 2009/04/16 N.Maeda Var1.12 MOD END   ***************************************
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
                   END IF;
-                -- 値引未発生時
-                ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
+    --            -- 値引未発生時
+    --            ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
                   -- 税率単位の各種金額積上げ
                   FOR a IN 1..ln_max_index LOOP
                     IF ( g_tax_amount_sum_type_tab(a).tax_rate = lt_tax_consum ) THEN
@@ -13441,7 +13544,9 @@ AS
                     END IF;
                   END LOOP;
     --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
-                END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL START **************
+    --            END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 DEL END   **************
               END IF;
     --
               -- 明細最大行No確認
@@ -14784,6 +14889,11 @@ AS
     --************** 2019/07/26 S.Kuwako Var1.38 ADD START **************
                   -- 値引未発生時
                   ELSE
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                    -- 最大明細番号、最大税額の保持
+                    ln_max_no_data_hht  := ln_max_no_data;
+                    ln_max_tax_data_hht := ln_max_tax_data;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                     -- 税率ごとの差額計算
                     FOR a IN 1..ln_max_index LOOP
                       IF ( g_tax_amount_sum_type_tab(a).tax_amount_sum <> g_tax_amount_sum_type_tab(a).tax_amount ) THEN
@@ -14799,12 +14909,38 @@ AS
     --
                         IF ( lt_red_black_flag = cv_black_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+                            ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+                          END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         ELSIF ( lt_red_black_flag = cv_red_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+                            ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+                          END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         END IF;
                       END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                      -- 消費税合計積上げに対して、税率ごとの差額調整
+                      ln_all_tax_amount := ln_all_tax_amount + g_tax_amount_sum_type_tab(a).diff_amount;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                     END LOOP;
     --************** 2019/07/26 S.Kuwako Var1.38 ADD END   **************
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
+                    --  内税(伝票課税)、かつ、HHT売上消費税額と消費税金額積上げ(税率ごとの差額調整後)が相違する場合
+                    IF  ( lt_consumption_tax_class = cv_ins_slip_tax )
+                    AND ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
+                        -- HHT売上消費税額と消費税金額積上げ(税率ごとの差額調整後)の差額調整
+                      IF ( lt_red_black_flag = cv_black_flag) THEN
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                      ELSIF ( lt_red_black_flag = cv_red_flag) THEN
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( ( lt_tax_amount_sum - ln_all_tax_amount )  * ( -1 ) ) );
+                      END IF;
+                    END IF;
+    --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                   END IF;
                 END IF;
             END IF;
