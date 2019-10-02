@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -23,6 +23,7 @@
 * 2017-08-10 1.13 山下  翔太     E_本稼動_14243対応
 * 2017-12-22 1.14 佐々木宏之     E_本稼動_14243対応(メッセージ追加)
 * 2019-09-05 1.15 小路  恭弘     E_本稼動_15601対応(メッセージ追加)
+* 2019-09-25 1.16 小路  恭弘     E_本稼動_15887対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -651,6 +652,10 @@ public class XxpoConstants
   /** テーブル日本語名：tab_xxpo_txns_update_history */
   public static final String TAB_XXPO_TXNS_UPDATE_HISTORY = "出来高実績更新履歴";
 // S.Yamashita Ver.1.13 Add End
+// Y.Shoji Ver.1.16 Add Start
+  /** テーブル日本語名：tab_xxcmn_lots_mst_history */
+  public static final String TAB_XXCMN_LOTS_MST_HISTORY = "ロットマスタ履歴";
+// Y.Shoji Ver.1.16 Add End
   /** 列名：qt_inspect_req_no */
   public static final String COL_QT_INSPECT_REQ_NO  = "検査依頼No";
   /** 列名：manufactured_date */
