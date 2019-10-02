@@ -3,13 +3,15 @@
  * View  Name      : XXSKZ_ロットマスタ_基本_V
  * Description     : XXSKZ_ロットマスタ_基本_V
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.2
  * 
  * Change Record
- * ------------- ----- ------------  -------------------------------------
- *  Date          Ver.  Editor       Description
- * ------------- ----- ------------  -------------------------------------
- *  2012/11/22    1.0   SCSK M.Nagai 初回作成
+ * ------------- ----- ------------   -------------------------------------
+ *  Date          Ver.  Editor        Description
+ * ------------- ----- ------------   -------------------------------------
+ *  2012/11/22    1.0  SCSK M.Nagai   初回作成
+ *  2010/01/28    1.1  T.Yoshimoto    本稼動#1168
+ *  2019/09/27    1.2  SCSK Y.Ohishi  E_本稼動_15887
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKZ_ロットマスタ_基本_V
 (
@@ -22,6 +24,9 @@ CREATE OR REPLACE VIEW APPS.XXSKZ_ロットマスタ_基本_V
 ,品目名
 ,品目略称
 ,ロット番号
+-- 2019/09/27 Y.Ohishi Add Start E_本稼動_15887
+,履歴番号
+-- 2019/09/27 Y.Ohishi Add End   E_本稼動_15887
 ,無効フラグ
 ,無効フラグ名
 ,削除フラグ
@@ -75,6 +80,9 @@ SELECT  XPCV.prod_class_code          --商品区分
        ,CASE WHEN ILM.lot_id = 0 THEN '0'          --'DEFAULTLOT'は'0'に変換
              ELSE                     ILM.lot_no
         END                 lot_no    --ロット番号
+-- 2019/09/27 Y.Ohishi Add Start E_本稼動_15887
+       ,NULL                history_no --履歴番号
+-- 2019/09/27 Y.Ohishi Add End   E_本稼動_15887
        ,ILM.inactive_ind              --無効フラグ
        ,CASE WHEN NVL( ILM.inactive_ind, 0 ) = 0 THEN '有効' ELSE '無効'
         END  inactive_ind_name        --無効フラグ名
@@ -245,6 +253,118 @@ SELECT  XPCV.prod_class_code          --商品区分
    --AND  ILM.last_update_login    = FL_LL.login_id(+)
    --AND  FL_LL.user_id            = FU_LL.user_id(+)
 -- 2010/01/28 T.Yoshimoto Del End 本稼動#1168
+-- 2019/09/27 Y.Ohishi Add Start E_本稼動_15887
+UNION   ALL
+SELECT  XPCV.prod_class_code                                          prod_class_code     --商品区分
+       ,XPCV.prod_class_name                                          prod_class_name     --商品区分名
+       ,XICV.item_class_code                                          item_class_code     --品目区分
+       ,XICV.item_class_name                                          item_class_name     --品目区分名
+       ,XCCV.crowd_code                                               crowd_code          --群コード
+       ,XIMV.item_no                                                  item_no             --品目コード
+       ,XIMV.item_name                                                item_name           --品目名
+       ,XIMV.item_short_name                                          item_short_name     --品目略称
+       ,CASE WHEN XLMH.lot_id = 0 THEN '0'                                                --'DEFAULTLOT'は'0'に変換
+                                  ELSE XLMH.lot_no
+        END                                                           lot_no              --ロット番号
+       ,XLMH.history_no                                               history_no          --履歴番号
+       ,XLMH.inactive_ind                                             inactive_ind        --無効フラグ
+       ,CASE WHEN NVL( XLMH.inactive_ind, 0 ) = 0 THEN '有効'
+                                                  ELSE '無効'
+        END                                                           inactive_ind_name   --無効フラグ名
+       ,XLMH.delete_mark                                              delete_mark         --削除フラグ
+       ,CASE WHEN NVL( XLMH.delete_mark, 0 ) <> 0 THEN '削除'
+        END                                                           delete_mark_name    --削除フラグ名
+       ,XLMH.attribute1                                               attribute1          --製造年月日
+       ,XLMH.attribute2                                               attribute2          --固有記号
+       ,XLMH.attribute3                                               attribute3          --賞味期限
+       ,XLMH.attribute4                                               attribute4          --納入日(初回)
+       ,XLMH.attribute5                                               attribute5          --納入日(最終)
+       ,NVL(TO_NUMBER(XLMH.attribute6), 0)                            attribute6          --在庫入数
+       ,NVL(TO_NUMBER(XLMH.attribute7), 0)                            attribute7          --在庫単価
+       ,XLMH.attribute8                                               attribute8          --取引先
+       ,(SELECT XVV.vendor_name    vendor_name
+         FROM xxskz_vendors_v XVV                                                         --仕入先VIEW
+         WHERE  XLMH.attribute8 = XVV.segment1
+        )                                                             XVV_vendor_name
+       ,XLMH.attribute9                                               attribute9          --仕入形態
+       ,(SELECT FLV01.meaning      meaning
+         FROM fnd_lookup_values FLV01                                                     --クイックコード(仕入形態名)
+         WHERE FLV01.language    = 'JA'
+         AND   FLV01.lookup_type = 'XXCMN_L05'
+         AND   FLV01.lookup_code = XLMH.attribute9
+        )                                                             FLV01_meaning
+       ,XLMH.attribute10                                              attribute10         --茶期区分
+       ,(SELECT FLV02.meaning      meaning
+         FROM fnd_lookup_values FLV02                                                     --クイックコード(茶期区分名)
+         WHERE  FLV02.language    = 'JA'
+         AND    FLV02.lookup_type = 'XXCMN_L06'
+         AND    FLV02.lookup_code = XLMH.attribute10
+        )                                                             FLV02_meaning
+       ,XLMH.attribute11                                              attribute11         --年度
+       ,XLMH.attribute12                                              attribute12         --産地
+       ,(SELECT FLV03.meaning      meaning
+         FROM fnd_lookup_values FLV03                                                     --クイックコード(産地名)
+         WHERE FLV03.language    = 'JA'
+         AND   FLV03.lookup_type = 'XXCMN_L07'
+         AND   FLV03.lookup_code = XLMH.attribute12
+        )                                                             FLV03_meaning
+       ,TO_NUMBER( XLMH.attribute13 )                                 attribute13         --タイプ
+       ,XLMH.attribute14                                              attribute14         --ランク１
+       ,XLMH.attribute15                                              attribute15         --ランク２
+       ,XLMH.attribute19                                              attribute19         --ランク３
+       ,XLMH.attribute16                                              attribute16         --生産伝票区分
+       ,(SELECT FLV04.meaning      meaning
+         FROM fnd_lookup_values FLV04                                                     --クイックコード(生産伝票区分名)
+         WHERE FLV04.language    = 'JA'
+         AND   FLV04.lookup_type = 'XXCMN_L03'
+         AND   FLV04.lookup_code = XLMH.attribute16
+        )                                                             FLV04_meaning
+       ,XLMH.attribute17                                              attribute17         --ラインNo
+       ,XLMH.attribute18                                              attribute18         --摘要
+       ,XLMH.attribute20                                              attribute20         --原料製造工場
+       ,XLMH.attribute21                                              attribute21         --原料製造元ロット番号
+       ,XLMH.attribute22                                              attribute22         --検査依頼No
+       ,XLMH.attribute23                                              attribute23         --ロットステータス
+       ,(SELECT FLV05.meaning      meaning
+         FROM fnd_lookup_values FLV05                                                     --クイックコード(ロットステータス名)
+         WHERE FLV05.language    = 'JA'
+         AND   FLV05.lookup_type = 'XXCMN_LOT_STATUS'
+         AND   FLV05.lookup_code = XLMH.attribute23
+        )                                                             FLV05_meaning
+       ,XLMH.attribute24                                              attribute24         --作成区分
+       ,(SELECT FLV06.meaning      meaning
+         FROM fnd_lookup_values FLV06                                                     --クイックコード(作成区分名)
+         WHERE FLV06.language    = 'JA'
+         AND   FLV06.lookup_type = 'XXCMN_DERIVE_DIV'
+         AND   FLV06.lookup_code = XLMH.attribute24
+        )                                                             FLV06_meaning
+       ,(SELECT FU_CB.user_name    user_name
+         FROM fnd_user FU_CB                                                              --ユーザーマスタ(created_by名称取得用)
+         WHERE XLMH.created_by = FU_CB.user_id
+        )                                                             FU_CB_user_name
+       ,TO_CHAR( XLMH.creation_date, 'YYYY/MM/DD HH24:MI:SS' )        creation_date       --作成日
+       ,(SELECT FU_LU.user_name    user_name
+         FROM fnd_user FU_LU                                                              --ユーザーマスタ(last_updated_by名称取得用)
+         WHERE XLMH.last_updated_by = FU_LU.user_id
+        )                                                             FU_LU_user_name
+       ,TO_CHAR( XLMH.last_update_date, 'YYYY/MM/DD HH24:MI:SS' )     last_update_date    --最終更新日
+       ,(SELECT FU_LL.user_name    user_name
+         FROM fnd_user    FU_LL                                                           --ユーザーマスタ(last_update_login名称取得用)
+              ,fnd_logins FL_LL                                                           --ログインマスタ(last_update_login名称取得用)
+         WHERE XLMH.last_update_login = FL_LL.login_id
+         AND   FL_LL.user_id          = FU_LL.user_id
+        )                                                             FU_LL_user_name
+  FROM  xxcmn_lots_mst_history XLMH                                                       --ロットマスタ履歴
+       ,xxskz_prod_class_v     XPCV                                                       --SKYLINK用 商品区分取得VIEW
+       ,xxskz_item_class_v     XICV                                                       --SKYLINK用 品目区分取得VIEW
+       ,xxskz_crowd_code_v     XCCV                                                       --SKYLINK用 郡コード取得VIEW
+       ,xxskz_item_mst_v       XIMV                                                       --OPM品目情報VIEW
+ WHERE  XLMH.item_id         = XPCV.item_id(+)
+   AND  XPCV.item_id         = XICV.item_id
+   AND  XPCV.item_id         = XCCV.item_id
+   AND  XICV.item_id         = XCCV.item_id
+   AND  XLMH.item_id         = XIMV.item_id(+)
+-- 2019/09/27 Y.Ohishi Add End   E_本稼動_15887
 /
 COMMENT ON TABLE APPS.XXSKZ_ロットマスタ_基本_V IS 'SKYLINK用ロットマスタ（基本）VIEW'
 /
@@ -265,6 +385,10 @@ COMMENT ON COLUMN APPS.XXSKZ_ロットマスタ_基本_V.品目名                         
 COMMENT ON COLUMN APPS.XXSKZ_ロットマスタ_基本_V.品目略称                       IS '品目略称'
 /
 COMMENT ON COLUMN APPS.XXSKZ_ロットマスタ_基本_V.ロット番号                     IS 'ロット番号'
+-- 2019/09/27 Y.Ohishi Add Start E_本稼動_15887
+/
+COMMENT ON COLUMN APPS.XXSKZ_ロットマスタ_基本_V.履歴番号                       IS '履歴番号'
+-- 2019/09/27 Y.Ohishi Add End   E_本稼動_15887
 /
 COMMENT ON COLUMN APPS.XXSKZ_ロットマスタ_基本_V.無効フラグ                     IS '無効フラグ'
 /
