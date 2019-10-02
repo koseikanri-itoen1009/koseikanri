@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcmn_lots_mst_history FOR xxcmn.xxcmn_lots_mst_history;
