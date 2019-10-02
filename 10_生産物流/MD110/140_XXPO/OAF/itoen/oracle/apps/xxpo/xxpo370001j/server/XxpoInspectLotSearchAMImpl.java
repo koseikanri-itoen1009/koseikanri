@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoInspectLotSearchAMImpl
 * 概要説明   : 検査ロット情報検索・登録アプリケーションモジュール
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2009-02-06 1.3  伊藤ひとみ     本番障害#1147対応
 * 2009-02-13 1.4  伊藤ひとみ     本番障害#1147対応
 * 2009-02-17 1.5  伊藤ひとみ     本番障害#1096対応
+* 2019-09-18 1.6  小路恭弘       E_本稼動_15887対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo370001j.server;
@@ -1018,10 +1019,10 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("  lr_create_lot.item_no      := :1; "); // 品目コード
     sb.append("  lr_create_lot.lot_no       := :2; "); // ロットNo
     sb.append("  lr_create_lot.lot_created  := TRUNC(SYSDATE); "); // 作成日
-// 2008-12-24 v.1.6 D.Nihei Add Start 本番障害#743
+// 2008-12-24 v.1.2 D.Nihei Add Start 本番障害#743
     sb.append("  lr_create_lot.expaction_date := TO_DATE('2099/12/31', 'YYYY/MM/DD'); "); // 再テスト日付
     sb.append("  lr_create_lot.expire_date    := TO_DATE('2099/12/31', 'YYYY/MM/DD'); "); // 失効日付
-// 2008-12-24 v.1.6 D.Nihei Add End
+// 2008-12-24 v.1.2 D.Nihei Add End
     sb.append("  lr_create_lot.inactive_ind := 0; "); // 有効
     sb.append("  lr_create_lot.origination_type := '0'; "); // 元タイプ
     sb.append("  lr_create_lot.attribute1   := :3; "); // 製造日/仕入日
@@ -1164,6 +1165,9 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     String retStatus = null;
     Number msgCount = null;
     String msgData = null;
+// add start 1.6
+    String retCode = null;
+// add end 1.6
 
     String apiName = "callUpdateLot";
 
@@ -1204,6 +1208,11 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("DECLARE");
     sb.append("  l_lot_rec            ic_lots_mst%ROWTYPE;");
     sb.append("  l_lot_cpg_rec        ic_lots_cpg%ROWTYPE;");
+// add start 1.6
+    sb.append("  l_before_lot_rec     ic_lots_mst%ROWTYPE;");
+    sb.append("  cv_api_status_success CONSTANT VARCHAR2(1) := 'S'; ");
+    sb.append("  cv_api_return_normal  CONSTANT VARCHAR2(1) := '0'; ");
+// add end 1.6
     sb.append("  ln_api_version_number CONSTANT NUMBER := 1.0; ");
     sb.append("BEGIN ");
     sb.append("  SELECT * ");
@@ -1212,6 +1221,9 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("  WHERE  ilm.lot_no     = :1 ");
     sb.append("  AND    ilm.lot_id     = :2 ");
     sb.append("  AND    ilm.item_id    = :3; ");
+// add start 1.6
+    sb.append("  l_before_lot_rec           := l_lot_rec; ");
+// add end 1.6
     sb.append("  l_lot_rec.attribute1       := :4; ");
     sb.append("  l_lot_rec.attribute3       := :5; ");
     sb.append("  l_lot_rec.attribute12      := :6; ");
@@ -1239,6 +1251,19 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("   ,:15 ");
     sb.append("   ,l_lot_rec ");
     sb.append("   ,l_lot_cpg_rec); ");
+// add start 1.6
+    sb.append("  IF ( :13 = cv_api_status_success ) THEN ");
+    sb.append("    IF ( NVL(l_lot_rec.attribute12 ,' ') <> NVL(l_before_lot_rec.attribute12  ,' ') ) THEN ");
+    sb.append("      xxcmn_common_pkg.create_lot_mst_history( ");
+    sb.append("        l_before_lot_rec, ");
+    sb.append("        :16, ");
+    sb.append("        :17, ");
+    sb.append("        :18); ");
+    sb.append("    ELSE ");
+    sb.append("      :17 := cv_api_return_normal; ");
+    sb.append("    END IF; ");
+    sb.append("  END IF; ");
+// add end 1.6
     sb.append("END; ");
 
     // PL/SQLの設定
@@ -1263,11 +1288,19 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
       cstmt.registerOutParameter(13, Types.VARCHAR);
       cstmt.registerOutParameter(14, Types.INTEGER);
       cstmt.registerOutParameter(15, Types.VARCHAR);
+// add start 1.6
+      cstmt.registerOutParameter(16, Types.VARCHAR);
+      cstmt.registerOutParameter(17, Types.VARCHAR);
+      cstmt.registerOutParameter(18, Types.VARCHAR);
+// add end 1.6
 
       // PL/SQLの実行
       cstmt.execute();
       // リターンコードの取得
       retStatus = cstmt.getString(13);
+// add start 1.6
+      retCode   = cstmt.getString(17);
+// add end 1.6
       
       // 異常終了の場合
       if (!XxcmnConstants.API_STATUS_SUCCESS.equals(retStatus))
@@ -1284,6 +1317,20 @@ public class XxpoInspectLotSearchAMImpl extends XxcmnOAApplicationModuleImpl
           tokens,
           OAException.ERROR,
           null);
+// add start 1.6
+      } else if (!XxcmnConstants.API_RETURN_NORMAL.equals(retCode))
+      {
+        // メッセージの出力
+        MessageToken[] tokens =
+          { new MessageToken("INFO_NAME", XxpoConstants.TAB_XXCMN_LOTS_MST_HISTORY) };
+
+        throw new OAException(
+          XxcmnConstants.APPL_XXPO,
+          XxpoConstants.XXPO10007,
+          tokens,
+          OAException.ERROR,
+          null);
+// add end 1.6
       }
     } catch(SQLException expt)
     {
