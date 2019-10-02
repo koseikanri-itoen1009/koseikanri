@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数（補足資料）.xls
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  --------------------        ---- ----- --------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  get_can_enc_qty               F   NUM   引当可能数算出API
  *  rcv_ship_conv_qty             F   NUM   入出庫換算関数(生産バッチ用)
  *  get_user_dept_code            F   VAR   担当部署CD取得
+ *  create_lot_mst_history        P         ロットマスタ履歴作成関数
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -48,6 +49,7 @@ AS
  *  2008/09/30   1.3   Yuko Kawano      OPM在庫会計期間CLOSE年月取得関数 T_S_500対応
  *  2008/10/29   1.4   T.Yoshimoto     統合指摘対応(No.251)
  *  2008/12/29   1.5   A.Shiina        [採番関数]動的に修正
+ *  2019/09/19   1.6   Y.Ohishi        ロットマスタ履歴作成関数を追加
  *
  *****************************************************************************************/
 --
@@ -2364,6 +2366,364 @@ AS
 --###################################  固定部 END   #########################################
 --
   END get_user_dept_code ;
+-- Ver_1.6 E_本稼動_15887 ADD Start
+--
+  /**********************************************************************************
+   * Procedure Name   : create_lot_mst_history
+   * Description      : ロットマスタ履歴作成関数
+   ***********************************************************************************/
+  PROCEDURE create_lot_mst_history(
+    ir_lot_data         IN  lot_rec,              -- 更新前ロットマスタのデータ
+    ov_errbuf           OUT NOCOPY VARCHAR2,      -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT NOCOPY VARCHAR2,      -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT NOCOPY VARCHAR2)      -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'create_lot_mst_history'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_zero               CONSTANT NUMBER := 0;
+    cn_one                CONSTANT NUMBER := 1;
+--
+    -- *** ローカル変数 ***
+    ln_history_no                  NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- ===============================
+    -- ユーザー定義例外
+    -- ===============================
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --  ロットマスタ履歴テーブルより発行済最大履歴番号を取得
+    BEGIN
+      SELECT NVL( MAX( xlmh.history_no ) , cn_zero )   history_no
+      INTO   ln_history_no
+      FROM   xxcmn_lots_mst_history  xlmh
+      WHERE  xlmh.item_id = ir_lot_data.item_id
+      AND    xlmh.lot_id  = ir_lot_data.lot_id;
+    END;
+--
+    --  発行済最大履歴番号確認
+    IF ( ln_history_no = cn_zero )  THEN
+--
+      --  履歴番号加算
+      ln_history_no := ln_history_no + cn_one;
+--
+      --  変更前のロットマスタの情報をロットマスタ履歴テーブルに登録
+      BEGIN
+        INSERT INTO xxcmn_lots_mst_history(
+          item_id,
+          lot_id,
+          history_no,
+          lot_no,
+          sublot_no,
+          lot_desc,
+          qc_grade,
+          expaction_code,
+          expaction_date,
+          lot_created,
+          expire_date,
+          retest_date,
+          strength,
+          inactive_ind,
+          origination_type,
+          shipvend_id,
+          vendor_lot_no,
+          creation_date,
+          last_update_date,
+          created_by,
+          last_updated_by,
+          trans_cnt,
+          delete_mark,
+          text_code,
+          last_update_login,
+          program_application_id,
+          program_id,
+          program_update_date,
+          request_id,
+          attribute1,
+          attribute2,
+          attribute3,
+          attribute4,
+          attribute5,
+          attribute6,
+          attribute7,
+          attribute8,
+          attribute9,
+          attribute10,
+          attribute11,
+          attribute12,
+          attribute13,
+          attribute14,
+          attribute15,
+          attribute16,
+          attribute17,
+          attribute18,
+          attribute19,
+          attribute20,
+          attribute21,
+          attribute22,
+          attribute23,
+          attribute24,
+          attribute25,
+          attribute26,
+          attribute27,
+          attribute28,
+          attribute29,
+          attribute30,
+          attribute_category,
+          odm_lot_number
+        )
+        VALUES(
+          ir_lot_data.item_id,
+          ir_lot_data.lot_id,
+          ln_history_no,
+          ir_lot_data.lot_no,
+          ir_lot_data.sublot_no,
+          ir_lot_data.lot_desc,
+          ir_lot_data.qc_grade,
+          ir_lot_data.expaction_code,
+          ir_lot_data.expaction_date,
+          ir_lot_data.lot_created,
+          ir_lot_data.expire_date,
+          ir_lot_data.retest_date,
+          ir_lot_data.strength,
+          ir_lot_data.inactive_ind,
+          ir_lot_data.origination_type,
+          ir_lot_data.shipvend_id,
+          ir_lot_data.vendor_lot_no,
+          ir_lot_data.creation_date,
+          ir_lot_data.last_update_date,
+          ir_lot_data.created_by,
+          ir_lot_data.last_updated_by,
+          ir_lot_data.trans_cnt,
+          ir_lot_data.delete_mark,
+          ir_lot_data.text_code,
+          ir_lot_data.last_update_login,
+          ir_lot_data.program_application_id,
+          ir_lot_data.program_id,
+          ir_lot_data.program_update_date,
+          ir_lot_data.request_id,
+          ir_lot_data.attribute1,
+          ir_lot_data.attribute2,
+          ir_lot_data.attribute3,
+          ir_lot_data.attribute4,
+          ir_lot_data.attribute5,
+          ir_lot_data.attribute6,
+          ir_lot_data.attribute7,
+          ir_lot_data.attribute8,
+          ir_lot_data.attribute9,
+          ir_lot_data.attribute10,
+          ir_lot_data.attribute11,
+          ir_lot_data.attribute12,
+          ir_lot_data.attribute13,
+          ir_lot_data.attribute14,
+          ir_lot_data.attribute15,
+          ir_lot_data.attribute16,
+          ir_lot_data.attribute17,
+          ir_lot_data.attribute18,
+          ir_lot_data.attribute19,
+          ir_lot_data.attribute20,
+          ir_lot_data.attribute21,
+          ir_lot_data.attribute22,
+          ir_lot_data.attribute23,
+          ir_lot_data.attribute24,
+          ir_lot_data.attribute25,
+          ir_lot_data.attribute26,
+          ir_lot_data.attribute27,
+          ir_lot_data.attribute28,
+          ir_lot_data.attribute29,
+          ir_lot_data.attribute30,
+          ir_lot_data.attribute_category,
+          ir_lot_data.odm_lot_number
+        );
+      END;
+    END IF;
+--
+    --  履歴番号加算
+    ln_history_no := ln_history_no + cn_one;
+--
+    --  変更後のロットマスタの情報をロットマスタ履歴テーブルに登録
+    BEGIN
+      INSERT INTO xxcmn_lots_mst_history(
+        item_id,
+        lot_id,
+        history_no,
+        lot_no,
+        sublot_no,
+        lot_desc,
+        qc_grade,
+        expaction_code,
+        expaction_date,
+        lot_created,
+        expire_date,
+        retest_date,
+        strength,
+        inactive_ind,
+        origination_type,
+        shipvend_id,
+        vendor_lot_no,
+        creation_date,
+        last_update_date,
+        created_by,
+        last_updated_by,
+        trans_cnt,
+        delete_mark,
+        text_code,
+        last_update_login,
+        program_application_id,
+        program_id,
+        program_update_date,
+        request_id,
+        attribute1,
+        attribute2,
+        attribute3,
+        attribute4,
+        attribute5,
+        attribute6,
+        attribute7,
+        attribute8,
+        attribute9,
+        attribute10,
+        attribute11,
+        attribute12,
+        attribute13,
+        attribute14,
+        attribute15,
+        attribute16,
+        attribute17,
+        attribute18,
+        attribute19,
+        attribute20,
+        attribute21,
+        attribute22,
+        attribute23,
+        attribute24,
+        attribute25,
+        attribute26,
+        attribute27,
+        attribute28,
+        attribute29,
+        attribute30,
+        attribute_category,
+        odm_lot_number
+      )
+      SELECT
+             ilm.item_id                   item_id,
+             ilm.lot_id                    lot_id,
+             ln_history_no                 history_no,
+             ilm.lot_no                    lot_no,
+             ilm.sublot_no                 sublot_no,
+             ilm.lot_desc                  lot_desc,
+             ilm.qc_grade                  qc_grade,
+             ilm.expaction_code            expaction_code,
+             ilm.expaction_date            expaction_date,
+             ilm.lot_created               lot_created,
+             ilm.expire_date               expire_date,
+             ilm.retest_date               retest_date,
+             ilm.strength                  strength,
+             ilm.inactive_ind              inactive_ind,
+             ilm.origination_type          origination_type,
+             ilm.shipvend_id               shipvend_id,
+             ilm.vendor_lot_no             vendor_lot_no,
+             ilm.creation_date             creation_date,
+             ilm.last_update_date          last_update_date,
+             ilm.created_by                created_by,
+             ilm.last_updated_by           last_updated_by,
+             ilm.trans_cnt                 trans_cnt,
+             ilm.delete_mark               delete_mark,
+             ilm.text_code                 text_code,
+             ilm.last_update_login         last_update_login,
+             ilm.program_application_id    program_application_id,
+             ilm.program_id                program_id,
+             ilm.program_update_date       program_update_date,
+             ilm.request_id                request_id,
+             ilm.attribute1                attribute1,
+             ilm.attribute2                attribute2,
+             ilm.attribute3                attribute3,
+             ilm.attribute4                attribute4,
+             ilm.attribute5                attribute5,
+             ilm.attribute6                attribute6,
+             ilm.attribute7                attribute7,
+             ilm.attribute8                attribute8,
+             ilm.attribute9                attribute9,
+             ilm.attribute10               attribute10,
+             ilm.attribute11               attribute11,
+             ilm.attribute12               attribute12,
+             ilm.attribute13               attribute13,
+             ilm.attribute14               attribute14,
+             ilm.attribute15               attribute15,
+             ilm.attribute16               attribute16,
+             ilm.attribute17               attribute17,
+             ilm.attribute18               attribute18,
+             ilm.attribute19               attribute19,
+             ilm.attribute20               attribute20,
+             ilm.attribute21               attribute21,
+             ilm.attribute22               attribute22,
+             ilm.attribute23               attribute23,
+             ilm.attribute24               attribute24,
+             ilm.attribute25               attribute25,
+             ilm.attribute26               attribute26,
+             ilm.attribute27               attribute27,
+             ilm.attribute28               attribute28,
+             ilm.attribute29               attribute29,
+             ilm.attribute30               attribute30,
+             ilm.attribute_category        attribute_category,
+             ilm.odm_lot_number            odm_lot_number
+      FROM   ic_lots_mst ilm
+      WHERE  ilm.item_id = ir_lot_data.item_id
+      AND    ilm.lot_id  = ir_lot_data.lot_id;
+    END;
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END create_lot_mst_history;
+-- Ver_1.6 E_本稼動_15887 ADD End
 --
 END xxcmn_common_pkg;
 /
