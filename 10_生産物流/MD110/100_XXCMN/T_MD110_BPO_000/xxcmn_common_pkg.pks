@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数（補足資料）.xls
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  get_can_enc_qty        F   NUM   引当可能数算出API
  *  rcv_ship_conv_qty      F   NUM   入出庫換算関数(生産バッチ用)
  *  get_user_dept_code     F   VAR   担当部署CD取得
+ *  create_lot_mst_history P         ロットマスタ履歴作成関数
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -53,6 +54,7 @@ AS
  *  2008/09/30   1.3   Yuko Kawano      OPM在庫会計期間CLOSE年月取得関数 T_S_500対応
  *  2008/10/29   1.4   T.Yoshimoto      統合指摘対応(No.251)
  *  2008/12/29   1.5   A.Shiina         [採番関数]動的に修正
+ *  2019/09/19   1.6   Y.Ohishi         ロットマスタ履歴作成関数を追加
  *
  *****************************************************************************************/
 --
@@ -81,6 +83,71 @@ AS
     user_cd10               VARCHAR2(150)
   );
 --
+-- Ver_1.6 E_本稼動_15887 ADD Start
+  TYPE lot_rec IS RECORD(
+    item_id                       ic_lots_mst.item_id%TYPE,
+    lot_id                        ic_lots_mst.lot_id%TYPE,
+    lot_no                        ic_lots_mst.lot_no%TYPE,
+    sublot_no                     ic_lots_mst.sublot_no%TYPE,
+    lot_desc                      ic_lots_mst.lot_desc%TYPE,
+    qc_grade                      ic_lots_mst.qc_grade%TYPE,
+    expaction_code                ic_lots_mst.expaction_code%TYPE,
+    expaction_date                ic_lots_mst.expaction_date%TYPE,
+    lot_created                   ic_lots_mst.lot_created%TYPE,
+    expire_date                   ic_lots_mst.expire_date%TYPE,
+    retest_date                   ic_lots_mst.retest_date%TYPE,
+    strength                      ic_lots_mst.strength%TYPE,
+    inactive_ind                  ic_lots_mst.inactive_ind%TYPE,
+    origination_type              ic_lots_mst.origination_type%TYPE,
+    shipvend_id                   ic_lots_mst.shipvend_id%TYPE,
+    vendor_lot_no                 ic_lots_mst.vendor_lot_no%TYPE,
+    creation_date                 ic_lots_mst.creation_date%TYPE,
+    last_update_date              ic_lots_mst.last_update_date%TYPE,
+    created_by                    ic_lots_mst.created_by%TYPE,
+    last_updated_by               ic_lots_mst.last_updated_by%TYPE,
+    trans_cnt                     ic_lots_mst.trans_cnt%TYPE,
+    delete_mark                   ic_lots_mst.delete_mark%TYPE,
+    text_code                     ic_lots_mst.text_code%TYPE,
+    last_update_login             ic_lots_mst.last_update_login%TYPE,
+    program_application_id        ic_lots_mst.program_application_id%TYPE,
+    program_id                    ic_lots_mst.program_id%TYPE,
+    program_update_date           ic_lots_mst.program_update_date%TYPE,
+    request_id                    ic_lots_mst.request_id%TYPE,
+    attribute1                    ic_lots_mst.attribute1%TYPE,
+    attribute2                    ic_lots_mst.attribute2%TYPE,
+    attribute3                    ic_lots_mst.attribute3%TYPE,
+    attribute4                    ic_lots_mst.attribute4%TYPE,
+    attribute5                    ic_lots_mst.attribute5%TYPE,
+    attribute6                    ic_lots_mst.attribute6%TYPE,
+    attribute7                    ic_lots_mst.attribute7%TYPE,
+    attribute8                    ic_lots_mst.attribute8%TYPE,
+    attribute9                    ic_lots_mst.attribute9%TYPE,
+    attribute10                   ic_lots_mst.attribute10%TYPE,
+    attribute11                   ic_lots_mst.attribute11%TYPE,
+    attribute12                   ic_lots_mst.attribute12%TYPE,
+    attribute13                   ic_lots_mst.attribute13%TYPE,
+    attribute14                   ic_lots_mst.attribute14%TYPE,
+    attribute15                   ic_lots_mst.attribute15%TYPE,
+    attribute16                   ic_lots_mst.attribute16%TYPE,
+    attribute17                   ic_lots_mst.attribute17%TYPE,
+    attribute18                   ic_lots_mst.attribute18%TYPE,
+    attribute19                   ic_lots_mst.attribute19%TYPE,
+    attribute20                   ic_lots_mst.attribute20%TYPE,
+    attribute22                   ic_lots_mst.attribute22%TYPE,
+    attribute21                   ic_lots_mst.attribute21%TYPE,
+    attribute23                   ic_lots_mst.attribute23%TYPE,
+    attribute24                   ic_lots_mst.attribute24%TYPE,
+    attribute25                   ic_lots_mst.attribute25%TYPE,
+    attribute26                   ic_lots_mst.attribute26%TYPE,
+    attribute27                   ic_lots_mst.attribute27%TYPE,
+    attribute28                   ic_lots_mst.attribute28%TYPE,
+    attribute29                   ic_lots_mst.attribute29%TYPE,
+    attribute30                   ic_lots_mst.attribute30%TYPE,
+    attribute_category            ic_lots_mst.attribute_category%TYPE,
+    odm_lot_number                ic_lots_mst.odm_lot_number%TYPE
+  );
+--
+-- Ver_1.6 E_本稼動_15887 ADD End
   -- ===============================
   -- プロシージャおよびファンクション
   -- ===============================
@@ -291,5 +358,14 @@ AS
     )
     RETURN VARCHAR2 ;                        -- 担当部署名
 --
+-- Ver_1.6 E_本稼動_15887 ADD Start
+--  ロットマスタ履歴作成関数
+  PROCEDURE create_lot_mst_history(
+    ir_lot_data         IN  lot_rec,                  -- 更新前ロットマスタのデータ
+    ov_errbuf           OUT NOCOPY VARCHAR2,          -- エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT NOCOPY VARCHAR2,          -- リターン・コード             --# 固定 #
+    ov_errmsg           OUT NOCOPY VARCHAR2);         -- ユーザー・エラー・メッセージ --# 固定 #
+--
+-- Ver_1.6 E_本稼動_15887 ADD End
 END xxcmn_common_pkg;
 /
