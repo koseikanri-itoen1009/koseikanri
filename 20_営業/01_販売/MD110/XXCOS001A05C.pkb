@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : èoâ◊ämîFèàóùÅiHHTî[ïiÉfÅ[É^Åj
  * MD.050           : èoâ◊ämîFèàóù(MD050_COS_001_A05)
- * Version          : 1.40
+ * Version          : 1.41
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -103,6 +103,7 @@ AS
  *  2019/07/26    1.38  S.Kuwako         [E_ñ{â“ìÆ_15472] åyå∏ê≈ó¶ëŒâû(HHTí«â¡ëŒâû)
  *  2019/09/24    1.39  S.Kuwako         [E_ñ{â“ìÆ_15941] åyå∏ê≈ó¶ëŒâû(ñ{î‘è·äQëŒâû)
  *  2019/09/26    1.40  S.Kuwako         [E_ñ{â“ìÆ_15941] åyå∏ê≈ó¶ëŒâû(T4è·äQëŒâû)
+ *  2019/10/03    1.41  S.Kuwako         [E_ñ{â“ìÆ_15974] åyå∏ê≈ó¶ëŒâû(ñ{î‘è·äQëŒâû)
  *
  *****************************************************************************************/
 --
@@ -6882,16 +6883,20 @@ AS
                         IF ( lt_red_black_flag = cv_black_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
     --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
-                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
-                            ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
-                          END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL START **************
+    --                      IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+    --                        ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+    --                      END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL END   **************
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         ELSIF ( lt_red_black_flag = cv_red_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
     --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
-                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
-                            ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
-                          END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL START **************
+    --                      IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+    --                        ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+    --                      END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL END   **************
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         END IF;
                       END IF;
@@ -6907,9 +6912,17 @@ AS
                     AND ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
                         -- HHTîÑè„è¡îÔê≈äzÇ∆è¡îÔê≈ã‡äzêœè„Ç∞(ê≈ó¶Ç≤Ç∆ÇÃç∑äzí≤êÆå„)ÇÃç∑äzí≤êÆ
                       IF ( lt_red_black_flag = cv_black_flag) THEN
-                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD START **************
+                        --gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( gt_accumulation_data(ln_max_no_data_hht).tax_amount 
+                                                                                                           + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD END   **************
                       ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) ;
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD START **************
+                        --gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) ) * ( -1 ) ;
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( gt_accumulation_data(ln_max_no_data_hht).tax_amount 
+                                                                                                           - ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD END   **************
                       END IF;
                     END IF;
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
@@ -11022,16 +11035,20 @@ AS
                         IF ( lt_red_black_flag = cv_black_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
     --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
-                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
-                            ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
-                          END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL START **************
+    --                      IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+    --                        ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+    --                      END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL END   **************
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         ELSIF ( lt_red_black_flag = cv_red_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
     --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
-                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
-                            ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
-                          END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL START **************
+    --                      IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+    --                        ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+    --                      END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL END   **************
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         END IF;
                       END IF;
@@ -11047,9 +11064,17 @@ AS
                     AND ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
                         -- HHTîÑè„è¡îÔê≈äzÇ∆è¡îÔê≈ã‡äzêœè„Ç∞(ê≈ó¶Ç≤Ç∆ÇÃç∑äzí≤êÆå„)ÇÃç∑äzí≤êÆ
                       IF ( lt_red_black_flag = cv_black_flag) THEN
-                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD START **************
+                        --gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( gt_accumulation_data(ln_max_no_data_hht).tax_amount 
+                                                                                                           + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD END   **************
                       ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( ( lt_tax_amount_sum - ln_all_tax_amount )  * ( -1 ) ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD START **************
+                        --gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( ( lt_tax_amount_sum - ln_all_tax_amount )  * ( -1 ) ) );
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( gt_accumulation_data(ln_max_no_data_hht).tax_amount 
+                                                                                                           - ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD END   **************
                       END IF;
                     END IF;
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
@@ -14910,16 +14935,20 @@ AS
                         IF ( lt_red_black_flag = cv_black_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
     --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
-                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
-                            ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
-                          END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL START **************
+    --                      IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+    --                        ln_max_tax_data_hht := ( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount );
+    --                      END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL END   **************
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         ELSIF ( lt_red_black_flag = cv_red_flag) THEN
                           gt_accumulation_data(ln_max_no_data).tax_amount := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
     --************** 2019/09/26 S.Kuwako Var1.40 ADD START **************
-                          IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
-                            ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
-                          END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL START **************
+    --                      IF ( ln_max_no_data_hht = ln_max_no_data ) THEN
+    --                        ln_max_tax_data_hht := (( ln_max_tax_data + g_tax_amount_sum_type_tab(a).diff_amount )  * ( -1 ));
+    --                      END IF;
+    --************** 2019/10/03 S.Kuwako Var1.41 DEL END   **************
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
                         END IF;
                       END IF;
@@ -14935,9 +14964,17 @@ AS
                     AND ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
                         -- HHTîÑè„è¡îÔê≈äzÇ∆è¡îÔê≈ã‡äzêœè„Ç∞(ê≈ó¶Ç≤Ç∆ÇÃç∑äzí≤êÆå„)ÇÃç∑äzí≤êÆ
                       IF ( lt_red_black_flag = cv_black_flag) THEN
-                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD START **************
+                        --gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( gt_accumulation_data(ln_max_no_data_hht).tax_amount 
+                                                                                                           + ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD END   **************
                       ELSIF ( lt_red_black_flag = cv_red_flag) THEN
-                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( ( lt_tax_amount_sum - ln_all_tax_amount )  * ( -1 ) ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD START **************
+                        --gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( ln_max_tax_data_hht + ( ( lt_tax_amount_sum - ln_all_tax_amount )  * ( -1 ) ) );
+                        gt_accumulation_data(ln_max_no_data_hht).tax_amount := ( gt_accumulation_data(ln_max_no_data_hht).tax_amount 
+                                                                                                           - ( lt_tax_amount_sum - ln_all_tax_amount ) );
+    --************** 2019/10/03 S.Kuwako Var1.41 MOD END   **************
                       END IF;
                     END IF;
     --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
