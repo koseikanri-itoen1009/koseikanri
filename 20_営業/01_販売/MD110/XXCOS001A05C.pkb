@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.41
+ * Version          : 1.42
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -104,6 +104,7 @@ AS
  *  2019/09/24    1.39  S.Kuwako         [E_本稼動_15941] 軽減税率対応(本番障害対応)
  *  2019/09/26    1.40  S.Kuwako         [E_本稼動_15941] 軽減税率対応(T4障害対応)
  *  2019/10/03    1.41  S.Kuwako         [E_本稼動_15974] 軽減税率対応(本番障害対応)
+ *  2019/10/07    1.42  S.Kuwako         [E_本稼動_15952] 軽減税率対応(本番障害追加対応)
  *
  *****************************************************************************************/
 --
@@ -3741,6 +3742,11 @@ AS
       ln_max_no_data_hht              := 0;
       ln_max_tax_data_hht             := 0;
 --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
+--************** Var1.42 ADD START **************
+      ln_line_count                   := 0;
+      gv_tax_code_header              := NULL;
+      gv_tax_rate_header              := NULL;
+--************** Var1.42 ADD END   **************
 --
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
 --      lt_row_id                    := gt_dlv_edi_headers_data( ck_no ).row_id;                   -- 行ID
@@ -6838,6 +6844,14 @@ AS
               IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
               AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+    --************** Var1.42 ADD START **************
+                --値引のみの場合
+                IF ( ln_line_count <> 0 ) THEN
+                  --最大消費税額取得
+                  ln_max_no_data  := ln_max_no_data + 1;
+                  ln_max_tax_data := lt_tax_amount;
+                END IF;
+    --************** Var1.42 ADD END   **************
               END IF;
     --************** 2019/07/26 S.Kuwako Var1.38 DEL START **************
     --          IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
@@ -7839,6 +7853,11 @@ AS
       ln_max_no_data_hht              := 0;
       ln_max_tax_data_hht             := 0;
 --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
+--************** Var1.42 ADD START **************
+      ln_line_count                   := 0;
+      gv_tax_code_header              := NULL;
+      gv_tax_rate_header              := NULL;
+--************** Var1.42 ADD END   **************
 --
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
       lt_row_id                    := gt_inp_dlv_hht_headers_data( ck_no ).row_id;                   -- 行ID
@@ -10990,6 +11009,14 @@ AS
               IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
               AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+    --************** Var1.42 ADD START **************
+                --値引のみの場合
+                IF ( ln_line_count <> 0 ) THEN
+                  --最大消費税額取得
+                  ln_max_no_data  := ln_max_no_data + 1;
+                  ln_max_tax_data := lt_tax_amount;
+                END IF;
+    --************** Var1.42 ADD END   **************
               END IF;
     --************** 2019/07/26 S.Kuwako Var1.38 DEL START **************
     --          IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
@@ -11855,6 +11882,11 @@ AS
       ln_max_no_data_hht              := 0;
       ln_max_tax_data_hht             := 0;
 --************** 2019/09/26 S.Kuwako Var1.40 ADD END   **************
+--************** Var1.42 ADD START **************
+      ln_line_count                   := 0;
+      gv_tax_code_header              := NULL;
+      gv_tax_rate_header              := NULL;
+--************** Var1.42 ADD END   **************
 --
 --******************************* 2009/06/23 N.Maeda Var1.17 MOD START ***************************************
 ----******************************* 2009/04/16 N.Maeda Var1.12 ADD START ***************************************
@@ -14890,6 +14922,14 @@ AS
               IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
               AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+    --************** Var1.42 ADD START **************
+                --値引のみの場合
+                IF ( ln_line_count <> 0 ) THEN
+                  --最大消費税額取得
+                  ln_max_no_data  := ln_max_no_data + 1;
+                  ln_max_tax_data := lt_tax_amount;
+                END IF;
+    --************** Var1.42 ADD END   **************
               END IF;
     --************** 2019/07/26 S.Kuwako Var1.38 DEL START **************
     --          IF ( lt_tax_amount_sum <> ln_all_tax_amount ) THEN
