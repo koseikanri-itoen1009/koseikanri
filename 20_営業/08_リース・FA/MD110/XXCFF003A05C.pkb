@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A05C(body)
  * Description      : 支払計画作成
  * MD.050           : MD050_CFF_003_A05_支払計画作成.doc
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  * 2016/10/26     1.6   SCSK郭          E_本稼動_13658 自販機耐用年数変更対応・フェーズ3
  * 2018/3/27      1.7   SCSK大塚        E_本稼動_14830 IFRSリース資産対応
  * 2018/09/10     1.8   SCSK佐々木宏之  E_本稼動_14830 追加対応
+ * 2019/10/03     1.9   SCSK大石秀泰    E_本稼動_15913
  *
  *****************************************************************************************/
 --
@@ -1759,6 +1760,11 @@ AS
     cn_re_lease_times2       CONSTANT NUMBER(1)   :=  2;   -- '再リース2回目'
     cn_re_lease_times3       CONSTANT NUMBER(1)   :=  3;   -- '再リース3回目'
 -- 2016/09/06 Ver.1.5 Y.Shoji ADD End
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
+    cv_lease_class_fin       CONSTANT VARCHAR2(1) := '1';  -- '日本基準連携'
+    cv_lease_class_ifrs      CONSTANT VARCHAR2(1) := '2';  -- 'IFRS連携'
+    cn_const_zero            CONSTANT NUMBER(1)   :=  0;
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
 --
     --*** ローカル変数 ***
     ln_payment_frequency     xxcff_contract_headers.payment_frequency%TYPE;  --支払回数
@@ -1766,6 +1772,13 @@ AS
     lt_payment_frequency2    xxcff_pay_planning.payment_frequency%TYPE;  -- 支払回数（再リース用）
     lt_contract_line_id      xxcff_pay_planning.contract_line_id%TYPE;   -- 契約明細内部ID
 -- 2016/09/06 Ver.1.5 Y.Shoji ADD End
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
+    lv_lease_class           VARCHAR2(2);    -- リース種別
+    lv_ret_dff4              VARCHAR2(1);    -- リース判定DFF4
+    lv_ret_dff5              VARCHAR2(1);    -- リース判定DFF5
+    lv_ret_dff6              VARCHAR2(1);    -- リース判定DFF6
+    lv_ret_dff7              VARCHAR2(1);    -- リース判定DFF7
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1778,8 +1791,20 @@ AS
 --      WHERE  xpp.contract_line_id   =  in_contract_line_id
 --      AND    xpp.payment_frequency  >= ln_payment_frequency
       WHERE  ( xpp.contract_line_id   =  in_contract_line_id
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
+        AND    lv_ret_dff7            =  cv_lease_class_fin
+        AND    xpp.payment_match_flag =  cv_const_0
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
         AND    xpp.payment_frequency  >= ln_payment_frequency)
-      OR     ( lt_payment_frequency2  IS NOT NULL
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
+      OR     ( xpp.contract_line_id   =  in_contract_line_id
+        AND    lv_ret_dff7            =  cv_lease_class_ifrs
+        AND    xpp.payment_frequency  >  ln_payment_frequency)
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
+-- 2019/10/03 Ver.1.9 Y.Ohishi MOD Start
+--      OR     ( lt_payment_frequency2  IS NOT NULL
+      OR     ( lt_payment_frequency2  <> cn_const_zero
+-- 2019/10/03 Ver.1.9 Y.Ohishi MOD End
         AND    xpp.contract_line_id   =  lt_contract_line_id
         AND    xpp.payment_frequency  >  lt_payment_frequency2)
 -- 2016/09/06 Ver.1.5 Y.Shoji MOD End
@@ -1858,6 +1883,37 @@ AS
       RETURN;  
     END IF;
 -- 2016/09/06 Ver.1.5 Y.Shoji MOD End
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
+    lv_lease_class := gn_lease_class;
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    --  リース判定処理 
+    xxcff_common2_pkg.get_lease_class_info(
+        iv_lease_class  =>  lv_lease_class
+      , ov_ret_dff4     =>  lv_ret_dff4           --  DFF4(日本基準連携)
+      , ov_ret_dff5     =>  lv_ret_dff5           --  DFF5(IFRS連携)
+      , ov_ret_dff6     =>  lv_ret_dff6           --  DFF6(仕訳作成)
+      , ov_ret_dff7     =>  lv_ret_dff7           --  DFF7(リース判定処理)
+      , ov_errbuf       =>  lv_errbuf
+      , ov_retcode      =>  lv_retcode
+      , ov_errmsg       =>  lv_errmsg
+     );
+    -- 共通関数エラーの場合
+    IF (lv_retcode <> cv_status_normal) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff,      -- アプリケーション短縮名：XXCFF
+                                                     cv_msg_cff_00094,    -- メッセージ：共通関数エラー
+                                                     cv_tk_cff_00094_01,  -- 共通関数名
+                                                     cv_msg_cff_50323  )  -- ファイルID
+                                                    || cv_msg_part
+                                                    || lv_errmsg          --共通関数内ｴﾗｰﾒｯｾｰｼﾞ
+                                                    ,1
+                                                    ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
 --
     -- ***************************************************
     -- 3.リース支払計画をロックする
@@ -1899,9 +1955,20 @@ AS
 -- 00000417 2009/07/09 ADD END
 --    AND    xpp.payment_frequency      >= ln_payment_frequency;
     WHERE  ( xpp.contract_line_id   =  in_contract_line_id
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
+      AND    lv_ret_dff7            =  cv_lease_class_fin
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
       AND    xpp.payment_match_flag =  cv_const_0
       AND    xpp.payment_frequency  >= ln_payment_frequency)
-    OR     ( lt_payment_frequency2  IS NOT NULL
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD Start
+    OR     ( xpp.contract_line_id   =  in_contract_line_id
+      AND    lv_ret_dff7            =  cv_lease_class_ifrs
+      AND    xpp.payment_frequency  >  ln_payment_frequency)
+-- 2019/10/03 Ver.1.9 Y.Ohishi ADD End
+-- 2019/10/03 Ver.1.9 Y.Ohishi MOD Start
+--    OR     ( lt_payment_frequency2  IS NOT NULL
+    OR     ( lt_payment_frequency2  <> cn_const_zero
+-- 2019/10/03 Ver.1.9 Y.Ohishi MOD End
       AND    xpp.contract_line_id   =  lt_contract_line_id
       AND    xpp.payment_frequency  >  lt_payment_frequency2)
     ;
