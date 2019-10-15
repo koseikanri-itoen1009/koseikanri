@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A19C(body)
  * Description      : HHT連携IFデータ作成
  * MD.050           : MD050_CMM_003_A19_HHT系連携IFデータ作成
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2017/08/29    1.13  Shigeto.Niki     障害E_本稼動_14486の対応
  *  2019/07/30    1.14  N.Koyama         障害E_本稼動_15472の追加対応
  *  2019/09/26    1.15  N.Koyama         障害E_本稼動_15949の対応
+ *  2019/10/10    1.16  N.Koyama         障害E_本稼動_15949の追加対応
  *
  *****************************************************************************************/
 --
@@ -605,6 +606,14 @@ AS
                  AND  hop9.effective_end_date IS NULL
                  AND  hopev9.d_ext_attr3 BETWEEN (p_proc_date_from + 1) AND xxccp_common_pkg2.get_working_day(p_proc_date_to, 1)
 -- 2009/12/06 Ver1.7 障害E_本稼動_00327 add end by Yutaka.Kuboshima
+-- 2019/10/10 Ver1.16 N.koyama Add Start
+               UNION
+               -- 請求先顧客使用目的
+               SELECT /*+ INDEX(xchm hz_cust_accounts_n2) */
+                      xchm.ship_account_id customer_id
+               FROM   xxcos_cust_hierarchy_mv xchm
+               WHERE  xchm.bill_last_update_date BETWEEN p_proc_date_from AND p_proc_date_to + 1
+-- 2019/10/10 Ver1.16 N.koyama Add End
              ) def
       WHERE  hca.cust_account_id = def.customer_id
       ORDER BY hca.account_number;
@@ -873,7 +882,10 @@ AS
              xca.business_low_type                                       business_low_type,           --業態コード
 -- Ver1.13 add end
 -- Ver1.14 add start
-             hcsu.tax_rounding_rule                                      tax_rounding_rule,           --税金端数処理
+-- 2019/10/10 Ver1.16 N.koyama Mod Start
+--             hcsu.tax_rounding_rule                                      tax_rounding_rule,           --税金端数処理
+             NVL(xchv.bill_tax_round_rule,hcsu.tax_rounding_rule)        tax_rounding_rule,           --税金端数処理
+-- 2019/10/10 Ver1.16 N.koyama Mod End
 -- Ver1.14 add end
              hp.duns_number_c                                            duns_number_c,               --顧客ステータスコード
              xca.change_amount                                           change_amount,               --つり銭
@@ -901,6 +913,9 @@ AS
              hz_cust_acct_sites        hcas,     --顧客所在地マスタ
              hz_parties                hp,       --パーティマスタ
              ra_terms                  rt,       --支払条件マスタ
+-- 2019/10/10 Ver1.16 N.koyama Add Start
+             xxcos_cust_hierarchy_mv xchv,
+-- 2019/10/10 Ver1.16 N.koyama Add End
 --
              (SELECT flvs.lookup_code    lookup_code,
                      flvs.attribute1     attribute1
@@ -1066,6 +1081,9 @@ AS
                                       AND     hpsiv.status           = cv_a_flag)      --ロケーションIDの最小値
       AND    hp.party_id            = hps.party_id
       AND    hcas.party_site_id     = hps.party_site_id
+-- 2019/10/10 Ver1.16 N.koyama Add Start
+      AND    hca.cust_account_id=xchv.ship_account_id(+)
+-- 2019/10/10 Ver1.16 N.koyama Add End
       AND    hca.cust_account_id    = p_customer_id;
 --
 -- 2009/08/24 Ver1.5 modify end by Yutaka.Kuboshima
@@ -1335,24 +1353,26 @@ AS
           -- 予約売上拠点コードを管理元拠点コードに設定
           cust_data_rec.rsv_sale_base_code  := serch_base_rec.management_base_code;
         END IF;
+-- 2019/10/10 Ver1.16 N.koyama Del Start
 -- Ver1.15 Add Start
         -- 顧客階層ビューより端数処理区分を取得
-        lt_tax_rounding_rule := NULL;
-        BEGIN
-          SELECT xchv.bill_tax_round_rule                                      tax_rounding_rule           --税金端数処理
-          INTO   lt_tax_rounding_rule
-          FROM   xxcos_cust_hierarchy_v xchv
-          WHERE  xchv.ship_account_id = def_cust_rec.customer_id
-          ;
-          cust_data_rec.tax_rounding_rule := lt_tax_rounding_rule;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-             NULL;
-          -- その他例外
-          WHEN OTHERS THEN
-            RAISE global_api_others_expt;
-        END;
+--        lt_tax_rounding_rule := NULL;
+--        BEGIN
+--          SELECT xchv.bill_tax_round_rule                                      tax_rounding_rule           --税金端数処理
+--          INTO   lt_tax_rounding_rule
+--          FROM   xxcos_cust_hierarchy_v xchv
+--          WHERE  xchv.ship_account_id = def_cust_rec.customer_id
+--          ;
+--          cust_data_rec.tax_rounding_rule := lt_tax_rounding_rule;
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+--             NULL;
+--          -- その他例外
+--          WHEN OTHERS THEN
+--            RAISE global_api_others_expt;
+--        END;
 -- Ver1.15 Add End
+-- 2019/10/10 Ver1.16 N.koyama Del End
         -- 変数初期化
         serch_base_rec := NULL;
         -- ===============================
