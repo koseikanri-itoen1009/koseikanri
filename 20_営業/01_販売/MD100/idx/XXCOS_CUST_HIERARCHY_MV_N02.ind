@@ -1,0 +1,19 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Index Name      : XXCOS_CUST_HIERARCHY_MV_N02
+ * Description     : 請求顧客階層マテリアライズドビュー
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2019/10/06    1.0   N.Koyama         新規作成
+ *
+ ************************************************************************/
+CREATE INDEX apps.xxcos_cust_hierarchy_mv_n02
+ ON apps.xxcos_cust_hierarchy_mv
+  ( bill_last_update_date desc -- 請求先使用目的最終更新日
+  ) TABLESPACE xxidx2
+/
