@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *  2019/02/06    1.31  S.Kuwako         [E_本稼動_15472] 軽減税率対応
  *  2019/07/26    1.32  S.Kuwako         [E_本稼動_15472] 軽減税率対応(HHT追加対応)
  *  2019/09/18    1.33  S.Kuwako         [E_本稼動_15472] 軽減税率対応(追加対応)
+ *  2019/10/15    1.34  N.Watanabe       [E_本稼動_15952]出荷確認処理でのヘッダと明細の不一致（値引のみ伝票、税コード不一致対応）
  *
  *****************************************************************************************/
 --
@@ -2021,6 +2022,11 @@ AS
         g_tax_amount_sum_type_tab(a).diff_amount        := 0;
       END LOOP;
 --******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+--******************************* Var1.34 ADD Start **************************************
+      ln_line_count                   := 0;
+      gv_tax_code_header              := NULL;
+      gv_tax_rate_header              := NULL;
+--******************************* Var1.34 ADD End   **************************************
 --
 --****************************** 2009/06/29 1.16 T.Kitajima ADD START ******************************--
       -- 受注No.（HHT）(ロックエラー時の出力の為)
@@ -4142,6 +4148,14 @@ AS
             IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 )
               AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+--******************************* Var1.34 ADD Start **************************************
+                --値引のみの場合
+                IF ( ln_line_count <> 0 ) THEN
+                  --最大消費税額取得
+                  ln_max_no_data  := ln_max_no_data + 1;
+                  ln_max_tax_data := lt_tax_amount;
+                END IF;
+--******************************* Var1.34 ADD End   **************************************
             END IF;
             --
 --******************************* 2019/07/26 S.Kuwako Var1.32 DEL START **************************************
@@ -6968,6 +6982,11 @@ AS
         g_tax_amount_sum_type_tab(a).diff_amount        := 0;
       END LOOP;
 --******************************* 2019/07/26 S.Kuwako Var1.32 ADD END   **************************************
+--******************************* Var1.34 ADD Start **************************************
+      ln_line_count                   := 0;
+      gv_tax_code_header              := NULL;
+      gv_tax_rate_header              := NULL;
+--******************************* Var1.34 ADD End   **************************************
 --
 --****************************** 2009/06/29 1.16 T.Kitajima ADD START ******************************--
       BEGIN
@@ -9036,6 +9055,14 @@ AS
             IF ( lt_sale_discount_amount IS NOT NULL ) AND ( lt_sale_discount_amount <> 0 ) 
               AND ( lt_consumption_tax_class <> cv_ins_bid_tax ) THEN
                 ln_all_tax_amount := ( ln_all_tax_amount + lt_tax_amount );
+--******************************* Var1.34 ADD Start **************************************
+                --値引のみの場合
+                IF ( ln_line_count <> 0 ) THEN
+                  --最大消費税額取得
+                  ln_max_no_data  := ln_max_no_data + 1;
+                  ln_max_tax_data := lt_tax_amount;
+                END IF;
+--******************************* Var1.34 ADD End   **************************************
             END IF;
 --
 --******************************* 2019/07/26 S.Kuwako Var1.32 DEL START **************************************
