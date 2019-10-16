@@ -3,13 +3,14 @@
  * 
  * VIEW Name       : xxcmm_item_tax_rate_v
  * Description     : è¡îÔê≈ó¶VIEW
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2019/04/25    1.0   Y.Shoji      èââÒçÏê¨
+ *  2019/10/15    1.1   Y.Shoji      E_ñ{â“ìÆ_15601çƒëŒâû
  *
  ************************************************************************/
  CREATE OR REPLACE VIEW apps.xxcmm_item_tax_rate_v(
@@ -49,11 +50,17 @@ AND    mcb1.category_id         = mct1.category_id
 AND    mct1.source_lang         = 'JA'
 AND    mct1.language            = 'JA'
 AND    mcb1.segment1            = flv_tax_o1.lookup_code
-AND    flv_tax_o1.lookup_type   = 'XXCFO1_TAX_CODE'
+-- V1.1 Mod Start
+--AND    flv_tax_o1.lookup_type   = 'XXCFO1_TAX_CODE'
+AND    flv_tax_o1.lookup_type   = 'XXCMN_TAX_CODE'
+-- V1.1 Mod End
 AND    flv_tax_o1.language      = USERENV('LANG')
 AND    flv_tax_o1.enabled_flag  = 'Y'
 AND    flv_tax_o1.lookup_code   = flv_hist_o1.tag
-AND    flv_hist_o1.lookup_type  = 'XXCFO1_TAX_CODE_HISTORIES'
+-- V1.1 Mod Start
+--AND    flv_hist_o1.lookup_type  = 'XXCFO1_TAX_CODE_HISTORIES'
+AND    flv_hist_o1.lookup_type  = 'XXCMN_TAX_CODE_HISTORIES'
+-- V1.1 Mod End
 AND    flv_hist_o1.language     = USERENV('LANG')
 AND    flv_hist_o1.enabled_flag = 'Y'
 --
