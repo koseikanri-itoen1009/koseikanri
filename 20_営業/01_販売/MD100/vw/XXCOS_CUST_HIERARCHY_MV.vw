@@ -10,6 +10,8 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2019/10/06    1.0   N.Koyama         新規作成
+ *  2019/10/17    1.1   N.Koyama         E_本稼動_15949障害(仮想ログイン不要対応)
+ *                                       ※パフォーマンスを考慮し、OUを固定値で対応
  *
  ************************************************************************/
   CREATE MATERIALIZED VIEW "APPS"."XXCOS_CUST_HIERARCHY_MV" ("CASH_ACCOUNT_ID", "CASH_ACCOUNT_NUMBER", "CASH_ACCOUNT_NAME", "BILL_ACCOUNT_ID", "BILL_ACCOUNT_NUMBER", "BILL_ACCOUNT_NAME", "SHIP_ACCOUNT_ID", "SHIP_ACCOUNT_NUMBER", "SHIP_ACCOUNT_NAME", "CASH_RECEIV_BASE_CODE", "BILL_PARTY_ID", "BILL_BILL_BASE_CODE", "BILL_POSTAL_CODE", "BILL_STATE", "BILL_CITY", "BILL_ADDRESS1", "BILL_ADDRESS2", "BILL_TEL_NUM", "BILL_CONS_INV_FLAG", "BILL_TORIHIKISAKI_CODE", "BILL_STORE_CODE", "BILL_CUST_STORE_NAME", "BILL_TAX_DIV", "BILL_CRED_REC_CODE1", "BILL_CRED_REC_CODE2", "BILL_CRED_REC_CODE3", "BILL_INVOICE_TYPE", "BILL_PAYMENT_TERM_ID", "BILL_PAYMENT_TERM2", "BILL_PAYMENT_TERM3", "BILL_TAX_ROUND_RULE", "SHIP_SALE_BASE_CODE", "BILL_LAST_UPDATE_DATE")
@@ -97,17 +99,28 @@
           ,ship_hzad_1.sale_base_code          AS ship_sale_base_code     --売上拠点コード
           ,bill_hsua_1.last_update_date        AS bill_last_update_date   --請求先顧客使用目的最終更新日
     FROM   hz_cust_accounts          bill_hzca_1              --請求先顧客マスタ
-          ,hz_cust_acct_sites        bill_hasa_1              --請求先顧客所在地
-          ,hz_cust_site_uses         bill_hsua_1              --請求先顧客使用目的
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_sites        bill_hasa_1              --請求先顧客所在地
+--          ,hz_cust_site_uses         bill_hsua_1              --請求先顧客使用目的
+          ,hz_cust_acct_sites_all    bill_hasa_1              --請求先顧客所在地
+          ,hz_cust_site_uses_all     bill_hsua_1              --請求先顧客使用目的
+-- Ver1.1 Mod End
           ,xxcmm_cust_accounts       bill_hzad_1              --請求先顧客追加情報
           ,hz_party_sites            bill_hzps_1              --請求先パーティサイト
           ,hz_locations              bill_hzlo_1              --請求先顧客事業所
           ,hz_customer_profiles      bill_hzcp_1              --請求先顧客プロファイル
           ,hz_cust_accounts          ship_hzca_1              --出荷先顧客マスタ
-          ,hz_cust_acct_sites        ship_hasa_1              --出荷先顧客所在地
-          ,hz_cust_site_uses         ship_hsua_1              --出荷先顧客使用目的
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_sites        ship_hasa_1              --出荷先顧客所在地
+--          ,hz_cust_site_uses         ship_hsua_1              --出荷先顧客使用目的
+          ,hz_cust_acct_sites_all    ship_hasa_1              --出荷先顧客所在地
+          ,hz_cust_site_uses_all     ship_hsua_1              --出荷先顧客使用目的
+-- Ver1.1 Mod End
           ,xxcmm_cust_accounts       ship_hzad_1              --出荷先顧客追加情報
-          ,hz_cust_acct_relate       bill_hcar_1              --顧客関連マスタ(請求関連)
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_relate       bill_hcar_1              --顧客関連マスタ(請求関連)
+          ,hz_cust_acct_relate_all   bill_hcar_1              --顧客関連マスタ(請求関連)
+-- Ver1.1 Mod End
     WHERE  bill_hzca_1.cust_account_id = bill_hcar_1.cust_account_id         --請求先顧客マスタ.顧客ID = 顧客関連マスタ.顧客ID
     AND    bill_hcar_1.related_cust_account_id = ship_hzca_1.cust_account_id --顧客関連マスタ.関連先顧客ID = 出荷先顧客マスタ.顧客ID
     AND    bill_hzca_1.customer_class_code = '14'                            --請求先顧客.顧客区分 = '14'(売掛管理先顧客)
@@ -130,13 +143,26 @@
     AND    ship_hasa_1.status = 'A'                                          --出荷先顧客所在地.ステータス = 'A'
     AND    bill_hsua_1.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
     AND    ship_hsua_1.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
+-- Ver1.1 Add Start
+    AND    bill_hasa_1.org_id = 2424
+    AND    bill_hsua_1.org_id = 2424
+    AND    ship_hasa_1.org_id = 2424
+    AND    ship_hsua_1.org_id = 2424
+    AND    bill_hcar_1.org_id = 2424
+-- Ver1.1 Add End
     AND NOT EXISTS (
                 SELECT /*+ INDEX( cash_hcar_1 HZ_CUST_ACCT_RELATE_N2 ) */
                        'X'
-                FROM   hz_cust_acct_relate       cash_hcar_1   --顧客関連マスタ(入金関連)
+-- Ver1.1 Mod Start
+--                FROM   hz_cust_acct_relate       cash_hcar_1   --顧客関連マスタ(入金関連)
+                FROM   hz_cust_acct_relate_all   cash_hcar_1   --顧客関連マスタ(入金関連)
+-- Ver1.1 Mod End
                 WHERE  cash_hcar_1.status = 'A'                                          --顧客関連マスタ(入金関連).ステータス = ‘A’
                 AND    cash_hcar_1.attribute1 = '2'                                      --顧客関連マスタ(入金関連).関連分類 = ‘2’ (入金)
                 AND    cash_hcar_1.related_cust_account_id = bill_hzca_1.cust_account_id --顧客関連マスタ(入金関連).関連先顧客ID = 請求先顧客マスタ.顧客ID
+-- Ver1.1 Add Start
+                AND    cash_hcar_1.org_id = 2424
+-- Ver1.1 Add End
                      )
     UNION ALL
     --②入金先顧客－請求先顧客－出荷先顧客
@@ -176,21 +202,36 @@
           ,ship_hzad_2.sale_base_code            AS ship_sale_base_code     --売上拠点コード
           ,bill_hsua_2.last_update_date          AS bill_last_update_date   --請求先顧客使用目的最終更新日
     FROM   hz_cust_accounts          cash_hzca_2              --入金先顧客マスタ
-          ,hz_cust_acct_sites        cash_hasa_2              --入金先顧客所在地
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_sites        cash_hasa_2              --入金先顧客所在地
+          ,hz_cust_acct_sites_all    cash_hasa_2              --入金先顧客所在地
+-- Ver1.1 Mod End
           ,xxcmm_cust_accounts       cash_hzad_2              --入金先顧客追加情報
           ,hz_cust_accounts          bill_hzca_2              --請求先顧客マスタ
-          ,hz_cust_acct_sites        bill_hasa_2              --請求先顧客所在地
-          ,hz_cust_site_uses         bill_hsua_2              --請求先顧客使用目的
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_sites        bill_hasa_2              --請求先顧客所在地
+--          ,hz_cust_site_uses         bill_hsua_2              --請求先顧客使用目的
+          ,hz_cust_acct_sites_all    bill_hasa_2              --請求先顧客所在地
+          ,hz_cust_site_uses_all     bill_hsua_2              --請求先顧客使用目的
+-- Ver1.1 Mod End
           ,xxcmm_cust_accounts       bill_hzad_2              --請求先顧客追加情報
           ,hz_party_sites            bill_hzps_2              --請求先パーティサイト
           ,hz_locations              bill_hzlo_2              --請求先顧客事業所
           ,hz_customer_profiles      bill_hzcp_2              --請求先顧客プロファイル
           ,hz_cust_accounts          ship_hzca_2              --出荷先顧客マスタ
-          ,hz_cust_acct_sites        ship_hasa_2              --出荷先顧客所在地
-          ,hz_cust_site_uses         ship_hsua_2              --出荷先顧客使用目的
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_sites        ship_hasa_2              --出荷先顧客所在地
+--          ,hz_cust_site_uses         ship_hsua_2              --出荷先顧客使用目的
+          ,hz_cust_acct_sites_all    ship_hasa_2              --出荷先顧客所在地
+          ,hz_cust_site_uses_all     ship_hsua_2              --出荷先顧客使用目的
+-- Ver1.1 Mod End
           ,xxcmm_cust_accounts       ship_hzad_2              --出荷先顧客追加情報
-          ,hz_cust_acct_relate       cash_hcar_2              --顧客関連マスタ(入金関連)
-          ,hz_cust_acct_relate       bill_hcar_2              --顧客関連マスタ(請求関連)
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_relate       cash_hcar_2              --顧客関連マスタ(入金関連)
+--          ,hz_cust_acct_relate       bill_hcar_2              --顧客関連マスタ(請求関連)
+          ,hz_cust_acct_relate_all   cash_hcar_2              --顧客関連マスタ(入金関連)
+          ,hz_cust_acct_relate_all   bill_hcar_2              --顧客関連マスタ(請求関連)
+-- Ver1.1 Mod End
     WHERE  cash_hzca_2.cust_account_id = cash_hcar_2.cust_account_id         --入金先顧客マスタ.顧客ID = 顧客関連マスタ(入金関連).顧客ID
     AND    cash_hzca_2.cust_account_id = cash_hzad_2.customer_id             --入金先顧客マスタ.顧客ID = 入金先顧客追ﾁ情報.顧客ID
     AND    cash_hcar_2.related_cust_account_id = bill_hzca_2.cust_account_id --顧客関連マスタ(入金関連).関連先顧客ID = 請求先顧客マスタ.顧客ID
@@ -221,6 +262,15 @@
     AND    ship_hasa_2.status = 'A'                                          --出荷先顧客所在地.ステータス = 'A'
     AND    bill_hsua_2.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
     AND    ship_hsua_2.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
+-- Ver1.1 Add Start
+    AND    cash_hasa_2.org_id = 2424
+    AND    bill_hasa_2.org_id = 2424
+    AND    bill_hsua_2.org_id = 2424
+    AND    ship_hasa_2.org_id = 2424
+    AND    ship_hsua_2.org_id = 2424
+    AND    cash_hcar_2.org_id = 2424
+    AND    bill_hcar_2.org_id = 2424
+-- Ver1.1 Add End
     UNION ALL
     --③入金先顧客－請求先顧客＆出荷先顧客
     SELECT
@@ -262,17 +312,28 @@
           ,bill_hzad_3.sale_base_code              AS ship_sale_base_code     --売上拠点コード
           ,bill_hsua_3.last_update_date            AS bill_last_update_date   --請求先顧客使用目的最終更新日
     FROM   hz_cust_accounts          cash_hzca_3              --入金先顧客マスタ
-          ,hz_cust_acct_sites        cash_hasa_3              --入金先顧客所在地
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_sites        cash_hasa_3              --入金先顧客所在地
+          ,hz_cust_acct_sites_all    cash_hasa_3              --入金先顧客所在地
+-- Ver1.1 Mod End
           ,xxcmm_cust_accounts       cash_hzad_3              --入金先顧客追加情報
           ,hz_cust_accounts          ship_hzca_3              --出荷先顧客マスタ　※請求先含む
-          ,hz_cust_acct_sites        bill_hasa_3              --請求先顧客所在地
-          ,hz_cust_site_uses         bill_hsua_3              --請求先顧客使用目的
-          ,hz_cust_site_uses         ship_hsua_3              --出荷先顧客使用目的
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_sites        bill_hasa_3              --請求先顧客所在地
+--          ,hz_cust_site_uses         bill_hsua_3              --請求先顧客使用目的
+--          ,hz_cust_site_uses         ship_hsua_3              --出荷先顧客使用目的
+          ,hz_cust_acct_sites_all    bill_hasa_3              --請求先顧客所在地
+          ,hz_cust_site_uses_all     bill_hsua_3              --請求先顧客使用目的
+          ,hz_cust_site_uses_all     ship_hsua_3              --出荷先顧客使用目的
+-- Ver1.1 Mod End
           ,xxcmm_cust_accounts       bill_hzad_3              --請求先顧客追加情報
           ,hz_party_sites            bill_hzps_3              --請求先パーティサイト
           ,hz_locations              bill_hzlo_3              --請求先顧客事業所
           ,hz_customer_profiles      bill_hzcp_3              --請求先顧客プロファイル
-          ,hz_cust_acct_relate       cash_hcar_3              --顧客関連マスタ(入金関連)
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_relate       cash_hcar_3              --顧客関連マスタ(入金関連)
+          ,hz_cust_acct_relate_all   cash_hcar_3              --顧客関連マスタ(入金関連)
+-- Ver1.1 Mod End
     WHERE  cash_hzca_3.cust_account_id = cash_hcar_3.cust_account_id         --入金先顧客マスタ.顧客ID = 顧客関連マスタ(入金関連).顧客ID
     AND    cash_hzca_3.cust_account_id = cash_hzad_3.customer_id             --入金先顧客マスタ.顧客ID = 入金先顧客追加情報.顧客ID
     AND    cash_hcar_3.related_cust_account_id = ship_hzca_3.cust_account_id --顧客関連マスタ(入金関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
@@ -283,9 +344,15 @@
     AND    NOT EXISTS (
                SELECT /*+ INDEX( ex_hcar_3 HZ_CUST_ACCT_RELATE_N1 ) */
                       'X'
-               FROM   hz_cust_acct_relate     ex_hcar_3       --顧客関連マスタ(請求関連)
+-- Ver1.1 Mod Start
+--               FROM   hz_cust_acct_relate     ex_hcar_3       --顧客関連マスタ(請求関連)
+               FROM   hz_cust_acct_relate_all ex_hcar_3       --顧客関連マスタ(請求関連)
+-- Ver1.1 Mod End
                WHERE  ex_hcar_3.cust_account_id = ship_hzca_3.cust_account_id         --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
                AND    ex_hcar_3.status = 'A'                                          --顧客関連マスタ(請求関連).ステータス = ‘A’
+-- Ver1.1 Add Start
+               AND    ex_hcar_3.org_id = 2424
+-- Ver1.1 Add End
                     )
     AND    ship_hzca_3.cust_account_id = bill_hzad_3.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
     AND    ship_hzca_3.cust_account_id = bill_hasa_3.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
@@ -303,6 +370,13 @@
     AND    bill_hasa_3.status = 'A'                                          --請求先顧客所在地.ステータス = 'A'
     AND    bill_hsua_3.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
     AND    ship_hsua_3.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
+-- Ver1.1 Add Start
+    AND    cash_hasa_3.org_id = 2424
+    AND    bill_hasa_3.org_id = 2424
+    AND    bill_hsua_3.org_id = 2424
+    AND    ship_hsua_3.org_id = 2424
+    AND    cash_hcar_3.org_id = 2424
+-- Ver1.1 Add End
     UNION ALL
     --④入金先顧客＆請求先顧客＆出荷先顧客
     SELECT
@@ -342,9 +416,14 @@
           ,bill_hzad_4.sale_base_code                AS ship_sale_base_code     --売上拠点コード
           ,bill_hsua_4.last_update_date              AS bill_last_update_date   --請求先顧客使用目的最終更新日
     FROM   hz_cust_accounts          ship_hzca_4              --出荷先顧客マスタ　※入金先・請求先含む
-          ,hz_cust_acct_sites        bill_hasa_4              --請求先顧客所在地
-          ,hz_cust_site_uses         bill_hsua_4              --請求先顧客使用目的
-          ,hz_cust_site_uses         ship_hsua_4              --出荷先顧客使用目的
+-- Ver1.1 Mod Start
+--          ,hz_cust_acct_sites        bill_hasa_4              --請求先顧客所在地
+--          ,hz_cust_site_uses         bill_hsua_4              --請求先顧客使用目的
+--          ,hz_cust_site_uses         ship_hsua_4              --出荷先顧客使用目的
+          ,hz_cust_acct_sites_all    bill_hasa_4              --請求先顧客所在地
+          ,hz_cust_site_uses_all     bill_hsua_4              --請求先顧客使用目的
+          ,hz_cust_site_uses_all     ship_hsua_4              --出荷先顧客使用目的
+-- Ver1.1 Mod End
           ,xxcmm_cust_accounts       bill_hzad_4              --請求先顧客追加情報
           ,hz_party_sites            bill_hzps_4              --請求先パーティサイト
           ,hz_locations              bill_hzlo_4              --請求先顧客事業所
@@ -357,20 +436,32 @@
     AND    NOT EXISTS (
                SELECT /*+ INDEX( ex_hcar_41 HZ_CUST_ACCT_RELATE_N1 ) */
                       'X'
-               FROM   hz_cust_acct_relate     ex_hcar_41      --顧客関連マスタ
+-- Ver1.1 Mod Start
+--               FROM   hz_cust_acct_relate     ex_hcar_41      --顧客関連マスタ
+               FROM   hz_cust_acct_relate_all ex_hcar_41      --顧客関連マスタ
+-- Ver1.1 Mod End
                WHERE
                       ex_hcar_41.cust_account_id = ship_hzca_4.cust_account_id          --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
                AND    ex_hcar_41.status = 'A'                                           --顧客関連マスタ(請求関連).ステータス = ‘A’
                AND    ex_hcar_41.attribute1 = '2'
+-- Ver1.1 Add Start
+               AND    ex_hcar_41.org_id = 2424
+-- Ver1.1 Add End
                     )
     AND    NOT EXISTS (
                SELECT /*+ INDEX( ex_hcar_42 HZ_CUST_ACCT_RELATE_N2 ) */
                       'X'
-               FROM   hz_cust_acct_relate     ex_hcar_42      --顧客関連マスタ
+-- Ver1.1 Mod Start
+--               FROM   hz_cust_acct_relate     ex_hcar_42      --顧客関連マスタ
+               FROM   hz_cust_acct_relate_all ex_hcar_42      --顧客関連マスタ
+-- Ver1.1 Mod End
                WHERE
                       ex_hcar_42.related_cust_account_id = ship_hzca_4.cust_account_id   --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
                AND    ex_hcar_42.status = 'A'                                            --顧客関連マスタ(請求関連).ステータス = ‘A’
                AND    ex_hcar_42.attribute1 = '2'
+-- Ver1.1 Add Start
+               AND    ex_hcar_42.org_id = 2424
+-- Ver1.1 Add End
                     )
     AND    ship_hzca_4.cust_account_id = bill_hzad_4.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
     AND    ship_hzca_4.cust_account_id = bill_hasa_4.cust_account_id         --請求先顧客マスタ.顧客ID = 請求先顧客所在地.顧客ID
@@ -386,6 +477,11 @@
     AND    bill_hasa_4.status = 'A'                                          --請求先顧客所在地.ステータス = 'A'
     AND    bill_hsua_4.primary_flag = 'Y'                                    --請求先顧客使用目的.主フラグ = 'Y'
     AND    ship_hsua_4.primary_flag = 'Y'                                    --出荷先顧客使用目的.主フラグ = 'Y'
+-- Ver1.1 Add Start
+    AND    bill_hasa_4.org_id = 2424
+    AND    bill_hsua_4.org_id = 2424
+    AND    ship_hsua_4.org_id = 2424
+-- Ver1.1 Add End
 ) cust_hier;
 COMMENT ON  COLUMN  apps.xxcos_cust_hierarchy_mv.cash_account_id         IS  '入金先顧客ID';
 COMMENT ON  COLUMN  apps.xxcos_cust_hierarchy_mv.cash_account_number     IS  '入金先顧客コード';
