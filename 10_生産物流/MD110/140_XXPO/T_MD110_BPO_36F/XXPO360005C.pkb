@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2012/08/16    1.20  T.Makuta         E_本稼動_09898
  *  2013/07/05    1.21  R.Watanabe       E_本稼動_10839
  *  2019/08/30    1.22  Y.Shoji          E_本稼働_15601
+ *  2019/10/18    1.23  H.Ishii          E_本稼働_15601
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2188,7 +2189,10 @@ AS
       ot_data_rec(ln_count).attribute5_tax       := ln_sum_tax_kousen;                             --預かり口銭金額(消費税)
 --
 -- 2019/08/30 Ver1.22 Add Start
-      ot_data_rec(ln_count).purchase_tax_kbn      := it_data_rec(ln_loop_index-1).attribute3;      --仕入税区分
+-- 2019/10/18 Ver1.23 H.Ishii Mod Start
+--      ot_data_rec(ln_count).purchase_tax_kbn      := it_data_rec(ln_loop_index-1).attribute3;      --仕入税区分
+      ot_data_rec(ln_count).purchase_tax_kbn      := it_data_rec(ln_loop_index).attribute3;        --仕入税区分
+-- 2019/10/18 Ver1.23 H.Ishii Mod End
       ot_data_rec(ln_count).comm_price_tax_kbn    := lv_comm_price_tax_kbn;                        --口銭税区分
 --
       ot_data_rec(ln_count).bank_name             := lt_bank_name;                                 --金融機関名
