@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    請求書兼有償支給相殺確認書（伊藤園）  (T_MD070_BPO_78A)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/03/04    1.7  Akiyoshi Shiina   本番障害#1266対応
  *  2019/09/11    1.8  N.Abe             E_本稼動_15601（生産_軽減税率対応）
  *                                       コンカレント名を変更：計算書 ⇒ 請求書兼有償支給相殺確認書（伊藤園）
+ *  2019/10/18    1.9  N.Abe             E_本稼動_15601対応（追加対応）
  *
  *****************************************************************************************/
 --
@@ -76,6 +77,10 @@ AS
   gc_lookup_type_tax_rate       CONSTANT VARCHAR2(100) := 'XXCMN_CONSUMPTION_TAX_RATE' ;
   gc_lookup_meaning_shikyu_irai CONSTANT VARCHAR2(100) := '支給依頼' ;
   gc_lookup_meaning_kakutei     CONSTANT VARCHAR2(100) := '確定' ;
+-- 2019/10/18 Ver1.9 Add Start
+  gc_lkup_acct_pay              CONSTANT VARCHAR2(20)  := 'XXPO_ACCOUNT_PAYABLE'; -- 振込先
+  gc_lkup_mean_acct_pay         CONSTANT VARCHAR2(20)  := '振込先情報';
+-- 2019/10/18 Ver1.9 Add End
 --
 -- S 2008/03/10 mod by m.ikeda Ver1.2 --------------------------------------------------------- S --
   gc_ship_rcv_pay_ctg_mhn       CONSTANT VARCHAR2(2)   := '01' ;    -- 見本出庫
@@ -172,16 +177,21 @@ AS
      ,quantity              xxwsh_order_lines_all.quantity%TYPE               -- 出荷実績数量
 -- 2019/09/11 Ver1.8 Add Start
      ,lot_no                xxinv_mov_lot_details.lot_no%TYPE                 -- ロットNo
-     ,bank_name             ap_bank_branches.bank_name%TYPE                   -- 金融機関名
-     ,bank_bra_name         ap_bank_branches.bank_branch_name%TYPE            -- 支店名
-     ,bank_acct_type        xxcmn_lookup_values2_v.meaning%TYPE               -- 預金区分名
-     ,bank_acct_num         ap_bank_accounts_all.bank_account_num%TYPE        -- 口座No
-     ,bank_acct_name_alt    ap_bank_accounts_all.account_holder_name_alt%TYPE -- 口座名義ｶﾅ
+-- 2019/10/18 Ver1.9 Del Start
+--     ,bank_name             ap_bank_branches.bank_name%TYPE                   -- 金融機関名
+--     ,bank_bra_name         ap_bank_branches.bank_branch_name%TYPE            -- 支店名
+--     ,bank_acct_type        xxcmn_lookup_values2_v.meaning%TYPE               -- 預金区分名
+--     ,bank_acct_num         ap_bank_accounts_all.bank_account_num%TYPE        -- 口座No
+--     ,bank_acct_name_alt    ap_bank_accounts_all.account_holder_name_alt%TYPE -- 口座名義ｶﾅ
+-- 2019/10/18 Ver1.9 Del End
      ,s_vendor_code         po_vendors.segment1%TYPE                          -- 取引先：仕入先コード
      ,tax_type_code         fnd_lookup_values_vl.lookup_code%TYPE             -- 税区分（コード）
      ,tax_type_name         fnd_lookup_values_vl.description%TYPE             -- 税区分（名称）
      ,sikyu_date            VARCHAR2(7)                                       -- 有償支給年月
 -- 2019/09/11 Ver1.8 Add End
+-- 2019/10/18 Ver1.9 Add Start
+     ,billing_office        xxcmn_locations_all.location_name%TYPE            -- 請求先事業所
+-- 2019/10/18 Ver1.9 Add End
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -217,6 +227,18 @@ AS
   gv_tax_type_old_8         fnd_lookup_values.lookup_code%TYPE;
   gv_tax_type_no_tax        fnd_lookup_values.lookup_code%TYPE;
 -- 2019/09/11 Ver1.8 Add End
+-- 2019/10/18 Ver1.9 Add Start
+  gv_l_zip                  fnd_lookup_values.attribute1%TYPE;
+  gv_l_address              fnd_lookup_values.attribute2%TYPE;
+  gv_l_phone                fnd_lookup_values.attribute3%TYPE;
+  gv_l_fax                  fnd_lookup_values.attribute4%TYPE;
+  gv_l_dept                 fnd_lookup_values.attribute5%TYPE;
+  gv_bank_name              fnd_lookup_values.attribute6%TYPE;
+  gv_bank_bra_name          fnd_lookup_values.attribute7%TYPE;
+  gv_bank_acct_type         fnd_lookup_values.attribute8%TYPE;
+  gv_bank_acct_num          fnd_lookup_values.attribute9%TYPE;
+  gv_bank_acct_name_alt     fnd_lookup_values.attribute10%TYPE;
+-- 2019/10/18 Ver1.9 Add End
 --
   ------------------------------
   -- プロファイル用
@@ -539,6 +561,48 @@ AS
     END IF ;
 --
 -- S 2008/02/06 mod by m.ikeda ---------------------------------------------------------------- S --
+-- 2019/10/18 Ver1.9 Add Start
+    BEGIN
+      SELECT attribute1  AS l_zip                 -- 郵便番号
+            ,attribute2  AS l_address             -- 住所
+            ,attribute3  AS l_phone               -- TEL
+            ,attribute4  AS l_fax                 -- FAX
+            ,attribute5  AS l_dept                -- 拠点（部署）
+            ,attribute6  AS bank_name             -- 金融機関名
+            ,attribute7  AS bank_bra_name         -- 支店名
+            ,attribute8  AS bank_acct_type        -- 預金区分
+            ,attribute9  AS bank_acct_num         -- 口座No
+            ,attribute10 AS bank_acct_name_alt    -- 口座名義
+      INTO   gv_l_zip
+            ,gv_l_address
+            ,gv_l_phone
+            ,gv_l_fax
+            ,gv_l_dept
+            ,gv_bank_name
+            ,gv_bank_bra_name
+            ,gv_bank_acct_type
+            ,gv_bank_acct_num
+            ,gv_bank_acct_name_alt
+      FROM   fnd_lookup_values flv
+      WHERE  gd_exec_date     BETWEEN NVL( flv.start_date_active, gd_exec_date )
+                              AND     NVL( flv.end_date_active  , gd_exec_date )
+      AND   flv.enabled_flag  = gc_enable_flag
+      AND   flv.lookup_type   = gc_lkup_acct_pay
+      AND   flv.language      = gc_language_code
+      AND   flv.source_lang   = gc_language_code
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_err_code     := 'APP-XXCMN-10121' ;
+        lv_token_name1  := 'LOOKUP_TYPE' ;
+        lv_token_name2  := 'MEANING' ;
+        lv_token_value1 := gc_lkup_acct_pay  ;
+        lv_token_value2 := gc_lkup_mean_acct_pay ;
+    END;
+    IF ( lv_err_code IS NOT NULL ) THEN
+      RAISE get_value_expt ;
+    END IF ;
+-- 2019/10/18 Ver1.9 Add End
 --
     -- ====================================================
     -- プロファイル取得
@@ -621,7 +685,10 @@ AS
     WHEN get_value_expt THEN
       -- メッセージセット
       lv_errmsg := xxcmn_common_pkg.get_msg
-                    ( iv_application    => gc_application_po
+-- 2019/10/18 Ver1.9 Mod Start
+--                    ( iv_application    => gc_application_po
+                    ( iv_application    => gc_application_cmn
+-- 2019/10/18 Ver1.9 Mod End
                      ,iv_name           => lv_err_code
                      ,iv_token_name1    => lv_token_name1
                      ,iv_token_name2    => lv_token_name2
@@ -756,17 +823,22 @@ AS
              END) quantity                           -- 出荷実績数量
 -- 2019/09/11 Ver1.8 Add Start
             ,xmld.lot_no                    AS lot_no                   -- ロットNo
-            ,abb.bank_name                  AS bank_name                -- 金融機関名
-            ,abb.bank_branch_name           AS bank_branch_name         -- 支店名
-            ,flv.meaning                    AS bank_account_type        -- 預金区分名
-            ,aba.bank_account_num           AS bank_account_num         -- 口座No
-            ,aba.account_holder_name_alt    AS bank_account_name_alt    -- 口座名義ｶﾅ
+-- 2019/10/18 Ver1.9 Del Start
+--            ,abb.bank_name                  AS bank_name                -- 金融機関名
+--            ,abb.bank_branch_name           AS bank_branch_name         -- 支店名
+--            ,flv.meaning                    AS bank_account_type        -- 預金区分名
+--            ,aba.bank_account_num           AS bank_account_num         -- 口座No
+--            ,aba.account_holder_name_alt    AS bank_account_name_alt    -- 口座名義ｶﾅ
+-- 2019/10/18 Ver1.9 Del End
             ,pv.segment1                    AS s_vendor_code            -- 取引先：仕入先コード
             ,flvv.lookup_code               AS tax_type_code            -- 税区分（コード）
             ,flvv.description               AS tax_type_name            -- 税区分（名称）
             ,TO_CHAR(xoha.sikyu_return_date, 'YYYY/MM')
                                             AS sikyu_date               -- 有償支給年月
 -- 2019/09/11 Ver1.8 Add End
+-- 2019/10/18 Ver1.9 Add Start
+            ,xla2.location_name             AS billing_office           -- 請求先事業所
+-- 2019/10/18 Ver1.9 Add End
 -- mod end ver1.6
       FROM xxwsh_order_headers_all    xoha    -- 受注ヘッダアドオン
           ,oe_transaction_types_all   otta    -- 受注タイプ
@@ -791,16 +863,24 @@ AS
 -- E 2008/02/06 mod by m.ikeda ---------------------------------------------------------------- E --
 -- 2019/09/11 Ver1.8 Add Start
           ,xxcmm_item_tax_rate_v      xitrv       -- 消費税率VIEW
-          ,ap_bank_account_uses_all   abaua       -- 口座使用情報テーブル
-          ,ap_bank_accounts_all       aba         -- 銀行口座
-          ,ap_bank_branches           abb         -- 銀行支店
+-- 2019/10/18 Ver1.9 Del Start
+--          ,ap_bank_account_uses_all   abaua       -- 口座使用情報テーブル
+--          ,ap_bank_accounts_all       aba         -- 銀行口座
+--          ,ap_bank_branches           abb         -- 銀行支店
+-- 2019/10/18 Ver1.9 Del End
           ,po_vendors                 pv          -- 仕入先
           ,po_vendor_sites_all        pvsa_sales  -- 仕入先サイト(営業)
           ,po_vendor_sites_all        pvsa_mfg    -- 仕入先サイト(生産)
-          ,xxcmn_lookup_values2_v     flv         -- クイックコード（口座種別）
+-- 2019/10/18 Ver1.9 Del Start
+--          ,xxcmn_lookup_values2_v     flv         -- クイックコード（口座種別）
+-- 2019/10/18 Ver1.9 Del End
           ,mtl_categories_tl          mct         -- 品目カテゴリ（日本語）
           ,fnd_lookup_values_vl       flvv        -- クイックコード（税区分）
 -- 2019/09/11 Ver1.8 Add End
+-- 2019/10/18 Ver1.9 Add Start
+          ,hr_locations_all           hla2    -- 事業所マスタ（請求管理部署）
+          ,xxcmn_locations_all        xla2    -- 事業所アドオン（請求管理部署）
+-- 2019/10/18 Ber1.9 Add End
       WHERE mcsb.structure_id     = mcb.structure_id
       AND   gic.category_id       = mcb.category_id
       ---------------------------------------------------------------------------------------------
@@ -883,21 +963,28 @@ AS
 -- 2019/09/11 Ver1.8 Add Start
       ---------------------------------------------------------------------------------------------
       -- 振込先情報の絞込み条件
-      AND   abaua.external_bank_account_id = aba.bank_account_id
-      AND   aba.bank_branch_id             = abb.bank_branch_id
-      AND   xoha.arrival_date              BETWEEN abaua.start_date
-                                           AND     NVL(abaua.end_date ,xoha.arrival_date)
-      AND   abaua.vendor_id                = pv.vendor_id
-      AND   abaua.vendor_id                = pvsa_sales.vendor_id
-      AND   abaua.vendor_site_id           = pvsa_sales.vendor_site_id
+-- 2019/10/18 Ver1.9 Del Start
+--      AND   abaua.external_bank_account_id = aba.bank_account_id
+--      AND   aba.bank_branch_id             = abb.bank_branch_id
+--      AND   xoha.arrival_date              BETWEEN abaua.start_date
+--                                           AND     NVL(abaua.end_date ,xoha.arrival_date)
+--      AND   abaua.vendor_id                = pv.vendor_id
+--      AND   abaua.vendor_id                = pvsa_sales.vendor_id
+--      AND   abaua.vendor_site_id           = pvsa_sales.vendor_site_id
+-- 2019/10/18 Ver1.9 Del End
+-- 2019/10/18 Ver1.9 Add Start
+      AND   pv.vendor_id                   = pvsa_sales.vendor_id
+-- 2019/10/18 Ver1.9 Add End
       AND   pvsa_sales.org_id              = FND_PROFILE.VALUE( 'XXCMN_SALES_ORG_ID' )
       AND   pvsa_sales.vendor_site_code    = pvsa_mfg.attribute5
       AND   pvsa_mfg.org_id                = gn_sales_class
       AND   pvsa_mfg.vendor_site_code      = xoha.vendor_site_code
-      AND   aba.bank_account_type          = flv.lookup_code
-      AND   flv.lookup_type                = 'XXCSO1_KOZA_TYPE'
-      AND   xoha.arrival_date              BETWEEN flv.start_date_active
-                                           AND     NVL(flv.end_date_active ,xoha.arrival_date)
+-- 2019/10/18 Ver1.9 Del Start
+--      AND   aba.bank_account_type          = flv.lookup_code
+--      AND   flv.lookup_type                = 'XXCSO1_KOZA_TYPE'
+--      AND   xoha.arrival_date              BETWEEN flv.start_date_active
+--                                           AND     NVL(flv.end_date_active ,xoha.arrival_date)
+-- 2019/10/18 Ver1.9 Del End
       ---------------------------------------------------------------------------------------------
       -- 税区分の絞込み条件
       AND   flvv.lookup_type               = 'XXPO_TAX_TYPE_CALC'    -- 税区分（名称用）
@@ -906,6 +993,14 @@ AS
       AND   xoha.arrival_date              BETWEEN flvv.start_date_active   -- 着荷日で有効なデータ
                                            AND     NVL(flvv.end_date_active, xoha.arrival_date)   -- 
 -- 2019/09/11 Ver1.8 Add End
+-- 2019/10/18 Ver1.9 Add Start
+      ---------------------------------------------------------------------------------------------
+      -- 請求先事業所の条件
+      AND   hla2.location_code        = xoha.performance_management_dept  -- 成績管理部署
+      AND   hla2.location_id          = xla2.location_id
+      AND   xoha.arrival_date         BETWEEN xla2.start_date_active      -- 着荷日で有効なデータ
+                                      AND     xla2.end_date_active
+-- 2019/10/18 Ver1.9 Add End
 -- add start ver1.6
       GROUP BY xoha.vendor_code         -- 取引先：取引先コード
               ,xv.vendor_name           -- 取引先：取引先名称
@@ -935,16 +1030,21 @@ AS
 -- 2019/09/11 Ver1.8 Mod End
 -- 2019/09/11 Ver1.8 Add Start
               ,xmld.lot_no                  -- ロットNo
-              ,abb.bank_name                -- 金融機関名
-              ,abb.bank_branch_name         -- 支店名
-              ,flv.meaning                  -- 預金区分名
-              ,aba.bank_account_num         -- 口座No
-              ,aba.account_holder_name_alt  -- 口座名義ｶﾅ
+-- 2019/10/18 Ver1.9 Del Start
+--              ,abb.bank_name                -- 金融機関名
+--              ,abb.bank_branch_name         -- 支店名
+--              ,flv.meaning                  -- 預金区分名
+--              ,aba.bank_account_num         -- 口座No
+--              ,aba.account_holder_name_alt  -- 口座名義ｶﾅ
+-- 2019/10/18 Ver1.9 Del End
               ,pv.segment1                  -- 取引先：仕入先コード
               ,flvv.lookup_code             -- 税区分
               ,flvv.description             -- 税区分（名称）
               ,TO_CHAR(xoha.sikyu_return_date, 'YYYY/MM')
                                             -- 有償支給年月
+-- 2019/10/18 Ver1.9 Add Start
+              ,xla2.location_name           -- 請求先事業所
+-- 2019/10/18 Ver1.9 Add End
 -- 2019/09/11 Ver1.8 Add End
 -- add end ver1.6
       ORDER BY xoha.vendor_code         -- 取引先コード
@@ -1085,7 +1185,10 @@ AS
          ,it_data_rec(i).arrival_date     -- 06.着荷日
          ,it_data_rec(i).request_no       -- 07.依頼No（伝票番号）
          ,it_data_rec(i).lot_no           -- 08.ロットNo
-         ,it_data_rec(i).l_location_name  -- 09.事業所：事業所名称
+-- 2019/10/18 Ver1.9 Del Start
+--         ,it_data_rec(i).l_location_name  -- 09.事業所：事業所名称
+         ,it_data_rec(i).billing_office   -- 09.請求先事業所
+-- 2019/10/18 Ver1.9 Del End
          ,it_data_rec(i).item_class       -- 10.品目区分（日本語）
          ,it_data_rec(i).item_class_name  -- 11.品目区分（日本語）
          ,it_data_rec(i).item_code        -- 12.品目コード
@@ -1479,43 +1582,98 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'dep_zip_code' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_zip ;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_zip ;
+        --【閲覧者：伊藤園】の場合
+        IF ( ir_param.browser = '1' ) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_zip ;
+        ELSE
+        --【閲覧者：取引先】の場合
+          gt_xml_data_table(gl_xml_idx).tag_value := gv_l_zip;
+        END IF;
+-- 2019/10/18 Mod Ver1.9 End
         -- 事業所：住所１
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'dep_address1' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value
+        --【閲覧者：伊藤園】の場合
+        IF ( ir_param.browser = '1' ) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value
 -- 2019/09/11 Ver1.8 Mod Start
 --                                      := SUBSTR( gt_main_data(i).l_address_line1,  1, 15 ) ;
                                       := SUBSTRB( gt_main_data(i).l_address_line1,  1, 30 ) ;
 -- 2019/09/11 Ver1.8 Mod End
+        ELSE
+        --【閲覧者：取引先】の場合
+          gt_xml_data_table(gl_xml_idx).tag_value := SUBSTRB( gv_l_address,  1, 30 ) ;
+        END IF;
+-- 2019/10/18 Mod Ver1.9 End
         -- 事業所：住所２
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'dep_address2' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value
+        --【閲覧者：伊藤園】の場合
+        IF ( ir_param.browser = '1' ) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value
 -- 2019/09/11 Ver1.8 Mod Start
 --                                      := SUBSTR( gt_main_data(i).l_address_line1, 16, 15 ) ;
                                       := SUBSTRB( gt_main_data(i).l_address_line1, 31, 30 ) ;
 -- 2019/09/11 Ver1.8 Mod End
+        ELSE
+        --【閲覧者：取引先】の場合
+          gt_xml_data_table(gl_xml_idx).tag_value := SUBSTRB( gv_l_address, 31, 30 ) ;
+        END IF;
+-- 2019/10/18 Mod Ver1.9 End
         -- 事業所：電話番号
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'dep_phone_num' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_phone ;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_phone ;
+        --【閲覧者：伊藤園】の場合
+        IF ( ir_param.browser = '1' ) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_phone ;
+        ELSE
+        --【閲覧者：取引先】の場合
+          gt_xml_data_table(gl_xml_idx).tag_value := gv_l_phone;
+        END IF;
+-- 2019/10/18 Mod Ver1.9 End
         -- 事業所：ＦＡＸ番号
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'dep_fax_num' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_fax ;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_fax ;
+        --【閲覧者：伊藤園】の場合
+        IF ( ir_param.browser = '1' ) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_fax ;
+        ELSE
+        --【閲覧者：取引先】の場合
+          gt_xml_data_table(gl_xml_idx).tag_value := gv_l_fax;
+        END IF;
+-- 2019/10/18 Mod Ver1.9 End
         -- 事業所：事業所名称
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'dep_name' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
 -- mod start ver1.6
 --        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_location_name ;
-        gt_xml_data_table(gl_xml_idx).tag_value 
-                                     := xxcmn_common_pkg.get_user_dept(FND_GLOBAL.USER_ID);
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value 
+--                                     := xxcmn_common_pkg.get_user_dept(FND_GLOBAL.USER_ID);
+        --【閲覧者：伊藤園】の場合
+        IF ( ir_param.browser = '1' ) THEN
+          gt_xml_data_table(gl_xml_idx).tag_value 
+                                       := xxcmn_common_pkg.get_user_dept(FND_GLOBAL.USER_ID);
+        ELSE
+        --【閲覧者：取引先】の場合
+          gt_xml_data_table(gl_xml_idx).tag_value := gv_l_dept;
+        END IF;
+-- 2019/10/18 Mod Ver1.9 End
 -- mod end ver1.6
 -- 2019/09/11 Ver1.8 Add Start
         -- 事業所：取引先コード
@@ -1535,47 +1693,74 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_name';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).bank_name;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).bank_name;
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_bank_name;
+-- 2019/10/18 Mod Ver1.9 End
         -- 支店名
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_bra_name';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).bank_bra_name;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).bank_bra_name;
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_bank_bra_name;
+-- 2019/10/18 Mod Ver1.9 End
         -- 預金区分
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_acct_type';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).bank_acct_type;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).bank_acct_type;
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_bank_acct_type;
+-- 2019/10/18 Mod Ver1.9 End
         -- 口座No
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_acct_num';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).bank_acct_num;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).bank_acct_num;
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_bank_acct_num;
+-- 2019/10/18 Mod Ver1.9 End
         -- 口座名義ｶﾅ1
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_acct_name_alt1';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 1, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 1, 30 ) ;
+        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gv_bank_acct_name_alt, 1, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 End
         -- 口座名義ｶﾅ2
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_acct_name_alt2';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 31, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 31, 30 ) ;
+        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gv_bank_acct_name_alt, 31, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 End
         -- 口座名義ｶﾅ3
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_acct_name_alt3';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 61, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 61, 30 ) ;
+        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gv_bank_acct_name_alt, 61, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 End
         -- 口座名義ｶﾅ4
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_acct_name_alt4';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 91, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 91, 30 ) ;
+        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gv_bank_acct_name_alt, 91, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 End
         -- 口座名義ｶﾅ5
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'bank_acct_name_alt5';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 121, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 Start
+--        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gt_main_data(i).bank_acct_name_alt, 121, 30 ) ;
+        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTR( gv_bank_acct_name_alt, 121, 30 ) ;
+-- 2019/10/18 Mod Ver1.9 End
 -- 2019/09/11 Ver1.8 Add End
 --
         ------------------------------
@@ -1830,7 +2015,10 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'l_location_name';
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
-      gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_location_name;
+-- 2019/10/18 Ver1.9 Mod Start
+--      gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).l_location_name;
+      gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).billing_office;
+-- 2019/10/18 Ver1.9 Mod End
       -- 品目区分
       gl_xml_idx := gt_xml_data_table.COUNT + 1;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'item_class_name';
