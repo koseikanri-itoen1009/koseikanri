@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -114,6 +114,7 @@ AS
  *                                       ・新規／異動／退職いずれの場合もユーザーマスタ「摘要」を「カナ姓＋カナ名」で更新するよう変更
  *  2019/04/16    1.20 SCSK 阿部 直樹    障害E_本稼動_15639 対応
  *  2019/05/22    1.21 SCSK 阿部 直樹    障害E_本稼動_15725 対応
+ *  2019/10/16    1.22 SCSK 郭 有司      障害E_本稼動_15852 対応
  *
  *****************************************************************************************/
 --
@@ -366,6 +367,9 @@ AS
 --Ver1.20 2019/04/16 N.Abe Add Start
   cv_flv_exp_sett_appr         CONSTANT VARCHAR2(30)  := 'XXCMM_EXPENSE_SETT_APPROVER'; -- 経費精算拠点別承認者設定
 --Ver1.20 2019/04/16 N.Abe Add End
+-- 2019/10/16 Ver1.22 ADD Start
+  cv_flv_appr_scope            CONSTANT VARCHAR2(30)  := 'XXCMM_APPROVER_SCOPE';        -- 承認者範囲設定
+-- 2019/10/16 Ver1.22 ADD End
   --
   -- テーブル名
   cd_sysdate                   DATE := SYSDATE;                -- 処理開始時間(YYYYMMDDHH24MISS)
@@ -397,6 +401,9 @@ AS
   cv_std                       CONSTANT VARCHAR2(8)   := 'STANDARD';
   cv_all                       CONSTANT VARCHAR2(3)   := 'ALL';
   cv_ok                        CONSTANT VARCHAR2(2)   := 'OK';
+-- 2019/10/16 Ver1.22 ADD Start
+  cv_scp                       CONSTANT VARCHAR2(5)   := 'SCOPE';
+-- 2019/10/16 Ver1.22 ADD End
 --Ver1.20 2019/04/16 N.Abe Add End
   --
   -- ===============================
@@ -9265,6 +9272,30 @@ AS
       AND    lt_proc_masters(ln_cnt).location_code_old IS NOT NULL
       ;
 --Ver1.20 2019/04/16 N.Abe Add End
+-- 2019/10/16 Ver1.22 ADD Start
+      -- ⑤ 異動元所属コード（旧）もしくは異動先所属コード（新）が承認者範囲設定の所属拠点と一致
+      INSERT INTO xxcmm_wk_approver(
+        applica_dep_code
+       ,approve_dep_code
+       ,config_type
+       ,created_by
+       ,creation_date
+       ,request_id
+      )
+      SELECT flv.lookup_code
+            ,flv.meaning
+            ,cv_scp
+            ,gn_created_by
+            ,gd_creation_date
+            ,gn_request_id
+      FROM   fnd_lookup_values_vl flv
+      WHERE  flv.lookup_type                            = cv_flv_appr_scope
+      AND    flv.enabled_flag                           = gv_const_y
+      AND    flv.start_date_active                     <= cd_process_date
+      AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
+      AND    flv.lookup_code                           IN (lt_proc_masters(ln_cnt).location_code_old, lt_proc_masters(ln_cnt).location_code);
+                                                                                                                       -- 所属拠点 = 所属コード（旧）もしくは 所属コード（新）
+-- 2019/10/16 Ver1.22 ADD End
     END LOOP lt_proc_masters_loop;
 --Ver1.20 2019/04/16 N.Abe Add Start
     -- ===================================
@@ -9369,6 +9400,18 @@ AS
         WHERE  person_id            = lt_emp(k).person_id             --従業員ID
         AND    effective_start_date = lt_emp(k).effective_start_date  --登録年月日
         AND    effective_end_date   = lt_emp(k).effective_end_date    --登録期限年月日
+-- 2019/10/16 Ver1.22 ADD Start
+        AND    NOT EXISTS
+        (
+          SELECT flv.lookup_code      location_code
+          FROM   fnd_lookup_values_vl flv
+          WHERE  flv.lookup_type                            = cv_flv_appr_scope
+          AND    flv.enabled_flag                           = gv_const_y
+          AND    flv.start_date_active                     <= cd_process_date
+          AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
+          AND    flv.lookup_code                            = lt_wk_st(ln_wk_cnt).applica_dep_code
+        )
+-- 2019/10/16 Ver1.22 ADD End
         ;
 --
     END LOOP std_loop;
@@ -9539,6 +9582,18 @@ AS
         WHERE  person_id            = lt_emp(k).person_id                     --従業員ID
         AND    effective_start_date = lt_emp(k).effective_start_date          --登録年月日
         AND    effective_end_date   = lt_emp(k).effective_end_date            --登録期限年月日
+-- 2019/10/16 Ver1.22 ADD Start
+        AND    NOT EXISTS
+        (
+          SELECT flv.lookup_code      location_code
+          FROM   fnd_lookup_values_vl flv
+          WHERE  flv.lookup_type                            = cv_flv_appr_scope
+          AND    flv.enabled_flag                           = gv_const_y
+          AND    flv.start_date_active                     <= cd_process_date
+          AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
+          AND    flv.lookup_code                            = lt_wk_all(ln_wk_cnt).applica_dep_code
+        )
+-- 2019/10/16 Ver1.22 ADD End
         ;
 --
     END LOOP all_loop;
@@ -9626,7 +9681,10 @@ AS
         -- 更新従業員取得用に「-1」代入
           ln_app_id := -1;
         -- 承認者複数エラーメッセージ
-          lv_msg_code  := cv_msg_xxcmm_10495;
+-- 2019/10/16 Ver1.22 ADD Start
+--          lv_msg_code  := cv_msg_xxcmm_10495;
+          lv_msg_code  := cv_msg_xxcmm_10496;
+-- 2019/10/16 Ver1.22 ADD End
         -- 従業員検索後のスキップ判定
           lv_skip_flag := TRUE;
           gv_retcode    := cv_status_warn;  -- 処理結果(警告)
@@ -9707,11 +9765,62 @@ AS
         WHERE  person_id            = lt_emp(k).person_id             --従業員ID
         AND    effective_start_date = lt_emp(k).effective_start_date  --登録年月日
         AND    effective_end_date   = lt_emp(k).effective_end_date    --登録期限年月日
+-- 2019/10/16 Ver1.22 ADD Start
+        AND    NOT EXISTS
+        (
+          SELECT flv.lookup_code      location_code
+          FROM   fnd_lookup_values_vl flv
+          WHERE  flv.lookup_type                            = cv_flv_appr_scope
+          AND    flv.enabled_flag                           = gv_const_y
+          AND    flv.start_date_active                     <= cd_process_date
+          AND    NVL(flv.end_date_active, cd_process_date) >= cd_process_date
+          AND    flv.lookup_code                            = lt_wk_ok(ln_wk_cnt).applica_dep_code
+        )
+-- 2019/10/16 Ver1.22 ADD End
         ;
 --
     END LOOP ok_loop;
 --
 --Ver1.20 2019/04/16 N.Abe Add End
+-- 2019/10/16 Ver1.22 ADD Start
+    -- =========================
+    -- ④設定タイプ = 'SCOPE'
+    -- =========================
+--
+    --承認者ワークより対象データ取得
+    --オープン
+    OPEN get_wk_alok_cur(cv_scp);
+    --バルクフェッチ
+    FETCH get_wk_alok_cur BULK COLLECT INTO lt_wk_ok;
+    --クローズ
+    CLOSE get_wk_alok_cur;
+--
+    -- 承認者範囲設定の件数分処理を実施
+    <<scope_loop>>
+    FOR ln_wk_cnt IN 1..lt_wk_ok.COUNT LOOP
+      --更新対象従業員を取得
+      OPEN get_emp_cur(
+        lt_wk_ok(ln_wk_cnt).applica_dep_code  --申請者所属コード
+       ,NULL                                  --職位（承認範囲の更新対象に申請者職位は不要）
+       ,-1                                    --承認者の従業員ID（申請者所属コードに所属する従業員全てが更新対象）
+      );
+      --バルク
+      FETCH get_emp_cur BULK COLLECT INTO lt_emp;
+      --クローズ
+      CLOSE get_emp_cur;
+--
+      --承認者範囲の更新
+      FORALL k IN 1..lt_emp.COUNT
+        UPDATE per_all_people_f
+        SET    attribute30          = lt_wk_ok(ln_wk_cnt).approve_dep_code      --承認者所属CD(承認者範囲)
+        WHERE  person_id            = lt_emp(k).person_id                       --従業員ID
+        AND    effective_start_date = lt_emp(k).effective_start_date            --登録年月日
+        AND    effective_end_date   = lt_emp(k).effective_end_date              --登録期限年月日
+        ;
+--
+    END LOOP scope_loop;
+--
+-- 2019/10/16 Ver1.22 ADD End
     -- 新規社員の職責は社員職責自動割当ワークより一括登録
     <<wk_pr2_loop>>
     FOR wk_pr2_rec IN wk_pr2_cur(gv_kbn_new) 
