@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2019/01/31    1.19  阿部 直樹        障害E_本稼動_15490対応 顧客追加情報項目変更
  *  2019/02/18    1.20  奈良 和宏        障害E_本稼動_15490対応 顧客追加情報項目変更の不具合対応
  *  2019/04/09    1.21  小山 伸男        障害E_本稼動_15661対応 顧客追加情報項目変更の不具合対応２(法人顧客)
+ *  2019/07/26    1.22  阿部 直樹        障害E_本稼動_15748対応 エラーデータスキップ対応
  *
  *****************************************************************************************/
 --
@@ -218,6 +219,9 @@ AS
 -- Ver1.20 add start
   cv_latitude_not_null_err    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10492';                --カテゴリー商品計上区分指定エラー
 -- Ver1.20 add end
+-- Ver1.22 add start
+  cv_corp_cust_chk_err        CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-10497';                --法人顧客中止チェックエラーメッセージ
+-- Ver1.22 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -499,6 +503,9 @@ AS
   gv_management_resp          VARCHAR2(30);                                                --職責管理プロファイル
   gv_resp_flag                VARCHAR2(1);                                                 --職責管理フラグ(情報管理部：'Y' その他：'N')
 -- 2010/04/23 Ver1.6 E_本稼動_02295 add end by Yutaka.Kuboshima
+-- Ver1.22 add start
+  gv_warn_chk                 VARCHAR2(1);                                                 --項目チェックでエラーがあった場合の警告終了用
+-- Ver1.22 add end
 --
   /**********************************************************************************
    * Procedure Name   : cust_data_make_wk
@@ -608,6 +615,9 @@ AS
 -- 2010/02/15 Ver1.5 E_本稼動01582 add end by Yutaka.Kuboshima
 --
     lv_check_status          VARCHAR2(1)     := NULL;                     --項目チェック結果格納用変数
+-- Ver1.22 add start
+    lv_err_chk               VARCHAR2(1)     := NULL;                     --チェックエラー判定用
+-- Ver1.22 add end
 --
 -- 2009/10/23 Ver1.2 add start by Yutaka.Kuboshima
     lv_cust_customer_class      VARCHAR2(100)   := NULL;                  --ローカル変数・顧客区分(顧客マスタ)
@@ -1589,7 +1599,9 @@ AS
         IF   (lv_customer_code IS NULL)
           OR (lv_customer_code = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --顧客コード必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -1618,7 +1630,9 @@ AS
           END LOOP check_cust_code_loop;
           IF (lv_cust_code_mst IS NULL) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --顧客コードマスター存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -1650,7 +1664,9 @@ AS
         IF (ln_cust_addon_mst IS NULL) THEN
           --顧客追加情報エラー
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --顧客コードマスター存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -1690,7 +1706,9 @@ AS
           END LOOP check_cust_class_loop;
           IF (lv_cust_class_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --顧客区分参照表存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -1721,7 +1739,9 @@ AS
             AND (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
 --不具合ID007 2007/02/24 add start
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
 --add end
             --顧客区分エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
@@ -1755,7 +1775,9 @@ AS
         --顧客名称の必須チェック
         IF (lv_customer_name = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del endt
           --顧客名称必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -1784,7 +1806,9 @@ AS
           --顧客名称が存在し、かつ型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --顧客名称エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -1807,7 +1831,9 @@ AS
           --全角文字チェック
           IF (xxccp_common_pkg.chk_double_byte(lv_customer_name) = FALSE) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --全角文字チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -1846,7 +1872,9 @@ AS
         --顧客名称カナが存在し、かつ型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --顧客名称カナエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -1889,7 +1917,9 @@ AS
         --顧客名称カナの半角文字チェック
         IF (NVL(xxccp_common_pkg.chk_single_byte(lv_cust_name_kana), TRUE) = FALSE) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --半角文字チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -1931,7 +1961,9 @@ AS
         --略称型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --略称エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -2053,7 +2085,9 @@ AS
         --業態（小分類）型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --業態（小分類）エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -2086,7 +2120,9 @@ AS
             AND (lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_uesama_kbn, cv_tenpo_kbn ) )
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --業態（小分類）相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2118,7 +2154,9 @@ AS
             END LOOP check_business_low_type_loop;
             IF (lv_business_low_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --業態（小分類）参照表存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -2161,7 +2199,9 @@ AS
                                                , cv_gyotai_full_vd ))
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode      := cv_status_error;
+-- Ver1.22 del end
               --現在値更新可否チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -2278,7 +2318,9 @@ AS
         --顧客ステータスの必須チェック
         IF (lv_customer_status = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --顧客ステータス必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -2303,7 +2345,9 @@ AS
           END LOOP check_cust_status_loop;
           IF (lv_cust_status_mst IS NULL) THEN
             lv_check_status    := cv_status_error;
-            lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode         := cv_status_error;
+-- Ver1.22 del end
             --顧客ステータス参照表存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2333,7 +2377,9 @@ AS
                                                              ,lv_get_cust_status
                                                              ,lv_customer_status) <> cv_status_normal) THEN
                 lv_check_status  := cv_status_error;
-                lv_retcode       := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode       := cv_status_error;
+-- Ver1.22 del end
                 --変更不能エラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -2350,7 +2396,29 @@ AS
                   ,buff   => gv_out_msg
                 );
             END IF;
+-- Ver1.22 add start
+            -- 顧客ステータス・中止決済済
+-- Ver1.22 add end
             IF (lv_customer_status = cv_stop_approved) THEN
+-- Ver1.22 add start
+              -- 顧客区分が「13：法人顧客」かの確認
+              IF (lv_customer_class = cv_trust_corp) THEN
+                lv_check_status   := cv_status_error;
+--
+                -- 法人顧客中止チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_corp_cust_chk_err
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg);
+              ELSE
+              -- 法人顧客ではない場合は顧客の中止処理を実施
+-- Ver1.22 add end
+--
 -- 2010/02/15 Ver1.5 E_本稼動01582 add start by Yutaka.Kuboshima
 -- Ver1.10 del start
 --              -- 現在設定されている業態(小分類)を取得
@@ -2368,42 +2436,47 @@ AS
 --              END IF;
 -- Ver1.10 del end
 -- 2010/02/15 Ver1.5 E_本稼動01582 add end by Yutaka.Kuboshima
-              --顧客ステータス変更チェック
-              xxcmm_cust_sts_chg_chk_pkg.main( ln_cust_id
+                --顧客ステータス変更チェック
+                xxcmm_cust_sts_chg_chk_pkg.main( ln_cust_id
 -- 2010/02/15 Ver1.5 E_本稼動01582 modify start by Yutaka.Kuboshima
 --                                              ,lv_customer_status
 -- Ver1.10 mod start
 --                                              ,lv_business_low_type_now
-                                              ,lt_business_low_type_bef
+                                                ,lt_business_low_type_bef
 -- Ver1.10 mod end
 -- 2010/02/15 Ver1.5 E_本稼動01582 modify end by Yutaka.Kuboshima
-                                              ,lv_item_retcode
-                                              ,lv_item_errmsg);
-              IF (lv_item_retcode = cv_modify_err) THEN
+                                                ,lv_item_retcode
+                                                ,lv_item_errmsg);
+                IF (lv_item_retcode = cv_modify_err) THEN
 --不具合ID007 2007/02/24 modify start
 --                lv_cust_status_mst := cv_status_error;
-                lv_check_status  := cv_status_error;
+                  lv_check_status  := cv_status_error;
 --modify end
-                lv_retcode       := cv_status_error;
-                --顧客ステータス変更チェックエラーメッセージ取得
-                gv_out_msg := xxccp_common_pkg.get_msg(
-                                 iv_application  => gv_xxcmm_msg_kbn
-                                ,iv_name         => cv_status_modify_err_msg
-                                ,iv_token_name1  => cv_cust_code
-                                ,iv_token_value1 => lv_customer_code
-                                ,iv_token_name2  => cv_input_val
-                                ,iv_token_value2 => lv_customer_status
-                                ,iv_token_name3  => cv_ret_code
-                                ,iv_token_value3 => lv_item_retcode
-                                ,iv_token_name4  => cv_ret_msg
-                                ,iv_token_value4 => lv_item_errmsg
-                               );
-                FND_FILE.PUT_LINE(
-                   which  => FND_FILE.LOG
-                  ,buff   => gv_out_msg
-                );
+-- Ver1.22 del start
+--                lv_retcode       := cv_status_error;
+-- Ver1.22 del end
+                  --顧客ステータス変更チェックエラーメッセージ取得
+                  gv_out_msg := xxccp_common_pkg.get_msg(
+                                   iv_application  => gv_xxcmm_msg_kbn
+                                  ,iv_name         => cv_status_modify_err_msg
+                                  ,iv_token_name1  => cv_cust_code
+                                  ,iv_token_value1 => lv_customer_code
+                                  ,iv_token_name2  => cv_input_val
+                                  ,iv_token_value2 => lv_customer_status
+                                  ,iv_token_name3  => cv_ret_code
+                                  ,iv_token_value3 => lv_item_retcode
+                                  ,iv_token_name4  => cv_ret_msg
+                                  ,iv_token_value4 => lv_item_errmsg
+                                 );
+                  FND_FILE.PUT_LINE(
+                     which  => FND_FILE.LOG
+                    ,buff   => gv_out_msg
+                  );
+                END IF;
+-- Ver1.22 add start
               END IF;
             END IF;
+-- Ver1.22 add end
           END IF;
         END IF;
 --
@@ -2424,7 +2497,9 @@ AS
           END LOOP check_approval_reason_loop;
           IF (lv_appr_reason_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --中止理由参照表存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2453,7 +2528,9 @@ AS
           --中止理由型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --中止理由エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2498,7 +2575,9 @@ AS
           --中止決済日型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --中止決済日エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2530,7 +2609,9 @@ AS
             --業務日付より未来日の場合はエラー
             IF (TO_DATE(lv_approval_date, cv_date_format) > gd_process_date) THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode      := cv_status_error;
+-- Ver1.22 del end
               --中止決済日未来日メッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -2559,7 +2640,9 @@ AS
               --会計期間がクローズしている日付を指定している場合
               IF (lv_period_status = cv_close_status) THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode      := cv_status_error;
+-- Ver1.22 del end
                 --中止決済日妥当性メッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -2600,7 +2683,9 @@ AS
           END LOOP check_ar_invoice_code_loop;
           IF (lv_ar_invoice_code_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --売掛コード１（請求書）存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2629,7 +2714,9 @@ AS
           --売掛コード１（請求書）型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --売掛コード１（請求書）エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2674,7 +2761,9 @@ AS
           --売掛コード２（事業所）型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --売掛コード２（事業所）エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2719,7 +2808,9 @@ AS
           --売掛コード３（その他）型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --売掛コード３（その他）エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2846,7 +2937,9 @@ AS
         --請求書印刷単位型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --請求書印刷単位エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -2875,7 +2968,9 @@ AS
           --請求書印刷単位の相関チェック
           IF (lv_invoice_class = cv_null_bar) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --請求書印刷単位相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -2936,7 +3031,9 @@ AS
             END LOOP check_invoice_class_loop;
             IF (lv_invoice_class_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --請求書印刷単位存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -2980,7 +3077,9 @@ AS
           END LOOP check_invoice_cycle_loop;
           IF (lv_invoice_cycle_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --請求書発行サイクル存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3012,7 +3111,9 @@ AS
           --請求書発行サイクル型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start            
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --請求書発行サイクルエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3055,7 +3156,9 @@ AS
           END LOOP check_invoice_form_loop;
           IF (lv_invoice_form_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --請求書出力形式存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3087,7 +3190,9 @@ AS
           --請求書出力形式型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --請求書出力形式エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3157,7 +3262,9 @@ AS
             AND (NVL(lt_invoice_cycle_aft ,cv_dummy_0) <> cv_invoice_cycle_1)
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --請求書発行サイクルチェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3188,7 +3295,9 @@ AS
             AND ( lv_invoice_trust_flag = cv_no )
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --請求書印刷単位チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3216,7 +3325,9 @@ AS
         --支払条件の必須チェック
         IF (lv_payment_term_id = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --支払条件必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -3240,7 +3351,9 @@ AS
           END LOOP check_payment_term_loop;
           IF (lv_payment_term_id_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --支払条件存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3271,7 +3384,9 @@ AS
           --支払条件型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --支払条件エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3311,7 +3426,9 @@ AS
           END LOOP check_payment_term_loop;
           IF (lv_payment_second_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --第2支払条件存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3342,7 +3459,9 @@ AS
           --第2支払条件型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --第2支払条件エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3382,7 +3501,9 @@ AS
           END LOOP check_payment_term_loop;
           IF (lv_payment_third_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --第3支払条件存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3413,7 +3534,9 @@ AS
           --第3支払条件型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --第3支払条件エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3446,7 +3569,9 @@ AS
         --チェーン店コード（販売先）の必須チェック
         IF (lv_sales_chain_code = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --チェーン店コード（販売先）必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -3470,7 +3595,9 @@ AS
           END LOOP check_chain_code_loop;
           IF (lv_sales_chain_code_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --チェーン店コード（販売先）チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3499,7 +3626,9 @@ AS
           --チェーン店コード（販売先）型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode      := cv_status_error;
+-- Ver1.22 del end
             --チェーン店コード（販売先）エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3532,7 +3661,9 @@ AS
         --チェーン店コード（納品先）の必須チェック
         IF (lv_delivery_chain_code = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode      := cv_status_error;
+-- Ver1.22 del end
           --チェーン店コード（納品先）必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -3556,7 +3687,9 @@ AS
           END LOOP check_chain_code_loop;
           IF (lv_deliv_chain_code_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --チェーン店コード（納品先）チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3585,7 +3718,9 @@ AS
           --チェーン店コード（納品先）型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --チェーン店コード（納品先）エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3630,7 +3765,9 @@ AS
           --チェーン店コード（政策用）型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --チェーン店コード（政策用）エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3677,7 +3814,9 @@ AS
           --紹介者チェーン1型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --紹介者チェーン1エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3722,7 +3861,9 @@ AS
           --紹介者チェーン2型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --紹介者チェーン2エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3767,7 +3908,9 @@ AS
           END LOOP check_edi_chain_loop;
           IF (lv_edi_chain_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --チェーン店コード（ＥＤＩ）存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3802,7 +3945,9 @@ AS
           --チェーン店コード（ＥＤＩ）型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --チェーン店コード（ＥＤＩ）エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3880,7 +4025,9 @@ AS
           --店舗コード型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --店舗コードエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3916,7 +4063,9 @@ AS
         --郵便番号の必須チェック
         IF (lv_postal_code = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --郵便番号必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -3945,7 +4094,9 @@ AS
           --郵便番号型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --郵便番号エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -3972,7 +4123,9 @@ AS
             OR (LENGTHB(lv_postal_code) <> 7)
           THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --郵便番号チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4004,7 +4157,9 @@ AS
         --都道府県の必須チェック
         IF (lv_state = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --都道府県必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -4033,7 +4188,9 @@ AS
           --都道府県型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --都道府県エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4058,7 +4215,9 @@ AS
           -- 全角文字チェック
           IF (xxccp_common_pkg.chk_double_byte(lv_state) = FALSE) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --全角文字チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4090,7 +4249,9 @@ AS
         --市・区の必須チェック
         IF (lv_city = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --市・区必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -4119,7 +4280,9 @@ AS
           --市・区型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --市・区エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4144,7 +4307,9 @@ AS
           -- 全角文字チェック
           IF (xxccp_common_pkg.chk_double_byte(lv_city) = FALSE) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --全角文字チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4176,7 +4341,9 @@ AS
         --住所1の必須チェック
         IF (lv_address1 = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --住所1必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -4205,7 +4372,9 @@ AS
           --住所1型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --住所1エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4230,7 +4399,9 @@ AS
           -- 全角文字チェック
           IF (xxccp_common_pkg.chk_double_byte(lv_address1) = FALSE) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --全角文字チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4274,7 +4445,9 @@ AS
           --住所2型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --住所2エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4299,7 +4472,9 @@ AS
           -- 全角文字チェック
           IF (xxccp_common_pkg.chk_double_byte(lv_address2) = FALSE) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --全角文字チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4331,7 +4506,9 @@ AS
         --地区コードの必須チェック
         IF (lv_address3 = cv_null_bar) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --地区コード必須エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -4355,7 +4532,9 @@ AS
           END LOOP check_cust_chiku_code_loop;
           IF (lv_cust_chiku_code_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --地区コード存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4384,7 +4563,9 @@ AS
           --地区コード型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --地区コードエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4420,7 +4601,9 @@ AS
           IF (ln_cust_corp_mst IS NULL)THEN
               --顧客法人情報マスタ情報エラー
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --顧客法人情報マスタ存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -4448,7 +4631,9 @@ AS
           --与信限度額の必須チェック
           IF (lv_credit_limit = cv_null_bar) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --与信限度額必須エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4475,7 +4660,9 @@ AS
             --与信限度額型・桁数チェックエラー時
             IF (lv_item_retcode <> cv_status_normal) THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --与信限度額エラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -4537,7 +4724,9 @@ AS
           --判定区分の必須チェック
           IF (lv_decide_div = cv_null_bar) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --判定区分必須エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4561,7 +4750,9 @@ AS
             END LOOP check_decide_div_loop;
             IF (lv_decide_div_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --判定区分存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -4590,7 +4781,9 @@ AS
             --判定区分型・桁数チェックエラー時
             IF (lv_item_retcode <> cv_status_normal) THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --判定区分エラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -4638,7 +4831,9 @@ AS
         --請求書用コード型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --請求書用コードエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -4695,7 +4890,9 @@ AS
             AND (lv_invoice_required_flag = cv_yes)
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --請求書用コード相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4735,7 +4932,9 @@ AS
             END LOOP check_invoice_class_loop;
             IF (ln_invoice_code_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --請求書用コード存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -4785,7 +4984,9 @@ AS
         --業種型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --業種エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -4815,7 +5016,9 @@ AS
             AND (lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_uesama_kbn, cv_tenpo_kbn ) )
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --業種相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4843,7 +5046,9 @@ AS
             END LOOP check_industry_div_loop;
             IF (lv_industry_div_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --業種存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -4885,7 +5090,9 @@ AS
         --請求拠点型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --請求拠点エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -4911,7 +5118,9 @@ AS
           -- 請求拠点の必須チェック
           IF (lv_bill_base_code = cv_null_bar) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --請求拠点相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -4939,7 +5148,9 @@ AS
             END LOOP check_bill_base_code_loop;
             IF (lv_bill_base_code_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --請求拠点存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -4981,7 +5192,9 @@ AS
         --入金拠点型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --入金拠点エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -5007,7 +5220,9 @@ AS
           -- 入金拠点の必須チェック
           IF (lv_receiv_base_code = cv_null_bar) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --入金拠点相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -5035,7 +5250,9 @@ AS
             END LOOP check_receiv_base_code_loop;
             IF (lv_receiv_base_code_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --入金拠点存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5077,7 +5294,9 @@ AS
         --納品拠点型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --納品拠点エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -5110,7 +5329,9 @@ AS
             AND (lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_uesama_kbn ) )
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --納品拠点相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -5142,7 +5363,9 @@ AS
             END LOOP check_delivery_base_code_loop;
             IF (lv_delivery_base_code_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --納品拠点存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5213,7 +5436,9 @@ AS
             END LOOP check_head_base_code_loop;
             IF (lv_sales_head_base_code_mst IS NULL) THEN
               lv_check_status    := cv_status_error;
-              lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --販売先本部担当拠点参照表存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5403,7 +5628,9 @@ AS
             IF ( lv_base_code_flag1 = cv_yes ) THEN
               --エラーメッセージの設定
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --顧客区分ステータスチェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5424,7 +5651,9 @@ AS
               --
               --エラーメッセージの設定
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --顧客区分ステータスチェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5445,7 +5674,9 @@ AS
             --
             --エラーメッセージの設定
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --獲得拠点営業員相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -5467,7 +5698,9 @@ AS
             --
             --エラーメッセージの設定
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --獲得拠点営業員相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -5489,7 +5722,9 @@ AS
             --
             --エラーメッセージの設定
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --未登録チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -5511,7 +5746,9 @@ AS
             --
             --エラーメッセージの設定
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --未登録チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -5725,7 +5962,9 @@ AS
             IF ( lv_base_code_flag4 = cv_yes ) THEN
               --エラーメッセージの設定
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --獲得拠点従業員紐付きチェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5744,7 +5983,9 @@ AS
             --または、CSVに設定された獲得拠点でCSVに設定された獲得従業員が取得できない場合
               --エラーメッセージの設定
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --獲得従業員拠点紐付きチェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5784,7 +6025,9 @@ AS
             END LOOP check_new_point_div_loop;
             IF (lv_new_point_div_mst IS NULL) THEN
               lv_check_status    := cv_status_error;
-              lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --新規ポイント区分参照表存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5831,7 +6074,9 @@ AS
             --新規ポイント型・桁数チェックエラー時
             IF (lv_item_retcode <> cv_status_normal) THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --新規ポイントエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5857,7 +6102,9 @@ AS
               IF  ((ln_new_point < cn_point_min)
                 OR (ln_new_point > cn_point_max)) THEN
                 lv_check_status   := cv_status_error;
-                lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --新規ポイントエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -5900,7 +6147,9 @@ AS
             END LOOP check_intro_base_code_loop;
             IF (lv_intro_base_code_mst1 IS NULL) THEN
               lv_check_status    := cv_status_error;
-              lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --紹介拠点参照表存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -5953,7 +6202,9 @@ AS
                 IF ( lv_cnvs_business_person_mst2 = lv_intro_business_person_mst1 ) THEN
                 --
                   lv_check_status   := cv_status_error;
-                  lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--                  lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                   --獲得営業員紹介者チェックエラーメッセージ取得
                   gv_out_msg := xxccp_common_pkg.get_msg(
                                    iv_application  => gv_xxcmm_msg_kbn
@@ -6002,7 +6253,9 @@ AS
             --または、CSVに設定された紹介拠点が'-'の場合
             IF ( lv_int_bus_per_flag1 = cv_yes ) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --未登録チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6029,7 +6282,9 @@ AS
               --
               IF ( lv_intro_business_person_mst2 IS NULL ) THEN
                 lv_check_status   := cv_status_error;
-                lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --紹介者マスタチェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -6095,7 +6350,9 @@ AS
                   --または、CSVに設定された獲得営業員とCSVに設定されている紹介営業員が同じ場合
                   IF ( lv_int_bus_per_flag2 = cv_yes ) THEN
                     lv_check_status   := cv_status_error;
-                    lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--                    lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                     --獲得営業員紹介者チェックエラーメッセージ取得
                     gv_out_msg := xxccp_common_pkg.get_msg(
                                      iv_application  => gv_xxcmm_msg_kbn
@@ -6151,7 +6408,9 @@ AS
             --TDBコード型・桁数チェックエラー時
             IF (lv_item_retcode <> cv_status_normal) THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --TDBコードエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6210,7 +6469,9 @@ AS
             --決裁日付型・桁数チェックエラー時
             IF (lv_item_retcode <> cv_status_normal) THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --決裁日付エラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6260,7 +6521,9 @@ AS
             END LOOP check_base_code_loop;
             IF (lv_base_code_mst IS NULL) THEN
               lv_check_status    := cv_status_error;
-              lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --本部担当拠点参照表存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6281,7 +6544,9 @@ AS
           ELSIF (lv_base_code = cv_null_bar) THEN 
           --CSVに設定された本部担当拠点が'-'の場合
             lv_check_status    := cv_status_error;
-            lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --本部担当拠点必須エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -6325,7 +6590,9 @@ AS
         --売上実績振替型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --売上実績振替エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -6362,7 +6629,9 @@ AS
             END LOOP check_selling_transfer_loop;
             IF (lv_selling_transfer_div_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --売上実績振替存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6439,7 +6708,9 @@ AS
         --カード会社型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --カード会社エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -6472,7 +6743,9 @@ AS
             END LOOP check_card_company_loop;
             IF (lv_card_company_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --カード会社マスタ存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6494,7 +6767,9 @@ AS
             --業態（小分類）が'24','25'以外が設定されている場合
             IF (lv_business_low_type NOT IN (cv_gyotai_full_syoka_vd, cv_gyotai_full_vd)) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --カード会社相関チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6538,7 +6813,9 @@ AS
         --問屋管理コード型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --問屋管理コードエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -6571,7 +6848,9 @@ AS
             END LOOP check_wholesale_ctrl_code_loop;
             IF (lv_wholesale_ctrl_code_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --問屋管理コード存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6613,7 +6892,9 @@ AS
         --価格表型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --価格表エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -6646,7 +6927,9 @@ AS
             END LOOP check_price_list_loop;
             IF (lv_price_list_mst IS NULL) THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --価格表マスタ存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -6697,7 +6980,9 @@ AS
           --出荷元保管場所型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --出荷元保管場所エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -6734,7 +7019,9 @@ AS
               END LOOP check_price_list_loop;
               IF (lv_ship_storage_code_mst IS NULL) THEN
                 lv_check_status   := cv_status_error;
-                lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --出荷元保管場所マスタ存在チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -6827,7 +7114,9 @@ AS
         --配送順（EDI） 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --配送順（EDI） エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -6878,7 +7167,9 @@ AS
         --EDI地区コード（EDI） 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --EDI地区コード（EDI） エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -6903,7 +7194,9 @@ AS
         --EDI地区コード（EDI）の半角文字チェック
         IF (NVL(xxccp_common_pkg.chk_single_byte(lv_edi_district_code), TRUE) = FALSE) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --半角文字チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -6949,7 +7242,9 @@ AS
         --EDI地区名（EDI） 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --EDI地区名（EDI） エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -6976,7 +7271,9 @@ AS
           AND (lv_edi_district_name <> cv_null_bar)
         THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --全角文字チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7022,7 +7319,9 @@ AS
         --EDI地区名カナ（EDI） 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --EDI地区名カナ（EDI） エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7047,7 +7346,9 @@ AS
         --半角文字チェック
         IF (NVL(xxccp_common_pkg.chk_single_byte(lv_edi_district_kana), TRUE) = FALSE) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --半角文字チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7093,7 +7394,9 @@ AS
         --通過在庫型区分（EDI） 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --通過在庫型区分（EDI） エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7129,7 +7432,9 @@ AS
           END LOOP check_tsukagatazaiko_div_loop;
           IF (lv_tsukagatazaiko_div_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --通過在庫型区分（EDI）存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -7279,7 +7584,9 @@ AS
         IF (lv_tsukagatazaiko_flag = cv_yes) THEN
           --エラーメッセージの設定
           lv_check_status   := cv_status_error;
-          lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --通過在庫型区分（EDI）存在チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7340,7 +7647,9 @@ AS
                 AND (lt_delivery_base_code_aft IS NULL)
               THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --納品拠点相関チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -7373,7 +7682,9 @@ AS
                 AND  (lt_ship_storage_code_aft  IS NULL)
               THEN
                 lv_check_status   := cv_status_error;
-                lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --出荷元保管場所相関チェック１メッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -7409,7 +7720,9 @@ AS
                 IF (lt_chain_store_code_mst IS NULL)
                 THEN
                   lv_check_status   := cv_status_error;
-                  lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--                  lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                   --出荷元保管場所相関チェック２メッセージ取得
                   gv_out_msg := xxccp_common_pkg.get_msg(
                                    iv_application  => gv_xxcmm_msg_kbn
@@ -7456,7 +7769,9 @@ AS
         --EDI納品センターコード 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --EDI納品センターコード エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7507,7 +7822,9 @@ AS
         --EDI納品センター名 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --EDI納品センター名 エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7558,7 +7875,9 @@ AS
         --EDI伝送追番 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --EDI伝送追番 エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7609,7 +7928,9 @@ AS
         --顧客店舗名称 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --顧客店舗名称 エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7636,7 +7957,9 @@ AS
           AND (lv_cust_store_name <> cv_null_bar)
         THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --全角文字チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7682,7 +8005,9 @@ AS
         --取引先コード 型・桁数チェックエラー時
         IF (lv_item_retcode <> cv_status_normal) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --取引先コード エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7707,7 +8032,9 @@ AS
         --取引先コードの半角文字チェック
         IF (NVL(xxccp_common_pkg.chk_single_byte(lv_torihikisaki_code), TRUE) = FALSE) THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --半角文字チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7749,7 +8076,9 @@ AS
           END LOOP check_homon_taisyo_kbn_loop;
           IF (lv_vist_target_div_mst IS NULL) THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --訪問対象区分チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -7779,7 +8108,9 @@ AS
           --訪問対象区分型・桁数チェックエラー時
           IF (lv_item_retcode <> cv_status_normal) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --訪問対象区分エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -7814,7 +8145,9 @@ AS
         IF (lv_address_lines_phonetic = cv_null_bar)
         THEN
           lv_check_status := cv_status_error;
-          lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--          lv_retcode        := cv_status_error;
+-- Ver1.22 del end
           --必須項目エラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
@@ -7844,7 +8177,9 @@ AS
           IF (lv_item_retcode <> cv_status_normal)
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --型・桁数エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -7870,7 +8205,9 @@ AS
           IF (xxccp_common_pkg.chk_tel_format(lv_address_lines_phonetic) = FALSE)
           THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --電話番号チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -7912,7 +8249,9 @@ AS
           IF (lv_item_retcode <> cv_status_normal)
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --型・桁数エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -7938,7 +8277,9 @@ AS
           IF (xxccp_common_pkg.chk_tel_format(lv_address4) = FALSE)
           THEN
             lv_check_status   := cv_status_error;
-            lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --電話番号チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -7972,7 +8313,9 @@ AS
           IF (lv_tax_div = cv_null_bar)
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -8003,7 +8346,9 @@ AS
             IF (lt_tax_div_aft IS NULL)
             THEN
               lv_check_status   := cv_status_error;
-              lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --参照表存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8039,7 +8384,9 @@ AS
           IF (lv_sale_base_code = cv_null_bar)
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --相関チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -8069,7 +8416,9 @@ AS
             IF (lt_sale_base_code_aft IS NULL)
             THEN
               lv_check_status    := cv_status_error;
-              lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --値セット存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8131,7 +8480,9 @@ AS
                OR  (NVL(lv_longitude ,lt_longitude_bef) IS NULL))
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --相関チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8162,7 +8513,9 @@ AS
               IF (lt_longitude_aft IS NULL)
               THEN
                 lv_check_status   := cv_status_error;
-                lv_retcode        := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --参照表存在チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -8205,7 +8558,9 @@ AS
                 IF (lt_calendar_code_aft IS NULL)
                 THEN
                   lv_check_status    := cv_status_error;
-                  lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--                  lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                   --マスタ存在チェックエラーメッセージ取得
                   gv_out_msg := xxccp_common_pkg.get_msg(
                                    iv_application  => gv_xxcmm_msg_kbn
@@ -8242,7 +8597,9 @@ AS
                OR  (NVL(lv_rate ,lt_rate_bef) IS NULL))
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --相関チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8276,7 +8633,9 @@ AS
               IF (lv_item_retcode <> cv_status_normal)
               THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --型・桁数エラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -8302,7 +8661,9 @@ AS
                   OR  (TO_NUMBER(lv_rate) > cn_rate_max) )
                 THEN
                   lv_check_status := cv_status_error;
-                  lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                  lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                   --範囲チェックエラーメッセージ取得
                   gv_out_msg := xxccp_common_pkg.get_msg(
                                    iv_application  => gv_xxcmm_msg_kbn
@@ -8351,7 +8712,9 @@ AS
             IF (lv_item_retcode <> cv_status_normal)
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --型・桁数チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8377,7 +8740,9 @@ AS
                 OR  (TO_NUMBER(lv_rcv_dsct_rate) > cn_rcv_dsct_rate_max) )
               THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --範囲チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -8425,7 +8790,9 @@ AS
             IF (lv_item_retcode <> cv_status_normal)
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --型・桁数チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8453,7 +8820,9 @@ AS
                 OR  (TO_NUMBER(lv_conclusion_day1) > cn_conc_day_max) )
               THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --範囲チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -8503,7 +8872,9 @@ AS
             IF (lv_item_retcode <> cv_status_normal)
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --型・桁数チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8531,7 +8902,9 @@ AS
                 OR  (TO_NUMBER(lv_conclusion_day2) > cn_conc_day_max) )
               THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --範囲チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -8581,7 +8954,9 @@ AS
             IF (lv_item_retcode <> cv_status_normal)
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --型・桁数チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8609,7 +8984,9 @@ AS
                 OR  (TO_NUMBER(lv_conclusion_day3) > cn_conc_day_max) )
               THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --範囲チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -8692,7 +9069,9 @@ AS
               AND (lt_conclusion_day2_aft IS NOT NULL)
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --消化計算締め日相関チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8717,7 +9096,9 @@ AS
               AND (lt_conclusion_day3_aft IS NOT NULL)
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --消化計算締め日相関チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8746,7 +9127,9 @@ AS
                 < lt_conclusion_day1_aft + cn_conclusion_interval
               THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --消化計算締め日妥当性チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -8778,7 +9161,9 @@ AS
                 < lt_conclusion_day2_aft + cn_conclusion_interval
               THEN
                 lv_check_status := cv_status_error;
-                lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--                lv_retcode        := cv_status_error;
+-- Ver1.22 del end
                 --消化計算締め日妥当性チェックエラーメッセージ取得
                 gv_out_msg := xxccp_common_pkg.get_msg(
                                  iv_application  => gv_xxcmm_msg_kbn
@@ -8810,7 +9195,9 @@ AS
               AND (NVL(lt_conclusion_day3_aft ,cn_dummy_0) <> cn_conc_day_max)
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --消化計算締め日月末日チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8845,7 +9232,9 @@ AS
             IF (lt_store_cust_code_aft IS NULL)
             THEN
               lv_check_status    := cv_status_error;
-              lv_retcode         := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --マスタ存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8885,7 +9274,9 @@ AS
             THEN
               --エラーセット
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --マスタ存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8927,7 +9318,9 @@ AS
             IF ( lv_item_retcode <> cv_status_normal ) THEN
               --エラーセット
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --取引先顧客コードエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -8990,7 +9383,9 @@ AS
             THEN
               --エラーセット
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --相殺用顧客コード関連チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -9021,7 +9416,9 @@ AS
             THEN
               --エラーセット
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --取引先顧客コード重複チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -9063,7 +9460,9 @@ AS
           IF ( lt_esm_target_div_mst IS NULL )
           THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --参照表存在チェックエラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -9106,7 +9505,9 @@ AS
               OR  (NVL(lv_latitude, lt_latitude_bef) IS NULL))
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --カテゴリー商品計上区分必須チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -9136,7 +9537,9 @@ AS
             IF ( lt_latitude_mst IS NULL )
             THEN
               lv_check_status := cv_status_error;
-              lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--              lv_retcode        := cv_status_error;
+-- Ver1.22 del end
               --参照表存在チェックエラーメッセージ取得
               gv_out_msg := xxccp_common_pkg.get_msg(
                                iv_application  => gv_xxcmm_msg_kbn
@@ -9159,7 +9562,9 @@ AS
         ELSE  --顧客区分:10以外
           IF ( lv_latitude <> cv_null_bar ) THEN
             lv_check_status := cv_status_error;
-            lv_retcode      := cv_status_error;
+-- Ver1.22 del start
+--            lv_retcode        := cv_status_error;
+-- Ver1.22 del end
             --カテゴリー商品計上区分指定エラーメッセージ取得
             gv_out_msg := xxccp_common_pkg.get_msg(
                              iv_application  => gv_xxcmm_msg_kbn
@@ -9412,6 +9817,10 @@ AS
           gn_normal_cnt  := gn_normal_cnt + 1;  -- 正常件数
         ELSE
           gn_error_cnt   := gn_error_cnt +1;    -- エラー件数
+-- Ver1.22 add start
+          -- チェックエラー判定用にエラーを設定
+          lv_err_chk := cv_status_error;
+-- Ver1.22 add end
         END IF;
       END IF;
       --各格納用変数初期化
@@ -9637,6 +10046,13 @@ AS
       RAISE invalid_data_expt;
     END IF;
 --
+-- Ver1.22 add start
+    -- チェック処理に1件でもエラーがあった場合はエラーにする
+    IF (lv_err_chk = cv_status_error) THEN
+       gv_warn_chk := cv_status_warn;
+    END IF;
+-- Ver1.22 add end
+-- 
     COMMIT;
 --
   EXCEPTION
@@ -12168,6 +12584,11 @@ AS
       lv_errmsg := lv_real_errmsg;
       lv_errbuf := lv_real_errbuf;
       RAISE global_process_expt;
+-- Ver1.22 add start
+    -- 項目チェックでエラーがあった場合は警告にする。
+    ELSIF (gv_warn_chk = cv_status_warn) THEN
+      ov_retcode := cv_status_warn;
+-- Ver1.22 add end
     END IF;
 --
     --終了処理処理エラー時
