@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.33
+ * Version          : 1.34
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -71,6 +71,7 @@ AS
  *  2009/09/24    1.31  T.Yoshimoto      本番障害#1523対応
  *  2010/01/12    1.32  T.Yoshimoto      E_本稼動#892対応
  *  2019/04/08    1.33  Y.Sasaki         E_本稼動_15601(生産_軽減税率)対応
+ *  2019/10/30    1.34  Y.Shouji         E_本稼動_16020対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -223,6 +224,9 @@ AS
      ,fukakin         NUMBER                                                --賦課金
 -- 2009/01/09 v1.21 UPDATE END
      ,zeiritu         fnd_lookup_values.lookup_code%TYPE                    --税率
+-- V1.34 Y.Shouji ADD START
+     ,zeiritu_k       fnd_lookup_values.lookup_code%TYPE                    --税率(口銭）
+-- V1.34 Y.Shouji ADD END
      ,order1          fnd_lookup_values.lookup_code%TYPE                    --表示順
      ,gaku            NUMBER                                                --金額(粉引後単価*受入返品数量)
      ,siire_tax       NUMBER                                                --仕入金額（消費税額）
@@ -829,6 +833,10 @@ AS
 --    cv_type_tax_rate       CONSTANT VARCHAR2(100) := '''XXCMN_CONSUMPTION_TAX_RATE''' ;
 --                                                                     --消費税
 -- V1.33 Y.Sasaki Deleted END
+-- V1.34 Y.Shouji ADD START
+    cv_type_tax_rate       CONSTANT VARCHAR2(100) := '''XXCMN_CONSUMPTION_TAX_RATE''' ;
+                                                                     --消費税
+-- V1.34 Y.Shouji ADD END
     cv_type_kousen         CONSTANT VARCHAR2(100) := '''XXPO_KOUSEN_TYPE''' ;     --口銭区分
     cv_type_fukakin        CONSTANT VARCHAR2(100) := '''XXPO_FUKAKIN_TYPE''' ;    --賦課金区分
     cv_ja                  CONSTANT VARCHAR2(100) := '''JA''' ;                   --日本語
@@ -1149,6 +1157,10 @@ AS
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(xitrv_u.tax, 0) '
         ||       ' , NVL(xitrv_p.tax, 0))   zeiritu '      --税率'
 -- V1.33 Y.Sasaki Modified END
+-- V1.34 Y.Shouji ADD START
+        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
+        ||       ' , NVL(flv_p_tax.lookup_code, 0))   zeiritu_k '      --税率口銭'
+-- V1.34 Y.Shouji ADD END
         || ',DECODE( xic6.item_class_code '
         ||       ' , '|| cv_item_class || ', ilm.attribute1||ilm.attribute2 '
         ||       ' ,ilm.lot_no )              order1 '       --表示順'
@@ -1199,8 +1211,12 @@ AS
 -- V1.33 Y.Sasaki Modified START
 --        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
 --        || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   kousen_tax '
-        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(xitrv_u.tax, 0) '
-        || '   , NVL(xitrv_p.tax, 0)) / 100,0)   kousen_tax '
+-- V1.34 Y.Shouji MOD START
+--        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(xitrv_u.tax, 0) '
+--        || '   , NVL(xitrv_p.tax, 0)) / 100,0)   kousen_tax '
+        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
+        || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   kousen_tax '
+-- V1.34 Y.Shouji MOD END
 -- V1.33 Y.Sasaki Modified END
         -- 2008/12/02 ADD END
         ;
@@ -1255,6 +1271,13 @@ AS
 --      ||    ' AND flv_u_tax.language = ' || cv_ja
 --      ||    ' AND flv_u_tax.start_date_active <= xrart.txns_date '
 --      ||    ' AND NVL(flv_u_tax.end_date_active, xrart.txns_date)  >= xrart.txns_date ) '
+-- V1.34 Y.Shouji ADD START
+      || 'INNER JOIN fnd_lookup_values flv_u_tax '                --クイックコード(消費税)
+      ||  ' ON (  flv_u_tax.lookup_type = ' || cv_type_tax_rate
+      ||    ' AND flv_u_tax.language = ' || cv_ja
+      ||    ' AND flv_u_tax.start_date_active <= xrart.txns_date '
+      ||    ' AND NVL(flv_u_tax.end_date_active, xrart.txns_date)  >= xrart.txns_date ) '
+-- V1.34 Y.Shouji ADD END
       || 'INNER JOIN xxcmm_item_tax_rate_v xitrv_u '              --消費税率ビュー
       ||  ' ON (  xrart.item_id = xitrv_u.item_id '
       ||    ' AND xitrv_u.start_date_active <= xrart.txns_date '
@@ -1301,6 +1324,15 @@ AS
 --      ||                  ' <= ph.attribute4 '
 --      ||              ' AND NVL(TO_CHAR(flv_p_tax.end_date_active, '''||gc_char_d_format||'''),'
 --      ||                  ' ph.attribute4) >= ph.attribute4 )'
+-- V1.34 Y.Shouji ADD START
+      || '          INNER JOIN fnd_lookup_values flv_p_tax '     --クイックコード(消費税)
+      ||            ' ON (  flv_p_tax.lookup_type = ' || cv_type_tax_rate
+      ||              ' AND flv_p_tax.language = '|| cv_ja
+      ||              ' AND TO_CHAR(flv_p_tax.start_date_active,'''||gc_char_d_format||''')'
+      ||                  ' <= ph.attribute4 '
+      ||              ' AND NVL(TO_CHAR(flv_p_tax.end_date_active, '''||gc_char_d_format||'''),'
+      ||                  ' ph.attribute4) >= ph.attribute4 )'
+-- V1.34 Y.Shouji ADD END
       || '          INNER JOIN xxcmn_item_mst_v ximv_p '           --OPM品目情報VIEW
       ||            ' ON ( pl.item_id = ximv_p.inventory_item_id ) '
       || '          INNER JOIN xxcmm_item_tax_rate_v xitrv_p '     --消費税率ビュー
@@ -1843,7 +1875,10 @@ AS
       --消費税(仕入金額)
       ln_sum_tax_siire    := ln_sum_tax_siire + (ROUND(NVL(ln_siire, 0) * NVL(it_data_rec(ln_loop_index).zeiritu , 0) / 100 ,0));
       --消費税(口銭金額)
-      ln_sum_tax_kousen   := ln_sum_tax_kousen + (ROUND(NVL(ln_kousen, 0) * NVL(it_data_rec(ln_loop_index).zeiritu , 0) / 100 ,0));
+-- V1.34 Y.Shouji MOD START
+--      ln_sum_tax_kousen   := ln_sum_tax_kousen + (ROUND(NVL(ln_kousen, 0) * NVL(it_data_rec(ln_loop_index).zeiritu , 0) / 100 ,0));
+      ln_sum_tax_kousen   := ln_sum_tax_kousen + (ROUND(NVL(ln_kousen, 0) * NVL(it_data_rec(ln_loop_index).zeiritu_k , 0) / 100 ,0));
+-- V1.34 Y.Shouji ADD END
       -- 入庫総数を加算
       ln_sum_qty   := ln_sum_qty + it_data_rec(ln_loop_index).quantity;
       ln_sum_conv_qty := ln_sum_conv_qty + it_data_rec(ln_loop_index).conv_quantity;
@@ -2438,7 +2473,10 @@ AS
         lb_ret := fnc_set_xml('Z', 'purchase_amount_tax', ln_tax_siire);
 --
         --消費税(口銭金額)
-        ln_tax_kousen := ROUND(ln_kousen * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100, 0);
+-- V1.34 Y.Shouji MOD START
+--        ln_tax_kousen := ROUND(ln_kousen * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100, 0);
+        ln_tax_kousen := ROUND(ln_kousen * NVL(gt_main_data(ln_loop_index).zeiritu_k, 0) / 100, 0);
+-- V1.34 Y.Shouji MOD END
         lb_ret := fnc_set_xml('Z', 'commission_unit_price_rate_tax', ln_tax_kousen);
 --
         --消費税(差引金額)
