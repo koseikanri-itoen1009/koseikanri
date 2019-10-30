@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2013/06/27    1.18  S.Niki           E_本稼動_10839対応（消費税増税対応）
  *  2014/10/14    1.19  H.Itou           E_本稼動_12321対応
  *  2019/04/12    1.20  Y.Sasaki         E_本稼動_15601対応（生産_軽減税率対応）
+ *  2019/10/30    1.21  Y.Shouji         E_本稼動_16020対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1599,7 +1600,10 @@ AS
 ------ v1.18 MOD END
 --      || '                 ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
 ---- v1.19 Mod End
-      || '                 ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xitrv.tax) / 100) '
+-- V1.21 Y.Shouji MOD START
+--      || '                 ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xitrv.tax) / 100) '
+      || '                 ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- V1.21 Y.Shouji MOD END
 -- v1.20 Y.Sasaki Modified END
       || '               WHEN ''2'' THEN '
 -- v1.20 Y.Sasaki Modified START
@@ -1610,7 +1614,10 @@ AS
 ------ v1.18 MOD END
 --      || '                 ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100) '
 ---- v1.19 Mod End
-      || '                 ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xitrv.tax) / 100) '
+-- V1.21 Y.Shouji MOD START
+--      || '                 ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xitrv.tax) / 100) '
+      || '                 ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- V1.21 Y.Shouji MOD END
 -- v1.20 Y.Sasaki Modified END
       || '               ELSE '
       || '                 0 '
@@ -1737,6 +1744,9 @@ AS
 ---- v1.18 ADD START
 --      || '             ,xxcmn_lookup_values2_v   xlv2v '  -- 消費税率情報VIEW
 ---- v1.18 ADD END
+-- V1.21 Y.Shouji ADD START
+      || '             ,xxcmn_lookup_values2_v   xlv2v '  -- 消費税率情報VIEW
+-- V1.21 Y.Shouji ADD END
       || '             ,xxcmm_item_tax_rate_v   xitrv '  -- 消費税率VIEW
 -- v1.20 Y.Sasaki Modified END
       || '       WHERE  itp.doc_type                = :para_porc '
@@ -1820,6 +1830,12 @@ AS
 --      || '       AND    xlv2v.start_date_active  < (FND_DATE.STRING_TO_DATE(pha.attribute4, :para_char_std_format) + 1) '
 --      || '       AND    xlv2v.end_date_active    >= FND_DATE.STRING_TO_DATE(pha.attribute4, :para_char_std_format) '
 ---- v1.18 ADD END
+-- V1.21 Y.Shouji ADD START
+      || '       AND    xlv2v.lookup_type         = :para_xxcmn_ctr '  -- 消費税率マスタ(LOOKUP表)
+      -- 発注データの納入日基準
+      || '       AND    xlv2v.start_date_active  < (FND_DATE.STRING_TO_DATE(pha.attribute4, :para_char_std_format) + 1) '
+      || '       AND    xlv2v.end_date_active    >= FND_DATE.STRING_TO_DATE(pha.attribute4, :para_char_std_format) '
+-- V1.21 Y.Shouji ADD END
       || '       AND    xitrv.item_id               =  iimb.item_id '  -- 消費税率ビュー
       || '       AND    xitrv.start_date_active     <  (FND_DATE.STRING_TO_DATE(pha.attribute4, :para_char_std_format) + 1) '
       || '       AND    NVL( xitrv.end_date_active, FND_DATE.STRING_TO_DATE(pha.attribute4, :para_char_std_format) )'
@@ -1903,6 +1919,9 @@ AS
                     || '         ,rsl.attribute1 '
 -- v1.20 Y.Sasaki Modified START
 --                    || '         ,xlv2v.lookup_code '
+-- V1.21 Y.Shouji ADD START
+                    || '         ,xlv2v.lookup_code '
+-- V1.21 Y.Shouji ADD END
                     || '         ,xitrv.tax '
 -- v1.20 Y.Sasaki Modified END
 -- v1.19 Add End
@@ -2023,7 +2042,10 @@ AS
       || '                  ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
 -- v1.20 Y.Sasaki Modified START
 --      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
-      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100) '
+-- V1.21 Y.Shouji MOD START
+--      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100) '
+      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- V1.21 Y.Shouji MOD END
 -- v1.20 Y.Sasaki Modified END
 -- v1.19 Mod End
       || '                WHEN ''2'' THEN '
@@ -2036,7 +2058,10 @@ AS
       || '                  ROUND(TRUNC( xrrt.unit_price * SUM(NVL(itc.trans_qty, 0)) '
 -- v1.20 Y.Sasaki Modified START
 --      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
-      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100) '
+-- V1.21 Y.Shouji MOD START
+--      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100) '
+      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- V1.21 Y.Shouji MOD END
 -- v1.20 Y.Sasaki Modified END
 -- v1.19 Mod End
       || '                ELSE '
@@ -2170,6 +2195,9 @@ AS
 -- v1.18 ADD START
 -- v1.20 Y.Sasaki Modified START
 --      || '             ,xxcmn_lookup_values2_v   xlv2v '  -- 消費税率情報VIEW
+-- V1.21 Y.Shouji ADD START
+      || '             ,xxcmn_lookup_values2_v   xlv2v '  -- 消費税率情報VIEW
+-- V1.21 Y.Shouji ADD END
       || '             ,xxcmm_item_tax_rate_v   xitrv '  -- 消費税率VIEW
 -- v1.20 Y.Sasaki Modified END
       || '             ,(SELECT xrrt2.txns_id                   AS txns_id '
@@ -2254,6 +2282,11 @@ AS
 --      || '       AND    xlv2v.lookup_type             =  :para_xxcmn_ctr '      -- 消費税率マスタ(LOOKUP表)
 --      || '       AND    xlv2v.start_date_active       < (pha.txns_date + 1) '
 --      || '       AND    xlv2v.end_date_active         >= pha.txns_date '
+-- V1.21 Y.Shouji ADD START
+      || '       AND    xlv2v.lookup_type             =  :para_xxcmn_ctr '      -- 消費税率マスタ(LOOKUP表)
+      || '       AND    xlv2v.start_date_active       < (pha.txns_date + 1) '
+      || '       AND    xlv2v.end_date_active         >= pha.txns_date '
+-- V1.21 Y.Shouji ADD END
       || '       AND    xitrv.item_id                              = iimb.item_id '      -- 消費税率ビュー
       || '       AND    xitrv.start_date_active                    < (pha.txns_date + 1) '
       || '       AND    NVL(xitrv.end_date_active, pha.txns_date)  >= pha.txns_date '
@@ -2329,6 +2362,9 @@ AS
                 || '         ,ijm.attribute1 '
 -- v1.20 Y.Sasaki Modified START
 --                || '         ,xlv2v.lookup_code '
+-- V1.21 Y.Shouji ADD START
+                || '         ,xlv2v.lookup_code '
+-- V1.21 Y.Shouji ADD END
                 || '         ,xitrv.tax '
 -- v1.20 Y.Sasaki Modified END
 -- v1.19 Add End
@@ -2497,6 +2533,11 @@ AS
 -- V1.20 Y.Sasaki Deleted START
 --                                      ,gv_xxcmn_ctr       -- 消費税率マスタ(LOOKUP表)
 -- V1.20 Y.Sasaki Deleted END
+-- V1.21 Y.Shouji ADD START
+                                      ,gv_xxcmn_ctr       -- 消費税率マスタ(LOOKUP表)
+                                      ,gc_char_std_format -- 発注ヘッダ.納入日の日付書式
+                                      ,gc_char_std_format -- 発注ヘッダ.納入日の日付書式
+-- V1.21 Y.Shouji ADD END
                                       ,gc_char_std_format -- 発注ヘッダ.納入日の日付書式
                                       ,gc_char_std_format -- 発注ヘッダ.納入日の日付書式
 -- V1.20 Y.Sasaki Added START
@@ -2559,6 +2600,9 @@ AS
 --                                      ,gv_xxcmn_ctr       -- 消費税率マスタ(LOOKUP表)
 ---- v1.18 ADD END
 -- V1.20 Y.Sasaki Deleted END
+-- V1.21 Y.Shouji ADD START
+                                      ,gv_xxcmn_ctr       -- 消費税率マスタ(LOOKUP表)
+-- V1.21 Y.Shouji ADD END
                                       ,cv_adji
                                       ;
 -- 2008/11/13 v1.8 UPDATE END
