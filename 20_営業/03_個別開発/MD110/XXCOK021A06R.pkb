@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2012/07/12    1.12  S.Niki           [E_本稼動_09806] 単位別にNET価格と営業原価の比較方法を変更
  *  2012/07/19    1.13  T.Osawa          [E_本稼動_08317] 問屋請求見積書明細の取得方法変更
  *  2019/06/11    1.14  N.Abe            [E_本稼動_15472] 軽減税率対応
+ *  2019/10/31    1.15  N.Abe            [E_本稼動_16011] 販手・販協判別方法の修正
  *
  *****************************************************************************************/
   -- ===============================================
@@ -181,6 +182,10 @@ AS
 -- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
   cv_index_4                 CONSTANT VARCHAR2(1)   := '4';   -- クイックコード
 -- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe ADD START
+  cv_bm                      CONSTANT VARCHAR2(1)   := '1';   -- 販手
+  cv_support                 CONSTANT VARCHAR2(1)   := '2';   -- 販協
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe ADD END
   -- ダミー値
   cv_dummy                   CONSTANT VARCHAR2(5)   := 'dummy';              -- ダミー値
 -- 2012/03/12 Ver.1.11 [E_本稼動_08318] SCSK K.Nakamura ADD END
@@ -313,6 +318,9 @@ AS
                 )
               )                           AS tax_rate
 -- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD END
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe ADD START
+         , flv.attribute1                 AS bm_support_div                 -- 販手販協区分
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe ADD END
     FROM   xxcok_wholesale_bill_head      xwbh                              -- 問屋請求書ヘッダーテーブル
          , xxcok_wholesale_bill_line      xwbl                              -- 問屋請求書明細テーブル
          , hz_cust_accounts               hca                               -- 顧客マスタ
@@ -328,6 +336,9 @@ AS
 --         , xxcok_lookups_v                xlv                               -- クイックコードビュー
          , fnd_lookup_values              xlv                               -- クイックコード
 -- 2009/12/24 Ver.1.8 [E_本稼動_00608] SCS S.Moriyama UPD END
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe ADD START
+         , fnd_lookup_values              flv                               -- クイックコード（勘定科目支払税率）
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe ADD END
          ,( SELECT msib.segment1                 AS item_code               -- 品目コード
                  , TO_NUMBER( iimb.attribute4 )  AS old_fixed_price         -- 旧定価
                  , TO_NUMBER( iimb.attribute5 )  AS new_fixed_price         -- 定価(新)
@@ -401,6 +412,14 @@ AS
 -- 2009/12/24 Ver.1.8 [E_本稼動_00608] SCS S.Moriyama ADD START
     AND    xlv.language                  = USERENV('LANG')
 -- 2009/12/24 Ver.1.8 [E_本稼動_00608] SCS S.Moriyama ADD END
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe ADD START
+    AND    flv.lookup_type(+)            = cv_lookup_sub_acct_tax
+    AND    flv.lookup_code(+)            = xwbl.acct_code || cv_hyphen || xwbl.sub_acct_code
+    AND    flv.enabled_flag(+)           = cv_enabled_flag
+    AND    flv.language(+)               = USERENV('LANG')
+    AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) >= flv.start_date_active(+)
+    AND    TO_DATE(xwbl.selling_month, cv_format_yyyymm) <= NVL(flv.end_date_active(+), TO_DATE(xwbl.selling_month, cv_format_yyyymm))
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe ADD END
     AND    xwbl.acct_code                = xav.flex_value(+)
     AND    xwbl.sub_acct_code            = xsav.flex_value(+)
     AND    xwbl.acct_code                = xsav.parent_flex_value_low(+)
@@ -1052,21 +1071,40 @@ AS
           ln_wholesale_margin_sum := ln_wholesale_margin_sum + ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) - ln_fraction_amount );
         END IF;
       ELSE
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe MOD START
+--        -- ===============================================
+--        -- 勘定科目支払時
+--        -- 83110-05103⇒問屋マージンへ設定
+--        -- 83111-05132⇒拡売費へ設定
+--        -- 上記以外⇒その他科目へ設定
+--        -- ===============================================
+--        IF ( g_target_tab( in_i ).acct_code = gv_aff3_fee
+--             AND g_target_tab( in_i ).sub_acct_code = gv_aff4_fee ) THEN
+--          ln_wholesale_margin_sum := NVL( g_target_tab( in_i ).payment_amt, 0 );
+--        ELSIF (g_target_tab( in_i ).acct_code = gv_aff3_support
+--             AND g_target_tab( in_i ).sub_acct_code = gv_aff4_support ) THEN
+--          ln_expansion_sales_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
+--        ELSE
+--          ln_misc_acct_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
+--        END IF;
         -- ===============================================
-        -- 勘定科目支払時
-        -- 83110-05103⇒問屋マージンへ設定
-        -- 83111-05132⇒拡売費へ設定
-        -- 上記以外⇒その他科目へ設定
+        -- 勘定科目支払
+        -- 参照タイプ「勘定科目支払税率」の「販手販協区分」（DFF1）の値で判別
+        -- 1：販手  ⇒ 問屋マージン  ※帳票項目名：販手（問屋）
+        -- 2：販協  ⇒ 拡売費        ※帳票項目名：販協（問屋）
+        -- 上記以外 ⇒ その他科目    ※帳票項目名：その他科目
         -- ===============================================
-        IF ( g_target_tab( in_i ).acct_code = gv_aff3_fee
-             AND g_target_tab( in_i ).sub_acct_code = gv_aff4_fee ) THEN
+        -- 1：販手
+        IF g_target_tab( in_i ).bm_support_div = cv_bm THEN
           ln_wholesale_margin_sum := NVL( g_target_tab( in_i ).payment_amt, 0 );
-        ELSIF (g_target_tab( in_i ).acct_code = gv_aff3_support
-             AND g_target_tab( in_i ).sub_acct_code = gv_aff4_support ) THEN
+        -- 2：販協
+        ELSIF g_target_tab( in_i ).bm_support_div = cv_support THEN
           ln_expansion_sales_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
+        -- その他科目
         ELSE
           ln_misc_acct_amt := NVL( g_target_tab( in_i ).payment_amt, 0 );
         END IF;
+-- 2019/10/31 Ver.1.15 [E_本稼動_16011] SCSK N.Abe MOD END
       END IF;
 -- 2019/06/11 Ver.1.14 [E_本稼動_15472] SCSK N.Abe ADD START
       -- ===============================================
