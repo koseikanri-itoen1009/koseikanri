@@ -385,7 +385,10 @@ SELECT  SMRP.year                         year                   --年度
 --                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITP.trans_date
 --                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITP.trans_date
                          AND  ITP.item_id = xitrv.item_id
-                         AND  xitrv.start_date_active < ITP.trans_date
+-- 2019/11/11 Y.Sasaki Mod Start E_本稼動_16045
+--                         AND  xitrv.start_date_active < ITP.trans_date
+                         AND  xitrv.start_date_active <= ITP.trans_date
+-- 2019/11/11 Y.Sasaki Mod End E_本稼動_16045
                          AND  NVL( xitrv.end_date_active ,ITP.trans_date ) >= ITP.trans_date
 -- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
 -- 2015/04/13 D.Sugahara Mod Start E_本稼動_12983
@@ -494,7 +497,10 @@ SELECT  SMRP.year                         year                   --年度
 --                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= XRRT.txns_date
 ---- 2013/06/18 D.Sugahara Mod End E_本稼動_10839
                          AND  ITC.item_id = xitrv.item_id
-                         AND  xitrv.start_date_active < XRRT.txns_date
+-- 2019/11/11 Y.Sasaki Mod Start E_本稼動_16045
+--                         AND  xitrv.start_date_active < XRRT.txns_date
+                         AND  xitrv.start_date_active <= XRRT.txns_date
+-- 2019/11/11 Y.Sasaki Mod End E_本稼動_16045
                          AND  NVL( xitrv.end_date_active ,XRRT.txns_date ) >= XRRT.txns_date
 -- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
 -- 2015/04/13 D.Sugahara Mod Start E_本稼動_12983
@@ -611,7 +617,10 @@ SELECT  SMRP.year                         year                   --年度
 --                         AND  NVL( FLV02.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= PAY.tran_date
 --                         AND  NVL( FLV02.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= PAY.tran_date
                          AND  PAY.item_id = xitrv.item_id
-                         AND  xitrv.start_date_active < PAY.base_date
+-- 2019/11/11 Y.Sasaki Mod Start E_本稼動_16045
+--                         AND  xitrv.start_date_active < PAY.base_date
+                         AND  xitrv.start_date_active <= PAY.base_date
+-- 2019/11/11 Y.Sasaki Mod End E_本稼動_16045
                          AND  NVL( xitrv.end_date_active ,PAY.base_date ) >= PAY.base_date
 -- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                       -- [ 有償支給データ END ] --

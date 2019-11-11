@@ -3,7 +3,7 @@
  * View  Name      : XXSKZ_仕入有償時系列_基本_V
  * Description     : XXSKZ_仕入有償時系列_基本_V
  * MD.070          : 
- * Version         : 1.3
+ * Version         : 1.4
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------
@@ -13,6 +13,7 @@
  *  2013/06/18    1.1   SCSK D.Sugahara E_本稼働_10839消費税対応
  *  2013/11/05    1.2   SCSK D.Sugahara E_本稼動_11245対応
  *  2019/06/15    1.3   SCSK Y.Soji     E_本稼動_15601対応
+ *  2019/11/11    1.4   SCSK Y.Sasaki   E_本稼動_16045対応
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKZ_仕入有償時系列_基本_V
 (
@@ -393,7 +394,10 @@ SELECT  SMRP.year                         year                   --年度
 --                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITP.trans_date
 --                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITP.trans_date
                          AND  ITP.item_id = xitrv.item_id
-                         AND  xitrv.start_date_active < ITP.trans_date
+-- 2019/11/11 Y.Sasaki Mod Start E_本稼動_16045
+--                         AND  xitrv.start_date_active < ITP.trans_date
+                         AND  xitrv.start_date_active <= ITP.trans_date
+-- 2019/11/11 Y.Sasaki Mod End E_本稼動_16045
                          AND  NVL( xitrv.end_date_active ,ITP.trans_date ) >= ITP.trans_date
 -- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                       -- [ 発注受入データ END ] --
@@ -487,7 +491,10 @@ SELECT  SMRP.year                         year                   --年度
 --                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= XRRT.txns_date
 -- 2013/06/18 D.Sugahara Mod End E_本稼動_10839
                          AND  ITC.item_id = xitrv.item_id
-                         AND  xitrv.start_date_active < XRRT.txns_date
+-- 2019/11/11 Y.Sasaki Mod Start E_本稼動_16045
+--                         AND  xitrv.start_date_active < XRRT.txns_date
+                         AND  xitrv.start_date_active <= XRRT.txns_date
+-- 2019/11/11 Y.Sasaki Mod End E_本稼動_16045
                          AND  NVL( xitrv.end_date_active ,XRRT.txns_date ) >= XRRT.txns_date
 -- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                       -- [ 発注無し返品データ END ] --
@@ -532,6 +539,10 @@ SELECT  SMRP.year                         year                   --年度
                                    SELECT  XOHA.arrival_date
 -- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
                                                                            tran_date       --対象日(着荷日)
+-- 2019/11/11 Y.Sasaki Add Start E_本稼動_16045
+                                        ,NVL(XOHA.sikyu_return_date ,XOHA.arrival_date)
+                                                                           base_date       --基準日
+-- 2019/11/11 Y.Sasaki Add End E_本稼動_16045
                                         ,XOHA.performance_management_dept  dept_code       --部署コード
                                         ,XOHA.vendor_id                    vendor_id       --取引先ID
                                         ,XOLA.shipping_item_code           item_code       --品目コード
@@ -586,8 +597,12 @@ SELECT  SMRP.year                         year                   --年度
 --                         AND  NVL( FLV02.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= PAY.tran_date
 --                         AND  NVL( FLV02.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= PAY.tran_date
                          AND  PAY.item_id = xitrv.item_id
-                         AND  xitrv.start_date_active < PAY.tran_date
-                         AND  NVL( xitrv.end_date_active ,PAY.tran_date ) >= PAY.tran_date
+-- 2019/11/11 Y.Sasak Mod Start E_本稼動_16045
+--                         AND  xitrv.start_date_active < PAY.tran_date
+--                         AND  NVL( xitrv.end_date_active ,PAY.tran_date ) >= PAY.tran_date
+                         AND  xitrv.start_date_active <= PAY.base_date
+                         AND  NVL( xitrv.end_date_active ,PAY.base_date ) >= PAY.base_date
+-- 2019/11/11 Y.Sasak Mod End E_本稼動_16045
 -- 2019/06/15 Y.Shoji Mod End E_本稼動_15601
                       -- [ 有償支給データ END ] --
                    )                RVPY
