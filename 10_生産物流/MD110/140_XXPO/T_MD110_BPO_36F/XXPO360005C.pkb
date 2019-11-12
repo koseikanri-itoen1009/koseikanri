@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2013/07/05    1.21  R.Watanabe       E_本稼動_10839
  *  2019/08/30    1.22  Y.Shoji          E_本稼働_15601
  *  2019/10/18    1.23  H.Ishii          E_本稼働_15601
+ *  2019/11/12    1.24  H.Ishii          E_本稼働_16036
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2129,7 +2130,7 @@ AS
               ,lv_bank_account_type
               ,lt_bank_account_num
               ,lt_bank_account_name_alt
-        FROM   ap_bank_account_uses_all  abaua        -- 口座使用情報テーブル
+        FROM   ap_bank_account_uses_all  abaua       -- 口座使用情報テーブル
               ,ap_bank_accounts_all      aba         -- 銀行口座
               ,ap_bank_branches          abb         -- 銀行支店
               ,po_vendors                pv          -- 仕入先
@@ -2138,6 +2139,10 @@ AS
               ,xxcmn_lookup_values2_v    flv         -- クイックコード（口座種別）
         WHERE  abaua.external_bank_account_id = aba.bank_account_id
         AND    aba.bank_branch_id             = abb.bank_branch_id
+-- 2019/11/12 Ver1.24 Add Start
+        AND    ld_tax_date                    BETWEEN abaua.start_date
+                                              AND     NVL(abaua.end_date ,ld_tax_date)
+-- 2019/11/12 Ver1.24 Add End
         AND    abaua.vendor_id                = pv.vendor_id
         AND    abaua.vendor_id                = pvsa_sales.vendor_id
         AND    abaua.vendor_site_id           = pvsa_sales.vendor_site_id
