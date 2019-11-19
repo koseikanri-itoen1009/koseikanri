@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS018A01C(body)
  * Description      : CSVデータアップロード（販売実績）
  * MD.050           : MD050_COS_018_A01_CSVデータアップロード（販売実績）
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2016/12/19    1.1   S.Niki           E_本稼動_13879追加対応
  *  2019/06/20    1.2   S.Kuwako         E_本稼動_15472軽減税率対応
  *  2019/07/25    1.3   N.Koyama         E_本稼動_15472軽減税率対応(障害対応)
+ *  2019/11/06    1.4   Y.Ohishi         E_本稼動_15850VD委託販売実績アップロードの桁数について
  *
  *****************************************************************************************/
 --
@@ -103,6 +104,9 @@ AS
   global_security_check_expt        EXCEPTION;    -- セキュリティチェックエラーハンドラ
   global_ins_sales_data_expt        EXCEPTION;    -- レコード登録例外ハンドラ
   global_del_sales_data_expt        EXCEPTION;    -- レコード削除例外ハンドラ
+-- Ver.1.4 ADD START
+  global_get_open_period_expt       EXCEPTION;    -- 在庫オープン会計期間取得例外ハンドラ
+-- Ver.1.4 ADD END
 --
   global_data_lock_expt             EXCEPTION;    -- データロック例外
   PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
@@ -143,8 +147,12 @@ AS
   cv_msg_bp_com_code_err            CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15120';    --取引先コードエラーメッセージ
   cv_msg_get_h_count                CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11287';    --件数メッセージ
 -- Ver.1.2 ADD START
-  cv_msg_common_pkg_err             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15123';      --共通関数エラーメッセージ
+  cv_msg_common_pkg_err             CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15123';    --共通関数エラーメッセージ
 -- Ver.1.2 ADD END
+-- Ver.1.4 ADD START
+  cv_msg_get_open_period_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15124';    --在庫会計期間オープン期間取得エラー
+  cv_msg_dlv_date_chk_err_2         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-15125';    --納品日オープン会計期間外エラー
+-- Ver.1.4 ADD END
 --
   --メッセージ用文字列
   cv_msg_file_up_load               CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11282';    --ファイルアップロードIF
@@ -223,6 +231,12 @@ AS
   cv_msg_comma                      CONSTANT VARCHAR2(2)   := '、';        --メッセージ用区切り文字
   ct_user_lang                      CONSTANT fnd_lookup_values.language%TYPE
                                                            := USERENV( 'LANG' );
+-- Ver.1.4 ADD START
+  cv_minus                          CONSTANT VARCHAR2(1)   := '-';         -- マイナス記号
+  cv_y_flag                         CONSTANT VARCHAR2(100) := 'Y';         -- フラグ値:Y
+  cn_no_1                          CONSTANT NUMBER        := 1;           -- 数値１
+
+-- Ver.1.4 ADD END
 --
   --CSVレイアウト（レイアウト順序を定義）
   cn_bp_company_code                CONSTANT NUMBER        := 1;           --取引先コード
@@ -254,6 +268,9 @@ AS
   cn_item_code_length               CONSTANT NUMBER        := 7;           --伊藤園品名コード
   cn_bp_item_code_length            CONSTANT NUMBER        := 15;          --取引先品名コード
   cn_dlv_qty_length                 CONSTANT NUMBER        := 5;           --数量
+-- Ver.1.4 ADD START
+  cn_dlv_qty_length_minus           CONSTANT NUMBER        := 6;           --数量（マイナス）
+-- Ver.1.4 ADD END
   cn_dlv_qty_point                  CONSTANT NUMBER        := 2;           --数量（小数点以下）
   cn_unit_price_length              CONSTANT NUMBER        := 7;           --売単価
   cn_cash_and_card_length           CONSTANT NUMBER        := 11;          --現金・カード併用額
@@ -381,6 +398,11 @@ AS
   gn_line_suc_cnt                   NUMBER;                                             --成功明細カウンター
   gt_bp_com_code                    xxcos_sales_bus_partners.bp_company_code%TYPE;      --取引先会社コード
   gt_dlv_inv_num                    xxcos_sales_bus_partners.dlv_invoice_number%TYPE;   --納品伝票番号
+-- Ver.1.4 ADD START
+--
+  -- オープン会計期間格納用
+  gd_start_date                     DATE;                        -- 開始日
+-- Ver.1.4 ADD END
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -634,6 +656,24 @@ AS
     FETCH get_login_base_cur BULK COLLECT INTO gr_g_login_base_info;
     -- カーソルCLOSE
     CLOSE get_login_base_cur;
+-- Ver.1.4 ADD START
+--
+    -- **********************************
+    -- ***  在庫オープン会計期間取得  ***
+    -- **********************************
+--
+    BEGIN
+      SELECT  MIN(oap.period_start_date)          start_date
+      INTO    gd_start_date
+      FROM    org_acct_periods      oap
+      WHERE   oap.open_flag       = cv_y_flag
+      AND     oap.organization_id = gn_org_id
+      ;
+      IF ( gd_start_date IS NULL ) THEN
+        RAISE global_get_open_period_expt;
+      END IF;
+    END;
+-- Ver.1.4 ADD END
 --
   EXCEPTION
 --
@@ -689,6 +729,19 @@ AS
                    );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+-- Ver.1.4 ADD START
+--
+    --*** 在庫オープン会計期間取得例外ハンドラ ***
+    WHEN global_get_open_period_expt THEN
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_xxcos_appl_short_name
+                    ,iv_name         => cv_msg_get_open_period_err
+                    ,iv_token_name1  => cv_prf_org_id
+                    ,iv_token_value1 => gn_org_id
+                   );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+-- Ver.1.4 ADD END
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1138,6 +1191,9 @@ AS
     -- *** ローカル変数 ***
     lv_err_msg         VARCHAR2(32767);  --エラーメッセージ
     ld_data_created    DATE;             --データ作成日時
+-- Ver.1.4 ADD START
+    ln_dlv_qty_length  NUMBER;           --数量項目長
+-- Ver.1.4 ADD END
 --
     -- *** ローカル・カーソル ***
 --
@@ -1587,10 +1643,21 @@ AS
     -- ***  数量  ***
     -- **************
 --
+-- Ver.1.4 ADD START
+    IF ( SUBSTR(gr_sales_work_data(in_cnt)(cn_dlv_qty),cn_no_1,cn_no_1) = cv_minus ) THEN
+      ln_dlv_qty_length := cn_dlv_qty_length_minus;
+    ELSE
+      ln_dlv_qty_length := cn_dlv_qty_length;
+    END IF;
+--
+-- Ver.1.4 ADD END
     xxccp_common_pkg2.upload_item_check(
       iv_item_name    => gr_sales_work_data(cn_item_header)(cn_dlv_qty)             -- 1.項目名称
      ,iv_item_value   => gr_sales_work_data(in_cnt)(cn_dlv_qty)                     -- 2.項目の値
-     ,in_item_len     => cn_dlv_qty_length                                          -- 3.項目の長さ
+-- Ver.1.4 MOD START
+--     ,in_item_len     => cn_dlv_qty_length                                          -- 3.項目の長さ
+     ,in_item_len     => ln_dlv_qty_length                                          -- 3.項目の長さ
+-- Ver.1.4 MOD END
      ,in_item_decimal => cn_dlv_qty_point                                           -- 4.項目の長さ(小数点以下)
      ,iv_item_nullflg => xxccp_common_pkg2.gv_null_ng                               -- 5.必須フラグ
      ,iv_item_attr    => xxccp_common_pkg2.gv_attr_num                              -- 6.項目属性
@@ -2010,6 +2077,30 @@ AS
       );
       ov_retcode := cv_status_warn;
     END IF;
+-- Ver.1.4 ADD START
+--
+    --納品日＜有効開始日の場合は、納品日オープン会計期間外エラーエラー
+    IF ( id_delivery_date < gd_start_date ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application   => cv_xxcos_appl_short_name
+                    ,iv_name          => cv_msg_dlv_date_chk_err_2
+                    ,iv_token_name1   => cv_tkn_param1                            --パラメータ1(トークン)
+                    ,iv_token_value1  => in_cnt                                   --行番号
+                    ,iv_token_name2   => cv_tkn_param2                            --パラメータ2(トークン)
+                    ,iv_token_value2  => iv_dlv_inv_num                           --納品伝票番号
+                    ,iv_token_name3   => cv_tkn_param3                            --パラメータ3(トークン)
+                    ,iv_token_value3  => in_line_number                           --行No
+                    ,iv_token_name4   => cv_tkn_param4                            --パラメータ4(トークン)
+                    ,iv_token_value4  => TO_CHAR( id_delivery_date ,cv_fmt_std )  --納品日
+                   );
+      --
+      FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+       ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+      );
+      ov_retcode := cv_status_warn;
+    END IF;
+-- Ver.1.4 ADD END
 --
     -- **********************
     -- ***  カード売区分  ***
