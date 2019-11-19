@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.41
+ * Version                : 1.42
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *  2016/11/25   1.39  SCSK  桐生和幸   [納品鮮度管理強化] E_本稼動_09591対応
  *  2018/11/06   1.40  SCSK  奈良和宏   [鮮度基準日算出用の条件を細分化] E_本稼動_15398対応
  *  2019/02/26   1.41  SCSK  佐々木宏之 [鮮度基準日算出用の条件を細分化] E_本稼動_15398対応 1.40の戻しと、新規プロシージャ作成
+ *  2019/08/27   1.42  SCSK  佐々木宏之 [鮮度基準日算出用の条件を細分化] E_本稼動_15398対応 追加（一般の場合）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -6576,8 +6577,12 @@ AS
     --  ****************************
     --  賞味期間NULLチェック
     --  ****************************
-    IF ( lv_freshness_class IN( lv_freshness_class1, lv_freshness_class0 ) AND ln_expiration_days IS NULL ) THEN
-      --  賞味期限基準または一般で、賞味期間NULLの場合エラー
+--  V1.42 Modified START
+--    IF ( lv_freshness_class IN( lv_freshness_class1, lv_freshness_class0 ) AND ln_expiration_days IS NULL ) THEN
+--      --  賞味期限基準または一般で、賞味期間NULLの場合エラー
+    IF ( lv_freshness_class = lv_freshness_class1 AND ln_expiration_days IS NULL ) THEN
+      --  賞味期限基準で、賞味期間NULLの場合エラー
+--  V1.42 Modified END
       lv_errmsg :=  xxcmn_common_pkg.get_msg(
                         gv_cnst_xxwsh
                       , cv_xxwsh_not_expiration_days
@@ -6597,13 +6602,24 @@ AS
     --  ****************************
     --  賞味期限NULLチェック
     --  ****************************
-    IF ( lv_freshness_class = lv_freshness_class1 AND ld_limit_expiration_date IS NULL) THEN
-      --  賞味期限基準で、賞味期限がNULLの場合エラー
+--  V1.42 Modified START
+--    IF ( lv_freshness_class = lv_freshness_class1 AND ld_limit_expiration_date IS NULL) THEN
+--      --  賞味期限基準で、賞味期限がNULLの場合エラー
+    IF ( lv_freshness_class IN( lv_freshness_class1, lv_freshness_class0 ) AND ld_limit_expiration_date IS NULL) THEN
+      --  賞味期限基準または一般で、賞味期限がNULLの場合エラー
+--  V1.42 Modified END
       lv_errmsg :=  xxcmn_common_pkg.get_msg(
                         gv_cnst_xxwsh
                       , cv_xxwsh_not_best_before_date
                       , cv_flesh_code
-                      , cv_freshness_class1_char
+--  V1.42 Modified START
+--                      , cv_freshness_class1_char
+                      , CASE  WHEN  lv_freshness_class = lv_freshness_class0
+                                THEN  cv_freshness_class0_char
+                              WHEN  lv_freshness_class = lv_freshness_class1
+                                THEN  cv_freshness_class1_char
+                        END
+--  V1.42 Modified END
                       , cv_tkn_lot_no
                       , lv_lot_no
                     );
@@ -6614,8 +6630,12 @@ AS
     --  ****************************
     --  製造日NULLチェック
     --  ****************************
-    IF ( lv_freshness_class IN( lv_freshness_class0, lv_freshness_class2 ) AND ld_manufact_date IS NULL ) THEN
-      --  製造日基準、一般で製造日がNULLの場合エラー
+--  V1.42 Modified START
+--    IF ( lv_freshness_class IN( lv_freshness_class0, lv_freshness_class2 ) AND ld_manufact_date IS NULL ) THEN
+--      --  製造日基準、一般で製造日がNULLの場合エラー
+    IF ( lv_freshness_class = lv_freshness_class2 AND ld_manufact_date IS NULL ) THEN
+      --  製造日基準で製造日がNULLの場合エラー
+--  V1.42 Modified END
       lv_errmsg :=  xxcmn_common_pkg.get_msg(
                         gv_cnst_xxwsh
                       , cv_xxwsh_not_manufact_date
@@ -6671,13 +6691,22 @@ AS
       END IF;
     ELSIF ( lv_freshness_class = lv_freshness_class0 ) THEN
       --  一般の場合
-      --  鮮度条件基準日（製造日）を算出
-      --  鮮度条件基準日（製造日） = ( 着荷予定日 - 鮮度条件基準値 - 鮮度条件調整値 ) - 賞味期間
-      ld_freshness_base_date  :=  ( id_arrival_date - NVL( ln_freshness_base_value, 0 ) - NVL( ln_freshness_adjust_value, 0 ) ) - ln_expiration_days;
+--  V1.42 Modified START
+--      --  鮮度条件基準日（製造日）を算出
+--      --  鮮度条件基準日（製造日） = ( 着荷予定日 - 鮮度条件基準値 - 鮮度条件調整値 ) - 賞味期間
+--      ld_freshness_base_date  :=  ( id_arrival_date - NVL( ln_freshness_base_value, 0 ) - NVL( ln_freshness_adjust_value, 0 ) ) - ln_expiration_days;
+      --  鮮度条件基準日（着予定日）を算出
+      --  鮮度条件基準日（着予定日） = ロットマスタ賞味期限 - 鮮度条件基準値 + 鮮度条件調整値
+      ld_freshness_base_date  :=  ld_limit_expiration_date - NVL( ln_freshness_base_value, 0 ) + NVL( ln_freshness_adjust_value, 0 );
+--  V1.42 Modified END
       --
       --  可否判定
-      IF ( ld_freshness_base_date <= ld_manufact_date ) THEN
-        --  鮮度条件基準日（製造日） <= ロットマスタ製造日であれば合格
+--  V1.42 Modified START
+--      IF ( ld_freshness_base_date <= ld_manufact_date ) THEN
+--        --  鮮度条件基準日（製造日） <= ロットマスタ製造日であれば合格
+      IF ( id_arrival_date <= ld_freshness_base_date ) THEN
+        --  着予定日 <= 鮮度条件基準日（着予定日）であれば合格
+--  V1.42 Modified END
         on_result         :=  ln_result_success;                    --  引当可否
         od_standard_date  :=  NULL;                                 --  引当可否判定基準日付
       ELSE
