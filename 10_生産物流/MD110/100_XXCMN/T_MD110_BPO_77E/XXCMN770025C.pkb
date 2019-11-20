@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2014/10/14    1.19  H.Itou           E_本稼動_12321対応
  *  2019/04/12    1.20  Y.Sasaki         E_本稼動_15601対応（生産_軽減税率対応）
  *  2019/10/30    1.21  Y.Shouji         E_本稼動_16020対応
+ *  2019/11/14    1.22  Y.Sasaki         E_本稼動_16049対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1637,7 +1638,10 @@ AS
 --      || '                 * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
 --      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
       || '                 * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100) '
-      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xitrv.tax) / 100) '
+-- v1.22 Y.Sasaki Mod Start
+--      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xitrv.tax) / 100) '
+      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.22 Y.Sasaki Mod End
 -- v1.20 Y.Sasaki Moddified END
 -- v1.19 Mod End
       || '               WHEN ''2'' THEN '
@@ -1654,7 +1658,10 @@ AS
 --      || '                 * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
 --      || '                 - ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100) '
       || '                 * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100) '
-      || '                 - ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xitrv.tax) / 100) '
+-- v1.22 Y.Sasaki Mod Start
+--      || '                 - ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xitrv.tax) / 100) '
+      || '                 - ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.22 Y.Sasaki Mod End
 -- v1.20 Y.Sasaki Moddified END
 -- v1.19 Mod End
       || '               ELSE '
@@ -2087,7 +2094,10 @@ AS
       || '                  - ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
 -- v1.20 Y.Sasaki Modified START
 --      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
-      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100) '
+-- v1.22 Y.Sasaki Mod Start
+--      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100) '
+      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.22 Y.Sasaki Mod End
 -- v1.20 Y.Sasaki Modified END
 -- v1.19 Mod End
       || '                WHEN ''2'' THEN '
@@ -2109,7 +2119,10 @@ AS
       || '                  - ROUND(TRUNC( xrrt.unit_price * SUM(NVL(itc.trans_qty, 0)) '
 -- v1.20 Y.Sasaki Modified START
 --      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
-      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100) '
+-- v1.22 Y.Sasaki Mod Start
+--      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100) '
+      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.22 Y.Sasaki Mod End
 -- v1.20 Y.Sasaki Modified END
 -- v1.19 Mod End
       || '                ELSE '
