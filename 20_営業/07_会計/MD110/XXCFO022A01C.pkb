@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *                                       ・A-4(AP請求書OIF情報編集)で支払金額0円時のブレイク処理を修正
  *  2019-10-29    1.7   Y.Shouji         E_本稼動_15601(軽減税率)不具合対応
  *                                       ・口銭の消費税を標準税率にて処理
+ *  2019-11-14    1.8   S.Kuwako         E_本稼動_16049対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2575,7 +2576,10 @@ AS
 --                         * cn_rcv_pay_div_1)) * TO_NUMBER(xlv2v.lookup_code) / 100)
 --                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
                          * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
-                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2019-11-14 Ver1.8 Mod Start
+--                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xitrv.tax) / 100)
+                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2019-11-14 Ver1.8 Mod End
 -- 2019-04-04 Ver1.6 Mod End
                        -- 2015-02-06 Ver1.2 Mod End
                      WHEN cv_kousen_type_ritsu THEN   -- 2:率
@@ -2590,10 +2594,15 @@ AS
                          * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
 -- 2019-04-04 Ver1.6 Mod End
                          - ROUND(TRUNC( pla.attribute8 * SUM(NVL(xrart.quantity, 0)) 
--- 2019-04-04 Ver1.6 Mod Start
---                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xitrv.tax) / 100)
--- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del Start
+---- 2019-04-04 Ver1.6 Mod Start
+----                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
+----                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xitrv.tax) / 100)
+---- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del End
+-- 2019-11-14 Ver1.8 Add Start
+                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2019-11-14 Ver1.8 Add End
                        -- 2015-02-06 Ver1.2 Mod End
                      ELSE 
                        -- 2015-02-06 Ver1.2 Mod Start
@@ -2795,10 +2804,15 @@ AS
                          * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
 -- 2019-04-04 Ver1.6 Mod End
                          - ROUND(TRUNC(NVL(xrart.kousen_rate_or_unit_price, 0)
--- 2019-04-04 Ver1.6 Mod Start
---                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
--- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del Start
+---- 2019-04-04 Ver1.6 Mod Start
+----                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+--                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+---- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del End
+-- 2019-11-14 Ver1.8 Add Start
+                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2019-11-14 Ver1.8 Add End
                      WHEN cv_kousen_type_ritsu THEN   -- 2:率
                        ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
 -- 2019-04-04 Ver1.6 Mod Start
@@ -2806,10 +2820,15 @@ AS
                          * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
 -- 2019-04-04 Ver1.6 Mod End
                          - ROUND(TRUNC( xrart.unit_price * SUM(NVL(itc.trans_qty, 0))
--- 2019-04-04 Ver1.6 Mod Start
---                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100)
--- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del Start
+---- 2019-04-04 Ver1.6 Mod Start
+----                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+--                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100)
+---- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del End
+-- 2019-11-14 Ver1.8 Add Start
+                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2019-11-14 Ver1.8 Add End
                      ELSE 
                        ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
 -- 2019-04-04 Ver1.6 Mod Start
@@ -2976,10 +2995,15 @@ AS
                          * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
 -- 2019-04-04 Ver1.6 Mod End
                          - ROUND(TRUNC(NVL(xrart.kousen_rate_or_unit_price, 0)
--- 2019-04-04 Ver1.6 Mod Start
---                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
--- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del Start
+---- 2019-04-04 Ver1.6 Mod Start
+----                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+--                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+---- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del End
+-- 2019-11-14 Ver1.8 Add Start
+                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2019-11-14 Ver1.8 Add End
                      WHEN cv_kousen_type_ritsu THEN   -- 2:率
                        ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
 -- 2019-04-04 Ver1.6 Mod Start
@@ -2987,10 +3011,15 @@ AS
                          * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
 -- 2019-04-04 Ver1.6 Mod End
                          - ROUND(TRUNC( xrart.unit_price * SUM(NVL(itc.trans_qty, 0))
--- 2019-04-04 Ver1.6 Mod Start
---                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100)
--- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del Start
+---- 2019-04-04 Ver1.6 Mod Start
+----                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+--                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xitrv.tax) / 100)
+---- 2019-04-04 Ver1.6 Mod End
+-- 2019-11-14 Ver1.8 Del End
+-- 2019-11-14 Ver1.8 Add Start
+                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2019-11-14 Ver1.8 Add End
                      ELSE 
                        ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
 -- 2019-04-04 Ver1.6 Mod Start
