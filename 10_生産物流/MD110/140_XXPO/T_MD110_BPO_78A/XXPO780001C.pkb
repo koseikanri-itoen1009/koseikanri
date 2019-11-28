@@ -7,7 +7,7 @@ AS
  * Description      : 月次〆切処理（有償支給相殺）
  * MD.050/070       : 月次〆切処理（有償支給相殺）Issue1.0  (T_MD050_BPO_780)
  *                    請求書兼有償支給相殺確認書（伊藤園）  (T_MD070_BPO_78A)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -39,7 +39,7 @@ AS
  *  2019/09/11    1.8  N.Abe             E_本稼動_15601（生産_軽減税率対応）
  *                                       コンカレント名を変更：計算書 ⇒ 請求書兼有償支給相殺確認書（伊藤園）
  *  2019/10/18    1.9  N.Abe             E_本稼動_15601対応（追加対応）
- *
+ *  2019/11/22    1.10 Y.Sasaki          E_本稼動_16050対応(軽減税率_計算書_合計数量の記入)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1295,6 +1295,9 @@ AS
     ln_tax_old_8            NUMBER := 0;          -- 消費税額（旧標準税率(8%)）
     ln_amount_no_tax        NUMBER := 0;          -- 課税対象外
     ln_no_tax               NUMBER := 0;          -- 課税対象外
+-- Ver1.10 Add Start
+    ln_sum_quant            NUMBER := 0;          -- 合計数量
+-- Ver1.10 Add End
     ln_request_id           NUMBER;               -- 要求ID（呼出先）
 -- 2019/09/11 Ver1.8 Add End
     -- *** ローカル・例外処理 ***
@@ -1482,6 +1485,13 @@ AS
           gt_xml_data_table(gl_xml_idx).tag_name  := 'no_tax';
           gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
           gt_xml_data_table(gl_xml_idx).tag_value := ln_no_tax;
+-- Ver1.10 Add Start
+          -- 合計数量
+          gl_xml_idx := gt_xml_data_table.COUNT + 1;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'sum_quant';
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
+          gt_xml_data_table(gl_xml_idx).tag_value := ln_sum_quant;
+-- Ver.1.10 Add End
 -- 2019/09/11 Ver1.8 Add End
           ------------------------------
           -- 取引先Ｇ終了タグ
@@ -1791,6 +1801,9 @@ AS
         ln_tax_old_8      := 0;   -- 消費税額（旧標準税率(8%)）
         ln_amount_no_tax  := 0;   -- 課税対象外
         ln_no_tax         := 0;   -- 課税対象外
+-- Ver1.10 Add Start
+        ln_sum_quant      := 0;   -- 合計数量
+-- Ver1.10 Add End
 -- 2019/09/11 Ver1.8 Add End
 --
       END IF ;
@@ -1978,6 +1991,9 @@ AS
         ln_amount_no_tax  := ln_amount_no_tax + gt_main_data(i).amount;
         ln_no_tax         := ln_no_tax + gt_main_data(i).tax;
       END IF;
+-- Ver1.10 Add Start
+      ln_sum_quant      := ln_sum_quant + gt_main_data(i).quantity;
+-- Ver1.10 Add End
 --
 -- 2019/09/11 Ver1.8 Add End
       -- -----------------------------------------------------
@@ -2154,6 +2170,13 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_name  := 'no_tax';
     gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
     gt_xml_data_table(gl_xml_idx).tag_value := ln_no_tax;
+-- Ver1.10 Add Start
+    -- 合計数量
+    gl_xml_idx := gt_xml_data_table.COUNT + 1;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'sum_quant';
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D';
+    gt_xml_data_table(gl_xml_idx).tag_value := ln_sum_quant;
+-- Ver1.10 Add End
 -- 2019/09/11 Ver1.8 Mod End
     ------------------------------
     -- 取引先Ｇ終了タグ
