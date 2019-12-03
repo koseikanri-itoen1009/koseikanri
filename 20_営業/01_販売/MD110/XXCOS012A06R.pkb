@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A06R(body)
  * Description      : ロット別ピックリスト（出荷先・販売先・製品別）
  * MD.050           : MD050_COS_012_A06_ロット別ピックリスト（出荷先・販売先・製品別）
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2014/09/25    1.0   S.Itou           新規作成
  *  2015/04/10    1.1   S.Yamashita     【E_本稼動_13004】対応
  *  2015/04/21    1.2   S.Yamashita     【E_本稼動_13004】追加対応
+ *  2019/11/19    1.3   T.Nakano        【E_本稼動_16039】対応
  *
  *****************************************************************************************/
 --
@@ -1105,6 +1106,12 @@ AS
       ln_case_qty    := ln_case_qty    + l_data_rec.case_qty;
       ln_singly_qty  := ln_singly_qty  + l_data_rec.singly_qty;
       ln_summary_qty := ln_summary_qty + l_data_rec.summary_qty;
+--  Add Ver1.3 T.Nakano Start
+      IF l_data_rec.case_in_qty <= ln_singly_qty THEN
+        ln_case_qty   := ln_case_qty + ( ln_singly_qty - MOD( ln_singly_qty, l_data_rec.case_in_qty ) ) / l_data_rec.case_in_qty;
+        ln_singly_qty := MOD( ln_singly_qty, l_data_rec.case_in_qty );
+      END IF;
+--  Add Ver1.3 T.Nakano End
     END;
 --
   BEGIN
