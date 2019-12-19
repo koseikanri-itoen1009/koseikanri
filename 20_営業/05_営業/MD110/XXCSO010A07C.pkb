@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_010_A07_契約更新CSVアップロード
  *
- * Version          : 1.01
+ * Version          : 1.02
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2019-03-28    1.00  T.Kawaguchi      新規作成
  *  2019-07-30    1.01  S.Kuwako         エラー発生時のメッセージ、および終了ステータスの修正
  *                                       コンカレント出力フォーマットの修正
+ *  2019-11-29    1.02  N.Abe            取得名称の修正
  *
  *****************************************************************************************/
   cv_pkg_name                    CONSTANT VARCHAR2(100) := 'XXCSO010A07C';      -- パッケージ名
@@ -391,7 +392,10 @@ AS
       -- 新仕入先コードによる仕入先マスタのチェック
       lv_token_code := cv_new_sup_code;
       SELECT pv.vendor_id           vendor_id
-            ,pv.vendor_name         vendor_name
+-- 2019/11/29 1.02 Mod START
+--            ,pv.vendor_name         vendor_name
+            ,pvs.attribute1         attribute1
+-- 2019/11/29 1.02 Mod END
             ,pv.vendor_name_alt     vendor_name_alt
             ,pvs.bank_charge_bearer bank_charge_bearer
             ,pvs.attribute4         attribute4
@@ -403,7 +407,10 @@ AS
             ,pvs.address_line2      address_line2
             ,pvs.phone              phone
       INTO   o_po_vendors_rtype.vendor_id
-            ,o_po_vendors_rtype.vendor_name
+-- 2019/11/29 1.02 Mod START
+--            ,o_po_vendors_rtype.vendor_name
+            ,o_po_vendor_sites_all_rtype.attribute1
+-- 2019/11/29 1.02 Mod END
             ,o_po_vendors_rtype.vendor_name_alt
             ,o_po_vendor_sites_all_rtype.bank_charge_bearer
             ,o_po_vendor_sites_all_rtype.attribute4
@@ -626,7 +633,10 @@ AS
 
       UPDATE xxcso_destinations xd
       SET    xd.supplier_id                    = i_po_vendors_rtype.vendor_id
-            ,xd.payment_name                   = i_po_vendors_rtype.vendor_name
+-- 2019/11/29 1.02 Mod START
+--            ,xd.payment_name                   = i_po_vendors_rtype.vendor_name
+            ,xd.payment_name                   = i_po_vendor_sites_all_rtype.attribute1
+-- 2019/11/29 1.02 Mod END
             ,xd.payment_name_alt               = i_po_vendors_rtype.vendor_name_alt
             ,xd.bank_transfer_fee_charge_div   = i_po_vendor_sites_all_rtype.bank_charge_bearer
             ,xd.belling_details_div            = i_po_vendor_sites_all_rtype.attribute4
@@ -884,7 +894,10 @@ AS
                         cv_double_quotation || i_destinations.supplier_id                                           || cv_double_quotation || cv_separator ||
                         cv_double_quotation || i_po_vendors_rtype.vendor_id                                         || cv_double_quotation || cv_separator ||
                         cv_double_quotation || i_destinations.payment_name                                          || cv_double_quotation || cv_separator ||
-                        cv_double_quotation || i_po_vendors_rtype.vendor_name                                       || cv_double_quotation || cv_separator ||
+-- 2019/11/29 1.02 Mod START
+--                        cv_double_quotation || i_po_vendors_rtype.vendor_name                                       || cv_double_quotation || cv_separator ||
+                        cv_double_quotation || i_po_vendor_sites_all_rtype.attribute1                               || cv_double_quotation || cv_separator ||
+-- 2019/11/29 1.02 Mod END
                         cv_double_quotation || i_destinations.payment_name_alt                                      || cv_double_quotation || cv_separator ||
                         cv_double_quotation || i_po_vendors_rtype.vendor_name_alt                                   || cv_double_quotation || cv_separator ||
                         cv_double_quotation || i_destinations.bank_transfer_fee_charge_div                          || cv_double_quotation || cv_separator ||
