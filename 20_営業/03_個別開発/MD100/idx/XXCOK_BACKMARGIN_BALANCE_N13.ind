@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_backmargin_balance_n13
+ON xxcok.xxcok_backmargin_balance (
+     publication_date
+    ,supplier_code
+)
+TABLESPACE xxidx2
+/
