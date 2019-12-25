@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2018/07/03    1.28  K.Kiriu          [E_本稼動_15116]EDI納品予定データ抽出条件について（HHT受注データ制御）対応
  *  2019/06/25    1.29  S.Kuwako         [E_本稼動_15472]軽減税率対応
  *  2019/07/16    1.30  S.Kuwako         [E_本稼動_15472]軽減税率対応_商品コード変換エラー対応
+ *  2019/12/19    1.31  N.Koyama         [E_本稼動_16112]パフォーマンス対応()受注日の期間絞り
  *
  *****************************************************************************************/
 --
@@ -177,6 +178,9 @@ AS
 -- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
   ct_item_div_h         CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ITEM_DIV_H'; -- XXCOS1:本社製品区分
 -- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
+/*  Ver1.31 Add Start   */
+  cv_deli_ord_keep_day  CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_DELI_ORD_KEEP_DAY'; -- XXCOS:納品用受注保持日数
+/*  Ver1.31 Add End     */
 /* 2010/04/15 Ver1.20 Del Start */
 ---- 2009/05/22 Ver1.9 Add Start
 --  cv_prf_dum_stock_out  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_DUMMY_STOCK_OUT';  -- XXCOS:EDI納品予定ダミー欠品区分
@@ -801,6 +805,9 @@ AS
 /* 2010/03/19 Ver1.19 Add Start */
   gd_min_date           DATE;                                          -- MIN日付
 /* 2010/03/19 Ver1.19 Add  End  */
+/*  Ver1.31 Add Start   */
+    gn_deli_ord_keep_day  NUMBER;                                      -- 納品用受注保持日数
+/*  Ver1.31 Add End     */
   gn_bks_id             NUMBER;                                        -- 会計帳簿ID
   gn_org_id             NUMBER;                                        -- 営業単位
 /* 2010/04/15 Ver1.20 Del Start */
@@ -1507,6 +1514,10 @@ AS
     AND (( ooha.global_attribute3 IS NULL )
     OR   ( ooha.global_attribute3 = '02' ) )
 -- ***************************** 2009/07/10 1.10 N.Maeda    ADD  END  ******************************--
+/*  Ver1.31 Add Start   */
+    AND ooha.ordered_date            >= cd_process_date - gn_deli_ord_keep_day                    -- 受注ﾍｯﾀﾞ.受注日 BETWEEN プロファイル対象期間
+    AND ooha.ordered_date             < cd_process_date + 1                    --                         業務日付
+/*  Ver1.31 Add End   */
     ORDER BY
 --****************************** 2009/06/12 1.10 T.Kitajima MOD START ******************************--
 --           xeh.invoice_number                 -- EDIヘッダ情報.伝票番号
@@ -2890,6 +2901,26 @@ AS
 --
     END IF;
 -- ********** 2009/09/03 1.12 N.Maeda ADD  END  ********** --
+--
+/*  Ver1.31 Add Start   */
+    -- 納品用受注保持日数
+    gn_deli_ord_keep_day      := TO_NUMBER( FND_PROFILE.VALUE( cv_deli_ord_keep_day ) );
+    IF ( gn_deli_ord_keep_day IS NULL ) THEN
+      -- メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application  -- アプリケーション
+                      ,iv_name         => cv_msg_prf_err  -- プロファイル取得エラー
+                      ,iv_token_name1  => cv_tkn_profile  -- トークンコード１
+                      ,iv_token_value1 => cv_deli_ord_keep_day   -- プロファイル名
+                    );
+      -- メッセージに出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_err_msg
+      );
+      ln_err_chk := cn_1;  -- エラー有り
+    END IF;
+/*  Ver1.31 Add End   */
 -- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
     BEGIN
       SELECT oos.order_source_id     order_source_id    -- 受注ソースID
