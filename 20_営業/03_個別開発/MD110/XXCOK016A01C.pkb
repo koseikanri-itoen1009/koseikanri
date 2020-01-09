@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2018/01/23    1.9   K.Nara           [E_本稼動_14790]事務センター対応（事務センタユーザの顧客指定残高取消）
  *  2019/03/14    1.10  T.Kawaguchi      [E_本稼動_15561]残高消し込みを問合せ担当拠点でできるようにする
  *  2019/04/16    1.11  T.Kawaguchi      [E_本稼動_15603]E_本稼動_15603【営業】VDBM残高の保留について
+ *  2019/10/29    1.12  Y.Ohishi         [E_本稼動_15863]問合せ拠点で残高を消込む際に仕入先コードに紐づく顧客の残高をまとめて消込できるようにする
  *
  *****************************************************************************************/
 --
@@ -175,6 +176,9 @@ AS
   cv_errmsg_10568   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10568';                 -- 業務管理部保留必須チェックエラー2
   cv_errmsg_10567   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10567';                 -- 業務管理部保留必須チェックエラー3
 -- Ver_1.11 E_本稼動_15603 ADD End
+-- Ver_1.12 E_本稼動_15863 ADD Start
+  cv_errmsg_10569   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10569';                 -- 拠点処理区分チェックエラー
+-- Ver_1.12 E_本稼動_15863 ADD End
   -- メッセージトークン定義
   cv_tkn_file_id    CONSTANT VARCHAR2(7)  := 'FILE_ID';                          -- ファイルIDトークン
   cv_tkn_format     CONSTANT VARCHAR2(6)  := 'FORMAT';                           -- ファイルパターントークン
@@ -546,7 +550,10 @@ AS
                  OR pva.attribute5            = gv_dept_bel_code  -- 所属拠点 = 仕入先の問合せ担当拠点
 -- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
                )
-           OR
+-- Ver_1.12 E_本稼動_15863 MOD Start
+--           OR
+           AND
+-- Ver_1.12 E_本稼動_15863 MOD End
                ( gv_f_cend_cust = cv_yes )                           -- 事務センターの顧客指定メニュー
            )
 -- Ver_1.9 E_本稼動_14790 MOD End
@@ -562,6 +569,29 @@ AS
 -- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
 -- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+-- Ver_1.12 E_本稼動_15863 ADD Start
+    -- 拠点残高取消ロック、更新カーソル定義
+    CURSOR bm_bel_cancel_cur2(
+       iv_vendor_code IN po_vendors.segment1%TYPE                          -- 仕入先コード
+      ,iv_customer_code IN hz_cust_accounts.account_number%TYPE            -- 顧客コード
+      ,id_pay_date    IN xxcok_backmargin_balance.expect_payment_date%TYPE -- 支払日
+    )
+    IS
+      SELECT xbb.rowid AS row_id -- 販手残高ROWID
+      FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
+            ,po_vendors               pv   -- 仕入先マスタ
+            ,po_vendor_sites_all      pva  -- 仕入先サイトマスタ
+      WHERE  xbb.supplier_code        = iv_vendor_code
+      AND    xbb.expect_payment_date <= id_pay_date
+      AND    xbb.resv_flag           IS NULL
+      AND    xbb.fb_interface_status  = cv_fb_if_type0
+      AND    pv.segment1              = xbb.supplier_code
+      AND    pv.vendor_id             = pva.vendor_id
+      AND    pva.vendor_site_code     = xbb.supplier_site_code
+      AND    pva.org_id               = gn_org_id
+      AND    TRUNC( NVL( pva.inactive_date, gd_proc_date + 1 ) )  > gd_proc_date
+      FOR UPDATE OF xbb.bm_balance_id NOWAIT;
+-- Ver_1.12 E_本稼動_15863 ADD End
     -- 拠点顧客保留ロックカーソル定義
     CURSOR bm_bel_cust_pending_cur(
        iv_base_code     IN xxcok_backmargin_balance.base_code%TYPE           -- 拠点コード
@@ -791,10 +821,13 @@ AS
 -- Ver_1.11 E_本稼動_15603 ADD End
     -------------------------------------------------
     -- 5.拠点残高取消ロック処理
-    -------------------------------------------------      
+    -------------------------------------------------
 -- Ver_1.9 E_本稼動_14790 MOD Start
 --    ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
-    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) OR ( gv_f_cend_cust = cv_yes ) ) AND
+-- Ver_1.12 E_本稼動_15863 MOD Start
+--    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) OR ( gv_f_cend_cust = cv_yes ) ) AND
+    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) AND ( gv_f_cend_cust = cv_yes ) ) AND
+-- Ver_1.12 E_本稼動_15863 MOD End
       -- 拠点 または 事務センター顧客指定 の場合
 -- Ver_1.9 E_本稼動_14790 MOD End
           ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
@@ -805,6 +838,17 @@ AS
       );
       FETCH bm_bel_cancel_cur BULK COLLECT INTO l_bm_bel_cancel_tab;
       CLOSE bm_bel_cancel_cur;
+-- Ver_1.12 E_本稼動_15863 ADD Start
+    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) AND ( gv_f_cend_cust = cv_no ) ) AND  -- 拠点 かつ 事務センター顧客未指定 の場合
+          ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+      OPEN bm_bel_cancel_cur2(
+         it_check_data(in_index).vendor_code   -- 仕入先コード
+        ,it_check_data(in_index).customer_code -- 顧客コード
+        ,it_check_data(in_index).pay_date      -- 支払日
+      );
+      FETCH bm_bel_cancel_cur2 BULK COLLECT INTO l_bm_bel_cancel_tab;
+      CLOSE bm_bel_cancel_cur2;
+-- Ver_1.12 E_本稼動_15863 ADD End
 -- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -------------------------------------------------
     -- 6.拠点顧客保留ロック処理
@@ -1612,6 +1656,32 @@ AS
         ov_retcode := cv_status_check;
       END IF;
     END IF;
+-- Ver_1.12 E_本稼動_15863 ADD Start
+    IF ( gv_dept_flg =  cv_bel_dept ) AND
+       ( gv_f_cend_cust = cv_no ) THEN  --事務センタ顧客未指定の場合
+      -- 事務センター顧客未指定時の処理区分チェック
+      IF ( iv_segment5 = cv_proc_type2 ) THEN
+        -- 処理区分を退避
+        lv_proc_type := iv_segment5;
+      ELSE
+        -- 妥当性チェックエラーメッセージ取得
+        lv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_ap_type_xxcok
+                        ,iv_name         => cv_errmsg_10569
+                        ,iv_token_name1  => cv_tkn_row_num
+                        ,iv_token_value1 => in_index
+                      );
+        -- 妥当性チェックエラーメッセージ出力
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                         in_which      => FND_FILE.OUTPUT -- 出力区分
+                        ,iv_message    => lv_out_msg      -- メッセージ
+                        ,in_new_line   => cn_zero         -- 改行
+                      );
+        -- 妥当性チェックエラー
+        ov_retcode := cv_status_check;
+      END IF;
+    END IF;
+-- Ver_1.12 E_本稼動_15863 MOD End
     -------------------------------------------------
     -- 3.仕入先コード半角英数字チェック（共通）
     -------------------------------------------------
@@ -2039,7 +2109,10 @@ AS
         END IF;
       END IF;
     -- 業務管理部かつ残高取消の場合
-    ELSIF ( gv_dept_flg = cv_act_dept ) AND
+-- Ver_1.12 E_本稼動_15863 MOD Start
+--    ELSIF ( gv_dept_flg = cv_act_dept ) AND
+    ELSIF ( ( gv_dept_flg = cv_act_dept ) OR ( gv_dept_flg = cv_bel_dept ) ) AND  -- 業務管理部または各拠点部門
+-- Ver_1.12 E_本稼動_15863 MOD End
 -- Ver_1.9 E_本稼動_14790 ADD Start
           ( gv_f_cend_cust = cv_no  ) AND  --現行のメニューより起動（事務センター顧客指定でない）
 -- Ver_1.9 E_本稼動_14790 ADD End
@@ -2100,19 +2173,42 @@ AS
       IF ( iv_segment1 IS NOT NULL ) THEN
         -- 仕入先確認
         BEGIN
-          SELECT pvs.segment1               AS vendor_code  -- 仕入先コード
-                ,pva.hold_all_payments_flag AS hold_pay_flg -- 全支払保留フラグ
-                ,NVL( pva.attribute4,'X' )  AS pay_type     -- BM支払区分
-          INTO   lv_vendor_code  -- 仕入先コード
-                ,lv_hold_pay_flg -- 全支払保留フラグ
-                ,lv_pay_type     -- BM支払区分
-          FROM   po_vendors          pvs
-                ,po_vendor_sites_all pva
-          WHERE  pvs.segment1                                         = iv_segment1
-          AND    pvs.enabled_flag                                     = cv_yes
-          AND    pvs.vendor_id                                        = pva.vendor_id
-          AND    TRUNC( NVL( pva.inactive_date, gd_proc_date + 1 ) )  > gd_proc_date
-          AND    pva.org_id                                           = gn_org_id;
+-- Ver_1.12 E_本稼動_15863 MOD Start
+        IF ( gv_dept_flg = cv_act_dept ) AND       -- 部門フラグ＝'1'：業務管理部
+           ( gv_f_cend_cust = cv_no  ) THEN        -- 事務センター顧客指定フラグ＝'N'：顧客指定でない
+-- Ver_1.12 E_本稼動_15863 MOD End
+            SELECT pvs.segment1               AS vendor_code  -- 仕入先コード
+                  ,pva.hold_all_payments_flag AS hold_pay_flg -- 全支払保留フラグ
+                  ,NVL( pva.attribute4,'X' )  AS pay_type     -- BM支払区分
+            INTO   lv_vendor_code  -- 仕入先コード
+                  ,lv_hold_pay_flg -- 全支払保留フラグ
+                  ,lv_pay_type     -- BM支払区分
+            FROM   po_vendors          pvs
+                  ,po_vendor_sites_all pva
+            WHERE  pvs.segment1                                         = iv_segment1
+            AND    pvs.enabled_flag                                     = cv_yes
+            AND    pvs.vendor_id                                        = pva.vendor_id
+            AND    TRUNC( NVL( pva.inactive_date, gd_proc_date + 1 ) )  > gd_proc_date
+            AND    pva.org_id                                           = gn_org_id;
+-- Ver_1.12 E_本稼動_15863 ADD Start
+        ELSIF ( gv_dept_flg = cv_bel_dept ) AND   -- 部門フラグ＝'2'：各拠点部門
+              ( gv_f_cend_cust = cv_no  ) THEN    -- 事務センター顧客指定フラグ＝'N'：顧客指定でない
+            SELECT pvs.segment1               AS vendor_code  -- 仕入先コード
+                  ,pva.hold_all_payments_flag AS hold_pay_flg -- 全支払保留フラグ
+                  ,NVL( pva.attribute4,'X' )  AS pay_type     -- BM支払区分
+            INTO   lv_vendor_code  -- 仕入先コード
+                  ,lv_hold_pay_flg -- 全支払保留フラグ
+                  ,lv_pay_type     -- BM支払区分
+            FROM   po_vendors          pvs
+                  ,po_vendor_sites_all pva
+            WHERE  pvs.segment1                                         = iv_segment1
+            AND    pvs.enabled_flag                                     = cv_yes
+            AND    pvs.vendor_id                                        = pva.vendor_id
+            AND    TRUNC( NVL( pva.inactive_date, gd_proc_date + 1 ) )  > gd_proc_date
+            AND    pva.org_id                                           = gn_org_id
+            AND    pva.attribute5                                       = gv_dept_bel_code;  -- 仕入先サイトコード．問合せ担当拠点コード＝初期処理で取得した所属部門コード
+        END IF;
+-- Ver_1.12 E_本稼動_15863 ADD End
         EXCEPTION
           -- 仕入先存在チェック
           WHEN NO_DATA_FOUND THEN
@@ -2194,23 +2290,51 @@ AS
          ( ln_pay_chk_flg =  cv_one ) THEN
         -- 販手残高確認
         BEGIN
-          SELECT xbb.supplier_code                 AS supplier_code -- 仕入先コード
+-- Ver_1.12 E_本稼動_15863 ADD Start
+          IF ( gv_dept_flg = cv_act_dept ) AND       -- 部門フラグ＝'1'：業務管理部
+             ( gv_f_cend_cust = cv_no ) THEN         -- 事務センター顧客指定フラグ＝'N'：顧客指定でない
+-- Ver_1.12 E_本稼動_15863 ADD End
+            SELECT xbb.supplier_code                 AS supplier_code -- 仕入先コード
 -- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
---                ,xbb.expect_payment_date           AS payment_date  -- 支払予定日
-                ,SUM( xbb.expect_payment_amt_tax ) AS payment_amt   -- 支払予定額
-          INTO   lv_vendor_code -- 仕入先コード
---                ,ld_pay_date    -- 支払予定日
-                ,ln_pay_sum_amt -- 支払予定額
-          FROM   xxcok_backmargin_balance xbb
-          WHERE  xbb.supplier_code       = lv_vendor_code
---          AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
-          AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
-          AND    xbb.resv_flag           IS NULL
-          AND    xbb.fb_interface_status = cv_zero
---          GROUP BY xbb.supplier_code
---                  ,xbb.expect_payment_date;
-          GROUP BY xbb.supplier_code;
+--                  ,xbb.expect_payment_date           AS payment_date  -- 支払予定日
+                  ,SUM( xbb.expect_payment_amt_tax ) AS payment_amt   -- 支払予定額
+            INTO   lv_vendor_code -- 仕入先コード
+--                  ,ld_pay_date    -- 支払予定日
+                  ,ln_pay_sum_amt -- 支払予定額
+            FROM   xxcok_backmargin_balance xbb
+            WHERE  xbb.supplier_code       = lv_vendor_code
+--            AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+            AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
+            AND    xbb.resv_flag           IS NULL
+            AND    xbb.fb_interface_status = cv_zero
+--            GROUP BY xbb.supplier_code
+--                    ,xbb.expect_payment_date;
+            GROUP BY xbb.supplier_code;
 -- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+-- Ver_1.12 E_本稼動_15863 ADD Start
+          ELSIF  ( gv_dept_flg = cv_bel_dept ) AND   -- 部門フラグ＝'2'：各拠点部門
+                 ( gv_f_cend_cust = cv_no ) THEN     -- 事務センター顧客指定フラグ＝'N'：顧客指定でない
+            SELECT xbb.supplier_code                 AS supplier_code -- 仕入先コード
+                  ,SUM( xbb.expect_payment_amt_tax ) AS payment_amt   -- 支払予定額
+            INTO   lv_vendor_code -- 仕入先コード
+                  ,ln_pay_sum_amt -- 支払予定額
+            FROM   xxcok_backmargin_balance xbb
+                  ,po_vendors               pv   -- 仕入先マスタ
+                  ,po_vendor_sites_all      pva  -- 仕入先サイトマスタ
+            WHERE  xbb.supplier_code       = lv_vendor_code
+            AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
+            AND    xbb.resv_flag           IS NULL
+            AND    xbb.fb_interface_status = cv_zero
+            AND    pva.attribute5          = gv_dept_bel_code        -- 仕入先サイトコード．問合せ担当拠点コード＝初期処理で取得した所属部門コード
+            AND    pv.segment1             = xbb.supplier_code       -- 販手残高テーブル．仕入先コード＝仕入先マスタ．仕入先コード
+            AND    pv.vendor_id            = pva.vendor_id           -- 仕入先マスタ．仕入先ID＝仕入先サイトマスタ．仕入先ID
+            AND    pva.vendor_site_code    = xbb.supplier_site_code  -- 販手残高テーブル．仕入先サイトコード＝仕入先サイトマスタ．仕入先サイトコード
+            AND    pva.org_id              = gn_org_id               -- 仕入先サイトマスタ.営業単位 = 初期処理で取得した営業単位ID
+            AND    TRUNC( NVL( pva.inactive_date, gd_proc_date + 1 ) )  > gd_proc_date
+                   -- NVL(仕入サイトマスタ.無効日,初期処理で取得した業務処理日付＋1) > 初期処理で取得した業務処理日付
+            GROUP BY xbb.supplier_code;
+          END IF;
+-- Ver_1.12 E_本稼動_15863 ADD End
         EXCEPTION
           -- 販手残高存在チェック
           WHEN NO_DATA_FOUND THEN
@@ -2704,8 +2828,12 @@ AS
 -- Ver_1.9 E_本稼動_14790 MOD Start
 --    -- 拠点かつ残高取消の場合
 --    ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
-    -- 拠点 または 事務センタ顧客指定の残高取消 の場合
-    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) OR ( gv_f_cend_cust = cv_yes ) ) AND
+-- Ver_1.12 E_本稼動_15863 MOD Start
+--    -- 拠点 または 事務センタ顧客指定の残高取消 の場合
+--    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) OR ( gv_f_cend_cust = cv_yes ) ) AND
+    -- 拠点 かつ 事務センタ顧客指定の残高取消 の場合
+    ELSIF ( ( gv_dept_flg =  cv_bel_dept ) AND ( gv_f_cend_cust = cv_yes ) ) AND
+-- Ver_1.12 E_本稼動_15863 MOD End
 -- Ver_1.9 E_本稼動_14790 MOD End
           ( lv_proc_type = cv_proc_type2 ) THEN
       -------------------------------------------------
@@ -2905,7 +3033,10 @@ AS
                      OR pva.attribute5            = gv_dept_bel_code  -- 所属拠点 = 仕入先の問合せ担当拠点
 -- Ver.1.10 [障害E_本稼動_15561] SCSK T.Kawaguchi ADD END
                    )
-               OR
+-- Ver_1.12 E_本稼動_15863 MOD Start
+--               OR
+               AND
+-- Ver_1.12 E_本稼動_15863 MOD End
                    ( gv_f_cend_cust = cv_yes )                           -- 事務センターの顧客指定メニュー
                )
 -- Ver_1.9 E_本稼動_14790 MOD End
