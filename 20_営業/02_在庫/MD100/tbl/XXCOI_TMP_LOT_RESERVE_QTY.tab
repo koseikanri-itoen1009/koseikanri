@@ -1,0 +1,55 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : XXCOI_TMP_LOT_RESERVE_QTY
+ * Description : ロット別引当可能数量一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2019/11/28    1.0   T.Nakano         新規作成
+ *
+ *****************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_tmp_lot_reserve_qty (
+     subinventory_code              VARCHAR2(10)
+    ,base_code                      VARCHAR2(4)
+    ,parent_item_id                 NUMBER
+    ,parent_item_code               VARCHAR2(40)
+    ,child_item_id                  NUMBER
+    ,child_item_code                VARCHAR2(40)
+    ,lot                            VARCHAR2(10)
+    ,location_code                  VARCHAR2(8)
+    ,difference_summary_code        VARCHAR2(6)
+    ,location_type                  VARCHAR2(1)
+    ,case_in_qty                    NUMBER
+    ,reserved_quantity              NUMBER
+) ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE xxcoi.xxcoi_tmp_lot_reserve_qty IS 'ロット別引当可能数量一時表'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.subinventory_code                    IS '保管場所コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.base_code                            IS '拠点コード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.parent_item_id                       IS '親品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.parent_item_code                     IS '親品目'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.child_item_id                        IS '子品目ID'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.child_item_code                      IS '子品目'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.lot                                  IS 'ロット'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.location_code                        IS 'ロケーションコード'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.difference_summary_code              IS '固有記号'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.location_type                        IS 'ロケーションタイプ'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.case_in_qty                          IS '入数'
+/
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.reserved_quantity                    IS '引当可能数'
+/
