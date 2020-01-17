@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2019/11/15    1.0   T.Nakano         新規作成
+ *  2020/01/16    1.1   H.Sasaki         E_本稼動_15992 受入指摘対応（チェック追加：会計期間、数量0）
  *
  *****************************************************************************************/
 --
@@ -229,6 +230,11 @@ AS
   cv_tkn_coi_10634      CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10634';   -- ファイルアップロードIF
   cv_tkn_cos_10628      CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10628';   -- 子品目コード
   cv_tkn_cos_10496      CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10496';   -- 親品目コード
+--  V1.1 Added START
+  cv_msg_coi_10226      CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10226';   -- 総本数換算エラー
+  cv_msg_coi_00026      CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-00026';   -- 在庫会計期間ステータス取得エラー
+  cv_msg_coi_10231      CONSTANT VARCHAR2(20)  := 'APP-XXCOI1-10231';   -- 在庫会計期間チェックエラー
+--  V1.1 Added END
 --
   -- トークン名
   cv_tkn_pro_tok          CONSTANT VARCHAR2(15) := 'PRO_TOK';         -- プロファイル
@@ -261,6 +267,10 @@ AS
   cv_tkn_data             CONSTANT VARCHAR2(15) := 'DATA';            -- データ
   cv_tkn_file_id          CONSTANT VARCHAR2(15) := 'FILE_ID';         -- ファイルID
   cv_tkn_api_name         CONSTANT VARCHAR2(15) := 'API_NAME';        -- API名
+--  V1.1 Added START
+  cv_tkn_target_date      CONSTANT VARCHAR2(15) := 'TARGET_DATE';     -- 対象日
+  cv_tkn_invoice_date     CONSTANT VARCHAR2(15) := 'INVOICE_DATE';    -- 伝票日付
+--  V1.1 Added END
 --
   -- ダミー値
   cv_dummy_char         CONSTANT VARCHAR2(100) := 'DUMMY99999999';   -- 文字列用ダミー値
@@ -1562,6 +1572,9 @@ AS
     lt_inside_cust_code             xxcoi_hht_inv_transactions.inside_code%TYPE;                        -- 入庫側顧客コード
     lt_outside_subinv_div           mtl_secondary_inventories.attribute5%TYPE;                          -- 出庫側棚卸対象
     lt_inside_subinv_div            mtl_secondary_inventories.attribute5%TYPE;                          -- 入庫側棚卸対象
+--  V1.1 Added START
+    lb_org_acct_period_flg          BOOLEAN;                                                            --  在庫会計期間のチェック結果
+--  V1.1 Added END
 --
     -- *** ローカル・カーソル ***
 --
@@ -1793,6 +1806,49 @@ AS
       END;
 --
     END IF;
+--
+--  V1.1 Added START
+    --  総数の0チェック（数量0取引の作成不可）
+    IF ln_reserved_quantity_req = 0 THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                        iv_application  =>  cv_msg_kbn_coi
+                      , iv_name         =>  cv_msg_coi_10226
+                    );
+      lv_errbuf := SUBSTRB(lv_errbuf || chr(10) || lv_errmsg, 1, 5000);
+    END IF;
+    --
+    lv_errbuf2  :=  NULL;
+    --  在庫会計期間のチェック
+    IF g_if_data_tab(cn_invoice_date) IS NOT NULL THEN
+      xxcoi_common_pkg.org_acct_period_chk(
+          in_organization_id  =>  gn_inv_org_id                                               --  在庫組織ID
+        , id_target_date      =>  TO_DATE( g_if_data_tab(cn_invoice_date), cv_date_format )   --  伝票日付
+        , ob_chk_result       =>  lb_org_acct_period_flg                                      --  チェック結果
+        , ov_errbuf           =>  lv_errbuf2
+        , ov_retcode          =>  lv_retcode
+        , ov_errmsg           =>  lv_errmsg
+      );
+      --  在庫会計期間ステータスの取得に失敗した場合
+      IF ( lv_retcode <> cv_status_normal ) THEN
+        lv_errmsg :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  cv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_00026
+                        , iv_token_name1    =>  cv_tkn_target_date
+                        , iv_token_value1   =>  g_if_data_tab(cn_invoice_date)
+                      );
+        lv_errbuf := SUBSTRB(lv_errbuf || chr(10) || lv_errmsg, 1, 5000);
+      ELSIF ( NOT lb_org_acct_period_flg ) THEN
+        --  在庫会計期間がクローズの場合
+        lv_errmsg :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  cv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_10231
+                        , iv_token_name1    =>  cv_tkn_invoice_date
+                        , iv_token_value1   =>  g_if_data_tab(cn_invoice_date)
+                      );
+        lv_errbuf := SUBSTRB(lv_errbuf || chr(10) || lv_errmsg, 1, 5000);
+      END IF;
+    END IF;
+--  V1.1 Added END
 --
     -- 出庫側拠点、出庫側保管場所コード、入庫側拠点、入庫側保管場所コードの取得（他拠点へ出庫）
     lv_errbuf2  :=  NULL;
