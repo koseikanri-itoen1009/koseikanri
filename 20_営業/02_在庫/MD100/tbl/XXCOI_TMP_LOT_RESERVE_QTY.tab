@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2019/11/28    1.0   T.Nakano         新規作成
+ *  2020/01/21    1.1   T.Nakano         E_本稼動_16191 出庫依頼アップロード障害対応
  *
  *****************************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_tmp_lot_reserve_qty (
@@ -23,6 +24,9 @@ CREATE GLOBAL TEMPORARY TABLE xxcoi.xxcoi_tmp_lot_reserve_qty (
     ,location_code                  VARCHAR2(8)
     ,difference_summary_code        VARCHAR2(6)
     ,location_type                  VARCHAR2(1)
+-- V1.1 2020/01/21 T.Nakano ADD START --
+    ,priority                       NUMBER
+-- V1.1 2020/01/21 T.Nakano ADD END --
     ,case_in_qty                    NUMBER
     ,reserved_quantity              NUMBER
 ) ON COMMIT DELETE ROWS
@@ -49,6 +53,10 @@ COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.difference_summary_code       
 /
 COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.location_type                        IS 'ロケーションタイプ'
 /
+-- V1.1 2020/01/21 T.Nakano ADD START --
+COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.priority                             IS '優先順位'
+/
+-- V1.1 2020/01/21 T.Nakano ADD END --
 COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.case_in_qty                          IS '入数'
 /
 COMMENT ON COLUMN xxcoi.xxcoi_tmp_lot_reserve_qty.reserved_quantity                    IS '引当可能数'
