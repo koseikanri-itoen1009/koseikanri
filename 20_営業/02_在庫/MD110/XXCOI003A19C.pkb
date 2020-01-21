@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2019/11/15    1.0   T.Nakano         新規作成
  *  2020/01/16    1.1   H.Sasaki         E_本稼動_15992 受入指摘対応（チェック追加：会計期間、数量0）
+ *  2020/01/21    1.2   T.Nakano         E_本稼動_16191 出庫依頼アップロード障害対応
  *
  *****************************************************************************************/
 --
@@ -109,7 +110,11 @@ AS
 --
   cv_location_type_1          CONSTANT VARCHAR2(1)  := '1';   -- ロケーションタイプ:通常
   cv_location_type_2          CONSTANT VARCHAR2(1)  := '2';   -- ロケーションタイプ:優先
---
+-- V1.2 2020/01/21 T.Nakano MOD START --
+  cv_location_type_3          CONSTANT VARCHAR2(1)  := '3';   -- ロケーションタイプ:一時保管
+  cv_9                        CONSTANT VARCHAR2(1)  := '9';   -- ロケーションタイプ優先のダミー値
+  cv_8                        CONSTANT VARCHAR2(1)  := '8';   -- ロケーションタイプ一時保管のダミー値
+-- V1.2 2020/01/21 T.Nakano MOD END ----
   cn_slip_no                  CONSTANT NUMBER       := 1;     -- 伝票番号
   cn_invoice_date             CONSTANT NUMBER       := 2;     -- 伝票日付
   cn_outside_base_code        CONSTANT NUMBER       := 3;     -- 出庫側拠点コード
@@ -1009,7 +1014,16 @@ AS
              ,xaiciv.parent_item_code       AS parent_item_code         -- 親品目
              ,xaiciv.child_item_id          AS item_id                  -- 子品目ID
              ,xaiciv.child_item_code        AS item_code                -- 子品目
-             ,xwlmv.location_type           AS location_type            -- ロケーションタイプ
+-- V1.2 2020/01/21 T.Nakano MOD START --
+             -- 引き当てる優先順位は、ロケーションタイプが（優先）、（通常・一時保管）となるため、
+             -- 優先とそれ以外で設定する数値を分ける
+             --,xwlmv.location_type           AS location_type            -- ロケーションタイプ
+             ,DECODE(xwlmv.location_type, cv_location_type_2, cv_9, cv_8)
+                                            AS location_type            -- ロケーションタイプ
+-- V1.2 2020/01/21 T.Nakano MOD END --
+-- V1.2 2020/01/21 T.Nakano ADD START --
+             ,xnwl.priority                 AS priority                 -- 優先順位
+-- V1.2 2020/01/21 T.Nakano ADD END --
              ,xaiciv.primary_uom_code       AS primary_uom_code         -- 基準単位コード
       FROM    (
                 SELECT  msib.inventory_item_id      AS child_item_id
@@ -1053,6 +1067,9 @@ AS
               )                               xaiciv  -- 在庫調整情報画面_子品目ビュー_簡易版
              ,xxcoi_lot_onhand_quantites      xloq    -- ロット別手持数量
              ,xxcoi_warehouse_location_mst_v  xwlmv   -- 倉庫ロケーションマスタビュー
+-- V1.2 2020/01/21 T.Nakano ADD START --
+             ,xxcoi_mst_warehouse_location    xnwl    -- 倉庫ロケーションマスタ
+-- V1.2 2020/01/21 T.Nakano ADD END --
       WHERE   xaiciv.child_item_id    = xloq.child_item_id
       AND     xloq.base_code          = iv_outside_base_code
       AND     xloq.subinventory_code  = iv_outside_subinv_code
@@ -1061,7 +1078,11 @@ AS
       AND     xwlmv.base_code         = xloq.base_code
       AND     xwlmv.subinventory_code = xloq.subinventory_code
       AND     xwlmv.location_code     = xloq.location_code
-      AND     xwlmv.location_type     IN (cv_location_type_1, cv_location_type_2)
+-- V1.2 2020/01/21 T.Nakano MOD START --
+      --AND     xwlmv.location_type     IN (cv_location_type_1, cv_location_type_2)
+      AND     xwlmv.location_type     IN (cv_location_type_1, cv_location_type_2, cv_location_type_3)
+      AND     xwlmv.warehouse_location_id = xnwl.warehouse_location_id
+-- V1.2 2020/01/21 T.Nakano MOD END --
     ;
 --
     -- 一時表に格納した引当可能数量の取得カーソル
@@ -1095,6 +1116,9 @@ AS
       AND     xtlr.reserved_quantity  > cn_zero
       ORDER BY  xtlr.location_type  DESC
                ,xtlr.lot            ASC
+-- V1.2 2020/01/21 T.Nakano ADD START --
+               ,xtlr.priority       ASC
+-- V1.2 2020/01/21 T.Nakano ADD END --
     ;
 --
     -- *** ローカル・レコード ***
@@ -1209,6 +1233,9 @@ AS
                ,location_code             -- ロケーションコード
                ,difference_summary_code   -- 固有記号
                ,location_type             -- ロケーションタイプ
+-- V1.2 2020/01/21 T.Nakano ADD START --
+               ,priority                  -- 優先順位
+-- V1.2 2020/01/21 T.Nakano ADD END --
                ,case_in_qty               -- 入数
                ,reserved_quantity)        -- 引当可能数
               VALUES(
@@ -1222,6 +1249,9 @@ AS
                ,get_lot_info_rec.location_code                -- ロケーションコード
                ,get_lot_info_rec.difference_summary_code      -- 固有記号
                ,get_lot_info_rec.location_type                -- ロケーションタイプ
+-- V1.2 2020/01/21 T.Nakano ADD START --
+               ,get_lot_info_rec.priority                     -- 優先順位
+-- V1.2 2020/01/21 T.Nakano ADD END --
                ,ln_case_in_qty                                -- 入数
                ,ln_summary_qty                                -- 引当可能数
               )
