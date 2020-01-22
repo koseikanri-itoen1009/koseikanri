@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A13C(spec)
  * Description      : 保管場所転送取引データOIF更新（倉替情報）
  * MD.050           : 保管場所転送取引データOIF更新（倉替情報） MD050_COI_003_A13
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2015/08/07    1.3   S.Yamashita      [E_本稼動_13215]他拠点営業車の入出庫不具合対応（確認数量の登録値変更）
  *  2015/10/05    1.4   S.Yamashita      [E_本稼動_13328]E_本稼動_13215の再対応（入庫情報一時表の更新項目に確認数量を追加）
  *  2015/12/25    1.5   S.Niki           [E_本稼動_13442]他拠点営業車入出庫セキュリティマスタを参照するよう修正
+ *  2020/01/22    1.6   T.Nakano         [E_本稼動_16192]出庫依頼アップロード障害対応
  *
  *****************************************************************************************/
 --
@@ -494,6 +495,9 @@ AS
       FROM   xxcoi_hht_inv_transactions  xhit                      -- HHT入出庫一時表
       WHERE  xhit.status          = cv_status_pre                  -- 処理ステータス
       AND    xhit.hht_program_div = cv_hht_program_div_2           -- 入出庫ジャーナル処理区分
+-- V1.6 2020/01/22 T.Nakano ADD START --
+      AND    xhit.invoice_date    < TRUNC(SYSDATE + 1)             -- 伝票日付
+-- V1.6 2020/01/22 T.Nakano ADD END --
       ORDER BY 
              xhit.inside_code                                      -- 顧客コード
            , xhit.invoice_no                                       -- 伝票No
