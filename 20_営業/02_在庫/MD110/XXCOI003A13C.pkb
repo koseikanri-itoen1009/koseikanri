@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A13C(spec)
  * Description      : 保管場所転送取引データOIF更新（倉替情報）
  * MD.050           : 保管場所転送取引データOIF更新（倉替情報） MD050_COI_003_A13
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2015/10/05    1.4   S.Yamashita      [E_本稼動_13328]E_本稼動_13215の再対応（入庫情報一時表の更新項目に確認数量を追加）
  *  2015/12/25    1.5   S.Niki           [E_本稼動_13442]他拠点営業車入出庫セキュリティマスタを参照するよう修正
  *  2020/01/22    1.6   T.Nakano         [E_本稼動_16192]出庫依頼アップロード障害対応
+ *  2020/02/07    1.7   Y.Sasaki         [E_本稼動_16220]出庫依頼アップロード障害対応
  *
  *****************************************************************************************/
 --
@@ -130,6 +131,9 @@ AS
   -- 2015/04/27 Ver1.2 Add Start
   cv_lot_tran_temp_cre_error     CONSTANT VARCHAR2(16)  := 'APP-XXCOI1-10453'; -- ロット別取引TEMP登録エラーメッセージ
   -- 2015/04/27 Ver1.2 Add End
+-- Ver1.7 Add Start
+  cv_process_date_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00011'; -- 業務日付取得エラーメッセージ
+-- Ver1.7 Add End
   -- トークン
   cv_tkn_pro                     CONSTANT VARCHAR2(20)  := 'PRO_TOK';              -- プロファイル名
   cv_tkn_org_code                CONSTANT VARCHAR2(20)  := 'ORG_CODE_TOK';         -- 在庫組織コード
@@ -210,6 +214,9 @@ AS
   gt_tran_type_inout             mtl_transaction_types.transaction_type_id%TYPE;      -- 取引タイプID 入出庫
   gv_skip_flag                   VARCHAR2(1);                                         -- スキップ用フラグ
   gv_auto_flag                   VARCHAR2(1);                                         -- 自動入庫確認フラグ
+--  Ver1.7  Add Start
+  gd_process_date                DATE;                                                -- 業務日付
+--  Ver1.7  Add End
   -- カウンタ
   gn_kuragae_data_loop_cnt       NUMBER; -- 倉替データループカウンタ
   gn_storage_info_loop_cnt       NUMBER; -- 入庫情報一時表データループカウンタ
@@ -404,6 +411,21 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Ver1.7 Add Start
+    -- ===============================
+    -- 業務日付取得
+    -- ===============================
+    gd_process_date := xxccp_common_pkg2.get_process_date;
+    -- 取得できない場合
+    IF  ( gd_process_date IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  =>  cv_application_short_name
+                     ,iv_name         =>  cv_process_date_err_msg -- 業務日付取得エラーメッセージ
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Ver1.7 Add End
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -496,7 +518,10 @@ AS
       WHERE  xhit.status          = cv_status_pre                  -- 処理ステータス
       AND    xhit.hht_program_div = cv_hht_program_div_2           -- 入出庫ジャーナル処理区分
 -- V1.6 2020/01/22 T.Nakano ADD START --
-      AND    xhit.invoice_date    < TRUNC(SYSDATE + 1)             -- 伝票日付
+-- Ver1.7 Mod Start
+--      AND    xhit.invoice_date    < TRUNC(SYSDATE + 1)             -- 伝票日付
+      AND    xhit.invoice_date    < TRUNC(gd_process_date + 1)     -- 伝票日付
+-- Ver1.7 Mod End
 -- V1.6 2020/01/22 T.Nakano ADD END --
       ORDER BY 
              xhit.inside_code                                      -- 顧客コード
