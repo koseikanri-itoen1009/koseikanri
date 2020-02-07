@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI003A14C(body)
  * Description      : その他取引データOIF更新
  * MD.050           : その他取引データOIF更新（HHT入出庫データ） MD050_COI_003_A14 
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2010/08/31   1.3   H.Sasaki          [E_本稼動_04663]PT対応
  *  2020/01/22   1.4   H.Sasaki          [E_本稼動_16192]E_本稼動_15992に伴う対応
  *                                       未来日伝票対象外（商品振替、消化VDは除く）
+ *  2020/02/07   1.5   Y.Sasaki          [E_本稼動_16220]出庫依頼アップロード障害対応
  *
  *****************************************************************************************/
 --
@@ -1200,7 +1201,10 @@ AS
       AND     NVL( xhit.outside_business_low_type,cv_business_low_type_dummy ) <> cv_business_low_type_27
       AND     NVL( xhit.inside_business_low_type,cv_business_low_type_dummy  ) <> cv_business_low_type_27
 --  V1.4 Added START
-      AND     xhit.invoice_date     <   TRUNC( SYSDATE ) + 1        --  処理実行日翌日00:00:00 未満のみ対象（在庫取引ワーカーエラー対応）
+--  Ver1.5 Mod Start
+--      AND     xhit.invoice_date     <   TRUNC( SYSDATE ) + 1        --  処理実行日翌日00:00:00 未満のみ対象（在庫取引ワーカーエラー対応）
+      AND     xhit.invoice_date    < TRUNC( gd_process_date ) + 1   --  業務日付翌日00:00:00 未満のみ対象（在庫取引ワーカーエラー対応）
+--  Ver1.5 Mod End
 --  V1.4 Added END
       ORDER BY
                 xhit.base_code
