@@ -3,13 +3,14 @@
  *
  * Table Name  : XXCOS_REPORT_FORMS_REGISTER
  * Description : 様式定義管理台帳マスタ
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Kumamoto   新規作成
+ *  2020/01/30    1.1   SCSK N.Koyama    [E_本稼動_16199]作成
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REPORT_FORMS_REGISTER
@@ -22,6 +23,14 @@ CREATE TABLE XXCOS.XXCOS_REPORT_FORMS_REGISTER
   ,INFO_CLASS_NAME          VARCHAR2(40)                                    -- 情報区分名称
   ,DEFAULT_REPORT_FLAG      VARCHAR2(1)                                     -- デフォルト 帳票フラグ
   ,PUBLISH_FLAG_SEQ         NUMBER(3)                                       -- 納品書発行フラグ順番
+/* Ver1.1 Add Start */
+  ,ORIG_REPORT_CODE         VARCHAR2(4)                                     -- 分割元帳票コード
+  ,RESREVE_COLUMN1          VARCHAR2(10)                                    -- 予備項目1
+  ,RESREVE_COLUMN2          VARCHAR2(10)                                    -- 予備項目2
+  ,RESREVE_COLUMN3          VARCHAR2(10)                                    -- 予備項目3
+  ,RESREVE_COLUMN4          VARCHAR2(10)                                    -- 予備項目4
+  ,RESREVE_COLUMN5          VARCHAR2(10)                                    -- 予備項目5
+/* Ver1.1 Add End   */
   ,CREATED_BY               NUMBER(15)     NOT NULL                         -- 作成者
   ,CREATION_DATE            DATE           NOT NULL                         -- 作成日
   ,LAST_UPDATED_BY          NUMBER(15)     NOT NULL                         -- 最終更新者
@@ -43,6 +52,14 @@ COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.INFO_CLASS              IS '
 COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.INFO_CLASS_NAME         IS '情報区分名称';
 COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.DEFAULT_REPORT_FLAG     IS 'デフォルト 帳票フラグ';
 COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.PUBLISH_FLAG_SEQ        IS '納品書発行フラグ順番';
+/* Ver1.1 Add Start */
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.ORIG_REPORT_CODE        IS '分割元帳票コード';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.RESREVE_COLUMN1         IS '予備項目1';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.RESREVE_COLUMN2         IS '予備項目2';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.RESREVE_COLUMN3         IS '予備項目3';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.RESREVE_COLUMN4         IS '予備項目4';
+COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.RESREVE_COLUMN5         IS '予備項目5';
+/* Ver1.1 Add End   */
 COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.CREATED_BY              IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.CREATION_DATE           IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_REPORT_FORMS_REGISTER.LAST_UPDATED_BY         IS '最終更新者';
