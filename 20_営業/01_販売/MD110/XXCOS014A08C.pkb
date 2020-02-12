@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A08C (body)
  * Description      : CSVデータアップロード(様式定義管理台帳)
  * MD.050           : CSVデータアップロード(様式定義管理台帳)(MD050_COS_014_A08)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/1/13    1.0   T.Oura           新規作成
  *  2009/2/12    1.1   T.Nakamura       [障害COS_061] メッセージ出力、ログ出力への出力内容の追加・修正
+ *  2020/01/30   1.2   N.Koyama         [E_本稼動_16199]帳票コード分割他項目追加対応
  *
  *****************************************************************************************/
 --
@@ -124,6 +125,10 @@ AS
   cv_msg_CCP_90005          CONSTANT VARCHAR2(100)  := 'APP-XXCCP1-90005';       -- 警告終了メッセージ
   cv_msg_CCP_90006          CONSTANT VARCHAR2(100)  := 'APP-XXCCP1-90006';       -- エラー終了全ロールバックメッセージ
   cv_msg_COS_13262          CONSTANT VARCHAR2(100)  := 'APP-XXCOS1-13262';       -- パラメータ出力メッセージ
+-- Ver.1.2 Mod Start
+  cv_msg_COS_13272          CONSTANT VARCHAR2(100)  := 'APP-XXCOS1-13272';       -- 分割元帳票コード存在チェックエラーメッセージ
+  cv_msg_COS_13273          CONSTANT VARCHAR2(100)  := 'APP-XXCOS1-13273';       -- 分割元帳票コード帳票フラグ不一致エラーメッセージ
+-- Ver.1.2 Mod End
   -- トークン
   cv_tkn_table              CONSTANT VARCHAR2(20)   := 'TABLE';                  -- テーブル名
   cv_tkn_row                CONSTANT VARCHAR2(20)   := 'ROW';                    -- CSVファイルの行数
@@ -155,7 +160,10 @@ AS
   cv_file_id                CONSTANT VARCHAR2(100)  := 'FILE_ID';          -- ファイルID
   cn_header_row_num         CONSTANT NUMBER         := 1;                  -- ヘッダー行数
   cv_delim                  CONSTANT VARCHAR2(1)    := ',';                -- デリミタ文字(カンマ)
-  cn_column_num             CONSTANT NUMBER         := 8;                  -- 項目数
+-- Ver.1.2 Mod Start
+--  cn_column_num             CONSTANT NUMBER         := 8;                  -- 項目数
+  cn_column_num             CONSTANT NUMBER         := 14;                  -- 項目数
+-- Ver.1.2 Mod End
   cv_line_number            CONSTANT VARCHAR2(100)  := '行数';             -- 行数
   cv_line_num_cnt           CONSTANT VARCHAR2(100)  := '行目';             -- 行目
   cv_data_type_code_2       CONSTANT VARCHAR2(100)  := 'XXCOS1_DATA_TYPE_CODE';
@@ -167,7 +175,10 @@ AS
   cv_control_flag_y         CONSTANT VARCHAR2(100)  := 'Y';                -- 再出力制御フラグ「Y」
   cv_chain                  CONSTANT VARCHAR2(100)  := 18;                 -- チェーン店
   cv_error_flag_y           CONSTANT VARCHAR2(100)  := 'Y';                -- エラーフラグ「Y」
-  cv_delim_7                CONSTANT VARCHAR2(100)  := 7;                  -- カンマの数「7」
+-- Ver.1.2 Mod Start
+--  cv_delim_7                CONSTANT VARCHAR2(100)  := 7;                  -- カンマの数「7」
+  cv_delim_count            CONSTANT VARCHAR2(100)  := 13;                  -- カンマの数「13」
+-- Ver.1.2 Mod End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -182,6 +193,14 @@ AS
   , info_class_name          VARCHAR2(32767)
   , publish_flag_seq         VARCHAR2(32767)
   , default_report_flag      VARCHAR2(32767)
+-- Ver.1.2 Add Start
+  , orig_report_code         VARCHAR2(32767)
+  , resreve_column1          VARCHAR2(32767)
+  , resreve_column2          VARCHAR2(32767)
+  , resreve_column3          VARCHAR2(32767)
+  , resreve_column4          VARCHAR2(32767)
+  , resreve_column5          VARCHAR2(32767)
+-- Ver.1.2 Add End
   );
   --様式定義管理台帳項目レイアウトコレクション型
   TYPE g_sourcing_rule_data_ttype IS TABLE OF g_sourcing_rule_data_rtype
@@ -790,6 +809,14 @@ AS
     cn_info_class_name     CONSTANT NUMBER := 6;   -- 情報区分名称(項目№)
     cn_publish_flag_seq    CONSTANT NUMBER := 7;   -- 納品書発行フラグ順番(項目№)
     cn_default_report_flag CONSTANT NUMBER := 8;   -- デフォルト帳票フラグ(項目№)
+-- Ver.1.2 Add Start
+    cn_orig_report_code    CONSTANT NUMBER := 9;   -- 分割元帳票コード(項目№9)
+    cn_resreve_column1     CONSTANT NUMBER := 10;  -- 予備項目1(項目№10)
+    cn_resreve_column2     CONSTANT NUMBER := 11;  -- 予備項目2(項目№11)
+    cn_resreve_column3     CONSTANT NUMBER := 12;  -- 予備項目3(項目№12)
+    cn_resreve_column4     CONSTANT NUMBER := 13;  -- 予備項目4(項目№13)
+    cn_resreve_column5     CONSTANT NUMBER := 14;  -- 予備項目5(項目№14)
+-- Ver.1.2 Add End
 --
     -- *** ローカル変数 ***
     lv_delim_count         VARCHAR2(100);
@@ -817,8 +844,12 @@ AS
     -- ======================
     -- フォーマットチェック
     -- ======================
-    -- カンマの数が「7」ではない場合
-    IF ( lv_delim_count <> cv_delim_7 ) THEN
+-- Ver.1.2 Mod Start
+--    -- カンマの数が「7」ではない場合
+--    IF ( lv_delim_count <> cv_delim_7 ) THEN
+    -- カンマの数が項目数+1ではない場合
+    IF ( lv_delim_count <> cv_delim_count ) THEN
+-- Ver.1.2 Mod End
       -- フォーマットチェックエラーメッセージ出力
       lv_errmsg  := xxccp_common_pkg.get_msg(
                           iv_application  => cv_application
@@ -860,6 +891,14 @@ AS
       g_ins_data(gn_i).info_class_name      := g_rep_form_reg(gn_i)(cn_info_class_name);      -- 情報区分名称(項目№6)
       g_ins_data(gn_i).publish_flag_seq     := g_rep_form_reg(gn_i)(cn_publish_flag_seq);     -- 納品書発行フラグ順番(項目№7)
       g_ins_data(gn_i).default_report_flag  := g_rep_form_reg(gn_i)(cn_default_report_flag);  -- デフォルト帳票フラグ(項目№8)
+-- Ver.1.2 Add Start
+      g_ins_data(gn_i).orig_report_code     := g_rep_form_reg(gn_i)(cn_orig_report_code);     -- 分割元帳票コード(項目№9)
+      g_ins_data(gn_i).resreve_column1      := g_rep_form_reg(gn_i)(cn_resreve_column1);      -- 予備項目1(項目№10)
+      g_ins_data(gn_i).resreve_column2      := g_rep_form_reg(gn_i)(cn_resreve_column2);      -- 予備項目2(項目№11)
+      g_ins_data(gn_i).resreve_column3      := g_rep_form_reg(gn_i)(cn_resreve_column3);      -- 予備項目3(項目№12)
+      g_ins_data(gn_i).resreve_column4      := g_rep_form_reg(gn_i)(cn_resreve_column4);      -- 予備項目4(項目№13)
+      g_ins_data(gn_i).resreve_column5      := g_rep_form_reg(gn_i)(cn_resreve_column5);      -- 予備項目5(項目№14)
+-- Ver.1.2 Add End
 --
     END IF;
 --
@@ -922,6 +961,9 @@ AS
     lv_output_control_flag  VARCHAR2(200);
     lv_chain_store_code     VARCHAR2(200);
     lv_rep_form_cnt         VARCHAR2(200);
+-- Ver.1.2 Add Start
+    lv_publish_flag_seq     VARCHAR2(200);
+-- Ver.1.2 Add End
 --
     lb_on      BOOLEAN := TRUE;
     lb_off     BOOLEAN := FALSE;
@@ -945,6 +987,11 @@ AS
     , notnull_chk_publish_no    BOOLEAN := lb_on   -- 必須チェック(納品書発行フラグ順番)
     , range_chk_publish_no      BOOLEAN := lb_on   -- 範囲チェック(納品書発行フラグ順番)
     , dup_chk_publish_no        BOOLEAN := lb_on   -- 重複チェック(納品書発行フラグ順番)
+-- Ver.1.2 Mod Start
+    , value_chk_orig_report_code     BOOLEAN := lb_on   -- 入力値チェック(分割元帳票コード)
+    , value_chk_orig_publish_no      BOOLEAN := lb_on   -- 入力値チェック(納品書発行フラグ順番)
+    , value_chk_resreve_column BOOLEAN := lb_on   -- 入力値チェック(予備項目)
+-- Ver.1.2 Mod End
     );
 --
     -- 項目チェックレコード
@@ -1353,7 +1400,12 @@ AS
     -- ========================================
     IF ( chk_rec.dup_chk_publish_no ) THEN
       -- 様式定義管理台帳データ.納品書発行フラグ設定順が入力されている場合
-      IF ( g_ins_data(gn_i).publish_flag_seq IS NOT NULL ) THEN
+-- Ver.1.2 Mod Start
+      -- かつ、分割元帳票コードが入力されていない場合
+--      IF ( g_ins_data(gn_i).publish_flag_seq IS NOT NULL ) THEN
+      IF ( g_ins_data(gn_i).publish_flag_seq IS NOT NULL )
+       AND ( g_ins_data(gn_i).orig_report_code IS NULL ) THEN
+-- Ver.1.2 Mod End
 --
         BEGIN
           SELECT   COUNT(*)                          -- 件数
@@ -1385,6 +1437,58 @@ AS
         END IF;
       END IF;
     END IF;
+-- Ver.1.2 Mod Start
+    -- ========================================
+    -- 分割元帳票コードの存在チェック
+    -- ========================================
+    IF ( chk_rec.value_chk_orig_report_code ) THEN
+      -- 様式定義管理台帳データ.分割元帳票コードが入力されている場合
+      IF ( g_ins_data(gn_i).orig_report_code IS NOT NULL ) THEN
+--
+        BEGIN
+          SELECT   publish_flag_seq                   -- 納品書発行フラグ設定順
+          INTO     lv_publish_flag_seq
+          FROM     xxcos_report_forms_register  xrfr  -- 様式定義管理台帳マスタ
+          WHERE    xrfr.chain_code           =  g_ins_data(gn_i).chain_code
+          AND      xrfr.data_type_code       =  g_ins_data(gn_i).data_type_code
+          AND      xrfr.report_code     =  g_ins_data(gn_i).orig_report_code;
+--
+      -- 様式定義管理台帳データ.分割元帳票コードと納品書発行フラグ設定順が一致してい場合
+      IF ( lv_publish_flag_seq <>  g_ins_data(gn_i).publish_flag_seq ) THEN
+        -- メッセージ出力
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_application
+                          , iv_name         => cv_msg_COS_13273
+                          , iv_token_name1  => cv_tkn_row
+                          , iv_token_value1 => gn_i
+                         );
+        lv_errbuf  := lv_errmsg;
+        -- ログ出力
+        proc_msg_output( cv_prg_name, lv_errbuf );
+        -- 終了ステータスを異常に設定
+        ov_retcode := cv_status_error;
+      END IF;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- メッセージ出力
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                              iv_application  => cv_application
+                            , iv_name         => cv_msg_COS_13272
+                            , iv_token_name1  => cv_tkn_row
+                            , iv_token_value1 => gn_i
+                            , iv_token_name2  => cv_tkn_value
+                            , iv_token_value2 => g_ins_data(gn_i).orig_report_code          -- 分割元帳票コード
+                           );
+          lv_errbuf  := lv_errmsg;
+          -- ログ出力
+          proc_msg_output( cv_prg_name, lv_errbuf );
+          -- 終了ステータスを異常に設定
+          ov_retcode := cv_status_error;
+        END;
+--
+      END IF;
+    END IF;
+-- Ver.1.2 Mod End
 --
   EXCEPTION
 --
@@ -1465,6 +1569,14 @@ AS
         , info_class_name                        -- 情報区分名称
         , publish_flag_seq                       -- 納品書発行フラグ順番
         , default_report_flag                    -- デフォルト帳票フラグ
+-- Ver.1.2 Add Start
+        , orig_report_code                       -- 分割元帳票コード
+        , resreve_column1                        -- 予備項目1
+        , resreve_column2                        -- 予備項目2
+        , resreve_column3                        -- 予備項目3
+        , resreve_column4                        -- 予備項目4
+        , resreve_column5                        -- 予備項目5
+-- Ver.1.2 Add End
         , created_by                             -- 作成者
         , creation_date                          -- 作成日
         , last_updated_by                        -- 最終更新者
@@ -1484,6 +1596,14 @@ AS
         , g_ins_data(gn_i).info_class_name       -- 情報区分名称
         , g_ins_data(gn_i).publish_flag_seq      -- 納品書発行フラグ順番
         , g_ins_data(gn_i).default_report_flag   -- デフォルト帳票フラグ
+-- Ver.1.2 Add Start
+        , g_ins_data(gn_i).orig_report_code      -- 分割元帳票コード
+        , g_ins_data(gn_i).resreve_column1       -- 予備項目1
+        , g_ins_data(gn_i).resreve_column2       -- 予備項目2
+        , g_ins_data(gn_i).resreve_column3       -- 予備項目3
+        , g_ins_data(gn_i).resreve_column4       -- 予備項目4
+        , g_ins_data(gn_i).resreve_column5       -- 予備項目5
+-- Ver.1.2 Add End
         , cn_created_by                          -- 作成者
         , cd_creation_date                       -- 作成日
         , cn_last_updated_by                     -- 最終更新者
