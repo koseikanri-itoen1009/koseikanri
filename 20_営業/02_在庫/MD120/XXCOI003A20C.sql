@@ -143,7 +143,7 @@ AND     flv.lookup_type                 = 'XXCOI1_TRANSACTION_TYPE_NAME'
 AND     flv.language                    = USERENV( 'LANG' )
 AND     flv.lookup_code                 = xlt.transaction_type_code
 and     msibp.segment1                  = xsib.ITEM_CODE
-and     xsib.vessel_group               = xiy.lookup_code
+and     xsib.vessel_group               = xiy.lookup_code(+)
 AND     xlt.transaction_date           >= TRUNC(SYSDATE)-14
 --  検索条件（作成日時）
 and     xlt.creation_date              >= TO_DATE('&1', 'YYYY/MM/DD HH24:MI:SS' ) --パラメータ：作成日時
