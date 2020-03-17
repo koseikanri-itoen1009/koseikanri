@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52C
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  chk_future_date        未来日チェック                        (C-34)
  *  chk_qty_short_plan     引当可能在庫不足チェック(予定)        (C-35)
  *  chk_location           保管倉庫チェック                      (C-36)
+ *  chk_rest_condition     制限条件確認処理                      (C-41)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -70,6 +71,7 @@ AS
  *  2009/03/19    1.4  SCS    椎名 昭圭    本番障害#1308対応
  *  2009/06/02    1.5  SCS    伊藤 ひとみ  本番障害#1517対応
  *  2014/04/21    1.6  SCSK   池田 木綿子  E_EBSパッチ_00031 品目振替のESパッチ対応
+ *  2020/03/10    1.7  SCSK   佐々木 大和  E_本稼動_16213対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -168,6 +170,13 @@ AS
 -- 2009/03/19 v1.4 ADD START
   gv_msg_xxinv_10188    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10188'; -- マイナス在庫チェックエラーメッセージ
 -- 2009/03/19 v1.4 ADD END
+-- V1.7 Add Start
+  gv_msg_xxinv_10215    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10215'; -- 品目振替制限条件エラー(産地制限)
+  gv_msg_xxinv_10216    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10216'; -- 品目振替制限条件エラー(茶期制限)
+  gv_msg_xxinv_10217    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10217'; -- 品目振替制限条件エラー(年度)
+  gv_msg_xxinv_10218    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10218'; -- 品目振替制限条件エラー(有機)
+  gv_msg_xxinv_10219    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10219'; -- 振替元ロットマスタ取得エラー
+-- V1.7 Add Start
 --
   -- トークン
   gv_tkn_parameter      CONSTANT VARCHAR2(15)   := 'PARAMETER';
@@ -186,6 +195,10 @@ AS
   gv_tkn_lot            CONSTANT VARCHAR2(15)   := 'LOT';
   gv_tkn_standard_date  CONSTANT VARCHAR2(15)   := 'STANDARD_DATE';
 -- 2009/01/15 H.Itou Add End
+-- V1.7 Add Start
+  gv_tkn_from_v         CONSTANT VARCHAR2(15)   := 'FROM_VALUE';
+  gv_tkn_to_v           CONSTANT VARCHAR2(15)   := 'TO_VALUE';
+-- V1.7 Add End
 --
   -- トークン値
   gv_tkn_inv_loc        CONSTANT VARCHAR2(20)   := '保管倉庫';
@@ -231,6 +244,9 @@ AS
 --
   -- ルックアップ
   gv_lt_item_tran_cls   CONSTANT VARCHAR2(30)   := 'XXINV_ITEM_TRANS_CLASS';
+-- V1.7 Add Start
+  gv_lt_orgin_rest_ptrn CONSTANT VARCHAR2(30)   := 'XXCMN_ORIGIN_REST_PTRN';
+-- V1.7 Add End
 --
   -- プロファイル
   gv_pro_start_date     CONSTANT VARCHAR2(100)  := 'XXINV_VALID_RULE_DEFAULT_START_DATE'; -- XXINV:妥当性ルール開始日
@@ -286,6 +302,16 @@ AS
   gv_actual             CONSTANT VARCHAR2(1)    := '4';    -- 実績(生産バッチNo指定時)
   gv_actual_new         CONSTANT VARCHAR2(1)    := '5';    -- 実績(生産バッチNo指定なし時)
 --
+-- V1.7 Add Start
+  -- 有効フラグ
+  gv_flag_y             CONSTANT VARCHAR2(1)    := 'Y';    -- 有効
+  -- 有機フラグ
+  gv_chk_flg_n          CONSTANT VARCHAR2(1)    := 'N';    -- 非有機
+  -- ダミー初期化
+  gn_dummy_0            CONSTANT NUMBER         := 0;
+  -- 言語
+  gt_lang               CONSTANT mtl_category_sets_tl.language%TYPE := USERENV('LANG');
+-- V1.7 Add End
 -- 2009/03/03 v1.3 ADD START
   -- OPMロットマスタDFF更新APIバージョン
   gn_api_version        CONSTANT NUMBER(2,1)    := 1.0;
@@ -350,6 +376,14 @@ AS
   , to_item_id              ic_item_mst_b.item_id%TYPE        -- 振替先品目ID
   , to_item_no              ic_item_mst_b.item_no%TYPE        -- 振替先品目No
   , to_item_um              ic_item_mst_b.item_um%TYPE        -- 振替先単位
+-- V1.7 Add Start
+    -- OPM品目アドオンマスタ
+  , from_organic            xxcmn_item_mst_b.organic%TYPE                 -- 振替元有機
+  , to_origin_rest          xxcmn_item_mst_b.origin_restriction%TYPE      -- 振替先産地制限
+  , to_tea_period_rest      xxcmn_item_mst_b.tea_period_restriction%TYPE  -- 振替先茶期区分
+  , to_product_year         xxcmn_item_mst_b.product_year%TYPE            -- 振替先年度
+  , to_organic              xxcmn_item_mst_b.organic%TYPE                 -- 振替先有機
+-- V1.7 Add End
     -- OPMロットマスタ
   , from_lot_id             ic_lots_mst.lot_id%TYPE           -- 振替元ロットID
   , to_lot_id               ic_lots_mst.lot_id%TYPE           -- 振替先ロットID
@@ -825,8 +859,14 @@ AS
       -- ==================================
       SELECT ximv.item_id             item_id   -- 品目ID
            , ximv.item_um             item_um   -- 単位
+-- V1.7 Add Start
+           , ximv.organic             organic   -- 有機
+-- V1.7 Add End
       INTO   ir_masters_rec.from_item_id        -- 品目ID(振替元)
            , ir_masters_rec.from_item_um        -- 単位(振替元)
+-- V1.7 Add Start
+           , ir_masters_rec.from_organic        -- 有機(振替元)
+-- V1.7 Add End
       FROM   xxcmn_item_mst_v         ximv      -- OPM品目マスタ情報VIEW
            , xxcmn_item_categories5_v xicv      -- OPM品目カテゴリ情報VIEW5
       WHERE  xicv.item_id         = ximv.item_id
@@ -855,7 +895,17 @@ AS
       -- 振替元ロットIDの取得
       -- ==================================
       SELECT ilm.lot_id  lot_id          -- ロットID
+-- V1.7 Add Start
+           , ilm.attribute10  tea_period_div  -- 茶期区分
+           , ilm.attribute11  product_year    -- 年度
+           , ilm.attribute12  origin          -- 産地
+-- V1.7 Add End
       INTO   ir_masters_rec.from_lot_id  -- ロットID(振替元)
+-- V1.7 Add Start
+           , ir_masters_rec.lot_attribute10             -- 茶期区分(振替元)
+           , ir_masters_rec.lot_attribute11             -- 年度(振替元)
+           , ir_masters_rec.lot_attribute12             -- 産地(振替元)
+-- V1.7 Add End
       FROM   ic_lots_mst ilm             -- OPMロットマスタ
       WHERE  ilm.lot_no  = ir_masters_rec.lot_no
       AND    ilm.item_id = ir_masters_rec.from_item_id
@@ -879,8 +929,20 @@ AS
       -- ==================================
       SELECT ximv.item_id             item_id   -- 品目ID
            , ximv.item_um             item_um   -- 単位
+-- V1.7 Add Start
+           , ximv.origin_restriction      to_origin_rest      -- 産地制限
+           , ximv.tea_period_restriction  to_tea_period_rest  -- 茶期制限
+           , ximv.product_year            to_product_year     -- 年度
+           , ximv.organic                 to_organic          -- 有機
+-- V1.7 Add End
       INTO   ir_masters_rec.to_item_id          -- 品目ID(振替先)
            , ir_masters_rec.to_item_um          -- 単位(振替先)
+-- V1.7 Add Start
+           , ir_masters_rec.to_origin_rest      -- 産地制限(振替先)
+           , ir_masters_rec.to_tea_period_rest  -- 茶期制限(振替先)
+           , ir_masters_rec.to_product_year     -- 年度(振替先)
+           , ir_masters_rec.to_organic          -- 有機(振替先)
+-- V1.7 Add End
       FROM   xxcmn_item_mst_v         ximv      -- OPM品目マスタ情報VIEW
            , xxcmn_item_categories5_v xicv      -- OPM品目カテゴリ情報VIEW5
       WHERE  xicv.item_id         = ximv.item_id
@@ -1104,12 +1166,18 @@ AS
            , ximv.item_id            from_item_id             -- 品目ID
            , ximv.item_no            from_item_no             -- 品目コード
            , ximv.item_um            from_item_um             -- 単位
+-- V1.7 Add Start
+           , ximv.organic            from_organic             -- 有機
+-- V1.7 Add End
       INTO   ir_masters_rec.from_material_detail_id           -- 生産原料詳細ID(振替元)
            , ir_masters_rec.from_trans_id                     -- トランザクションID(振替元)
            , ir_masters_rec.from_lot_id                       -- ロットID(振替元)
            , ir_masters_rec.from_item_id                      -- 品目ID(振替元)
            , ir_masters_rec.from_item_no                      -- 品目コード(振替元)
            , ir_masters_rec.from_item_um                      -- 単位(振替元)
+-- V1.7 Add Start
+           , ir_masters_rec.from_organic                      -- 有機(振替元)
+-- V1.7 Add End
       FROM   gme_material_details gmd                         -- 生産原料詳細
            , ic_tran_pnd          itp                         -- OPM保留在庫トランザクション
            , xxcmn_item_mst_v     ximv                        -- OPM品目情報VIEW
@@ -1136,6 +1204,12 @@ AS
            , ximv.item_id            to_item_id               -- 品目ID
            , ximv.item_no            to_item_no               -- 品目コード
            , ximv.item_um            to_item_um               -- 単位
+-- V1.7 Add Start
+           , ximv.origin_restriction        to_origin_rest      -- 産地制限
+           , ximv.tea_period_restriction    to_tea_period_rest  -- 茶期制限
+           , ximv.product_year              to_product_year     -- 年度
+           , ximv.organic                   to_organic          -- 有機
+-- V1.7 Add End
       INTO   ir_masters_rec.to_material_detail_id             -- 生産原料詳細ID(振替先)
            , ir_masters_rec.to_trans_id                       -- トランザクションID(振替先)
            , ir_masters_rec.trans_qty                         -- トランザクション数量
@@ -1144,6 +1218,12 @@ AS
            , ir_masters_rec.to_item_id                        -- 品目ID(振替先)
            , ir_masters_rec.to_item_no                        -- 品目コード(振替先)
            , ir_masters_rec.to_item_um                        -- 単位(振替先)
+-- V1.7 Add Start
+           , ir_masters_rec.to_origin_rest                    -- 産地制限(振替先)
+           , ir_masters_rec.to_tea_period_rest                -- 茶期制限(振替先)
+           , ir_masters_rec.to_product_year                   -- 年度(振替先)
+           , ir_masters_rec.to_organic                        -- 有機(振替先)
+-- V1.7 Add End
       FROM   gme_material_details gmd                         -- 生産原料詳細
            , ic_tran_pnd          itp                         -- OPM保留在庫トランザクション
            , xxcmn_item_mst_v     ximv                        -- OPM品目情報VIEW
@@ -6314,6 +6394,249 @@ AS
 --
   END chk_location;
 -- 2009/01/15 H.Itou Add End
+-- V1.7 Add Start
+  /**********************************************************************************
+   * Procedure Name   : chk_rest_condition
+   * Description      : 制限条件確認処理(C-41)
+   ***********************************************************************************/
+  PROCEDURE chk_rest_condition(
+    ir_masters_rec IN OUT NOCOPY masters_rec                                        -- 1.チェック対象レコード
+  , ov_errbuf      OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
+  , ov_retcode     OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
+  , ov_errmsg      OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_rest_condition'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    ln_dummy    NUMBER;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ローカル・変数初期化
+    ln_dummy  :=  gn_dummy_0;
+--
+    -- ***************************
+    -- 産地のチェック
+    -- ***************************
+    -- 振替先が設定済みで振替先と振替元が一致しない場合
+    IF (    ir_masters_rec.to_origin_rest IS NOT NULL
+        AND (   ir_masters_rec.lot_attribute12 IS NULL
+            OR  ir_masters_rec.to_origin_rest <> ir_masters_rec.lot_attribute12 ) ) THEN
+      -- 産地制限組み合わせパターンに存在するか確認
+      BEGIN
+        SELECT  COUNT(1)
+        INTO    ln_dummy
+        FROM    fnd_lookup_values flv
+        WHERE   flv.lookup_type = gv_lt_orgin_rest_ptrn
+        AND     ( (     flv.attribute1  = ir_masters_rec.to_origin_rest       -- 産地制限(振替先)
+                    AND flv.attribute2  = ir_masters_rec.lot_attribute12  )   -- 産地(振替元)
+                OR(     flv.attribute1  = ir_masters_rec.lot_attribute12      -- 産地(振替元)
+                    AND flv.attribute2  = ir_masters_rec.to_origin_rest   )   -- 産地制限(振替先)
+                )
+        AND     flv.language          = gt_lang
+        AND     flv.enabled_flag      = gv_flag_y
+        AND     TRUNC( SYSDATE )  BETWEEN flv.start_date_active
+                                  AND NVL ( flv.end_date_active, TRUNC( SYSDATE ) )
+        ;
+      END;
+      -- 存在しない場合エラー
+      IF ln_dummy = 0 THEN
+        -- エラーメッセージを取得
+        lv_errmsg :=  xxcmn_common_pkg.get_msg(
+                        iv_application  => gv_msg_kbn_inv
+                      , iv_name         => gv_msg_xxinv_10215
+                      , iv_token_name1  => gv_tkn_from_v
+                      , iv_token_value1 => ir_masters_rec.lot_attribute12
+                      , iv_token_name2  => gv_tkn_to_v
+                      , iv_token_value2 => ir_masters_rec.to_origin_rest
+                      );
+        -- 共通関数例外ハンドラ
+        RAISE global_api_expt;
+      END IF;
+    END IF;
+    -- ***************************
+    -- 茶期区分のチェック
+    -- ***************************
+    -- 振替先が設定済みで振替先と振替元が一致しない場合エラー
+    IF (    ir_masters_rec.to_tea_period_rest IS NOT NULL
+        AND (   ir_masters_rec.lot_attribute10 IS NULL
+            OR  ir_masters_rec.to_tea_period_rest <> ir_masters_rec.lot_attribute10 ) ) THEN
+      -- エラーメッセージを取得
+      lv_errmsg :=  xxcmn_common_pkg.get_msg(
+                      iv_application  => gv_msg_kbn_inv
+                    , iv_name         => gv_msg_xxinv_10216
+                    , iv_token_name1  => gv_tkn_from_v
+                    , iv_token_value1 => ir_masters_rec.lot_attribute10
+                    , iv_token_name2  => gv_tkn_to_v
+                    , iv_token_value2 => ir_masters_rec.to_tea_period_rest
+                    );
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END IF;
+    -- ***************************
+    -- 年度のチェック
+    -- ***************************
+    -- 振替先が設定済みで振替先と振替元が一致しない場合エラー
+    IF (    ir_masters_rec.to_product_year IS NOT NULL
+        AND (   ir_masters_rec.lot_attribute11 IS NULL
+            OR  ir_masters_rec.to_product_year <> ir_masters_rec.lot_attribute11 ) )  THEN
+      -- エラーメッセージを取得
+      lv_errmsg :=  xxcmn_common_pkg.get_msg(
+                      iv_application  => gv_msg_kbn_inv
+                    , iv_name         => gv_msg_xxinv_10217
+                    , iv_token_name1  => gv_tkn_from_v
+                    , iv_token_value1 => ir_masters_rec.lot_attribute11
+                    , iv_token_name2  => gv_tkn_to_v
+                    , iv_token_value2 => ir_masters_rec.to_product_year
+                    );
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END IF;
+    -- ***************************
+    -- 有機のチェック
+    -- ***************************
+    -- 振替先または振替元がY
+    IF (  NVL( ir_masters_rec.to_organic, gv_chk_flg_n )
+          <> NVL( ir_masters_rec.from_organic, gv_chk_flg_n ) ) THEN
+      -- 振替先、振替元が一致しない場合エラー
+      -- エラーメッセージを取得
+      lv_errmsg :=  xxcmn_common_pkg.get_msg(
+                      iv_application  => gv_msg_kbn_inv
+                    , iv_name         => gv_msg_xxinv_10218
+                    , iv_token_name1  => gv_tkn_from_v
+                    , iv_token_value1 => ir_masters_rec.from_organic
+                    , iv_token_name2  => gv_tkn_to_v
+                    , iv_token_value2 => ir_masters_rec.to_organic
+                    );
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_rest_condition;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_from_lot
+   * Description      : 振替元ロット情報取得(C-42)
+   ***********************************************************************************/
+  PROCEDURE get_from_lot(
+    ir_masters_rec IN OUT NOCOPY masters_rec                                 -- 1.チェック対象レコード
+  , ov_errbuf      OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
+  , ov_retcode     OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
+  , ov_errmsg      OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_from_lot'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    BEGIN
+      -- ==================================
+      -- 振替元ロットDFF情報の取得
+      -- ==================================
+      SELECT ilm.attribute10    AS  tea_period_div  -- 茶期区分
+           , ilm.attribute11    AS  product_year    -- 年度
+           , ilm.attribute12    AS  origin          -- 産地
+      INTO   ir_masters_rec.lot_attribute10             -- 茶期区分(振替元)
+           , ir_masters_rec.lot_attribute11             -- 年度(振替元)
+           , ir_masters_rec.lot_attribute12             -- 産地(振替元)
+      FROM   ic_lots_mst ilm             -- OPMロットマスタ
+      WHERE  ilm.lot_id  = ir_masters_rec.from_lot_id
+      AND    ilm.item_id = ir_masters_rec.from_item_id
+      ;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+                                            , gv_msg_xxinv_10219);
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_from_lot;
+-- V1.7 Add End
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -6440,6 +6763,22 @@ AS
         gn_error_cnt := gn_error_cnt + 1;
         RAISE global_process_expt;
       END IF;
+-- V1.7 Add Start
+      -- ===============================
+      -- 制限条件確認処理(C-41)
+      -- ===============================
+      chk_rest_condition(
+          ir_masters_rec  => lr_masters_rec
+        , ov_errbuf       => lv_errbuf
+        , ov_retcode      => lv_retcode
+        , ov_errmsg       => lv_errmsg
+      );
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+-- V1.7 Add End
 --
       -- ===============================
       -- 在庫クローズチェック(C-23)
@@ -6652,6 +6991,38 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- V1.7 Add Start
+      -- ===============================
+      -- 振替元ロット情報取得(C-42)
+      -- ===============================
+      get_from_lot(
+          ir_masters_rec  => lr_masters_rec
+        , ov_errbuf       => lv_errbuf
+        , ov_retcode      => lv_retcode
+        , ov_errmsg       => lv_errmsg
+      );
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- ===============================
+      -- 制限条件確認処理(C-41)
+      -- ===============================
+      chk_rest_condition(
+          ir_masters_rec  => lr_masters_rec
+        , ov_errbuf       => lv_errbuf
+        , ov_retcode      => lv_retcode
+        , ov_errmsg       => lv_errmsg
+      );
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+--
+-- V1.7 Add End
 -- 2009/03/03 v1.3 DELETE START
 --      -- ===============================
 --      -- 在庫クローズチェック(C-23)
@@ -7158,6 +7529,22 @@ AS
         RAISE global_api_expt;
       END IF;
 --
+-- V1.7 Add Start
+      -- ===============================
+      -- 制限条件確認処理(C-41)
+      -- ===============================
+      chk_rest_condition(
+          ir_masters_rec  => lr_masters_rec
+        , ov_errbuf       => lv_errbuf
+        , ov_retcode      => lv_retcode
+        , ov_errmsg       => lv_errmsg
+      );
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+-- V1.7 Add End
 -- 2009/03/03 v1.3 ADD END
       -- ===============================
       -- 在庫クローズチェック(C-23)
@@ -7328,6 +7715,23 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- V1.7 Add Start
+      -- ===============================
+      -- 制限条件確認処理(C-41)
+      -- ===============================
+      chk_rest_condition(
+          ir_masters_rec  => lr_masters_rec
+        , ov_errbuf       => lv_errbuf
+        , ov_retcode      => lv_retcode
+        , ov_errmsg       => lv_errmsg
+      );
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+--
+-- V1.7 Add End
       -- ===============================
       -- 在庫クローズチェック(C-23)
       -- ===============================
