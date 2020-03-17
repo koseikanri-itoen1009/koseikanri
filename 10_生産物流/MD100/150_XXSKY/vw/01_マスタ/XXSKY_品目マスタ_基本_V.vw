@@ -101,6 +101,14 @@ CREATE OR REPLACE VIEW APPS.XXSKY_品目マスタ_基本_V
 ,ロット逆転区分
 ,ロット逆転区分名称
 -- 2018/10/29 N.Koyama Add End   E_本稼動_15277
+-- 2020/02/27 Y.Sasaki Add Start E_本稼動_16213
+,産地制限
+,産地制限名称
+,茶期制限
+,茶期制限名称
+,年度
+,有機
+-- 2020/02/27 Y.Sasaki Add End E_本稼動_16213
 -- 2019/07/02 N.Abe Add Start E_本稼動_15625
 ,品目ステータス
 ,品目ステータス名称
@@ -368,6 +376,24 @@ SELECT  IIMB.item_no                  item_no                     --品目コード
            AND FLV19.lookup_code = XIMB.lot_reversal_type         --クイックコード
        ) lot_reversal_name
 -- 2018/10/29 N.Koyama Add End  E_本稼動_15277
+-- 2020/02/27 Y.Sasaki Add Start E_本稼動_16213
+       ,XIMB.origin_restriction             origin_restriction    --産地制限
+       ,(SELECT FLV22.meaning
+         FROM fnd_lookup_values FLV22                             --クイックコード(産地)
+         WHERE FLV22.language    = 'JA'                           --言語
+           AND FLV22.lookup_type = 'XXCMN_L07'                    --クイックコードタイプ
+           AND FLV22.lookup_code = XIMB.origin_restriction        --クイックコード
+       ) origin_restriction_name
+       ,XIMB.tea_period_restriction         tea_period_restriction  --茶期制限
+       ,(SELECT FLV23.meaning
+         FROM fnd_lookup_values FLV23                             --クイックコード(茶期区分)
+         WHERE FLV23.language    = 'JA'                           --言語
+           AND FLV23.lookup_type = 'XXCMN_L06'                    --クイックコードタイプ
+           AND FLV23.lookup_code = XIMB.tea_period_restriction    --クイックコード
+       ) tea_period_restriction_name
+       ,XIMB.product_year                                         --年度
+       ,XIMB.organic                                              --有機
+-- 2020/02/27 Y.Sasaki Add End E_本稼動_16213
 -- 2019/07/02 N.Abe Add Start E_本稼動_15625
        ,XSIB.item_status         --品目ステータス
        ,(SELECT FLV20.meaning
@@ -725,6 +751,20 @@ COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.ロット逆転区分         IS 'ロット
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.ロット逆転区分名称     IS 'ロット逆転区分名称'
 /
 -- 2018/10/29 N.Koyama Add End   E_本稼動_15277
+-- 2020/02/27 Y.Sasaki Add Start E_本稼動_16213
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.産地制限               IS '産地制限'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.産地制限名称           IS '産地制限名称'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.茶期制限               IS '茶期制限'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.茶期制限名称           IS '茶期制限名称'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.年度                   IS '年度'
+/
+COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.有機                   IS '有機'
+/
+-- 2020/02/27 Y.Sasaki Add End E_本稼動_16213
 -- 2019/07/02 N.Abe Add Start E_本稼動_15625
 COMMENT ON COLUMN APPS.XXSKY_品目マスタ_基本_V.品目ステータス         IS '品目ステータス'
 /
