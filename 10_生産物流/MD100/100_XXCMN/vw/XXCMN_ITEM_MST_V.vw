@@ -66,6 +66,12 @@ CREATE OR REPLACE VIEW xxcmn_item_mst_v
   attribute3,
   attribute4,
   attribute5
+-- E_–{‰Ò“®_16213 V1.1 Y.Sasaki Add Start
+ ,origin_restriction
+ ,tea_period_restriction
+ ,product_year
+ ,organic
+-- E_–{‰Ò“®_16213 V1.1 Y.Sasaki Add End
 )
 AS
   SELECT  Iimb.item_id,
@@ -146,6 +152,12 @@ AS
           ximb.attribute3,
           ximb.attribute4,
           ximb.attribute5
+-- E_–{‰Ò“®_16213 V1.1 Y.Sasaki Add Start
+        , ximb.origin_restriction
+        , ximb.tea_period_restriction
+        , ximb.product_year
+        , ximb.organic
+-- E_–{‰Ò“®_16213 V1.1 Y.Sasaki Add End
   FROM    ic_item_mst_b      iimb,
           xxcmn_item_mst_b   ximb,
           mtl_system_items_b msib
@@ -224,5 +236,11 @@ COMMENT ON COLUMN xxcmn_item_mst_v.attribute2                  IS '—\”õ‚Q';
 COMMENT ON COLUMN xxcmn_item_mst_v.attribute3                  IS '—\”õ‚R';
 COMMENT ON COLUMN xxcmn_item_mst_v.attribute4                  IS '—\”õ‚S';
 COMMENT ON COLUMN xxcmn_item_mst_v.attribute5                  IS '—\”õ‚T';
+-- E_–{‰Ò“®_16213 V1.1 Y.Sasaki Add Start
+COMMENT ON COLUMN xxcmn_item_mst_v.origin_restriction          IS 'Y’n§ŒÀ';
+COMMENT ON COLUMN xxcmn_item_mst_v.tea_period_restriction      IS '’ƒŠú§ŒÀ';
+COMMENT ON COLUMN xxcmn_item_mst_v.product_year                IS '”N“x';
+COMMENT ON COLUMN xxcmn_item_mst_v.organic                     IS '—L‹@';
+-- E_–{‰Ò“®_16213 V1.1 Y.Sasaki Add End
 --
 COMMENT ON TABLE  xxcmn_item_mst_v IS 'OPM•i–Úî•ñVIEW';
