@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO022A01C(body)
  * Description      : AP仕入請求情報生成（仕入）
  * MD.050           : AP仕入請求情報生成（仕入）<MD050_CFO_022_A01>
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2019-10-29    1.7   Y.Shouji         E_本稼動_15601(軽減税率)不具合対応
  *                                       ・口銭の消費税を標準税率にて処理
  *  2019-11-14    1.8   S.Kuwako         E_本稼動_16049対応
+ *  2020-03-17    1.9   S.Kuwako         E_本稼動_16232対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -254,7 +255,7 @@ AS
   gd_target_date_to           DATE          DEFAULT NULL;    -- 抽出対象日付TO
 --
   gn_payment_amount_all       NUMBER        DEFAULT NULL;    -- 請求書単位：支払金額（税込）
-  gn_commission_all           NUMBER        DEFAULT NULL;    -- 請求書単位：口銭金額（税抜）
+  gn_commission_all           NUMBER        DEFAULT NULL;    -- 請求書単位：口銭金額（税込）
   gn_assessment_all           NUMBER        DEFAULT NULL;    -- 請求書単位：賦課金額
   gv_vendor_code_hdr          VARCHAR2(100) DEFAULT NULL;    -- 請求書単位：仕入先コード（生産）
   gv_vendor_site_code_hdr     VARCHAR2(100) DEFAULT NULL;    -- 請求書単位：仕入先サイトコード（生産）
@@ -302,7 +303,10 @@ AS
     (
       tax_rate                NUMBER                         -- 消費税率
      ,payment_amount_net      NUMBER                         -- 支払金額（税抜）
-     ,commission_net          NUMBER                         -- 口銭金額（税抜）
+-- 2020-03-17 Ver1.9 Mod Start
+--     ,commission_net          NUMBER                         -- 口銭金額（税抜）
+     ,commission_price        NUMBER                         -- 口銭金額（税込）
+-- 2020-03-17 Ver1.9 Mod End
      ,assessment              NUMBER                         -- 賦課金額
      ,payment_tax             NUMBER                         -- 支払消費税額
      ,tax_code                NUMBER                         -- 税コード（営業）
@@ -1431,87 +1435,89 @@ AS
       END IF;
     END IF;
 --
-    -- 2015-01-26 Ver1.1 Add Start
-    -- 口銭消費税がある場合、共通関数で科目情報を取得
-    IF ( gn_commission_tax_all <> 0 ) THEN
-      -- 借方
-      -- 共通関数で口銭消費税レコードの「摘要」を取得
-      xxcfo020a06c.get_siwake_account_title(
-          iv_report                   =>  gv_je_ptn_purchasing           -- (IN)帳票
-        , iv_class_code               =>  gv_item_class_code_hdr         -- (IN)品目区分
-        , iv_prod_class               =>  NULL                           -- (IN)商品区分
-        , iv_reason_code              =>  NULL                           -- (IN)事由コード
-        , iv_ptn_siwake               =>  cv_ptn_siwake_01               -- (IN)仕訳パターン ：1
-        , iv_line_no                  =>  cv_line_no_06                  -- (IN)行番号(6)
-        , iv_gloif_dr_cr              =>  cv_gloif_dr                    -- (IN)借方・貸方
-        , iv_warehouse_code           =>  NULL                           -- (IN)倉庫コード
-        , ov_company_code             =>  lv_comp_code_comm_tax_dr       -- (OUT)会社
-        , ov_department_code          =>  lv_dept_code_comm_tax_dr       -- (OUT)部門
-        , ov_account_title            =>  lv_acct_title_comm_tax_dr      -- (OUT)勘定科目
-        , ov_account_subsidiary       =>  lv_acct_sub_comm_tax_dr        -- (OUT)補助科目
-        , ov_description              =>  lv_desc_comm_tax_dr            -- (OUT)摘要
-        , ov_retcode                  =>  lv_retcode                     -- リターンコード
-        , ov_errbuf                   =>  lv_errbuf                      -- エラーメッセージ
-        , ov_errmsg                   =>  lv_errmsg                      -- ユーザー・エラーメッセージ
-      );
+-- 2020-03-17 Ver1.9 Del Start
+--    -- 2015-01-26 Ver1.1 Add Start
+--    -- 口銭消費税がある場合、共通関数で科目情報を取得
+--    IF ( gn_commission_tax_all <> 0 ) THEN
+--      -- 借方
+--      -- 共通関数で口銭消費税レコードの「摘要」を取得
+--      xxcfo020a06c.get_siwake_account_title(
+--          iv_report                   =>  gv_je_ptn_purchasing           -- (IN)帳票
+--        , iv_class_code               =>  gv_item_class_code_hdr         -- (IN)品目区分
+--        , iv_prod_class               =>  NULL                           -- (IN)商品区分
+--        , iv_reason_code              =>  NULL                           -- (IN)事由コード
+--        , iv_ptn_siwake               =>  cv_ptn_siwake_01               -- (IN)仕訳パターン ：1
+--        , iv_line_no                  =>  cv_line_no_06                  -- (IN)行番号(6)
+--        , iv_gloif_dr_cr              =>  cv_gloif_dr                    -- (IN)借方・貸方
+--        , iv_warehouse_code           =>  NULL                           -- (IN)倉庫コード
+--        , ov_company_code             =>  lv_comp_code_comm_tax_dr       -- (OUT)会社
+--        , ov_department_code          =>  lv_dept_code_comm_tax_dr       -- (OUT)部門
+--        , ov_account_title            =>  lv_acct_title_comm_tax_dr      -- (OUT)勘定科目
+--        , ov_account_subsidiary       =>  lv_acct_sub_comm_tax_dr        -- (OUT)補助科目
+--        , ov_description              =>  lv_desc_comm_tax_dr            -- (OUT)摘要
+--        , ov_retcode                  =>  lv_retcode                     -- リターンコード
+--        , ov_errbuf                   =>  lv_errbuf                      -- エラーメッセージ
+--        , ov_errmsg                   =>  lv_errmsg                      -- ユーザー・エラーメッセージ
+--      );
+----
+--      IF ( lv_retcode <> cv_status_normal ) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      -- 貸方
+--      -- 共通関数で科目情報を取得
+--      xxcfo020a06c.get_siwake_account_title(
+--          iv_report                   =>  gv_je_ptn_purchasing           -- (IN)帳票
+--        , iv_class_code               =>  gv_item_class_code_hdr         -- (IN)品目区分
+--        , iv_prod_class               =>  NULL                           -- (IN)商品区分
+--        , iv_reason_code              =>  NULL                           -- (IN)事由コード
+--        , iv_ptn_siwake               =>  cv_ptn_siwake_01               -- (IN)仕訳パターン ：1
+--        , iv_line_no                  =>  cv_line_no_07                  -- (IN)行番号 ：7
+--        , iv_gloif_dr_cr              =>  cv_gloif_cr                    -- (IN)借方・貸方
+--        , iv_warehouse_code           =>  NULL                           -- (IN)倉庫コード
+--        , ov_company_code             =>  lv_comp_code_comm_tax_cr       -- (OUT)会社
+--        , ov_department_code          =>  lv_dept_code_comm_tax_cr       -- (OUT)部門
+--        , ov_account_title            =>  lv_acct_title_comm_tax_cr      -- (OUT)勘定科目
+--        , ov_account_subsidiary       =>  lv_acct_sub_comm_tax_cr        -- (OUT)補助科目
+--        , ov_description              =>  lv_desc_comm_tax_cr            -- (OUT)摘要
+--        , ov_retcode                  =>  lv_retcode                     -- リターンコード
+--        , ov_errbuf                   =>  lv_errbuf                      -- エラーメッセージ
+--        , ov_errmsg                   =>  lv_errmsg                      -- ユーザー・エラーメッセージ
+--      );
+----
+--      IF ( lv_retcode <> cv_status_normal ) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      -- 口銭消費税貸方レコードのCCIDを取得
+--      lv_ccid_comm_tax_cr := xxcok_common_pkg.get_code_combination_id_f(
+--                               id_proc_date => gd_process_date                 -- 処理日
+--                             , iv_segment1  => lv_comp_code_comm_tax_cr        -- 会社コード
+--                             , iv_segment2  => lv_dept_code_comm_tax_cr        -- 部門コード
+--                             , iv_segment3  => lv_acct_title_comm_tax_cr       -- 勘定科目コード
+--                             , iv_segment4  => lv_acct_sub_comm_tax_cr         -- 補助科目コード
+--                             , iv_segment5  => gv_aff5_customer_dummy          -- 顧客コードダミー値
+--                             , iv_segment6  => gv_aff6_company_dummy           -- 企業コードダミー値
+--                             , iv_segment7  => gv_aff7_preliminary1_dummy      -- 予備1ダミー値
+--                             , iv_segment8  => gv_aff8_preliminary2_dummy      -- 予備2ダミー値
+--                             );
+--      IF ( lv_ccid_comm_tax_cr IS NULL ) THEN
+--        lv_errmsg    := xxccp_common_pkg.get_msg(
+--                          iv_application  => cv_appl_short_name_cfo
+--                        , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
+--                        , iv_token_name1  => cv_tkn_data
+--                        , iv_token_value1 => cv_msg_out_item_05            -- 口銭CCID
+--                        , iv_token_name2  => cv_tkn_item
+--                        , iv_token_value2 => cv_msg_out_item_04            -- 品目区分
+--                        , iv_token_name3  => cv_tkn_key
+--                        , iv_token_value3 => gv_item_class_code_hdr
+--                        );
+--        RAISE global_api_expt;
+--      END IF;
 --
-      IF ( lv_retcode <> cv_status_normal ) THEN
-        RAISE global_api_expt;
-      END IF;
---
-      -- 貸方
-      -- 共通関数で科目情報を取得
-      xxcfo020a06c.get_siwake_account_title(
-          iv_report                   =>  gv_je_ptn_purchasing           -- (IN)帳票
-        , iv_class_code               =>  gv_item_class_code_hdr         -- (IN)品目区分
-        , iv_prod_class               =>  NULL                           -- (IN)商品区分
-        , iv_reason_code              =>  NULL                           -- (IN)事由コード
-        , iv_ptn_siwake               =>  cv_ptn_siwake_01               -- (IN)仕訳パターン ：1
-        , iv_line_no                  =>  cv_line_no_07                  -- (IN)行番号 ：7
-        , iv_gloif_dr_cr              =>  cv_gloif_cr                    -- (IN)借方・貸方
-        , iv_warehouse_code           =>  NULL                           -- (IN)倉庫コード
-        , ov_company_code             =>  lv_comp_code_comm_tax_cr       -- (OUT)会社
-        , ov_department_code          =>  lv_dept_code_comm_tax_cr       -- (OUT)部門
-        , ov_account_title            =>  lv_acct_title_comm_tax_cr      -- (OUT)勘定科目
-        , ov_account_subsidiary       =>  lv_acct_sub_comm_tax_cr        -- (OUT)補助科目
-        , ov_description              =>  lv_desc_comm_tax_cr            -- (OUT)摘要
-        , ov_retcode                  =>  lv_retcode                     -- リターンコード
-        , ov_errbuf                   =>  lv_errbuf                      -- エラーメッセージ
-        , ov_errmsg                   =>  lv_errmsg                      -- ユーザー・エラーメッセージ
-      );
---
-      IF ( lv_retcode <> cv_status_normal ) THEN
-        RAISE global_api_expt;
-      END IF;
---
-      -- 口銭消費税貸方レコードのCCIDを取得
-      lv_ccid_comm_tax_cr := xxcok_common_pkg.get_code_combination_id_f(
-                               id_proc_date => gd_process_date                 -- 処理日
-                             , iv_segment1  => lv_comp_code_comm_tax_cr        -- 会社コード
-                             , iv_segment2  => lv_dept_code_comm_tax_cr        -- 部門コード
-                             , iv_segment3  => lv_acct_title_comm_tax_cr       -- 勘定科目コード
-                             , iv_segment4  => lv_acct_sub_comm_tax_cr         -- 補助科目コード
-                             , iv_segment5  => gv_aff5_customer_dummy          -- 顧客コードダミー値
-                             , iv_segment6  => gv_aff6_company_dummy           -- 企業コードダミー値
-                             , iv_segment7  => gv_aff7_preliminary1_dummy      -- 予備1ダミー値
-                             , iv_segment8  => gv_aff8_preliminary2_dummy      -- 予備2ダミー値
-                             );
-      IF ( lv_ccid_comm_tax_cr IS NULL ) THEN
-        lv_errmsg    := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_appl_short_name_cfo
-                        , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
-                        , iv_token_name1  => cv_tkn_data
-                        , iv_token_value1 => cv_msg_out_item_05            -- 口銭CCID
-                        , iv_token_name2  => cv_tkn_item
-                        , iv_token_value2 => cv_msg_out_item_04            -- 品目区分
-                        , iv_token_name3  => cv_tkn_key
-                        , iv_token_value3 => gv_item_class_code_hdr
-                        );
-        RAISE global_api_expt;
-      END IF;
---
-    END IF;
-    -- 2015-01-26 Ver1.1 Add End
+--    END IF;
+--    -- 2015-01-26 Ver1.1 Add End
+-- 2020-03-17 Ver1.9 Del End
 --
     -- 共通関数で消費税レコードの「摘要」を取得
     xxcfo020a06c.get_siwake_account_title(
@@ -1698,7 +1704,10 @@ AS
       ln_detail_num := ln_detail_num + 1;
 --
       -- 口銭レコードの登録
-      IF ( g_ap_invoice_line_tab(line_cnt).commission_net <> 0 ) THEN
+-- 2020-03-17 Ver1.9 Mod Start
+--      IF ( g_ap_invoice_line_tab(line_cnt).commission_net <> 0 ) THEN
+      IF ( g_ap_invoice_line_tab(line_cnt).commission_price <> 0 ) THEN
+-- 2020-03-17 Ver1.9 Mod End
         BEGIN
           INSERT INTO ap_invoice_lines_interface (
             invoice_id                                        -- 請求書ID
@@ -1722,8 +1731,12 @@ AS
           , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
           , ln_detail_num                                     -- ヘッダー内での連番
           , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
-          , g_ap_invoice_line_tab(line_cnt).commission_net * cn_minus
-                                                              -- 口銭金額（税抜）
+-- 2020-03-17 Ver1.9 Mod Start
+--          , g_ap_invoice_line_tab(line_cnt).commission_net * cn_minus
+--                                                              -- 口銭金額（税抜）
+          , g_ap_invoice_line_tab(line_cnt).commission_price * cn_minus
+                                                              -- 口銭金額（税込）
+-- 2020-03-17 Ver1.9 Mod End
           -- 2015-01-26 Ver1.1 Mod Start
 --          , lv_description_kosen || gv_vendor_code_hdr || gv_mfg_vendor_name
           , gv_vendor_code_hdr || cv_underbar || lv_description_kosen || cv_underbar || gv_mfg_vendor_name
@@ -1831,146 +1844,148 @@ AS
       --
       END IF;
 --
-      -- 2015-01-26 Ver1.1 Add Start
-      -- 口銭消費税レコードの登録
-      IF ( g_ap_invoice_line_tab(line_cnt).commission_tax <> 0 ) THEN
--- 2019-10-29 Ver1.7 Add Start
-        -- 口銭消費税レコードのCCIDをAP税コードマスタから取得
-        BEGIN
-          SELECT  atc.name                     name                      -- 税コード（営業）
-                 ,atc.tax_code_combination_id  tax_code_combination_id   -- 消費税勘定CCID
-          INTO    lt_name
-                 ,lt_tax_code_combination_id
-          FROM    ap_tax_codes_all atc
-          WHERE   atc.attribute2   = cv_tax_sum_type_2                         -- 課税集計区分(2:課税仕入)
-          AND     atc.attribute4   = g_ap_invoice_line_tab(line_cnt).tax_rate  -- 生産税率
-          AND     atc.org_id       = gn_org_id_sales                           -- 営業単位
-          ;
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errmsg    := xxccp_common_pkg.get_msg(
-                              iv_application  => cv_appl_short_name_cfo
-                            , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
-                            , iv_token_name1  => cv_tkn_data
-                            , iv_token_value1 => cv_msg_out_data_05            -- AP税コードマスタ
-                            , iv_token_name2  => cv_tkn_item
-                            , iv_token_value2 => cv_msg_out_item_09            -- 税率
-                            , iv_token_name3  => cv_tkn_key
-                            , iv_token_value3 => g_ap_invoice_line_tab(line_cnt).tax_rate
-                            );
-            RAISE global_process_expt;
-        END;
---
--- 2019-10-29 Ver1.7 Add End
-        BEGIN
-          -- 借方　仮払消費税
-          INSERT INTO ap_invoice_lines_interface (
-            invoice_id                                        -- 請求書ID
-          , invoice_line_id                                   -- 請求書明細ID
-          , line_number                                       -- 明細行番号
-          , line_type_lookup_code                             -- 明細タイプ
-          , amount                                            -- 明細金額
-          , description                                       -- 摘要
-          , tax_code                                          -- 税コード
-          , dist_code_combination_id                          -- CCID
-          , last_updated_by                                   -- 最終更新者
-          , last_update_date                                  -- 最終更新日
-          , last_update_login                                 -- 最終ログインID
-          , created_by                                        -- 作成者
-          , creation_date                                     -- 作成日
-          , attribute_category                                -- DFFコンテキスト
-          , org_id                                            -- 組織ID
-          )
-          VALUES (
-            ap_invoices_interface_s.CURRVAL                   -- 直前に作成したAP請求書OIFヘッダーの請求ID
-          , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
-          , ln_detail_num                                     -- ヘッダー内での連番
-          , gv_detail_type_tax                                -- 明細タイプ：税金(TAX)
-          , g_ap_invoice_line_tab(line_cnt).commission_tax    -- 賦課金額（税込）
-          , gv_vendor_code_hdr || cv_underbar || lv_desc_comm_tax_dr || cv_underbar || gv_mfg_vendor_name
-                                                              -- 摘要（仕入先C＋摘要＋仕入先名）
--- 2019-10-29 Ver1.7 Mod Start
---          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
---          , g_ap_invoice_line_tab(line_cnt).tax_ccid          -- CCID
-          , lt_name                                           -- 請求書税コード
-          , lt_tax_code_combination_id                        -- CCID
--- 2017-12-05 Ver1.7 Mod End
-          , cn_last_updated_by                                -- 最終更新者
-          , SYSDATE                                           -- 最終更新日
-          , cn_last_update_login                              -- 最終ログインID
-          , cn_created_by                                     -- 作成者
-          , SYSDATE                                           -- 作成日
-          , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
-          , gn_org_id_sales                                   -- 組織ID
-          );
---
-          -- 正常に作成された場合、ヘッダー内明細連番をカウントアップ
-          ln_detail_num := ln_detail_num + 1;
---
-          -- 貸方　預かり金
-          INSERT INTO ap_invoice_lines_interface (
-            invoice_id                                        -- 請求書ID
-          , invoice_line_id                                   -- 請求書明細ID
-          , line_number                                       -- 明細行番号
-          , line_type_lookup_code                             -- 明細タイプ
-          , amount                                            -- 明細金額
-          , description                                       -- 摘要
-          , tax_code                                          -- 税コード
-          , dist_code_combination_id                          -- CCID
-          , last_updated_by                                   -- 最終更新者
-          , last_update_date                                  -- 最終更新日
-          , last_update_login                                 -- 最終ログインID
-          , created_by                                        -- 作成者
-          , creation_date                                     -- 作成日
-          , attribute_category                                -- DFFコンテキスト
-          , org_id                                            -- 組織ID
-          )
-          VALUES (
-            ap_invoices_interface_s.CURRVAL                   -- 直前に作成したAP請求書OIFヘッダーの請求ID
-          , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
-          , ln_detail_num                                     -- ヘッダー内での連番
-          , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
-          , g_ap_invoice_line_tab(line_cnt).commission_tax * cn_minus
-                                                              -- 賦課金額（税込）
-          , gv_vendor_code_hdr || cv_underbar || lv_desc_comm_tax_cr || cv_underbar || gv_mfg_vendor_name
-                                                              -- 摘要（仕入先C＋摘要＋仕入先名）
--- 2017-12-05 Ver1.5 Mod Start
---          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
-          , cv_tax_code_0000                                  -- 請求書税コード
--- 2017-12-05 Ver1.5 Mod End
-          , lv_ccid_comm_tax_cr                               -- CCID
-          , cn_last_updated_by                                -- 最終更新者
-          , SYSDATE                                           -- 最終更新日
-          , cn_last_update_login                              -- 最終ログインID
-          , cn_created_by                                     -- 作成者
-          , SYSDATE                                           -- 作成日
-          , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
-          , gn_org_id_sales                                   -- 組織ID
-          );
---
-          -- 正常に作成された場合、ヘッダー内明細連番をカウントアップ
-          ln_detail_num := ln_detail_num + 1;
---
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_appl_short_name_cfo            -- 'XXCFO'
-                      , iv_name         => cv_msg_cfo_10040
-                      , iv_token_name1  => cv_tkn_data                       -- データ
-                      , iv_token_value1 => cv_msg_out_data_09                -- AP請求書OIF明細_賦課金
-                      , iv_token_name2  => cv_tkn_vendor_site_code           -- 仕入先サイトコード
-                      , iv_token_value2 => gv_vendor_code_hdr
-                      , iv_token_name3  => cv_tkn_department                 -- 部門
-                      , iv_token_value3 => gv_department_code_hdr
-                      , iv_token_name4  => cv_tkn_item_kbn                   -- 品目区分
-                      , iv_token_value4 => gv_item_class_code_hdr
-                      );
-            lv_errbuf := lv_errmsg;
-            RAISE global_process_expt;
-        END;
-      --
-      END IF;
-      -- 2015-01-26 Ver1.1 Add End
+-- 2020-03-17 Ver1.9 Del Start
+--      -- 2015-01-26 Ver1.1 Add Start
+--      -- 口銭消費税レコードの登録
+--      IF ( g_ap_invoice_line_tab(line_cnt).commission_tax <> 0 ) THEN
+---- 2019-10-29 Ver1.7 Add Start
+--        -- 口銭消費税レコードのCCIDをAP税コードマスタから取得
+--        BEGIN
+--          SELECT  atc.name                     name                      -- 税コード（営業）
+--                 ,atc.tax_code_combination_id  tax_code_combination_id   -- 消費税勘定CCID
+--          INTO    lt_name
+--                 ,lt_tax_code_combination_id
+--          FROM    ap_tax_codes_all atc
+--          WHERE   atc.attribute2   = cv_tax_sum_type_2                         -- 課税集計区分(2:課税仕入)
+--          AND     atc.attribute4   = g_ap_invoice_line_tab(line_cnt).tax_rate  -- 生産税率
+--          AND     atc.org_id       = gn_org_id_sales                           -- 営業単位
+--          ;
+--        EXCEPTION
+--          WHEN OTHERS THEN
+--            lv_errmsg    := xxccp_common_pkg.get_msg(
+--                              iv_application  => cv_appl_short_name_cfo
+--                            , iv_name         => cv_msg_cfo_10035              -- データ取得エラー
+--                            , iv_token_name1  => cv_tkn_data
+--                            , iv_token_value1 => cv_msg_out_data_05            -- AP税コードマスタ
+--                            , iv_token_name2  => cv_tkn_item
+--                            , iv_token_value2 => cv_msg_out_item_09            -- 税率
+--                            , iv_token_name3  => cv_tkn_key
+--                            , iv_token_value3 => g_ap_invoice_line_tab(line_cnt).tax_rate
+--                            );
+--            RAISE global_process_expt;
+--        END;
+----
+---- 2019-10-29 Ver1.7 Add End
+--        BEGIN
+--          -- 借方　仮払消費税
+--          INSERT INTO ap_invoice_lines_interface (
+--            invoice_id                                        -- 請求書ID
+--          , invoice_line_id                                   -- 請求書明細ID
+--          , line_number                                       -- 明細行番号
+--          , line_type_lookup_code                             -- 明細タイプ
+--          , amount                                            -- 明細金額
+--          , description                                       -- 摘要
+--          , tax_code                                          -- 税コード
+--          , dist_code_combination_id                          -- CCID
+--          , last_updated_by                                   -- 最終更新者
+--          , last_update_date                                  -- 最終更新日
+--          , last_update_login                                 -- 最終ログインID
+--          , created_by                                        -- 作成者
+--          , creation_date                                     -- 作成日
+--          , attribute_category                                -- DFFコンテキスト
+--          , org_id                                            -- 組織ID
+--          )
+--          VALUES (
+--            ap_invoices_interface_s.CURRVAL                   -- 直前に作成したAP請求書OIFヘッダーの請求ID
+--          , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
+--          , ln_detail_num                                     -- ヘッダー内での連番
+--          , gv_detail_type_tax                                -- 明細タイプ：税金(TAX)
+--          , g_ap_invoice_line_tab(line_cnt).commission_tax    -- 賦課金額（税込）
+--          , gv_vendor_code_hdr || cv_underbar || lv_desc_comm_tax_dr || cv_underbar || gv_mfg_vendor_name
+--                                                              -- 摘要（仕入先C＋摘要＋仕入先名）
+---- 2019-10-29 Ver1.7 Mod Start
+----          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+----          , g_ap_invoice_line_tab(line_cnt).tax_ccid          -- CCID
+--          , lt_name                                           -- 請求書税コード
+--          , lt_tax_code_combination_id                        -- CCID
+---- 2017-12-05 Ver1.7 Mod End
+--          , cn_last_updated_by                                -- 最終更新者
+--          , SYSDATE                                           -- 最終更新日
+--          , cn_last_update_login                              -- 最終ログインID
+--          , cn_created_by                                     -- 作成者
+--          , SYSDATE                                           -- 作成日
+--          , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
+--          , gn_org_id_sales                                   -- 組織ID
+--          );
+----
+--          -- 正常に作成された場合、ヘッダー内明細連番をカウントアップ
+--          ln_detail_num := ln_detail_num + 1;
+----
+--          -- 貸方　預かり金
+--          INSERT INTO ap_invoice_lines_interface (
+--            invoice_id                                        -- 請求書ID
+--          , invoice_line_id                                   -- 請求書明細ID
+--          , line_number                                       -- 明細行番号
+--          , line_type_lookup_code                             -- 明細タイプ
+--          , amount                                            -- 明細金額
+--          , description                                       -- 摘要
+--          , tax_code                                          -- 税コード
+--          , dist_code_combination_id                          -- CCID
+--          , last_updated_by                                   -- 最終更新者
+--          , last_update_date                                  -- 最終更新日
+--          , last_update_login                                 -- 最終ログインID
+--          , created_by                                        -- 作成者
+--          , creation_date                                     -- 作成日
+--          , attribute_category                                -- DFFコンテキスト
+--          , org_id                                            -- 組織ID
+--          )
+--          VALUES (
+--            ap_invoices_interface_s.CURRVAL                   -- 直前に作成したAP請求書OIFヘッダーの請求ID
+--          , ap_invoice_lines_interface_s.NEXTVAL              -- AP請求書OIF明細の一意ID
+--          , ln_detail_num                                     -- ヘッダー内での連番
+--          , gv_detail_type_item                               -- 明細タイプ：明細(ITEM)
+--          , g_ap_invoice_line_tab(line_cnt).commission_tax * cn_minus
+--                                                              -- 賦課金額（税込）
+--          , gv_vendor_code_hdr || cv_underbar || lv_desc_comm_tax_cr || cv_underbar || gv_mfg_vendor_name
+--                                                              -- 摘要（仕入先C＋摘要＋仕入先名）
+---- 2017-12-05 Ver1.5 Mod Start
+----          , g_ap_invoice_line_tab(line_cnt).tax_code          -- 請求書税コード
+--          , cv_tax_code_0000                                  -- 請求書税コード
+---- 2017-12-05 Ver1.5 Mod End
+--          , lv_ccid_comm_tax_cr                               -- CCID
+--          , cn_last_updated_by                                -- 最終更新者
+--          , SYSDATE                                           -- 最終更新日
+--          , cn_last_update_login                              -- 最終ログインID
+--          , cn_created_by                                     -- 作成者
+--          , SYSDATE                                           -- 作成日
+--          , gn_org_id_sales                                   -- DFFコンテキスト：組織ID
+--          , gn_org_id_sales                                   -- 組織ID
+--          );
+----
+--          -- 正常に作成された場合、ヘッダー内明細連番をカウントアップ
+--          ln_detail_num := ln_detail_num + 1;
+----
+--        EXCEPTION
+--          WHEN OTHERS THEN
+--            lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_appl_short_name_cfo            -- 'XXCFO'
+--                      , iv_name         => cv_msg_cfo_10040
+--                      , iv_token_name1  => cv_tkn_data                       -- データ
+--                      , iv_token_value1 => cv_msg_out_data_09                -- AP請求書OIF明細_賦課金
+--                      , iv_token_name2  => cv_tkn_vendor_site_code           -- 仕入先サイトコード
+--                      , iv_token_value2 => gv_vendor_code_hdr
+--                      , iv_token_name3  => cv_tkn_department                 -- 部門
+--                      , iv_token_value3 => gv_department_code_hdr
+--                      , iv_token_name4  => cv_tkn_item_kbn                   -- 品目区分
+--                      , iv_token_value4 => gv_item_class_code_hdr
+--                      );
+--            lv_errbuf := lv_errmsg;
+--            RAISE global_process_expt;
+--        END;
+--      --
+--      END IF;
+--      -- 2015-01-26 Ver1.1 Add End
+-- 2020-03-17 Ver1.9 Del End
 --
     END LOOP line_insert_loop;
 --
@@ -2493,19 +2508,21 @@ AS
              ,trn.txns_id                                     AS txns_id                  -- 取引ID
              ,trn.trans_qty                                   AS trans_qty                -- 取引数量
              ,trn.order_amount_net                            AS order_amount_net         -- 仕入金額（税抜）
-             ,trn.tax_rate                                    AS tax_rate                 -- 消費税率
-             ,DECODE(trn.item_class_code
-                    ,cv_item_class_5
-                    ,0
-                    ,cv_item_class_2
-                    ,0
-                    ,trn.commission_net      )                AS commission_net           -- 口銭金額（税抜）<明細-口銭>
-             ,DECODE(trn.item_class_code
-                    ,cv_item_class_5
-                    ,0
-                    ,cv_item_class_2
-                    ,0
-                    ,trn.commission_tax      )                AS commission_tax           -- 口銭消費税金額
+-- 2020-03-17 Ver1.9 Del Start
+--             ,trn.tax_rate                                    AS tax_rate                 -- 消費税率
+--             ,DECODE(trn.item_class_code
+--                    ,cv_item_class_5
+--                    ,0
+--                    ,cv_item_class_2
+--                    ,0
+--                    ,trn.commission_net      )                AS commission_net           -- 口銭金額（税抜）<明細-口銭>
+--             ,DECODE(trn.item_class_code
+--                    ,cv_item_class_5
+--                    ,0
+--                    ,cv_item_class_2
+--                    ,0
+--                    ,trn.commission_tax      )                AS commission_tax           -- 口銭消費税金額
+-- 2020-03-17 Ver1.9 Del End
              ,DECODE(trn.item_class_code
                     ,cv_item_class_5
                     ,0
@@ -2519,19 +2536,31 @@ AS
                     ,0
                     ,trn.assessment )                         AS assessment               -- 賦課金額<明細-賦課金>
              ,trn.order_amount_net                            AS payment_amount_net       -- 支払金額（税抜）<明細-本体>
-             ,DECODE(trn.item_class_code
-                    ,cv_item_class_5
-                    ,trn.payment_tax + trn.commission_tax
-                    ,cv_item_class_2
-                    ,trn.payment_tax + trn.commission_tax
-                    ,trn.payment_tax   )                      AS payment_tax              -- 支払消費税額<明細-消費税>
+-- 2020-03-17 Ver1.9 Mod Start
+--             ,DECODE(trn.item_class_code
+--                    ,cv_item_class_5
+--                    ,trn.payment_tax + trn.commission_tax
+--                    ,cv_item_class_2
+--                    ,trn.payment_tax + trn.commission_tax
+--                    ,trn.payment_tax   )                      AS payment_tax              -- 支払消費税額<明細-消費税>
+             ,trn.payment_tax                                 AS payment_tax              -- 支払消費税額<明細-消費税>
+-- 2020-03-17 Ver1.9 Mod End
              ,trn.order_amount_net + trn.payment_tax
                - (DECODE(trn.item_class_code
                         ,cv_item_class_5       -- 製品
-                        ,commission_tax * -1   -- 口銭消費税をプラスする
+-- 2020-03-17 Ver1.9 Mod Start
+--                        ,commission_tax * -1   -- 口銭消費税をプラスする
+                        ,0
+-- 2020-03-17 Ver1.9 Mod End
                         ,cv_item_class_2       -- 資材
-                        ,commission_tax * -1   -- 口銭消費税をプラスする
-                        ,trn.commission_net + trn.assessment))  AS payment_amount           -- 支払金額（税込）<ヘッダ-金額>
+-- 2020-03-17 Ver1.9 Mod Start
+--                        ,commission_tax * -1   -- 口銭消費税をプラスする
+                        ,0
+-- 2020-03-17 Ver1.9 Mod End
+-- 2020-03-17 Ver1.9 Mod Start
+--                        ,trn.commission_net + trn.assessment))  AS payment_amount           -- 支払金額（税込）<ヘッダ-金額>
+                        ,trn.commission_net + trn.commission_tax + trn.assessment))  AS payment_amount      -- 支払金額（税込）<ヘッダ-金額>
+-- 2020-03-17 Ver1.9 Mod End
 -- 2019-04-04 Ver1.6 Add Start
              ,trn.tax_code                                    AS tax_code                 -- 消費税コード（課税仕入（外税））
 -- 2019-04-04 Ver1.6 Add End
@@ -2565,35 +2594,51 @@ AS
                   ,ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0)
                      * cn_rcv_pay_div_1))          AS order_amount_net        -- 仕入金額（税抜）
                   -- 2015-02-06 Ver1.2 Mod End
-                  ,CASE plla.attribute3   -- 口銭区分
-                     WHEN cv_kousen_type_yen THEN     -- 1:円
+-- 2020-03-17 Ver1.9 Del Start
+--                  ,CASE plla.attribute3   -- 口銭区分
+--                     WHEN cv_kousen_type_yen THEN     -- 1:円
+-- 2020-03-17 Ver1.9 Del End
                        -- 2015-02-06 Ver1.2 Mod Start
 --                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0)
 --                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
 --                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                         * cn_rcv_pay_div_1)) * TO_NUMBER(xlv2v.lookup_code) / 100)
 --                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Mod Start
 --                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xitrv.tax) / 100)
-                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(xrart.quantity, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Mod End
 -- 2019-04-04 Ver1.6 Mod End
                        -- 2015-02-06 Ver1.2 Mod End
-                     WHEN cv_kousen_type_ritsu THEN   -- 2:率
+-- 2020-03-17 Ver1.9 Del Start
+--                     WHEN cv_kousen_type_ritsu THEN   -- 2:率
+-- 2020-03-17 Ver1.9 Del End
                        -- 2015-02-06 Ver1.2 Mod Start
 --                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0) 
 --                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
 --                         - ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) 
 --                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0) 
+-- 2020-03-17 Ver1.9 Del Start
+--                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0) 
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                         * cn_rcv_pay_div_1)) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod End
-                         - ROUND(TRUNC( pla.attribute8 * SUM(NVL(xrart.quantity, 0)) 
+-- 2020-03-17 Ver1.9 Del Start
+--                         - ROUND(TRUNC( pla.attribute8 * SUM(NVL(xrart.quantity, 0)) 
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Del Start
 ---- 2019-04-04 Ver1.6 Mod Start
 ----                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
@@ -2601,20 +2646,35 @@ AS
 ---- 2019-04-04 Ver1.6 Mod End
 -- 2019-11-14 Ver1.8 Del End
 -- 2019-11-14 Ver1.8 Add Start
-                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Add End
                        -- 2015-02-06 Ver1.2 Mod End
-                     ELSE 
+-- 2020-03-17 Ver1.9 Del Start
+--                     ELSE
+-- 2020-03-17 Ver1.9 Del End
                        -- 2015-02-06 Ver1.2 Mod Start
 --                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(itp.trans_qty, 0) 
 --                         * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0) 
+-- 2020-03-17 Ver1.9 Del Start
+--                       ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0) 
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                         * cn_rcv_pay_div_1)) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod End
                        -- 2015-02-06 Ver1.2 Mod End
-                     END                           AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Del Start
+--                     END                           AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Del End
+-- 2020-03-17 Ver1.9 Add Start
+                  ,ROUND(ROUND(NVL(pla.unit_price, 0) * SUM(NVL(xrart.quantity, 0)
+                     * cn_rcv_pay_div_1)) * TO_NUMBER(xitrv.tax) / 100)
+                                                   AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Add End
                   ,CASE plla.attribute3   -- 口銭区分
                      WHEN cv_kousen_type_yen THEN     -- 1:円
                        -- 2015-02-06 Ver1.2 Mod Start
@@ -2796,14 +2856,20 @@ AS
 -- 2019-04-04 Ver1.6 Mod End
                   ,ROUND(NVL(xrart.kobki_converted_unit_price, 0) * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))))
                                                    AS order_amount_net          -- 仕入金額（税抜）
-                  ,CASE xrart.kousen_type
-                     WHEN cv_kousen_type_yen THEN     -- 1:円
-                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                  ,CASE xrart.kousen_type
+--                     WHEN cv_kousen_type_yen THEN     -- 1:円
+--                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod End
-                         - ROUND(TRUNC(NVL(xrart.kousen_rate_or_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                         - ROUND(TRUNC(NVL(xrart.kousen_rate_or_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Del Start
 ---- 2019-04-04 Ver1.6 Mod Start
 ----                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
@@ -2811,15 +2877,23 @@ AS
 ---- 2019-04-04 Ver1.6 Mod End
 -- 2019-11-14 Ver1.8 Del End
 -- 2019-11-14 Ver1.8 Add Start
-                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Add End
-                     WHEN cv_kousen_type_ritsu THEN   -- 2:率
-                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                     WHEN cv_kousen_type_ritsu THEN   -- 2:率
+--                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod End
-                         - ROUND(TRUNC( xrart.unit_price * SUM(NVL(itc.trans_qty, 0))
+-- 2020-03-17 Ver1.9 Del Start
+--                         - ROUND(TRUNC( xrart.unit_price * SUM(NVL(itc.trans_qty, 0))
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Del Start
 ---- 2019-04-04 Ver1.6 Mod Start
 ----                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
@@ -2827,15 +2901,28 @@ AS
 ---- 2019-04-04 Ver1.6 Mod End
 -- 2019-11-14 Ver1.8 Del End
 -- 2019-11-14 Ver1.8 Add Start
-                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Add End
-                     ELSE 
-                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                     ELSE
+--                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                       * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                       * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                       * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del ENd
 -- 2019-04-04 Ver1.6 Mod End
-                     END                           AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Del Start
+--                     END                           AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Del End
+-- 2020-03-17 Ver1.9 Add Start
+                  ,ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+                     * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+                                                   AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Add End
                   ,CASE xrart.kousen_type
                      WHEN cv_kousen_type_yen THEN     -- 1:円
                        TRUNC(NVL(xrart.kousen_rate_or_unit_price, 0)
@@ -2987,14 +3074,20 @@ AS
 -- 2019-04-04 Ver1.6 Mod End
                   ,ROUND(NVL(xrart.kobki_converted_unit_price, 0) * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) 
                                                    AS order_amount_net          -- 仕入金額（税抜）
-                  ,CASE xrart.kousen_type
-                     WHEN cv_kousen_type_yen THEN     -- 1:円
-                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                  ,CASE xrart.kousen_type
+--                     WHEN cv_kousen_type_yen THEN     -- 1:円
+--                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod End
-                         - ROUND(TRUNC(NVL(xrart.kousen_rate_or_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                         - ROUND(TRUNC(NVL(xrart.kousen_rate_or_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Del Start
 ---- 2019-04-04 Ver1.6 Mod Start
 ----                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
@@ -3002,15 +3095,23 @@ AS
 ---- 2019-04-04 Ver1.6 Mod End
 -- 2019-11-14 Ver1.8 Del End
 -- 2019-11-14 Ver1.8 Add Start
-                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Add End
-                     WHEN cv_kousen_type_ritsu THEN   -- 2:率
-                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                     WHEN cv_kousen_type_ritsu THEN   -- 2:率
+--                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod End
-                         - ROUND(TRUNC( xrart.unit_price * SUM(NVL(itc.trans_qty, 0))
+-- 2020-03-17 Ver1.9 Del Start
+--                         - ROUND(TRUNC( xrart.unit_price * SUM(NVL(itc.trans_qty, 0))
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Del Start
 ---- 2019-04-04 Ver1.6 Mod Start
 ----                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
@@ -3018,15 +3119,28 @@ AS
 ---- 2019-04-04 Ver1.6 Mod End
 -- 2019-11-14 Ver1.8 Del End
 -- 2019-11-14 Ver1.8 Add Start
-                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                         * NVL(xrart.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-11-14 Ver1.8 Add End
-                     ELSE 
-                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del Start
+--                     ELSE 
+--                       ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod Start
 --                       * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100)
-                       * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del Start
+--                       * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Mod End
-                     END                           AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Del Start
+--                     END                           AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Del End
+-- 2020-03-17 Ver1.9 Add Start
+                  ,ROUND(ROUND(NVL(xrart.kobki_converted_unit_price, 0)
+                     * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xitrv.tax) / 100)
+                                                   AS payment_tax               -- 支払消費税金額
+-- 2020-03-17 Ver1.9 Add End
                   ,CASE xrart.kousen_type
                      WHEN cv_kousen_type_yen THEN     -- 1:円
                        TRUNC(NVL(xrart.kousen_rate_or_unit_price, 0)
@@ -3365,10 +3479,15 @@ AS
 --
       -- 値の積み上げを行う。
       gn_payment_amount_all     := NVL(gn_payment_amount_all,0) + ap_invoice_rec.payment_amount;     -- 請求書単位：支払金額（税込）
-      gn_commission_all         := NVL(gn_commission_all,0) + ap_invoice_rec.commission_net;         -- 請求書単位：口銭金額（税抜）
+-- 2020-03-17 Ver1.9 Mod Start
+--      gn_commission_all         := NVL(gn_commission_all,0) + ap_invoice_rec.commission_net;         -- 請求書単位：口銭金額（税抜）
+      gn_commission_all         := NVL(gn_commission_all,0) + ap_invoice_rec.commission_price;         -- 請求書単位：口銭金額（税込）
+-- 2020-03-17 Ver1.9 Mod End
       gn_assessment_all         := NVL(gn_assessment_all,0) + ap_invoice_rec.assessment;             -- 請求書単位：賦課金額
       -- 2015-01-26 Ver1.1 Add Start
-      gn_commission_tax_all     := NVL(gn_commission_tax_all,0) + ap_invoice_rec.commission_tax;     -- 請求書単位：口銭消費税
+-- 2020-03-17 Ver1.9 Del End
+--      gn_commission_tax_all     := NVL(gn_commission_tax_all,0) + ap_invoice_rec.commission_tax;     -- 請求書単位：口銭消費税
+-- 2020-03-17 Ver1.9 Del End
       -- 2015-01-26 Ver1.1 Add End
 --
       -- 消費税コードごとの積み上げを行う。
@@ -3386,21 +3505,29 @@ AS
       --
       END IF;
 --
-      g_ap_invoice_line_tab(ln_tax_cnt).tax_rate           := ap_invoice_rec.tax_rate;               -- 請求書明細単位：消費税率
+-- 2020-03-17 Ver1.9 Del Start
+--      g_ap_invoice_line_tab(ln_tax_cnt).tax_rate           := ap_invoice_rec.tax_rate;               -- 請求書明細単位：消費税率
+-- 2020-03-17 Ver1.9 Del End
 -- 2019-04-04 Ver1.6 Add Start
       g_ap_invoice_line_tab(ln_tax_cnt).tax_code           := ap_invoice_rec.tax_code;               -- 請求書明細単位：消費税コード
 -- 2019-04-04 Ver1.6 Add End
       g_ap_invoice_line_tab(ln_tax_cnt).payment_amount_net := NVL(g_ap_invoice_line_tab(ln_tax_cnt).payment_amount_net,0)
                                                              + ap_invoice_rec.payment_amount_net;    -- 請求書明細単位：仕入金額（税抜）
-      g_ap_invoice_line_tab(ln_tax_cnt).commission_net     := NVL(g_ap_invoice_line_tab(ln_tax_cnt).commission_net,0)
-                                                             + ap_invoice_rec.commission_net  ;      -- 請求書明細単位：口銭金額（税抜）
+-- 2020-03-17 Ver1.9 Mod Start
+--      g_ap_invoice_line_tab(ln_tax_cnt).commission_net     := NVL(g_ap_invoice_line_tab(ln_tax_cnt).commission_net,0)
+--                                                             + ap_invoice_rec.commission_net  ;      -- 請求書明細単位：口銭金額（税抜）
+      g_ap_invoice_line_tab(ln_tax_cnt).commission_price   := NVL(g_ap_invoice_line_tab(ln_tax_cnt).commission_price,0)
+                                                             + ap_invoice_rec.commission_price  ;      -- 請求書明細単位：口銭金額（税込）
+-- 2020-03-17 Ver1.9 Mod End
       g_ap_invoice_line_tab(ln_tax_cnt).assessment         := NVL(g_ap_invoice_line_tab(ln_tax_cnt).assessment,0)
                                                              + ap_invoice_rec.assessment;            -- 請求書明細単位：賦課金額
       g_ap_invoice_line_tab(ln_tax_cnt).payment_tax        := NVL(g_ap_invoice_line_tab(ln_tax_cnt).payment_tax,0)
                                                              + ap_invoice_rec.payment_tax;           -- 請求書明細単位：支払消費税額
       -- 2015-01-26 Ver1.1 Add Start
-      g_ap_invoice_line_tab(ln_tax_cnt).commission_tax     := NVL(g_ap_invoice_line_tab(ln_tax_cnt).commission_tax,0)
-                                                             + ap_invoice_rec.commission_tax  ;      -- 請求書明細単位：口銭消費税
+-- 2020-03-17 Ver1.9 Del Start
+--      g_ap_invoice_line_tab(ln_tax_cnt).commission_tax     := NVL(g_ap_invoice_line_tab(ln_tax_cnt).commission_tax,0)
+--                                                             + ap_invoice_rec.commission_tax  ;      -- 請求書明細単位：口銭消費税
+-- 2020-03-17 Ver1.9 Del End
       -- 2015-01-26 Ver1.1 Add End
 -- 2019-04-04 Ver1.6 Mod Start
 --      -- 消費税率(判定用)を保持
@@ -3420,11 +3547,15 @@ AS
       g_ap_invoice_tab(ln_out_count).target_period         := ap_invoice_rec.target_period;          -- 対象年月
       g_ap_invoice_tab(ln_out_count).txns_id               := ap_invoice_rec.txns_id;                -- 取引ID
       g_ap_invoice_tab(ln_out_count).trans_qty             := ap_invoice_rec.trans_qty;              -- 取引数量
-      g_ap_invoice_tab(ln_out_count).tax_rate              := ap_invoice_rec.tax_rate;               -- 消費税率
+-- 2020-03-17 Ver1.9 Del Start
+--      g_ap_invoice_tab(ln_out_count).tax_rate              := ap_invoice_rec.tax_rate;               -- 消費税率
+-- 2020-03-17 Ver1.9 Del End
       g_ap_invoice_tab(ln_out_count).order_amount_net      := ap_invoice_rec.order_amount_net;       -- 仕入金額（税抜）
       g_ap_invoice_tab(ln_out_count).payment_tax           := ap_invoice_rec.payment_tax;            -- 支払消費税額
-      g_ap_invoice_tab(ln_out_count).commission_net        := ap_invoice_rec.commission_net;         -- 口銭金額（税抜）
-      g_ap_invoice_tab(ln_out_count).commission_tax        := ap_invoice_rec.commission_tax;         -- 口銭消費税金額
+-- 2020-03-17 Ver1.9 Del Start
+--      g_ap_invoice_tab(ln_out_count).commission_net        := ap_invoice_rec.commission_net;         -- 口銭金額（税抜）
+--      g_ap_invoice_tab(ln_out_count).commission_tax        := ap_invoice_rec.commission_tax;         -- 口銭消費税金額
+-- 2020-03-17 Ver1.9 Del End
       g_ap_invoice_tab(ln_out_count).assessment            := ap_invoice_rec.assessment;             -- 賦課金額
       g_ap_invoice_tab(ln_out_count).payment_amount_net    := ap_invoice_rec.payment_amount_net;     -- 支払金額（税抜）
       g_ap_invoice_tab(ln_out_count).payment_amount        := ap_invoice_rec.payment_amount;         -- 支払金額（税込み）
