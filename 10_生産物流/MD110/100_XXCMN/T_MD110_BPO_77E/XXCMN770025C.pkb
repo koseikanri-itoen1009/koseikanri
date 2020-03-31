@@ -7,7 +7,7 @@ AS
  * Description      : d“üÀÑ•\ì¬
  * MD.050/070       : ŒŸYØˆ—iŒo—jIssue1.0(T_MD050_BPO_770)
  *                    ŒŸYØˆ—iŒo—jIssue1.0(T_MD070_BPO_77E)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2019/04/12    1.20  Y.Sasaki         E_–{‰Ò“®_15601‘Î‰i¶Y_ŒyŒ¸Å—¦‘Î‰j
  *  2019/10/30    1.21  Y.Shouji         E_–{‰Ò“®_16020‘Î‰
  *  2019/11/14    1.22  Y.Sasaki         E_–{‰Ò“®_16049‘Î‰
+ *  2020/03/26    1.23  Y.Sasaki         E_–{‰Ò“®_16232‘Î‰
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -438,8 +439,10 @@ AS
      ,in_sum_commission_tax_amount IN  NUMBER         -- Á”ïÅŒv(Œû‘K)
      ,in_sum_commission_amount     IN  NUMBER         -- Œû‘K‹àŠz
      ,in_sum_assess_amount         IN  NUMBER         -- •Š‰Û‹àŒv
-     ,in_sum_payment               IN  NUMBER         -- x•¥Œv
-     ,in_sum_payment_amount_tax    IN  NUMBER         -- Á”ïÅŒv(x•¥)
+-- v1.23 Del Start
+--     ,in_sum_payment               IN  NUMBER         -- x•¥Œv
+--     ,in_sum_payment_amount_tax    IN  NUMBER         -- Á”ïÅŒv(x•¥)
+-- v1.23 Del End
      ,in_sum_payment_amount        IN  NUMBER         -- x•¥‹àŠzŒv
      ,in_sum_standard_amount       IN  NUMBER         -- •W€‹àŠzŒv
      ,in_sum_difference_amount     IN  NUMBER         -- ·ˆÙŒv
@@ -514,16 +517,18 @@ AS
     iot_xml_data_table(iot_xml_idx).tag_name  := 'sum_assess_amount' ;
     iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
     iot_xml_data_table(iot_xml_idx).tag_value := in_sum_assess_amount;
-    -- x•¥Œv
-    iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
-    iot_xml_data_table(iot_xml_idx).tag_name  := 'sum_payment' ;
-    iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
-    iot_xml_data_table(iot_xml_idx).tag_value := in_sum_payment;
-    -- Á”ïÅŒv(x•¥)
-    iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
-    iot_xml_data_table(iot_xml_idx).tag_name  := 'sum_payment_amount_tax' ;
-    iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
-    iot_xml_data_table(iot_xml_idx).tag_value := in_sum_payment_amount_tax;
+-- v1.23 Del Start
+--    -- x•¥Œv
+--    iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
+--    iot_xml_data_table(iot_xml_idx).tag_name  := 'sum_payment' ;
+--    iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
+--    iot_xml_data_table(iot_xml_idx).tag_value := in_sum_payment;
+--    -- Á”ïÅŒv(x•¥)
+--    iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
+--    iot_xml_data_table(iot_xml_idx).tag_name  := 'sum_payment_amount_tax' ;
+--    iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
+--    iot_xml_data_table(iot_xml_idx).tag_value := in_sum_payment_amount_tax;
+-- v1.23 Del End
     -- x•¥‹àŠzŒv
     iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
     iot_xml_data_table(iot_xml_idx).tag_name  := 'sum_payment_amount' ;
@@ -2679,8 +2684,10 @@ AS
      ,on_sum_commission_tax_amount IN OUT NUMBER         -- Á”ïÅŒv(Œû‘K)
      ,on_sum_commission_amount     IN OUT NUMBER         -- Œû‘K‹àŠz
      ,on_sum_assess_amount         IN OUT NUMBER         -- •Š‰Û‹àŒv
-     ,on_sum_payment               IN OUT NUMBER         -- x•¥Œv
-     ,on_sum_payment_amount_tax    IN OUT NUMBER         -- Á”ïÅŒv(x•¥)
+-- v1.23 Del Start
+--     ,on_sum_payment               IN OUT NUMBER         -- x•¥Œv
+--     ,on_sum_payment_amount_tax    IN OUT NUMBER         -- Á”ïÅŒv(x•¥)
+-- v1.23 Del End
      ,on_sum_payment_amount        IN OUT NUMBER         -- x•¥‹àŠzŒv
      ,on_sum_standard_amount       IN OUT NUMBER         -- •W€‹àŠzŒv
      ,on_sum_difference_amount     IN OUT NUMBER         -- ·ˆÙŒv
@@ -2872,26 +2879,30 @@ AS
     -- x•¥
     ln_payment :=
       ln_order_amount - NVL(ROUND(it_data_rec.c_amt),gn_zero) - NVL(it_data_rec.assessment,gn_zero);
-    IF ( ln_payment IS NOT NULL ) THEN
-      iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
-      iot_xml_data_table(iot_xml_idx).tag_name  := 'payment' ;
-      iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
-      iot_xml_data_table(iot_xml_idx).tag_value := ln_payment;
-      on_sum_payment := on_sum_payment + ln_payment;
-    END IF;
+-- v1.23 Del Start
+--    IF ( ln_payment IS NOT NULL ) THEN
+--      iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
+--      iot_xml_data_table(iot_xml_idx).tag_name  := 'payment' ;
+--      iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
+--      iot_xml_data_table(iot_xml_idx).tag_value := ln_payment;
+--      on_sum_payment := on_sum_payment + ln_payment;
+--    END IF;
+-- v1.23 Del End
     -- Á”ïÅ“™(x•¥)
 -- 2008/12/05 v1.13 UPDATE START
 --    ln_payment_amount_tax := ROUND(ln_payment * ln_tax);
     ln_payment_amount_tax := it_data_rec.payment_tax;
 -- 2008/12/05 v1.13 UPDATE END
-    IF ( ln_payment_amount_tax IS NOT NULL ) THEN
-      iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
-      iot_xml_data_table(iot_xml_idx).tag_name  := 'payment_amount_tax' ;
-      iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
-      iot_xml_data_table(iot_xml_idx).tag_value := ln_payment_amount_tax;
-      on_sum_payment_amount_tax :=
-        on_sum_payment_amount_tax + ln_payment_amount_tax;
-    END IF;
+-- v1.23 Del Start
+--    IF ( ln_payment_amount_tax IS NOT NULL ) THEN
+--      iot_xml_idx := iot_xml_data_table.COUNT + 1 ;
+--      iot_xml_data_table(iot_xml_idx).tag_name  := 'payment_amount_tax' ;
+--      iot_xml_data_table(iot_xml_idx).tag_type  := 'D' ;
+--      iot_xml_data_table(iot_xml_idx).tag_value := ln_payment_amount_tax;
+--      on_sum_payment_amount_tax :=
+--        on_sum_payment_amount_tax + ln_payment_amount_tax;
+--    END IF;
+-- v1.23 Del End
     -- x•¥‹àŠz
 -- 2008/12/05 v1.12 UPDATE START
 --    ln_payment_amount := ln_payment + ln_payment_amount_tax;
@@ -3026,8 +3037,10 @@ AS
     ln_sum_commission_tax_amount NUMBER DEFAULT 0; -- Á”ïÅŒv(Œû‘K)
     ln_sum_commission_amount     NUMBER DEFAULT 0; -- Œû‘K‹àŠz
     ln_sum_assess_amount         NUMBER DEFAULT 0; -- •Š‰Û‹àŒv
-    ln_sum_payment               NUMBER DEFAULT 0; -- x•¥Œv
-    ln_sum_payment_amount_tax    NUMBER DEFAULT 0; -- Á”ïÅŒv(x•¥)
+-- v1.23 Del Start
+--    ln_sum_payment               NUMBER DEFAULT 0; -- x•¥Œv
+--    ln_sum_payment_amount_tax    NUMBER DEFAULT 0; -- Á”ïÅŒv(x•¥)
+-- v1.23 Del End
     ln_sum_payment_amount        NUMBER DEFAULT 0; -- x•¥‹àŠzŒv
     ln_sum_standard_amount       NUMBER DEFAULT 0; -- •W€Œ´‰¿Œv
     ln_sum_difference_amount     NUMBER DEFAULT 0; -- ·ˆÙŒv
@@ -3421,8 +3434,10 @@ AS
                      ,on_sum_commission_tax_amount => ln_sum_commission_tax_amount -- Á”ïÅŒv(Œû)
                      ,on_sum_commission_amount  => ln_sum_commission_amount        -- Œû‘K‹àŠz
                      ,on_sum_assess_amount      => ln_sum_assess_amount            -- •Š‰Û‹àŒv
-                     ,on_sum_payment            => ln_sum_payment                  -- x•¥Œv
-                     ,on_sum_payment_amount_tax => ln_sum_payment_amount_tax       -- Á”ïÅŒv(x)
+-- v1.23 Del Start
+--                     ,on_sum_payment            => ln_sum_payment                  -- x•¥Œv
+--                     ,on_sum_payment_amount_tax => ln_sum_payment_amount_tax       -- Á”ïÅŒv(x)
+-- v1.23 Del End
                      ,on_sum_payment_amount     => ln_sum_payment_amount           -- x•¥‹àŠzŒv
                      ,on_sum_standard_amount    => ln_sum_standard_amount          -- •W€‹àŠzŒv
                      ,on_sum_difference_amount  => ln_sum_difference_amount);      -- ·ˆÙŒv
@@ -3501,8 +3516,10 @@ AS
            ,in_sum_commission_tax_amount => ln_sum_commission_tax_amount -- Á”ïÅŒv(Œû)
            ,in_sum_commission_amount  => ln_sum_commission_amount        -- Œû‘K‹àŠz
            ,in_sum_assess_amount      => ln_sum_assess_amount            -- •Š‰Û‹àŒv
-           ,in_sum_payment            => ln_sum_payment                  -- x•¥Œv
-           ,in_sum_payment_amount_tax => ln_sum_payment_amount_tax       -- Á”ïÅŒv(x)
+-- v1.23 Del Start
+--           ,in_sum_payment            => ln_sum_payment                  -- x•¥Œv
+--           ,in_sum_payment_amount_tax => ln_sum_payment_amount_tax       -- Á”ïÅŒv(x)
+-- v1.23 Del End
            ,in_sum_payment_amount     => ln_sum_payment_amount           -- x•¥‹àŠzŒv
            ,in_sum_standard_amount    => ln_sum_standard_amount          -- •W€‹àŠzŒv
            ,in_sum_difference_amount  => ln_sum_difference_amount);      -- ·ˆÙŒv
@@ -3535,8 +3552,10 @@ AS
            ,in_sum_commission_tax_amount => ln_sum_commission_tax_amount -- Á”ïÅŒv(Œû)
            ,in_sum_commission_amount  => ln_sum_commission_amount        -- Œû‘K‹àŠz
            ,in_sum_assess_amount      => ln_sum_assess_amount            -- •Š‰Û‹àŒv
-           ,in_sum_payment            => ln_sum_payment                  -- x•¥Œv
-           ,in_sum_payment_amount_tax => ln_sum_payment_amount_tax       -- Á”ïÅŒv(x)
+-- v1.23 Del Start
+--           ,in_sum_payment            => ln_sum_payment                  -- x•¥Œv
+--           ,in_sum_payment_amount_tax => ln_sum_payment_amount_tax       -- Á”ïÅŒv(x)
+-- v1.23 Del End
            ,in_sum_payment_amount     => ln_sum_payment_amount           -- x•¥‹àŠzŒv
            ,in_sum_standard_amount    => ln_sum_standard_amount          -- •W€‹àŠzŒv
            ,in_sum_difference_amount  => ln_sum_difference_amount);      -- ·ˆÙŒv
