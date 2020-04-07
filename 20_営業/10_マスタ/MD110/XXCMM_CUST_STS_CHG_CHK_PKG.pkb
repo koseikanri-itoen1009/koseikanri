@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM_CUST_STS_CHK_PKG(body)
  * Description      : 顧客ステータスを「中止」に変更する際、ステータス変更が可能か判定を行います。
  * MD.050           : MD050_CMM_003_A11_顧客ステータス変更チェック
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2010/08/04    1.4   Shigeto.Niki     障害E_本稼動_04245 業態関係なく売掛残高チェック
  *  2011/03/07    1.5   Masato.Hirose    障害E_本稼動_02443 月内取引の存在チェック追加
  *  2015/11/17    1.6   Shigeto.Niki     障害E_本稼動_13403 PT対応：残高情報チェックSQL
+ *  2020/03/24    1.7   Nobuo.Koyama     障害E_本稼動_16273 BM残高チェック追加対応
  *
  *****************************************************************************************/
 --
@@ -71,6 +72,9 @@ AS
   cv_msg_xxcmm_10313   CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10313';              -- 有効物件中止チェックエラー
   cv_msg_xxcmm_10314   CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10314';              -- 中止チェック起動エラー
   cv_msg_xxcmm_10315   CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10315';              -- 残高中止チェック起動エラー
+-- 2020/03/24 Ver1.7 add start
+  cv_msg_xxcmm_10500   CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-10500';              -- BM支払予定額チェックエラー
+-- 2020/03/24 Ver1.7 add end
 -- 2011/03/07 Ver1.5 add start
   cv_msg_xxcmm_00018   CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00018';              -- 業務日付取得エラー
   cv_msg_xxcmm_00356   CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00356';              -- 月内取引存在チェックエラー
@@ -651,6 +655,77 @@ AS
   END cust_tran_chk;
 --
 -- 2011/03/07 Ver1.5 add end
+-- 2020/03/24 Ver1.7 add start
+  /**********************************************************************************
+   * Procedure Name   : bm_expect_payment_chk
+   * Description      : BM支払予定額チェック処理(A-7)
+   ***********************************************************************************/
+  PROCEDURE bm_expect_payment_chk(
+    in_cust_id      IN  NUMBER,       --   顧客ID
+    ov_check_status OUT VARCHAR2,     --   チェックステータス
+    ov_err_message  OUT VARCHAR2      --   エラーメッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'bm_expect_payment_chk'; -- プログラム名
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_errmsg     VARCHAR2(5000);                            -- ユーザー・エラー・メッセージ
+    ln_count      NUMBER;
+--
+  BEGIN
+--
+    --チェックステータス初期化部
+    ov_check_status := cv_sts_check_ok;
+    --ローカル変数初期化部
+    ln_count := 0;
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- BM支払予定額チェック
+    SELECT COUNT(1)  -- 件数
+     INTO  ln_count
+    FROM   xxcok_backmargin_balance    xbb   -- BM残高情報
+          ,xxcmm_cust_accounts         xca   -- 顧客追加情報
+    WHERE  xca.customer_id             = in_cust_id          -- 内部ID
+      AND  xca.customer_code           = xbb.cust_code
+      AND  xbb.expect_payment_amt_tax <> 0
+    ;
+--
+    --BM支払予定額が残っていれば中止
+    IF ( ln_count > 0 ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(cv_cnst_msg_kbn,
+                                            cv_msg_xxcmm_10500);
+      RAISE stop_err_expt;
+    END IF;
+--
+  EXCEPTION
+    --*** 中止チェックエラー ***
+    WHEN stop_err_expt THEN
+      ov_check_status := cv_sts_check_ng;            --チェックステータス
+      ov_err_message  := lv_errmsg;                  --エラーメッセージ
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_err_message  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_check_status := cv_sts_check_ng;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_err_message  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_check_status := cv_sts_check_ng;
+--
+  END bm_expect_payment_chk;
+--
+-- 2020/03/24 Ver1.7 add end
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -771,6 +846,23 @@ AS
     END IF;
 --
 -- 2011/03/07 Ver1.5 insert end
+-- 2020/03/24 Ver1.7 insert start
+--
+    -- ===============================
+    -- <BM支払予定額チェック>
+    -- ===============================
+    bm_expect_payment_chk(
+      in_cust_id      =>  in_cust_id,        -- 顧客ID
+      ov_check_status =>  lv_check_status,   -- チェックステータス
+      ov_err_message  =>  lv_err_message     -- エラーメッセージ
+      );
+--
+    IF ( lv_check_status = cv_sts_check_ng ) THEN
+      --(エラー処理)
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2020/03/24 Ver1.7 insert End
   EXCEPTION
 --
     -- *** 処理部共通例外ハンドラ ***
