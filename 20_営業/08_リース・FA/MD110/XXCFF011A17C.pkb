@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF011A17C(body)
  * Description      : リース会計基準開示データ出力
  * MD.050           : リース会計基準開示データ出力 MD050_CFF_011_A17
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/08/28    1.5   SCS 渡辺         [統合テスト障害0001061(PT対応)]
  *  2016/09/14    1.6   SCSK 郭          E_本稼動_13658（自販機耐用年数変更対応）
  *  2018/03/27    1.7   SCSK 小路        E_本稼動_14830（IFRSリース資産対応）
+ *  2020/04/06    1.8   SCSK 桑子        E_本稼動_16255 (会計基準帳票 修正対応)
  *
  *****************************************************************************************/
 --
@@ -298,22 +299,30 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- 1.期首残高の取得
-    BEGIN
-      SELECT xpp.fin_debt
-           + xpp.fin_debt_rem
-           + NVL(xpp.debt_re ,0)
-           + NVL(xpp.debt_rem_re ,0)       AS kisyu_bal_amount -- 期首残高
-      INTO   io_csv_rec.kisyu_bal_amount
-      FROM   xxcff_pay_planning xpp
-      WHERE  xpp.contract_line_id  =  io_csv_rec.contract_line_id
-      AND    xpp.period_name       =  io_csv_rec.period_from
-      AND    XPP.payment_frequency <> 1                           -- 支払回数1回目ではない
-      ;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        io_csv_rec.kisyu_bal_amount := 0;
-    END;
+-- 2020/04/06 Ver.1.8 S.Kuwako ADD Start
+    IF ( io_csv_rec.lease_start_date  < TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm) ) THEN
+-- 2020/04/06 Ver.1.8 S.Kuwako ADD End
+      -- 1.期首残高の取得
+      BEGIN
+        SELECT xpp.fin_debt
+             + xpp.fin_debt_rem
+             + NVL(xpp.debt_re ,0)
+             + NVL(xpp.debt_rem_re ,0)       AS kisyu_bal_amount -- 期首残高
+        INTO   io_csv_rec.kisyu_bal_amount
+        FROM   xxcff_pay_planning xpp
+        WHERE  xpp.contract_line_id  =  io_csv_rec.contract_line_id
+        AND    xpp.period_name       =  io_csv_rec.period_from
+        AND    XPP.payment_frequency <> 1                           -- 支払回数1回目ではない
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          io_csv_rec.kisyu_bal_amount := 0;
+      END;
+-- 2020/04/06 Ver.1.8 S.Kuwako ADD Start
+    ELSE
+      io_csv_rec.kisyu_bal_amount := 0;
+    END IF;
+-- 2020/04/06 Ver.1.8 S.Kuwako ADD End
 --
     -- 期中増加額の取得
     IF (  io_csv_rec.lease_start_date >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm)
@@ -371,10 +380,21 @@ AS
 --
     -- 8.期中減少額(解約)の取得
     IF (  io_csv_rec.cancellation_date >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm)
-      AND io_csv_rec.cancellation_date <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)) ) THEN
+-- 2020/04/06 Ver.1.8 S.Kuwako MOD Start
+--      AND io_csv_rec.cancellation_date <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm)) ) THEN
+      AND io_csv_rec.cancellation_date <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm))
+      AND io_csv_rec.kisyu_bal_amount  >  0  )  THEN
+-- 2020/04/06 Ver.1.8 S.Kuwako MOD End
       io_csv_rec.lease_year_del_amount := io_csv_rec.kisyu_bal_amount;
       -- 解約と債務返済が同月の場合、債務返済は0とする
       io_csv_rec.lease_year_dec_amount := 0;
+-- 2020/04/06 Ver.1.8 S.Kuwako ADD Start
+    ELSIF ( io_csv_rec.cancellation_date >= TO_DATE(io_csv_rec.period_from ,cv_format_yyyy_mm)
+      AND   io_csv_rec.cancellation_date <= LAST_DAY(TO_DATE(io_csv_rec.period_to ,cv_format_yyyy_mm))
+      AND   io_csv_rec.kisyu_bal_amount   = 0
+      AND   io_csv_rec.lease_year_add_amount_new + io_csv_rec.lease_year_add_amount_old > 0 )  THEN
+      io_csv_rec.lease_year_del_amount := io_csv_rec.lease_year_add_amount_new + io_csv_rec.lease_year_add_amount_old;
+-- 2020/04/06 Ver.1.8 S.Kuwako ADD End
     ELSE
       io_csv_rec.lease_year_del_amount := 0;
     END IF;
