@@ -1,0 +1,159 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_DEDU_SELL_TRNS_INFO
+ * Description : 控除用実績振替情報テーブルx
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/02/18    1.0   SCSK Y.Nakajima  新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_dedu_sell_trns_info (
+     selling_trns_info_id           NUMBER        NOT NULL
+    ,selling_trns_type              VARCHAR2(1)
+    ,slip_no                        VARCHAR2(12)
+    ,detail_no                      NUMBER
+    ,selling_date                   DATE          NOT NULL
+    ,selling_type                   VARCHAR2(1)
+    ,selling_return_type            VARCHAR2(1)
+    ,delivery_slip_type             VARCHAR2(2)
+    ,base_code                      VARCHAR2(4)   NOT NULL
+    ,cust_code                      VARCHAR2(9)   NOT NULL
+    ,selling_emp_code               VARCHAR2(5)
+    ,cust_state_type                VARCHAR2(2)
+    ,delivery_form_type             VARCHAR2(1)
+    ,article_code                   VARCHAR2(10)
+    ,card_selling_type              VARCHAR2(1)
+    ,checking_date                  DATE
+    ,demand_to_cust_code            VARCHAR2(9)
+    ,h_c                            VARCHAR2(1)
+    ,column_no                      VARCHAR2(2)
+    ,item_code                      VARCHAR2(7)   NOT NULL
+    ,qty                            NUMBER        NOT NULL
+    ,unit_type                      VARCHAR2(3)
+    ,delivery_unit_price            NUMBER        NOT NULL
+    ,selling_amt                    NUMBER        NOT NULL
+    ,selling_amt_no_tax             NUMBER        NOT NULL
+    ,trading_cost                   NUMBER        NOT NULL
+    ,selling_cost_amt               NUMBER
+    ,tax_code                       VARCHAR2(4)
+    ,tax_rate                       NUMBER
+    ,delivery_base_code             VARCHAR2(4)   NOT NULL
+    ,registration_date              DATE
+    ,correction_flag                VARCHAR2(1)
+    ,report_decision_flag           VARCHAR2(1)
+    ,info_interface_flag            VARCHAR2(1)
+    ,gl_interface_flag              VARCHAR2(1)
+    ,org_slip_number                VARCHAR2(50)
+    ,selling_from_cust_code         VARCHAR2(9)
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcok_dedu_sell_trns_info_pk PRIMARY KEY (selling_trns_info_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 40 INITRANS 32 STORAGE ( INITIAL 2M)
+/
+COMMENT ON TABLE xxcok.xxcok_dedu_sell_trns_info IS '控除用実績振替情報テーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_trns_info_id                 IS '売上実績振替情報ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_trns_type                    IS '実績振替区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.slip_no                              IS '伝票番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.detail_no                            IS '明細番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_date                         IS '売上計上日'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_type                         IS '売上区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_return_type                  IS '売上返品区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.delivery_slip_type                   IS '納品伝票区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.base_code                            IS '拠点コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.cust_code                            IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_emp_code                     IS '担当者営業コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.cust_state_type                      IS '顧客業態区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.delivery_form_type                   IS '納品形態区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.article_code                         IS '物件コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.card_selling_type                    IS 'カード売り区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.checking_date                        IS '検収日'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.demand_to_cust_code                  IS '請求先顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.h_c                                  IS 'Ｈ＆Ｃ'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.column_no                            IS 'コラムNO'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.item_code                            IS '品目コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.qty                                  IS '数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.unit_type                            IS '単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.delivery_unit_price                  IS '納品単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_amt                          IS '売上金額'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_amt_no_tax                   IS '売上金額(税抜き)'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.trading_cost                         IS '営業原価'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_cost_amt                     IS '売上原価金額'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.tax_code                             IS '消費税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.tax_rate                             IS '消費税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.delivery_base_code                   IS '納品拠点コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.registration_date                    IS '業務登録日付'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.correction_flag                      IS '振戻フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.report_decision_flag                 IS '速報確定フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.info_interface_flag                  IS '情報系I/Fフラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.gl_interface_flag                    IS '仕訳作成フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.org_slip_number                      IS '元伝票番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.selling_from_cust_code               IS '売上振替元顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.created_by                           IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.creation_date                        IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.last_updated_by                      IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.last_update_date                     IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.last_update_login                    IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.request_id                           IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.program_application_id               IS 'コンカレント・プログラム･アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.program_id                           IS 'コンカレント･プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_sell_trns_info.program_update_date                  IS 'プログラム更新日'
+/
