@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A01C(body)
  * Description      : 営業員在庫IF出力
  * MD.050           : 営業員在庫IF出力 MD050_COI_010_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/12/18    1.0   T.Nakamura       新規作成
  *  2009/05/12    1.1   T.Nakamura       [障害T1_0813]容器群コードNULLチェックを削除
  *  2018/01/10    1.2   S.Yamashita      [E_本稼動_14486]次期HHTシステム リアルタイム在庫対応
+ *  2020/04/13    1.3   H.Sasaki         [E_本稼動_16284]出庫依頼の取引データ反映（ロット取引）
  *
  *****************************************************************************************/
 --
@@ -113,6 +114,10 @@ AS
   cv_subinv_type_sal_stf      CONSTANT VARCHAR2(20)  := '2';                -- 保管場所区分：営業員
   cv_dept_hht_div_dept        CONSTANT VARCHAR2(20)  := '1';                -- 百貨店HHT区分：百貨店
   cv_cust_class_code_base     CONSTANT VARCHAR2(20)  := '1';                -- 顧客区分：拠点
+--  V1.3 Added START
+  cv_yes                      CONSTANT VARCHAR2(1)   := 'Y';                                -- フラグ：Y
+  cv_other_base_inout_car     CONSTANT VARCHAR2(30)  := 'XXCOI1_OTHER_BASE_INOUT_CAR';      -- 他拠点営業車入出庫セキュリティマスタ（出庫依頼）
+--  V1.3 Added END
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -134,6 +139,18 @@ AS
   -- 営業員在庫情報抽出
   CURSOR get_sal_stf_inv_cur
   IS
+--  V1.3 Added START
+  SELECT  sqt.sale_base_code                  sale_base_code
+        , SUM( sqt.prev_inv_quantity )        prev_inv_quantity
+        , sqt.sale_staff_code                 sale_staff_code
+        , sqt.vessel_group_code               vessel_group_code
+        , sqt.item_code                       item_code
+        , sqt.item_division                   item_division
+        , sqt.inv_code                        inv_code
+        , sqt.subinventory_type               subinventory_type
+        , SUM( sqt.transaction_quantity )     transaction_quantity
+  FROM  (
+--  V1.3 Added END
     SELECT   DECODE( xca.dept_hht_div                               -- 顧客追加情報の百貨店HHT区分が
                    , cv_dept_hht_div_dept                           -- '1'の場合
                    , xca.management_base_code                       -- 顧客追加情報の管理元拠点コード
@@ -147,6 +164,9 @@ AS
 -- Ver.1.2 S.Yamashita Add Start
            , xird.subinventory_type       AS subinventory_type      -- 保管場所区分
 -- Ver.1.2 S.Yamashita Add ENd
+--  V1.3 Added START
+           , 0                            AS transaction_quantity   --  取引数量
+--  V1.3 Added END
     FROM     xxcoi_inv_reception_daily    xird                      -- 月次在庫受払表(日次)テーブル
            , mtl_secondary_inventories    msi                       -- 保管場所マスタ
            , mtl_system_items_b           msib                      -- 品目マスタ
@@ -175,6 +195,76 @@ AS
     AND      hca.account_number           = xird.base_code          -- 結合条件：顧客マスタと月次在庫受払表(日次)
     AND      hca.customer_class_code      = cv_cust_class_code_base -- 取得条件：顧客区分が拠点
     AND      xca.customer_id              = hca.cust_account_id     -- 結合条件：顧客追加情報と顧客マスタ
+--  V1.3 Added START
+    UNION ALL
+    SELECT  /*+ LEADING( flv msio xlt msii hca xca ) */
+            DECODE( xca.dept_hht_div, cv_dept_hht_div_dept, xca.management_base_code
+                                                          , msii.attribute7
+            )                             AS  sale_base_code          --  百貨店HHT区分1の場合管理元拠点、それ以外の場合、入庫側の拠点コード
+          , 0                             AS  prev_inv_quantity       --  前日在庫数
+          , msii.attribute3               AS  sale_staff_code         --  営業員コード
+          , xsib.vessel_group             AS  vessel_group_code       --  容器群コード
+          , msib.segment1                 AS  item_code               --  品目コード
+          , mcb.segment1                  AS  item_division           --  商品区分
+          , xlt.inside_warehouse_code     AS  inv_code                --  保管場所コード（入庫側）
+          , msii.attribute1               AS  subinventory_type       --  保管場所区分（入庫側）
+          , xlt.summary_qty * -1          AS  transaction_quantity    --  取引数量
+    FROM    ( SELECT  DISTINCT  SUBSTRB( flv.lookup_code, 1, 4 )  out_base_code
+              FROM    fnd_lookup_values   flv
+              WHERE   flv.lookup_type                   =   cv_other_base_inout_car
+              AND     flv.language                      =   USERENV( 'LANG' )
+              AND     flv.enabled_flag                  =   cv_yes
+              AND     NVL( gd_target_date, gd_process_date ) + 1
+                        BETWEEN flv.start_date_active
+                        AND     NVL( flv.end_date_active, NVL( gd_target_date, gd_process_date ) + 1 )
+            )                             sub                         --  対象拠点
+          , mtl_secondary_inventories     msio                        --  保管場所（出庫）
+          , mtl_secondary_inventories     msii                        --  保管場所（入庫）
+          , xxcoi_lot_transactions        xlt                         --  ロット別取引
+          , hz_cust_accounts              hca                         --  顧客
+          , xxcmm_cust_accounts           xca                         --  顧客アドオン
+          , mtl_system_items_b            msib                        --  品目マスタ
+          , xxcmm_system_items_b          xsib                        --  Disc品目アドオン
+          , mtl_categories_b              mcb                         --  品目カテゴリ
+          , mtl_item_categories           mic                         --  品目カテゴリ割当
+          , mtl_category_sets_tl          mcst                        --  カテゴリセット
+            --  出庫側保管場所(倉庫管理対象)
+    WHERE   sub.out_base_code                 =   msio.attribute7
+    AND     msio.organization_id              =   gn_org_id
+    AND     msio.attribute1                   =   cv_subinv_type_warehouse
+    AND     msio.attribute14                  =   cv_yes
+            --  ロット別取引取得
+    AND     msio.attribute7                   =   xlt.base_code
+    AND     msio.secondary_inventory_name     =   xlt.subinventory_code
+    AND     msio.organization_id              =   xlt.organization_id
+    AND     xlt.transaction_date              =   NVL( gd_target_date, gd_process_date ) + 1
+    AND     xlt.inside_warehouse_code IS NOT NULL
+            --  入庫側保管場所取得
+    AND     xlt.inside_warehouse_code         =   msii.secondary_inventory_name
+    AND     xlt.organization_id               =   msii.organization_id
+            --  入庫側の拠点情報
+    AND     msii.attribute7                   =   hca.account_number
+    AND     hca.customer_class_code           =   cv_cust_class_code_base
+    AND     hca.cust_account_id               =   xca.customer_id
+            --  品目情報取得
+    AND     xlt.parent_item_id                =   msib.inventory_item_id
+    AND     xlt.organization_id               =   msib.organization_id
+    AND     msib.segment1                     =   xsib.item_code
+    AND     msib.inventory_item_id            =   mic.inventory_item_id
+    AND     msib.organization_id              =   mic.organization_id
+    AND     mic.category_id                   =   mcb.category_id
+    AND     mic.category_set_id               =   mcst.category_set_id
+    AND     mcst.category_set_name            =   gv_cat_set_name
+    AND     mcst.language                     =   USERENV( 'LANG' )
+        )     sqt
+  GROUP BY  sale_base_code
+          , sale_staff_code
+          , vessel_group_code
+          , item_code
+          , item_division
+          , inv_code
+          , subinventory_type
+--  V1.3 Added END
     ;
 --
   -- ==============================
@@ -735,9 +825,13 @@ AS
         IF ( g_get_sal_stf_inv_tab(i).subinventory_type = cv_subinv_type_warehouse ) THEN
           lv_prev_inv_quantity := NULL; -- 前日在庫数
         ELSE
--- Ver.1.2 S.Yamashita Add End
-          lv_prev_inv_quantity := TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity ); -- 前日在庫数
--- Ver.1.2 S.Yamashita Add Start
+--  V1.3 Modified START
+---- Ver.1.2 S.Yamashita Add End
+--          lv_prev_inv_quantity := TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity ); -- 前日在庫数
+---- Ver.1.2 S.Yamashita Add Start
+          --  前日在庫数＋出庫依頼分の数量
+          lv_prev_inv_quantity  :=  TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity + g_get_sal_stf_inv_tab(i).transaction_quantity );
+--  V1.3 Modified END
         END IF;
 -- Ver.1.2 S.Yamashita Add End
         lv_sysdate           := TO_CHAR( gd_sysdate, 'YYYY/MM/DD HH24:MI:SS' );        -- SYSDATE
@@ -755,7 +849,10 @@ AS
           cv_encloser || g_get_sal_stf_inv_tab(i).item_division     || cv_encloser                    -- 商品区分
 -- Ver.1.2 S.Yamashita Add Start
           || cv_delimiter || cv_encloser || g_get_sal_stf_inv_tab(i).inv_code                     || cv_encloser  -- 保管場所コード
-          || cv_delimiter ||                TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity )                 -- 前日在庫数（営業車・倉庫）
+--  V1.3 Modified START
+--          || cv_delimiter ||                TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity )                 -- 前日在庫数（営業車・倉庫）
+          || cv_delimiter ||  TO_CHAR( g_get_sal_stf_inv_tab(i).prev_inv_quantity + g_get_sal_stf_inv_tab(i).transaction_quantity )   -- 前日在庫数（営業車・倉庫）
+--  V1.3 Modified END
 -- Ver.1.2 S.Yamashita Add End
         );
 --
