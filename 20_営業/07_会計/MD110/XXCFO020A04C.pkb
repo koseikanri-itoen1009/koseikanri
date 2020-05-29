@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO020A04C(body)
  * Description      : 有償支給仕訳IF作成
  * MD.050           : 有償支給仕訳IF作成<MD050_CFO_020_A04>
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2019-07-26    1.5   Y.Shoji          E_本稼動_15786対応
  *  2019-08-01    1.6   N.Miyamoto       E_本稼動_15601 生産_軽減税率対応
  *                                         ・税率を品目ごとに消費税率ビューから取得するよう仕様変更
+ *  2020-05-27    1.7   S.Kuwako         E_本稼動_16386【会計】有償支給(返品訂正)
  *
  *****************************************************************************************/
 --
@@ -1251,7 +1252,10 @@ AS
 -- 2019/08/01 Ver1.6 Mod Start
 --               ,flv.lookup_code                                                                   AS tax_rate
                ,itp.item_id                                                                       AS item_id
-               ,xoha.arrival_date                                                                 AS target_date
+-- 2020/05/27 Ver1.7 Mod Start
+--               ,xoha.arrival_date                                                                 AS target_date
+               ,NVL( xoha.sikyu_return_date,xoha.arrival_date )                                   AS target_date
+-- 2020/05/27 Ver1.7 Mod End
 -- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
@@ -1469,7 +1473,10 @@ AS
 -- 2019/08/01 Ver1.6 Mod Start
 --               ,flv.lookup_code                                                                   AS tax_rate
                ,itp.item_id                                                                       AS item_id
-               ,xoha.arrival_date                                                                 AS target_date
+-- 2020/05/27 Ver1.7 Mod Start
+--               ,xoha.arrival_date                                                                 AS target_date
+               ,NVL( xoha.sikyu_return_date,xoha.arrival_date )                                   AS target_date
+-- 2020/05/27 Ver1.7 Mod End
 -- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
@@ -1687,7 +1694,10 @@ AS
 -- 2019/08/01 Ver1.6 Mod Start
 --               ,flv.lookup_code                                                                   AS tax_rate
                ,itp.item_id                                                                       AS item_id
-               ,xoha.arrival_date                                                                 AS target_date
+-- 2020/05/27 Ver1.7 Mod Start
+--               ,xoha.arrival_date                                                                 AS target_date
+               ,NVL( xoha.sikyu_return_date,xoha.arrival_date )                                   AS target_date
+-- 2020/05/27 Ver1.7 Mod End
 -- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
@@ -1921,7 +1931,10 @@ AS
 -- 2019/08/01 Ver1.6 Mod Start
 --               ,flv.lookup_code                                                                   AS tax_rate
                ,itp.item_id                                                                       AS item_id
-               ,xoha.arrival_date                                                                 AS target_date
+-- 2020/05/27 Ver1.7 Mod Start
+--               ,xoha.arrival_date                                                                 AS target_date
+               ,NVL( xoha.sikyu_return_date,xoha.arrival_date )                                   AS target_date
+-- 2020/05/27 Ver1.7 Mod End
 -- 2019/08/01 Ver1.6 Mod End
                ,xoha.performance_management_dept                                                  AS department_code
                ,xoha.vendor_site_id                                                               AS vendor_site_id
