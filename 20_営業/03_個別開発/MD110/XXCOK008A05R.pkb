@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A05R(body)
  * Description      : 要求の発行画面から、売上振替割合チェックリストを帳票に出力します。
  * MD.050           : 売上振替割合チェックリスト MD050_COK_008_A05
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/02/02    1.1   T.Abe            [障害COK_003] 取得条件に営業単位IDを追加
  *  2009/03/25    1.2   S.Kayahara       最終行にスラッシュ追加
  *  2009/08/26    1.3   M.Hiruta         [障害0001154] 従業員マスタの有効日をデータ抽出条件に追加
+ *  2020/05/26    1.4   S.Kuwako         E_本稼動_16378対応
  *
  *****************************************************************************************/
 --
@@ -481,11 +482,19 @@ AS
         ,g_target_tab( in_i ).selling_from_base_code     -- selling_from_base_code
         ,g_target_tab( in_i ).selling_from_base_name     -- selling_from_base_name
         ,g_target_tab( in_i ).selling_from_cust_code     -- selling_from_cust_code
-        ,g_target_tab( in_i ).selling_from_cust_name     -- selling_from_cust_name
+-- Start 2020/05/26 Ver.1.4 S.Kuwako REPAIR
+--        ,g_target_tab( in_i ).selling_from_cust_name     -- selling_from_cust_name
+        ,SUBSTRB( g_target_tab( in_i ).selling_from_cust_name, 1, 100 )
+                                                         -- selling_from_cust_name
+-- End   2020/05/26 Ver.1.4 S.Kuwako REPAIR
         ,g_target_tab( in_i ).selling_from_emp_code      -- selling_from_emp_code
         ,g_target_tab( in_i ).selling_from_emp_name      -- selling_from_emp_name
         ,g_target_tab( in_i ).selling_to_cust_code       -- selling_to_cust_code
-        ,g_target_tab( in_i ).selling_to_cust_name       -- selling_to_cust_name
+-- Start 2020/05/26 Ver.1.4 S.Kuwako REPAIR
+--        ,g_target_tab( in_i ).selling_to_cust_name       -- selling_to_cust_name
+        ,SUBSTRB( g_target_tab( in_i ).selling_to_cust_name, 1, 100 )
+                                                         -- selling_to_cust_name
+-- End   2020/05/26 Ver.1.4 S.Kuwako REPAIR
         ,g_target_tab( in_i ).selling_to_base_code       -- selling_to_base_code
         ,g_target_tab( in_i ).selling_to_base_name       -- selling_to_base_name
         ,g_target_tab( in_i ).selling_to_emp_code        -- selling_to_emp_code
