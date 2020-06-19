@@ -7,7 +7,7 @@ AS
  * Description     : 情報系システムへのデータ連携（勘定科目明細）
  * MD.050          : MD050_CFO_010_A01_情報系システムへのデータ連携（勘定科目明細）
  * MD.070          : MD050_CFO_010_A01_情報系システムへのデータ連携（勘定科目明細）
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008-11-19    1.0  SCS 加藤 忠   初回作成
  *  2009-07-09    1.1  SCS 佐々木    [0000019]パフォーマンス改善
  *  2009-08-04    1.2  SCS 廣瀬      [0000928]パフォーマンス改善
+ *  2020-06-19    1.3  SCSK小路      E_本稼動_16432対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -103,6 +104,9 @@ AS
   cv_msg_010a01_007  CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00029'; --ファイルをオープンできないメッセージ
   cv_msg_010a01_008  CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00030'; --ファイルに書込みできないメッセージ
   cv_msg_010a01_009  CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00032'; --データ取得エラーメッセージ
+-- == 2020/06/19 V1.3 Added START   ===============================================================
+  cv_msg_010a01_010  CONSTANT VARCHAR2(20) := 'APP-XXCFO1-50004'; --企業コードスキップメッセージ
+-- == 2020/06/19 V1.3 Added END     ===============================================================
 --
   -- トークン
   cv_tkn_prof             CONSTANT VARCHAR2(20) := 'PROF_NAME';                   -- プロファイル名
@@ -1000,28 +1004,72 @@ AS
     <<out_loop>>
     FOR ln_loop_cnt IN gt_segment1.FIRST..gt_segment1.LAST LOOP
 --
-      -- 出力文字列作成
-      lv_csv_text := cv_enclosed || gt_segment1( ln_loop_cnt )   || cv_enclosed || cv_delimiter
-                  || gt_effective_date( ln_loop_cnt )                           || cv_delimiter
-                  || cv_enclosed || gt_segment2( ln_loop_cnt )   || cv_enclosed || cv_delimiter
-                  || cv_enclosed || gt_segment3( ln_loop_cnt )   || cv_enclosed || cv_delimiter
-                  || cv_enclosed || gt_segment4( ln_loop_cnt )   || cv_enclosed || cv_delimiter
-                  || cv_enclosed || gt_segment5( ln_loop_cnt )   || cv_enclosed || cv_delimiter
-                  || cv_enclosed || gt_segment6( ln_loop_cnt )   || cv_enclosed || cv_delimiter
-                  || TO_CHAR( gt_entered_sum( ln_loop_cnt ))                    || cv_delimiter
-                  || cv_enclosed || gt_attribute1( ln_loop_cnt ) || cv_enclosed || cv_delimiter
-                  || cv_put_file_date
-      ;
+-- == 2020/06/19 V1.3 Modified START ===============================================================
+--      -- 出力文字列作成
+--      lv_csv_text := cv_enclosed || gt_segment1( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+--                  || gt_effective_date( ln_loop_cnt )                           || cv_delimiter
+--                  || cv_enclosed || gt_segment2( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+--                  || cv_enclosed || gt_segment3( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+--                  || cv_enclosed || gt_segment4( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+--                  || cv_enclosed || gt_segment5( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+--                  || cv_enclosed || gt_segment6( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+--                  || TO_CHAR( gt_entered_sum( ln_loop_cnt ))                    || cv_delimiter
+--                  || cv_enclosed || gt_attribute1( ln_loop_cnt ) || cv_enclosed || cv_delimiter
+--                  || cv_put_file_date
+--      ;
+----
+--      -- ====================================================
+--      -- ファイル書き込み
+--      -- ====================================================
+--      UTL_FILE.PUT_LINE( lf_file_hand, lv_csv_text ) ;
 --
-      -- ====================================================
-      -- ファイル書き込み
-      -- ====================================================
-      UTL_FILE.PUT_LINE( lf_file_hand, lv_csv_text ) ;
+--      -- ====================================================
+--      -- 処理件数カウントアップ
+--      -- ====================================================
+--      ln_normal_cnt := ln_normal_cnt + 1 ;
+      -- 企業コードが6桁以外の場合
+      IF (length(gt_segment6( ln_loop_cnt )) <> 6 ) THEN
+        -- 
+        gv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_msg_kbn_cfo
+                        ,iv_name         => cv_msg_010a01_010
+                        ,iv_token_name1  => cv_tkn_data
+                        ,iv_token_value1 => gt_segment6( ln_loop_cnt )
+                       );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => gv_out_msg
+        );
 --
-      -- ====================================================
-      -- 処理件数カウントアップ
-      -- ====================================================
-      ln_normal_cnt := ln_normal_cnt + 1 ;
+        ov_retcode := cv_status_warn;
+        gn_warn_cnt := gn_warn_cnt + 1;
+--
+      ELSE
+        -- 出力文字列作成
+        lv_csv_text := cv_enclosed || gt_segment1( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+                    || gt_effective_date( ln_loop_cnt )                           || cv_delimiter
+                    || cv_enclosed || gt_segment2( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+                    || cv_enclosed || gt_segment3( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+                    || cv_enclosed || gt_segment4( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+                    || cv_enclosed || gt_segment5( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+                    || cv_enclosed || gt_segment6( ln_loop_cnt )   || cv_enclosed || cv_delimiter
+                    || TO_CHAR( gt_entered_sum( ln_loop_cnt ))                    || cv_delimiter
+                    || cv_enclosed || gt_attribute1( ln_loop_cnt ) || cv_enclosed || cv_delimiter
+                    || cv_put_file_date
+        ;
+--
+        -- ====================================================
+        -- ファイル書き込み
+        -- ====================================================
+        UTL_FILE.PUT_LINE( lf_file_hand, lv_csv_text ) ;
+--
+        -- ====================================================
+        -- 処理件数カウントアップ
+        -- ====================================================
+        ln_normal_cnt := ln_normal_cnt + 1 ;
+--
+      END IF;
+-- == 2020/06/19 V1.3 Modified END   ===============================================================
 --
     END LOOP out_loop;
 --
@@ -1331,6 +1379,9 @@ AS
         --(エラー処理)
         RAISE global_process_expt;
       END IF;
+-- == 2020/06/19 V1.3 Added START   ===============================================================
+      ov_retcode := lv_retcode;
+-- == 2020/06/19 V1.3 Added END     ===============================================================
 --
     ELSE
 --
@@ -1439,6 +1490,9 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       gn_target_cnt := 0;
       gn_normal_cnt := 0;
+-- == 2020/06/19 V1.3 Added START   ===============================================================
+      gn_warn_cnt   := 0;
+-- == 2020/06/19 V1.3 Added END     ===============================================================
       gn_error_cnt  := 1;
     END IF;
 --
@@ -1481,6 +1535,20 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
+-- == 2020/06/19 V1.3 Added START   ===============================================================
+    --
+    --スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+-- == 2020/06/19 V1.3 Added END     ===============================================================
     --
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
