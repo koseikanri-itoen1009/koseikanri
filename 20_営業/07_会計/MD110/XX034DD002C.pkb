@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの仕訳伝票データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（GL）       OCSJ/BFAFIN/MD050/F602
  * MD.070(CMD.050)  : 部門入力（GL）データインポート OCSJ/BFAFIN/MD070/F602/03
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2007/10/29   11.5.10.2.10C  通貨の精度チェック(入力可能精度か桁チェック)追加のため
  *                              伝票情報取得時に通貨書式に丸める処理を削除
  *  2016/11/04   1.1            障害対応E_本稼動_13901
+ *  2020/06/17   1.2            障害対応E_本稼動_16418
  *
  *****************************************************************************************/
 --
@@ -734,6 +735,10 @@ AS
                WHERE current_employee_flag = 'Y' AND TRUNC(SYSDATE) BETWEEN effective_start_date AND effective_end_date
                ) ppf
         WHERE  xjsi.APPROVER_PERSON_NUMBER = ppf.EMPLOYEE_NUMBER
+-- == V1.2 Added START ===============================================================
+          AND  xjsi.request_id             = h_request_id
+          AND  xjsi.source                 = h_source
+-- == V1.2 Added END   ===============================================================
           AND  EXISTS (SELECT '1'
                        FROM   XX03_APPROVER_PERSON_LOV_V xaplv
                        WHERE  xaplv.PERSON_ID = ppf.person_id
@@ -5100,11 +5105,16 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- == V1.2 Added START ===============================================================
+    cv_slip_code CONSTANT VARCHAR2(3) := 'TMP';
+-- == V1.2 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
     ln_update_count NUMBER;     -- 更新件数
-    lv_slip_code VARCHAR2(10);  -- 仕訳伝票コード
-    ln_slip_number NUMBER;      -- 伝票番号
+-- == V1.2 Delete START ===============================================================
+--    lv_slip_code VARCHAR2(10);  -- 仕訳伝票コード
+--    ln_slip_number NUMBER;      -- 伝票番号
+-- == V1.2 Delete END   ===============================================================
 --
     -- *** ローカル・カーソル ***
     -- 更新対象取得カーソル
@@ -5151,20 +5161,22 @@ AS
         FROM XX03_JOURNAL_SLIPS xjs
        WHERE xjs.REQUEST_ID = xx00_global_pkg.conc_request_id;
 --
-      -- 伝票番号取得
-      update_slip_number(
-        ln_update_count,
-        lv_slip_code,
-        ln_slip_number,
-        lv_errbuf,
-        lv_retcode,
-        lv_errmsg);
-      IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
-        RAISE global_process_expt;
-      ELSIF (lv_retcode = xx00_common_pkg.set_status_warn_f) THEN
-        RAISE global_process_expt;
-      END IF;
---
+-- == V1.2 Delete START ===============================================================
+--      -- 伝票番号取得
+--      update_slip_number(
+--        ln_update_count,
+--        lv_slip_code,
+--        ln_slip_number,
+--        lv_errbuf,
+--        lv_retcode,
+--        lv_errmsg);
+--      IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
+--        RAISE global_process_expt;
+--      ELSIF (lv_retcode = xx00_common_pkg.set_status_warn_f) THEN
+--        RAISE global_process_expt;
+--      END IF;
+----
+-- == V1.2 Delete END   ===============================================================
       -- 更新対象取得
       OPEN update_record_cur;
       <<update_record_loop>>
@@ -5176,12 +5188,17 @@ AS
           EXIT update_record_loop;
         END IF;
 --
-        -- 伝票番号加算
-        ln_slip_number := ln_slip_number + 1;
---
+-- == V1.2 Delete START ===============================================================
+--        -- 伝票番号加算
+--        ln_slip_number := ln_slip_number + 1;
+----
+-- == V1.2 Delete END   ===============================================================
         -- 伝票番号更新
         UPDATE XX03_JOURNAL_SLIPS xjs
-           SET xjs.JOURNAL_NUM = lv_slip_code || TO_CHAR(ln_slip_number)
+-- == V1.2 Modified START ===============================================================
+--           SET xjs.JOURNAL_NUM = lv_slip_code || TO_CHAR(ln_slip_number)
+           SET xjs.JOURNAL_NUM = cv_slip_code || TO_CHAR(xxcfo_slip_number_s1.NEXTVAL)
+-- == V1.2 Modified END   ===============================================================
          WHERE xjs.JOURNAL_ID = update_record_rec.JOURNAL_ID;
 --
       END LOOP update_record_loop;
