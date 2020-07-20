@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A04C(body)
  * Description      : 控除用実績振替データの作成（振替割合）
  * MD.050           : 控除用実績振替データの作成（振替割合） MD050_COK_024_A04
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/04/08    1.0   Y.Nakajima       新規作成
+ *  2020/06/15    1.1   K.Kanada         後続機能のPT対応で商品区分の編集を追加
  *
  *****************************************************************************************/
 --
@@ -186,6 +187,9 @@ AS
   cv_payment_discounts_code_type   CONSTANT VARCHAR2(50)    := 'XXCMM1_PAYMENT_DISCOUNTS_CODE';     -- 入金値引
   --参照タイプ・有効フラグ
   cv_enable                        CONSTANT VARCHAR2(1)     := 'Y';         -- 有効
+-- 2020/06/15 Add S
+  cv_cate_set_name                 CONSTANT VARCHAR2(20)    := '本社商品区分';            -- 品目カテゴリセット名
+-- 2020/06/15 Add E
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -206,6 +210,9 @@ AS
   gv_param_info_class              VARCHAR2(1)   DEFAULT NULL;   -- 情報種別
   --
   gt_selling_trns_info_id_min      xxcok_dedu_sell_trns_info.selling_trns_info_id%TYPE DEFAULT NULL; -- 売上振替情報登録最小ID
+-- 2020/06/15 Add S
+  gt_product_class                 xxcok_dedu_sell_trns_info.product_class%TYPE;     -- 商品区分
+-- 2020/06/15 Add E
   --==================================================
   -- グローバル例外
   --==================================================
@@ -777,6 +784,9 @@ AS
     , program_application_id                      -- コンカレント・プログラム･アプリケーションID
     , program_id                                  -- コンカレント･プログラムID
     , program_update_date                         -- プログラム更新日
+-- 2020/06/15 Add S
+    , product_class                               -- 商品区分
+-- 2020/06/15 Add E
     )
     VALUES(
       xxcok_dedu_sell_trns_info_s01.NEXTVAL       -- selling_trns_info_id
@@ -832,6 +842,9 @@ AS
     , cn_program_application_id                   -- program_application_id
     , cn_program_id                               -- program_id
     , SYSDATE                                     -- program_update_date
+-- 2020/06/15 Add S
+    , gt_product_class                            -- product_class
+-- 2020/06/15 Add E
     );
     --==================================================
     -- 出力パラメータ設定
@@ -1237,6 +1250,28 @@ AS
                         );
           RAISE warning_skip_expt;
         END IF;
+-- 2020/06/15 Add S
+        --==================================================
+        -- 商品区分の取得
+        --==================================================
+        BEGIN
+          SELECT SUBSTRB(mcv.segment1,1,1)      segment1             -- 商品区分
+          INTO   gt_product_class
+          FROM   mtl_categories_vl        mcv
+                ,gmi_item_categories      gic
+                ,mtl_category_sets_vl     mcsv
+                ,xxcmm_system_items_b     xsib
+          WHERE  mcsv.category_set_name   = cv_cate_set_name
+          AND    gic.item_id              = xsib.item_id
+          AND    gic.category_set_id      = mcsv.category_set_id
+          AND    gic.category_id          = mcv.category_id
+          AND    xsib.item_code           = get_selling_from_rec.item_code
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            gt_product_class := NULL ;
+        END ;
+-- 2020/06/15 Add E
         --==================================================
         -- 売上振替先情報ループ(A-4)
         --==================================================
