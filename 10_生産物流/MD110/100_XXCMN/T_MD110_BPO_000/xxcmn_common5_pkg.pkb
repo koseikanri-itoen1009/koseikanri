@@ -6,13 +6,14 @@ AS
  * Package Name           : xxcmn_common5_pkg(body)
  * Description            : 共通関数5
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数5.xls
- * Version                : 1.2
+ * Version                : 1.3
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
  *   Name                Type  Ret   Description
  *  -------------------- ---- ----- --------------------------------------------------
  *  get_use_by_date       F    DATE  賞味期限取得関数
+ *  chek_lot_unit_price   F    NUM   月跨ぎのロット単価変更チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -21,6 +22,7 @@ AS
  *  2018/02/22    1.0   H.Sasaki        新規作成(E_本稼動_14859)
  *  2018/06/18    1.1   H.Sasaki        不具合対応(E_本稼動_15154)
  *  2019/07/25    1.2   E.Yazaki        不具合対応(E_本稼動_15550)
+ *  2020/07/30    1.3   Y.Shoji         E_本稼動_16375対応
  *
  *****************************************************************************************/
 --
@@ -241,5 +243,127 @@ AS
 --
   END get_use_by_date;
 --
+-- Ver_1.3 E_本稼動_16375 ADD Start
+  /**********************************************************************************
+   * Function Name    : chek_lot_unit_price
+   * Description      : 月跨ぎのロット単価変更チェック
+   ***********************************************************************************/
+  FUNCTION  chek_lot_unit_price(
+      id_base_date          IN DATE       --  1.基準日
+    , in_lot_id             IN NUMBER     --  2.ロットID
+    , iv_unit_price         IN VARCHAR2   --  3.単価
+  ) RETURN NUMBER
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chek_lot_unit_price'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_date_format_YM      CONSTANT VARCHAR2(7)  :=  'YYYY-MM';                      -- 日付形式：YYYY-MM
+    cv_date_format_MM      CONSTANT VARCHAR2(2)  :=  'MM';                           -- 日付形式：MM
+    cv_flag_y              CONSTANT VARCHAR2(1)  :=  'Y';                            -- フラグ：Y
+    cv_pro_sales_books_id  CONSTANT VARCHAR2(27) :=  'XXCMN_SALES_SET_OF_BOOKS_ID';  -- プロファイル：XXCMN:営業会計帳簿ID
+--
+    -- *** ローカル変数 ***
+    ld_start_date       DATE;          -- 基準日の前月の初日
+    ld_end_date         DATE;          -- 基準日の月の初日
+    lv_period_name      VARCHAR2(7);   -- 会計期間
+    ln_count_gl         NUMBER;        -- 前月仕訳作成有無
+    ln_count_trn        NUMBER;        -- 前月単価違いトランザクション有無
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+    -- 基準日の月の初日を取得
+    ld_end_date   := TRUNC(id_base_date ,cv_date_format_MM);
+    -- 基準日の前月の初日を取得
+    ld_start_date := ADD_MONTHS(ld_end_date ,-1);
+    -- 基準日の前月の会計期間を取得
+    lv_period_name := TO_CHAR(ld_start_date ,cv_date_format_YM);
+--
+    -- 相良会計自動仕訳作成有無チェック
+    SELECT COUNT(0) count
+    INTO   ln_count_gl
+    FROM   xxcfo_mfg_if_control  xmif                   -- 連携管理テーブル
+    WHERE  xmif.period_name     = lv_period_name                           -- 会計期間
+    AND    xmif.gl_process_flag = cv_flag_y                                -- 処理フラグ
+    AND    xmif.set_of_books_id = fnd_profile.value(cv_pro_sales_books_id) -- 会計帳簿ID
+    ;
+--
+    -- 仕訳未作成の場合
+    IF ( ln_count_gl = 0 ) THEN
+      -- 保留在庫トランザクションの単価違いチェック
+      SELECT COUNT(0) count
+      INTO   ln_count_trn
+      FROM   ic_tran_pnd  itp  -- 保留在庫トランザクション
+            ,ic_lots_mst  ilm  -- ロットマスタ
+      WHERE  itp.trans_date >= ld_start_date  -- 取引日From
+      AND    itp.trans_date <  ld_end_date    -- 取引日To
+      AND    itp.lot_id     =  in_lot_id      -- ロットID
+      AND    itp.lot_id     =  ilm.lot_id
+      AND    ilm.attribute7 <> iv_unit_price  -- 単価違い
+      ;
+--
+      -- 単価違いが存在しない場合
+      IF ( ln_count_trn = 0 ) THEN
+        -- 完了在庫トランザクションの単価違いチェック
+        SELECT COUNT(0) count
+        INTO   ln_count_trn
+        FROM   ic_tran_cmp  itc  -- 完了在庫トランザクション
+              ,ic_lots_mst  ilm  -- ロットマスタ
+        WHERE  itc.trans_date >= ld_start_date  -- 取引日From
+        AND    itc.trans_date <  ld_end_date    -- 取引日To
+        AND    itc.lot_id     =  in_lot_id      -- ロットID
+        AND    itc.lot_id     =  ilm.lot_id
+        AND    ilm.attribute7 <> iv_unit_price  -- 単価違い
+        ;
+      END IF;
+--
+      -- 単価違いが存在する場合
+      IF ( ln_count_trn > 0 ) THEN
+        -- エラーあり
+        RETURN 1;
+      END IF;
+--
+    END IF;
+--
+    -- エラーなし
+    RETURN 0;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000),TRUE);
+      RETURN  NULL;
+--
+  END chek_lot_unit_price;
+--
+-- Ver_1.3 E_本稼動_16375 ADD End
 END xxcmn_common5_pkg;
 /
