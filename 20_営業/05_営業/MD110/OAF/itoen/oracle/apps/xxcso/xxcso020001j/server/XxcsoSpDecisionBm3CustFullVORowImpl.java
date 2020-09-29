@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionBm3CustFullVORowImpl
 * 概要説明   : BM3登録／更新用ビュー行クラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS小川浩     新規作成
+* 2020-08-21 1.1  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -63,6 +64,8 @@ public class XxcsoSpDecisionBm3CustFullVORowImpl extends OAViewRowImpl
   protected static final int PROGRAMUPDATEDATE = 35;
   protected static final int VENDORNUMBER = 36;
   protected static final int INQUIRYBASENAME = 37;
+  protected static final int BM3TAXKBNCODEVIEW = 38;
+  protected static final int BM3TAXKBNVIEW = 39;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -773,6 +776,10 @@ public class XxcsoSpDecisionBm3CustFullVORowImpl extends OAViewRowImpl
         return getVendorNumber();
       case INQUIRYBASENAME:
         return getInquiryBaseName();
+      case BM3TAXKBNCODEVIEW:
+        return getBm3TaxKbnCodeView();
+      case BM3TAXKBNVIEW:
+        return getBm3TaxKbnView();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -897,6 +904,12 @@ public class XxcsoSpDecisionBm3CustFullVORowImpl extends OAViewRowImpl
       case INQUIRYBASENAME:
         setInquiryBaseName((String)value);
         return;
+      case BM3TAXKBNCODEVIEW:
+        setBm3TaxKbnCodeView((String)value);
+        return;
+      case BM3TAXKBNVIEW:
+        setBm3TaxKbnView((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -973,5 +986,41 @@ public class XxcsoSpDecisionBm3CustFullVORowImpl extends OAViewRowImpl
   public void setInquiryBaseName(String value)
   {
     setAttributeInternal(INQUIRYBASENAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm3TaxKbnCodeView
+   */
+  public String getBm3TaxKbnCodeView()
+  {
+    return (String)getAttributeInternal(BM3TAXKBNCODEVIEW);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm3TaxKbnCodeView
+   */
+  public void setBm3TaxKbnCodeView(String value)
+  {
+    setAttributeInternal(BM3TAXKBNCODEVIEW, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm3TaxKbnView
+   */
+  public String getBm3TaxKbnView()
+  {
+    return (String)getAttributeInternal(BM3TAXKBNVIEW);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm3TaxKbnView
+   */
+  public void setBm3TaxKbnView(String value)
+  {
+    setAttributeInternal(BM3TAXKBNVIEW, value);
   }
 }

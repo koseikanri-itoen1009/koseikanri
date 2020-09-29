@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.17
+* バージョン : 1.18
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -24,6 +24,7 @@
 * 2014-12-15 1.15 SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-08 1.16 SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.17 SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加
+* 2020-06-16 1.18 SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -53,6 +54,8 @@ import com.sun.java.util.collections.HashMap;
 import com.sun.java.util.collections.List;
 import com.sun.java.util.collections.ArrayList;
 import java.sql.SQLException;
+import itoen.oracle.apps.xxcso.xxcso020001j.poplist.server.XxcsoBM1TaxListVOImpl;
+import itoen.oracle.apps.xxcso.common.lov.server.XxcsoLookupLovVOImpl;
 
 /*******************************************************************************
  * SP専決書の登録を行うための
@@ -2712,7 +2715,41 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       "XXCSO1_SP_BUSINESS_COND"
      ,"lookup_code"
     );
-
+// [E_本稼動_15409] Add Start
+    // BM1税区分
+    XxcsoBM1TaxListVOImpl bm1TaxListVo
+      = getXxcsoBM1TaxListVO1();
+    if ( bm1TaxListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBM1TaxListVO");
+    }
+    // BM2税区分
+    XxcsoLookupListVOImpl bm2TaxListVo
+      = getXxcsoBM2TaxListVO1();
+    if ( bm2TaxListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBM2TaxListVO");
+    }
+    bm2TaxListVo.initQuery(
+      "XXCSO1_BM_TAX_KBN"
+     ,"lookup_code"
+    );
+    // BM3税区分
+    XxcsoLookupListVOImpl bm3TaxListVo
+      = getXxcsoBM3TaxListVO1();
+    if ( bm3TaxListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBM3TaxListVO");
+    }
+    bm3TaxListVo.initQuery(
+      "XXCSO1_BM_TAX_KBN"
+     ,"lookup_code"
+    );
+    
+// [E_本稼動_15409] Add End
     // 定価
     XxcsoLookupListVOImpl fixedPriceListVo
       = getXxcsoFiexedPriceListVO();
@@ -3521,7 +3558,7 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
      ,selCcVo
      ,bmFmtVo
     );
-    
+
     /////////////////////////////////////
     // 検証処理：設置先
     /////////////////////////////////////
@@ -4219,6 +4256,21 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         );
       }
     }
+    // [E_本稼動_15904] Add Start
+    /////////////////////////////////////
+    // 検証処理：BM1/BM2/BM3の税区分コードの妥当性チェック
+    /////////////////////////////////////
+    errorList.addAll(
+      XxcsoSpDecisionValidateUtils.validateBmTaxKbn(
+         txn
+        ,headerVo
+        ,bm1Vo
+        ,bm2Vo
+        ,bm3Vo
+        ,OperationMode
+      )
+    );
+    // [E_本稼動_15904] Add End
     // 2009-10-14 [IE554,IE573] Add Start
     ///////////////////////////////////////
     //// 検証処理：BM1/BM2/BM3の送付先名の相互チェック
@@ -5270,6 +5322,34 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
   {
     return (XxcsoLookupListVOImpl)findViewObject("XxcsoMonthsListVO");
   }
+
+  /**
+   * 
+   * Container's getter for XxcsoBM1TaxListVO1
+   */
+  public XxcsoBM1TaxListVOImpl getXxcsoBM1TaxListVO1()
+  {
+    return (XxcsoBM1TaxListVOImpl)findViewObject("XxcsoBM1TaxListVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoBM3TaxListVO1
+   */
+  public XxcsoLookupListVOImpl getXxcsoBM3TaxListVO1()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoBM3TaxListVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoBM2TaxListVO1
+   */
+  public XxcsoLookupListVOImpl getXxcsoBM2TaxListVO1()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoBM2TaxListVO1");
+  }
+
 
 
 

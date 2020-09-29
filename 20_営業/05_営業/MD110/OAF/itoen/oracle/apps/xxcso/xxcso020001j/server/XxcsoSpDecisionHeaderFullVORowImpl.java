@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionHeaderFullVORowImpl
 * 概要説明   : SP専決ヘッダ登録／更新用ビュー行クラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-12-27 1.0  SCS小川浩     新規作成
 * 2014-12-30 1.1  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 * 2018-05-16 1.2  SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加対応
+* 2020-08-21 1.3  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -135,16 +136,19 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   protected static final int INSTALLATIONSTARTMONTH = 105;
   protected static final int INSTALLATIONENDYEAR = 106;
   protected static final int INSTALLATIONENDMONTH = 107;
-  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 108;
-  protected static final int XXCSOSPDECISIONATTACHFULLVO = 109;
-  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 110;
-  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 111;
-  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 112;
-  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 113;
-  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 114;
-  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 115;
-  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 116;
-  protected static final int XXCSOSPDECISIONSENDFULLVO = 117;
+  protected static final int BM1TAXKBN = 108;
+  protected static final int BM2TAXKBN = 109;
+  protected static final int BM3TAXKBN = 110;
+  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 111;
+  protected static final int XXCSOSPDECISIONATTACHFULLVO = 112;
+  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 113;
+  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 114;
+  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 115;
+  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 116;
+  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 117;
+  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 118;
+  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 119;
+  protected static final int XXCSOSPDECISIONSENDFULLVO = 120;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -1377,6 +1381,12 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return getInstallationEndYear();
       case INSTALLATIONENDMONTH:
         return getInstallationEndMonth();
+      case BM1TAXKBN:
+        return getBm1TaxKbn();
+      case BM2TAXKBN:
+        return getBm2TaxKbn();
+      case BM3TAXKBN:
+        return getBm3TaxKbn();
       case XXCSOSPDECISIONALLCCLINEFULLVO:
         return getXxcsoSpDecisionAllCcLineFullVO();
       case XXCSOSPDECISIONATTACHFULLVO:
@@ -1730,6 +1740,15 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return;
       case INSTALLATIONENDMONTH:
         setInstallationEndMonth((String)value);
+        return;
+      case BM1TAXKBN:
+        setBm1TaxKbn((String)value);
+        return;
+      case BM2TAXKBN:
+        setBm2TaxKbn((String)value);
+        return;
+      case BM3TAXKBN:
+        setBm3TaxKbn((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -2798,6 +2817,78 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(INSTALLATIONENDMONTH, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm1TaxKbn
+   */
+  public String getBm1TaxKbn()
+  {
+    return (String)getAttributeInternal(BM1TAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm1TaxKbn
+   */
+  public void setBm1TaxKbn(String value)
+  {
+    setAttributeInternal(BM1TAXKBN, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm2TaxKbn
+   */
+  public String getBm2TaxKbn()
+  {
+    return (String)getAttributeInternal(BM2TAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm2TaxKbn
+   */
+  public void setBm2TaxKbn(String value)
+  {
+    setAttributeInternal(BM2TAXKBN, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm3TaxKbn
+   */
+  public String getBm3TaxKbn()
+  {
+    return (String)getAttributeInternal(BM3TAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm3TaxKbn
+   */
+  public void setBm3TaxKbn(String value)
+  {
+    setAttributeInternal(BM3TAXKBN, value);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

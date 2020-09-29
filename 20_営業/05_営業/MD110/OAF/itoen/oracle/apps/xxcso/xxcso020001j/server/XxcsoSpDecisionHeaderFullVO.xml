@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -152,6 +152,11 @@ SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID,
       ,XxcsoSpDecisionHeadersVEO.INSTALLATION_END_YEAR
       ,XxcsoSpDecisionHeadersVEO.INSTALLATION_END_MONTH
 -- 2018-05-16 [E_本稼動_14989] Add End
+-- 2020-06-16 [E_本稼動_15904] Add Start
+      ,XxcsoSpDecisionHeadersVEO.BM1_TAX_KBN
+      ,XxcsoSpDecisionHeadersVEO.BM2_TAX_KBN
+      ,XxcsoSpDecisionHeadersVEO.BM3_TAX_KBN
+-- 2020-06-16 [E_本稼動_15904] Add End
 FROM XXCSO_SP_DECISION_HEADERS_V XxcsoSpDecisionHeadersVEO
 WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
    ]]></SQLQuery>
@@ -913,6 +918,24 @@ WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
       EntityAttrName="InstallationEndMonth"
       EntityUsage="XxcsoSpDecisionHeadersVEO"
       AliasName="InstallationEndMonth" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1TaxKbn"
+      EntityAttrName="Bm1TaxKbn"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="Bm1TaxKbn" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2TaxKbn"
+      EntityAttrName="Bm2TaxKbn"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="Bm2TaxKbn" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3TaxKbn"
+      EntityAttrName="Bm3TaxKbn"
+      EntityUsage="XxcsoSpDecisionHeadersVEO"
+      AliasName="Bm3TaxKbn" >
    </ViewAttribute>
    <ViewLinkAccessor
       Name="XxcsoSpDecisionAllCcLineFullVO"

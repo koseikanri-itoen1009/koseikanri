@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -274,6 +274,15 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
         ,NULL
         ,NULL
        ) transfer_commission_type_view
+      ,pvs.attribute6 AS bm1_tax_kbn_code_view
+      ,(SELECT  flvv.meaning
+        FROM   fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type   = 'XXCSO1_BM_TAX_KBN'
+          AND  flvv.lookup_code   = pvs.attribute6
+          AND  flvv.enabled_flag  = 'Y'
+          AND  NVL(flvv.start_date_active, TRUNC(xxcso_util_common_pkg.get_online_sysdate)) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+          AND  NVL(flvv.end_date_active,   TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        ) bm1_tax_kbn_view
 FROM XXCSO_SP_DECISION_CUSTS_V XxcsoSpDecisionCustsVEO
     ,xxcso_sp_decision_headers xsdh
     ,xxcso_sp_decision_custs_v inst
@@ -295,7 +304,7 @@ AND   pvs.vendor_id(+)                                   = XxcsoSpDecisionCustsV
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <EntityUsage
@@ -599,6 +608,29 @@ AND   pvs.vendor_id(+)                                   = XxcsoSpDecisionCustsV
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1TaxKbnCodeView"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM1_TAX_KBN_CODE_VIEW"
+      Expression="BM1_TAX_KBN_CODE_VIEW"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1TaxKbnView"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM1_TAX_KBN_VIEW"
+      Expression="BM1_TAX_KBN_VIEW"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

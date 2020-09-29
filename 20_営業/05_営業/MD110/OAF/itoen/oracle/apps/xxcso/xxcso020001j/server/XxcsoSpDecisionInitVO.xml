@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -3234,6 +3234,51 @@ WHERE   xev.user_id = fnd_global.user_id
    </ViewAttribute>
    <ViewAttribute
       Name="InstallationEndMonthViewRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BMTaxRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1TaxKbnViewRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2TaxKbnViewRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3TaxKbnViewRender"
+      IsQueriable="false"
+      IsPersistent="false"
+      Type="java.lang.Boolean"
+      ColumnType="$none$"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BMTaxViewRender"
       IsQueriable="false"
       IsPersistent="false"
       Type="java.lang.Boolean"

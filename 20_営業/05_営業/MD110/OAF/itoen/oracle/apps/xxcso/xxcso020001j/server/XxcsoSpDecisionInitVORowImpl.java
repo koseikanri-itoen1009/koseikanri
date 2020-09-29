@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionInitVORowImpl
 * 概要説明   : SP専決初期化用ビュー行クラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2014-12-30 1.2  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.3  SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.4  SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加対応
+* 2020-08-21 1.5  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -379,6 +380,11 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   protected static final int INSTALLATIONENDYEARVIEWRENDER = 348;
   protected static final int INSTALLATIONENDMONTHRENDER = 349;
   protected static final int INSTALLATIONENDMONTHVIEWRENDER = 350;
+  protected static final int BMTAXRENDER = 351;
+  protected static final int BM1TAXKBNVIEWRENDER = 352;
+  protected static final int BM2TAXKBNVIEWRENDER = 353;
+  protected static final int BM3TAXKBNVIEWRENDER = 354;
+  protected static final int BMTAXVIEWRENDER = 355;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -1184,6 +1190,16 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return getInstallationEndMonthRender();
       case INSTALLATIONENDMONTHVIEWRENDER:
         return getInstallationEndMonthViewRender();
+      case BMTAXRENDER:
+        return getBMTaxRender();
+      case BM1TAXKBNVIEWRENDER:
+        return getBm1TaxKbnViewRender();
+      case BM2TAXKBNVIEWRENDER:
+        return getBm2TaxKbnViewRender();
+      case BM3TAXKBNVIEWRENDER:
+        return getBm3TaxKbnViewRender();
+      case BMTAXVIEWRENDER:
+        return getBMTaxViewRender();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -2246,6 +2262,21 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
         return;
       case INSTALLATIONENDMONTHVIEWRENDER:
         setInstallationEndMonthViewRender((Boolean)value);
+        return;
+      case BMTAXRENDER:
+        setBMTaxRender((Boolean)value);
+        return;
+      case BM1TAXKBNVIEWRENDER:
+        setBm1TaxKbnViewRender((Boolean)value);
+        return;
+      case BM2TAXKBNVIEWRENDER:
+        setBm2TaxKbnViewRender((Boolean)value);
+        return;
+      case BM3TAXKBNVIEWRENDER:
+        setBm3TaxKbnViewRender((Boolean)value);
+        return;
+      case BMTAXVIEWRENDER:
+        setBMTaxViewRender((Boolean)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -8572,5 +8603,99 @@ public class XxcsoSpDecisionInitVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(INSTALLATIONENDMONTHVIEWRENDER, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BMTaxRender
+   */
+  public Boolean getBMTaxRender()
+  {
+    return (Boolean)getAttributeInternal(BMTAXRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BMTaxRender
+   */
+  public void setBMTaxRender(Boolean value)
+  {
+    setAttributeInternal(BMTAXRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm1TaxKbnViewRender
+   */
+  public Boolean getBm1TaxKbnViewRender()
+  {
+    return (Boolean)getAttributeInternal(BM1TAXKBNVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm1TaxKbnViewRender
+   */
+  public void setBm1TaxKbnViewRender(Boolean value)
+  {
+    setAttributeInternal(BM1TAXKBNVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm2TaxKbnViewRender
+   */
+  public Boolean getBm2TaxKbnViewRender()
+  {
+    return (Boolean)getAttributeInternal(BM2TAXKBNVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm2TaxKbnViewRender
+   */
+  public void setBm2TaxKbnViewRender(Boolean value)
+  {
+    setAttributeInternal(BM2TAXKBNVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm3TaxKbnViewRender
+   */
+  public Boolean getBm3TaxKbnViewRender()
+  {
+    return (Boolean)getAttributeInternal(BM3TAXKBNVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm3TaxKbnViewRender
+   */
+  public void setBm3TaxKbnViewRender(Boolean value)
+  {
+    setAttributeInternal(BM3TAXKBNVIEWRENDER, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BMTaxViewRender
+   */
+  public Boolean getBMTaxViewRender()
+  {
+    return (Boolean)getAttributeInternal(BMTAXVIEWRENDER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BMTaxViewRender
+   */
+  public void setBMTaxViewRender(Boolean value)
+  {
+    setAttributeInternal(BMTAXVIEWRENDER, value);
+  }
+
+
+
+
 
 }

@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionBm1CustFullVORowImpl
 * 概要説明   : BM1登録／更新用ビュー行クラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS小川浩     新規作成
+* 2020-08-21 1.1  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -64,6 +65,8 @@ public class XxcsoSpDecisionBm1CustFullVORowImpl extends OAViewRowImpl
   protected static final int VENDORNUMBER = 36;
   protected static final int INQUIRYBASENAME = 37;
   protected static final int TRANSFERCOMMISSIONTYPEVIEW = 38;
+  protected static final int BM1TAXKBNCODEVIEW = 39;
+  protected static final int BM1TAXKBNVIEW = 40;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -776,6 +779,10 @@ public class XxcsoSpDecisionBm1CustFullVORowImpl extends OAViewRowImpl
         return getInquiryBaseName();
       case TRANSFERCOMMISSIONTYPEVIEW:
         return getTransferCommissionTypeView();
+      case BM1TAXKBNCODEVIEW:
+        return getBm1TaxKbnCodeView();
+      case BM1TAXKBNVIEW:
+        return getBm1TaxKbnView();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -903,6 +910,12 @@ public class XxcsoSpDecisionBm1CustFullVORowImpl extends OAViewRowImpl
       case TRANSFERCOMMISSIONTYPEVIEW:
         setTransferCommissionTypeView((String)value);
         return;
+      case BM1TAXKBNCODEVIEW:
+        setBm1TaxKbnCodeView((String)value);
+        return;
+      case BM1TAXKBNVIEW:
+        setBm1TaxKbnView((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -997,5 +1010,43 @@ public class XxcsoSpDecisionBm1CustFullVORowImpl extends OAViewRowImpl
   public void setTransferCommissionTypeView(String value)
   {
     setAttributeInternal(TRANSFERCOMMISSIONTYPEVIEW, value);
+  }
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm1TaxKbnView
+   */
+  public String getBm1TaxKbnView()
+  {
+    return (String)getAttributeInternal(BM1TAXKBNVIEW);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm1TaxKbnView
+   */
+  public void setBm1TaxKbnView(String value)
+  {
+    setAttributeInternal(BM1TAXKBNVIEW, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute Bm1TaxKbnCodeView
+   */
+  public String getBm1TaxKbnCodeView()
+  {
+    return (String)getAttributeInternal(BM1TAXKBNCODEVIEW);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute Bm1TaxKbnCodeView
+   */
+  public void setBm1TaxKbnCodeView(String value)
+  {
+    setAttributeInternal(BM1TAXKBNCODEVIEW, value);
   }
 }

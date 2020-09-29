@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -178,7 +178,7 @@ AND   xcasv.cust_account_id(+)                           = XxcsoSpDecisionCustsV
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <EntityUsage
