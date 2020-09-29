@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO020A07C (body)
  * Description      : SP専決書情報CSV出力
  * MD.050           : SP専決書情報CSV出力 (MD050_CSO_020A07)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2015/02/23    1.0   S.Yamashita      新規作成
  *  2018/05/16    1.1   K.Kiriu          E_本稼動_14989対応
+ *  2020/08/21    1.2   M.Sato           E_本稼動_15904対応
  *
  *****************************************************************************************/
 --
@@ -148,6 +149,9 @@ AS
   cv_lookup_type_25           CONSTANT VARCHAR2(30)  := 'XXCSO1_SP_WORK_REQUEST_TYPE';  -- SP専決作業依頼区分
   cv_lookup_type_26           CONSTANT VARCHAR2(30)  := 'XXCSO1_SP_APPROVAL_STATE_TYPE';-- SP専決回送状態区分
   cv_lookup_type_27           CONSTANT VARCHAR2(30)  := 'XXCSO1_SP_DECISION_CONTENT';   -- SP専決決裁内容
+-- V1.2 2020/08/21 M.Sato ADD START --
+  cv_lookup_type_28           CONSTANT VARCHAR2(30)  := 'XXCSO1_BM_TAX_KBN';            -- BM税区分
+-- V1.2 2020/08/21 M.Sato ADD END   --
 --
   cv_flag_y                   CONSTANT VARCHAR2(1)   := 'Y';                         -- 有効
   cv_output_log               CONSTANT VARCHAR2(3)   := 'LOG';                       -- 出力区分：ログ
@@ -265,6 +269,11 @@ AS
                                    xcc.phone_number)         AS contract_phone_number         -- 契約先電話番号
     ,DECODE(xsdc2.customer_id,NULL,xsdc2.representative_name,
                                    xcc.delegate_name)        AS contract_delegate_name        -- 契約先代表者名
+-- V1.2 2020/08/21 M.Sato ADD START --
+    ,xsdh.bm1_tax_kbn                                        AS bm1_tax_kbn                   -- BM1税区分
+    ,xsdh.bm2_tax_kbn                                        AS bm2_tax_kbn                   -- BM2税区分
+    ,xsdh.bm3_tax_kbn                                        AS bm3_tax_kbn                   -- BM3税区分
+-- V1.2 2020/08/21 M.Sato ADD END   --
     ,xsdh.newold_type                                        AS newold_type                   -- 新台旧台区分
     ,xsdh.maker_code                                         AS maker_code                    -- メーカーコード
     ,xsdh.un_number                                          AS un_number                     -- 機種コード
@@ -326,7 +335,11 @@ AS
     ,xsdh.intro_chg_trans_date                               AS intro_chg_trans_date          -- 紹介手数料振込日
     ,xsdh.intro_chg_trans_name                               AS intro_chg_trans_name          -- 紹介手数料契約先以外名
     ,xsdh.intro_chg_trans_name_alt                           AS intro_chg_trans_name_alt      -- 紹介手数料契約先以外名（カナ）
-    ,xsdh.condition_reason                                   AS condition_reason              -- 特別条件の理由
+-- V1.2 2020/08/21 M.Sato MOD START --
+--    ,xsdh.condition_reason                                   AS condition_reason              -- 特別条件の理由
+    ,REPLACE( REPLACE( xsdh.condition_reason , CHR(13), NULL ) , CHR(10) , NULL )
+                                                             AS condition_reason              -- 特別条件の理由
+-- V1.2 2020/08/21 M.Sato MOD START --
     ,xsdh.bm1_send_type                                      AS bm1_send_type                 -- BM1送付先区分
     ,pv1.segment1                                            AS bm1_send_code                 -- BM1送付先コード
     ,DECODE(xsdc3.customer_id,NULL,xsdc3.party_name,
@@ -347,6 +360,9 @@ AS
                                   ,pvs1.attribute4)          AS bm1_bm_payment_type           -- BM1支払方法・明細書
     ,DECODE(xsdc3.customer_id,NULL,xsdc3.inquiry_base_code,
                                    pvs1.attribute5)          AS bm1_inquiry_base_code         -- BM1問合せ担当拠点コード
+-- V1.2 2020/08/21 M.Sato ADD START --
+    ,pvs1.attribute6                                         AS bm1_tax_class                 -- BM1税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD END   --
     ,pv2.segment1                                            AS bm2_send_code                 -- BM2送付先コード
     ,DECODE(xsdc4.customer_id,NULL,xsdc4.party_name,
                                    pvs2.attribute1)          AS bm2_send_name                 -- BM2送付先名
@@ -366,6 +382,9 @@ AS
                                   ,pvs2.attribute4)          AS bm2_bm_payment_type           -- BM2支払方法・明細書
     ,DECODE(xsdc4.customer_id,NULL,xsdc4.inquiry_base_code,
                                    pvs2.attribute5)          AS bm2_inquiry_base_code         -- BM2問合せ担当拠点コード
+-- V1.2 2020/08/21 M.Sato ADD START --
+    ,pvs2.attribute6                                         AS bm2_tax_class                 -- BM2税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD END   --
     ,pv3.segment1                                            AS bm3_send_code                 -- BM3送付先コード
     ,DECODE(xsdc5.customer_id,NULL,xsdc5.party_name,
                                    pvs3.attribute1)          AS bm3_send_name                 -- BM3送付先名
@@ -385,6 +404,9 @@ AS
                                   ,pvs3.attribute4)          AS bm3_bm_payment_type           -- BM3支払方法・明細書
     ,DECODE(xsdc5.customer_id,NULL,xsdc5.inquiry_base_code,
                                    pvs3.attribute5)          AS bm3_inquiry_base_code         -- BM3問合せ担当拠点コード
+-- V1.2 2020/08/21 M.Sato ADD START --
+    ,pvs3.attribute6                                         AS bm3_tax_class                 -- BM3税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD END   --
     ,xsdh.sales_month                                        AS sales_month                   -- 月間売上
     ,xsdh.sales_year                                         AS sales_year                    -- 年間売上
     ,xsdh.sales_gross_margin_rate                            AS sales_gross_margin_rate       -- 売上粗利率
@@ -991,6 +1013,14 @@ AS
     lv_approve_70                     VARCHAR2(300); -- 回送先・自販機部長
     lv_approve_80                     VARCHAR2(300); -- 回送先・拠点管理部長
     lv_approve_90                     VARCHAR2(300); -- 回送先・営業本部長
+-- V1.2 2020/08/21 M.Sato ADD START --
+    lv_bm1_tax_kbn                    VARCHAR2(100); -- BM1税区分
+    lv_bm2_tax_kbn                    VARCHAR2(100); -- BM2税区分
+    lv_bm3_tax_kbn                    VARCHAR2(100); -- BM3税区分
+    lv_bm1_tax_class                  VARCHAR2(100); -- BM1税区分（仕入先）
+    lv_bm2_tax_class                  VARCHAR2(100); -- BM2税区分（仕入先）
+    lv_bm3_tax_class                  VARCHAR2(100); -- BM3税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD END   --
 --
     -- 参照タイプ取得値格納用変数
     lv_status_name                    VARCHAR2(100); -- ステータス名
@@ -1054,6 +1084,14 @@ AS
     lv_work_request_type_name_90      VARCHAR2(100); -- 作業依頼区分名(営業本部長)
     lv_approval_state_type_name_90    VARCHAR2(100); -- 決裁状態区分(営業本部長)
     lv_approval_content_name_90       VARCHAR2(100); -- 決裁内容(営業本部長)
+-- V1.2 2020/08/21 M.Sato ADD START --
+    lv_bm1_tax_kbn_name               VARCHAR2(100); -- BM1税区分
+    lv_bm2_tax_kbn_name               VARCHAR2(100); -- BM2税区分
+    lv_bm3_tax_kbn_name               VARCHAR2(100); -- BM3税区分
+    lv_bm1_tax_class_name             VARCHAR2(100); -- BM1税区分（仕入先）
+    lv_bm2_tax_class_name             VARCHAR2(100); -- BM2税区分（仕入先）
+    lv_bm3_tax_class_name             VARCHAR2(100); -- BM3税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD END   --
 --
     lv_year                           VARCHAR2(2);   -- 文字列:年
     lv_month                          VARCHAR2(2);   -- 文字列:月
@@ -1154,6 +1192,14 @@ AS
       lv_approve_70                   := NULL; -- 回送先・自販機部長
       lv_approve_80                   := NULL; -- 回送先・拠点管理部長
       lv_approve_90                   := NULL; -- 回送先・営業本部長
+-- V1.2 2020/08/21 M.Sato ADD START --
+      lv_bm1_tax_kbn                  := NULL; -- BM1税区分
+      lv_bm2_tax_kbn                  := NULL; -- BM2税区分
+      lv_bm3_tax_kbn                  := NULL; -- BM3税区分
+      lv_bm1_tax_class                := NULL; -- BM1税区分（仕入先）
+      lv_bm2_tax_class                := NULL; -- BM2税区分（仕入先）
+      lv_bm3_tax_class                := NULL; -- BM3税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD END   --
 --
       lv_status_name                  := NULL; -- SP専決ステータス名
       lv_application_type_name        := NULL; -- 申請区分名
@@ -1216,6 +1262,14 @@ AS
       lv_work_request_type_name_90    := NULL; -- 作業依頼区分名(営業本部長)
       lv_approval_state_type_name_90  := NULL; -- 決裁状態区分名(営業本部長)
       lv_approval_content_name_90     := NULL; -- 決裁内容名(営業本部長)
+-- V1.2 2020/08/21 M.Sato ADD START --
+      lv_bm1_tax_kbn_name             := NULL; -- BM1税区分
+      lv_bm2_tax_kbn_name             := NULL; -- BM2税区分
+      lv_bm3_tax_kbn_name             := NULL; -- BM3税区分
+      lv_bm1_tax_class_name           := NULL; -- BM1税区分（仕入先）
+      lv_bm2_tax_class_name           := NULL; -- BM2税区分（仕入先）
+      lv_bm3_tax_class_name           := NULL; -- BM3税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD END   --
 --
       -- ===============================
       -- 参照タイプより項目名称を取得
@@ -2243,6 +2297,110 @@ AS
           lv_approval_content_name_90 := NULL;
       END;
 --
+-- V1.2 2020/08/21 M.Sato ADD START --
+      -- BM1税区分
+      BEGIN
+        SELECT description AS bm1_tax_kbn
+        INTO   lv_bm1_tax_kbn_name
+        FROM   fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type = cv_lookup_type_28
+        AND    flvv.lookup_code = NVL( get_sp_rec.bm1_tax_kbn , '0' )
+        AND    flvv.enabled_flag  = cv_flag_y
+        AND    gd_process_date
+               BETWEEN NVL(TRUNC(flvv.start_date_active),gd_process_date)
+                   AND NVL(TRUNC(flvv.end_date_active),gd_process_date)
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_bm1_tax_kbn_name := NULL;
+      END;
+--
+      -- BM2税区分
+      BEGIN
+        SELECT description AS bm2_tax_kbn
+        INTO   lv_bm2_tax_kbn_name
+        FROM   fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type = cv_lookup_type_28
+        AND    flvv.lookup_code = NVL( get_sp_rec.bm2_tax_kbn , '0' )
+        AND    flvv.enabled_flag  = cv_flag_y
+        AND    gd_process_date
+               BETWEEN NVL(TRUNC(flvv.start_date_active),gd_process_date)
+                   AND NVL(TRUNC(flvv.end_date_active),gd_process_date)
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_bm2_tax_kbn_name := NULL;
+      END;
+--
+      -- BM3税区分
+      BEGIN
+        SELECT description AS bm3_tax_kbn
+        INTO   lv_bm3_tax_kbn_name
+        FROM   fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type = cv_lookup_type_28
+        AND    flvv.lookup_code = NVL( get_sp_rec.bm3_tax_kbn , '0' )
+        AND    flvv.enabled_flag  = cv_flag_y
+        AND    gd_process_date
+               BETWEEN NVL(TRUNC(flvv.start_date_active),gd_process_date)
+                   AND NVL(TRUNC(flvv.end_date_active),gd_process_date)
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_bm3_tax_kbn_name := NULL;
+      END;
+--
+      -- BM1税区分（仕入先）
+      BEGIN
+        SELECT description AS bm1_tax_class
+        INTO   lv_bm1_tax_class_name
+        FROM   fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type = cv_lookup_type_28
+        AND    flvv.lookup_code = get_sp_rec.bm1_tax_class
+        AND    flvv.enabled_flag  = cv_flag_y
+        AND    gd_process_date
+               BETWEEN NVL(TRUNC(flvv.start_date_active),gd_process_date)
+                   AND NVL(TRUNC(flvv.end_date_active),gd_process_date)
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_bm1_tax_class_name := NULL;
+      END;
+--
+      -- BM2税区分（仕入先）
+      BEGIN
+        SELECT description AS bm2_tax_class
+        INTO   lv_bm2_tax_class_name
+        FROM   fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type = cv_lookup_type_28
+        AND    flvv.lookup_code = get_sp_rec.bm2_tax_class
+        AND    flvv.enabled_flag  = cv_flag_y
+        AND    gd_process_date
+               BETWEEN NVL(TRUNC(flvv.start_date_active),gd_process_date)
+                   AND NVL(TRUNC(flvv.end_date_active),gd_process_date)
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_bm2_tax_class_name := NULL;
+      END;
+--
+      -- BM3税区分（仕入先）
+      BEGIN
+        SELECT description AS bm3_tax_class
+        INTO   lv_bm3_tax_class_name
+        FROM   fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type = cv_lookup_type_28
+        AND    flvv.lookup_code = get_sp_rec.bm3_tax_class
+        AND    flvv.enabled_flag  = cv_flag_y
+        AND    gd_process_date
+               BETWEEN NVL(TRUNC(flvv.start_date_active),gd_process_date)
+                   AND NVL(TRUNC(flvv.end_date_active),gd_process_date)
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_bm3_tax_class_name := NULL;
+      END;
+-- V1.2 2020/08/21 M.Sato ADD END   --
+--
       -- ===============================
       -- 項目を編集
       -- ===============================
@@ -2741,6 +2899,56 @@ AS
            || ' '
            || get_sp_rec.approval_comment_90;
 --
+-- V1.2 2020/08/21 M.Sato ADD START --
+      -- BM1税区分
+      IF ( get_sp_rec.bm1_tax_kbn IS NOT NULL ) THEN
+        lv_bm1_tax_kbn
+          := get_sp_rec.bm1_tax_kbn
+             || cv_colon
+             || lv_bm1_tax_kbn_name;
+      END IF;
+--
+      -- BM2税区分
+      IF ( get_sp_rec.bm2_tax_kbn IS NOT NULL ) THEN
+        lv_bm2_tax_kbn
+          := get_sp_rec.bm2_tax_kbn
+             || cv_colon
+             || lv_bm2_tax_kbn_name;
+      END IF;
+--
+      -- BM3税区分
+      IF ( get_sp_rec.bm3_tax_kbn IS NOT NULL ) THEN
+        lv_bm3_tax_kbn
+          := get_sp_rec.bm3_tax_kbn
+             || cv_colon
+             || lv_bm3_tax_kbn_name;
+      END IF;
+--
+      -- BM1税区分（仕入先）
+      IF ( get_sp_rec.bm1_tax_class IS NOT NULL ) THEN
+        lv_bm1_tax_class
+          := get_sp_rec.bm1_tax_class
+             || cv_colon
+             || lv_bm1_tax_class_name;
+      END IF;
+--
+      -- BM2税区分（仕入先）
+      IF ( get_sp_rec.bm2_tax_class IS NOT NULL ) THEN
+        lv_bm2_tax_class
+          := get_sp_rec.bm2_tax_class
+             || cv_colon
+             || lv_bm2_tax_class_name;
+      END IF;
+--
+      -- BM3税区分（仕入先）
+      IF ( get_sp_rec.bm3_tax_class IS NOT NULL ) THEN
+        lv_bm3_tax_class
+          := get_sp_rec.bm3_tax_class
+             || cv_colon
+             || lv_bm3_tax_class_name;
+      END IF;
+-- V1.2 2020/08/21 M.Sato ADD END   --
+--
       -- ===============================
       -- カンマ区切りでデータ作成
       -- ===============================
@@ -2783,6 +2991,11 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.contract_address_2           || cv_dqu ;  -- 契約先住所2
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.contract_phone_number        || cv_dqu ;  -- 契約先電話番号
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.contract_delegate_name       || cv_dqu ;  -- 契約先代表者名
+-- V1.2 2020/08/21 M.Sato ADD START --
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm1_tax_kbn                          || cv_dqu ;  -- BM1税区分
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm2_tax_kbn                          || cv_dqu ;  -- BM2税区分
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm3_tax_kbn                          || cv_dqu ;  -- BM3税区分
+-- V1.2 2020/08/21 M.Sato ADD END   --
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_newold_type                          || cv_dqu ;  -- 新台旧台区分
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.maker_code                   || cv_dqu ;  -- メーカーコード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.un_number                    || cv_dqu ;  -- 機種コード
@@ -2845,6 +3058,9 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm1_bank_charge_bearer               || cv_dqu ;  -- BM1振込手数料負担
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm1_bm_payment_type                  || cv_dqu ;  -- BM1支払方法・明細書
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm1_inquiry_base_code        || cv_dqu ;  -- BM1問合せ担当拠点コード
+-- V1.2 2020/08/21 M.Sato ADD START --
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm1_tax_class                        || cv_dqu ;  -- BM1税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD START --
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm2_send_code                || cv_dqu ;  -- BM2送付先コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm2_send_name                || cv_dqu ;  -- BM2送付先名
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm2_send_name_alt            || cv_dqu ;  -- BM2送付先カナ
@@ -2855,6 +3071,9 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm2_bank_charge_bearer               || cv_dqu ;  -- BM2振込手数料負担
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm2_bm_payment_type                  || cv_dqu ;  -- BM2支払方法・明細書
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm2_inquiry_base_code        || cv_dqu ;  -- BM2問合せ担当拠点コード
+-- V1.2 2020/08/21 M.Sato ADD START --
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm2_tax_class                        || cv_dqu ;  -- BM2税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD START --
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm3_send_code                || cv_dqu ;  -- BM3送付先コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm3_send_name                || cv_dqu ;  -- BM3送付先名
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm3_send_name_alt            || cv_dqu ;  -- BM3送付先カナ
@@ -2865,6 +3084,9 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm3_bank_charge_bearer               || cv_dqu ;  -- BM3振込手数料負担
       lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm3_bm_payment_type                  || cv_dqu ;  -- BM3支払方法・明細書
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.bm3_inquiry_base_code        || cv_dqu ;  -- BM3問合せ担当拠点コード
+-- V1.2 2020/08/21 M.Sato ADD START --
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || lv_bm3_tax_class                        || cv_dqu ;  -- BM3税区分（仕入先）
+-- V1.2 2020/08/21 M.Sato ADD START --
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.sales_month                  || cv_dqu ;  -- 月間売上
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.sales_year                   || cv_dqu ;  -- 年間売上
       lv_output_str := lv_output_str || cv_comma || cv_dqu || get_sp_rec.sales_gross_margin_rate      || cv_dqu ;  -- 売上粗利率

@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -89,6 +89,7 @@ AS
  *  2015-11-24    1.22  K.Kiriu          E_本稼働_13345対応
  *  2016-02-02    1.23  H.Okada          E_本稼働_13456対応
  *  2019-06-14    1.24  N.Miyamoto       E_本稼動_15472軽減税率対応
+ *  2020-08-21    1.25  M.Sato           E_本稼動_15904対応
  *
  *****************************************************************************************/
   --
@@ -409,6 +410,9 @@ AS
     /* 2009.10.15 D.Abe 0001537対応 START */
     ,delivery_id                  xxcso_destinations.delivery_id%TYPE                  -- 送付先ID
     /* 2009.10.15 D.Abe 0001537対応 END */
+    -- 2020/08/21 V1.25 M.SATO ADD START --
+    ,bm_tax_kbn                   xxcso_destinations.bm_tax_kbn%TYPE                   -- ＢＭ税区分
+    -- 2020/08/21 V1.25 M.SATO ADD END   --
     -- 銀行口座情報
     ,bank_number             xxcso_bank_accounts.bank_number%TYPE             -- 銀行番号
     ,bank_name               xxcso_bank_accounts.bank_name%TYPE               -- 銀行名
@@ -1161,6 +1165,9 @@ AS
                 ,site_attribute3              -- 仕入先サイト予備3
                 ,site_attribute4              -- 仕入先サイト予備4
                 ,site_attribute5              -- 仕入先サイト予備5
+                -- 2020/08/21 V1.25 M.SATO ADD START --
+                ,site_attribute6              -- 仕入先サイト予備6
+                -- 2020/08/21 V1.25 M.SATO ADD END   --
                 ,site_bank_number             -- 仕入先サイト銀行支店コード
                 ,site_vendor_site_code_alt    -- 仕入先サイト仕入先サイト名（カナ）
                 ,site_bank_charge_bearer      -- 仕入先サイト銀行手数料負担者
@@ -1215,6 +1222,9 @@ AS
                 ,SUBSTRB(cv_flag_yes, 1, 150)                                  -- 仕入先サイト予備3
                 ,SUBSTRB(it_mst_regist_info_rec.belling_details_div, 1, 150)   -- 仕入先サイト予備4
                 ,SUBSTRB(it_mst_regist_info_rec.inquery_charge_hub_cd, 1, 150) -- 仕入先サイト予備5
+                -- 2020/08/21 V1.25 M.SATO ADD START --
+                ,SUBSTRB(it_mst_regist_info_rec.bm_tax_kbn, 1, 150)            -- 仕入先サイト予備6
+                -- 2020/08/21 V1.25 M.SATO ADD END   --
                 ,SUBSTRB(lt_bank_num, 1, 30)                                   -- 仕入先サイト支店コード
                 ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先サイト仕入先サイト名（カナ）
                 ,it_mst_regist_info_rec.bank_transfer_fee_charge_div           -- 仕入先サイト銀行手数料負担者
@@ -1433,6 +1443,9 @@ AS
           ,site_attribute3              -- 仕入先サイト予備3
           ,site_attribute4              -- 仕入先サイト予備4
           ,site_attribute5              -- 仕入先サイト予備5
+          -- 2020/08/21 V1.25 M.SATO ADD START --
+          ,site_attribute6              -- 仕入先サイト予備6
+          -- 2020/08/21 V1.25 M.SATO ADD END   --
           ,site_bank_number             -- 仕入先サイト銀行支店コード
           ,site_vendor_site_code_alt    -- 仕入先サイト仕入先サイト名（カナ）
           ,site_bank_charge_bearer      -- 仕入先サイト銀行手数料負担者
@@ -1506,6 +1519,9 @@ AS
           ,SUBSTRB(cv_flag_yes, 1, 150)                                  -- 仕入先サイト予備3
           ,SUBSTRB(it_mst_regist_info_rec.belling_details_div, 1, 150)   -- 仕入先サイト予備4
           ,SUBSTRB(it_mst_regist_info_rec.inquery_charge_hub_cd, 1, 150) -- 仕入先サイト予備5
+          -- 2020/08/21 V1.25 M.SATO ADD START --
+          ,SUBSTRB(it_mst_regist_info_rec.bm_tax_kbn, 1, 150)            -- 仕入先サイト予備6
+          -- 2020/08/21 V1.25 M.SATO ADD END   --
           ,SUBSTRB(lt_bank_num, 1, 30)                                   -- 仕入先サイト支店コード
           ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先サイト仕入先サイト名（カナ）
           ,it_mst_regist_info_rec.bank_transfer_fee_charge_div           -- 仕入先サイト銀行手数料負担者
@@ -2417,7 +2433,10 @@ AS
     --lt_electricity_amount xxcso_sp_decision_headers.electricity_amount%TYPE;
     lt_electricity_amount xxcok_mst_bm_contract.bm1_amt%TYPE;
     lt_electric_payment_type xxcso_sp_decision_headers.electric_payment_type%TYPE;
-    lt_tax_type              xxcso_sp_decision_headers.tax_type%TYPE;
+    -- 2020/08/21 V1.25 M.SATO MOD START --
+    --lt_tax_type              xxcso_sp_decision_headers.tax_type%TYPE;
+    lt_bm1_tax_kbn        xxcso_sp_decision_headers.bm1_tax_kbn%TYPE;
+    -- 2020/08/21 V1.25 M.SATO MOD END   --
     /* 2015.02.25 H.Wajima E_本稼動_12565 END */
     lv_mst_bm_flag        VARCHAR2(1);
     ln_rowid              ROWID;
@@ -2446,6 +2465,11 @@ AS
             ,sdl.bm3_bm_rate             bm3_bm_rate             -- ＢＭ率３
             ,sdl.bm3_bm_amount           bm3_bm_amount           -- ＢＭ３金額
             ,lup.bm_container_type       bm_container_type       -- 販手容器区分
+            -- 2020/08/21 V1.25 M.SATO ADD START --
+            ,sdh.bm1_tax_kbn             bm1_tax_kbn             -- ＢＭ１税区分
+            ,sdh.bm2_tax_kbn             bm2_tax_kbn             -- ＢＭ２税区分
+            ,sdh.bm3_tax_kbn             bm3_tax_kbn             -- ＢＭ３税区分
+            -- 2020/08/21 V1.25 M.SATO ADD END   --
       FROM   xxcso_sp_decision_headers sdh -- ＳＰ専決ヘッダテーブル
             ,xxcso_sp_decision_lines   sdl -- ＳＰ専決明細テーブル
             ,(
@@ -2536,28 +2560,35 @@ AS
       /* 2015.02.25 H.Wajima E_本稼動_12565 START */
       --lt_electricity_amount := lt_sp_decision_rec.electricity_amount;
       lt_electric_payment_type := lt_sp_decision_rec.electric_payment_type;
-      lt_tax_type              := lt_sp_decision_rec.tax_type;
-      -- 税区分が税抜きの場合、電気代＊消費税の計算を行う
-      IF (lt_tax_type = cv_tax_type_2) THEN
--- 2019/06/14 V1.24 N.Miyamoto ADD START
-        -- 業務日付が新税率開始日以降の場合は新税率
-        IF ( cd_process_date >= gd_new_tax_start_date ) THEN
-          gt_tax_rate := gt_new_tax_rate;
-        -- 業務日付が旧税率終了日以前の場合は契約書発効日で比較
-        ELSIF ( cd_process_date <= gd_old_tax_end_date ) THEN
-          -- 契約書発効日が新税率開始日以降の場合は新税率
-          IF ( it_contract_effect_date >= gd_new_tax_start_date ) THEN
-            gt_tax_rate := gt_new_tax_rate;
-          -- 契約書発効日が旧税率終了日以前の場合は旧税率
-          ELSIF ( it_contract_effect_date <= gd_old_tax_end_date ) THEN
-            gt_tax_rate := gt_old_tax_rate;
-          END IF;
-        END IF;
--- 2019/06/14 V1.24 N.Miyamoto ADD END
-        lt_electricity_amount  := TRUNC(lt_sp_decision_rec.electricity_amount * gt_tax_rate);
-      ELSE
+-- 2020/08/21 V1.25 M.SATO ADD START --
+      lt_bm1_tax_kbn           := lt_sp_decision_rec.bm1_tax_kbn;
+-- 2020/08/21 V1.25 M.SATO ADD END   --
+-- 2020/08/21 V1.25 M.SATO DEL START --
+--      lt_tax_type              := lt_sp_decision_rec.tax_type;
+--      -- 税区分が税抜きの場合、電気代＊消費税の計算を行う
+--      IF (lt_tax_type = cv_tax_type_2) THEN
+---- 2019/06/14 V1.24 N.Miyamoto ADD START
+--        -- 業務日付が新税率開始日以降の場合は新税率
+--        IF ( cd_process_date >= gd_new_tax_start_date ) THEN
+--          gt_tax_rate := gt_new_tax_rate;
+--        -- 業務日付が旧税率終了日以前の場合は契約書発効日で比較
+--        ELSIF ( cd_process_date <= gd_old_tax_end_date ) THEN
+--          -- 契約書発効日が新税率開始日以降の場合は新税率
+--          IF ( it_contract_effect_date >= gd_new_tax_start_date ) THEN
+--            gt_tax_rate := gt_new_tax_rate;
+--          -- 契約書発効日が旧税率終了日以前の場合は旧税率
+--          ELSIF ( it_contract_effect_date <= gd_old_tax_end_date ) THEN
+--            gt_tax_rate := gt_old_tax_rate;
+--          END IF;
+--        END IF;
+---- 2019/06/14 V1.24 N.Miyamoto ADD END
+--        lt_electricity_amount  := TRUNC(lt_sp_decision_rec.electricity_amount * gt_tax_rate);
+--      ELSE
+-- 2020/08/21 V1.25 M.SATO DEL END --
         lt_electricity_amount  := lt_sp_decision_rec.electricity_amount;
-      END IF;
+-- 2020/08/21 V1.25 M.SATO DEL START --
+--      END IF;
+-- 2020/08/21 V1.25 M.SATO DEL END --
       /* 2015.02.25 H.Wajima E_本稼動_12565 END */
       --
       -- *** DEBUG_LOG START ***
@@ -2666,7 +2697,13 @@ AS
                 ,request_id             -- 要求ID
                 ,program_application_id -- コンカレント・プログラム・アプリケーションID
                 ,program_id             -- コンカレント・プログラムID
-                ,program_update_date)   -- プログラム更新日
+                -- 2020/08/21 V1.25 M.SATO MOD START --
+                --,program_update_date)   -- プログラム更新日
+                ,program_update_date    -- プログラム更新日
+                ,bm1_tax_kbn            -- BM1税区分
+                ,bm2_tax_kbn            -- BM2税区分
+                ,bm3_tax_kbn)           -- BM3税区分
+                -- 2020/08/21 V1.25 M.SATO MOD END   --
               VALUES(
                  xxcok_mst_bm_contract_s01.NEXTVAL -- 販手条件ＩＤ
                 ,it_install_account_number         -- 顧客コード
@@ -2733,6 +2770,11 @@ AS
                 ,cn_program_application_id        -- コンカレント・プログラム・アプリケーションID
                 ,cn_program_id                    -- コンカレント・プログラムID
                 ,cd_program_update_date           -- プログラム更新日
+                -- 2020/08/21 V1.25 M.SATO ADD START --
+                ,lt_sp_decision_rec.bm1_tax_kbn   -- BM1税区分
+                ,lt_sp_decision_rec.bm2_tax_kbn   -- BM2税区分
+                ,lt_sp_decision_rec.bm3_tax_kbn   -- BM3税区分
+                -- 2020/08/21 V1.25 M.SATO ADD END   --
               );
               --
             EXCEPTION
@@ -2798,6 +2840,11 @@ AS
                     ,xmb.program_application_id = cn_program_application_id        -- コンカレント・プログラム・アプリケーションID
                     ,xmb.program_id             = cn_program_id                    -- コンカレント・プログラムID
                     ,xmb.program_update_date    = cd_program_update_date           -- プログラム更新日
+                    -- 2020/08/21 V1.25 M.SATO ADD START --
+                    ,xmb.bm1_tax_kbn            = lt_sp_decision_rec.bm1_tax_kbn   -- BM1税区分
+                    ,xmb.bm2_tax_kbn            = lt_sp_decision_rec.bm2_tax_kbn   -- BM2税区分
+                    ,xmb.bm3_tax_kbn            = lt_sp_decision_rec.bm3_tax_kbn   -- BM3税区分
+                    -- 2020/08/21 V1.25 M.SATO ADD END   --
               WHERE  ROWID = ln_rowid
               ;
               --
@@ -2899,7 +2946,11 @@ AS
             ,request_id             -- 要求ID
             ,program_application_id -- コンカレント・プログラム・アプリケーションID
             ,program_id             -- コンカレント・プログラムID
-            ,program_update_date)   -- プログラム更新日
+            -- 2020/08/21 V1.25 M.SATO MOD START --
+--            ,program_update_date)   -- プログラム更新日
+            ,program_update_date    -- プログラム更新日
+            ,bm1_tax_kbn)           -- BM1税区分
+            -- 2020/08/21 V1.25 M.SATO MOD END   --
           VALUES(
              xxcok_mst_bm_contract_s01.NEXTVAL -- 販手条件ＩＤ
             ,it_install_account_number         -- 顧客コード
@@ -2916,6 +2967,9 @@ AS
             ,cn_program_application_id         -- コンカレント・プログラム・アプリケーションID
             ,cn_program_id                     -- コンカレント・プログラムID
             ,cd_program_update_date            -- プログラム更新日
+            -- 2020/08/21 V1.25 M.SATO ADD START --
+            ,lt_bm1_tax_kbn                    -- BM1税区分
+            -- 2020/08/21 V1.25 M.SATO ADD END   --
           );
           --
         EXCEPTION
@@ -2952,6 +3006,9 @@ AS
                 ,xmb.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
                 ,xmb.program_id             = cn_program_id             -- コンカレント・プログラムID
                 ,xmb.program_update_date    = cd_program_update_date    -- プログラム更新日
+                -- 2020/08/21 V1.25 M.SATO ADD START --
+                ,bm1_tax_kbn                = lt_bm1_tax_kbn            -- BM1税区分
+                -- 2020/08/21 V1.25 M.SATO ADD END   --
           WHERE  ROWID = ln_rowid
           ;
           --
@@ -4406,6 +4463,9 @@ AS
             /* 2009.10.15 D.Abe 0001537対応 START */
             ,xde.delivery_id                  delivery_id                  -- 送付先ＩＤ
             /* 2009.10.15 D.Abe 0001537対応 END */
+            -- 2020/08/21 V1.25 M.SATO ADD START --
+            ,xde.bm_tax_kbn                   bm_tax_kbn                   -- ＢＭ税区分
+            -- 2020/08/21 V1.25 M.SATO ADD END   --
             ,xba.bank_number                  bank_number                  -- 銀行番号
             ,xba.bank_name                    bank_name                    -- 銀行名
             ,xba.branch_number                branch_number                -- 支店番号
@@ -4547,6 +4607,9 @@ AS
         /* 2009.10.15 D.Abe 0001537対応 START */
         lt_mst_regist_info_rec.delivery_id                  := lt_vendor_info_rec.delivery_id;
         /* 2009.10.15 D.Abe 0001537対応 END */
+        -- 2020/08/21 V1.25 M.SATO ADD START --
+        lt_mst_regist_info_rec.bm_tax_kbn                   := lt_vendor_info_rec.bm_tax_kbn;
+        -- 2020/08/21 V1.25 M.SATO ADD END   --
         lt_mst_regist_info_rec.bank_number                  := lt_vendor_info_rec.bank_number;
         lt_mst_regist_info_rec.bank_name                    := lt_vendor_info_rec.bank_name;
         lt_mst_regist_info_rec.branch_number                := lt_vendor_info_rec.branch_number;
