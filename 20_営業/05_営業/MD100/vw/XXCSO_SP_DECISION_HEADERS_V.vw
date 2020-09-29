@@ -3,7 +3,7 @@
  * VIEW Name       : xxcso_sp_decision_headers_v
  * Description     : 画面用：SP専決登録画面用ビュー
  * MD.070          : 
- * Version         : 1.2
+ * Version         : 1.3
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,7 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2015/01/30    1.1  K.Kiriu       [E_本稼動_12565]SP・契約書画面改修対応 
  *  2018/05/16    1.2  Y.Shoji       [E_本稼動_14989]SP項目追加対応 
+ *  2020/08/21    1.3  Y.Sasaki      [E_本稼動_15904]SP項目追加対応
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcso_sp_decision_headers_v
 (
@@ -122,6 +123,11 @@ CREATE OR REPLACE VIEW apps.xxcso_sp_decision_headers_v
 ,INSTALLATION_END_YEAR
 ,INSTALLATION_END_MONTH
 -- 2018/05/16 E_本稼動_14989 Add End
+-- E_本稼動_15904 Add Start
+,BM1_TAX_KBN
+,BM2_TAX_KBN
+,BM3_TAX_KBN
+-- E_本稼動_15904 Add End
 )
 AS
 SELECT
@@ -232,6 +238,11 @@ SELECT
 ,TO_CHAR(INSTALLATION_END_YEAR, 'FM9999999999999999990')
 ,TO_CHAR(INSTALLATION_END_MONTH, 'FM999G999G999G999G990')
 -- 2018/05/16 E_本稼動_14989 Add End
+-- E_本稼動_15904 Add Start
+,BM1_TAX_KBN
+,BM2_TAX_KBN
+,BM3_TAX_KBN
+-- E_本稼動_15904 Add End
 FROM XXCSO_SP_DECISION_HEADERS
 WITH READ ONLY
 ;
