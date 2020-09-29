@@ -12,7 +12,7 @@ Search vendor information LOV region by shared for regist SP-DECISION informatio
 
 HISTORY
 2009/01/05  H.Ogawa        new-->
-<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM" scope="/" advancedSearchAllowed="true">
+<oa:listOfValues version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.lov.server.XxcsoSpDecisionRegistLovAM" scope="/" advancedSearchAllowed="true">
    <ui:contents>
       <oa:table name="XxcsoVendorLovRN" id="VendorTblRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/VendorTblRN">
          <ui:contents>
@@ -37,6 +37,8 @@ HISTORY
             <oa:formValue id="BmPaymentType" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="BmPaymentType"/>
             <oa:formValue id="InquiryBaseCode" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="InquiryBaseCode"/>
             <oa:formValue id="InquiryBaseName" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="InquiryBaseName"/>
+            <oa:formValue id="BmTaxKbn" dataType="VARCHAR2" prompt="BmTaxKbn" viewName="XxcsoVendorLovVO1" viewAttr="BmTaxKbn"/>
+            <oa:formValue id="BmTaxKbnCode" dataType="VARCHAR2" prompt="BmTaxKbnCode" viewName="XxcsoVendorLovVO1" viewAttr="BmTaxKbnCode"/>
          </ui:contents>
       </oa:table>
    </ui:contents>
