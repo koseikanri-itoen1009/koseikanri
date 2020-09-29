@@ -10,7 +10,8 @@
 修正履歴
 2008/12/22  小川浩        新規作成
 2016/01/07  山下翔太      E_本稼動_13456対応
-2018/05/16  小路恭弘      E_本稼動_14989対応-->
+2018/05/16  小路恭弘      E_本稼動_14989対応
+2020/08/21  佐々木大和    E_本稼動_15904対応-->
 <package version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <attributeSet docName="PageLayoutRN" windowTitle="SP専決入力／更新／承認" title="SP専決入力／更新／承認"/>
    <attributeSet docName="ConfirmButton" prompt="確認"/>
@@ -346,4 +347,7 @@
    <attributeSet docName="InstallationEndYear" shortDesc="設置見込み期間終了（年）"/>
    <attributeSet docName="InstallationEndMonth" shortDesc="設置見込み期間終了（月）"/>
    <attributeSet docName="InstallationStartEndSeparete" prompt="－"/>
+   <attributeSet docName="BM1TaxType"/>
+   <attributeSet docName="BM3TaxType"/>
+   <attributeSet docName="BM2TaxType"/>
 </package>
