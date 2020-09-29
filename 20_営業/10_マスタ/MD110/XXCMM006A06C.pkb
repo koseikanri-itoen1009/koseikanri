@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM006A06C(body)
  * Description      : 販手マスタIF出力(情報系)
  * MD.050           : 販手マスタIF出力(情報系) MD050_CMM_006_A06
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/09    1.0   SCS 福間 貴子    初回作成
+ *  2020/08/21    1.1   SCSK 佐藤 雅貴   [E_本稼動_15904] 税抜きでの自販機BM計算
  *
  *****************************************************************************************/
 --
@@ -111,14 +112,33 @@ AS
   -- ===============================
   CURSOR get_contract_data_cur
   IS
+--******************************* 2020/08/21 1.1 M.Sato MOD START   ******************************--
+    --SELECT   cust_code,             -- 顧客コード
+    --         calc_type,             -- 計算条件
+    --         container_type_code,   -- 容器区分
+    --         selling_price,         -- 売価
+    --         bm1_pct,               -- BM1率(%)
+    --         bm1_amt,               -- BM1金額
+    --         bm2_pct,               -- BM2率(%)
+    --         bm2_amt,               -- BM2金額
+    --         bm3_pct,               -- BM3率(%)
+    --         bm3_amt,               -- BM3金額
+    --         calc_target_flag,      -- 計算対象フラグ
+    --         start_date_active,     -- 有効日(from)
+    --         end_date_active        -- 有効日(to)
+    --FROM     xxcok_mst_bm_contract
+    --ORDER BY cust_code,calc_type,container_type_code,start_date_active
     SELECT   cust_code,             -- 顧客コード
              calc_type,             -- 計算条件
              container_type_code,   -- 容器区分
              selling_price,         -- 売価
+             bm1_tax_kbn,           -- BM1税区分
              bm1_pct,               -- BM1率(%)
              bm1_amt,               -- BM1金額
+             bm2_tax_kbn,           -- BM2税区分
              bm2_pct,               -- BM2率(%)
              bm2_amt,               -- BM2金額
+             bm3_tax_kbn,           -- BM3税区分
              bm3_pct,               -- BM3率(%)
              bm3_amt,               -- BM3金額
              calc_target_flag,      -- 計算対象フラグ
@@ -127,6 +147,7 @@ AS
     FROM     xxcok_mst_bm_contract
     ORDER BY cust_code,calc_type,container_type_code,start_date_active
   ;
+--******************************* 2020/08/21 1.1 M.Sato MOD END   ********************************--
   TYPE g_contract_data_ttype IS TABLE OF get_contract_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
   gt_contract_data            g_contract_data_ttype;
 --
@@ -457,22 +478,42 @@ AS
 --
     <<out_loop>>
     FOR ln_loop_cnt IN gt_contract_data.FIRST..gt_contract_data.LAST LOOP
+--******************************* 2020/08/21 1.1 M.Sato MOD START   ******************************--
+      --lv_csv_text := cv_enclosed || cv_company_cd || cv_enclosed || cv_delimiter                           -- 会社コード
+      --  || cv_enclosed || gt_contract_data(ln_loop_cnt).cust_code || cv_enclosed || cv_delimiter           -- 顧客コード
+      --  || cv_enclosed || gt_contract_data(ln_loop_cnt).calc_type || cv_enclosed || cv_delimiter           -- 計算条件
+      --  || cv_enclosed || gt_contract_data(ln_loop_cnt).container_type_code || cv_enclosed || cv_delimiter -- 計算条件-容器区分
+      --  || gt_contract_data(ln_loop_cnt).SELLING_PRICE || cv_delimiter                                     -- 計算条件-売価
+      --  || gt_contract_data(ln_loop_cnt).bm1_pct || cv_delimiter                                           -- BM1率
+      --  || gt_contract_data(ln_loop_cnt).bm1_amt || cv_delimiter                                           -- BM1金額
+      --  || gt_contract_data(ln_loop_cnt).bm2_pct || cv_delimiter                                           -- BM2率
+      --  || gt_contract_data(ln_loop_cnt).bm2_amt || cv_delimiter                                           -- BM2金額
+      --  || gt_contract_data(ln_loop_cnt).bm3_pct || cv_delimiter                                           -- BM3率
+      --  || gt_contract_data(ln_loop_cnt).bm3_amt || cv_delimiter                                           -- BM3金額
+      --  || cv_enclosed || gt_contract_data(ln_loop_cnt).calc_target_flag || cv_enclosed || cv_delimiter    -- 計算対象フラグ
+      --  || TO_CHAR(gt_contract_data(ln_loop_cnt).start_date_active,'YYYYMMDD') || cv_delimiter             -- 有効開始日
+      --  || TO_CHAR(gt_contract_data(ln_loop_cnt).end_date_active,'YYYYMMDD') || cv_delimiter               -- 有効終了日
+      --  || TO_CHAR(gd_sysdate,'YYYYMMDDHH24MISS')
       lv_csv_text := cv_enclosed || cv_company_cd || cv_enclosed || cv_delimiter                           -- 会社コード
         || cv_enclosed || gt_contract_data(ln_loop_cnt).cust_code || cv_enclosed || cv_delimiter           -- 顧客コード
         || cv_enclosed || gt_contract_data(ln_loop_cnt).calc_type || cv_enclosed || cv_delimiter           -- 計算条件
         || cv_enclosed || gt_contract_data(ln_loop_cnt).container_type_code || cv_enclosed || cv_delimiter -- 計算条件-容器区分
         || gt_contract_data(ln_loop_cnt).SELLING_PRICE || cv_delimiter                                     -- 計算条件-売価
+        || cv_enclosed || gt_contract_data(ln_loop_cnt).bm1_tax_kbn || cv_enclosed || cv_delimiter         -- BM1税区分
         || gt_contract_data(ln_loop_cnt).bm1_pct || cv_delimiter                                           -- BM1率
         || gt_contract_data(ln_loop_cnt).bm1_amt || cv_delimiter                                           -- BM1金額
+        || cv_enclosed || gt_contract_data(ln_loop_cnt).bm2_tax_kbn || cv_enclosed || cv_delimiter         -- BM2税区分
         || gt_contract_data(ln_loop_cnt).bm2_pct || cv_delimiter                                           -- BM2率
         || gt_contract_data(ln_loop_cnt).bm2_amt || cv_delimiter                                           -- BM2金額
+        || cv_enclosed || gt_contract_data(ln_loop_cnt).bm3_tax_kbn || cv_enclosed || cv_delimiter         -- BM3税区分
         || gt_contract_data(ln_loop_cnt).bm3_pct || cv_delimiter                                           -- BM3率
         || gt_contract_data(ln_loop_cnt).bm3_amt || cv_delimiter                                           -- BM3金額
         || cv_enclosed || gt_contract_data(ln_loop_cnt).calc_target_flag || cv_enclosed || cv_delimiter    -- 計算対象フラグ
         || TO_CHAR(gt_contract_data(ln_loop_cnt).start_date_active,'YYYYMMDD') || cv_delimiter             -- 有効開始日
         || TO_CHAR(gt_contract_data(ln_loop_cnt).end_date_active,'YYYYMMDD') || cv_delimiter               -- 有効終了日
-        || TO_CHAR(gd_sysdate,'YYYYMMDDHH24MISS')
+        || TO_CHAR(gd_sysdate,'YYYYMMDDHH24MISS')                                                          -- 連携日時
       ;
+--******************************* 2020/08/21 1.1 M.Sato MOD END   ********************************--
       BEGIN
         -- ファイル書き込み
         UTL_FILE.PUT_LINE(gf_file_hand,lv_csv_text);

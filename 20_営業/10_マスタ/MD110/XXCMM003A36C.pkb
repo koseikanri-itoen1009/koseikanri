@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A36C(body)
  * Description      : 各諸マスタ連携IFデータ作成
  * MD.050           : MD050_CMM_003_A36_各諸マスタ連携IFデータ作成
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2018/04/27    1.9   Haruka.Mori         E_本稼動_15041の対応
  *  2019/01/25    1.10  Yasuhiro.Shoji      E_本稼動_15490の対応
  *  2019/07/16    1.11  Kawaguch.Takuya     E_本稼動_15472の対応
+ *  2020/08/21    1.12  Nobuo.Koyama        E_本稼動_15904の対応
  *
  *****************************************************************************************/
 --
@@ -7413,6 +7414,65 @@ AS
     END;
 --
 -- 2019/04/03 Ver1.11 add end
+-- 2020/08/21 Ver1.12 add start
+    -- 1-98.BM税区分取得
+    DECLARE
+      CURSOR bm_tax_kbn_cur
+      IS
+        SELECT flv.lookup_type AS lv_ref_type
+              ,flv.lookup_code AS lv_ref_code
+              ,flv.meaning     AS lv_ref_name
+              ,NULL            AS lv_pt_ref_type
+              ,NULL            AS lv_pt_ref_code
+        FROM   fnd_lookup_values flv
+        WHERE  flv.language = cv_language_ja
+        AND    flv.lookup_type = 'XXCSO1_BM_TAX_KBN'
+        AND    flv.enabled_flag = cv_y_flag
+        AND    gd_process_date BETWEEN flv.start_date_active AND NVL(flv.end_date_active, TO_DATE(cv_max_date, cv_date_format))
+        ORDER BY flv.lookup_code;
+      bm_tax_kbn_rec bm_tax_kbn_cur%ROWTYPE;
+    BEGIN
+      OPEN bm_tax_kbn_cur;
+        << bm_tax_kbn_loop >>
+        LOOP
+          FETCH bm_tax_kbn_cur INTO bm_tax_kbn_rec;
+          EXIT WHEN bm_tax_kbn_cur%NOTFOUND;
+            -- ファイル出力
+            write_csv(
+               bm_tax_kbn_rec.lv_ref_type     -- 参照タイプ
+              ,bm_tax_kbn_rec.lv_ref_code     -- 参照コード
+              ,bm_tax_kbn_rec.lv_ref_name     -- 名称
+              ,bm_tax_kbn_rec.lv_pt_ref_type  -- 親参照タイプ
+              ,bm_tax_kbn_rec.lv_pt_ref_code  -- 親参照コード
+              ,if_file_handler
+              ,lv_errbuf
+              ,lv_retcode
+              ,lv_errmsg
+            );
+            --カーソルカウント
+            ln_data_cnt := ln_data_cnt + 1;
+        END LOOP bm_tax_kbn_loop;
+      CLOSE bm_tax_kbn_cur;
+      --参照コード取得エラー
+      IF (ln_data_cnt = 0) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
+                                              cv_no_data_err_msg,
+                                              cv_lookup_type,
+                                              'XXCSO1_BM_TAX_KBN');
+        ov_retcode := cv_status_warn;
+        --警告メッセージ出力
+        FND_FILE.PUT_LINE(which  => FND_FILE.LOG  ,buff   => lv_errmsg);
+        --警告カウントアップ
+        ln_warn_cnt := ln_warn_cnt + 1;
+      END IF;
+      --出力件数カウント
+      ln_output_cnt := ln_output_cnt + ln_data_cnt;
+      ln_data_cnt := 0;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE;
+    END;
+-- 2020/08/21 Ver1.12 add end
     -- ===============================
     -- 2.品目カテゴリの取得
     -- =============================== 
