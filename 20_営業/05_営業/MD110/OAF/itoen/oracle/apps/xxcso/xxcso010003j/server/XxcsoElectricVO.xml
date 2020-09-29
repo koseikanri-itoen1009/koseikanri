@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoElectricVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoElectricVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoElectricVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT    xsdh.sp_decision_number           AS sp_decision_numbe
+        , xsdh.electricity_type             AS electricity_type
+        , flvv2.meaning                     AS electricity_mean
+        , xsdh.electricity_amount           AS  electricity_amount
+        , xsdh.electric_payment_type        AS electric_payment_type
+        , flvv1.meaning                     AS electric_payment_mean
+        , xsdh.electric_payment_change_type AS electric_payment_change_type
+        , flvv3.meaning                     AS electric_payment_change_mean
+        , xsdh.electric_payment_cycle       AS electric_payment_cycle
+        , flvv4.meaning                     AS electric_payment_cycle_mean
+        , xsdh.electric_closing_date        AS electric_closing_date
+        , flvv5.meaning                     AS electric_closing_date_mean
+        , xsdh.electric_trans_month         AS electric_trans_month
+        , flvv6.meaning                     AS electric_trans_month_mean
+        , xsdh.electric_trans_date          AS electric_trans_date
+        , flvv7.meaning                     AS electric_trans_date_mean
+        , xsdh.electric_trans_name          AS electric_trans_name
+        , xsdh.electric_trans_name_alt      AS electric_trans_name_alt
+        , xsdh.bm1_tax_kbn                  AS bm1_tax_kbn
+        , xsdh.bm2_tax_kbn                  AS bm2_tax_kbn
+        , xsdh.bm3_tax_kbn                  AS bm3_tax_kbn
+FROM    XXCSO_SP_DECISION_HEADERS xsdh
+      , fnd_lookup_values_vl  flvv1        --支払条件（電気代）
+      , fnd_lookup_values_vl  flvv2        --電気代区分
+      , fnd_lookup_values_vl  flvv3        --支払条件（変動電気代
+      , fnd_lookup_values_vl  flvv4        --支払サイクル（電気代）
+      , fnd_lookup_values_vl  flvv5        --日付タイプ（締め日）
+      , fnd_lookup_values_vl  flvv6        --月タイプ（振込日）
+      , fnd_lookup_values_vl  flvv7        --日付タイプ（振込日）
+WHERE   xsdh.sp_decision_header_id     = :1
+        --支払条件（電気代）
+AND     flvv1.lookup_type(+)           = 'XXCSO1_SP_ELECTRIC_PAY_TYPE'
+AND     flvv1.enabled_flag(+)       = 'Y'
+AND     flvv1.start_date_active(+)  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL (flvv1.end_date_active(+),TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >=  TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xsdh.electric_payment_type  = flvv1.lookup_code(+)
+        --電気代区分
+AND     flvv2.lookup_type(+) = 'XXCSO1_SP_ELECTRIC_BILL_TYPE'
+AND     flvv2.enabled_flag(+)       = 'Y'
+AND     flvv2.start_date_active(+)  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL (flvv2.end_date_active(+),TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >=  TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xsdh.electricity_type  = flvv2.lookup_code(+)
+        --支払条件（変動電気代）
+AND     flvv3.lookup_type(+) = 'XXCSO1_SP_ELEC_PAY_CNG_TYPE'
+AND     flvv3.enabled_flag(+)       = 'Y'
+AND     flvv3.start_date_active(+)  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL (flvv3.end_date_active(+),TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >=  TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xsdh.electric_payment_change_type  = flvv3.lookup_code(+)
+        --支払サイクル（電気代）
+AND     flvv4.lookup_type(+) = 'XXCSO1_SP_ELEC_PAY_CYCLE'
+AND     flvv4.enabled_flag(+)       = 'Y'
+AND     flvv4.start_date_active(+)  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL (flvv4.end_date_active(+),TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >=  TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xsdh.electric_payment_cycle  = flvv4.lookup_code(+)
+        --日付タイプ（締め日）
+AND     flvv5.lookup_type(+) = 'XXCSO1_DAYS_TYPE'
+AND     flvv5.enabled_flag(+)       = 'Y'
+AND     flvv5.start_date_active(+)  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL (flvv5.end_date_active(+),TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >=  TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xsdh.electric_closing_date  = flvv5.lookup_code(+)
+        --月タイプ（振込日）
+AND     flvv6.lookup_type(+) = 'XXCSO1_MONTHS_TYPE'
+AND     flvv6.enabled_flag(+)       = 'Y'
+AND     flvv6.start_date_active(+)  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL (flvv6.end_date_active(+),TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >=  TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xsdh.electric_trans_month  = flvv6.lookup_code(+)
+        --日付タイプ（振込日）
+AND     flvv7.lookup_type(+) = 'XXCSO1_DAYS_TYPE'
+AND     flvv7.enabled_flag(+)       = 'Y'
+AND     flvv7.start_date_active(+)  <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     NVL (flvv7.end_date_active(+),TRUNC(xxcso_util_common_pkg.get_online_sysdate)) >=  TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+AND     xsdh.electric_trans_date  = flvv7.lookup_code(+)
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="SpDecisionNumbe"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="30"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SP_DECISION_NUMBE"
+      Expression="SP_DECISION_NUMBE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRICITY_TYPE"
+      Expression="ELECTRICITY_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityMean"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRICITY_MEAN"
+      Expression="ELECTRICITY_MEAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricityAmount"
+      IsPersistent="false"
+      Precision="5"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ELECTRICITY_AMOUNT"
+      Expression="ELECTRICITY_AMOUNT"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_PAYMENT_TYPE"
+      Expression="ELECTRIC_PAYMENT_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentMean"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_PAYMENT_MEAN"
+      Expression="ELECTRIC_PAYMENT_MEAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentChangeType"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_PAYMENT_CHANGE_TYPE"
+      Expression="ELECTRIC_PAYMENT_CHANGE_TYPE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentChangeMean"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_PAYMENT_CHANGE_MEAN"
+      Expression="ELECTRIC_PAYMENT_CHANGE_MEAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentCycle"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_PAYMENT_CYCLE"
+      Expression="ELECTRIC_PAYMENT_CYCLE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricPaymentCycleMean"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_PAYMENT_CYCLE_MEAN"
+      Expression="ELECTRIC_PAYMENT_CYCLE_MEAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricClosingDate"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_CLOSING_DATE"
+      Expression="ELECTRIC_CLOSING_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricClosingDateMean"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_CLOSING_DATE_MEAN"
+      Expression="ELECTRIC_CLOSING_DATE_MEAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransMonth"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_TRANS_MONTH"
+      Expression="ELECTRIC_TRANS_MONTH"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransMonthMean"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_TRANS_MONTH_MEAN"
+      Expression="ELECTRIC_TRANS_MONTH_MEAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransDate"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_TRANS_DATE"
+      Expression="ELECTRIC_TRANS_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransDateMean"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_TRANS_DATE_MEAN"
+      Expression="ELECTRIC_TRANS_DATE_MEAN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransName"
+      IsPersistent="false"
+      Precision="360"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_TRANS_NAME"
+      Expression="ELECTRIC_TRANS_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="360" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ElectricTransNameAlt"
+      IsPersistent="false"
+      Precision="320"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="ELECTRIC_TRANS_NAME_ALT"
+      Expression="ELECTRIC_TRANS_NAME_ALT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="320" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm1TaxKbn"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM1_TAX_KBN"
+      Expression="BM1_TAX_KBN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm2TaxKbn"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM2_TAX_KBN"
+      Expression="BM2_TAX_KBN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Bm3TaxKbn"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM3_TAX_KBN"
+      Expression="BM3_TAX_KBN"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>
