@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoDestinationsEOImpl
 * 概要説明   : 送付先テーブルエンティティクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2009-01-22 1.0  SCS小川浩  新規作成
+* 2009-01-22 1.0  SCS小川浩    新規作成
+* 2020-08-21 1.1  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -53,8 +54,13 @@ public class XxcsoDestinationsEOImpl extends OAPlsqlEntityImpl
   protected static final int PROGRAMAPPLICATIONID = 21;
   protected static final int PROGRAMID = 22;
   protected static final int PROGRAMUPDATEDATE = 23;
-  protected static final int XXCSOCONTRACTMANAGEMENTSEO = 24;
-  protected static final int XXCSOBANKACCOUNTSEO = 25;
+  protected static final int BMTAXKBN = 24;
+  protected static final int XXCSOCONTRACTMANAGEMENTSEO = 25;
+  protected static final int XXCSOBANKACCOUNTSEO = 26;
+
+
+
+
 
 
 
@@ -96,6 +102,10 @@ public class XxcsoDestinationsEOImpl extends OAPlsqlEntityImpl
     }
     return mDefinitionObject;
   }
+
+
+
+
 
 
 
@@ -756,6 +766,8 @@ public class XxcsoDestinationsEOImpl extends OAPlsqlEntityImpl
         return getProgramId();
       case PROGRAMUPDATEDATE:
         return getProgramUpdateDate();
+      case BMTAXKBN:
+        return getBmTaxKbn();
       case XXCSOBANKACCOUNTSEO:
         return getXxcsoBankAccountsEO();
       case XXCSOCONTRACTMANAGEMENTSEO:
@@ -842,6 +854,9 @@ public class XxcsoDestinationsEOImpl extends OAPlsqlEntityImpl
       case PROGRAMUPDATEDATE:
         setProgramUpdateDate((Date)value);
         return;
+      case BMTAXKBN:
+        setBmTaxKbn((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -887,6 +902,25 @@ public class XxcsoDestinationsEOImpl extends OAPlsqlEntityImpl
     setAttributeInternal(XXCSOBANKACCOUNTSEO, value);
   }
 
+
+  /**
+   * 
+   * Gets the attribute value for BmTaxKbn, using the alias name BmTaxKbn
+   */
+  public String getBmTaxKbn()
+  {
+    return (String)getAttributeInternal(BMTAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for BmTaxKbn
+   */
+  public void setBmTaxKbn(String value)
+  {
+    setAttributeInternal(BMTAXKBN, value);
+  }
+
   /**
    * 
    * Creates a Key object based on given key constituents
@@ -895,6 +929,9 @@ public class XxcsoDestinationsEOImpl extends OAPlsqlEntityImpl
   {
     return new Key(new Object[] {deliveryId});
   }
+
+
+
 
 
 

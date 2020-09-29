@@ -1,15 +1,16 @@
 /*============================================================================
 * ƒtƒ@ƒCƒ‹–¼ : XxcsoSpDecisionHeadersVEOImpl
 * ŠT—và–¾   : SPêŒˆƒwƒbƒ_ƒGƒ“ƒeƒBƒeƒBƒNƒ‰ƒX
-* ƒo[ƒWƒ‡ƒ“ : 1.3
+* ƒo[ƒWƒ‡ƒ“ : 1.4
 *============================================================================
 * C³—š—ğ
-* “ú•t       Ver. ’S“–Ò       C³“à—e
-* ---------- ---- ------------ ----------------------------------------------
-* 2008-12-19 1.0  SCS¬ì_     V‹Kì¬
-* 2009-04-02 1.1  SCS–ö•½’¼l   [STáŠQT1-0229]SPêŒˆƒwƒbƒ_IDÌ”Ô•û®C³
-* 2014-12-15 1.2  SCSK‹Ë¶˜aK  [E_–{‰Ò“®_12565]SPEŒ_–ñ‘‰æ–Ê‰üC‘Î‰
-* 2018-05-16 1.3  SCSK¬˜H‹±O  [E_–{‰Ò“®_14989]‚r‚o€–Ú’Ç‰Á‘Î‰
+* “ú•t       Ver. ’S“–Ò          C³“à—e
+* ---------- ---- --------------  ----------------------------------------------
+* 2008-12-19 1.0  SCS¬ì_       V‹Kì¬
+* 2009-04-02 1.1  SCS–ö•½’¼l     [STáŠQT1-0229]SPêŒˆƒwƒbƒ_IDÌ”Ô•û®C³
+* 2014-12-15 1.2  SCSK‹Ë¶˜aK    [E_–{‰Ò“®_12565]SPEŒ_–ñ‘‰æ–Ê‰üC‘Î‰
+* 2018-05-16 1.3  SCSK¬˜H‹±O    [E_–{‰Ò“®_14989]‚r‚o€–Ú’Ç‰Á‘Î‰
+* 2020-08-21 1.4  SCSK²X–Ø‘å˜a  [E_–{‰Ò“®_15904]Å”²‚«‚Å‚Ì©”Ì‹@BMŒvZ‚É‚Â‚¢‚Ä
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -141,10 +142,23 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
   protected static final int INSTALLATIONSTARTMONTH = 100;
   protected static final int INSTALLATIONENDYEAR = 101;
   protected static final int INSTALLATIONENDMONTH = 102;
-  protected static final int XXCSOSPDECISIONATTACHESEO = 103;
-  protected static final int XXCSOSPDECISIONCUSTSVEO = 104;
-  protected static final int XXCSOSPDECISIONLINESVEO = 105;
-  protected static final int XXCSOSPDECISIONSENDSEO = 106;
+  protected static final int BM1TAXKBN = 103;
+  protected static final int BM2TAXKBN = 104;
+  protected static final int BM3TAXKBN = 105;
+  protected static final int XXCSOSPDECISIONATTACHESEO = 106;
+  protected static final int XXCSOSPDECISIONCUSTSVEO = 107;
+  protected static final int XXCSOSPDECISIONLINESVEO = 108;
+  protected static final int XXCSOSPDECISIONSENDSEO = 109;
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -262,6 +276,16 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
     }
     return mDefinitionObject;
   }
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2168,6 +2192,12 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
         return getInstallationEndYear();
       case INSTALLATIONENDMONTH:
         return getInstallationEndMonth();
+      case BM1TAXKBN:
+        return getBm1TaxKbn();
+      case BM2TAXKBN:
+        return getBm2TaxKbn();
+      case BM3TAXKBN:
+        return getBm3TaxKbn();
       case XXCSOSPDECISIONATTACHESEO:
         return getXxcsoSpDecisionAttachesEO();
       case XXCSOSPDECISIONCUSTSVEO:
@@ -2494,6 +2524,15 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
         return;
       case INSTALLATIONENDMONTH:
         setInstallationEndMonth((String)value);
+        return;
+      case BM1TAXKBN:
+        setBm1TaxKbn((String)value);
+        return;
+      case BM2TAXKBN:
+        setBm2TaxKbn((String)value);
+        return;
+      case BM3TAXKBN:
+        setBm3TaxKbn((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -3461,6 +3500,61 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
     setAttributeInternal(INSTALLATIONENDMONTH, value);
   }
 
+
+  /**
+   * 
+   * Gets the attribute value for Bm1TaxKbn, using the alias name Bm1TaxKbn
+   */
+  public String getBm1TaxKbn()
+  {
+    return (String)getAttributeInternal(BM1TAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for Bm1TaxKbn
+   */
+  public void setBm1TaxKbn(String value)
+  {
+    setAttributeInternal(BM1TAXKBN, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for Bm2TaxKbn, using the alias name Bm2TaxKbn
+   */
+  public String getBm2TaxKbn()
+  {
+    return (String)getAttributeInternal(BM2TAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for Bm2TaxKbn
+   */
+  public void setBm2TaxKbn(String value)
+  {
+    setAttributeInternal(BM2TAXKBN, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for Bm3TaxKbn, using the alias name Bm3TaxKbn
+   */
+  public String getBm3TaxKbn()
+  {
+    return (String)getAttributeInternal(BM3TAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for Bm3TaxKbn
+   */
+  public void setBm3TaxKbn(String value)
+  {
+    setAttributeInternal(BM3TAXKBN, value);
+  }
+
   /**
    * 
    * Creates a Key object based on given key constituents
@@ -3469,6 +3563,15 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
   {
     return new Key(new Object[] {spDecisionHeaderId});
   }
+
+
+
+
+
+
+
+
+
 
 
 
