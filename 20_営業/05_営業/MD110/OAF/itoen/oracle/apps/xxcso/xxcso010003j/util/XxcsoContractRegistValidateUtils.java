@@ -1,29 +1,30 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.15
+* バージョン : 1.16
 *============================================================================
 * 修正履歴
-* 日付       Ver. 担当者       修正内容
-* ---------- ---- ------------ ----------------------------------------------
-* 2009-01-27 1.0  SCS柳平直人  新規作成
-* 2009-02-16 1.1  SCS柳平直人  [CT1-005]送付先必須チェック削除
-*                              [CT1障害]BM口座名義カナ半角カナチェック修正
-* 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
-* 2009-04-09 1.3  SCS柳平直人  [ST障害T1_0327]月末締翌20日払チェック処理修正
-* 2009-04-27 1.4  SCS柳平直人  [ST障害T1_0708]入力項目チェック処理統一修正
-* 2009-06-08 1.5  SCS柳平直人  [ST障害T1_1307]半角カナチェックメッセージ修正
-* 2009-10-14 1.6  SCS阿部大輔  [共通課題IE554,IE573]住所対応
-* 2010-01-26 1.7  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
-* 2010-01-20 1.8  SCS阿部大輔  [E_本稼動_01212]口座番号対応
-* 2010-02-09 1.9  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
-* 2010-03-01 1.10 SCS阿部大輔  [E_本稼動_01678]現金支払対応
-* 2010-03-01 1.10 SCS阿部大輔  [E_本稼動_01868]物件コード対応
-* 2011-01-06 1.11 SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
-* 2011-06-06 1.12 SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
-* 2015-02-09 1.13 SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
-* 2015-11-26 1.14 SCSK山下翔太 [E_本稼動_13345]オーナ変更マスタ連携エラー対応
-* 2016-01-06 1.15 SCSK桐生和幸 [E_本稼動_13456]自販機管理システム代替対応
+* 日付       Ver. 担当者           修正内容
+* ---------- ---- ---------------- ------------------------------------------
+* 2009-01-27 1.0  SCS柳平直人      新規作成
+* 2009-02-16 1.1  SCS柳平直人      [CT1-005]送付先必須チェック削除
+*                                  [CT1障害]BM口座名義カナ半角カナチェック修正
+* 2009-04-08 1.2  SCS柳平直人      [ST障害T1_0364]仕入先重複チェック修正対応
+* 2009-04-09 1.3  SCS柳平直人      [ST障害T1_0327]月末締翌20日払チェック処理修正
+* 2009-04-27 1.4  SCS柳平直人      [ST障害T1_0708]入力項目チェック処理統一修正
+* 2009-06-08 1.5  SCS柳平直人      [ST障害T1_1307]半角カナチェックメッセージ修正
+* 2009-10-14 1.6  SCS阿部大輔      [共通課題IE554,IE573]住所対応
+* 2010-01-26 1.7  SCS阿部大輔      [E_本稼動_01314]契約書発効日必須対応
+* 2010-01-20 1.8  SCS阿部大輔      [E_本稼動_01212]口座番号対応
+* 2010-02-09 1.9  SCS阿部大輔      [E_本稼動_01538]契約書の複数確定対応
+* 2010-03-01 1.10 SCS阿部大輔      [E_本稼動_01678]現金支払対応
+* 2010-03-01 1.10 SCS阿部大輔      [E_本稼動_01868]物件コード対応
+* 2011-01-06 1.11 SCS桐生和幸      [E_本稼動_02498]銀行支店マスタチェック対応
+* 2011-06-06 1.12 SCS桐生和幸      [E_本稼動_01963]新規仕入先作成チェック対応
+* 2015-02-09 1.13 SCSK山下翔太     [E_本稼動_12565]SP専決・契約書画面改修
+* 2015-11-26 1.14 SCSK山下翔太     [E_本稼動_13345]オーナ変更マスタ連携エラー対応
+* 2016-01-06 1.15 SCSK桐生和幸     [E_本稼動_13456]自販機管理システム代替対応
+* 2020-08-21 1.16 SCSK佐々木大和   [E_本稼動_15904]税抜き自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -57,6 +58,11 @@ import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoPageRenderVORowImpl;
 import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVOImpl;
 import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVORowImpl;
 // 2015-02-09 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoElectricVOImpl;
+import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoElectricVORowImpl;
+import itoen.oracle.apps.xxcso.xxcso010003j.util.XxcsoContractRegistConstants;
+// [E_本稼動_15904] Add End
 import java.sql.SQLException;
 import oracle.apps.fnd.framework.OAException;
 import oracle.apps.fnd.framework.server.OADBTransaction;
@@ -2487,7 +2493,104 @@ public class XxcsoContractRegistValidateUtils
 
     return errorList;
   }
+// [E_本稼動_15904] Add Start
+ /*****************************************************************************
+   * ＢＭ税区分整合性の検証
+   * @param txn          OADBTransactionインスタンス
+   * @param pageRndrVo   ページ属性設定用ビューインスタンス
+   * @param bm1DestVo    送付先テーブル情報用ビューインスタンス
+   * @param bm2DestVo    送付先テーブル情報用ビューインスタンス
+   * @param bm3DestVo    送付先テーブル情報用ビューインスタンス
+   * @param electricVo   SP専決ヘッダBM税区分
+   * @return List        エラーリスト
+   *****************************************************************************
+   */
+  public static List validateBmTaxKbn(
+    OADBTransaction                     txn
+   ,XxcsoPageRenderVOImpl               pageRndrVo
+   ,XxcsoBm1DestinationFullVOImpl       bm1DestVo
+   ,XxcsoBm2DestinationFullVOImpl       bm2DestVo
+   ,XxcsoBm3DestinationFullVOImpl       bm3DestVo
+   ,XxcsoElectricVOImpl                 electricVo
+  )
+  {
+  
+    XxcsoUtils.debug(txn, "[START]");
+    
+    List errorList = new ArrayList();
+    
+    XxcsoBm1DestinationFullVORowImpl bm1DestVoRow
+      = (XxcsoBm1DestinationFullVORowImpl) bm1DestVo.first();
+    XxcsoBm2DestinationFullVORowImpl bm2DestVoRow
+      = (XxcsoBm2DestinationFullVORowImpl) bm2DestVo.first();
+    XxcsoBm3DestinationFullVORowImpl bm3DestVoRow
+      = (XxcsoBm3DestinationFullVORowImpl) bm3DestVo.first();
+    XxcsoElectricVORowImpl  electricVoRow
+      = (XxcsoElectricVORowImpl) electricVo.first();
+    String spBm1TaxKbn = "1";
+    String spBm2TaxKbn = "1";
+    String spBm3TaxKbn = "1";
 
+    //BM1税区分検証
+    if (  bm1DestVoRow != null && bm1DestVoRow.getVendorCode() != null )
+    {
+      if (electricVoRow.getBm1TaxKbn() != null)
+      {
+        spBm1TaxKbn = electricVoRow.getBm1TaxKbn();
+      }
+      if ( !(spBm1TaxKbn.equals( bm1DestVoRow.getBmTaxKbn() ) ) )   
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00909
+             ,XxcsoConstants.TOKEN_BM_KBN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+             );
+        errorList.add(error);
+      }
+    }
+    //BM2税区分検証
+    if ( bm2DestVoRow != null && bm2DestVoRow.getVendorCode() != null )
+    {
+      if (electricVoRow.getBm2TaxKbn() != null)
+      {
+        spBm2TaxKbn = electricVoRow.getBm2TaxKbn();
+      }
+      if ( !(spBm2TaxKbn.equals( bm2DestVoRow.getBmTaxKbn() ) ) )   
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00909
+             ,XxcsoConstants.TOKEN_BM_KBN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+             );
+        errorList.add(error);
+      }
+    }
+    //BM3税区分検証
+    if ( bm3DestVoRow != null && bm3DestVoRow.getVendorCode() != null )
+    {
+      if (electricVoRow.getBm3TaxKbn() != null)
+      {
+        spBm3TaxKbn = electricVoRow.getBm3TaxKbn();
+      }
+      if ( !(spBm3TaxKbn.equals( bm3DestVoRow.getBmTaxKbn() ) ))   
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00909
+             ,XxcsoConstants.TOKEN_BM_KBN
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+             );
+        errorList.add(error);
+      }
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+      
+    return errorList;
+  }
+// [E_本稼動_15904] Add End
 // 2015-02-09 [E_本稼動_12565] Add Start
   /*****************************************************************************
    * 設置協賛金情報・紹介手数料・電気代の検証

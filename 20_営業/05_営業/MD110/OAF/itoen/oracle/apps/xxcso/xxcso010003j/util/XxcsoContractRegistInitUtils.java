@@ -1,20 +1,21 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistInitUtils
 * 概要説明   : 自販機設置契約情報登録初期ユーティリティクラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
-* 日付       Ver. 担当者       修正内容
-* ---------- ---- ------------ ----------------------------------------------
-* 2009-01-27 1.0  SCS小川浩    新規作成
-* 2009-02-16 1.1  SCS柳平直人  [CT1-007]送付先コード初期値設定漏れ対応
-* 2009-02-19 1.1  SCS柳平直人  [CT1-016]基本情報リージョン値設定漏れ対応
-* 2009-02-23 1.1  SCS柳平直人  [CT1-021]送付先コード取得不正対応
-*                              [CT1-022]口座情報取得不正対応
-* 2009-02-25 1.1  SCS柳平直人  [CT1-029]コピー時送付先テーブルデータ不正対応
-* 2009-05-25 1.2  SCS柳平直人  [ST障害T1_1136]LOVPK項目設定対応
-* 2015-02-02 1.3  SCSK山下翔太 [E_本稼動_12565]SP専決・契約書画面改修
-* 2015-11-26 1.4  SCSK山下翔太 [E_本稼動_13345]オーナ変更マスタ連携エラー対応
+* 日付       Ver. 担当者          修正内容
+* ---------- ---- --------------  -------------------------------------------
+* 2009-01-27 1.0  SCS小川浩       新規作成
+* 2009-02-16 1.1  SCS柳平直人     [CT1-007]送付先コード初期値設定漏れ対応
+* 2009-02-19 1.1  SCS柳平直人     [CT1-016]基本情報リージョン値設定漏れ対応
+* 2009-02-23 1.1  SCS柳平直人     [CT1-021]送付先コード取得不正対応
+*                                 [CT1-022]口座情報取得不正対応
+* 2009-02-25 1.1  SCS柳平直人     [CT1-029]コピー時送付先テーブルデータ不正対応
+* 2009-05-25 1.2  SCS柳平直人     [ST障害T1_1136]LOVPK項目設定対応
+* 2015-02-02 1.3  SCSK山下翔太    [E_本稼動_12565]SP専決・契約書画面改修
+* 2015-11-26 1.4  SCSK山下翔太    [E_本稼動_13345]オーナ変更マスタ連携エラー対応
+* 2020-08-21 1.5  SCSK佐々木大和  [E_本稼動_15904]税抜き自販機ＢＭ計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -55,6 +56,9 @@ import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoContractOtherCustFullVOR
 import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoSpDecisionHeadersSummuryVORowImpl;
 import oracle.jbo.domain.Number;
 // 2015-02-02 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoElectricVOImpl;
+// [E_本稼動_15904] Add End
 import oracle.apps.fnd.framework.server.OADBTransaction;
 
 /*******************************************************************************
@@ -90,6 +94,7 @@ public class XxcsoContractRegistInitUtils
    * @param spCust3Vo            BM3SP専決顧客テーブル情報ビューインスタンス
    * @param contrOtherCustVo     契約先以外テーブル情報ビューインスタンス
    * @param spDecHedSumVo        SP専決ヘッダサマリ情報ビューインスタンス
+   * @param electricVo           電位代情報ビューインスタンス
    *****************************************************************************
    */
   public static void initCreate(
@@ -117,6 +122,9 @@ public class XxcsoContractRegistInitUtils
    ,XxcsoContractOtherCustFullVOImpl     contrOtherCustVo
    ,XxcsoSpDecisionHeadersSummuryVOImpl  spDecHedSumVo
 // 2015-02-02 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+   ,XxcsoElectricVOImpl                  electricVo
+// [E_本稼動_15904] Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -135,6 +143,11 @@ public class XxcsoContractRegistInitUtils
     createVo.initQuery(spDecisionHeaderId);
     XxcsoContractCreateInitVORowImpl createRow
       = (XxcsoContractCreateInitVORowImpl)createVo.first();
+
+// [E_本稼動_15904] Add Start
+    // 電気代VOの初期化
+    electricVo.initQuery(spDecisionHeaderId);
+// [E_本稼動_15904] Add End
 
     // 売価別条件情報取得VOの初期化
     salesCondVo.initQuery(spDecisionHeaderId);
@@ -203,8 +216,13 @@ public class XxcsoContractRegistInitUtils
     // 送付先テーブルの初期化(BM1)
     //////////////////////////////////////
     XxcsoInitBmInfoSummaryVORowImpl initBmRow = null;
-
-    initBmVo.initQuery(createRow.getBm1SpCustId());
+// [E_本稼動_15904] Mod Start
+    //initBmVo.initQuery(createRow.getBm1SpCustId());
+    //debug 
+    Number bm1Id = createRow.getBm1SpCustId();
+    //
+    initBmVo.initQuery(createRow.getBm1SpCustId(),new Number(1));
+// [E_本稼動_15904] Mod End
     initBmRow = (XxcsoInitBmInfoSummaryVORowImpl)initBmVo.first();
 
     if ( initBmRow != null )
@@ -245,12 +263,23 @@ public class XxcsoContractRegistInitUtils
       bank1Row.setBankAccountNumber(    initBmRow.getBankAccountNum()         );
       bank1Row.setBankAccountNameKana(  initBmRow.getAccountHolderNameAlt()   );
       bank1Row.setBankAccountNameKanji( initBmRow.getAccountHolderName()      );
+
+//[E_本稼動_15904] Add Start
+      dest1Row.setBmTaxKbn(             initBmRow.getBmTaxKbn()               );
+      dest1Row.setBmTaxKbnNm(           initBmRow.getBmTaxKbnNm()             );
+//[E_本稼動_15904] Add End      
     }
 
     //////////////////////////////////////
     // 送付先テーブルの初期化(BM2)
     //////////////////////////////////////
-    initBmVo.initQuery(createRow.getBm2SpCustId());
+// [E_本稼動_15904] ModStart
+//    initBmVo.initQuery(createRow.getBm2SpCustId());
+    //debug 
+    Number bm2Id = createRow.getBm2SpCustId();
+    //
+    initBmVo.initQuery(createRow.getBm2SpCustId(),new Number(2));
+// [E_本稼動_15904] Mod End
     initBmRow = (XxcsoInitBmInfoSummaryVORowImpl)initBmVo.first();
 
     if ( initBmRow != null )
@@ -291,12 +320,22 @@ public class XxcsoContractRegistInitUtils
       bank2Row.setBankAccountNumber(    initBmRow.getBankAccountNum()         );
       bank2Row.setBankAccountNameKana(  initBmRow.getAccountHolderNameAlt()   );
       bank2Row.setBankAccountNameKanji( initBmRow.getAccountHolderName()      );
+//[E_本稼動_15904] Add Start
+      dest2Row.setBmTaxKbn(             initBmRow.getBmTaxKbn()               );
+      dest2Row.setBmTaxKbnNm(           initBmRow.getBmTaxKbnNm()             );
+//[E_本稼動_15904] Add End 
     }
 
     //////////////////////////////////////
     // 送付先テーブルの初期化(BM3)
     //////////////////////////////////////
-    initBmVo.initQuery(createRow.getBm3SpCustId());
+// [E_本稼動_15904] Mod Start
+//    initBmVo.initQuery(createRow.getBm3SpCustId());
+    //debug 
+    Number bm3Id = createRow.getBm3SpCustId();
+    //
+    initBmVo.initQuery(createRow.getBm3SpCustId(),new Number(3));
+// [E_本稼動_15904] Mod End
     initBmRow = (XxcsoInitBmInfoSummaryVORowImpl)initBmVo.first();
 
     if ( initBmRow != null )
@@ -337,6 +376,10 @@ public class XxcsoContractRegistInitUtils
       bank3Row.setBankAccountNumber(    initBmRow.getBankAccountNum()         );
       bank3Row.setBankAccountNameKana(  initBmRow.getAccountHolderNameAlt()   );
       bank3Row.setBankAccountNameKanji( initBmRow.getAccountHolderName()      );
+//[E_本稼動_15904] Add Start
+      dest3Row.setBmTaxKbn(             initBmRow.getBmTaxKbn()               );
+      dest3Row.setBmTaxKbnNm(           initBmRow.getBmTaxKbnNm()             );
+//[E_本稼動_15904] Add End 
     }
 // 2015-02-02 [E_本稼動_12565] Add Start
     //////////////////////////////////////
@@ -433,6 +476,7 @@ public class XxcsoContractRegistInitUtils
    * @param spCust3Vo            BM3SP専決顧客テーブル情報ビューインスタンス
    * @param contrOtherCustVo     契約先以外テーブル情報ビューインスタンス
    * @param spDecHedSumVo        SP専決ヘッダサマリ情報ビューインスタンス
+   * @param electricVo           電気代情報ビューインスタンス
    *****************************************************************************
    */
   public static void initUpdate(
@@ -461,6 +505,9 @@ public class XxcsoContractRegistInitUtils
    ,XxcsoContractOtherCustFullVOImpl     contrOtherCustVo
    ,XxcsoSpDecisionHeadersSummuryVOImpl  spDecHedSumVo
 // 2015-02-02 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+   ,XxcsoElectricVOImpl                  electricVo
+// [E_本稼動_15904] Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -484,6 +531,11 @@ public class XxcsoContractRegistInitUtils
 
     // 一律条件・容器別条件取得VOの初期化
     contCondVo.initQuery(spDecisionHeaderId);
+    
+// [E_本稼動_15904] Add Start
+    // 電気代VOの初期化
+    electricVo.initQuery(spDecisionHeaderId);
+// [E_本稼動_15904] Add End
 
     //////////////////////////////////////
     // 契約管理テーブルの初期化
@@ -617,6 +669,7 @@ public class XxcsoContractRegistInitUtils
    * @param contrOtherCustVo      契約先以外テーブル情報ビューインスタンス
    * @param spDecHedSumVo         SP専決ヘッダサマリ情報ビューインスタンス
    * @param contrOtherCustVo2     コピー用契約先以外テーブル情報ビューインスタンス
+   * @param electricVo            電気代除法ビューインスタンス
    *****************************************************************************
    */
   public static void initCopy(
@@ -653,6 +706,9 @@ public class XxcsoContractRegistInitUtils
    ,XxcsoSpDecisionHeadersSummuryVOImpl  spDecHedSumVo
    ,XxcsoContractOtherCustFullVOImpl     contrOtherCustVo2
 // 2015-02-02 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+   ,XxcsoElectricVOImpl                  electricVo
+// [E_本稼動_15904] Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -676,6 +732,11 @@ public class XxcsoContractRegistInitUtils
 
     // 一律条件・容器別条件取得VOの初期化
     contCondVo.initQuery(spDecisionHeaderId);
+
+// [E_本稼動_15904] Add Start
+    // 電気代VOの初期化
+    electricVo.initQuery(spDecisionHeaderId);
+// [E_本稼動_15904] Add End
 
     //////////////////////////////////////
     // コピー用契約管理テーブルの初期化
