@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : îÃîÑé¿ê—èÓïÒÅEéËêîóøåvéZèåèÇ©ÇÁÇÃîÃîÑéËêîóøåvéZèàóù
  * MD.050           : èåèï îÃéËîÃã¶åvéZèàóù MD050_COK_014_A01
- * Version          : 3.19
+ * Version          : 3.20
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *  2012/10/18    3.17  K.Kiriu          [E_ñ{â“ìÆ_10133] ÉpÉtÉHÅ[É}ÉìÉXâ¸ëPí«â¡ëŒâû(ÉqÉìÉgãÂå≈íËâª)
  *  2018/12/26    3.18  E.Yazaki         [E_ñ{â“ìÆ_15349] Åyâcã∆ÅEå¬ï Åzédì¸êÊCDêßå‰
  *  2019/07/16    3.19  K.Nara           [E_ñ{â“ìÆ_15472] åyå∏ê≈ó¶ëŒâû
+ *  2020/08/21    3.20  N.Abe            [E_ñ{â“ìÆ_15904] é©îÃã@BMåvéZê≈î≤Ç´ëŒâû
  *****************************************************************************************/
   --==================================================
   -- ÉOÉçÅ[ÉoÉãíËêî
@@ -672,6 +673,9 @@ AS
          , SUM( xbc.dlv_qty )                                      AS dlv_qty                  -- î[ïiêîó 
          , xbc.dlv_uom_code                                        AS dlv_uom_code             -- î[ïiíPà 
          , SUM( xbc.amount_inc_tax )                               AS amount_inc_tax           -- îÑè„ã‡äzÅiê≈çûÅj
+-- Ver.3.20 N.Abe ADD START
+        ,  SUM( xbc.pure_amount )                                  AS amount_no_tax            -- îÑè„ã‡äzÅiê≈î≤Åj
+-- Ver.3.20 N.Abe ADD END
          , xbc.container_code                                      AS container_code           -- óeäÌãÊï™ÉRÅ[Éh
          , xbc.dlv_unit_price                                      AS dlv_unit_price           -- îÑâøã‡äz
          , xbc.tax_div                                             AS tax_div                  -- è¡îÔê≈ãÊï™
@@ -689,30 +693,122 @@ AS
          , xbc.bm1_bm_payment_type                                 AS bm1_bm_payment_type      -- ÅyÇaÇlÇPÅzBMéxï•ãÊï™
          , xbc.bm1_pct                                             AS bm1_pct                  -- ÅyÇaÇlÇPÅzBMó¶(%)
          , xbc.bm1_amt                                             AS bm1_amt                  -- ÅyÇaÇlÇPÅzBMã‡äz
-         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm1_pct / 100 )  AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm1_amt )               AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm1_pct / 100 )  AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm1_amt )               AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM1ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm1_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm1_pct / 100 )
+             -- BM1ê≈ãÊï™ = '2'(ê≈î≤)
+             WHEN xbc.bm1_tax_kbn = '2' THEN
+               CASE
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm1_pct >= 0 THEN
+                   CEIL( SUM( xbc.pure_amount ) * xbc.bm1_pct / 100 )
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm1_pct < 0 THEN
+                   FLOOR( SUM( xbc.pure_amount ) * xbc.bm1_pct / 100 )
+               END
+           END                                                     AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM1ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm1_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.dlv_qty ) * xbc.bm1_amt )
+             -- BM1ê≈ãÊï™ = '2'(ê≈î≤)
+             WHEN xbc.bm1_tax_kbn = '2' THEN
+               CASE
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm1_amt >= 0 THEN
+                   CEIL( SUM( xbc.dlv_qty ) * xbc.bm1_amt )
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm1_amt < 0 THEN
+                   FLOOR( SUM( xbc.dlv_qty ) * xbc.bm1_amt )
+               END
+           END                                                     AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                    AS bm1_electric_amt_tax     -- ÅyÇaÇlÇPÅzìdãCóø(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+         , NULL                                                    AS bm1_electric_amt_no_tax  -- ÅyÇaÇlÇPÅzìdãCóø(ê≈î≤)
+-- Ver.3.20 N.Abe ADD END 
          , xbc.bm2_vendor_code                                     AS bm2_vendor_code          -- ÅyÇaÇlÇQÅzédì¸êÊÉRÅ[Éh
          , xbc.bm2_vendor_site_code                                AS bm2_vendor_site_code     -- ÅyÇaÇlÇQÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , xbc.bm2_bm_payment_type                                 AS bm2_bm_payment_type      -- ÅyÇaÇlÇQÅzBMéxï•ãÊï™
          , xbc.bm2_pct                                             AS bm2_pct                  -- ÅyÇaÇlÇQÅzBMó¶(%)
          , xbc.bm2_amt                                             AS bm2_amt                  -- ÅyÇaÇlÇQÅzBMã‡äz
-         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm2_pct / 100 )  AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm2_amt )               AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm2_pct / 100 )  AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm2_amt )               AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM2ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm2_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm2_pct / 100 )
+             -- BM2ê≈ãÊï™ = '2'(ê≈î≤)ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN xbc.bm2_tax_kbn IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm2_pct >= 0 THEN
+                   CEIL( SUM( xbc.pure_amount ) * xbc.bm2_pct / 100 )
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm2_pct < 0 THEN
+                   FLOOR( SUM( xbc.pure_amount ) * xbc.bm2_pct / 100 )
+               END
+           END                                                     AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM2ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm2_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.dlv_qty ) * xbc.bm2_amt )
+             -- BM2ê≈ãÊï™ = '2':ê≈î≤ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN xbc.bm2_tax_kbn IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm2_amt >= 0 THEN
+                   CEIL( SUM( xbc.dlv_qty ) * xbc.bm2_amt )
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm2_amt < 0 THEN
+                   FLOOR( SUM( xbc.dlv_qty ) * xbc.bm2_amt )
+               END
+           END                                                     AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                    AS bm2_electric_amt_tax     -- ÅyÇaÇlÇQÅzìdãCóø(ê≈çû)
          , xbc.bm3_vendor_code                                     AS bm3_vendor_code          -- ÅyÇaÇlÇRÅzédì¸êÊÉRÅ[Éh
          , xbc.bm3_vendor_site_code                                AS bm3_vendor_site_code     -- ÅyÇaÇlÇRÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , xbc.bm3_bm_payment_type                                 AS bm3_bm_payment_type      -- ÅyÇaÇlÇRÅzBMéxï•ãÊï™
          , xbc.bm3_pct                                             AS bm3_pct                  -- ÅyÇaÇlÇRÅzBMó¶(%)
          , xbc.bm3_amt                                             AS bm3_amt                  -- ÅyÇaÇlÇRÅzBMã‡äz
-         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm3_pct / 100 )  AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm3_amt )               AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm3_pct / 100 )  AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm3_amt )               AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM3ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm3_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm3_pct / 100 )
+             -- BM3ê≈ãÊï™ = '2'(ê≈î≤)ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN xbc.bm3_tax_kbn IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm3_pct >= 0 THEN
+                   CEIL( SUM( xbc.pure_amount ) * xbc.bm3_pct / 100 )
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm3_pct < 0 THEN
+                   FLOOR( SUM( xbc.pure_amount ) * xbc.bm3_pct / 100 )
+               END
+           END                                                     AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM3ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm3_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.dlv_qty ) * xbc.bm3_amt )
+             -- BM3ê≈ãÊï™ = '2':ê≈î≤ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN xbc.bm3_tax_kbn IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm3_amt >= 0 THEN
+                   CEIL( SUM( xbc.dlv_qty ) * xbc.bm3_amt )
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm3_amt < 0 THEN
+                   FLOOR( SUM( xbc.dlv_qty ) * xbc.bm3_amt )
+               END
+           END                                                     AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                    AS bm3_electric_amt_tax     -- ÅyÇaÇlÇRÅzìdãCóø(ê≈çû)
          , xbc.item_code                                           AS item_code                -- ÉGÉâÅ[ïiñ⁄ÉRÅ[Éh
          , xbc.amount_fix_date                                     AS amount_fix_date          -- ã‡äzämíËì˙
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
          , xbc.vendor_dummy_flag                                   AS vendor_dummy_flag        -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+         , xbc.bm1_tax_kbn                                         AS bm1_tax_kbn              -- BM1ê≈ãÊï™
+         , xbc.bm2_tax_kbn                                         AS bm2_tax_kbn              -- BM2ê≈ãÊï™
+         , xbc.bm3_tax_kbn                                         AS bm3_tax_kbn              -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
     FROM ( SELECT xse.sales_base_code                                                              AS sales_base_code          -- îÑè„ãíì_ÉRÅ[Éh
                 , NVL2( xmbc.calc_type, xse.results_employee_code              , NULL )            AS results_employee_code    -- ê¨ê—åvè„é“ÉRÅ[Éh
                 , xse.ship_to_customer_code                                                        AS ship_to_customer_code    -- Åyèoâ◊êÊÅzå⁄ãqÉRÅ[Éh
@@ -728,6 +824,9 @@ AS
                 , NVL2( xmbc.calc_type, xse.dlv_qty                            , NULL )            AS dlv_qty                  -- î[ïiêîó 
                 , NVL2( xmbc.calc_type, xse.dlv_uom_code                       , NULL )            AS dlv_uom_code             -- î[ïiíPà 
                 , xse.pure_amount + xse.tax_amount                                                 AS amount_inc_tax           -- îÑè„ã‡äzÅiê≈çûÅj
+-- Ver.3.20 N.Abe ADD START
+                , xse.pure_amount                                                                  AS pure_amount              -- îÑè„ã‡äzÅiê≈î≤Åj
+-- Ver.3.20 N.Abe ADD END
                 , NVL2( xmbc.calc_type, NULL, NVL( flv1.attribute1, cv_container_code_others ) )   AS container_code           -- óeäÌãÊï™ÉRÅ[Éh
                 , xse.dlv_unit_price                                                               AS dlv_unit_price           -- îÑâøã‡äz
                 , NVL2( xmbc.calc_type, xse.tax_div                            , NULL )            AS tax_div                  -- è¡îÔê≈ãÊï™
@@ -760,6 +859,11 @@ AS
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
                 , xse.vendor_dummy_flag                                                            AS vendor_dummy_flag        -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+                , NVL( xmbc.bm1_tax_kbn, '1' )                                                     AS bm1_tax_kbn              -- BM1ê≈ãÊï™
+                , NVL( xmbc.bm2_tax_kbn, '1' )                                                     AS bm2_tax_kbn              -- BM2ê≈ãÊï™
+                , NVL( xmbc.bm3_tax_kbn, '1' )                                                     AS bm3_tax_kbn              -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
 -- 2012/10/01 Ver.3.16 [E_ñ{â“ìÆ_10133] SCSK K.Kiriu REPAIR START
 --           FROM ( SELECT /*+ LEADING(xt0c xcbi xseh xsel xsim) USE_NL(xsel xsim) */
            FROM ( SELECT /*+
@@ -946,6 +1050,11 @@ AS
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
            , xbc.vendor_dummy_flag
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+           , xbc.bm1_tax_kbn
+           , xbc.bm2_tax_kbn
+           , xbc.bm3_tax_kbn
+-- Ver.3.20 N.Abe ADD END
   ;
   -- îÃîÑé¿ê—èÓïÒÅEóeäÌãÊï™ï èåè
   CURSOR get_sales_data_cur2 IS
@@ -961,6 +1070,9 @@ AS
          , SUM( xbc.dlv_qty )                                      AS dlv_qty                  -- î[ïiêîó 
          , xbc.dlv_uom_code                                        AS dlv_uom_code             -- î[ïiíPà 
          , SUM( xbc.amount_inc_tax )                               AS amount_inc_tax           -- îÑè„ã‡äzÅiê≈çûÅj
+-- Ver.3.20 N.Abe ADD START
+        ,  SUM( xbc.pure_amount )                                  AS amount_no_tax            -- îÑè„ã‡äzÅiê≈î≤Åj
+-- Ver.3.20 N.Abe ADD END
          , xbc.container_code                                      AS container_code           -- óeäÌãÊï™ÉRÅ[Éh
          , xbc.dlv_unit_price                                      AS dlv_unit_price           -- îÑâøã‡äz
          , xbc.tax_div                                             AS tax_div                  -- è¡îÔê≈ãÊï™
@@ -978,30 +1090,122 @@ AS
          , xbc.bm1_bm_payment_type                                 AS bm1_bm_payment_type      -- ÅyÇaÇlÇPÅzBMéxï•ãÊï™
          , xbc.bm1_pct                                             AS bm1_pct                  -- ÅyÇaÇlÇPÅzBMó¶(%)
          , xbc.bm1_amt                                             AS bm1_amt                  -- ÅyÇaÇlÇPÅzBMã‡äz
-         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm1_pct / 100 )  AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm1_amt )               AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm1_pct / 100 )  AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm1_amt )               AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM1ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm1_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm1_pct / 100 )
+             -- BM1ê≈ãÊï™ = '2'(ê≈î≤)
+             WHEN xbc.bm1_tax_kbn = '2' THEN
+               CASE
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm1_pct >= 0 THEN
+                   CEIL( SUM( xbc.pure_amount ) * xbc.bm1_pct / 100 )
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm1_pct < 0 THEN
+                   FLOOR( SUM( xbc.pure_amount ) * xbc.bm1_pct / 100 )
+               END
+           END                                                     AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM1ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm1_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.dlv_qty ) * xbc.bm1_amt )
+             -- BM1ê≈ãÊï™ = '2'(ê≈î≤)
+             WHEN xbc.bm1_tax_kbn = '2' THEN
+               CASE
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm1_amt >= 0 THEN
+                   CEIL( SUM( xbc.dlv_qty ) * xbc.bm1_amt )
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm1_amt < 0 THEN
+                   FLOOR( SUM( xbc.dlv_qty ) * xbc.bm1_amt )
+               END
+           END                                                     AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                    AS bm1_electric_amt_tax     -- ÅyÇaÇlÇPÅzìdãCóø(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+         , NULL                                                    AS bm1_electric_amt_no_tax  -- ÅyÇaÇlÇPÅzìdãCóø(ê≈î≤)
+-- Ver.3.20 N.Abe ADD END 
          , xbc.bm2_vendor_code                                     AS bm2_vendor_code          -- ÅyÇaÇlÇQÅzédì¸êÊÉRÅ[Éh
          , xbc.bm2_vendor_site_code                                AS bm2_vendor_site_code     -- ÅyÇaÇlÇQÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , xbc.bm2_bm_payment_type                                 AS bm2_bm_payment_type      -- ÅyÇaÇlÇQÅzBMéxï•ãÊï™
          , xbc.bm2_pct                                             AS bm2_pct                  -- ÅyÇaÇlÇQÅzBMó¶(%)
          , xbc.bm2_amt                                             AS bm2_amt                  -- ÅyÇaÇlÇQÅzBMã‡äz
-         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm2_pct / 100 )  AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm2_amt )               AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm2_pct / 100 )  AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm2_amt )               AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM2ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm2_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm2_pct / 100 )
+             -- BM2ê≈ãÊï™ = '2'(ê≈î≤)ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN xbc.bm2_tax_kbn IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm2_pct >= 0 THEN
+                   CEIL( SUM( xbc.pure_amount ) * xbc.bm2_pct / 100 )
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm2_pct < 0 THEN
+                   FLOOR( SUM( xbc.pure_amount ) * xbc.bm2_pct / 100 )
+               END
+           END                                                     AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM2ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm2_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.dlv_qty ) * xbc.bm2_amt )
+             -- BM2ê≈ãÊï™ = '2':ê≈î≤ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN xbc.bm2_tax_kbn IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm2_amt >= 0 THEN
+                   CEIL( SUM( xbc.dlv_qty ) * xbc.bm2_amt )
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm2_amt < 0 THEN
+                   FLOOR( SUM( xbc.dlv_qty ) * xbc.bm2_amt )
+               END
+           END                                                     AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                    AS bm2_electric_amt_tax     -- ÅyÇaÇlÇQÅzìdãCóø(ê≈çû)
          , xbc.bm3_vendor_code                                     AS bm3_vendor_code          -- ÅyÇaÇlÇRÅzédì¸êÊÉRÅ[Éh
          , xbc.bm3_vendor_site_code                                AS bm3_vendor_site_code     -- ÅyÇaÇlÇRÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , xbc.bm3_bm_payment_type                                 AS bm3_bm_payment_type      -- ÅyÇaÇlÇRÅzBMéxï•ãÊï™
          , xbc.bm3_pct                                             AS bm3_pct                  -- ÅyÇaÇlÇRÅzBMó¶(%)
          , xbc.bm3_amt                                             AS bm3_amt                  -- ÅyÇaÇlÇRÅzBMã‡äz
-         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm3_pct / 100 )  AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm3_amt )               AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm3_pct / 100 )  AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , ROUND( SUM( xbc.dlv_qty ) * xbc.bm3_amt )               AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM3ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm3_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.amount_inc_tax ) * xbc.bm3_pct / 100 )
+             -- BM3ê≈ãÊï™ = '2'(ê≈î≤)ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN xbc.bm3_tax_kbn IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm3_pct >= 0 THEN
+                   CEIL( SUM( xbc.pure_amount ) * xbc.bm3_pct / 100 )
+                 WHEN SUM( xbc.pure_amount ) * xbc.bm3_pct < 0 THEN
+                   FLOOR( SUM( xbc.pure_amount ) * xbc.bm3_pct / 100 )
+               END
+           END                                                     AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM3ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN xbc.bm3_tax_kbn = '1' THEN
+               ROUND( SUM( xbc.dlv_qty ) * xbc.bm3_amt )
+             -- BM3ê≈ãÊï™ = '2':ê≈î≤ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN xbc.bm3_tax_kbn IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm3_amt >= 0 THEN
+                   CEIL( SUM( xbc.dlv_qty ) * xbc.bm3_amt )
+                 WHEN SUM( xbc.dlv_qty ) * xbc.bm3_amt < 0 THEN
+                   FLOOR( SUM( xbc.dlv_qty ) * xbc.bm3_amt )
+               END
+           END                                                     AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                    AS bm3_electric_amt_tax     -- ÅyÇaÇlÇRÅzìdãCóø(ê≈çû)
          , xbc.item_code                                           AS item_code                -- ÉGÉâÅ[ïiñ⁄ÉRÅ[Éh
          , xbc.amount_fix_date                                     AS amount_fix_date          -- ã‡äzämíËì˙
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
          , xbc.vendor_dummy_flag                                   AS vendor_dummy_flag        -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+         , xbc.bm1_tax_kbn                                         AS bm1_tax_kbn              -- BM1ê≈ãÊï™
+         , xbc.bm2_tax_kbn                                         AS bm2_tax_kbn              -- BM2ê≈ãÊï™
+         , xbc.bm3_tax_kbn                                         AS bm3_tax_kbn              -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
     FROM ( SELECT xse.sales_base_code                                                              AS sales_base_code          -- îÑè„ãíì_ÉRÅ[Éh
                 , NVL2( xmbc.calc_type, xse.results_employee_code              , NULL )            AS results_employee_code    -- ê¨ê—åvè„é“ÉRÅ[Éh
                 , xse.ship_to_customer_code                                                        AS ship_to_customer_code    -- Åyèoâ◊êÊÅzå⁄ãqÉRÅ[Éh
@@ -1017,6 +1221,9 @@ AS
                 , NVL2( xmbc.calc_type, xse.dlv_qty                            , NULL )            AS dlv_qty                  -- î[ïiêîó 
                 , NVL2( xmbc.calc_type, xse.dlv_uom_code                       , NULL )            AS dlv_uom_code             -- î[ïiíPà 
                 , xse.pure_amount + xse.tax_amount                                                 AS amount_inc_tax           -- îÑè„ã‡äzÅiê≈çûÅj
+-- Ver.3.20 N.Abe ADD START
+                , xse.pure_amount                                                                  AS pure_amount              -- îÑè„ã‡äzÅiê≈î≤Åj
+-- Ver.3.20 N.Abe ADD END
                 , NVL( xse.attribute1, cv_container_code_others )                                  AS container_code           -- óeäÌãÊï™ÉRÅ[Éh
                 , NVL2( xmbc.calc_type, NULL, xse.dlv_unit_price )                                 AS dlv_unit_price           -- îÑâøã‡äz
                 , NVL2( xmbc.calc_type, xse.tax_div                            , NULL )            AS tax_div                  -- è¡îÔê≈ãÊï™
@@ -1049,6 +1256,11 @@ AS
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
                 , xse.vendor_dummy_flag                                                            AS vendor_dummy_flag        -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+                , NVL( xmbc.bm1_tax_kbn, '1' )                                                     AS bm1_tax_kbn              -- BM1ê≈ãÊï™
+                , NVL( xmbc.bm2_tax_kbn, '1' )                                                     AS bm2_tax_kbn              -- BM2ê≈ãÊï™
+                , NVL( xmbc.bm3_tax_kbn, '1' )                                                     AS bm3_tax_kbn              -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
 -- 2012/10/01 Ver.3.16 [E_ñ{â“ìÆ_10133] SCSK K.Kiriu REPAIR START
 --           FROM ( SELECT /*+ LEADING(xt0c xcbi xseh xsel xsim) USE_NL(xsel xsim) */
            FROM ( SELECT /*+
@@ -1235,6 +1447,11 @@ AS
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
             , xbc.vendor_dummy_flag
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+            , xbc.bm1_tax_kbn
+            , xbc.bm2_tax_kbn
+            , xbc.bm3_tax_kbn
+-- Ver.3.20 N.Abe ADD END
   ;
   -- îÃîÑé¿ê—èÓïÒÅEàÍó•èåè
   CURSOR get_sales_data_cur3 IS
@@ -1270,6 +1487,9 @@ AS
          , SUM( xsel.dlv_qty )                                                     AS dlv_qty                  -- î[ïiêîó 
          , xsel.dlv_uom_code                                                       AS dlv_uom_code             -- î[ïiíPà 
          , SUM( xsel.pure_amount + xsel.tax_amount )                               AS amount_inc_tax           -- îÑè„ã‡äzÅiê≈çûÅj
+-- Ver.3.20 N.Abe ADD START
+        ,  SUM( xsel.pure_amount )                                                 AS amount_no_tax            -- îÑè„ã‡äzÅiê≈î≤Åj
+-- Ver.3.20 N.Abe ADD END
          , NULL                                                                    AS container_code           -- óeäÌãÊï™ÉRÅ[Éh
          , NULL                                                                    AS dlv_unit_price           -- îÑâøã‡äz
          , xt0c.tax_div                                                            AS tax_div                  -- è¡îÔê≈ãÊï™
@@ -1301,30 +1521,122 @@ AS
          , xt0c.bm1_bm_payment_type                                                AS bm1_bm_payment_type      -- ÅyÇaÇlÇPÅzBMéxï•ãÊï™
          , xmbc.bm1_pct                                                            AS bm1_pct                  -- ÅyÇaÇlÇPÅzBMó¶(%)
          , xmbc.bm1_amt                                                            AS bm1_amt                  -- ÅyÇaÇlÇPÅzBMã‡äz
-         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm1_pct / 100 ) AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm1_amt )                             AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm1_pct / 100 ) AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm1_amt )                             AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM1ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm1_tax_kbn, '1' ) = '1' THEN
+               TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm1_pct / 100 )
+             -- BM1ê≈ãÊï™ = '2'(ê≈î≤)
+             WHEN NVL( xmbc.bm1_tax_kbn, '1' ) = '2' THEN
+               CASE
+                 WHEN SUM( xsel.pure_amount ) * xmbc.bm1_pct >= 0 THEN
+                   CEIL( SUM( xsel.pure_amount ) * xmbc.bm1_pct / 100 )
+                 WHEN SUM( xsel.pure_amount ) * xmbc.bm1_pct < 0 THEN
+                   FLOOR( SUM( xsel.pure_amount ) * xmbc.bm1_pct / 100 )
+               END
+           END                                                                     AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM1ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm1_tax_kbn, '1' ) = '1' THEN
+               TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm1_amt )
+             -- BM1ê≈ãÊï™ = '2'(ê≈î≤)
+             WHEN NVL( xmbc.bm1_tax_kbn, '1' ) = '2' THEN
+               CASE
+                 WHEN SUM( xsel.dlv_qty ) * xmbc.bm1_amt >= 0 THEN
+                   CEIL( SUM( xsel.dlv_qty ) * xmbc.bm1_amt )
+                 WHEN SUM( xsel.dlv_qty ) * xmbc.bm1_amt < 0 THEN
+                   FLOOR( SUM( xsel.dlv_qty ) * xmbc.bm1_amt )
+               END
+           END                                                                     AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                                    AS bm1_electric_amt_tax     -- ÅyÇaÇlÇPÅzìdãCóø(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+         , NULL                                                                    AS bm1_electric_amt_no_tax  -- ÅyÇaÇlÇPÅzìdãCóø(ê≈î≤)
+-- Ver.3.20 N.Abe ADD END
          , xt0c.bm2_vendor_code                                                    AS bm2_vendor_code          -- ÅyÇaÇlÇQÅzédì¸êÊÉRÅ[Éh
          , xt0c.bm2_vendor_site_code                                               AS bm2_vendor_site_code     -- ÅyÇaÇlÇQÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , xt0c.bm2_bm_payment_type                                                AS bm2_bm_payment_type      -- ÅyÇaÇlÇQÅzBMéxï•ãÊï™
          , xmbc.bm2_pct                                                            AS bm2_pct                  -- ÅyÇaÇlÇQÅzBMó¶(%)
          , xmbc.bm2_amt                                                            AS bm2_amt                  -- ÅyÇaÇlÇQÅzBMã‡äz
-         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm2_pct / 100 ) AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm2_amt )                             AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm2_pct / 100 ) AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm2_amt )                             AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM2ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm2_tax_kbn, '1' ) = '1' THEN
+               TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm2_pct / 100 )
+             -- BM2ê≈ãÊï™ = '2'(ê≈î≤)ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN NVL( xmbc.bm2_tax_kbn, '1' ) IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xsel.pure_amount ) * xmbc.bm2_pct >= 0 THEN
+                   CEIL( SUM( xsel.pure_amount ) * xmbc.bm2_pct / 100 )
+                 WHEN SUM( xsel.pure_amount ) * xmbc.bm2_pct < 0 THEN
+                   FLOOR( SUM( xsel.pure_amount ) * xmbc.bm2_pct / 100 )
+               END
+           END                                                                     AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM2ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm2_tax_kbn, '1' ) = '1' THEN
+               TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm2_amt )
+             -- BM2ê≈ãÊï™ = '2':ê≈î≤ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN NVL( xmbc.bm2_tax_kbn, '1' ) IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xsel.dlv_qty ) * xmbc.bm2_amt >= 0 THEN
+                   CEIL( SUM( xsel.dlv_qty ) * xmbc.bm2_amt )
+                 WHEN SUM( xsel.dlv_qty ) * xmbc.bm2_amt < 0 THEN
+                   FLOOR( SUM( xsel.dlv_qty ) * xmbc.bm2_amt )
+               END
+           END                                                                     AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                                    AS bm2_electric_amt_tax     -- ÅyÇaÇlÇQÅzìdãCóø(ê≈çû)
          , xt0c.bm3_vendor_code                                                    AS bm3_vendor_code          -- ÅyÇaÇlÇRÅzédì¸êÊÉRÅ[Éh
          , xt0c.bm3_vendor_site_code                                               AS bm3_vendor_site_code     -- ÅyÇaÇlÇRÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , xt0c.bm3_bm_payment_type                                                AS bm3_bm_payment_type      -- ÅyÇaÇlÇRÅzBMéxï•ãÊï™
          , xmbc.bm3_pct                                                            AS bm3_pct                  -- ÅyÇaÇlÇRÅzBMó¶(%)
          , xmbc.bm3_amt                                                            AS bm3_amt                  -- ÅyÇaÇlÇRÅzBMã‡äz
-         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm3_pct / 100 ) AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm3_amt )                             AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm3_pct / 100 ) AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_ó¶
+--         , TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm3_amt )                             AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM3ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm3_tax_kbn, '1' ) = '1' THEN
+               TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xmbc.bm3_pct / 100 )
+             -- BM3ê≈ãÊï™ = '2'(ê≈î≤)ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN NVL( xmbc.bm3_tax_kbn, '1' ) IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xsel.pure_amount ) * xmbc.bm3_pct >= 0 THEN
+                   CEIL( SUM( xsel.pure_amount ) * xmbc.bm3_pct / 100 )
+                 WHEN SUM( xsel.pure_amount ) * xmbc.bm3_pct < 0 THEN
+                   FLOOR( SUM( xsel.pure_amount ) * xmbc.bm3_pct / 100 )
+               END
+           END                                                                     AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz_ó¶
+         , CASE
+             -- BM3ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm3_tax_kbn, '1' ) = '1' THEN
+               TRUNC( SUM( xsel.dlv_qty ) * xmbc.bm3_amt )
+             -- BM3ê≈ãÊï™ = '2':ê≈î≤ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN NVL( xmbc.bm3_tax_kbn, '1' ) IN ('2', '3') THEN
+               CASE
+                 WHEN SUM( xsel.dlv_qty ) * xmbc.bm3_amt >= 0 THEN
+                   CEIL( SUM( xsel.dlv_qty ) * xmbc.bm3_amt )
+                 WHEN SUM( xsel.dlv_qty ) * xmbc.bm3_amt < 0 THEN
+                   FLOOR( SUM( xsel.dlv_qty ) * xmbc.bm3_amt )
+               END
+           END                                                                     AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz_äz
+-- Ver.3.20 N.Abe MOD END 
          , NULL                                                                    AS bm3_electric_amt_tax     -- ÅyÇaÇlÇRÅzìdãCóø(ê≈çû)
          , NULL                                                                    AS item_code                -- ÉGÉâÅ[ïiñ⁄ÉRÅ[Éh
          , xt0c.amount_fix_date                                                    AS amount_fix_date          -- ã‡äzämíËì˙
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
          , xt0c.vendor_dummy_flag                                                  AS vendor_dummy_flag        -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+         , NVL( xmbc.bm1_tax_kbn, '1' )                                            AS bm1_tax_kbn              -- BM1ê≈ãÊï™
+         , NVL( xmbc.bm2_tax_kbn, '1' )                                            AS bm2_tax_kbn              -- BM2ê≈ãÊï™
+         , NVL( xmbc.bm3_tax_kbn, '1' )                                            AS bm3_tax_kbn              -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
     FROM xxcok_mst_bm_contract       xmbc  -- îÃéËèåèÉ}ÉXÉ^
        , xxcos_sales_exp_lines       xsel  -- îÃîÑé¿ê—ñæç◊
        , xxcos_sales_exp_headers     xseh  -- îÃîÑé¿ê—ÉwÉbÉ_
@@ -1448,6 +1760,11 @@ AS
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
            , xt0c.vendor_dummy_flag
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+           , NVL( xmbc.bm1_tax_kbn, '1' )
+           , NVL( xmbc.bm2_tax_kbn, '1' )
+           , NVL( xmbc.bm3_tax_kbn, '1' )
+-- Ver.3.20 N.Abe ADD END
   ;
 -- 2010/03/16 Ver.3.9 [E_ñ{â“ìÆ_01896] SCS K.Yamaguchi REPAIR START
 --  -- îÃîÑé¿ê—èÓïÒÅEíËäzèåè
@@ -1732,6 +2049,26 @@ AS
              END
            )                             AS amount_inc_tax           -- îÑè„ã‡äzÅiê≈çûÅj
 -- 2010/12/13 Ver.3.12 [E_ñ{â“ìÆ_01896] SCS S.Niki REPAIR END
+-- Ver.3.20 N.Abe ADD START
+         , SUM(
+             CASE
+               WHEN EXISTS ( SELECT 'X'
+                             FROM xxcok_mst_bm_contract     xmbc
+                             WHERE xmbc.cust_code               = xt0c.ship_cust_code
+                               AND xmbc.calc_target_flag        = cv_enable
+                               AND xmbc.calc_type              IN ( cv_calc_type_sales_price
+                                                                  , cv_calc_type_container
+                                                                  , cv_calc_type_uniform_rate
+                                                                  )
+                               AND ROWNUM = 1
+                    )
+               THEN
+                 0
+               ELSE
+                 NVL( xsel.pure_amount, 0 )
+             END
+           )                             AS amount_no_tax            -- îÑè„ã‡äzÅiê≈î≤Åj
+-- Ver.3.20 N.Abe ADD END
          , NULL                          AS container_code           -- óeäÌãÊï™ÉRÅ[Éh
          , NULL                          AS dlv_unit_price           -- îÑâøã‡äz
          , xt0c.tax_div                  AS tax_div                  -- è¡îÔê≈ãÊï™
@@ -1750,15 +2087,48 @@ AS
          , NULL                          AS bm1_pct                  -- ÅyÇaÇlÇPÅzBMó¶(%)
          , xmbc.bm1_amt                  AS bm1_amt                  -- ÅyÇaÇlÇPÅzBMã‡äz
          , NULL                          AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , TRUNC( xmbc.bm1_amt )         AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , TRUNC( xmbc.bm1_amt )         AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM1ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm1_tax_kbn, '1' ) = '1' THEN
+               TRUNC( xmbc.bm1_amt )
+             -- BM1ê≈ãÊï™ = '2'(ê≈î≤)
+             WHEN NVL( xmbc.bm1_tax_kbn, '1' ) = '2' THEN
+               CASE
+                 WHEN xmbc.bm1_amt >= 0 THEN
+                   CEIL( xmbc.bm1_amt )
+                 WHEN xmbc.bm1_amt < 0 THEN
+                   FLOOR( xmbc.bm1_amt )
+               END
+           END                           AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD END
          , NULL                          AS bm1_electric_amt_tax     -- ÅyÇaÇlÇPÅzìdãCóø(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+         , NULL                          AS bm1_electric_amt_no_tax  -- ÅyÇaÇlÇPÅzìdãCóø(ê≈î≤)
+-- Ver.3.20 N.Abe ADD END
          , xt0c.bm2_vendor_code          AS bm2_vendor_code          -- ÅyÇaÇlÇQÅzédì¸êÊÉRÅ[Éh
          , xt0c.bm2_vendor_site_code     AS bm2_vendor_site_code     -- ÅyÇaÇlÇQÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , xt0c.bm2_bm_payment_type      AS bm2_bm_payment_type      -- ÅyÇaÇlÇQÅzBMéxï•ãÊï™
          , NULL                          AS bm2_pct                  -- ÅyÇaÇlÇQÅzBMó¶(%)
          , xmbc.bm2_amt                  AS bm2_amt                  -- ÅyÇaÇlÇQÅzBMã‡äz
          , NULL                          AS bm2_cond_bm_tax_pct      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , TRUNC( xmbc.bm2_amt )         AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , TRUNC( xmbc.bm2_amt )         AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM2ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm2_tax_kbn, '1' ) = '1' THEN
+               TRUNC( xmbc.bm2_amt )
+             -- BM2ê≈ãÊï™ = '2'(ê≈î≤)ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN NVL( xmbc.bm2_tax_kbn, '1' ) IN ('2', '3') THEN
+               CASE
+                 WHEN xmbc.bm2_amt >= 0 THEN
+                   CEIL( xmbc.bm2_amt )
+                 WHEN xmbc.bm2_amt < 0 THEN
+                   FLOOR( xmbc.bm2_amt )
+               END
+           END                           AS bm2_cond_bm_amt_tax      -- ÅyÇaÇlÇQÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD END
          , NULL                          AS bm2_electric_amt_tax     -- ÅyÇaÇlÇQÅzìdãCóø(ê≈çû)
          , xt0c.bm3_vendor_code          AS bm3_vendor_code          -- ÅyÇaÇlÇRÅzédì¸êÊÉRÅ[Éh
          , xt0c.bm3_vendor_site_code     AS bm3_vendor_site_code     -- ÅyÇaÇlÇRÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
@@ -1766,13 +2136,33 @@ AS
          , NULL                          AS bm3_pct                  -- ÅyÇaÇlÇRÅzBMó¶(%)
          , xmbc.bm3_amt                  AS bm3_amt                  -- ÅyÇaÇlÇRÅzBMã‡äz
          , NULL                          AS bm3_cond_bm_tax_pct      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_ó¶
-         , TRUNC( xmbc.bm3_amt )         AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD START
+--         , TRUNC( xmbc.bm3_amt )         AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+         , CASE
+             -- BM3ê≈ãÊï™ = '1'(ê≈çû)
+             WHEN NVL( xmbc.bm3_tax_kbn, '1' ) = '1' THEN
+               TRUNC( xmbc.bm3_amt )
+             -- BM3ê≈ãÊï™ = '2'(ê≈î≤)ÅAñîÇÕ'3'(îÒâ€ê≈)
+             WHEN NVL( xmbc.bm3_tax_kbn, '1' ) IN ('2', '3') THEN
+               CASE
+                 WHEN xmbc.bm3_amt >= 0 THEN
+                   CEIL( xmbc.bm3_amt )
+                 WHEN xmbc.bm3_amt < 0 THEN
+                   FLOOR( xmbc.bm3_amt )
+               END
+           END                           AS bm3_cond_bm_amt_tax      -- ÅyÇaÇlÇRÅzèåèï éËêîóøäz(ê≈çû)_äz
+-- Ver.3.20 N.Abe MOD END
          , NULL                          AS bm3_electric_amt_tax     -- ÅyÇaÇlÇRÅzìdãCóø(ê≈çû)
          , NULL                          AS item_code                -- ÉGÉâÅ[ïiñ⁄ÉRÅ[Éh
          , xt0c.amount_fix_date          AS amount_fix_date          -- ã‡äzämíËì˙
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
          , xt0c.vendor_dummy_flag        AS vendor_dummy_flag        -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+         , NVL( xmbc.bm1_tax_kbn, '1' )  AS bm1_tax_kbn              -- BM1ê≈ãÊï™
+         , NVL( xmbc.bm2_tax_kbn, '1' )  AS bm2_tax_kbn              -- BM2ê≈ãÊï™
+         , NVL( xmbc.bm3_tax_kbn, '1' )  AS bm3_tax_kbn              -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
 -- 2012/06/15 Ver.3.15 [E_ñ{â“ìÆ_08751] SCSK S.Niki MOD START
 --    FROM xxcok_tmp_014a01c_custdata      xt0c  -- èåèï îÃéËîÃã¶åvéZå⁄ãqèÓïÒàÍéûï\
     FROM xxcok_wk_014a01c_custdata       xt0c  -- èåèï îÃéËîÃã¶åvéZå⁄ãqèÓïÒàÍéûï\
@@ -1869,6 +2259,11 @@ GROUP BY CASE
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
        , xt0c.vendor_dummy_flag                 -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+       , NVL( xmbc.bm1_tax_kbn, '1' )           -- BM1ê≈ãÊï™
+       , NVL( xmbc.bm2_tax_kbn, '1' )           -- BM2ê≈ãÊï™
+       , NVL( xmbc.bm3_tax_kbn, '1' )           -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
 -- 2010/12/13 Ver.3.12 [E_ñ{â“ìÆ_01896] SCS S.Niki REPAIR END
   ;
 -- 2010/03/16 Ver.3.9 [E_ñ{â“ìÆ_01896] SCS K.Yamaguchi REPAIR END
@@ -2585,6 +2980,53 @@ GROUP BY CASE
 --          )                             AS amount_inc_tax           -- îÑè„ã‡äzÅiê≈çûÅj
 -- 2012/02/23 Ver.3.14 [E_ñ{â“ìÆ_09144] SCSK S.Niki REPAIR END
 -- 2010/12/13 Ver.3.12 [E_ñ{â“ìÆ_01896] SCS S.Niki REPAIR END
+-- Ver.3.20 N.Abe ADD START
+         , CASE
+             WHEN EXISTS ( SELECT 'X'
+                           FROM xxcok_mst_bm_contract     xmbc   -- îÃéËèåèÉ}ÉXÉ^
+                           WHERE xmbc.cust_code               = xt0c.ship_cust_code
+                             AND xmbc.calc_target_flag        = cv_enable
+                             AND xmbc.calc_type              IN ( cv_calc_type_sales_price    -- îÑâøï èåè
+                                                                , cv_calc_type_container      -- óeäÌãÊï™ï èåè
+                                                                , cv_calc_type_uniform_rate   -- àÍó•èåè
+                                                                , cv_calc_type_flat_rate      -- íËäz
+                                                                )
+                             AND ROWNUM = 1
+                  )
+             THEN
+               0
+             ELSE
+               ( SELECT NVL( SUM( xsel.pure_amount ), 0 )
+                 FROM xxcos_sales_exp_headers     xseh  -- îÃîÑé¿ê—ÉwÉbÉ_
+                    , xxcos_sales_exp_lines       xsel  -- îÃîÑé¿ê—ñæç◊
+                 WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                   AND xseh.delivery_date         <= xt0c.closing_date
+                   AND xseh.delivery_date         >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
+                   AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                   AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                   AND EXISTS ( SELECT  'X'
+                                FROM fnd_lookup_values flv -- îÃéËåvéZëŒè€îÑè„ãÊï™
+                                WHERE flv.lookup_type         = cv_lookup_type_07             -- éQè∆É^ÉCÉvÅFîÃéËåvéZëŒè€îÑè„ãÊï™
+                                  AND flv.lookup_code         = xsel.sales_class
+                                  AND flv.language            = cv_lang
+                                  AND flv.enabled_flag        = cv_enable
+                                  AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                            AND NVL( flv.end_date_active  , gd_process_date )
+                                  AND ROWNUM = 1
+                       )
+                   AND NOT EXISTS ( SELECT 'X'
+                                    FROM fnd_lookup_values flv -- îÒç›å…ïiñ⁄
+                                    WHERE flv.lookup_type         = cv_lookup_type_05         -- éQè∆É^ÉCÉvÅFîÒç›å…ïiñ⁄
+                                      AND flv.lookup_code         = xsel.item_code
+                                      AND flv.language            = cv_lang
+                                      AND flv.enabled_flag        = cv_enable
+                                      AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                                AND NVL( flv.end_date_active  , gd_process_date )
+                                      AND ROWNUM = 1
+                       )
+               )
+           END                           AS amount_no_tax            -- îÑè„ã‡äzÅiê≈î≤Åj
+-- Ver.3.20 N.Abe ADD END
          , NULL                          AS container_code           -- óeäÌãÊï™ÉRÅ[Éh
          , NULL                          AS dlv_unit_price           -- îÑâøã‡äz
          , xt0c.tax_div                  AS tax_div                  -- è¡îÔê≈ãÊï™
@@ -2660,6 +3102,58 @@ GROUP BY CASE
                 )
               , 0
            )                             AS bm1_electric_amt_tax     -- ÅyÇaÇlÇPÅzìdãCóø(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+         , NVL( ( SELECT SUM( xsel.pure_amount )  -- ïœìÆìdãCóø
+                  FROM xxcos_sales_exp_headers     xseh  -- îÃîÑé¿ê—ÉwÉbÉ_
+                     , xxcos_sales_exp_lines       xsel  -- îÃîÑé¿ê—ñæç◊
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.business_date         <= gd_process_date
+                    AND xseh.delivery_date         >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND EXISTS ( SELECT  'X'
+                                 FROM fnd_lookup_values flv -- îÃéËåvéZëŒè€îÑè„ãÊï™
+                                 WHERE flv.lookup_type         = cv_lookup_type_07             -- éQè∆É^ÉCÉvÅFîÃéËåvéZëŒè€îÑè„ãÊï™
+                                   AND flv.lookup_code         = xsel.sales_class
+                                   AND flv.language            = cv_lang
+                                   AND flv.enabled_flag        = cv_enable
+                                   AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                             AND NVL( flv.end_date_active  , gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+                    AND xsel.item_code              = gv_elec_change_item_code
+                )
+              , 0
+           )
+         + NVL( ( SELECT xmbc.bm1_amt       -- å≈íËìdãCóø
+                  FROM xxcok_mst_bm_contract     xmbc
+                      ,xxcos_sales_exp_headers   xseh  -- îÃîÑé¿ê—ÉwÉbÉ_
+                      ,xxcos_sales_exp_lines     xsel  -- îÃîÑé¿ê—ñæç◊
+                  WHERE xmbc.calc_type               = cv_calc_type_electricity_cost  -- åvéZèåèÅFìdãCë„
+                    AND xmbc.cust_code               = xt0c.ship_cust_code
+                    AND xmbc.calc_target_flag        = cv_enable
+                    AND xseh.ship_to_customer_code   = xmbc.cust_code
+                    AND xseh.delivery_date          <= xt0c.closing_date
+                    AND xseh.delivery_date          >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
+                    AND xseh.business_date          <= gd_process_date
+                    AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+                    AND EXISTS ( SELECT  'X'
+                                 FROM fnd_lookup_values flv -- îÃéËåvéZëŒè€îÑè„ãÊï™
+                                 WHERE flv.lookup_type         = cv_lookup_type_07             -- éQè∆É^ÉCÉvÅFîÃéËåvéZëŒè€îÑè„ãÊï™
+                                   AND flv.lookup_code         = xsel.sales_class
+                                   AND flv.language            = cv_lang
+                                   AND flv.enabled_flag        = cv_enable
+                                   AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                             AND NVL( flv.end_date_active  , gd_process_date )
+                        )
+                    AND xsel.item_code              <> gv_elec_change_item_code
+                    AND ROWNUM = 1
+                )
+              , 0
+           )                             AS bm1_electric_amt_no_tax  -- ÅyÇaÇlÇPÅzìdãCóø(ê≈î≤)
+-- Ver.3.20 N.Abe ADD END
          , NULL                          AS bm2_vendor_code          -- ÅyÇaÇlÇQÅzédì¸êÊÉRÅ[Éh
          , NULL                          AS bm2_vendor_site_code     -- ÅyÇaÇlÇQÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , NULL                          AS bm2_bm_payment_type      -- ÅyÇaÇlÇQÅzBMéxï•ãÊï™
@@ -2681,6 +3175,11 @@ GROUP BY CASE
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
          , xt0c.vendor_dummy_flag        AS vendor_dummy_flag        -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+         ,NVL( xmbc.bm1_tax_kbn, '1' )   AS bm1_tax_kbn              -- BM1ê≈ãÊï™
+         ,'1'                            AS bm2_tax_kbn              -- BM2ê≈ãÊï™
+         ,'1'                            AS bm3_tax_kbn              -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
 -- 2012/06/15 Ver.3.15 [E_ñ{â“ìÆ_08751] SCSK S.Niki MOD START
 --    FROM xxcok_tmp_014a01c_custdata      xt0c  -- èåèï îÃéËîÃã¶åvéZå⁄ãqèÓïÒàÍéûï\
     FROM xxcok_wk_014a01c_custdata       xt0c  -- èåèï îÃéËîÃã¶åvéZå⁄ãqèÓïÒàÍéûï\
@@ -2692,6 +3191,9 @@ GROUP BY CASE
        , xxcos_sales_exp_headers         xseh  -- îÃîÑé¿ê—ÉwÉbÉ_
        , xxcos_sales_exp_lines           xsel  -- îÃîÑé¿ê—ñæç◊
 -- 2010/12/13 Ver.3.12 [E_ñ{â“ìÆ_01896] SCS S.Niki REPAIR END
+-- Ver.3.20 N.Abe ADD START
+       , xxcok_mst_bm_contract           xmbc  -- îÃéËèåèÉ}ÉXÉ^
+-- Ver.3.20 N.Abe ADD END
     WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- ã∆ë‘Åiè¨ï™óﬁÅjÅFÉtÉãÉTÅ[ÉrÉXVDÅEÉtÉãÉTÅ[ÉrÉXÅiè¡âªÅjVD
 -- 2012/06/15 Ver.3.15 [E_ñ{â“ìÆ_08751] SCSK S.Niki ADD START
       AND xt0c.proc_type              = gv_param_proc_type
@@ -2760,6 +3262,11 @@ GROUP BY CASE
                )
           )
 -- 2010/12/13 Ver.3.12 [E_ñ{â“ìÆ_01896] SCS S.Niki REPAIR START
+-- Ver.3.20 N.Abe ADD START
+      AND xmbc.calc_type(+)           = cv_calc_type_electricity_cost  -- åvéZèåèÅFìdãCë„
+      AND xmbc.cust_code(+)           = xt0c.ship_cust_code
+      AND xmbc.calc_target_flag(+)    = cv_enable
+-- Ver.3.20 N.Abe ADD END
     GROUP BY CASE
                WHEN TRUNC( xt0c.closing_date, 'MM' ) = TRUNC( gd_process_date, 'MM' ) THEN
                  xca.sale_base_code
@@ -2792,6 +3299,9 @@ GROUP BY CASE
            , xt0c.vendor_dummy_flag                 -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
 -- 2010/12/13 Ver.3.12 [E_ñ{â“ìÆ_01896] SCS S.Niki REPAIR END
+-- Ver.3.20 N.Abe ADD START
+           , NVL( xmbc.bm1_tax_kbn, '1' )           -- BM1ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD END
   ;
 -- 2010/03/16 Ver.3.9 [E_ñ{â“ìÆ_01896] SCS K.Yamaguchi REPAIR END
 -- 2009/12/21 Ver.3.6 [E_ñ{â“ìÆ_00460] SCS K.Yamaguchi REPAIR END
@@ -2829,6 +3339,9 @@ GROUP BY CASE
          , NULL                                                                                  AS dlv_qty                  -- î[ïiêîó 
          , NULL                                                                                  AS dlv_uom_code             -- î[ïiíPà 
          , SUM( xsel.pure_amount + xsel.tax_amount )                                             AS amount_inc_tax           -- îÑè„ã‡äzÅiê≈çûÅj
+-- Ver.3.20 N.Abe ADD START
+         , SUM( xsel.pure_amount )                                                               AS amount_no_tax            -- îÑè„ã‡äzÅiê≈î≤Åj
+-- Ver.3.20 N.Abe ADD END
          , NULL                                                                                  AS container_code           -- óeäÌãÊï™ÉRÅ[Éh
          , NULL                                                                                  AS dlv_unit_price           -- îÑâøã‡äz
          , xt0c.tax_div                                                                          AS tax_div                  -- è¡îÔê≈ãÊï™
@@ -2863,6 +3376,9 @@ GROUP BY CASE
          , TRUNC( SUM( xsel.pure_amount + xsel.tax_amount ) * xt0c.receiv_discount_rate / 100 )  AS bm1_cond_bm_tax_pct      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_ó¶
          , NULL                                                                                  AS bm1_cond_bm_amt_tax      -- ÅyÇaÇlÇPÅzèåèï éËêîóøäz(ê≈çû)_äz
          , NULL                                                                                  AS bm1_electric_amt_tax     -- ÅyÇaÇlÇPÅzìdãCóø(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+         , NULL                                                                                  AS bm1_electric_amt_no_tax  -- ÅyÇaÇlÇPÅzìdãCóø(ê≈î≤)
+-- Ver.3.20 N.Abe ADD END
          , NULL                                                                                  AS bm2_vendor_code          -- ÅyÇaÇlÇQÅzédì¸êÊÉRÅ[Éh
          , NULL                                                                                  AS bm2_vendor_site_code     -- ÅyÇaÇlÇQÅzédì¸êÊÉTÉCÉgÉRÅ[Éh
          , NULL                                                                                  AS bm2_bm_payment_type      -- ÅyÇaÇlÇQÅzBMéxï•ãÊï™
@@ -2884,6 +3400,11 @@ GROUP BY CASE
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
          , xt0c.vendor_dummy_flag                                                                AS vendor_dummy_flag        -- édì¸êÊÉ_É~Å[ÉtÉâÉO
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+         , '1'                                                                                   AS bm1_tax_kbn              -- BM1ê≈ãÊï™
+         , '1'                                                                                   AS bm2_tax_kbn              -- BM2ê≈ãÊï™
+         , '1'                                                                                   AS bm3_tax_kbn              -- BM3ê≈ãÊï™
+-- Ver.3.20 N.Abe ADD START
     FROM xxcos_sales_exp_lines       xsel  -- îÃîÑé¿ê—ñæç◊
        , xxcos_sales_exp_headers     xseh  -- îÃîÑé¿ê—ÉwÉbÉ_
 -- 2012/06/15 Ver.3.15 [E_ñ{â“ìÆ_08751] SCSK S.Niki MOD START
@@ -3007,6 +3528,9 @@ GROUP BY CASE
   , dlv_qty                        NUMBER
   , dlv_uom_code                   VARCHAR2(3)
   , amount_inc_tax                 NUMBER
+-- Ver.3.20 N.Abe ADD START
+  , amount_no_tax                  NUMBER
+-- Ver.3.20 N.Abe ADD END
   , container_code                 VARCHAR2(4)
   , dlv_unit_price                 NUMBER
   , tax_div                        VARCHAR2(1)
@@ -3027,6 +3551,9 @@ GROUP BY CASE
   , bm1_cond_bm_tax_pct            NUMBER
   , bm1_cond_bm_amt_tax            NUMBER
   , bm1_electric_amt_tax           NUMBER
+-- Ver.3.20 N.Abe ADD START
+  , bm1_electric_amt_no_tax        NUMBER
+-- Ver.3.20 N.Abe ADD END
   , bm2_vendor_code                VARCHAR2(9)
   , bm2_vendor_site_code           VARCHAR2(10)
   , bm2_bm_payment_type            VARCHAR2(1)
@@ -3048,6 +3575,11 @@ GROUP BY CASE
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
   , vendor_dummy_flag              VARCHAR2(1)
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD END
+-- Ver.3.20 N.Abe ADD START
+  , bm1_tax_kbn                    VARCHAR2(1)
+  , bm2_tax_kbn                    VARCHAR2(1)
+  , bm3_tax_kbn                    VARCHAR2(1)
+-- Ver.3.20 N.Abe ADD END
   );
   TYPE xcbs_data_ttype             IS TABLE OF xxcok_cond_bm_support%ROWTYPE INDEX BY BINARY_INTEGER;
 -- 2018/12/26 Ver.3.18 [E_ñ{â“ìÆ_15349] SCSK E.Yazaki ADD START
@@ -3844,6 +4376,9 @@ GROUP BY CASE
         , delivery_qty              -- î[ïiêîó 
         , delivery_unit_type        -- î[ïiíPà 
         , selling_amt_tax           -- îÑè„ã‡äz(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+        , selling_amt_no_tax        -- îÑè„ã‡äz(ê≈î≤)
+-- Ver.3.20 N.Abe ADD END
         , rebate_rate               -- äÑñﬂó¶
         , rebate_amt                -- äÑñﬂäz
         , container_type_code       -- óeäÌãÊï™ÉRÅ[Éh
@@ -3896,6 +4431,9 @@ GROUP BY CASE
         , i_xcbs_data_tab( i ).delivery_qty              -- î[ïiêîó 
         , i_xcbs_data_tab( i ).delivery_unit_type        -- î[ïiíPà 
         , i_xcbs_data_tab( i ).selling_amt_tax           -- îÑè„ã‡äz(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+        , i_xcbs_data_tab( i ).selling_amt_no_tax        -- îÑè„ã‡äz(ê≈çû)
+-- Ver.3.20 N.Abe ADD END
         , i_xcbs_data_tab( i ).rebate_rate               -- äÑñﬂó¶
         , i_xcbs_data_tab( i ).rebate_amt                -- äÑñﬂäz
         , i_xcbs_data_tab( i ).container_type_code       -- óeäÌãÊï™ÉRÅ[Éh
@@ -4005,6 +4543,17 @@ END insert_xcbs;
     ln_bm2_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM2_ì¸ã‡ílà¯äz(ê≈î≤)_àÍéûäiî[
     ln_bm3_rcpt_discount_amt_notax NUMBER         DEFAULT NULL;                 -- BM3_ì¸ã‡ílà¯äz(ê≈î≤)_àÍéûäiî[
 --
+-- Ver.3.20 N.Abe ADD START
+    ln_bm1_amt_tax                 NUMBER         DEFAULT NULL;                 -- ÅyBM1ÅzVDBM(ê≈çû)_àÍéûäiî[
+    ln_bm2_amt_tax                 NUMBER         DEFAULT NULL;                 -- ÅyBM2ÅzVDBM(ê≈çû)_àÍéûäiî[
+    ln_bm3_amt_tax                 NUMBER         DEFAULT NULL;                 -- ÅyBM3ÅzVDBM(ê≈çû)_àÍéûäiî[
+    ln_bm1_amt_no_tax              NUMBER         DEFAULT NULL;                 -- ÅyBM1ÅzVDBM(ê≈î≤)_àÍéûäiî[
+    ln_bm2_amt_no_tax              NUMBER         DEFAULT NULL;                 -- ÅyBM2ÅzVDBM(ê≈î≤)_àÍéûäiî[
+    ln_bm3_amt_no_tax              NUMBER         DEFAULT NULL;                 -- ÅyBM3ÅzVDBM(ê≈î≤)_àÍéûäiî[
+    ln_bm1_elect_amt_tax           NUMBER         DEFAULT NULL;                 -- ÅyBM1ÅzìdãCóø(ê≈çû)_àÍéûäiî[
+    ln_bm1_elect_amt_no_tax        NUMBER         DEFAULT NULL;                 -- ÅyBM1ÅzìdãCóø(ê≈î≤)_àÍéûäiî[
+-- Ver.3.20 N.Abe ADD END
+--
     -- òAågÉXÉeÅ[É^ÉX(èåèï îÃéËîÃã¶)_àÍéûäiî[
     lv_cond_bm_interface_status    xxcok_cond_bm_support.cond_bm_interface_status%TYPE DEFAULT NULL;
     -- òAågÉXÉeÅ[É^ÉX(îÃéËécçÇ)_àÍéûäiî[
@@ -4028,39 +4577,181 @@ END insert_xcbs;
     l_xcbs_data_tab( cn_index_1 ) := NULL;
     l_xcbs_data_tab( cn_index_2 ) := NULL;
     l_xcbs_data_tab( cn_index_3 ) := NULL;
+-- Ver.3.20 N.Abe ADD START
+    --==================================================
+    -- ìdãCóøíäèoéûÇÃí[êîí≤êÆÅiíäèoéûÇ…í≤êÆÇ™Ç»Ç¢ÇΩÇﬂÅj
+    -- ê≈çûÅÀêÿÇËéÃÇƒ
+    -- ê≈î≤ÅÀêÿÇËè„Ç∞
+    --==================================================
+    -- BM1ê≈ãÊï™ = '1'Åiê≈çûÅj
+    IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN 
+      -- ÅyBM1ÅzìdãCóø(ê≈çû)
+      ln_bm1_elect_amt_tax      := TRUNC( i_get_sales_data_rec.bm1_electric_amt_tax );
+    -- BM1ê≈ãÊï™ = '2'Åiê≈î≤Åj
+    ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
+      -- ÅyBM1ÅzìdãCóø(ê≈î≤)
+      IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 ) THEN
+        ln_bm1_elect_amt_no_tax := CEIL( i_get_sales_data_rec.bm1_electric_amt_no_tax );
+      ELSIF( i_get_sales_data_rec.bm1_electric_amt_no_tax < 0 ) THEN
+        ln_bm1_elect_amt_no_tax := FLOOR( i_get_sales_data_rec.bm1_electric_amt_no_tax );
+      END IF;
+    END IF;
+-- Ver.3.20 N.Abe ADD END
     --==================================================
     -- 1.îÃîÑé¿ê—èÓïÒÇÃã∆ë‘(è¨ï™óﬁ)Ç™ '25':ÉtÉãÉTÅ[ÉrÉXVDÇÃèÍçáÅAVDBM(ê≈çû)Çê›íËÇµÇ‹Ç∑ÅB
     --==================================================
     IF( i_get_sales_data_rec.ship_gyotai_sho = cv_gyotai_sho_25 ) THEN
       -- îÃîÑé¿ê—èÓïÒÇÃ BM1 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
       IF( i_get_sales_data_rec.bm1_pct IS NOT NULL ) THEN
-        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm1_cond_bm_tax_pct;
+-- Ver.3.20 N.Abe DEL START
+--        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm1_cond_bm_tax_pct;
+-- Ver.3.20 N.Abe DEL END
         l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt := NULL;
       -- îÃîÑé¿ê—èÓïÒÇÃ BM1 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
       ELSIF( i_get_sales_data_rec.bm1_amt IS NOT NULL ) THEN
-        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm1_cond_bm_amt_tax;
+-- Ver.3.20 N.Abe DEL START
+--        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm1_cond_bm_amt_tax;
+-- Ver.3.20 N.Abe DEL END
         l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt := NULL;
       END IF;
 --
       -- îÃîÑé¿ê—èÓïÒÇÃ BM2 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
       IF( i_get_sales_data_rec.bm2_pct IS NOT NULL ) THEN
-        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_tax_pct;
+-- Ver.3.20 N.Abe DEL START
+--        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_tax_pct;
+-- Ver.3.20 N.Abe DEL END
         l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt := NULL;
       -- îÃîÑé¿ê—èÓïÒÇÃ BM2 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
       ELSIF( i_get_sales_data_rec.bm2_amt IS NOT NULL ) THEN
-        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_amt_tax;
+-- Ver.3.20 N.Abe DEL START
+--        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_amt_tax;
+-- Ver.3.20 N.Abe DEL END
         l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt := NULL;
       END IF;
 --
       -- îÃîÑé¿ê—èÓïÒÇÃ BM3 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
       IF( i_get_sales_data_rec.bm3_pct IS NOT NULL ) THEN
-        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_tax_pct;
+-- Ver.3.20 N.Abe DEL START
+--        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_tax_pct;
+-- Ver.3.20 N.Abe DEL END
         l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt := NULL;
       -- îÃîÑé¿ê—èÓïÒÇÃ BM3 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
       ELSIF( i_get_sales_data_rec.bm3_amt IS NOT NULL ) THEN
-        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_amt_tax;
+-- Ver.3.20 N.Abe DEL START
+--        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_amt_tax;
+-- Ver.3.20 N.Abe DEL END
         l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt := NULL;
       END IF;
+--
+-- Ver.3.20 N.Abe ADD START
+      -- **************
+      -- ê≈çûÇ›
+      -- **************
+      -- BM1ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM1 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
+        IF( i_get_sales_data_rec.bm1_pct IS NOT NULL ) THEN
+          -- ÅyBM1ÅzVDBM(ê≈çû)
+          ln_bm1_amt_tax      := i_get_sales_data_rec.bm1_cond_bm_tax_pct;
+          -- ÅyBM1ÅzVDBM(ê≈î≤)
+          ln_bm1_amt_no_tax   := ln_bm1_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM1 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
+        ELSIF( i_get_sales_data_rec.bm1_amt IS NOT NULL ) THEN
+          -- ÅyBM1ÅzVDBM(ê≈çû)
+          ln_bm1_amt_tax      := i_get_sales_data_rec.bm1_cond_bm_amt_tax;
+          -- ÅyBM1ÅzVDBM(ê≈î≤)
+          ln_bm1_amt_no_tax   := ln_bm1_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        END IF;
+      END IF;
+--
+      -- BM2ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM2 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
+        IF( i_get_sales_data_rec.bm2_pct IS NOT NULL ) THEN
+          -- ÅyBM2ÅzVDBM(ê≈çû)
+          ln_bm2_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_tax_pct;
+          -- ÅyBM2ÅzVDBM(ê≈î≤)
+          ln_bm2_amt_no_tax    := ln_bm2_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM2 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
+        ELSIF( i_get_sales_data_rec.bm2_amt IS NOT NULL ) THEN
+          -- ÅyBM2ÅzVDBM(ê≈çû)
+          ln_bm2_amt_tax       := i_get_sales_data_rec.bm2_cond_bm_amt_tax;
+          -- ÅyBM2ÅzVDBM(ê≈î≤)
+          ln_bm2_amt_no_tax    := ln_bm2_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        END IF;
+      END IF;
+--
+      -- BM3ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM3 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
+        IF( i_get_sales_data_rec.bm3_pct IS NOT NULL ) THEN
+          -- ÅyBM3ÅzVDBM(ê≈çû)
+          ln_bm3_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_tax_pct;
+          -- ÅyBM3ÅzVDBM(ê≈î≤)
+          ln_bm3_amt_no_tax    := ln_bm3_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM3 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
+        ELSIF( i_get_sales_data_rec.bm3_amt IS NOT NULL ) THEN
+          -- ÅyBM3ÅzVDBM(ê≈çû)
+          ln_bm3_amt_tax       := i_get_sales_data_rec.bm3_cond_bm_amt_tax;
+          -- ÅyBM3ÅzVDBM(ê≈î≤)
+          ln_bm3_amt_no_tax    := ln_bm3_amt_tax / ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        END IF;
+      END IF;
+--
+      -- **************
+      -- ê≈î≤Ç´ÅAîÒâ€ê≈
+      -- **************
+      -- BM1ê≈ãÊï™ = '2'Åiê≈î≤Åj
+      IF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM1 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
+        IF( i_get_sales_data_rec.bm1_pct IS NOT NULL ) THEN
+          -- ÅyBM1ÅzVDBM(ê≈î≤)
+          ln_bm1_amt_no_tax    := i_get_sales_data_rec.bm1_cond_bm_tax_pct;
+          -- ÅyBM1ÅzVDBM(ê≈çû)
+          ln_bm1_amt_tax       := ln_bm1_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM1 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
+        ELSIF( i_get_sales_data_rec.bm1_amt IS NOT NULL ) THEN
+          -- ÅyBM1ÅzVDBM(ê≈î≤)
+          ln_bm1_amt_no_tax    := i_get_sales_data_rec.bm1_cond_bm_amt_tax;
+          -- ÅyBM1ÅzVDBM(ê≈çû)
+          ln_bm1_amt_tax       := ln_bm1_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        END IF;
+      END IF;
+--
+      -- BM2ê≈ãÊï™ IN ( '2'Åiê≈î≤ÅjÅA'3'ÅiîÒâ€ê≈ÅjÅj
+      IF ( i_get_sales_data_rec.bm2_tax_kbn IN ( '2', '3' ) ) THEN
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM2 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
+        IF( i_get_sales_data_rec.bm2_pct IS NOT NULL ) THEN
+          -- ÅyBM2ÅzVDBM(ê≈î≤)
+          ln_bm2_amt_no_tax    := i_get_sales_data_rec.bm2_cond_bm_tax_pct;
+          -- ÅyBM2ÅzVDBM(ê≈çû)
+          ln_bm2_amt_tax       := ln_bm2_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM2 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
+        ELSIF( i_get_sales_data_rec.bm2_amt IS NOT NULL ) THEN
+          -- ÅyBM2ÅzVDBM(ê≈î≤)
+          ln_bm2_amt_no_tax    := i_get_sales_data_rec.bm2_cond_bm_amt_tax;
+          -- ÅyBM2ÅzVDBM(ê≈çû)
+          ln_bm2_amt_tax       := ln_bm2_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        END IF;
+      END IF;
+--
+      -- BM3ê≈ãÊï™ IN ( '2'Åiê≈î≤ÅjÅA'3'ÅiîÒâ€ê≈ÅjÅj
+      IF ( i_get_sales_data_rec.bm3_tax_kbn IN ( '2', '3' ) ) THEN
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM3 BMó¶(%)Ç™ NULLà»äO ÇÃèÍçá
+        IF( i_get_sales_data_rec.bm3_pct IS NOT NULL ) THEN
+          -- ÅyBM3ÅzVDBM(ê≈î≤)
+          ln_bm3_amt_no_tax    := i_get_sales_data_rec.bm3_cond_bm_tax_pct;
+          -- ÅyBM3ÅzVDBM(ê≈çû)
+          ln_bm3_amt_tax       := ln_bm3_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        -- îÃîÑé¿ê—èÓïÒÇÃ BM3 BMã‡äzÇ™ NULL à»äOÇÃèÍçá
+        ELSIF( i_get_sales_data_rec.bm3_amt IS NOT NULL ) THEN
+          -- ÅyBM3ÅzVDBM(ê≈î≤)
+          ln_bm3_amt_no_tax    := i_get_sales_data_rec.bm3_cond_bm_amt_tax;
+          -- ÅyBM3ÅzVDBM(ê≈çû)
+          ln_bm3_amt_tax       := ln_bm3_amt_no_tax * ( 1 + i_get_sales_data_rec.tax_rate / 100 );
+        END IF;
+      END IF;
+-- Ver.3.20 N.Abe ADD END
     --==================================================
     -- 2.îÃîÑé¿ê—èÓïÒÇÃã∆ë‘(è¨ï™óﬁ)Ç™ '25':ÉtÉãÉTÅ[ÉrÉXVDà»äOÇÃèÍçáÅAì¸ã‡ílà¯äz(ê≈çû)Çê›íËÇµÇ‹Ç∑ÅB
     --==================================================
@@ -4096,28 +4787,42 @@ END insert_xcbs;
       END IF;
     END IF;
     --==================================================
-    -- 3.äeVDBM(ê≈çû)ÅAì¸ã‡ílà¯äz(ê≈çû)ÅAìdãCóø(ê≈çû)Ç™ NULL à»äOÇÃèÍçáÅAê≈î≤ã‡äzÇ®ÇÊÇ—è¡îÔê≈äzÇéZèoÇµÇ‹Ç∑ÅB
+    -- 3.äeVDBM(ê≈çû)ÅAì¸ã‡ílà¯äz(ê≈çû)ÅAìdãCóøÇ™ NULL à»äOÇÃèÍçáÅAê≈î≤ã‡äzÇ®ÇÊÇ—è¡îÔê≈äzÇéZèoÇµÇ‹Ç∑ÅB
     --==================================================
-    -- BM1 VDBM(ê≈î≤)ÇÃê›íË
-    IF( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax IS NOT NULL ) THEN
-      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax
-        := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-    END IF;
+-- Ver.3.20 N.Abe DEL START
+--    -- BM1 VDBM(ê≈î≤)ÇÃê›íË
+--    IF( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax IS NOT NULL ) THEN
+--      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax
+--        := l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--    END IF;
+-- Ver.3.20 N.Abe DEL END
     -- BM1 ì¸ã‡ílà¯äz(ê≈î≤)ÇÃê›íË
     IF( l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
       ln_bm1_rcpt_discount_amt_notax
         := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 )  );
     END IF;
-    -- BM1 ìdãCóø(ê≈î≤)ÇÃê›íË
-    IF( i_get_sales_data_rec.bm1_electric_amt_tax IS NOT NULL ) THEN
-      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax
-        := i_get_sales_data_rec.bm1_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+-- Ver.3.20 N.Abe MOD START
+    --BM1ê≈ãÊï™ = '1'Åiê≈çûÅj
+    IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+      -- BM1 ìdãCóø(ê≈î≤)ÇÃê›íË
+      IF( ln_bm1_elect_amt_tax IS NOT NULL ) THEN
+        ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      END IF;
+    --BM1ê≈ãÊï™ = '2'Åiê≈î≤Åj
+    ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
+      -- BM1 ìdãCóø(ê≈çû)ÇÃê›íË
+      IF( ln_bm1_elect_amt_no_tax IS NOT NULL ) THEN
+        ln_bm1_elect_amt_tax    := ln_bm1_elect_amt_no_tax * ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      END IF;
     END IF;
-    -- BM2 VDBM(ê≈î≤)ÇÃê›íË
-    IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax IS NOT NULL ) THEN
-      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax
-        := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-    END IF;
+-- Ver.3.20 N.Abe MOD END
+-- Ver.3.20 N.Abe DEL START
+--    -- BM2 VDBM(ê≈î≤)ÇÃê›íË
+--    IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax IS NOT NULL ) THEN
+--      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax
+--        := l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--    END IF;
+-- Ver.3.20 N.Abe DEL END
     -- BM2 ì¸ã‡ílà¯äz(ê≈î≤)ÇÃê›íË
     IF( l_xcbs_data_tab( cn_index_2 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
       ln_bm2_rcpt_discount_amt_notax
@@ -4128,11 +4833,13 @@ END insert_xcbs;
       l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax
         := i_get_sales_data_rec.bm2_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
     END IF;
-    -- BM3 VDBM(ê≈î≤)ÇÃê›íË
-    IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax IS NOT NULL ) THEN
-      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax
-        := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate/ 100 ) );
-    END IF;
+-- Ver.3.20 N.Abe DEL START
+--    -- BM3 VDBM(ê≈î≤)ÇÃê›íË
+--    IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax IS NOT NULL ) THEN
+--      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax
+--        := l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate/ 100 ) );
+--    END IF;
+-- Ver.3.20 N.Abe DEL END
     -- BM3 ì¸ã‡ílà¯äz(ê≈î≤)ÇÃê›íË
     IF( l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt IS NOT NULL ) THEN
       ln_bm3_rcpt_discount_amt_notax
@@ -4143,42 +4850,69 @@ END insert_xcbs;
       l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax
         := i_get_sales_data_rec.bm3_electric_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
     END IF;
+--
     --==================================================
-    -- í[êîèàóùãÊï™Ç…ÇÊÇÈéÊìæílÇÃí[êîèàóù
+    -- í[êîèàóùãÊï™Ç…ÇÊÇÈéÊìæílÇÃí[êîèàóùÅiBMê≈ãÊï™:ê≈çûÅj
     --==================================================
     -- îÃîÑé¿ê—èÓïÒÇÃí[êîèàóùãÊï™Ç™ 'NEAREST':éléÃå‹ì¸ÇÃèÍçáÅAè≠êîì_à»â∫ÇÃí[êîÇéléÃå‹ì¸ÇµÇ‹Ç∑ÅB
     IF( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_nearest ) THEN
-      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL START
+--      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL END
       ln_bm1_rcpt_discount_amt_notax                    := ROUND( ln_bm1_rcpt_discount_amt_notax );
-      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
-      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL START
+--      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+--      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL END
       ln_bm2_rcpt_discount_amt_notax                    := ROUND( ln_bm2_rcpt_discount_amt_notax );
       l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
-      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL START
+--      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ROUND( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL END
       ln_bm3_rcpt_discount_amt_notax                    := ROUND( ln_bm3_rcpt_discount_amt_notax );
       l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax := ROUND( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+--
+-- Ver.3.20 N.Abe ADD START
+      -- BM1ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+        ln_bm1_amt_no_tax       := ROUND( ln_bm1_amt_no_tax );        -- ÅyBM1ÅzVDBM(ê≈î≤)
+        ln_bm1_elect_amt_no_tax := ROUND( ln_bm1_elect_amt_no_tax );  -- ÅyBM1ÅzìdãCóø(ê≈î≤)
+      END IF;
+      -- BM2ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
+        ln_bm2_amt_no_tax       := ROUND( ln_bm2_amt_no_tax );        -- ÅyBM2ÅzVDBM(ê≈î≤)
+      END IF;
+      -- BM3ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
+        ln_bm3_amt_no_tax       := ROUND( ln_bm3_amt_no_tax );        -- ÅyBM3ÅzVDBM(ê≈î≤)
+      END IF;
+-- Ver.3.20 N.Abe ADD END
     -- îÃîÑé¿ê—èÓïÒÇÃí[êîèàóùãÊï™Ç™ 'UP':êÿÇËè„Ç∞ÇÃèÍçáÅAè¨êîì_à»â∫ÇÃí[êîÇêÿÇËè„Ç∞ÇµÇ‹Ç∑ÅB
     ELSIF ( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_up ) THEN
-      IF( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax > 0 )    THEN
-        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
-      ELSIF ( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax < 0 ) THEN
-        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
-      END IF;
+-- Ver.3.20 N.Abe DEL START
+--      IF( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax > 0 )    THEN
+--        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+--      ELSIF ( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax < 0 ) THEN
+--        l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+--      END IF;
+-- Ver.3.20 N.Abe DEL END
       IF( ln_bm1_rcpt_discount_amt_notax > 0 )    THEN
         ln_bm1_rcpt_discount_amt_notax  := CEIL( ln_bm1_rcpt_discount_amt_notax );
       ELSIF( ln_bm1_rcpt_discount_amt_notax < 0 ) THEN
         ln_bm1_rcpt_discount_amt_notax  := FLOOR( ln_bm1_rcpt_discount_amt_notax );
       END IF;
-      IF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax > 0 )    THEN
-        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
-      ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
-        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
-      END IF;
-      IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax > 0 )    THEN
-        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
-      ELSIF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax < 0 ) THEN
-        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
-      END IF;
+-- Ver.3.20 N.Abe DEL START
+--      IF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax > 0 )    THEN
+--        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+--      ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
+--        l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+--      END IF;
+--      IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax > 0 )    THEN
+--        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+--      ELSIF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax < 0 ) THEN
+--        l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+--      END IF;
+-- Ver.3.20 N.Abe DEL END
       IF( ln_bm2_rcpt_discount_amt_notax > 0 )    THEN
         ln_bm2_rcpt_discount_amt_notax  := CEIL( ln_bm2_rcpt_discount_amt_notax );
       ELSIF ( ln_bm2_rcpt_discount_amt_notax < 0 ) THEN
@@ -4189,11 +4923,13 @@ END insert_xcbs;
       ELSIF( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax < 0 ) THEN
         l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
       END IF;
-      IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax > 0 )    THEN
-        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
-      ELSIF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax < 0 ) THEN
-        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
-      END IF;
+-- Ver.3.20 N.Abe DEL START
+--      IF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax > 0 )    THEN
+--        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := CEIL( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+--      ELSIF( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax < 0 ) THEN
+--        l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+--      END IF;
+-- Ver.3.20 N.Abe DEL END
       IF( ln_bm3_rcpt_discount_amt_notax > 0 )    THEN
         ln_bm3_rcpt_discount_amt_notax  := CEIL( ln_bm3_rcpt_discount_amt_notax );
       ELSIF( ln_bm3_rcpt_discount_amt_notax < 0 ) THEN
@@ -4204,18 +4940,133 @@ END insert_xcbs;
       ELSIF ( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax < 0 ) THEN
         l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax  := FLOOR( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
       END IF;
+-- Ver.3.20 N.Abe ADD START
+      -- BM1ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+        -- ÅyBM1ÅzVDBM(ê≈î≤)
+        IF( ln_bm1_amt_no_tax >= 0 )    THEN
+          ln_bm1_amt_no_tax  := CEIL( ln_bm1_amt_no_tax );
+        ELSIF ( ln_bm1_amt_no_tax < 0 ) THEN
+          ln_bm1_amt_no_tax  := FLOOR( ln_bm1_amt_no_tax );
+        END IF;
+        -- ÅyBM1ÅzìdãCóø(ê≈î≤)
+        IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 )    THEN
+          ln_bm1_elect_amt_no_tax  := CEIL( ln_bm1_elect_amt_no_tax );
+        ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
+          ln_bm1_elect_amt_no_tax  := FLOOR( ln_bm1_elect_amt_no_tax );
+        END IF;
+      END IF;
+--
+      -- BM2ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
+        -- ÅyBM2ÅzVDBM(ê≈î≤)
+        IF( ln_bm2_amt_no_tax >= 0 )    THEN
+          ln_bm2_amt_no_tax  := CEIL( ln_bm2_amt_no_tax );
+        ELSIF( ln_bm2_amt_no_tax < 0 ) THEN
+          ln_bm2_amt_no_tax  := FLOOR( ln_bm2_amt_no_tax );
+        END IF;
+      END IF;
+--
+      -- BM3ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
+        -- ÅyBM3ÅzVDBM(ê≈î≤)
+        IF( ln_bm3_amt_no_tax >= 0 )    THEN
+          ln_bm3_amt_no_tax  := CEIL( ln_bm3_amt_no_tax );
+        ELSIF( ln_bm3_amt_no_tax < 0 ) THEN
+          ln_bm3_amt_no_tax  := FLOOR( ln_bm3_amt_no_tax );
+        END IF;
+      END IF;
+-- Ver.3.20 N.Abe ADD END
     -- è„ãLà»äOÇÃèÍçáÅA'DOWN':êÿÇËéÃÇƒÇ™ê›íËÇ≥ÇÍÇƒÇ¢ÇÈÇ±Ç∆Ç∆ÇµÅAè≠êîì_à»â∫ÇÃí[êîÇêÿÇËéÃÇƒÇµÇ‹Ç∑ÅB
     ELSE
-      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL START
+--      l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL END
       ln_bm1_rcpt_discount_amt_notax                    := TRUNC( ln_bm1_rcpt_discount_amt_notax );
-      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
-      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL START
+--      l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax );
+--      l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL END
       ln_bm2_rcpt_discount_amt_notax                    := TRUNC( ln_bm2_rcpt_discount_amt_notax );
       l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax );
-      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL START
+--      l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := TRUNC( l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax );
+-- Ver.3.20 N.Abe DEL END
       ln_bm3_rcpt_discount_amt_notax                    := TRUNC( ln_bm3_rcpt_discount_amt_notax );
       l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax := TRUNC( l_xcbs_data_tab( cn_index_3 ).electric_amt_no_tax );
+--
+-- Ver.3.20 N.Abe ADD START
+      -- BM1ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+        ln_bm1_amt_no_tax       := TRUNC( ln_bm1_amt_no_tax );             -- ÅyBM1ÅzVDBM(ê≈î≤)
+        ln_bm1_elect_amt_no_tax := TRUNC( ln_bm1_elect_amt_no_tax );  -- ÅyBM1ÅzìdãCóø(ê≈î≤)
+      END IF;
+      -- BM2ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
+        ln_bm2_amt_no_tax       := TRUNC( ln_bm2_amt_no_tax );             -- ÅyBM2ÅzVDBM(ê≈î≤)
+      END IF;
+      -- BM3ê≈ãÊï™ = '1'Åiê≈çûÅj
+      IF ( i_get_sales_data_rec.bm3_tax_kbn = '1' ) THEN
+        ln_bm3_amt_no_tax       := TRUNC( ln_bm3_amt_no_tax );             -- ÅyBM3ÅzVDBM(ê≈î≤)
+      END IF;
+-- Ver.3.20 N.Abe ADD END
     END IF;
+-- Ver.3.20 N.Abe ADD START
+    --==================================================
+    -- éÊìæílÇÃí[êîèàóùÅiBMê≈ãÊï™:ê≈î≤ÅAîÒâ€ê≈Åj
+    --==================================================
+    -- BM1ê≈ãÊï™ = '2'Åiê≈î≤Åj
+    IF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
+      -- ÅyBM1ÅzVDBM(ê≈çû)
+      IF( ln_bm1_amt_tax >= 0 ) THEN
+        ln_bm1_amt_tax  := CEIL( ln_bm1_amt_tax );
+      ELSIF( ln_bm1_amt_tax < 0 ) THEN
+        ln_bm1_amt_tax  := FLOOR( ln_bm1_amt_tax );
+      END IF;
+--
+      -- ÅyBM1ÅzìdãCóø(ê≈çû)
+      IF( ln_bm1_elect_amt_tax >= 0 ) THEN
+        ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
+      ELSIF( ln_bm1_elect_amt_tax < 0 ) THEN
+        ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
+      END IF;
+    END IF;
+--
+    -- BM2ê≈ãÊï™ IN ( '2', '3' )Åiê≈î≤ÅAîÒâ€ê≈Åj
+    IF ( i_get_sales_data_rec.bm2_tax_kbn IN ( '2', '3') ) THEN
+      -- ÅyBM2ÅzVDBM(ê≈çû)
+      IF( ln_bm2_amt_tax >= 0 ) THEN
+        ln_bm2_amt_tax  := CEIL( ln_bm2_amt_tax );
+      ELSIF( ln_bm2_amt_tax < 0 ) THEN
+        ln_bm2_amt_tax  := FLOOR( ln_bm2_amt_tax );
+      END IF;
+    END IF;
+--
+    -- BM3ê≈ãÊï™ IN ( '2', '3' )Åiê≈î≤ÅAîÒâ€ê≈Åj
+    IF ( i_get_sales_data_rec.bm3_tax_kbn IN ( '2', '3') ) THEN
+      -- ÅyBM3ÅzVDBM(ê≈çû)
+      IF( ln_bm3_amt_tax >= 0 ) THEN
+        ln_bm3_amt_tax  := CEIL( ln_bm3_amt_tax );
+      ELSIF( ln_bm3_amt_tax < 0 ) THEN
+        ln_bm3_amt_tax  := FLOOR( ln_bm3_amt_tax );
+      END IF;
+    END IF;
+    --==================================================
+    -- åvéZÇµÇΩílÇïœêîÇ…äiî[
+    --==================================================
+    -- VDBM(ê≈çû)
+    l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_tax     := ln_bm1_amt_tax;
+    l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax     := ln_bm2_amt_tax;
+    l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_tax     := ln_bm3_amt_tax;
+    -- VDBM(ê≈î≤)
+    l_xcbs_data_tab( cn_index_1 ).cond_bm_amt_no_tax  := ln_bm1_amt_no_tax;
+    l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_no_tax  := ln_bm2_amt_no_tax;
+    l_xcbs_data_tab( cn_index_3 ).cond_bm_amt_no_tax  := ln_bm3_amt_no_tax;
+    -- ìdãCóø(ê≈çû)
+    l_xcbs_data_tab( cn_index_1 ).electric_amt_tax    := ln_bm1_elect_amt_tax;
+    -- ìdãCóø(ê≈î≤)
+    l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax := ln_bm1_elect_amt_no_tax;
+-- Ver.3.20 N.Abe ADD END
     --==================================================
     -- è¡îÔê≈äzéZèo
     --==================================================
@@ -4234,8 +5085,12 @@ END insert_xcbs;
     l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt_tax
       := l_xcbs_data_tab( cn_index_3 ).csh_rcpt_discount_amt - ln_bm3_rcpt_discount_amt_notax;
     -- ìdãCóøè¡îÔê≈äz
+-- Ver.3.20 N.Abe MOD END
+--    l_xcbs_data_tab( cn_index_1 ).electric_tax_amt
+--      := i_get_sales_data_rec.bm1_electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax;
     l_xcbs_data_tab( cn_index_1 ).electric_tax_amt
-      := i_get_sales_data_rec.bm1_electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax;
+      := l_xcbs_data_tab( cn_index_1 ).electric_amt_tax - l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax;
+-- Ver.3.20 N.Abe MOD END
     l_xcbs_data_tab( cn_index_2 ).electric_tax_amt
       := i_get_sales_data_rec.bm2_electric_amt_tax - l_xcbs_data_tab( cn_index_2 ).electric_amt_no_tax;
     l_xcbs_data_tab( cn_index_3 ).electric_tax_amt
@@ -4310,7 +5165,9 @@ END insert_xcbs;
     l_xcbs_data_tab( cn_index_2 ).rebate_amt := i_get_sales_data_rec.bm2_amt;
     l_xcbs_data_tab( cn_index_3 ).rebate_amt := i_get_sales_data_rec.bm3_amt;
     -- ìdãCóø(ê≈çû)
-    l_xcbs_data_tab( cn_index_1 ).electric_amt_tax := i_get_sales_data_rec.bm1_electric_amt_tax;
+-- Ver.3.20 N.Abe DEL START
+--    l_xcbs_data_tab( cn_index_1 ).electric_amt_tax := i_get_sales_data_rec.bm1_electric_amt_tax;
+-- Ver.3.20 N.Abe DEL END
     l_xcbs_data_tab( cn_index_2 ).electric_amt_tax := i_get_sales_data_rec.bm2_electric_amt_tax;
     l_xcbs_data_tab( cn_index_3 ).electric_amt_tax := i_get_sales_data_rec.bm3_electric_amt_tax;
     --==================================================
@@ -4330,6 +5187,9 @@ END insert_xcbs;
       l_xcbs_data_tab( i ).delivery_qty              := i_get_sales_data_rec.dlv_qty;                   -- î[ïiêîó 
       l_xcbs_data_tab( i ).delivery_unit_type        := i_get_sales_data_rec.dlv_uom_code;              -- î[ïiíPà 
       l_xcbs_data_tab( i ).selling_amt_tax           := i_get_sales_data_rec.amount_inc_tax;            -- îÑè„ã‡äz(ê≈çû)
+-- Ver.3.20 N.Abe ADD START
+      l_xcbs_data_tab( i ).selling_amt_no_tax        := i_get_sales_data_rec.amount_no_tax;             -- îÑè„ã‡äz(ê≈î≤)
+-- Ver.3.20 N.Abe ADD END
       l_xcbs_data_tab( i ).container_type_code       := i_get_sales_data_rec.container_code;            -- óeäÌãÊï™ÉRÅ[Éh
       l_xcbs_data_tab( i ).selling_price             := i_get_sales_data_rec.dlv_unit_price;            -- îÑâøã‡äz
       l_xcbs_data_tab( i ).consumption_tax_class     := i_get_sales_data_rec.tax_div;                   -- è¡îÔê≈ãÊï™

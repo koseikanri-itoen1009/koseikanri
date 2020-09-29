@@ -7,7 +7,7 @@ AS
  * Description      : 販売手数料（自販機）の計算結果を情報系システムに
  *                    連携するインターフェースファイルを作成します
  * MD.050           : 情報系システムIFファイル作成-条件別販手販協  MD050_COK_014_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                                     プロファイル XXCOK1_FB_TERM_NAME の値を使用する。
  *  2009/06/29    1.7   K.Yamaguchi      [障害0000200] [障害0000290] パフォーマンス障害対応
  *  2009/10/08    1.8   S.Moriyama       [障害E_最終移行リハ_00460] 定額条件の場合は割戻額をNULLでファイル出力するよう変更
+ *  2020/08/21    1.9   M.Sato           [E_本稼動_15904] 税抜きでの自販機BM計算について
  *
  *****************************************************************************************/
 --
@@ -258,6 +259,9 @@ AS
          ,xcbs.delivery_qty             AS delivery_qty               -- 納品数量
          ,xcbs.delivery_unit_type       AS delivery_unit_type         -- 納品単位
          ,xcbs.selling_amt_tax          AS selling_amt_tax            -- 売上金額（税込）
+-- V1.9 2020/08/21 M.Sato ADD START --
+         ,xcbs.selling_amt_no_tax       AS selling_amt_no_tax         -- 売上金額（税抜）
+-- V1.9 2020/08/21 M.Sato ADD END   --
          ,xlv_v.meaning                 AS calc_type                  -- 計算条件
          ,xcbs.rebate_rate              AS rebate_rate                -- 割戻率
          ,xcbs.rebate_amt               AS rebate_amt                 -- 割戻額
@@ -267,11 +271,17 @@ AS
          ,xcbs.cond_bm_amt_no_tax       AS cond_bm_amt_no_tax         -- 条件別手数料額（税抜）
          ,xcbs.cond_tax_amt             AS cond_tax_amt               -- 条件別消費税額
          ,xcbs.electric_amt_tax         AS electric_amt_tax           -- 電気料（税込）
+-- V1.9 2020/08/21 M.Sato ADD START --
+         ,xcbs.electric_amt_no_tax      AS electric_amt_no_tax        -- 電気料（税抜）
+-- V1.9 2020/08/21 M.Sato ADD END   --
          ,xcbs.closing_date             AS closing_date               -- 締め日
          ,xcbs.expect_payment_date      AS expect_payment_date        -- 支払予定日
          ,xcbs.calc_target_period_from  AS calc_target_period_from    -- 計算対象期間（From）
          ,xcbs.calc_target_period_to    AS calc_target_period_to      -- 計算対象期間（To）
          ,pvsa.attribute5               AS ref_base_code              -- 問合せ担当拠点コード
+-- V1.9 2020/08/21 M.Sato ADD START --
+         ,pvsa.attribute6               AS tax_class                  -- 税区分
+-- V1.9 2020/08/21 M.Sato ADD END   --
   FROM    xxcok_cond_bm_support         xcbs                          -- 条件別販手販協テーブル
          ,xxcok_backmargin_balance      xbb                           -- 販手残高テーブル
          ,po_vendors                    pv                            -- 仕入先マスタ
@@ -948,7 +958,13 @@ AS
                    TO_CHAR( i_bm_support_rec.delivery_date )                                 || cv_comma || -- 納品日年月
                    TO_CHAR( NVL( i_bm_support_rec.delivery_qty , cv_0 ) )                    || cv_comma || -- 納品数量
           cv_wq ||          gt_prof_uom_code_hon                                    || cv_wq || cv_comma || -- 納品単位(本/ケース)
+-- V1.9 2020/08/21 M.Sato ADD START --
+          cv_wq ||          i_bm_support_rec.tax_class                                || cv_wq || cv_comma || -- 税区分
+-- V1.9 2020/08/21 M.Sato ADD END   --
                    TO_CHAR( i_bm_support_rec.selling_amt_tax )                               || cv_comma || -- 売上金額(税込)
+-- V1.9 2020/08/21 M.Sato ADD START --
+                   TO_CHAR( i_bm_support_rec.selling_amt_no_tax )                            || cv_comma || -- 売上金額(税抜)
+-- V1.9 2020/08/21 M.Sato ADD END   --
           cv_wq ||          i_bm_support_rec.calc_type                              || cv_wq || cv_comma || -- 取引条件
                    TO_CHAR( i_bm_support_rec.rebate_rate )                                   || cv_comma || -- 割戻率
 -- 2009/10/08 Ver.1.8 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
@@ -961,6 +977,9 @@ AS
                    TO_CHAR( i_bm_support_rec.cond_bm_amt_no_tax )                            || cv_comma || -- 条件別手数料額(税抜)
                    TO_CHAR( i_bm_support_rec.cond_tax_amt )                                  || cv_comma || -- 条件別消費税額
                    TO_CHAR( i_bm_support_rec.electric_amt_tax )                              || cv_comma || -- 電気料
+-- V1.9 2020/08/21 M.Sato ADD START --
+                   TO_CHAR( i_bm_support_rec.electric_amt_no_tax )                           || cv_comma || -- 電気料（税抜）
+-- V1.9 2020/08/21 M.Sato ADD END   --
                    TO_CHAR( i_bm_support_rec.closing_date           , 'YYYYMMDD' )           || cv_comma || -- 締日
                    TO_CHAR( i_bm_support_rec.expect_payment_date    , 'YYYYMMDD' )           || cv_comma || -- 支払日
                    TO_CHAR( i_bm_support_rec.calc_target_period_from, 'YYYYMMDD' )           || cv_comma || -- 計算対象期間(From)
