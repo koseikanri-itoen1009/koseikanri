@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoVendorModelLovVOImpl
 * 概要説明   : 仕入先コードLOV用ビュー行クラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
-* 日付       Ver. 担当者       修正内容
-* ---------- ---- ------------ ----------------------------------------------
-* 2008-12-18 1.0  SCS小川浩    新規作成
-*============================================================================
+* 日付       Ver. 担当者         修正内容
+* ---------- ---- -------------- ----------------------------------------------
+* 2008-12-18 1.0  SCS小川浩      新規作成
+* 2020-08-21 1.1  SCSK佐々木大和 [E_本稼動_15904]税抜きでの自販機BM計算について
+*==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.lov.server;
 import oracle.apps.fnd.framework.server.OAViewRowImpl;
@@ -45,6 +46,8 @@ public class XxcsoVendorLovVORowImpl extends OAViewRowImpl
   protected static final int BMPAYMENTTYPE = 18;
   protected static final int INQUIRYBASECODE = 19;
   protected static final int INQUIRYBASENAME = 20;
+  protected static final int BMTAXKBNCODE = 21;
+  protected static final int BMTAXKBN = 22;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -478,6 +481,10 @@ public class XxcsoVendorLovVORowImpl extends OAViewRowImpl
         return getInquiryBaseCode();
       case INQUIRYBASENAME:
         return getInquiryBaseName();
+      case BMTAXKBNCODE:
+        return getBmTaxKbnCode();
+      case BMTAXKBN:
+        return getBmTaxKbn();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -551,9 +558,51 @@ public class XxcsoVendorLovVORowImpl extends OAViewRowImpl
       case INQUIRYBASENAME:
         setInquiryBaseName((String)value);
         return;
+      case BMTAXKBNCODE:
+        setBmTaxKbnCode((String)value);
+        return;
+      case BMTAXKBN:
+        setBmTaxKbn((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BmTaxKbnCode
+   */
+  public String getBmTaxKbnCode()
+  {
+    return (String)getAttributeInternal(BMTAXKBNCODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BmTaxKbnCode
+   */
+  public void setBmTaxKbnCode(String value)
+  {
+    setAttributeInternal(BMTAXKBNCODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BmTaxKbn
+   */
+  public String getBmTaxKbn()
+  {
+    return (String)getAttributeInternal(BMTAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BmTaxKbn
+   */
+  public void setBmTaxKbn(String value)
+  {
+    setAttributeInternal(BMTAXKBN, value);
   }
 }
