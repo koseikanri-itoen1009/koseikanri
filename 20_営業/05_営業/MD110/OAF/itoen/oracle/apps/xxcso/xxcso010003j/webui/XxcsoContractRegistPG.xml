@@ -77,6 +77,52 @@
                   </oa:header>
                   <oa:header id="PayCondInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PayCondInfoHdrRN">
                      <ui:contents>
+                        <oa:tableLayout id="BMTaxKbnTIRN01" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="BMTaxKbnRIRN01" vAlign="top" width="100%">
+                                 <ui:contents>
+                                    <oa:cellFormat id="BMTaxKbnCfRN00" width="20%"/>
+                                    <oa:cellFormat id="BMTaxKbnCfRN01" width="20%">
+                                       <ui:contents>
+                                          <oa:header id="BM1TaxKbnHdrRN" text="ＢＭ1税区分">
+                                             <ui:contents>
+                                                <oa:messageRadioGroup id="BM1TaxKbn" defaultValue="1" pickListViewName="XxcsoBM1TaxKbnListVO1" pickListValAttr="LookupCode" pickListDispAttr="Meaning" viewName="XxcsoElectricVO1" viewAttr="Bm1TaxKbn" readOnly="true" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:header>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="BMTaxKbnCfRN02" width="20%">
+                                       <ui:contents>
+                                          <oa:header id="BM2TaxKbnHdrRN" text="ＢＭ2税区分">
+                                             <ui:contents>
+                                                <oa:messageRadioGroup id="BM2TaxKbn" pickListViewName="XxcsoBM2TaxKbnListVO1" pickListValAttr="LookupCode" pickListDispAttr="Meaning" defaultValue="1" viewName="XxcsoElectricVO1" viewAttr="Bm2TaxKbn" readOnly="true" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:header>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="BMTaxKbnCfRN03" width="20%">
+                                       <ui:contents>
+                                          <oa:header id="BM3TaxKbnHdrRN" text="ＢＭ3税区分">
+                                             <ui:contents>
+                                                <oa:messageRadioGroup id="BM3TaxKbn" pickListViewName="XxcsoBM3TaxKbnListVO1" pickListValAttr="LookupCode" pickListDispAttr="Meaning" defaultValue="1" viewName="XxcsoElectricVO1" viewAttr="Bm3TaxKbn" readOnly="true" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:header>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="BMTaxKbnCfRN04" width="20%"/>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="BMTaxKbnRIRN02" width="100%">
+                                 <ui:contents>
+                                    <oa:cellFormat id="BMTaxKbnCf0201" columnSpan="5">
+                                       <ui:contents>
+                                          <oa:spacer id="BMTaxKbnCf0201Spacer" height="20"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
                         <oa:tableLayout id="PayCondInfoTlRN" hAlign="center" width="100%">
                            <ui:contents>
                               <oa:rowLayout id="PayCondInfoRlRN01" width="100%">
@@ -362,6 +408,7 @@
                                     </oa:cellFormat>
                                  </ui:contents>
                               </oa:rowLayout>
+                              <oa:rowLayout id="PayCondInfoRIRN05"/>
                               <oa:rowLayout id="PayCondInfoRlRN04">
                                  <ui:contents>
                                     <oa:cellFormat id="PayCondInfoCfRN0401" columnSpan="2">
@@ -436,6 +483,220 @@
                               </oa:rowLayout>
                            </ui:contents>
                         </oa:tableLayout>
+                        <oa:header id="ElectricHdrRN" text="電気代">
+                           <ui:contents>
+                              <oa:tableLayout id="ElectricTIRN01" hAlign="center">
+                                 <ui:contents>
+                                    <oa:rowLayout id="ElectricRlRN01" width="100%">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ElectricCfRN0101" hAlign="end" width="20%" vAlign="top">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ElectricPayTypeLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="支払条件" prompt="支払条件" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN01011" width="20">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer01011" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0102" width="15%">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectricPayType" viewName="XxcsoElectricVO1" viewAttr="ElectricPaymentMean" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0103" width="10%">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectrictiyType" viewName="XxcsoElectricVO1" viewAttr="ElectricityMean" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0104" width="10%" hAlign="left">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectricAmount" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" styleClass="OraDataText" prompt="" viewName="XxcsoElectricVO1" viewAttr="ElectricityAmount" dataType="NUMBER" vAlign="bottom"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0105" width="10%">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ElectricPayTypeEndLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" styleClass="OraInstructionText" text="円／月" prompt="円／月"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0106">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer010601" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                    <oa:rowLayout id="ElectricRIRN02">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ElectricCfRN0201" width="20%" vAlign="top" hAlign="end">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ElectricChangeLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="変動の場合" prompt="変動の場合" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0202" width="30">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer020201" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0203" width="15%" columnSpan="1">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectricChangeType" viewName="XxcsoElectricVO1" viewAttr="ElectricPaymentChangeMean" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0204">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer020301" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                    <oa:rowLayout id="ElectricRIRN03">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ElectricCfRN0301" width="20%" vAlign="top" hAlign="end">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ElectricCyicleLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="支払サイクル" prompt="支払サイクル" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0302" width="30">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer030201" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0303" width="15%">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectricCyicleType" viewName="XxcsoElectricVO1" viewAttr="ElectricPaymentCycleMean" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0304">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer030401" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                    <oa:rowLayout id="ElectricRIRN04">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ElectricCfRN0401" width="20%" vAlign="top" hAlign="end">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ElectricCloseLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="締め日" prompt="締め日" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0402" width="30">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer0402" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0403" width="15%">
+                                             <ui:contents>
+                                                <oa:tableLayout id="ElectricTIRN0401">
+                                                   <ui:contents>
+                                                      <oa:rowLayout id="ElectricRNRN0401" hAlign="start">
+                                                         <ui:contents>
+                                                            <oa:cellFormat id="ElectricCfRN040101" hAlign="start">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="ElectricClosingDate" viewName="XxcsoElectricVO1" viewAttr="ElectricClosingDateMean" styleClass="OraDataText"/>
+                                                               </ui:contents>
+                                                            </oa:cellFormat>
+                                                            <oa:cellFormat id="ElectricCfRN040102">
+                                                               <ui:contents>
+                                                                  <oa:spacer id="ElectricSpacer0304011" width="10"/>
+                                                               </ui:contents>
+                                                            </oa:cellFormat>
+                                                            <oa:cellFormat id="ElectricCfRN040103">
+                                                               <ui:contents>
+                                                                  <oa:staticStyledText id="ElectricCloseEndLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="日" prompt="日" styleClass="OraInstructionText"/>
+                                                               </ui:contents>
+                                                            </oa:cellFormat>
+                                                         </ui:contents>
+                                                      </oa:rowLayout>
+                                                   </ui:contents>
+                                                </oa:tableLayout>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0404" width="15%" columnSpan="1">
+                                             <ui:contents>
+                                                <oa:tableLayout id="ElectricTIRN0404" hAlign="start">
+                                                   <ui:contents>
+                                                      <oa:rowLayout id="ElectricRNRN0404" vAlign="top">
+                                                         <ui:contents>
+                                                            <oa:cellFormat id="ElectricCfRN040401" hAlign="left">
+                                                               <ui:contents>
+                                                                  <oa:staticStyledText id="ElectricTransLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="振込日" prompt="振込日" styleClass="OraInstructionText"/>
+                                                               </ui:contents>
+                                                            </oa:cellFormat>
+                                                            <oa:cellFormat id="ElectricCfRN040402">
+                                                               <ui:contents>
+                                                                  <oa:spacer id="ElectricSpacer03040111" width="10"/>
+                                                               </ui:contents>
+                                                            </oa:cellFormat>
+                                                            <oa:cellFormat id="ElectricCfRN040403">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="ElectricTransMonth" viewName="XxcsoElectricVO1" viewAttr="ElectricTransMonthMean" styleClass="OraDataText"/>
+                                                               </ui:contents>
+                                                            </oa:cellFormat>
+                                                            <oa:cellFormat id="ElectricCfRN040404">
+                                                               <ui:contents>
+                                                                  <oa:messageStyledText id="ElectricTransDate" viewName="XxcsoElectricVO1" viewAttr="ElectricTransDateMean" styleClass="OraDataText"/>
+                                                               </ui:contents>
+                                                            </oa:cellFormat>
+                                                            <oa:cellFormat id="ElectricCfRN040405">
+                                                               <ui:contents>
+                                                                  <oa:staticStyledText id="ElectricTransEndLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="日" prompt="日" styleClass="OraInstructionText"/>
+                                                               </ui:contents>
+                                                            </oa:cellFormat>
+                                                         </ui:contents>
+                                                      </oa:rowLayout>
+                                                   </ui:contents>
+                                                </oa:tableLayout>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0405"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                    <oa:rowLayout id="ElectricRIRN05">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ElectricCfRN0501" width="20%" hAlign="end">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ElectricTransNameLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="契約先以外名（全角）" prompt="契約先以外名（全角）" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0502" width="30">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer050201" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0503" width="20%" columnSpan="2">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectricTransName" viewName="XxcsoElectricVO1" viewAttr="ElectricTransName" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0504"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                    <oa:rowLayout id="ElectricRIRN06">
+                                       <ui:contents>
+                                          <oa:cellFormat id="ElectricCfRN0601" width="20%" hAlign="end">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ElectricTransNameAltLabel" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/SalesCondLabel" text="契約先以外カナ（半角）" prompt="契約先以外カナ（半角）" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0602" width="30">
+                                             <ui:contents>
+                                                <oa:spacer id="ElectricSpacer060201" width="10"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0603" width="20%" columnSpan="2">
+                                             <ui:contents>
+                                                <oa:messageStyledText id="ElectricTransNameAlt" viewName="XxcsoElectricVO1" viewAttr="ElectricTransNameAlt" styleClass="OraDataText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                          <oa:cellFormat id="ElectricCfRN0604"/>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                 </ui:contents>
+                              </oa:tableLayout>
+                           </ui:contents>
+                        </oa:header>
                      </ui:contents>
                   </oa:header>
                   <oa:header id="PeriodInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/PeriodInfoHdrRN">
@@ -537,6 +798,8 @@
                                           <lovMap id="Bm1BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm1BankAccountNameKana" useForValidation="no"/>
                                           <lovMap id="Bm1BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm1BankAccountNameKanji" useForValidation="no"/>
                                           <lovMap id="Bm1SupplierId2Map" lovItem="VendorId2" resultTo="Bm1SpCustomerId" useForValidation="no"/>
+                                          <lovMap id="Bm1TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm1TaxKbnForm" useForValidation="no"/>
+                                          <lovMap id="Bm1TaxKbnNmMap" resultTo="Bm1TaxKbnNmForm" lovItem="BmTaxKbnNm" useForValidation="no"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm1BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDivLayout">
@@ -644,6 +907,12 @@
                                     <oa:messageTextInput id="Bm1BankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoBm1BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNameKanji" columns="70" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" required="no"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
+                              <oa:spacer id="Bm1DestSpacer03" height="20"/>
+                              <oa:messageComponentLayout id="Bm1TaxKbnMcIRN">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="BM1TaxKbnRbm" styleClass="OraDataText" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BmTaxKbnNm" columns="25" prompt="BM1税区分"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
                            </ui:contents>
                         </oa:stackLayout>
                         <oa:stackLayout id="Bm1DestDisableSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm1Disabled}">
@@ -680,10 +949,18 @@
                                     <oa:messageStyledText id="Bm1BankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankAccountNameKanji" required="no"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
+                              <oa:spacer id="Bm1DestSpacer031" height="20"/>
+                              <oa:messageComponentLayout id="Bm1TaxKbnMcIRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="BM1TaxKbnRbmBlank" styleClass="OraDataText" columns="25" prompt="BM1税区分"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
                            </ui:contents>
                         </oa:stackLayout>
                         <oa:formValue id="CityWard" dataType="VARCHAR2" prompt="CityWard" viewName="XxcsoBm1DestinationFullVO1" viewAttr="CityWard"/>
                         <oa:formValue id="Prefectures" dataType="VARCHAR2" prompt="Prefectures" viewName="XxcsoBm1DestinationFullVO1" viewAttr="Prefectures"/>
+                        <oa:formValue id="Bm1TaxKbnForm" dataType="VARCHAR2" prompt="BmTaxKbn" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BmTaxKbn"/>
+                        <oa:formValue id="Bm1TaxKbnNmForm" dataType="VARCHAR2" prompt="BmTaxKbnMm" viewName="XxcsoBm1DestinationFullVO1" viewAttr="BmTaxKbnNm"/>
                      </ui:contents>
                   </oa:header>
                   <oa:header id="Bm2DestHdrRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2DestHdrRN">
@@ -692,6 +969,8 @@
                         <oa:formValue id="Bm2SupplierId" dataType="NUMBER" prompt="SupplierId" viewName="XxcsoBm2DestinationFullVO1" viewAttr="SupplierId"/>
                         <oa:formValue id="Bm2VendorFlag" viewName="XxcsoBm2DestinationFullVO1" viewAttr="VendorFlag"/>
                         <oa:formValue id="Bm2SpCustomerId" viewName="XxcsoBm2ContractSpCustFullVO1" viewAttr="CustomerId" dataType="NUMBER"/>
+                        <oa:formValue id="Bm2TaxKbnForm" dataType="VARCHAR2" prompt="BmTaxKbn" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BmTaxKbn"/>
+                        <oa:formValue id="Bm2TaxKbnNmForm" dataType="VARCHAR2" prompt="BmTaxKbnNm" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BmTaxKbnNm"/>
                         <oa:stackLayout id="Bm2DestEnabledSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm2Enabled}">
                            <ui:contents>
                               <oa:messageComponentLayout id="Bm2DestMclRN01" columns="1">
@@ -722,6 +1001,8 @@
                                           <lovMap id="Bm2BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm2BankAccountNameKana" useForValidation="no"/>
                                           <lovMap id="Bm2BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm2BankAccountNameKanji" useForValidation="no"/>
                                           <lovMap id="Bm2SupplierId2Map" lovItem="VendorId2" resultTo="Bm2SpCustomerId" useForValidation="no"/>
+                                          <lovMap id="Bm2TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm2TaxKbnForm" useForValidation="no"/>
+                                          <lovMap id="BM2TaxKbnNmMap" lovItem="BmTaxKbnNm" resultTo="Bm2TaxKbnNmForm" useForValidation="no"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm2BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDivLayout">
@@ -829,6 +1110,12 @@
                                     <oa:messageTextInput id="Bm2BankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoBm2BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNameKanji" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
+                              <oa:spacer id="Bm2DestSpacer03" height="20"/>
+                              <oa:messageComponentLayout id="Bm2TaxKbnMcIRN">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="BM2TaxKbnRbm" styleClass="OraDataText" viewName="XxcsoBm2DestinationFullVO1" viewAttr="BmTaxKbnNm" columns="25" prompt="BM2税区分"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
                            </ui:contents>
                         </oa:stackLayout>
                         <oa:stackLayout id="Bm2DestDisabledSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm2Disabled}">
@@ -865,6 +1152,12 @@
                                     <oa:messageStyledText id="Bm2BankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankAccountNameKanji" required="no"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
+                              <oa:spacer id="Bm2DestSpacer031" height="20"/>
+                              <oa:messageComponentLayout id="Bm2TaxKbnMcIRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="BM2TaxKbnRbmblank" styleClass="OraDataText" columns="25" prompt="BM2税区分"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
                            </ui:contents>
                         </oa:stackLayout>
                      </ui:contents>
@@ -875,6 +1168,8 @@
                         <oa:formValue id="Bm3SupplierId" dataType="NUMBER" prompt="SupplierId" viewName="XxcsoBm3DestinationFullVO1" viewAttr="SupplierId"/>
                         <oa:formValue id="Bm3VendorFlag" dataType="NUMBER" prompt="SupplierId" viewName="XxcsoBm3DestinationFullVO1" viewAttr="VendorFlag"/>
                         <oa:formValue id="Bm3SpCustomerId" viewName="XxcsoBm3ContractSpCustFullVO1" viewAttr="CustomerId" dataType="NUMBER"/>
+                        <oa:formValue id="Bm3TaxKbnForm" dataType="VARCHAR2" prompt="BmTaxKbn" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BmTaxKbn"/>
+                        <oa:formValue id="Bm3TaxKbnNmForm" dataType="VARCHAR2" prompt="BmTaxKbnNm" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BmTaxKbnNm"/>
                         <oa:stackLayout id="Bm3DestEnabledSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm3Enabled}">
                            <ui:contents>
                               <oa:messageComponentLayout id="Bm3DestMclRN01" columns="1">
@@ -905,6 +1200,8 @@
                                           <lovMap id="Bm3BankAccountNameKanaMap" lovItem="BankAccountHolderNameAlt" resultTo="Bm3BankAccountNameKana" useForValidation="no"/>
                                           <lovMap id="Bm3BankAccountNameKanjiMap" lovItem="BankAccountHolderName" resultTo="Bm3BankAccountNameKanji" useForValidation="no"/>
                                           <lovMap id="Bm3SupplierId2Map" lovItem="VendorId2" resultTo="Bm3SpCustomerId" useForValidation="no"/>
+                                          <lovMap id="Bm3TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm3TaxKbnForm" useForValidation="no"/>
+                                          <lovMap id="Bm3TaxKbnNmMap" resultTo="Bm3TaxKbnNmForm" lovItem="BmTaxKbnNm" useForValidation="no"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm3BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDivLayout">
@@ -1012,6 +1309,12 @@
                                     <oa:messageTextInput id="Bm3BankAccountNameKanji" dataType="VARCHAR2" viewName="XxcsoBm3BankAccountFullVO1" viewAttr="BankAccountNameKanji" maximumLength="240" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKanji" columns="70" required="no" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
+                              <oa:spacer id="Bm3DestSpacer03" height="20"/>
+                              <oa:messageComponentLayout id="Bm3TaxKbnMcIRN">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="BM3TaxKbnRbm" styleClass="OraDataText" viewName="XxcsoBm3DestinationFullVO1" viewAttr="BmTaxKbnNm" columns="25" prompt="BM3税区分"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
                            </ui:contents>
                         </oa:stackLayout>
                         <oa:stackLayout id="Bm3DestDisabledSlRN" rendered="${oa.XxcsoPageRenderVO1.Bm3Disabled}">
@@ -1046,6 +1349,12 @@
                                     <oa:messageStyledText id="Bm3BankAccountNumberBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNumber" required="no"/>
                                     <oa:messageStyledText id="Bm3BankAccountNameKanaBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKana" required="no"/>
                                     <oa:messageStyledText id="Bm3BankAccountNameKanjiBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankAccountNameKanji" required="no"/>
+                                 </ui:contents>
+                              </oa:messageComponentLayout>
+                              <oa:spacer id="Bm3DestSpacer031" height="20"/>
+                              <oa:messageComponentLayout id="Bm3TaxKbnMcIRN1">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="BM3TaxKbnRbmBlank" styleClass="OraDataText" columns="25" prompt="BM3税区分"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                            </ui:contents>
