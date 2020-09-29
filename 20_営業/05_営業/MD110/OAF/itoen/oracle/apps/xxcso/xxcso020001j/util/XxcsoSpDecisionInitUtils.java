@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決初期化用ユーティリティクラス
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2014-12-15 1.5  SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.6  SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.7  SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加対応
+* 2020-08-21 1.8  SCSK佐々木大和[E_本稼動_15904]税抜き自販機BM計算対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -510,6 +511,11 @@ public class XxcsoSpDecisionInitUtils
     headerRow.setIntroChgTransName(     headerRow2.getIntroChgTransName()     );
     headerRow.setIntroChgTransNameAlt(  headerRow2.getIntroChgTransNameAlt()  );
 // 2014-12-15 [E_本稼動_12565] Mod End
+// [E_本稼動_15904] Add Start
+    headerRow.setBm1TaxKbn(             headerRow2.getBm1TaxKbn()             );
+    headerRow.setBm2TaxKbn(             headerRow2.getBm2TaxKbn()             );
+    headerRow.setBm3TaxKbn(             headerRow2.getBm3TaxKbn()             );
+// [E_本稼動_15904] Add End
     
     // 設置先行を作成
     installVo.first();
@@ -712,7 +718,11 @@ public class XxcsoSpDecisionInitUtils
     bm1Row.setTransferCommissionTypeView(
       bm1Row2.getTransferCommissionTypeView()
     );
-    
+    //[E_本稼動_15904] Add Start
+    bm1Row.setBm1TaxKbnCodeView(      bm1Row2.getBm1TaxKbnCodeView()     );
+    bm1Row.setBm1TaxKbnView(          bm1Row2.getBm1TaxKbnView()          ); 
+    //[E_本稼動_15904] Add End
+
     // BM2行を作成
     bm2Vo.first();
     XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
@@ -743,6 +753,10 @@ public class XxcsoSpDecisionInitUtils
     bm2Row.setInquiryBaseCode(        bm2Row2.getInquiryBaseCode()        );
     bm2Row.setInquiryBaseName(        bm2Row2.getInquiryBaseName()        );
     bm2Row.setCustomerId(             bm2Row2.getCustomerId()             );
+    //[E_本稼動_15904] Add Start
+    bm2Row.setBm2TaxKbnCodeView(      bm2Row2.getBm2TaxKbnCodeView()     );
+    bm2Row.setBm2TaxKbnView(          bm2Row2.getBm2TaxKbnView()          ); 
+    //[E_本稼動_15904] Add End
     
     // BM3行を作成
     bm3Vo.first();
@@ -774,6 +788,10 @@ public class XxcsoSpDecisionInitUtils
     bm3Row.setInquiryBaseCode(        bm3Row2.getInquiryBaseCode()        );
     bm3Row.setInquiryBaseName(        bm3Row2.getInquiryBaseName()        );
     bm3Row.setCustomerId(             bm3Row2.getCustomerId()             );
+    //[E_本稼動_15904] Add Start
+    bm3Row.setBm3TaxKbnCodeView(      bm3Row2.getBm3TaxKbnCodeView()     );
+    bm3Row.setBm3TaxKbnView(          bm3Row2.getBm3TaxKbnView()          ); 
+    //[E_本稼動_15904] Add End
 
     // 添付のコピー
     attachVo.first();

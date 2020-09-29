@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.21
+* バージョン : 1.22
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -29,6 +29,7 @@
 * 2014-12-15 1.19 SCSK桐生和幸 [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.20 SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.21 SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加
+* 2020-08-21 1.22 SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -7589,4 +7590,99 @@ public class XxcsoSpDecisionValidateUtils
   }
 
 // 2018-05-16 [E_本稼動_14989] Add End
+// [E_本稼動_15904] Add Start
+  /*****************************************************************************
+   * BM税区分妥当性チェック
+   * @param  txn            OADBTransactionインスタンス
+   * @param  headerVo       SP専決ヘッダ登録／更新用ビューインスタンス
+   * @param  bm1Vo          BM1登録／更新用ビューインスタンス
+   * @param  bm2Vo          BM2登録／更新用ビューインスタンス
+   * @param  bm3Vo          BM3登録／更新用ビューインスタンス
+   * @param  OperationMode  操作モード
+   * @return boolean        フラグ
+   *****************************************************************************
+   */
+ public static List validateBmTaxKbn(
+    OADBTransaction                     txn
+   ,XxcsoSpDecisionHeaderFullVOImpl     headerVo
+   ,XxcsoSpDecisionBm1CustFullVOImpl    bm1Vo
+   ,XxcsoSpDecisionBm2CustFullVOImpl    bm2Vo
+   ,XxcsoSpDecisionBm3CustFullVOImpl    bm3Vo
+   ,String                              OperationMode
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionHeaderFullVORowImpl headerRow
+      = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
+    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
+      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
+    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
+      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
+    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
+      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
+    List errorList = new ArrayList();
+    // 提出、承認、確認ボタンの場合
+    if (
+        OperationMode==XxcsoSpDecisionConstants.OPERATION_SUBMIT ||
+        OperationMode==XxcsoSpDecisionConstants.OPERATION_CONFIRM ||
+        OperationMode==XxcsoSpDecisionConstants.OPERATION_APPROVE
+       )
+    {
+      // BM1のチェック
+      if(  !(bm1Row.getVendorNumber() == null 
+         || "".equals(bm1Row.getVendorNumber()))
+        )
+      {
+        // 税区分リージョンとBM1リージョンの税区分が一致していない場合エラー
+        if(!(headerRow.getBm1TaxKbn().equals(bm1Row.getBm1TaxKbnCodeView())))
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00909
+               ,XxcsoConstants.TOKEN_BM_KBN
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
+              );
+          errorList.add(error);
+        }
+      }
+      // BM2のチェック
+      if(  !(bm2Row.getVendorNumber() == null 
+         || "".equals(bm2Row.getVendorNumber()))
+        )
+      {
+        // 税区分リージョンとBM2リージョンの税区分が一致していない場合エラー
+        if(!(headerRow.getBm2TaxKbn().equals(bm2Row.getBm2TaxKbnCodeView())))
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00909
+               ,XxcsoConstants.TOKEN_BM_KBN
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM2_REGION
+              );
+          errorList.add(error);
+        }
+      }
+      // BM3のチェック
+      if ( !(bm3Row.getVendorNumber() == null 
+         || "".equals(bm3Row.getVendorNumber()))
+        )
+      {
+      // 税区分リージョンとBM3リージョンの税区分が一致していない場合エラー
+        if(!(headerRow.getBm3TaxKbn().equals(bm3Row.getBm3TaxKbnCodeView())))
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00909
+               ,XxcsoConstants.TOKEN_BM_KBN
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
+              );
+          errorList.add(error);
+        }
+      }
+    }
+    return errorList;
+  }
+// [E_本稼動_15904] Add End
 }

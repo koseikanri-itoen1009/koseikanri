@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2014-12-15 1.9  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
 * 2016-01-07 1.10 SCSK山下翔太  [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.11 SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加対応
+* 2020-08-21 1.12 SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -445,6 +446,24 @@ public class XxcsoSpDecisionPropertyUtils
     /////////////////////////////////////
     // すべて入力可能
     initRow.setAllContainerTypeViewRender(         Boolean.FALSE );
+
+// [E_本稼動_15904] Add Start
+    /////////////////////////////////////
+    // BM税区分リージョン
+    /////////////////////////////////////
+    initRow.setBMTaxViewRender(                    Boolean.FALSE );
+    if (XxcsoSpDecisionConstants.BIZ_COND_FULL_VD.equals(
+        installRow.getBusinessConditionType()))
+    {
+      // 業態（小分類）が25:フルサービスVDの場合、すべて入力可能
+      initRow.setBMTaxRender(                      Boolean.TRUE);
+    }
+    else
+    {
+      initRow.setBMTaxRender(                      Boolean.FALSE);
+    }
+    //
+// [E_本稼動_15904] Add End
 
     /////////////////////////////////////
     // その他条件リージョン
@@ -881,6 +900,22 @@ public class XxcsoSpDecisionPropertyUtils
 
       selCcRow = (XxcsoSpDecisionSelCcLineFullVORowImpl)selCcVo.next();
     }
+// [E_本稼動_15904] Add Start
+    /////////////////////////////////////
+    // ＢＭ税区分リージョン
+    /////////////////////////////////////
+    initRow.setBMTaxRender(                        Boolean.FALSE );
+    // 業態小分類が「25：フルＶＤ」でない場合表示しない
+    // 上記以外の場合、入力不可
+    String bizCondType = installRow.getBusinessConditionType();
+    if ( !XxcsoSpDecisionConstants.BIZ_COND_FULL_VD.equals(bizCondType) )
+    {
+      initRow.setBMTaxViewRender(                  Boolean.FALSE );
+    } else 
+    {
+      initRow.setBMTaxViewRender(                  Boolean.TRUE  );     
+    }
+// [E_本稼動_15904] Add End
 
     /////////////////////////////////////
     // その他条件リージョン
@@ -1280,7 +1315,13 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setContributeInfoHdrRNRender(          Boolean.FALSE );
       initRow.setBm3InfoHdrRNRender(                 Boolean.FALSE );
     }
-    
+    //[E_本稼動_15904] Add Start
+    initRow.setBMTaxViewRender(                      Boolean.FALSE );
+    if ( !XxcsoSpDecisionConstants.BIZ_COND_FULL_VD.equals(bizCondType) )
+    {
+      initRow.setBMTaxRender(                        Boolean.FALSE );
+    }
+    //[E_本稼動_15904] Add End
 // 2016-01-07 [E_本稼動_13456] Del Start
 //    /////////////////////////////////////
 //    //新台旧台区分により、表示／非表示を設定
@@ -1534,7 +1575,16 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setBm1AddressLineViewRender(           Boolean.FALSE );
       initRow.setBm1TransferTypeLayoutRender(        Boolean.FALSE );
       initRow.setBm1InquiryBaseLayoutRender(         Boolean.FALSE );
+//[E_本稼動_15904] Add Start
+      initRow.setBm1TaxKbnViewRender(                Boolean.FALSE );
+//[E_本稼動_15904] Add End
     }
+//[E_本稼動_15904] Add Start
+    else
+    {      
+      initRow.setBm1TaxKbnViewRender(                Boolean.TRUE );
+    }
+//[E_本稼動_15904] Add End
 
     /////////////////////////////////////
     // 支払条件・明細書（BM2）により、表示／非表示を設定
@@ -1564,7 +1614,16 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setBm2AddressLineViewRender(           Boolean.FALSE );
       initRow.setBm2TransferTypeLayoutRender(        Boolean.FALSE );
       initRow.setBm2InquiryBaseLayoutRender(         Boolean.FALSE );
+//[E_本稼動_15904] Add Start
+      initRow.setBm2TaxKbnViewRender(                Boolean.FALSE );
+//[E_本稼動_15904] Add End
     }
+//[E_本稼動_15904] Add Start
+    else
+    {      
+      initRow.setBm2TaxKbnViewRender(                Boolean.TRUE );
+    }
+//[E_本稼動_15904] Add End
 
     /////////////////////////////////////
     // 支払条件・明細書（BM3）により、表示／非表示を設定
@@ -1594,7 +1653,16 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setBm3AddressLineViewRender(           Boolean.FALSE );
       initRow.setBm3TransferTypeLayoutRender(        Boolean.FALSE );
       initRow.setBm3InquiryBaseLayoutRender(         Boolean.FALSE );
+      //[E_本稼動_15904] Add Start
+      initRow.setBm3TaxKbnViewRender(                Boolean.FALSE );
+      //[E_本稼動_15904] Add End
     }
+//[E_本稼動_15904] Add Start
+    else
+    {      
+      initRow.setBm3TaxKbnViewRender(                Boolean.TRUE );
+    }
+//[E_本稼動_15904] Add End
 
 // 2014-12-15 [E_本稼動_12565] Del Start
 //    /////////////////////////////////////
@@ -2045,7 +2113,11 @@ public class XxcsoSpDecisionPropertyUtils
 
       selCcRow = (XxcsoSpDecisionSelCcLineFullVORowImpl)selCcVo.next();
     }
-
+// [E_本稼動_15904] Add Start
+    // BM税区分リージョン
+    initRow.setBMTaxRender(                      Boolean.TRUE  );
+    initRow.setBMTaxViewRender(                  Boolean.FALSE );
+// [E_本稼動_15904] Add End
     // その他条件リージョン
     initRow.setContractYearDateRender(           Boolean.TRUE  );
     initRow.setContractYearDateViewRender(       Boolean.TRUE  );
@@ -2203,6 +2275,9 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setBm1Address2ViewRender(            Boolean.TRUE  );
     initRow.setBm1AddressLineRender(             Boolean.TRUE  );
     initRow.setBm1AddressLineViewRender(         Boolean.TRUE  );
+    //[E_本稼動_15904] Add Start
+    initRow.setBm1TaxKbnViewRender(              Boolean.TRUE  );
+    //[E_本稼動_15904] Add End
 
     // BM2リージョン
     initRow.setBm2InfoHdrRNRender(               Boolean.TRUE  );
@@ -2241,6 +2316,9 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setBm2PaymentTypeRender(             Boolean.TRUE  );
     initRow.setBm2PaymentTypeViewRender(         Boolean.TRUE  );
     initRow.setBm2InquiryBaseLayoutRender(       Boolean.TRUE  );
+    //[E_本稼動_15904] Add Start
+    initRow.setBm2TaxKbnViewRender(              Boolean.TRUE  );
+    //[E_本稼動_15904] Add End
 
     // BM3リージョン
     initRow.setBm3InfoHdrRNRender(               Boolean.TRUE  );
@@ -2278,6 +2356,9 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setBm3PaymentTypeRender(             Boolean.TRUE  );
     initRow.setBm3PaymentTypeViewRender(         Boolean.TRUE  );
     initRow.setBm3InquiryBaseLayoutRender(       Boolean.TRUE  );
+    //[E_本稼動_15904] Add Start
+    initRow.setBm3TaxKbnViewRender(              Boolean.TRUE  );
+    //[E_本稼動_15904] Add End
 
 // 2014-12-15 [E_本稼動_12565] Del Start
 //    // 契約書への記載事項リージョン

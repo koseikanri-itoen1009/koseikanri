@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionReflectUtils
 * 概要説明   : SP専決反映ユーティリティクラス
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2010-05-26 1.5  SCS阿部大輔   [E_本稼動_02799]文字数対応
 * 2013-04-19 1.6  SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 * 2014-12-15 1.7  SCSK桐生和幸  [E_本稼動_12565]SP・契約書画面改修対応
+* 2020-08-21 1.8  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機ＢＭ計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -670,6 +671,7 @@ public class XxcsoSpDecisionReflectUtils
       }
     }
 
+
     String vendorNumber = bm1Row.getVendorNumber();
 
     if ( vendorNumber == null || "".equals(vendorNumber) )
@@ -694,6 +696,24 @@ public class XxcsoSpDecisionReflectUtils
           installRow.getPublishBaseName()
         );
       }
+// [E_本稼動_15904] Add Start
+      if ( isDiffer(
+             bm1Row.getBm1TaxKbnCodeView()
+            ,null
+            )
+          )
+      {
+         bm1Row.setBm1TaxKbnCodeView(null);   
+      }
+      if ( isDiffer(
+             bm1Row.getBm1TaxKbnView()
+            ,null
+            )
+          )
+      {
+         bm1Row.setBm1TaxKbnView(null);   
+      }
+// [E_本稼動_15904] Add End
     }
   }
 
@@ -745,6 +765,28 @@ public class XxcsoSpDecisionReflectUtils
           installRow.getPublishBaseName()
         );
       }
+// [E_本稼動_15904] Add Start
+      if ( isDiffer(
+             bm2Row.getBm2TaxKbnCodeView()
+            ,null
+           )
+         )
+      {
+        bm2Row.setBm2TaxKbnCodeView(
+          null
+        );
+      }
+      if ( isDiffer(
+             bm2Row.getBm2TaxKbnView()
+            ,null
+           )
+         )
+      {
+        bm2Row.setBm2TaxKbnView(
+          null
+        );
+      }
+// [E_本稼動_15904] Add End
     }
   }
 
@@ -797,6 +839,28 @@ public class XxcsoSpDecisionReflectUtils
           installRow.getPublishBaseName()
         );
       }
+      // [E_本稼動_15904] Add Start
+      if ( isDiffer(
+             bm3Row.getBm3TaxKbnCodeView()
+            ,null
+           )
+         )
+      {
+        bm3Row.setBm3TaxKbnCodeView(
+          null
+        );
+      }
+      if ( isDiffer(
+             bm3Row.getBm3TaxKbnView()
+            ,null
+           )
+         )
+      {
+        bm3Row.setBm3TaxKbnView(
+          null
+        );
+      }
+// [E_本稼動_15904] Add End
     }
   }
 
@@ -1263,6 +1327,7 @@ public class XxcsoSpDecisionReflectUtils
    ,XxcsoSpDecisionAllCcLineFullVOImpl     allCcVo
    ,XxcsoSpDecisionSelCcLineFullVOImpl     selCcVo
    ,XxcsoSpDecisionBmFormatVOImpl          bmFmtVo
+
   )
   {
     /////////////////////////////////////
@@ -1574,7 +1639,30 @@ public class XxcsoSpDecisionReflectUtils
         }
       }
     }
-    
+// [E_本稼動_15904] Add Start
+    /////////////////////////////////////
+    // 値の設定：BM税区分
+    /////////////////////////////////////
+    // 業態（小分類）が25:フルサービスVD以外の場合、
+    // BM1,BM2,BM3それぞれの税区分を税込みに設定
+    String bizCondType = installRow.getBusinessConditionType();
+    if (!(XxcsoSpDecisionConstants.BIZ_COND_FULL_VD.equals(bizCondType)))
+    {
+      if (isDiffer(headerRow.getBm1TaxKbn(),"1")) 
+      {
+        headerRow.setBm1TaxKbn("1");
+      }
+      if (isDiffer(headerRow.getBm2TaxKbn(),"1")) 
+      {
+        headerRow.setBm2TaxKbn("1");
+      }
+      if (isDiffer(headerRow.getBm3TaxKbn(),"1")) 
+      {
+        headerRow.setBm3TaxKbn("1");
+      }
+    }
+// [E_本稼動_15904] Add End
+
     /////////////////////////////////////
     // 値の設定：その他条件
     /////////////////////////////////////
@@ -1593,7 +1681,7 @@ public class XxcsoSpDecisionReflectUtils
     /////////////////////////////////////
     // 値の設定：BM1/BM2/BM3
     /////////////////////////////////////
-    String bizCondType = installRow.getBusinessConditionType();
+   // String bizCondType = installRow.getBusinessConditionType(); [E_本稼動_15904] del
     if ( XxcsoSpDecisionConstants.BIZ_COND_OFF_SET_VD.equals(bizCondType) )
     {
       String paymentType = XxcsoSpDecisionConstants.PAYMENT_TYPE_NONE;
