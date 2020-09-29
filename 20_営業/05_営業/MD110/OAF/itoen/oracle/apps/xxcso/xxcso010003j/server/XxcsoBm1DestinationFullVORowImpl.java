@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoBm1DestinationFullVORowImpl
 * 概要説明   : BM1送付先テーブル情報ビュー行オブジェクトクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS小川浩    新規作成
+* 2020-08-21 1.1  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -53,7 +54,9 @@ public class XxcsoBm1DestinationFullVORowImpl extends OAViewRowImpl
   protected static final int INQUERYCHARGEHUBNAME = 24;
   protected static final int VENDORCODE = 25;
   protected static final int VENDORFLAG = 26;
-  protected static final int XXCSOBM1BANKACCOUNTFULLVO = 27;
+  protected static final int BMTAXKBN = 27;
+  protected static final int BMTAXKBNNM = 28;
+  protected static final int XXCSOBM1BANKACCOUNTFULLVO = 29;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -502,6 +505,105 @@ public class XxcsoBm1DestinationFullVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(PROGRAMUPDATEDATE, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute InqueryChargeHubName
+   */
+  public String getInqueryChargeHubName()
+  {
+    return (String)getAttributeInternal(INQUERYCHARGEHUBNAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute InqueryChargeHubName
+   */
+  public void setInqueryChargeHubName(String value)
+  {
+    setAttributeInternal(INQUERYCHARGEHUBNAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute VendorCode
+   */
+  public String getVendorCode()
+  {
+    return (String)getAttributeInternal(VENDORCODE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute VendorCode
+   */
+  public void setVendorCode(String value)
+  {
+    setAttributeInternal(VENDORCODE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute VendorFlag
+   */
+  public String getVendorFlag()
+  {
+    return (String)getAttributeInternal(VENDORFLAG);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute VendorFlag
+   */
+  public void setVendorFlag(String value)
+  {
+    setAttributeInternal(VENDORFLAG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for BM_TAX_KBN using the alias name BmTaxKbn
+   */
+  public String getBmTaxKbn()
+  {
+    return (String)getAttributeInternal(BMTAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as attribute value for BM_TAX_KBN using the alias name BmTaxKbn
+   */
+  public void setBmTaxKbn(String value)
+  {
+    setAttributeInternal(BMTAXKBN, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BmTaxKbnNm
+   */
+  public String getBmTaxKbnNm()
+  {
+    return (String)getAttributeInternal(BMTAXKBNNM);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BmTaxKbnNm
+   */
+  public void setBmTaxKbnNm(String value)
+  {
+    setAttributeInternal(BMTAXKBNNM, value);
+  }
+
+  /**
+   * 
+   * Gets the associated <code>Row</code> using master-detail link XxcsoBm1BankAccountFullVO
+   */
+  public oracle.jbo.Row getXxcsoBm1BankAccountFullVO()
+  {
+    return (oracle.jbo.Row)getAttributeInternal(XXCSOBM1BANKACCOUNTFULLVO);
+  }
   //  Generated method. Do not modify.
 
   protected Object getAttrInvokeAccessor(int index, AttributeDefImpl attrDef) throws Exception
@@ -562,6 +664,10 @@ public class XxcsoBm1DestinationFullVORowImpl extends OAViewRowImpl
         return getVendorCode();
       case VENDORFLAG:
         return getVendorFlag();
+      case BMTAXKBN:
+        return getBmTaxKbn();
+      case BMTAXKBNNM:
+        return getBmTaxKbnNm();
       case XXCSOBM1BANKACCOUNTFULLVO:
         return getXxcsoBm1BankAccountFullVO();
       default:
@@ -655,74 +761,88 @@ public class XxcsoBm1DestinationFullVORowImpl extends OAViewRowImpl
       case VENDORFLAG:
         setVendorFlag((String)value);
         return;
+      case BMTAXKBN:
+        setBmTaxKbn((String)value);
+        return;
+      case BMTAXKBNNM:
+        setBmTaxKbnNm((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
   }
 
-  /**
-   * 
-   * Gets the associated <code>Row</code> using master-detail link XxcsoBm1BankAccountFullVO
-   */
-  public oracle.jbo.Row getXxcsoBm1BankAccountFullVO()
-  {
-    return (oracle.jbo.Row)getAttributeInternal(XXCSOBM1BANKACCOUNTFULLVO);
-  }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute InqueryChargeHubName
-   */
-  public String getInqueryChargeHubName()
-  {
-    return (String)getAttributeInternal(INQUERYCHARGEHUBNAME);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute InqueryChargeHubName
-   */
-  public void setInqueryChargeHubName(String value)
-  {
-    setAttributeInternal(INQUERYCHARGEHUBNAME, value);
-  }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute VendorCode
-   */
-  public String getVendorCode()
-  {
-    return (String)getAttributeInternal(VENDORCODE);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute VendorCode
-   */
-  public void setVendorCode(String value)
-  {
-    setAttributeInternal(VENDORCODE, value);
-  }
 
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute VendorFlag
-   */
-  public String getVendorFlag()
-  {
-    return (String)getAttributeInternal(VENDORFLAG);
-  }
 
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute VendorFlag
-   */
-  public void setVendorFlag(String value)
-  {
-    setAttributeInternal(VENDORFLAG, value);
-  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  //  Generated method. Do not modify.
+
+  //  Generated method. Do not modify.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

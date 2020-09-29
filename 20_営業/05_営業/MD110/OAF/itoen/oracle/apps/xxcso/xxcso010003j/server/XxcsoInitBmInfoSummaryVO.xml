@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -8,6 +8,7 @@
    RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoInitBmInfoSummaryVORowImpl"
    ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoInitBmInfoSummaryVOImpl"
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT  xxcso_010003j_pkg.decode_bm_info(
@@ -205,21 +206,57 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,NULL
          ,DECODE(pvs.attribute4,'4',NULL,xbav.account_holder_name)
         )                                    AS account_holder_name
+      ,xxcso_010003j_pkg.decode_bm_info(
+          xsdc.customer_id
+         ,'1'
+         ,'1'
+         ,'0'
+         ,CASE :1
+           WHEN 1 THEN
+             xsdh.bm1_tax_kbn
+           WHEN 2 THEN
+             xsdh.bm2_tax_kbn
+           WHEN 3 THEN
+             xsdh.bm3_tax_kbn
+          END
+         ,pvs.attribute6
+       )                                     AS bm_tax_kbn
+       ,xxcso_util_common_pkg.get_lookup_meaning(
+           'XXCSO1_BM_TAX_KBN'
+          ,xxcso_010003j_pkg.decode_bm_info(
+              xsdc.customer_id
+             ,'1'
+             ,'1'
+             ,'0'
+             ,CASE :2
+               WHEN 1 THEN
+                 xsdh.bm1_tax_kbn
+               WHEN 2 THEN
+                 xsdh.bm2_tax_kbn
+               WHEN 3 THEN
+                 xsdh.bm3_tax_kbn
+              END
+             ,pvs.attribute6
+         )
+          ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        )                                    AS bm_tax_kbn_nm
        ,xsdc.customer_id                     AS customer_id
-FROM    xxcso_sp_decision_custs  xsdc
-       ,po_vendors               pv
-       ,po_vendor_sites          pvs
-       ,xxcso_bank_accts_v       xbav
-WHERE   xsdc.sp_decision_customer_id  = :1
+FROM    xxcso_sp_decision_custs   xsdc
+       ,po_vendors                pv
+       ,po_vendor_sites           pvs
+       ,xxcso_bank_accts_v        xbav
+       ,xxcso_sp_decision_headers xsdh
+WHERE   xsdc.sp_decision_customer_id  = :3
 AND     xsdc.bm_payment_type         <> '5'
 AND     pv.vendor_id(+)               = xsdc.customer_id
 AND     pvs.vendor_id(+)              = xsdc.customer_id
 AND     xbav.vendor_id(+)             = pvs.vendor_id
 AND     xbav.vendor_site_id(+)        = pvs.vendor_site_id
+AND     xsdc.sp_decision_header_id    = xsdh.sp_decision_header_id
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
@@ -496,8 +533,32 @@ AND     xbav.vendor_site_id(+)        = pvs.vendor_site_id
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
+      Name="BmTaxKbn"
+      IsPersistent="false"
+      Precision="100"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM_TAK_KBN"
+      Expression="BM_TAK_KBN_NM"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmTaxKbnNm"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BM_TAX_KBN_NM"
+      Expression="BM_TAX_KBN_NM"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
       Name="CustomerId"
       IsPersistent="false"
+      Precision="4000"
       Type="oracle.jbo.domain.Number"
       ColumnType="NUMBER"
       AliasName="CUSTOMER_ID"

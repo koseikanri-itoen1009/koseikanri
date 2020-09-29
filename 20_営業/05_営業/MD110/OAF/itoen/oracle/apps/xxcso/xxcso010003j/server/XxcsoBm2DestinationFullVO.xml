@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -147,6 +147,26 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
        )                                               AS inquery_charge_hub_name
       ,pv.segment1                                     AS vendor_code
+      ,xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.BM_TAX_KBN
+        ,pvs.attribute6
+       )                                               AS bm_tax_kbn
+      ,xxcso_util_common_pkg.get_lookup_meaning(
+          'XXCSO1_BM_TAX_KBN'
+        , xxcso_010003j_pkg.decode_bm_info(
+            XxcsoDestinationsEO.SUPPLIER_ID
+           ,xcm.status
+           ,xcm.cooperate_flag
+           ,xcm.batch_proc_status
+           ,XxcsoDestinationsEO.BM_TAX_KBN
+           ,pvs.attribute6
+          )
+        , TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      )                                                AS bm_tax_kbn_nm
 FROM XXCSO_DESTINATIONS          XxcsoDestinationsEO
     ,xxcso_contract_managements  xcm
     ,po_vendors                  pv
@@ -158,7 +178,7 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <EntityUsage
@@ -376,6 +396,22 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       ColumnType="VARCHAR2"
       AliasName="VENDOR_FLAG"
       Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmTaxKbn"
+      EntityAttrName="BmTaxKbn"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="BmTaxKbn" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmTaxKbnNm"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BmTaxKbnNm"
+      Expression="BmTaxKbnNm"
       SQLType="VARCHAR" >
    </ViewAttribute>
    <ViewLinkAccessor

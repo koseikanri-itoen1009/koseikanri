@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoInitBmInfoSummaryVORowImpl
 * 概要説明   : 初期表示時BM情報取得ビュー行オブジェクトクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS小川浩    新規作成
+* 2020-08-21 1.1  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -49,7 +50,9 @@ public class XxcsoInitBmInfoSummaryVORowImpl extends OAViewRowImpl
   protected static final int BANKACCOUNTNUM = 18;
   protected static final int ACCOUNTHOLDERNAMEALT = 19;
   protected static final int ACCOUNTHOLDERNAME = 20;
-  protected static final int CUSTOMERID = 21;
+  protected static final int BMTAXKBN = 21;
+  protected static final int BMTAXKBNNM = 22;
+  protected static final int CUSTOMERID = 23;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -123,6 +126,10 @@ public class XxcsoInitBmInfoSummaryVORowImpl extends OAViewRowImpl
         return getAccountHolderNameAlt();
       case ACCOUNTHOLDERNAME:
         return getAccountHolderName();
+      case BMTAXKBN:
+        return getBmTaxKbn();
+      case BMTAXKBNNM:
+        return getBmTaxKbnNm();
       case CUSTOMERID:
         return getCustomerId();
       default:
@@ -197,6 +204,12 @@ public class XxcsoInitBmInfoSummaryVORowImpl extends OAViewRowImpl
         return;
       case ACCOUNTHOLDERNAME:
         setAccountHolderName((String)value);
+        return;
+      case BMTAXKBN:
+        setBmTaxKbn((String)value);
+        return;
+      case BMTAXKBNNM:
+        setBmTaxKbnNm((String)value);
         return;
       case CUSTOMERID:
         setCustomerId((Number)value);
@@ -584,4 +597,47 @@ public class XxcsoInitBmInfoSummaryVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(CUSTOMERID, value);
   }
+
+
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BmTaxKbn
+   */
+  public String getBmTaxKbn()
+  {
+    return (String)getAttributeInternal(BMTAXKBN);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BmTaxKbn
+   */
+  public void setBmTaxKbn(String value)
+  {
+    setAttributeInternal(BMTAXKBN, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute BmTaxKbnNm
+   */
+  public String getBmTaxKbnNm()
+  {
+    return (String)getAttributeInternal(BMTAXKBNNM);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute BmTaxKbnNm
+   */
+  public void setBmTaxKbnNm(String value)
+  {
+    setAttributeInternal(BMTAXKBNNM, value);
+  }
+
+
+
+
+
 }

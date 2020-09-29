@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 2.2
+* バージョン : 2.3
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -21,6 +21,7 @@
 * 2015-02-09 2.0  SCSK山下翔太   [E_本稼動_12565]SP専決・契約書画面改修
 * 2016-01-06 2.1  SCSK桐生和幸   [E_本稼動_13456]自販機管理システム代替対応
 * 2019-02-19 2.2  SCSK佐々木大和 [E_本稼動_15349]仕入先CD制御対応
+* 2020-08-21 2.3  SCSK佐々木大和 [E_本稼動_15904]税抜き自販機ＢＭ計算について
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -251,6 +252,16 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoSpDecisionHeadersSummuryVO1");
     }
 // 2015-02-09 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+    XxcsoElectricVOImpl electricVo
+      = getXxcsoElectricVO1();
+    if ( electricVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricVO1");
+
+    }
+// [E_本稼動_15904] Add End
     XxcsoContractRegistInitUtils.initCreate(
       txn
      ,spDecisionHeaderId
@@ -276,6 +287,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,contrOtherCustVo
      ,spDecHedSumVo
 // 2015-02-09 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+     ,electricVo
+// [E_本稼動_15904] Add End
     );
     
     XxcsoUtils.debug(txn, "[END]");
@@ -457,6 +471,16 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoSpDecisionHeadersSummuryVO1");
     }
 // 2015-02-09 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+    XxcsoElectricVOImpl electricVo
+      = getXxcsoElectricVO1();
+    if ( electricVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricVO1");
+
+    }
+// [E_本稼動_15904] Add End
     XxcsoContractRegistInitUtils.initUpdate(
       txn
      ,contractManagementId
@@ -483,6 +507,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,contrOtherCustVo
      ,spDecHedSumVo
 // 2015-02-09 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+     ,electricVo
+// [E_本稼動_15904] Add End
     );
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -726,6 +753,16 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO2");
     }
 // 2015-02-09 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+    XxcsoElectricVOImpl electricVo
+      = getXxcsoElectricVO1();
+    if ( electricVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricVO1");
+
+    }
+// [E_本稼動_15904] Add End
     XxcsoContractRegistInitUtils.initCopy(
       txn
      ,contractManagementId
@@ -760,6 +797,9 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,spDecHedSumVo
      ,contrOtherCustVo2
 // 2015-02-09 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+     ,electricVo
+// [E_本稼動_15904] Add End
     );
 
     XxcsoUtils.debug(txn, "[END]");
@@ -937,6 +977,45 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
 // 2010-01-20 [E_本稼動_01176] Add End
      ,"lookup_code"
     );
+// [E_本稼動_15904] Add Start
+    // BM1税区分
+    XxcsoLookupListVOImpl bm1TaxKbnListVo = getXxcsoBM1TaxKbnListVO1();
+    if ( bm1TaxKbnListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBM1TaxKbnListVO");
+    }
+
+    bm1TaxKbnListVo.initQuery(
+      "XXCSO1_BM_TAX_KBN"
+     ,"lookup_code IN('1','2')"
+     ,"lookup_code"
+    );
+    // BM2税区分
+    XxcsoLookupListVOImpl bm2TaxKbnListVo = getXxcsoBM2TaxKbnListVO1();
+    if ( bm2TaxKbnListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBM2TaxKbnListVO");
+    }
+
+    bm2TaxKbnListVo.initQuery(
+      "XXCSO1_BM_TAX_KBN"
+     ,"lookup_code"
+    );
+    // BM3税区分
+    XxcsoLookupListVOImpl bm3TaxKbnListVo = getXxcsoBM3TaxKbnListVO1();
+    if ( bm3TaxKbnListVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoBM3TaxKbnListVO");
+    }
+
+    bm3TaxKbnListVo.initQuery(
+      "XXCSO1_BM_TAX_KBN"
+     ,"lookup_code"
+    );
+// [E_本稼動_15904] Add End
     
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -1081,6 +1160,16 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     XxcsoPageRenderVORowImpl pageRndrVoRow
       = (XxcsoPageRenderVORowImpl) pageRndrVo.first(); 
 // 2016-01-06 [E_本稼動_13456] Add End
+// [E_本稼動_15904] Add Start
+    XxcsoElectricVOImpl electricVo
+      = getXxcsoElectricVO1();
+    if ( electricVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricVO1");
+
+    }
+// [E_本稼動_15904] Add End
 
     // 契約書フォーマットにその他が選択されている場合、エラー
     if ( XxcsoContractRegistConstants.FORMAT_OTHER.equals(
@@ -1410,6 +1499,16 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     XxcsoPageRenderVORowImpl pageRndrVoRow
       = (XxcsoPageRenderVORowImpl) pageRndrVo.first(); 
 // 2016-01-06 [E_本稼動_13456] Add End
+// [E_本稼動_15904] Add Start
+    XxcsoElectricVOImpl electricVo
+      = getXxcsoElectricVO1();
+    if ( electricVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricVO1");
+
+    }
+// [E_本稼動_15904] Add End
 
     /////////////////////////////////////
     // 検証処理：ＤＢ値検証
@@ -1481,7 +1580,6 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
      ,dest3Vo
      ,bank3Vo
     );
-// 2010-03-01 [E_本稼動_01678] Add End
 
     this.commit();
 
@@ -1862,6 +1960,15 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoContractOtherCustFullVO1");
     }
 // 2015-02-09 [E_本稼動_12565] Add End
+// [E_本稼動_15904] Add Start
+    XxcsoElectricVOImpl electricVo
+      = getXxcsoElectricVO1();
+    if ( electricVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError("XxcsoElectricVO1");
+    }
+// [E_本稼動_15904] Add End
     /////////////////////////////////////
     // 検証処理：契約者（甲）情報
     /////////////////////////////////////
@@ -1944,6 +2051,23 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
        ,fixedFlag
       )
     );
+// [E_本稼動_15904] Add Start
+    /////////////////////////////////////
+    // 検証処理：ＢＭ税区分
+    /////////////////////////////////////
+    if ( fixedFlag ) {
+      errorList.addAll(
+        XxcsoContractRegistValidateUtils.validateBmTaxKbn(
+           txn
+          ,pageRenderVo
+          ,dest1Vo
+          ,dest2Vo
+          ,dest3Vo
+          ,electricVo
+        )
+      );
+    }
+// [E_本稼動_15904] Add End
 // 2015-02-09 [E_本稼動_12565] Add Start
     /////////////////////////////////////
     // 検証処理：設置協賛金情報・紹介手数料・電気代
@@ -4446,6 +4570,42 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
   public XxcsoContractOtherCustFullVOImpl getXxcsoContractOtherCustFullVO2()
   {
     return (XxcsoContractOtherCustFullVOImpl)findViewObject("XxcsoContractOtherCustFullVO2");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoElectricVO1
+   */
+  public XxcsoElectricVOImpl getXxcsoElectricVO1()
+  {
+    return (XxcsoElectricVOImpl)findViewObject("XxcsoElectricVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoBM1TaxKbnListVO1
+   */
+  public XxcsoLookupListVOImpl getXxcsoBM1TaxKbnListVO1()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoBM1TaxKbnListVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoBM2TaxKbnListVO1
+   */
+  public XxcsoLookupListVOImpl getXxcsoBM2TaxKbnListVO1()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoBM2TaxKbnListVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoBM3TaxKbnListVO1
+   */
+  public XxcsoLookupListVOImpl getXxcsoBM3TaxKbnListVO1()
+  {
+    return (XxcsoLookupListVOImpl)findViewObject("XxcsoBM3TaxKbnListVO1");
   }
 
 

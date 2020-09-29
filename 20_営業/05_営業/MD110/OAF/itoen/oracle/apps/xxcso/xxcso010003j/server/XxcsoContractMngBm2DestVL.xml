@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE ViewLink SYSTEM "jbo_03_01.dtd">
 
 <ViewLink
    Name="XxcsoContractMngBm2DestVL" >
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
    </DesignTime>
    <ViewLinkDefEnd
       Name="XxcsoContractManagementFullVO"
