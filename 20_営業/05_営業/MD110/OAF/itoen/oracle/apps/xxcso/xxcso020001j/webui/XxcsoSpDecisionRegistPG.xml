@@ -24,7 +24,8 @@ HISTORY
 2009/03/23  N.Yanagitaira  assignment No.115 corrective action
 2009/05/15  N.Yanagitaira  T1_0230
 2016/01/07  S.Yamashita    E_13456
-2018/05/16  Y.Shoji        E_14989-->
+2018/05/16  Y.Shoji        E_14989
+2020/08/21  Y.Sasaki       E_15904-->
       <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionRegistAM" controllerClass="itoen.oracle.apps.xxcso.xxcso020001j.webui.XxcsoSpDecisionRegistCO" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PageLayoutRN">
          <ui:corporateBranding>
             <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
@@ -354,7 +355,6 @@ HISTORY
                   </oa:rowLayout>
                   <oa:header id="ConditionBusinessInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConditionBusinessInfoHdrRN">
                      <ui:contents>
-                        <oa:tip id="ConditionBusinessInfoHint" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConditionBusinessInfoHint"/>
                         <oa:header id="SelectConditionBusinessHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/SelectConditionBusinessHdrRN">
                            <ui:contents>
                               <oa:messageChoice id="CondBizTypeView" pickListViewName="XxcsoConditionBizTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConditionBusinessType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ConditionBusinessType" readOnly="true" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.CondBizTypeViewRender}"/>
@@ -365,6 +365,90 @@ HISTORY
                               </oa:messageChoice>
                            </ui:contents>
                         </oa:header>
+                        <oa:rowLayout id="BMTaxRlRN" width="100%">
+                           <ui:contents>
+                              <oa:cellFormat id="BMTaxCfRN01" vAlign="top" width="20%" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxRender}">
+                                 <ui:contents>
+                                    <oa:header id="BM1TaxHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountHdrRN" text="* BM1税区分">
+                                       <ui:contents>
+                                          <oa:messageRadioGroup id="BM1TaxType" pickListViewName="XxcsoBM1TaxListVO1" pickListDispAttr="Meaning" pickListValAttr="LookupCode" styleClass="OraInstructionText" vAlign="middle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/BM1TaxType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="Bm1TaxKbn" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxRender}" required="yes" prompt="" defaultValue="1">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="BM1TaxTypeChange" id="firePartialAction212"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageRadioGroup>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BMTaxCfRN02" vAlign="top" width="20%" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxRender}">
+                                 <ui:contents>
+                                    <oa:header id="BM2TaxHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ContractHdrRN" text="* BM2税区分">
+                                       <ui:contents>
+                                          <oa:messageRadioGroup id="BM2TaxType" pickListViewName="XxcsoBM2TaxListVO1" pickListDispAttr="Meaning" pickListValAttr="LookupCode" styleClass="OraInstructionText" vAlign="middle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/BM2TaxType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="Bm2TaxKbn" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxRender}" required="yes" prompt="" defaultValue="1">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="BM2TaxTypeChange" id="firePartialAction2121"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageRadioGroup>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BMTaxCfRN03" vAlign="top" width="20%" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxRender}">
+                                 <ui:contents>
+                                    <oa:header id="BM3TaxHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ContractHdrRN" text="* BM3税区分">
+                                       <ui:contents>
+                                          <oa:messageRadioGroup id="BM3TaxType" pickListViewName="XxcsoBM3TaxListVO1" pickListDispAttr="Meaning" pickListValAttr="LookupCode" styleClass="OraInstructionText" vAlign="middle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/BM3TaxType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="Bm3TaxKbn" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxRender}" required="yes" prompt="" defaultValue="1">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="BM3TaxTypeChange" id="firePartialAction21211"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageRadioGroup>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BMTaxCfRN04" vAlign="top" width="40%" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxRender}"/>
+                              <oa:cellFormat id="BMTaxViewCfRN01" vAlign="top" width="20%" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxViewRender}">
+                                 <ui:contents>
+                                    <oa:header id="BM1TaxViewHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountHdrRN" text="* BM1税区分">
+                                       <ui:contents>
+                                          <oa:messageRadioGroup id="BM1TaxTypeView" pickListViewName="XxcsoBM1TaxListVO1" pickListDispAttr="Meaning" pickListValAttr="LookupCode" styleClass="OraInstructionText" vAlign="middle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/BM1TaxType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="Bm1TaxKbn" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxViewRender}" required="yes" prompt="" defaultValue="1" readOnly="true">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="BM1TaxTypeChange" id="firePartialAction21212"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageRadioGroup>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BMTaxViewCfRN02" vAlign="top" width="20%" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxViewRender}">
+                                 <ui:contents>
+                                    <oa:header id="BM2TaxViewHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ContractHdrRN" text="* BM2税区分">
+                                       <ui:contents>
+                                          <oa:messageRadioGroup id="BM2TaxTypeView" pickListViewName="XxcsoBM2TaxListVO1" pickListDispAttr="Meaning" pickListValAttr="LookupCode" styleClass="OraInstructionText" vAlign="middle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/BM2TaxType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="Bm2TaxKbn" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxViewRender}" required="yes" prompt="" defaultValue="1" readOnly="true">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="BM2TaxTypeChange" id="firePartialAction21213"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageRadioGroup>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BMTaxViewCfRN03" vAlign="top" width="20%" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxViewRender}">
+                                 <ui:contents>
+                                    <oa:header id="BM3TaxViewHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ContractHdrRN" text="* BM3税区分">
+                                       <ui:contents>
+                                          <oa:messageRadioGroup id="BM3TaxTypeView" pickListViewName="XxcsoBM3TaxListVO1" pickListDispAttr="Meaning" pickListValAttr="LookupCode" styleClass="OraInstructionText" vAlign="middle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/BM3TaxType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="Bm3TaxKbn" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxViewRender}" required="yes" prompt="" defaultValue="1" readOnly="true">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="BM3TaxTypeChange" id="firePartialAction212111"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageRadioGroup>
+                                       </ui:contents>
+                                    </oa:header>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="BMTaxViewCfRN041" vAlign="top" width="40%" rendered="${oa.XxcsoSpDecisionInitVO1.BMTaxViewRender}"/>
+                           </ui:contents>
+                        </oa:rowLayout>
                         <oa:header id="SalesConditionHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/SalesConditionHdrRN" rendered="${oa.XxcsoSpDecisionInitVO1.SalesConditionHdrRNRender}">
                            <ui:contents>
                               <oa:advancedTable id="SalesConditionAdvTblRN" viewName="XxcsoSpDecisionScLineFullVO1" tableBanding="rowBanding" width="80%">
@@ -552,6 +636,15 @@ HISTORY
                                           <oa:cellFormat id="SelectConditionCfRN02">
                                              <ui:contents>
                                                 <oa:staticStyledText id="ConditionBusinessInfoLabel2" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConditionBusinessInfoLabel2" styleClass="OraInstructionText"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
+                                    <oa:rowLayout id="SelectConditionRlRN03">
+                                       <ui:contents>
+                                          <oa:cellFormat id="SelectConditionCfRN03">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ConditionBusinessInfoLabel5" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConditionBusinessInfoLabel2" styleClass="OraInstructionText" text="※売価は税区分に関らず、税込みで入力してください。" prompt="※売価は税区分に関らず、税込みで入力してください。"/>
                                              </ui:contents>
                                           </oa:cellFormat>
                                        </ui:contents>
@@ -888,8 +981,161 @@ HISTORY
                                           </oa:cellFormat>
                                        </ui:contents>
                                     </oa:rowLayout>
+                                    <oa:rowLayout id="AllcontainerRlRN03">
+                                       <ui:contents>
+                                          <oa:cellFormat id="AllcontainerCfRN03">
+                                             <ui:contents>
+                                                <oa:staticStyledText id="ConditionBusinessInfoLabel6" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ConditionBusinessInfoLabel2" styleClass="OraInstructionText" text="※売価は税区分に関らず、税込みで入力してください。" prompt="※売価は税区分に関らず、税込みで入力してください。"/>
+                                             </ui:contents>
+                                          </oa:cellFormat>
+                                       </ui:contents>
+                                    </oa:rowLayout>
                                  </ui:contents>
                               </oa:tableLayout>
+                           </ui:contents>
+                        </oa:header>
+                        <oa:header id="ElectricHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricHdrRN">
+                           <ui:contents>
+                              <oa:tip id="ElectricTypeHInt" text="契約先を選んだ場合、電気代の税区分はBM1税区分と同じになります。契約先以外を選んだ場合、覚書情報の税区分と同じになります。"/>
+                              <oa:messageCheckBox id="ElectricTypeView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTypeLabel" checkedValue="1" unCheckedValue="0" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTypeViewRender}" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricType" readOnly="true"/>
+                              <oa:messageCheckBox id="ElectricType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTypeLabel" checkedValue="1" unCheckedValue="0" styleClass="OraInstructionText" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTypeRender}" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricType" defaultValue="0">
+                                 <ui:primaryClientAction>
+                                    <ui:firePartialAction event="ElectricTypeChange" id="firePartialAction50"/>
+                                 </ui:primaryClientAction>
+                              </oa:messageCheckBox>
+                              <oa:header id="ElectricInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentType" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentTypeHdrRNRender}">
+                                 <ui:contents>
+                                    <oa:tip id="ElectricPaymentTypeHInt" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentTypeHint" text="契約先以外を選んだ場合、電気代は契約書へ出力されず、覚書が出力されます。"/>
+                                    <oa:messageChoice id="ElectricPaymentTypeView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentType" readOnly="true" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentType" styleClass="OraDataText" pickListViewName="XxcsoElectricPaymentTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" vAlign="middle" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentTypeViewRender}" allowBlankValue="false"/>
+                                    <oa:messageChoice id="ElectricPaymentType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentType" pickListViewName="XxcsoElectricPaymentTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" vAlign="middle" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentTypeRender}" allowBlankValue="false" defaultValue="1">
+                                       <ui:primaryClientAction>
+                                          <ui:firePartialAction event="ElectricPaymentTypeChange" id="firePartialAction49"/>
+                                       </ui:primaryClientAction>
+                                    </oa:messageChoice>
+                                    <oa:tableLayout id="ElectricInfoTIRN">
+                                       <ui:contents>
+                                          <oa:rowLayout id="ElectricInfoRIRN01">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ElectricInfoCfRN0101" hAlign="end">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ElectricityTypeLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityStartLabel" required="uiOnly"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ElectricInfoCfRN0102">
+                                                   <ui:contents>
+                                                      <oa:flowLayout id="ElectricityTypeFIRN">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="ElectricityTypeRIRN">
+                                                               <ui:contents>
+                                                                  <oa:messageChoice id="ElectricityTypeView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityType" pickListViewName="XxcsoElectricityTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityType" prompt="" allowBlankValue="false" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityTypeViewRender}" styleClass="OraDataText" readOnly="true"/>
+                                                                  <oa:messageChoice id="ElectricityType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityType" pickListViewName="XxcsoElectricityTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityTypeRender}" allowBlankValue="false" defaultValue="1"/>
+                                                                  <oa:spacer id="ElectricityTypeSpacer" width="10"/>
+                                                                  <oa:messageStyledText id="ElectricityAmountView" columns="7" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityAmount" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityAmount" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityAmountViewRender}" maximumLength="6" styleClass="OraDataText"/>
+                                                                  <oa:messageTextInput id="ElectricityAmount" columns="7" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityAmount" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityAmount" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityAmountRender}" maximumLength="6"/>
+                                                                  <oa:spacer id="ElectricityAmountSpacer" width="10"/>
+                                                                  <oa:staticStyledText id="ElectricityAmountEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityAmountLabel"/>
+                                                                  <oa:spacer id="ElectricityAmountEndLabelSpacer" width="10"/>
+                                                                  <oa:messageStyledText id="ElectricPaymentChangeTypeLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentChangeTypeLabel" required="uiOnly"/>
+                                                                  <oa:messageChoice id="ElectricPaymentChangeTypeView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentChangeType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentChangeType" pickListViewName="XxcsoElectricPaymentChangeTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentChangeTypeViewRender}" readOnly="true" styleClass="OraDataText"/>
+                                                                  <oa:messageChoice id="ElectricPaymentChangeType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentChangeType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentChangeType" pickListViewName="XxcsoElectricPaymentChangeTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentChangeTypeRender}" defaultValue="1" allowBlankValue="false"/>
+                                                                  <oa:spacer id="ElectricPaymentChangeTypeSpecer" width="10"/>
+                                                                  <oa:messageStyledText id="ElectricPaymentCycleLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentCycleLabel" required="uiOnly"/>
+                                                                  <oa:messageChoice id="ElectricPaymentCycleView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentCycle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentCycle" pickListViewName="XxcsoElectricPaymentCycleVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentCycleViewRender}" readOnly="true" styleClass="OraDataText"/>
+                                                                  <oa:messageChoice id="ElectricPaymentCycle" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentCycle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentCycle" pickListViewName="XxcsoElectricPaymentCycleVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentCycleRender}" defaultValue="1" allowBlankValue="false"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:flowLayout>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="ElectricInfoRIRN02" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN02Render}">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ElectricInfoCfRN0201" hAlign="end">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ElectricClosingDateLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ClosingDateLabel" required="uiOnly"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ElectricInfoCfRN0202">
+                                                   <ui:contents>
+                                                      <oa:flowLayout id="ElectricClosingDateFIRN">
+                                                         <ui:contents>
+                                                            <oa:rowLayout id="ElectricClosingDateRIRN">
+                                                               <ui:contents>
+                                                                  <oa:messageChoice id="ElectricClosingDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricClosingDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricClosingDate" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricClosingDateViewRender}" allowBlankValue="false" readOnly="true" styleClass="OraDataText"/>
+                                                                  <oa:messageChoice id="ElectricClosingDate" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricClosingDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricClosingDate" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricClosingDateRender}" allowBlankValue="false" defaultValue="30"/>
+                                                                  <oa:spacer id="ElectricClosingDateEndSpacer" width="10"/>
+                                                                  <oa:staticStyledText id="ElectricClosingDateEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/DayLabel"/>
+                                                                  <oa:spacer id="ElectricClosingDateEndLabelEndSpacer" width="10"/>
+                                                                  <oa:messageStyledText id="ElectricTransMonthLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TransMonthLabel" required="uiOnly"/>
+                                                                  <oa:messageChoice id="ElectricTransMonthView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransMonth" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransMonth" pickListViewName="XxcsoMonthsListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransMonthViewRender}" allowBlankValue="false" readOnly="true" styleClass="OraDataText"/>
+                                                                  <oa:messageChoice id="ElectricTransMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransMonth" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransMonth" pickListViewName="XxcsoMonthsListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransMonthRender}" allowBlankValue="false" defaultValue="50"/>
+                                                                  <oa:spacer id="ElectricTransMonthEndSpacer" width="10"/>
+                                                                  <oa:messageChoice id="ElectricTransDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransDate" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransDateViewRender}" allowBlankValue="false" styleClass="OraDataText" readOnly="true"/>
+                                                                  <oa:messageChoice id="ElectricTransDate" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransDate" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransDateRender}" allowBlankValue="false" defaultValue="20"/>
+                                                                  <oa:spacer id="ElectricTransDateEndSpacer" width="10"/>
+                                                                  <oa:staticStyledText id="ElectricTransDateEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/DayLabel"/>
+                                                               </ui:contents>
+                                                            </oa:rowLayout>
+                                                         </ui:contents>
+                                                      </oa:flowLayout>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="ElectricInfoRIRN03" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN03Render}">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ElectricInfoCfRN0301" hAlign="end">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ElectricTransNameLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TransNameLabel" required="uiOnly"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ElectricInfoCfRN0302">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ElectricTransNameView" columns="60" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransName" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransName" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransNameViewRender}" maximumLength="360" styleClass="OraDataText"/>
+                                                      <oa:messageTextInput id="ElectricTransName" columns="60" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransName" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransName" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransNameRender}" maximumLength="360"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="ElectricInfoRIRN04" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN04Render}">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ElectricInfoCfRN0401">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ElectricTransNameAltLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TransNameAltLabel" required="uiOnly"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ElectricInfoCfRN0402">
+                                                   <ui:contents>
+                                                      <oa:messageStyledText id="ElectricTransNameAltView" columns="60" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransNameAlt" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransNameAlt" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransNameAltViewRender}" maximumLength="320" styleClass="OraDataText"/>
+                                                      <oa:messageTextInput id="ElectricTransNameAlt" columns="60" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransNameAlt" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransNameAlt" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransNameAltRender}" maximumLength="320"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                          <oa:rowLayout id="ElectricInfoRIRN06" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN06Render}">
+                                             <ui:contents>
+                                                <oa:cellFormat id="ElectricInfoCfRN0601">
+                                                   <ui:contents>
+                                                      <oa:spacer id="ElectricContractOtherInfoSpacer"/>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                                <oa:cellFormat id="ElectricInfoCfRN0602">
+                                                   <ui:contents>
+                                                      <oa:flowLayout id="ElectricContracterInfoLabelFIRN1">
+                                                         <ui:contents>
+                                                            <oa:messageStyledText id="ElectricContractOtherInfoLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricContractOtherInfoLabel"/>
+                                                         </ui:contents>
+                                                      </oa:flowLayout>
+                                                   </ui:contents>
+                                                </oa:cellFormat>
+                                             </ui:contents>
+                                          </oa:rowLayout>
+                                       </ui:contents>
+                                    </oa:tableLayout>
+                                 </ui:contents>
+                              </oa:header>
                            </ui:contents>
                         </oa:header>
                         <oa:header id="OtherConditionHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/OtherConditionHdrRN">
@@ -1219,7 +1465,7 @@ HISTORY
                                     <oa:messageRadioGroup id="TaxTypeView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="TaxType" readOnly="true" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TaxType" styleClass="OraDataText" pickListViewName="XxcsoTaxTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" vAlign="middle" rendered="${oa.XxcsoSpDecisionInitVO1.TaxTypeViewRender}"/>
                                     <oa:messageRadioGroup id="TaxType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="TaxType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TaxType" pickListViewName="XxcsoTaxTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" vAlign="middle" rendered="${oa.XxcsoSpDecisionInitVO1.TaxTypeRender}" styleClass="OraInstructionText" defaultValue="1"/>
                                     <oa:spacer id="TaxTypeSpecer" width="10"/>
-                                    <oa:tip id="TaxTypeHint" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TaxTypeHint"/>
+                                    <oa:tip id="TaxTypeHint" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TaxTypeHint" text="ここで選択した税区分は、覚書（設置協賛金、契約先以外の電気代）の出力まで反映されます。"/>
                                  </ui:contents>
                               </oa:rowLayout>
                               <oa:header id="InstallSuppHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallSuppHdrRN">
@@ -1296,167 +1542,6 @@ HISTORY
                                                                   <oa:messageStyledText id="InstallSuppInfoLabel1" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallSuppInfoLabel1"/>
                                                                   <oa:messageStyledText id="InstallSuppInfoLabel2" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallSuppInfoLabel2"/>
                                                                   <oa:messageStyledText id="InstallSuppInfoLabel3" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallSuppInfoLabel3"/>
-                                                               </ui:contents>
-                                                            </oa:flowLayout>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                   </ui:contents>
-                                                </oa:rowLayout>
-                                             </ui:contents>
-                                          </oa:tableLayout>
-                                       </ui:contents>
-                                    </oa:header>
-                                 </ui:contents>
-                              </oa:header>
-                              <oa:header id="ElectricHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricHdrRN">
-                                 <ui:contents>
-                                    <oa:messageCheckBox id="ElectricTypeView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTypeLabel" checkedValue="1" unCheckedValue="0" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTypeViewRender}" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricType" readOnly="true"/>
-                                    <oa:messageCheckBox id="ElectricType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTypeLabel" checkedValue="1" unCheckedValue="0" styleClass="OraInstructionText" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTypeRender}" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricType" defaultValue="0">
-                                       <ui:primaryClientAction>
-                                          <ui:firePartialAction event="ElectricTypeChange"/>
-                                       </ui:primaryClientAction>
-                                    </oa:messageCheckBox>
-                                    <oa:header id="ElectricInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/PaymentType" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentTypeHdrRNRender}">
-                                       <ui:contents>
-                                          <oa:tip id="ElectricPaymentTypeHInt" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentTypeHint"/>
-                                          <oa:messageChoice id="ElectricPaymentTypeView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentType" readOnly="true" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentType" styleClass="OraDataText" pickListViewName="XxcsoElectricPaymentTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" vAlign="middle" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentTypeViewRender}" allowBlankValue="false"/>
-                                          <oa:messageChoice id="ElectricPaymentType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentType" pickListViewName="XxcsoElectricPaymentTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" vAlign="middle" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentTypeRender}" allowBlankValue="false" defaultValue="1">
-                                             <ui:primaryClientAction>
-                                                <ui:firePartialAction event="ElectricPaymentTypeChange" id="firePartialAction49"/>
-                                             </ui:primaryClientAction>
-                                          </oa:messageChoice>
-                                          <oa:tableLayout id="ElectricInfoTIRN">
-                                             <ui:contents>
-                                                <oa:rowLayout id="ElectricInfoRIRN01">
-                                                   <ui:contents>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0101" hAlign="end">
-                                                         <ui:contents>
-                                                            <oa:messageStyledText id="ElectricityTypeLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityStartLabel" required="uiOnly"/>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0102">
-                                                         <ui:contents>
-                                                            <oa:flowLayout id="ElectricityTypeFIRN">
-                                                               <ui:contents>
-                                                                  <oa:rowLayout id="ElectricityTypeRIRN">
-                                                                     <ui:contents>
-                                                                        <oa:messageChoice id="ElectricityTypeView" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityType" pickListViewName="XxcsoElectricityTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityType" prompt="" allowBlankValue="false" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityTypeViewRender}" styleClass="OraDataText" readOnly="true"/>
-                                                                        <oa:messageChoice id="ElectricityType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityType" pickListViewName="XxcsoElectricityTypeListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityTypeRender}" allowBlankValue="false" defaultValue="1"/>
-                                                                        <oa:spacer id="ElectricityTypeSpacer" width="10"/>
-                                                                        <oa:messageStyledText id="ElectricityAmountView" columns="7" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityAmount" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityAmount" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityAmountViewRender}" maximumLength="6" styleClass="OraDataText"/>
-                                                                        <oa:messageTextInput id="ElectricityAmount" columns="7" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityAmount" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricityAmount" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricityAmountRender}" maximumLength="6"/>
-                                                                        <oa:spacer id="ElectricityAmountSpacer" width="10"/>
-                                                                        <oa:staticStyledText id="ElectricityAmountEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricityAmountLabel"/>
-                                                                        <oa:spacer id="ElectricityAmountEndLabelSpacer" width="10"/>
-                                                                        <oa:messageStyledText id="ElectricPaymentChangeTypeLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentChangeTypeLabel" required="uiOnly"/>
-                                                                        <oa:messageChoice id="ElectricPaymentChangeTypeView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentChangeType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentChangeType" pickListViewName="XxcsoElectricPaymentChangeTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentChangeTypeViewRender}" readOnly="true" styleClass="OraDataText"/>
-                                                                        <oa:messageChoice id="ElectricPaymentChangeType" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentChangeType" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentChangeType" pickListViewName="XxcsoElectricPaymentChangeTypeVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentChangeTypeRender}" defaultValue="1" allowBlankValue="false"/>
-                                                                        <oa:spacer id="ElectricPaymentChangeTypeSpecer" width="10"/>
-                                                                        <oa:messageStyledText id="ElectricPaymentCycleLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentCycleLabel" required="uiOnly"/>
-                                                                        <oa:messageChoice id="ElectricPaymentCycleView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentCycle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentCycle" pickListViewName="XxcsoElectricPaymentCycleVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentCycleViewRender}" readOnly="true" styleClass="OraDataText"/>
-                                                                        <oa:messageChoice id="ElectricPaymentCycle" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricPaymentCycle" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricPaymentCycle" pickListViewName="XxcsoElectricPaymentCycleVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricPaymentCycleRender}" defaultValue="1" allowBlankValue="false"/>
-                                                                     </ui:contents>
-                                                                  </oa:rowLayout>
-                                                               </ui:contents>
-                                                            </oa:flowLayout>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                   </ui:contents>
-                                                </oa:rowLayout>
-                                                <oa:rowLayout id="ElectricInfoRIRN02" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN02Render}">
-                                                   <ui:contents>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0201" hAlign="end">
-                                                         <ui:contents>
-                                                            <oa:messageStyledText id="ElectricClosingDateLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ClosingDateLabel" required="uiOnly"/>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0202">
-                                                         <ui:contents>
-                                                            <oa:flowLayout id="ElectricClosingDateFIRN">
-                                                               <ui:contents>
-                                                                  <oa:rowLayout id="ElectricClosingDateRIRN">
-                                                                     <ui:contents>
-                                                                        <oa:messageChoice id="ElectricClosingDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricClosingDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricClosingDate" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricClosingDateViewRender}" allowBlankValue="false" readOnly="true" styleClass="OraDataText"/>
-                                                                        <oa:messageChoice id="ElectricClosingDate" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricClosingDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricClosingDate" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricClosingDateRender}" allowBlankValue="false" defaultValue="30"/>
-                                                                        <oa:spacer id="ElectricClosingDateEndSpacer" width="10"/>
-                                                                        <oa:staticStyledText id="ElectricClosingDateEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/DayLabel"/>
-                                                                        <oa:spacer id="ElectricClosingDateEndLabelEndSpacer" width="10"/>
-                                                                        <oa:messageStyledText id="ElectricTransMonthLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TransMonthLabel" required="uiOnly"/>
-                                                                        <oa:messageChoice id="ElectricTransMonthView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransMonth" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransMonth" pickListViewName="XxcsoMonthsListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransMonthViewRender}" allowBlankValue="false" readOnly="true" styleClass="OraDataText"/>
-                                                                        <oa:messageChoice id="ElectricTransMonth" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransMonth" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransMonth" pickListViewName="XxcsoMonthsListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransMonthRender}" allowBlankValue="false" defaultValue="50"/>
-                                                                        <oa:spacer id="ElectricTransMonthEndSpacer" width="10"/>
-                                                                        <oa:messageChoice id="ElectricTransDateView" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransDate" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransDateViewRender}" allowBlankValue="false" styleClass="OraDataText" readOnly="true"/>
-                                                                        <oa:messageChoice id="ElectricTransDate" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransDate" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransDate" pickListViewName="XxcsoDaysListVO" pickListDispAttr="Meaning" pickListValAttr="LookupCode" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransDateRender}" allowBlankValue="false" defaultValue="20"/>
-                                                                        <oa:spacer id="ElectricTransDateEndSpacer" width="10"/>
-                                                                        <oa:staticStyledText id="ElectricTransDateEndLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/DayLabel"/>
-                                                                     </ui:contents>
-                                                                  </oa:rowLayout>
-                                                               </ui:contents>
-                                                            </oa:flowLayout>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                   </ui:contents>
-                                                </oa:rowLayout>
-                                                <oa:rowLayout id="ElectricInfoRIRN03" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN03Render}">
-                                                   <ui:contents>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0301" hAlign="end">
-                                                         <ui:contents>
-                                                            <oa:messageStyledText id="ElectricTransNameLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TransNameLabel" required="uiOnly"/>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0302">
-                                                         <ui:contents>
-                                                            <oa:messageStyledText id="ElectricTransNameView" columns="60" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransName" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransName" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransNameViewRender}" maximumLength="360" styleClass="OraDataText"/>
-                                                            <oa:messageTextInput id="ElectricTransName" columns="60" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransName" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransName" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransNameRender}" maximumLength="360"/>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                   </ui:contents>
-                                                </oa:rowLayout>
-                                                <oa:rowLayout id="ElectricInfoRIRN04" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN04Render}">
-                                                   <ui:contents>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0401">
-                                                         <ui:contents>
-                                                            <oa:messageStyledText id="ElectricTransNameAltLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/TransNameAltLabel" required="uiOnly"/>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0402">
-                                                         <ui:contents>
-                                                            <oa:messageStyledText id="ElectricTransNameAltView" columns="60" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransNameAlt" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransNameAlt" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransNameAltViewRender}" maximumLength="320" styleClass="OraDataText"/>
-                                                            <oa:messageTextInput id="ElectricTransNameAlt" columns="60" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricTransNameAlt" viewName="XxcsoSpDecisionHeaderFullVO1" viewAttr="ElectricTransNameAlt" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricTransNameAltRender}" maximumLength="320"/>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                   </ui:contents>
-                                                </oa:rowLayout>
-                                                <oa:rowLayout id="ElectricInfoRIRN05" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN05Render}">
-                                                   <ui:contents>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0501">
-                                                         <ui:contents>
-                                                            <oa:spacer id="ElectricHintContracterSpacer"/>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                      <oa:cellFormat id="ElectricInfoCfRN0502">
-                                                         <ui:contents>
-                                                            <oa:flowLayout id="ElectricContracterInfoLabelFIRN">
-                                                               <ui:contents>
-                                                                  <oa:messageStyledText id="ElectricContractInfoLabel2" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricContractInfoLabel2"/>
-                                                               </ui:contents>
-                                                            </oa:flowLayout>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                   </ui:contents>
-                                                </oa:rowLayout>
-                                                <oa:rowLayout id="ElectricInfoRIRN06" rendered="${oa.XxcsoSpDecisionInitVO1.ElectricInfoRIRN06Render}">
-                                                   <ui:contents>
-                                                      <oa:cellFormat id="ElectricInfoRIRN0601">
-                                                         <ui:contents>
-                                                            <oa:spacer id="ElectricContracterOtherSpacer"/>
-                                                         </ui:contents>
-                                                      </oa:cellFormat>
-                                                      <oa:cellFormat id="ElectricInfoRIRN0602">
-                                                         <ui:contents>
-                                                            <oa:flowLayout id="ElectricContracterOtherInfoLabelFIRN">
-                                                               <ui:contents>
-                                                                  <oa:messageStyledText id="ElectricContractOtherInfoLabel" styleClass="OraInstructionText" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ElectricContractOtherInfoLabel"/>
                                                                </ui:contents>
                                                             </oa:flowLayout>
                                                          </ui:contents>
@@ -1662,6 +1747,8 @@ HISTORY
                                                 <lovMap id="Bm1Address2Map1" lovItem="AddressLine2" resultTo="Bm1Address2" useForValidation="no"/>
                                                 <lovMap id="Bm1AddressLineMap1" lovItem="PhoneNumber" resultTo="Bm1AddressLine" useForValidation="no"/>
                                                 <lovMap id="Bm1VendorIdMap1" lovItem="VendorId" resultTo="Bm1VendorId"/>
+                                                <lovMap id="Bm1TaxKbnMap1" lovItem="BmTaxKbn" resultTo="Bm1TaxKbnValue"/>
+                                                <lovMap id="Bm1TaxKbnCodeMap1" lovItem="BmTaxKbnCode" resultTo="Bm1TaxKbnCodeValue"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageLovInput id="Bm1VendorNumber2" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoVendorLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm1VendorNumber" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="VendorNumber" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1VendorNumber2Render}" maximumLength="9">
@@ -1681,6 +1768,8 @@ HISTORY
                                                 <lovMap id="Bm1Address2Map2" lovItem="AddressLine2" resultTo="Bm1Address2Value" useForValidation="no"/>
                                                 <lovMap id="Bm1AddressLineMap2" lovItem="PhoneNumber" resultTo="Bm1AddressLineValue" useForValidation="no"/>
                                                 <lovMap id="Bm1VendorIdMap2" lovItem="VendorId" resultTo="Bm1VendorId"/>
+                                                <lovMap id="Bm1TaxKbnMap2" lovItem="BmTaxKbn" resultTo="Bm1TaxKbnValue"/>
+                                                <lovMap id="Bm1TaxKbnCodeMap2" resultTo="Bm1TaxKbnCodeValue" lovItem="BmTaxKbnCode"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageStyledText id="Bm1VendorNameView" columns="45" maximumLength="80" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm1VendorName" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="PartyName" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1VendorNameViewRender}" required="uiOnly"/>
@@ -1730,6 +1819,8 @@ HISTORY
                                     <oa:formValue id="Bm1Address1Value" dataType="VARCHAR2" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="Address1" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1Address1ViewRender}"/>
                                     <oa:formValue id="Bm1Address2Value" dataType="VARCHAR2" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="Address2" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1Address2ViewRender}"/>
                                     <oa:formValue id="Bm1AddressLineValue" dataType="VARCHAR2" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="AddressLinesPhonetic" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1AddressLineViewRender}"/>
+                                    <oa:formValue id="Bm1TaxKbnValue" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="Bm1TaxKbnView"/>
+                                    <oa:formValue id="Bm1TaxKbnCodeValue" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="Bm1TaxKbnCodeView"/>
                                  </ui:contents>
                               </oa:cellFormat>
                               <oa:cellFormat id="Bm1InfoCfRN02" width="50%" vAlign="top">
@@ -1759,6 +1850,7 @@ HISTORY
                                           <oa:messageTextInput id="Bm1Address2" maximumLength="35" columns="45" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm1Address2" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="Address2" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1Address2Render}"/>
                                           <oa:messageStyledText id="Bm1AddressLineView" maximumLength="30" columns="30" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm1AddressLine" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="AddressLinesPhonetic" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1AddressLineViewRender}"/>
                                           <oa:messageTextInput id="Bm1AddressLine" maximumLength="30" columns="30" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm1AddressLine" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="AddressLinesPhonetic" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1AddressLineRender}"/>
+                                          <oa:messageStyledText id="Bm1TaxKbnView" maximumLength="30" viewName="XxcsoSpDecisionBm1CustFullVO1" viewAttr="Bm1TaxKbnView" rendered="${oa.XxcsoSpDecisionInitVO1.Bm1TaxKbnViewRender}" prompt="税区分" columns="10" styleClass="OraDataText"/>
                                        </ui:contents>
                                     </oa:messageComponentLayout>
                                  </ui:contents>
@@ -1793,6 +1885,8 @@ HISTORY
                                                 <lovMap id="Bm2Address2Map" lovItem="AddressLine2" resultTo="Bm2Address2" useForValidation="no"/>
                                                 <lovMap id="Bm2AddressLineMap" lovItem="PhoneNumber" resultTo="Bm2AddressLine" useForValidation="no"/>
                                                 <lovMap id="Bm2VendorIdMap" lovItem="VendorId" resultTo="Bm2VendorId"/>
+                                                <lovMap id="Bm2TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm2TaxKbnValue"/>
+                                                <lovMap id="Bm2TaxKbnCodeMap" resultTo="Bm2TaxKbnCodeValue" lovItem="BmTaxKbnCode"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageLovInput id="Bm2VendorNumber2" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoVendorLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm2VendorNumber" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="VendorNumber" rendered="${oa.XxcsoSpDecisionInitVO1.Bm2VendorNumber2Render}" maximumLength="9">
@@ -1812,6 +1906,8 @@ HISTORY
                                                 <lovMap id="Bm2Address2Map2" lovItem="AddressLine2" resultTo="Bm2Address2Value" useForValidation="no"/>
                                                 <lovMap id="Bm2AddressLineMap2" lovItem="PhoneNumber" resultTo="Bm2AddressLineValue" useForValidation="no"/>
                                                 <lovMap id="Bm2VendorIdMap2" lovItem="VendorId" resultTo="Bm2VendorId"/>
+                                                <lovMap id="Bm2TaxKbnMap2" resultTo="Bm2TaxKbnValue" lovItem="BmTaxKbn"/>
+                                                <lovMap id="Bm2TaxKbnCodeMap2" lovItem="BmTaxKbnCode" resultTo="Bm2TaxKbnCodeValue"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageStyledText id="Bm2VendorNameView" maximumLength="80" columns="45" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm2VendorName" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="PartyName" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.Bm2VendorNameViewRender}" required="uiOnly"/>
@@ -1868,6 +1964,7 @@ HISTORY
                                                 </oa:rowLayout>
                                              </ui:contents>
                                           </oa:messageLayout>
+                                          <oa:messageStyledText id="Bm2TaxKbnView" maximumLength="30" columns="10" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="Bm2TaxKbnView" rendered="${oa.XxcsoSpDecisionInitVO1.Bm2TaxKbnViewRender}" prompt="税区分" styleClass="OraDataText"/>
                                        </ui:contents>
                                     </oa:messageComponentLayout>
                                     <oa:formValue id="Bm2VendorId" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="CustomerId" dataType="NUMBER"/>
@@ -1884,6 +1981,8 @@ HISTORY
                                     <oa:formValue id="Bm2PaymentTypeValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="BmPaymentType" rendered="${oa.XxcsoSpDecisionInitVO1.Bm2PaymentTypeViewRender}"/>
                                     <oa:formValue id="Bm2InquiryBaseCodeValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="InquiryBaseCode"/>
                                     <oa:formValue id="Bm2InquiryBaseNameValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="InquiryBaseName"/>
+                                    <oa:formValue id="Bm2TaxKbnValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="Bm2TaxKbnView"/>
+                                    <oa:formValue id="Bm2TaxKbnCodeValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="Bm2TaxKbnCodeView"/>
                                  </ui:contents>
                               </oa:header>
                               <oa:header id="ContributeInfoHdrRN" rendered="${oa.XxcsoSpDecisionInitVO1.ContributeInfoHdrRNRender}" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/ContributeInfoHdrRN">
@@ -1908,6 +2007,8 @@ HISTORY
                                                 <lovMap id="CntrAddress2Map1" lovItem="AddressLine2" resultTo="CntrAddress2" useForValidation="no"/>
                                                 <lovMap id="CntrAddressLineMap1" lovItem="PhoneNumber" resultTo="CntrAddressLine" useForValidation="no"/>
                                                 <lovMap id="CntrVendorIdMap1" lovItem="VendorId" resultTo="CntrVendorId"/>
+                                                <lovMap id="CntrTaxKbn1" lovItem="BmTaxKbn" resultTo="CntrTaxKbnValue"/>
+                                                <lovMap id="CntrTaxKbnCode1" lovItem="BmTaxKbnCode" resultTo="CntrTaxKbnCodeValue"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageLovInput id="CntrVendorNumber2" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoVendorLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm2VendorNumber" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="VendorNumber" rendered="${oa.XxcsoSpDecisionInitVO1.Bm2VendorNumber2Render}" maximumLength="9">
@@ -1927,6 +2028,8 @@ HISTORY
                                                 <lovMap id="CntrAddress2Map2" lovItem="AddressLine2" resultTo="CntrAddress2Value" useForValidation="no"/>
                                                 <lovMap id="CntrAddressLineMap2" lovItem="PhoneNumber" resultTo="CntrAddressLineValue" useForValidation="no"/>
                                                 <lovMap id="CntrVendorIdMap2" lovItem="VendorId" resultTo="CntrVendorId"/>
+                                                <lovMap id="CntrTaxKbnMap2" lovItem="BmTaxKbn" resultTo="CntrTaxKbnValue"/>
+                                                <lovMap id="CntrTaxKbnCodeMap2" lovItem="BmTaxKbnCode" resultTo="Bm2TaxKbnCodeValue"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageStyledText id="CntrVendorNameView" maximumLength="80" columns="45" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm2VendorName" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="PartyName" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.Bm2VendorNameViewRender}" required="uiOnly"/>
@@ -1983,6 +2086,7 @@ HISTORY
                                                 </oa:rowLayout>
                                              </ui:contents>
                                           </oa:messageLayout>
+                                          <oa:messageStyledText id="CntrBMTaxView" maximumLength="30" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm2AddressLine" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="Bm2TaxKbnView" rendered="${oa.XxcsoSpDecisionInitVO1.Bm2TaxKbnViewRender}" prompt="税区分" styleClass="OraDataText"/>
                                        </ui:contents>
                                     </oa:messageComponentLayout>
                                     <oa:formValue id="CntrVendorId" dataType="NUMBER" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="CustomerId"/>
@@ -1999,6 +2103,8 @@ HISTORY
                                     <oa:formValue id="CntrPaymentTypeValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="BmPaymentType" rendered="${oa.XxcsoSpDecisionInitVO1.Bm2PaymentTypeViewRender}"/>
                                     <oa:formValue id="CntrInquiryBaseCodeValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="InquiryBaseCode"/>
                                     <oa:formValue id="CntrInquiryBaseNameValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="InquiryBaseName"/>
+                                    <oa:formValue id="CntrTaxKbnValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="Bm2TaxKbnView"/>
+                                    <oa:formValue id="CntrTaxKbnCodeValue" viewName="XxcsoSpDecisionBm2CustFullVO1" viewAttr="Bm2TaxKbnCodeView"/>
                                  </ui:contents>
                               </oa:header>
                            </ui:contents>
@@ -2027,6 +2133,8 @@ HISTORY
                                                 <lovMap id="Bm3Address2Map1" lovItem="AddressLine2" resultTo="Bm3Address2" useForValidation="no"/>
                                                 <lovMap id="Bm3AddressLineMap1" lovItem="PhoneNumber" resultTo="Bm3AddressLine" useForValidation="no"/>
                                                 <lovMap id="Bm3VendorIdMap1" lovItem="VendorId" resultTo="Bm3VendorId"/>
+                                                <lovMap id="Bm3TaxKbnMap1" lovItem="BmTaxKbn" resultTo="Bm3TaxKbnValue"/>
+                                                <lovMap id="Bm3TaxKbnCodeMap1" lovItem="BmTaxKbnCode" resultTo="Bm3TaxKbnCodeValue"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageLovInput id="Bm3VendorNumber2" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoVendorLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm3VendorNumber" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="VendorNumber" rendered="${oa.XxcsoSpDecisionInitVO1.Bm3VendorNumber2Render}" maximumLength="9">
@@ -2046,6 +2154,8 @@ HISTORY
                                                 <lovMap id="Bm3Address2Map2" lovItem="AddressLine2" resultTo="Bm3Address2Value" useForValidation="no"/>
                                                 <lovMap id="Bm3AddressLineMap2" lovItem="PhoneNumber" resultTo="Bm3AddressLineValue" useForValidation="no"/>
                                                 <lovMap id="Bm3VendorIdMap2" lovItem="VendorId" resultTo="Bm3VendorId"/>
+                                                <lovMap id="Bm3TaxKbnMap2" lovItem="BmTaxKbn" resultTo="Bm3TaxKbnValue"/>
+                                                <lovMap id="Bm3TaxKbnCodeMap2" lovItem="BmTaxKbnCode" resultTo="Bm3TaxKbnCodeValue"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageStyledText id="Bm3VendorNameView" maximumLength="80" columns="45" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm3VendorName" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="PartyName" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.Bm3VendorNameViewRender}" required="uiOnly"/>
@@ -2102,6 +2212,7 @@ HISTORY
                                                 </oa:rowLayout>
                                              </ui:contents>
                                           </oa:messageLayout>
+                                          <oa:messageTextInput id="Bm3TaxKbnView" maximumLength="30" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/Bm3AddressLine" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="Bm3TaxKbnView" rendered="${oa.XxcsoSpDecisionInitVO1.Bm3TaxKbnViewRender}" styleClass="OraDataText" prompt="税区分" readOnly="true"/>
                                        </ui:contents>
                                     </oa:messageComponentLayout>
                                     <oa:formValue id="Bm3VendorId" dataType="NUMBER" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="CustomerId"/>
@@ -2118,6 +2229,8 @@ HISTORY
                                     <oa:formValue id="Bm3PaymentTypeValue" dataType="VARCHAR2" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="BmPaymentType" rendered="${oa.XxcsoSpDecisionInitVO1.Bm3PaymentTypeViewRender}"/>
                                     <oa:formValue id="Bm3InquiryBaseCodeValue" dataType="VARCHAR2" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="InquiryBaseCode"/>
                                     <oa:formValue id="Bm3InquiryBaseNameValue" dataType="VARCHAR2" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="InquiryBaseName"/>
+                                    <oa:formValue id="Bm3TaxKbnValue" dataType="VARCHAR2" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="Bm3TaxKbnView"/>
+                                    <oa:formValue id="Bm3TaxKbnCodeValue" dataType="VARCHAR2" viewName="XxcsoSpDecisionBm3CustFullVO1" viewAttr="Bm3TaxKbnCodeView"/>
                                  </ui:contents>
                               </oa:header>
                            </ui:contents>
