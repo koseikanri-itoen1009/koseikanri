@@ -12,7 +12,7 @@ Search Vendor information LOV region by shared for regist CONTRACT_MANAGEMENTS i
 
 HISTORY
 2009/01/27  H.Ogawa                Initialcode drop.-->
-<oa:listOfValues version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAM" advancedSearchAllowed="true" scope="/">
+<oa:listOfValues version="9.0.3.8.13_1579" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" amDefName="itoen.oracle.apps.xxcso.xxcso010003j.lov.server.XxcsoContractRegistLovAM" advancedSearchAllowed="true" scope="/">
    <ui:contents>
       <oa:table name="XxcsoContractVendorLovRN" id="ContractVendorTblRN" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/ContractVendorTblRN">
          <ui:contents>
@@ -40,6 +40,8 @@ HISTORY
             <oa:formValue id="InquiryBaseCode" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="InquiryBaseCode"/>
             <oa:formValue id="InquiryBaseName" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="InquiryBaseName"/>
             <oa:formValue id="VendorId2" viewName="XxcsoContractVendorLovVO1" viewAttr="VendorId2" dataType="NUMBER"/>
+            <oa:formValue id="BmTaxKbn" viewName="XxcsoContractVendorLovVO1" viewAttr="BmTaxKbn"/>
+            <oa:formValue id="BmTaxKbnNm" viewName="XxcsoContractVendorLovVO1" viewAttr="BmTaxKbnNm"/>
          </ui:contents>
       </oa:table>
    </ui:contents>
