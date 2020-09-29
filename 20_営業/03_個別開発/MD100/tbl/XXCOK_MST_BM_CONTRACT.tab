@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_MST_BM_CONTRACT
  * Description : 販手条件マスタ
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/01/23    1.1   K.Iwabuchi       BM率、BM金額の桁数変更
  *  2009/07/09    1.2   K.Yamaguchi      [障害0000515]STORAGE句追加
+ *  2020/08/21    1.3   N.Koyama          E_本稼動_15904対応(BM毎の税区分追加)
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_MST_BM_CONTRACT
@@ -27,6 +28,11 @@ CREATE TABLE XXCOK.XXCOK_MST_BM_CONTRACT
    BM2_AMT                  NUMBER(10,2),
    BM3_PCT                  NUMBER(4,2),
    BM3_AMT                  NUMBER(10,2),
+/* N.Koyama Ver1.3 Add Start */
+   BM1_TAX_KBN              VARCHAR2(1),
+   BM2_TAX_KBN              VARCHAR2(1),
+   BM3_TAX_KBN              VARCHAR2(1),
+/* N.Koyama Ver1.3 Add End */
    CALC_TARGET_FLAG         VARCHAR2(1)    NOT NULL,
    START_DATE_ACTIVE        DATE           NOT NULL,
    END_DATE_ACTIVE          DATE,
@@ -70,6 +76,14 @@ COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM3_PCT                 IS 'BM3率(
 /
 COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM3_AMT                 IS 'BM3金額'
 /
+/* N.Koyama Ver1.3 Add Start */
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM1_TAX_KBN             IS 'BM1税区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM2_TAX_KBN             IS 'BM2税区分'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.BM3_TAX_KBN             IS 'BM3税区分'
+/
+/* N.Koyama Ver1.3 Add End */
 COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.CALC_TARGET_FLAG        IS '計算対象フラグ'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_MST_BM_CONTRACT.START_DATE_ACTIVE       IS '有効日(FROM)'

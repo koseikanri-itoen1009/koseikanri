@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_COND_BM_SUPPORT
  * Description : 条件別販手販協テーブル
- * Version     : 1.5
+ * Version     : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -15,6 +15,7 @@
  *  2009/07/09    1.3   K.Yamaguchi      [障害0000515]STORAGE句追加
  *  2009/10/08    1.4   S.Moriyama       [障害E_最終移行リハ_00460]割戻額桁数変更
  *  2009/10/09    1.5   S.Moriyama       [変更管理I_E_565]入金値引率桁数変更対応
+ *  2020/08/21    1.6   N.Koyama         E_本稼動_15904対応(BM税区分追加)
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_COND_BM_SUPPORT
@@ -33,6 +34,9 @@ CREATE TABLE XXCOK.XXCOK_COND_BM_SUPPORT
    DELIVERY_QTY              NUMBER(15),
    DELIVERY_UNIT_TYPE        VARCHAR2(3),
    SELLING_AMT_TAX           NUMBER(9)      NOT NULL,
+/* N.Koyama Ver1.6 Add Start */
+   SELLING_AMT_NO_TAX        NUMBER(9),
+/* N.Koyama Ver1.6 Add End */
    REBATE_RATE               NUMBER(4,2),
 -- 2009/10/08 Ver.1.4 [障害E_最終移行リハ_00460] SCS S.Moriyama UPD START
 --   REBATE_AMT                NUMBER(6,2),
@@ -115,6 +119,9 @@ COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.DELIVERY_UNIT_TYPE        IS '納品
 /
 COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.SELLING_AMT_TAX           IS '売上金額(税込)'
 /
+/* N.Koyama Ver1.6 Add Start */
+COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.SELLING_AMT_NO_TAX        IS '売上金額(税抜)'
+/* N.Koyama Ver1.6 Add End */
 COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.REBATE_RATE               IS '割戻率'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_COND_BM_SUPPORT.REBATE_AMT                IS '割戻額'
