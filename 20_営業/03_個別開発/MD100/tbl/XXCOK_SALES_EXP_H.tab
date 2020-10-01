@@ -1,0 +1,50 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : xxcok_sales_exp_h 
+ * Description : 控除データ作成用販売実績ヘッダ
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/05/25    1.0   SCSK N.Koyama    新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_sales_exp_h (
+  sales_exp_header_id            NUMBER        NOT NULL
+ ,sales_base_code                VARCHAR2(4)
+ ,ship_to_customer_code          VARCHAR2(9)
+ ,delivery_date                  DATE
+ ,create_class                   VARCHAR2(2)
+ ,created_by                     NUMBER(15)    NOT NULL
+ ,creation_date                  DATE          NOT NULL
+ ,last_updated_by                NUMBER(15)    NOT NULL
+ ,last_update_date               DATE          NOT NULL
+ ,last_update_login              NUMBER(15)
+ ,request_id                     NUMBER(15)
+ ,program_application_id         NUMBER(15)
+ ,program_id                     NUMBER(15)
+ ,program_update_date            DATE
+ ,CONSTRAINT xxcok_sales_exp_h_pk PRIMARY KEY ( sales_exp_header_id  )
+  USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.sales_exp_header_id    IS '販売実績ヘッダID';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.sales_base_code        IS '売上拠点コード';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.ship_to_customer_code  IS '顧客コード';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.delivery_date          IS '納品日';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.create_class           IS '作成元区分';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.created_by             IS '作成者';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.creation_date          IS '作成日';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.request_id             IS '要求ID';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_h.program_update_date    IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcok.xxcok_sales_exp_h                        IS  '控除データ作成用販売実績ヘッダ';
+/

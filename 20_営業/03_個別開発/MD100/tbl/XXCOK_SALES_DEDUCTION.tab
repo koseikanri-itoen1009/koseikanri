@@ -1,0 +1,206 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : xxcok_sales_deduction
+ * Description : 販売控除情報
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/10/01    1.0   SCSK Y.Shoji     新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_sales_deduction (
+     sales_deduction_id             NUMBER        NOT NULL
+    ,base_code_from                 VARCHAR2(4)   NOT NULL
+    ,base_code_to                   VARCHAR2(4)   NOT NULL
+    ,customer_code_from             VARCHAR2(9)
+    ,customer_code_to               VARCHAR2(9)
+    ,deduction_chain_code           VARCHAR2(9)
+    ,corp_code                      VARCHAR2(6)
+    ,record_date                    DATE          NOT NULL
+    ,source_category                VARCHAR2(1)   NOT NULL
+    ,source_line_id                 NUMBER
+    ,condition_id                   NUMBER
+    ,condition_no                   VARCHAR2(12)
+    ,condition_line_id              NUMBER
+    ,data_type                      VARCHAR2(10)  NOT NULL
+    ,status                         VARCHAR2(1)   NOT NULL
+    ,item_code                      VARCHAR2(7)
+    ,sales_uom_code                 VARCHAR2(3)
+    ,sales_unit_price               NUMBER(12,2)
+    ,sales_quantity                 NUMBER(9,2)
+    ,sale_pure_amount               NUMBER(12,0)
+    ,sale_tax_amount                NUMBER(11,0)
+    ,deduction_uom_code             VARCHAR2(3)
+    ,deduction_unit_price           NUMBER(12,2)
+    ,deduction_quantity             NUMBER(9,2)
+    ,deduction_amount               NUMBER(12,0)  NOT NULL
+    ,compensation                   NUMBER(12,0)
+    ,margin                         NUMBER(12,0)
+    ,sales_promotion_expenses       NUMBER(12,0)
+    ,margin_reduction               NUMBER(12,0)
+    ,tax_code                       VARCHAR2(4)   NOT NULL
+    ,tax_rate                       NUMBER
+    ,recon_tax_code                 VARCHAR2(4)
+    ,recon_tax_rate                 NUMBER
+    ,deduction_tax_amount           NUMBER(11,0)  NOT NULL
+    ,remarks                        VARCHAR2(1000)
+    ,application_no                 VARCHAR2(20)
+    ,gl_if_flag                     VARCHAR2(1)   NOT NULL
+    ,gl_base_code                   VARCHAR2(4)
+    ,gl_date                        DATE
+    ,recovery_date                  DATE          DEFAULT NULL
+    ,recovery_add_request_id        NUMBER        DEFAULT NULL
+    ,recovery_del_date              DATE          DEFAULT NULL
+    ,recovery_del_request_id        NUMBER        DEFAULT NULL
+    ,cancel_flag                    VARCHAR2(1)   NOT NULL
+    ,cancel_base_code               VARCHAR2(4)
+    ,cancel_gl_date                 DATE
+    ,cancel_user                    VARCHAR2(100)
+    ,recon_base_code                VARCHAR2(4)
+    ,recon_slip_num                 VARCHAR2(20)
+    ,carry_payment_slip_num         VARCHAR2(20)
+    ,report_decision_flag           VARCHAR2(1)
+    ,gl_interface_id                NUMBER
+    ,cancel_gl_interface_id         NUMBER
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcok_sales_deduction_pk PRIMARY KEY (sales_deduction_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcok.xxcok_sales_deduction IS '販売控除情報'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.sales_deduction_id                       IS '販売控除ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.base_code_from                           IS '振替元拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.base_code_to                             IS '振替先拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.customer_code_from                       IS '振替元顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.customer_code_to                         IS '振替先顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.deduction_chain_code                     IS '控除用チェーンコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.corp_code                                IS '企業コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.record_date                              IS '計上日'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.source_category                          IS '作成元区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.source_line_id                           IS '作成元明細ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.condition_id                             IS '控除条件ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.condition_no                             IS '控除番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.condition_line_id                        IS '控除詳細ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.data_type                                IS 'データ種類'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.status                                   IS 'ステータス'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.item_code                                IS '品目コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.sales_uom_code                           IS '販売単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.sales_unit_price                         IS '販売単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.sales_quantity                           IS '販売数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.sale_pure_amount                         IS '売上本体金額'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.sale_tax_amount                          IS '売上消費税額'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.deduction_uom_code                       IS '控除単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.deduction_unit_price                     IS '控除単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.deduction_quantity                       IS '控除数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.deduction_amount                         IS '控除額'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.compensation                             IS '補填'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.margin                                   IS '問屋マージン'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.sales_promotion_expenses                 IS '拡売'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.margin_reduction                         IS '問屋マージン減額'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.tax_code                                 IS '税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.tax_rate                                 IS '税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.recon_tax_code                           IS '消込時税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.recon_tax_rate                           IS '消込時税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.deduction_tax_amount                     IS '控除税額'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.remarks                                  IS '備考'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.application_no                           IS '申請書No.'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.gl_if_flag                               IS 'GL連携フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.gl_base_code                             IS 'GL計上拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.gl_date                                  IS 'GL記帳日'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.recovery_date                            IS 'リカバリデータ追加時日付'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.recovery_add_request_id                  IS 'リカバリデータ追加時要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.recovery_del_date                        IS 'リカバリデータ削除時日付'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.recovery_del_request_id                  IS 'リカバリデータ削除時要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.cancel_flag                              IS '取消フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.cancel_base_code                         IS '取消時計上拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.cancel_gl_date                           IS '取消GL記帳日'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.cancel_user                              IS '取消実施ユーザ'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.recon_base_code                          IS '消込時計上拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.recon_slip_num                           IS '支払伝票番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.carry_payment_slip_num                   IS '繰越時支払伝票番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.report_decision_flag                     IS '速報確定フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.gl_interface_id                          IS 'GL連携ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.cancel_gl_interface_id                   IS '取消GL連携ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.created_by                               IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.creation_date                            IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.last_updated_by                          IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.last_update_date                         IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.last_update_login                        IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.request_id                               IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.program_id                               IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_sales_deduction.program_update_date                      IS 'プログラム更新日'
+/
