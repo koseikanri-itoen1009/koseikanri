@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_condition_header_n04
+ON xxcok.xxcok_condition_header (
+     condition_no
+)
+TABLESPACE xxidx2
+/

@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_condition_header_n05
+ON xxcok.xxcok_condition_header (
+     last_update_date
+)
+TABLESPACE xxidx2
+/

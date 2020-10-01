@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_condition_header_n03
+ON xxcok.xxcok_condition_header(
+     customer_code
+   , start_date_active
+   , end_date_active
+)
+TABLESPACE xxidx2
+/
