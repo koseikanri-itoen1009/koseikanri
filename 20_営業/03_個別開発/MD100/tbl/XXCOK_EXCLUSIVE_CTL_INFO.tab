@@ -1,0 +1,26 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : XXCOK_EXCLUSIVE_CTL_INFO
+ * Description : 排他制御管理テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/05/11    1.0   SCSK Y.Koh       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_exclusive_ctl_info (
+     condition_no                   VARCHAR2(12)  NOT NULL
+    ,request_id                     NUMBER(15)
+  ,CONSTRAINT xxcok_ex_ctl_info_u01 UNIQUE (condition_no)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcok.xxcok_exclusive_ctl_info IS '排他制御管理テーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_exclusive_ctl_info.condition_no                          IS '控除番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_exclusive_ctl_info.request_id                            IS '要求ID'
+/

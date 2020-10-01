@@ -1,0 +1,105 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_DEDU_TRN_REV
+ * Description : 控除振替振戻テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/04/16    1.0   SCSK Y.Nakajima  新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_dedu_trn_rev (
+     base_code_from                 VARCHAR2(4)   NOT NULL
+    ,base_code_to                   VARCHAR2(4)   NOT NULL
+    ,customer_code_from             VARCHAR2(9)   NOT NULL
+    ,customer_code_to               VARCHAR2(9)   NOT NULL
+    ,record_date                    DATE          NOT NULL
+    ,item_code                      VARCHAR2(7)   NOT NULL
+    ,sales_quantity                 NUMBER(9,2)
+    ,sales_uom_code                 VARCHAR2(3)
+    ,sales_unit_price               NUMBER(12,3)
+    ,sale_pure_amount               NUMBER(12,0)
+    ,sale_tax_amount                NUMBER(11,0)
+    ,deduction_uom_code             VARCHAR2(3)
+    ,deduction_unit_price           NUMBER(12,3)
+    ,deduction_quantity             NUMBER(9,2)
+    ,deduction_amount               NUMBER(12,0)
+    ,tax_code                       VARCHAR2(4)
+    ,tax_rate                       NUMBER
+    ,recon_tax_code                 VARCHAR2(4)
+    ,recon_tax_rate                 NUMBER(3,2)
+    ,deduction_tax_amount           NUMBER(11,0)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcok.xxcok_dedu_trn_rev IS '控除振替振戻テーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.base_code_from                              IS '振替元拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.base_code_to                                IS '振替先拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.customer_code_from                          IS '振替元顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.customer_code_to                            IS '振替先顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.record_date                                 IS '計上日'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.item_code                                   IS '品目コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.sales_quantity                              IS '販売数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.sales_uom_code                              IS '販売単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.sales_unit_price                            IS '販売単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.sale_pure_amount                            IS '売上本体金額'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.sale_tax_amount                             IS '売上消費税額'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.deduction_uom_code                          IS '控除単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.deduction_unit_price                        IS '控除単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.deduction_quantity                          IS '控除数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.deduction_amount                            IS '控除額'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.tax_code                                    IS '税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.tax_rate                                    IS '税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.recon_tax_code                              IS '消込時税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.recon_tax_rate                              IS '消込時税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.deduction_tax_amount                        IS '控除税額'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.created_by                                  IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.creation_date                               IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.last_updated_by                             IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.last_update_date                            IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.last_update_login                           IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.request_id                                  IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.program_application_id                      IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.program_id                                  IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_dedu_trn_rev.program_update_date                         IS 'プログラム更新日'
+/

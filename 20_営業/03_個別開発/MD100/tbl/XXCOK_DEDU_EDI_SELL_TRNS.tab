@@ -1,0 +1,72 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : xxcok_dedu_edi_sell_trns 
+ * Description : 控除データ作成用実績振替(EDI)
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/06/02    1.0   SCSK K.Kanada    新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_dedu_edi_sell_trns (
+    SELLING_TRNS_INFO_ID   NUMBER
+   ,SELLING_TRNS_TYPE      VARCHAR2(1)
+   ,REPORT_DECISION_FLAG   VARCHAR2(1)
+   ,DELIVERY_BASE_CODE     VARCHAR2(4)  NOT NULL
+   ,SELLING_FROM_CUST_CODE VARCHAR2(9)
+   ,BASE_CODE              VARCHAR2(4)  NOT NULL
+   ,CUST_CODE              VARCHAR2(9)  NOT NULL
+   ,SELLING_DATE           DATE         NOT NULL
+   ,ITEM_CODE              VARCHAR2(7)  NOT NULL
+   ,PRODUCT_CLASS          VARCHAR2(1)
+   ,UNIT_TYPE              VARCHAR2(3)
+   ,DELIVERY_UNIT_PRICE    NUMBER       NOT NULL
+   ,QTY                    NUMBER       NOT NULL
+   ,SELLING_AMT_NO_TAX     NUMBER       NOT NULL
+   ,TAX_CODE               VARCHAR2(4)
+   ,TAX_RATE               NUMBER
+   ,SELLING_AMT            NUMBER       NOT NULL
+   ,CREATED_BY             NUMBER(15)   NOT NULL
+   ,CREATION_DATE          DATE         NOT NULL
+   ,LAST_UPDATED_BY        NUMBER(15)   NOT NULL
+   ,LAST_UPDATE_DATE       DATE         NOT NULL
+   ,LAST_UPDATE_LOGIN      NUMBER(15)
+   ,REQUEST_ID             NUMBER(15)
+   ,PROGRAM_APPLICATION_ID NUMBER(15)
+   ,PROGRAM_ID             NUMBER(15)
+   ,PROGRAM_UPDATE_DATE    DATE
+ ,CONSTRAINT xxcok_dedu_edi_sell_trns_pk PRIMARY KEY ( selling_trns_info_id  )
+  USING INDEX TABLESPACE xxidx2
+);
+--
+COMMENT ON TABLE  xxcok.xxcok_dedu_edi_sell_trns                         IS '控除データ作成用実績振替(EDI)';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.SELLING_TRNS_INFO_ID    IS '売上実績振替情報ID';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.SELLING_TRNS_TYPE       IS '実績振替区分';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.REPORT_DECISION_FLAG    IS '速報確定フラグ';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.DELIVERY_BASE_CODE      IS '振替元拠点';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.SELLING_FROM_CUST_CODE  IS '振替元顧客';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.BASE_CODE               IS '振替先拠点';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.CUST_CODE               IS '振替先顧客';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.SELLING_DATE            IS '売上計上日';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.ITEM_CODE               IS '品目コード';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.PRODUCT_CLASS           IS '商品区分';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.UNIT_TYPE               IS '納品単位';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.DELIVERY_UNIT_PRICE     IS '納品単価';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.QTY                     IS '数量';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.SELLING_AMT_NO_TAX      IS '本体金額（税抜き）';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.TAX_CODE                IS '消費税コード';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.TAX_RATE                IS '消費税率';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.SELLING_AMT             IS '本体金額';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.CREATED_BY              IS '作成者';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.CREATION_DATE           IS '作成日';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.LAST_UPDATED_BY         IS '最終更新者';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.LAST_UPDATE_DATE        IS '最終更新日';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.LAST_UPDATE_LOGIN       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.REQUEST_ID              IS '要求ID';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.PROGRAM_APPLICATION_ID  IS 'コンカレント・プログラム･アプリケーションID';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.PROGRAM_ID              IS 'コンカレント･プログラムID';
+COMMENT ON COLUMN xxcok.xxcok_dedu_edi_sell_trns.PROGRAM_UPDATE_DATE     IS 'プログラム更新日';
