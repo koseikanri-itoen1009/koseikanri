@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A04C(body)
  * Description      : 控除用実績振替データの作成（振替割合）
  * MD.050           : 控除用実績振替データの作成（振替割合） MD050_COK_024_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/04/08    1.0   Y.Nakajima       新規作成
  *  2020/06/15    1.1   K.Kanada         後続機能のPT対応で商品区分の編集を追加
+ *  2020/09/29    1.2   A.AOKI           不具合（取引（5:協賛、6:見本、7:広告宣伝費）の除外）
  *
  *****************************************************************************************/
 --
@@ -318,6 +319,22 @@ AS
                                                            )
                      AND ROWNUM                          = 1
           )
+ -- 2020/09/29 Ver.1.2 A.AOKI ADD START
+       AND  NOT EXISTS (
+               SELECT
+                        'X'
+                    FROM
+                        fnd_lookup_values                 flvl
+                    WHERE
+                        flvl.lookup_type                  = 'XXCOS1_SALE_CLASS_MST_013_A01'
+                    AND flvl.lookup_code                  LIKE 'XXCOS_013_A01%'
+                    AND flvl.attribute1                   = 'Y'
+                    AND flvl.enabled_flag                 = 'Y'
+                    AND flvl.language                     = 'JA'
+                    AND gd_process_date BETWEEN           NVL( flvl.start_date_active, gd_process_date )
+                                        AND               NVL( flvl.end_date_active,   gd_process_date )
+                    AND flvl.meaning                      = xsel.sales_class)
+ -- 2020/09/29 Ver.1.2 A.AOKI ADD END
   GROUP BY xseh.delivery_date
          , xseh.sales_base_code
          , xseh.ship_to_customer_code
