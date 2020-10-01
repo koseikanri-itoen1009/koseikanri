@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_sales_deduction_n01
+ON xxcok.xxcok_sales_deduction (
+     carry_payment_slip_num, sales_deduction_id
+)
+TABLESPACE xxidx2
+/

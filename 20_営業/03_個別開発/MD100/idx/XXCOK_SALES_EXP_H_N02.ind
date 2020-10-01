@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_sales_exp_h_n02
+ON xxcok.xxcok_sales_exp_h(
+     ship_to_customer_code
+    ,delivery_date     DESC
+)
+TABLESPACE xxidx2
+;

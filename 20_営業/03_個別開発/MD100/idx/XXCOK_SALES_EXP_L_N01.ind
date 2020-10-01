@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_sales_exp_l_n01
+ON xxcok.xxcok_sales_exp_l(
+     sales_exp_header_id
+    ,item_code
+    ,product_class
+)
+TABLESPACE xxidx2
+;

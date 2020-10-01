@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_sales_deduction_n04
+ON xxcok.xxcok_sales_deduction(
+     gl_if_flag
+)
+TABLESPACE xxidx2
+/

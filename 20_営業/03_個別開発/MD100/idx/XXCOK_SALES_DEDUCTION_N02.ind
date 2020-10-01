@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_sales_deduction_n02
+ON xxcok.xxcok_sales_deduction(
+     condition_id
+   , source_line_id
+   , status
+)
+TABLESPACE xxidx2
+/

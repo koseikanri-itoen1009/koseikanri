@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_sales_deduction_n03
+ON xxcok.xxcok_sales_deduction(
+     record_date desc
+   , status
+)
+TABLESPACE xxidx2
+/

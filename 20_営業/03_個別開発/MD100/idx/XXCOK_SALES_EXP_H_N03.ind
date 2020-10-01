@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_sales_exp_h_n03
+ON xxcok.xxcok_sales_exp_h(
+     request_id     DESC
+)
+TABLESPACE xxidx2
+;

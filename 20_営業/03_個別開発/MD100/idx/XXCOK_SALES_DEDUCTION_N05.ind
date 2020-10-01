@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_sales_deduction_n05
+ON xxcok.xxcok_sales_deduction(
+     recon_slip_num
+   , data_type
+)
+TABLESPACE xxidx2
+/
