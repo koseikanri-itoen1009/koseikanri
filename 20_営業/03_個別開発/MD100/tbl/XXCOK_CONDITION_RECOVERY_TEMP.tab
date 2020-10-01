@@ -1,0 +1,83 @@
+CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_condition_recovery_temp (
+     condition_id                   NUMBER
+    ,condition_no                   VARCHAR2(12)
+    ,corp_code                      VARCHAR2(6)
+    ,deduction_chain_code           VARCHAR2(9)
+    ,customer_code                  VARCHAR2(9)
+    ,start_date_active              DATE
+    ,end_date_active                DATE
+    ,data_type                      VARCHAR2(10)
+    ,tax_code_con                   VARCHAR2(4)
+    ,tax_rate_con                   NUMBER
+    ,enabled_flag_h                 VARCHAR2(1)
+    ,header_recovery_flag           VARCHAR2(1)
+    ,condition_line_id              NUMBER
+    ,product_class                  VARCHAR2(1)
+    ,item_code                      VARCHAR2(10)
+    ,uom_code                       VARCHAR2(3)
+    ,target_category                VARCHAR2(1)
+    ,shop_pay_1                     NUMBER
+    ,material_rate_1                NUMBER
+    ,condition_unit_price_en_2      NUMBER
+    ,accrued_en_3                   NUMBER
+    ,accrued_en_4                   NUMBER
+    ,condition_unit_price_en_5      NUMBER
+    ,deduction_unit_price_en_6      NUMBER
+    ,enabled_flag_l                 VARCHAR2(1)
+    ,line_recovery_flag             VARCHAR2(1))
+ ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE  xxcok.xxcok_condition_recovery_temp IS '控除マスタリカバリ用ワークテーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.condition_id                     IS '控除条件ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.condition_no                     IS '控除番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.corp_code                        IS '企業コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.deduction_chain_code             IS '控除用チェーンコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.customer_code                    IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.start_date_active                IS '開始日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.end_date_active                  IS '終了日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.data_type                        IS 'データ種類'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.tax_code_con                     IS '税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.tax_rate_con                     IS '税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.enabled_flag_h                   IS 'ヘッダ有効フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.header_recovery_flag             IS 'ヘッダーリカバリ対象フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.condition_line_id                IS '控除詳細ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.product_class                    IS '商品区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.item_code                        IS '品目コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.uom_code                         IS '単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.target_category                  IS '対象区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.shop_pay_1                       IS '店納(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.material_rate_1                  IS '料率(％)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.condition_unit_price_en_2        IS '条件単価２(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.accrued_en_3                     IS '未収計３(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.accrued_en_4                     IS '未収計４(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.condition_unit_price_en_5        IS '条件単価５(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.deduction_unit_price_en_6        IS '控除単価(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.enabled_flag_l                   IS '明細有効フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.line_recovery_flag               IS '明細リカバリ対象フラグ'
+/

@@ -1,0 +1,173 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_CONDITION_TEMP
+ * Description : 控除マスタCSVアップロードワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/05/12    1.0   SCSK Y.Ishii    新規作成
+ *  2020/06/10    1.0   SCSK K.Kanada    決裁番号の桁数変更（10⇒11）
+ *
+ ****************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_condition_temp (
+     csv_no                         NUMBER
+    ,csv_process_type               VARCHAR2(4)
+    ,process_type                   VARCHAR2(2)
+    ,condition_no                   VARCHAR2(12)
+    ,corp_code                      VARCHAR2(6)
+    ,deduction_chain_code           VARCHAR2(9)
+    ,customer_code                  VARCHAR2(9)
+    ,data_type                      VARCHAR2(10)
+    ,start_date_active              VARCHAR2(15)
+    ,end_date_active                VARCHAR2(15)
+    ,content                        VARCHAR2(200)
+    ,decision_no                    VARCHAR2(11)
+    ,agreement_no                   VARCHAR2(30)
+    ,process_type_line              VARCHAR2(2)
+    ,detail_number                  NUMBER
+    ,target_category                VARCHAR2(10)
+    ,product_class                  VARCHAR2(8)
+    ,product_class_code             VARCHAR2(1)
+    ,item_code                      VARCHAR2(10)
+    ,uom_code                       VARCHAR2(3)
+    ,shop_pay_1                     NUMBER
+    ,material_rate_1                NUMBER
+    ,demand_en_3                    NUMBER
+    ,shop_pay_en_3                  NUMBER
+    ,wholesale_margin_en_3          NUMBER
+    ,wholesale_margin_per_3         NUMBER
+    ,normal_shop_pay_en_4           NUMBER
+    ,just_shop_pay_en_4             NUMBER
+    ,wholesale_adj_margin_en_4      NUMBER
+    ,wholesale_adj_margin_per_4     NUMBER
+    ,prediction_qty_5_6             NUMBER
+    ,support_amount_sum_en_5        NUMBER
+    ,CONDITION_UNIT_PRICE_EN_2_6    NUMBER
+    ,target_rate_6                  NUMBER
+    ,accounting_base                VARCHAR2(4)
+    ,deduction_amount               NUMBER
+    ,tax_code                       VARCHAR2(4)
+    ,tax_rate                       NUMBER
+    ,deduction_tax_amount           NUMBER
+    ,condition_cls                  VARCHAR2(6)
+    ,condition_type                 VARCHAR2(6)
+    ,condition_id                   NUMBER
+    ,created_by                     NUMBER(15,0)  NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE)
+ ON COMMIT DELETE ROWS
+/
+COMMENT ON TABLE xxcok.xxcok_condition_temp IS '控除マスタCSVアップロードワークテーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.csv_no                                    IS 'CSV行数'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.csv_process_type                          IS 'CSV処理区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.process_type                              IS '処理区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.condition_no                              IS '控除番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.corp_code                                 IS '企業コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.deduction_chain_code                      IS '控除用チェーンコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.customer_code                             IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.data_type                                 IS 'データ種類'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.start_date_active                         IS '開始日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.end_date_active                           IS '終了日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.content                                   IS '内容'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.decision_no                               IS '決裁No'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.agreement_no                              IS '契約番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.process_type_line                         IS '明細処理区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.detail_number                             IS '明細番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.target_category                           IS '対象区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.product_class                             IS '商品区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.product_class_code                        IS '商品区分コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.item_code                                 IS '品目コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.uom_code                                  IS '単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.shop_pay_1                                IS '店納(％)_1'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.material_rate_1                           IS '料率(％)_1'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.demand_en_3                               IS '請求(円)_3'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.shop_pay_en_3                             IS '店納(円)_3'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.wholesale_margin_en_3                     IS '問屋マージン(円)_3'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.wholesale_margin_per_3                    IS '問屋マージン(％)_3'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.normal_shop_pay_en_4                      IS '通常店納(円)_4'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.just_shop_pay_en_4                        IS '今回店納(円)_4'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.wholesale_adj_margin_en_4                 IS '問屋マージン修正(円)_4'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.wholesale_adj_margin_per_4                IS '問屋マージン修正(％)_4'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.prediction_qty_5_6                        IS '予測数量(本)_5_6'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.support_amount_sum_en_5                   IS '協賛金合計(円)_5'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.CONDITION_UNIT_PRICE_EN_2_6               IS '条件単価(円)_2_6'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.target_rate_6                             IS '対象率(％)_6'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.accounting_base                           IS '計上拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.deduction_amount                          IS '控除額(本体)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.tax_code                                  IS '税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.tax_code                                  IS '税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.deduction_tax_amount                      IS '控除税額'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.condition_cls                             IS '控除区分'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.condition_type                            IS '控除タイプ'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.condition_id                              IS '控除条件ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.created_by                                IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.creation_date                             IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.last_updated_by                           IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.last_update_date                          IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.last_update_login                         IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.request_id                                IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.program_application_id                    IS 'コンカレント・プログラム･アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.program_id                                IS 'コンカレント･プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.program_update_date                       IS 'プログラム更新日'
+/

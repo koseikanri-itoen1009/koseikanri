@@ -1,0 +1,96 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_CONDITION_HEADER
+ * Description : 控除条件テーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/01/23    1.0   SCSK Y.Koh       新規作成
+ *  2020/04/09    1.0   SCSK H.Ishii     税コード、税率追加
+ *  2020/06/10    1.0   SCSK K.Kanada    決裁番号の桁数変更（10⇒11）
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_condition_header (
+     condition_id                   NUMBER        NOT NULL
+    ,condition_no                   VARCHAR2(12)  NOT NULL
+    ,enabled_flag_h                 VARCHAR2(1)   NOT NULL
+    ,corp_code                      VARCHAR2(6)
+    ,deduction_chain_code           VARCHAR2(9)
+    ,customer_code                  VARCHAR2(9)
+    ,data_type                      VARCHAR2(10)  NOT NULL
+    ,tax_code                       VARCHAR2(4)
+    ,tax_rate                       NUMBER
+    ,start_date_active              DATE          NOT NULL
+    ,end_date_active                DATE          NOT NULL
+    ,content                        VARCHAR2(200)
+    ,decision_no                    VARCHAR2(11)
+    ,agreement_no                   VARCHAR2(30)
+    ,header_recovery_flag           VARCHAR2(1)   NOT NULL
+    ,created_by                     NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER        NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER
+    ,request_id                     NUMBER
+    ,program_application_id         NUMBER
+    ,program_id                     NUMBER
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcok_condition_header_pk PRIMARY KEY (condition_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcok.xxcok_condition_header IS '控除条件テーブル'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.condition_id                            IS '控除条件ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.condition_no                            IS '控除番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.enabled_flag_h                          IS '有効フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.corp_code                               IS '企業コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.deduction_chain_code                    IS '控除用チェーンコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.customer_code                           IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.data_type                               IS 'データ種類'
+/
+-- 2020/04/09 Ver1.1 ADD Ishii START
+COMMENT ON COLUMN xxcok.xxcok_condition_header.tax_code                                IS '税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.tax_rate                                IS '税率'
+/
+-- 2020/04/09 Ver1.1 ADD Ishii END
+COMMENT ON COLUMN xxcok.xxcok_condition_header.start_date_active                       IS '開始日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.end_date_active                         IS '終了日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.content                                 IS '内容'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.decision_no                             IS '決裁No'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.agreement_no                            IS '契約番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.header_recovery_flag                    IS 'リカバリ対象フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.created_by                              IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.creation_date                           IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.last_updated_by                         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.last_update_date                        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.last_update_login                       IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.request_id                              IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.program_id                              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_header.program_update_date                     IS 'プログラム更新日'
+/
