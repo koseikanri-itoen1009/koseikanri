@@ -1,0 +1,10 @@
+CREATE INDEX xxcok.xxcok_dedu_sell_trns_info_n01
+ON xxcok.xxcok_dedu_sell_trns_info(
+     cust_code
+   , selling_date  desc
+   , item_code
+   , product_class
+   , correction_flag
+)
+TABLESPACE xxidx2
+/
