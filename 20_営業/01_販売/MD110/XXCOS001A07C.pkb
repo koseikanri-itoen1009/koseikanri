@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2016/06/14    1.22  N.Koyama         [E_本稼働_13661]取消訂正区分最新値取得時の変数初期化漏れ対応
  *  2017/04/19    1.23  N.Watanabe       [E_本稼動_14025]HHTからのシステム日付連携追加
  *  2019/07/26    1.24  N.Abe            [E_本稼動_15472]軽減税率対応
+ *  2020/09/03    1.25  N.Koyama         [E_本稼動_16450]HHT入出庫一時表取得条件追加＆処理対象外データフラグ更新対応
  *
  *****************************************************************************************/
 --
@@ -136,7 +137,11 @@ AS
 --****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
   -- MO営業単位
   cv_pf_org_id       CONSTANT VARCHAR2(30)  := 'ORG_ID';              -- MO:営業単位
---****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
+--******************************  1.9 T.Kitajima ADD  END  ******************************
+--******************************  1.25 N.Koyama ADD START *******************************
+  -- XXCOI:在庫組織コード
+  cv_prf_org         CONSTANT VARCHAR2(50)  := 'XXCOI1_ORGANIZATION_CODE';
+--******************************  1.25 N.Koyama ADD END   *******************************
 --
   -- エラーコード
   cv_msg_lock        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00001';       -- ロックエラー
@@ -178,6 +183,12 @@ AS
   cv_msg_mo          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00047';       -- MO:営業単位
   cv_data_loc        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00184';     -- 対象データロック中
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
+--******************************  1.25 N.Koyama ADD START *******************************
+  cv_msg_org_cd      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00048';       -- XXCOI:在庫組織コード
+  cv_msg_org_id_err  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00091';       -- 在庫組織ID取得エラー
+  cv_msg_period_err  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10370';       -- 在庫会計期間オープン期間取得エラー
+  cv_msg_update_cnt  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10371';       -- 入出庫情報対象外更新件数
+--******************************  1.25 N.Koyama ADD END   *******************************
 --****************************** 2014/10/16 1.18 MOD START ******************************
   cv_empl_effect     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10367';       -- 納品者コード有効性チェック
 --****************************** 2014/10/16 1.18 MOD END   ******************************
@@ -198,6 +209,9 @@ AS
   cv_tkn_item_cd     CONSTANT VARCHAR2(9)   := 'ITEM_CODE';             -- 品目コード
 -- *************** 2019/07/26 1.24 ADD END   *****************************--
   -- トークン
+--******************************  1.25 N.Koyama ADD START *******************************
+  cv_tkn_nm_org_cd   CONSTANT VARCHAR2(20)  := 'ORG_CODE_TOK';           -- 在庫組織コード
+--******************************  1.25 N.Koyama ADD START *******************************
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE_NAME';             -- テーブル名
   cv_tkn_tab         CONSTANT VARCHAR2(20)  := 'TABLE';                  -- テーブル名
   cv_tkn_colmun      CONSTANT VARCHAR2(20)  := 'COLMUN';                 -- 項目名
@@ -210,6 +224,9 @@ AS
 --****************************** 2010/03/18 1.16 S.Miyakoshi ADD START ******************************
   cv_tkn_a           CONSTANT VARCHAR2(1)   := 'A';                      -- 判定:A(有効)
 --****************************** 2010/03/18 1.16 S.Miyakoshi ADD END   ******************************
+--******************************  1.25 N.Koyama ADD START *******************************
+  cv_tkn_s           CONSTANT VARCHAR2(1)   := 'S';                      -- 対象外ステータス
+--******************************  1.25 N.Koyama ADD END   *******************************
   cv_tkn_out         CONSTANT VARCHAR2(3)   := 'OUT';                    -- 出庫側
   cv_tkn_in          CONSTANT VARCHAR2(2)   := 'IN';                     -- 入庫側
   cv_default         CONSTANT VARCHAR2(1)   := '0';                      -- 初期値
@@ -696,6 +713,11 @@ AS
 --****************************** 2009/05/29 1.9 T.Kitajima ADD START ******************************
   gt_org_id             fnd_profile_option_values.profile_option_value%TYPE;      -- MO:営業単位
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
+--******************************  1.25 N.Koyama ADD START *******************************
+  gn_inv_org_id         NUMBER;                         -- 在庫組織ID
+  gd_from_date          DATE;                           -- 期間開始日付
+  gd_to_date            DATE;                           -- 期間開始日付
+--******************************  1.25 N.Koyama ADD END   *******************************
   gt_tr_count           NUMBER := 0;
   gt_insert_h_count     NUMBER := 0;
 --
@@ -727,6 +749,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_application_ccp CONSTANT VARCHAR2(5)   := 'XXCCP';                  -- アプリケーション名
+--******************************  1.25 N.Koyama ADD START *******************************
+    cv_open_flag_y     CONSTANT VARCHAR2(1)   := 'Y';                      -- OPENフラグ[Y]
+--******************************  1.25 N.Koyama ADD END   *******************************
 --
     -- *** ローカル変数 ***
     ld_process_date  DATE;              -- 業務処理日
@@ -734,6 +759,9 @@ AS
 --****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
     lv_para_msg      VARCHAR2(100);     -- パラメータ出力
 --****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
+--******************************  1.25 N.Koyama ADD START *******************************
+    lt_inv_org_cd                mtl_parameters.organization_code%TYPE;  -- 在庫組織コード
+--******************************  1.25 N.Koyama ADD END   *******************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -869,6 +897,51 @@ AS
       RAISE global_api_expt;
     END IF;
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
+--******************************  1.25 N.Koyama ADD START *******************************
+    -- ===============================
+    --  XXCOI:在庫組織コード取得
+    -- ===============================
+    lt_inv_org_cd := FND_PROFILE.VALUE( cv_prf_org );
+--
+    -- プロファイル取得エラーの場合
+    IF ( lt_inv_org_cd IS NULL ) THEN
+      gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_org_cd );
+      lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_pro, cv_tkn_profile, gv_tkn1 );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --========================================
+    -- 在庫組織ID取得処理
+    --========================================
+    gn_inv_org_id := xxcoi_common_pkg.get_organization_id( lt_inv_org_cd );
+    IF ( gn_inv_org_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(cv_application, cv_msg_org_id_err, cv_tkn_nm_org_cd,lt_inv_org_cd);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --==============================================================
+    -- OPEN会計期間情報取得
+    --==============================================================
+    BEGIN
+      SELECT  MIN(inv_prd.period_start_date)      date_from,
+              MAX(inv_prd.schedule_close_date)    date_to
+        INTO  gd_from_date,
+              gd_to_date
+        FROM  org_acct_periods  inv_prd
+       WHERE  inv_prd.organization_id = gn_inv_org_id
+         AND  inv_prd.open_flag       = cv_open_flag_y
+      ;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg :=  xxccp_common_pkg.get_msg( cv_application, cv_msg_period_err);
+        lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END;
+--
+--******************************  1.25 N.Koyama ADD END   *******************************
 --
   EXCEPTION
 --
@@ -1107,6 +1180,10 @@ AS
                                   )                               -- 伝票区分＝4,5,6,7
       AND    inv.column_if_flag = cv_tkn_no                       -- コラム別転送フラグ＝N
       AND    inv.status         = cv_one                          -- 処理ステータス＝1
+--******************************  1.25 N.Koyama ADD START *******************************
+      AND    inv.invoice_date BETWEEN gd_from_date AND gd_to_date
+      AND    inv.column_no          IS NOT NULL
+--******************************  1.25 N.Koyama ADD END   *******************************
       FOR UPDATE NOWAIT;
 --
 /* 2015.01.29 H.Wajima E_本稼動_12599 MOD START */
@@ -1236,6 +1313,10 @@ AS
           WHERE  inv.invoice_type       = qck_invo.code           -- 伝票区分＝出庫側
           AND    inv.column_if_flag     = cv_tkn_no               -- コラム別転送フラグ＝N
           AND    inv.status             = cv_one                  -- 処理ステータス＝1
+--******************************  1.25 N.Koyama ADD START *******************************
+          AND    inv.invoice_date BETWEEN gd_from_date AND gd_to_date
+          AND    inv.column_no          IS NOT NULL
+--******************************  1.25 N.Koyama ADD END   *******************************
           AND    inv.outside_cust_code  = hz_cus.account_number   -- 入出庫一時表.出庫側顧客コード＝アカウント.顧客
           AND    hz_cus.cust_account_id = cust.customer_id        -- アカウント.顧客ID＝顧客追加情報.顧客ID
           AND    inv.column_no          = vd.column_no            -- 入出庫一時表.コラムNo.＝VDコラムマスタ.コラムNo.
@@ -1396,6 +1477,10 @@ AS
           WHERE  inv.invoice_type       = qck_invo.code           -- 伝票区分＝入庫側
           AND    inv.column_if_flag     = cv_tkn_no               -- コラム別転送フラグ＝N
           AND    inv.status             = cv_one                  -- 処理ステータス＝1
+--******************************  1.25 N.Koyama ADD START *******************************
+          AND    inv.invoice_date BETWEEN gd_from_date AND gd_to_date
+          AND    inv.column_no          IS NOT NULL
+--******************************  1.25 N.Koyama ADD END   *******************************
           AND    inv.inside_cust_code   = hz_cus.account_number   -- 入出庫一時表.入庫側顧客コード＝アカウント.顧客
           AND    hz_cus.cust_account_id = cust.customer_id        -- アカウント.顧客ID＝顧客追加情報.顧客ID
           AND    inv.column_no          = vd.column_no            -- 入出庫一時表.コラムNo.＝VDコラムマスタ.コラムNo.
@@ -3939,6 +4024,123 @@ AS
 --
   END ins_err_msg;
 --****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
+--******************************  1.25 N.Koyama ADD START *******************************
+--
+  /**********************************************************************************
+   * Procedure Name   : excluded_data_update
+   * Description      : 対象外データ更新処理(A-8)
+   ***********************************************************************************/
+  PROCEDURE excluded_data_update(
+    ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'excluded_data_update'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--******************************  1.25 N.Koyama ADD START *******************************
+    -- 入出庫一時表ロック
+    CURSOR lock_invoice_tran_cur
+    IS
+      SELECT  inv.column_if_flag    column_if_flag  -- 伝票区分
+        FROM  xxcoi_hht_inv_transactions     inv
+       WHERE  inv.invoice_date   < gd_from_date
+         AND  inv.invoice_date  >= ADD_MONTHS(gd_from_date,-1)
+         AND  inv.column_no     IS NULL
+         AND  inv.column_if_flag = cv_tkn_no
+      FOR UPDATE NOWAIT;
+--******************************  1.25 N.Koyama ADD START *******************************
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==============================================================
+    -- 入出庫一時表ロック
+    --==============================================================
+    OPEN  lock_invoice_tran_cur;
+    CLOSE lock_invoice_tran_cur;
+--
+    --==============================================================
+    -- コラム転送フラグ更新
+    --==============================================================
+    UPDATE xxcoi_hht_inv_transactions  inv   -- 入出庫一時表
+       SET inv.column_if_flag         = cv_tkn_s,                  -- コラム転送フラグ
+           inv.column_if_date         = cd_last_update_date,         -- コラム別転送日
+           inv.last_updated_by        = cn_last_updated_by,          -- 最終更新者
+           inv.last_update_date       = cd_last_update_date,         -- 最終更新日
+           inv.last_update_login      = cn_last_update_login,        -- 最終更新ログイン
+           inv.request_id             = cn_request_id,               -- 要求ID
+           inv.program_application_id = cn_program_application_id,   -- コンカレント・プログラム・アプリケーションID
+           inv.program_id             = cn_program_id,               -- コンカレント・プログラムID
+           inv.program_update_date    = cd_program_update_date       -- プログラム更新日
+    WHERE  inv.invoice_date           < gd_from_date
+      AND  inv.invoice_date          >= ADD_MONTHS(gd_from_date,-1)
+      AND  inv.column_no              IS NULL
+      AND  inv.column_if_flag          = cv_tkn_no
+    ;
+    --  更新件数カウント
+    gn_target_cnt := SQL%ROWCOUNT;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- ロックエラー
+    WHEN lock_expt THEN
+      gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_inv_table );
+      lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_lock, cv_tkn_tab, gv_tkn1 );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+      IF ( lock_invoice_tran_cur%ISOPEN ) THEN
+        CLOSE lock_invoice_tran_cur;
+      END IF;
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END excluded_data_update;
+--******************************  1.25 N.Koyama ADD END   *******************************
 --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -3948,6 +4150,9 @@ AS
 --****************************** 2014/11/27 1.19 K.Nakatsu ADD START ******************************--
     iv_gen_err_out_flag  IN         VARCHAR2,     --  汎用エラーリスト出力フラグ
 --****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
+--******************************  1.25 N.Koyama ADD START *******************************
+    iv_mode              IN         VARCHAR2,     --  起動モード
+--******************************  1.25 N.Koyama ADD END   *******************************
     ov_errbuf            OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode           OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg            OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -4023,65 +4228,68 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- ===============================
-    -- 入出庫データ抽出(A-1)
-    -- ===============================
-    inv_data_receive(
-      gn_inv_target_cnt,   -- 入出庫情報抽出件数
-      lv_errbuf,           -- エラー・メッセージ           --# 固定 #
-      lv_retcode,          -- リターン・コード             --# 固定 #
-      lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
---
-    -- エラー処理
-    IF ( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
-    END IF;
---
-    --== 入出庫情報が1件以上ある場合、A-2、A-3の処理を行います。 ==--
-    IF ( gn_inv_target_cnt >= 1 ) THEN
+--******************************  1.25 N.Koyama ADD START *******************************
+    IF ( iv_mode = cv_tkn_no ) THEN
+--******************************  1.25 N.Koyama ADD END   *******************************
       -- ===============================
-      -- 入出庫データ導出(A-2)
+      -- 入出庫データ抽出(A-1)
       -- ===============================
-      inv_data_compute(
-        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-        lv_retcode,        -- リターン・コード             --# 固定 #
-        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+      inv_data_receive(
+        gn_inv_target_cnt,   -- 入出庫情報抽出件数
+        lv_errbuf,           -- エラー・メッセージ           --# 固定 #
+        lv_retcode,          -- リターン・コード             --# 固定 #
+        lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
 --
       -- エラー処理
       IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
       END IF;
 --
-      -- ===============================
-      -- 入出庫データ登録(A-3)
-      -- ===============================
-      inv_data_register(
-        gn_h_normal_cnt,      -- 入出庫ヘッダ情報成功件数
-        gn_l_normal_cnt,      -- 入出庫明細情報成功件数
-        lv_errbuf,            -- エラー・メッセージ           --# 固定 #
-        lv_retcode,           -- リターン・コード             --# 固定 #
-        lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+      --== 入出庫情報が1件以上ある場合、A-2、A-3の処理を行います。 ==--
+      IF ( gn_inv_target_cnt >= 1 ) THEN
+        -- ===============================
+        -- 入出庫データ導出(A-2)
+        -- ===============================
+        inv_data_compute(
+          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+          lv_retcode,        -- リターン・コード             --# 固定 #
+          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
 --
-      -- エラー処理
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
+        -- エラー処理
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ===============================
+        -- 入出庫データ登録(A-3)
+        -- ===============================
+        inv_data_register(
+          gn_h_normal_cnt,      -- 入出庫ヘッダ情報成功件数
+          gn_l_normal_cnt,      -- 入出庫明細情報成功件数
+          lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+          lv_retcode,           -- リターン・コード             --# 固定 #
+          lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        -- エラー処理
+        IF ( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+--
       END IF;
 --
-    END IF;
+      -- ===============================
+      -- 納品データ登録(A-4)
+      -- ===============================
+      dlv_data_register(
+        gn_dlv_h_target_cnt, -- 納品ヘッダ情報抽出件数
+        gn_dlv_l_target_cnt, -- 納品明細情報抽出件数
+        lv_errbuf,           -- エラー・メッセージ           --# 固定 #
+        lv_retcode,          -- リターン・コード             --# 固定 #
+        lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
 --
-    -- ===============================
-    -- 納品データ登録(A-4)
-    -- ===============================
-    dlv_data_register(
-      gn_dlv_h_target_cnt, -- 納品ヘッダ情報抽出件数
-      gn_dlv_l_target_cnt, -- 納品明細情報抽出件数
-      lv_errbuf,           -- エラー・メッセージ           --# 固定 #
-      lv_retcode,          -- リターン・コード             --# 固定 #
-      lv_errmsg);          -- ユーザー・エラー・メッセージ --# 固定 #
---
-    -- 納品情報成功件数セット
-    gn_dlv_h_nor_cnt    := gn_dlv_h_target_cnt;
-    gn_dlv_l_nor_cnt    := gn_dlv_l_target_cnt;
+      -- 納品情報成功件数セット
+      gn_dlv_h_nor_cnt    := gn_dlv_h_target_cnt;
+      gn_dlv_l_nor_cnt    := gn_dlv_l_target_cnt;
 --
     -- エラー処理
     IF ( lv_retcode = cv_status_error ) THEN
@@ -4105,22 +4313,41 @@ AS
       -- =======================================================
       -- A-6.エラー情報登録処理
       -- =======================================================
-    IF (gn_msg_cnt <> 0) THEN
-      --  汎用エラーリスト出力対象有りの場合
-      ins_err_msg(
-          ov_errbuf       =>  lv_errbuf     -- エラー・メッセージ           --# 固定 #
-        , ov_retcode      =>  lv_retcode    -- リターン・コード             --# 固定 #
-        , ov_errmsg       =>  lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-      --
-      IF (lv_retcode = cv_status_err_ins) THEN
-        -- INSERT時エラー
-        RAISE global_ins_key_expt;
-      ELSIF (lv_retcode = cv_status_error) THEN
+      IF (gn_msg_cnt <> 0) THEN
+        --  汎用エラーリスト出力対象有りの場合
+        ins_err_msg(
+            ov_errbuf       =>  lv_errbuf     -- エラー・メッセージ           --# 固定 #
+          , ov_retcode      =>  lv_retcode    -- リターン・コード             --# 固定 #
+          , ov_errmsg       =>  lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        --
+        IF (lv_retcode = cv_status_err_ins) THEN
+          -- INSERT時エラー
+          RAISE global_ins_key_expt;
+        ELSIF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      END IF;
+--
+--******************************  1.25 N.Koyama ADD START *******************************
+    ELSE
+--
+      -- ===============================
+      -- 対象外データ更新処理(A-8)
+      -- ===============================
+      excluded_data_update(
+        lv_errbuf,            -- エラー・メッセージ           --# 固定 #
+        lv_retcode,           -- リターン・コード             --# 固定 #
+        lv_errmsg);           -- ユーザー・エラー・メッセージ --# 固定 #
+--    -- エラー処理
+      IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
       END IF;
-      --
+--
     END IF;
+--******************************  1.25 N.Koyama ADD END   *******************************
+--
 --****************************** 2014/11/27 1.19 K.Nakatsu ADD  END  ******************************--
     -- スキップ発生時
     IF ( gn_warn_cnt <> 0 ) THEN
@@ -4128,7 +4355,10 @@ AS
       ov_retcode := cv_status_warn;
     END IF;
     -- 警告処理（対象データ無しエラー）gt_tr_count
-    IF (  gn_inv_target_cnt + gn_dlv_h_target_cnt = 0  ) THEN
+--******************************  1.25 N.Koyama ADD START *******************************
+--    IF (  gn_inv_target_cnt + gn_dlv_h_target_cnt = 0  ) THEN
+    IF (  gn_inv_target_cnt + gn_dlv_h_target_cnt + gn_target_cnt = 0  ) THEN
+--******************************  1.25 N.Koyama MOD END   *******************************
 --    IF (  gn_inv_target_cnt + gn_dlv_h_target_cnt = 0  ) THEN
 --
       lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_nodata );
@@ -4171,6 +4401,9 @@ AS
     retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
     iv_gen_err_out_flag  IN VARCHAR2 --  汎用エラーリスト出力フラグ
 --****************************** 2014/11/27 1.19 K.Nakatsu MOD  END  ******************************--
+--******************************  1.20 N.Koyama ADD START *******************************
+   ,iv_mode              IN VARCHAR2 --  起動モード
+--******************************  1.20 N.Koyama ADD END   *******************************
   )
 --
 --###########################  固定部 START   ###########################
@@ -4224,8 +4457,12 @@ AS
 --****************************** 2014/11/27 1.19 K.Nakatsu MOD START ******************************--
 --       lv_errbuf   -- エラー・メッセージ           --# 固定 #
        NVL(iv_gen_err_out_flag, cv_tkn_no)         --  汎用エラーリスト出力フラグ
+--******************************  1.25 N.Koyama ADD START *******************************
+      ,NVL(iv_mode, cv_tkn_no)                     --  起動モード
+--******************************  1.25 N.Koyama ADD END   *******************************
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
 --****************************** 2014/11/27 1.19 K.Nakatsu MOD  END  ******************************--
+
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
@@ -4266,18 +4503,21 @@ AS
 --      ,buff  => gv_out_msg
 --    );
 ----    --
-    --納品ヘッダ情報抽出件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_target_rec_msg
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_dlv_h_target_cnt + gt_tr_count )
-                   );
-    FND_FILE.PUT_LINE(
-       which => FND_FILE.OUTPUT
-      ,buff  => gv_out_msg
-    );
-    --
+--******************************  1.25 N.Koyama ADD START *******************************
+    IF (NVL(iv_mode, cv_tkn_no) = cv_tkn_no) THEN                    --  起動モード
+--******************************  1.25 N.Koyama ADD END   *******************************
+      --納品ヘッダ情報抽出件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                      ,iv_name         => cv_target_rec_msg
+                      ,iv_token_name1  => cv_tkn_count
+                      ,iv_token_value1 => TO_CHAR( gn_dlv_h_target_cnt + gt_tr_count )
+                     );
+      FND_FILE.PUT_LINE(
+         which => FND_FILE.OUTPUT
+        ,buff  => gv_out_msg
+      );
+      --
 --    --納品明細情報抽出件数出力
 --    gv_out_msg := xxccp_common_pkg.get_msg(
 --                     iv_application  => cv_application
@@ -4290,18 +4530,18 @@ AS
 --      ,buff  => gv_out_msg
 --    );
     --
-    --ヘッダ成功件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_application
-                    ,iv_name         => cv_msg_h_nor_cnt
-                    ,iv_token_name1  => cv_tkn_count
-                    ,iv_token_value1 => TO_CHAR( gn_h_normal_cnt + gt_insert_h_count )
-                   );
-    FND_FILE.PUT_LINE(
-       which => FND_FILE.OUTPUT
-      ,buff  => gv_out_msg
-    );
-    --
+      --ヘッダ成功件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_h_nor_cnt
+                      ,iv_token_name1  => cv_tkn_count
+                      ,iv_token_value1 => TO_CHAR( gn_h_normal_cnt + gt_insert_h_count )
+                     );
+      FND_FILE.PUT_LINE(
+         which => FND_FILE.OUTPUT
+        ,buff  => gv_out_msg
+      );
+      --
 --    --明細成功件数出力
 --    gv_out_msg := xxccp_common_pkg.get_msg(
 --                     iv_application  => cv_application
@@ -4316,28 +4556,44 @@ AS
     --
     --
     --スキップ件数
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_skip_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
-                   );
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
-    --エラー件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_error_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR( gn_error_cnt )
-                   );
-    FND_FILE.PUT_LINE(
-       which => FND_FILE.OUTPUT
-      ,buff  => gv_out_msg
-    );
-    --
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                      ,iv_name         => cv_skip_rec_msg
+                      ,iv_token_name1  => cv_cnt_token
+                      ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+      --エラー件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name
+                      ,iv_name         => cv_error_rec_msg
+                      ,iv_token_name1  => cv_cnt_token
+                      ,iv_token_value1 => TO_CHAR( gn_error_cnt )
+                     );
+      FND_FILE.PUT_LINE(
+         which => FND_FILE.OUTPUT
+        ,buff  => gv_out_msg
+      );
+      --
+--******************************  1.25 N.Koyama ADD START *******************************
+    ELSE
+    --対象外更新件数
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_update_cnt
+                      ,iv_token_name1  => cv_cnt_token
+                      ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+--
+    END IF;
+--******************************  1.25 N.Koyama ADD END   *******************************
 --******************** 2009/07/17 Ver1.11  N.Maeda MOD  END  ******************************************
     --終了メッセージ
     IF ( lv_retcode = cv_status_normal ) THEN
