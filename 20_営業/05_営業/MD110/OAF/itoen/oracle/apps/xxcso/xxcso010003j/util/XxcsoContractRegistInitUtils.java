@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistInitUtils
 * 概要説明   : 自販機設置契約情報登録初期ユーティリティクラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者          修正内容
@@ -16,6 +16,7 @@
 * 2015-02-02 1.3  SCSK山下翔太    [E_本稼動_12565]SP専決・契約書画面改修
 * 2015-11-26 1.4  SCSK山下翔太    [E_本稼動_13345]オーナ変更マスタ連携エラー対応
 * 2020-08-21 1.5  SCSK佐々木大和  [E_本稼動_15904]税抜き自販機ＢＭ計算について
+* 2020-10-22 1.6  SCSK佐々木大和  [E_本稼動_15904]税抜き自販機ＢＭ計算についてT4検証NG対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -837,6 +838,10 @@ public class XxcsoContractRegistInitUtils
       dest1Row.setAddress1(             dest1Row2.getAddress1()               );
       dest1Row.setAddress2(             dest1Row2.getAddress2()               );
       dest1Row.setAddressLinesPhonetic( dest1Row2.getAddressLinesPhonetic()   );
+      // E_本稼動_15904 Add Start
+      dest1Row.setBmTaxKbn(             dest1Row2.getBmTaxKbn()               );
+      dest1Row.setBmTaxKbnNm(           dest1Row2.getBmTaxKbnNm()             );
+      // E_本稼動_15904 Add End
     }
 
     if ( bank1Row2 != null )
@@ -890,6 +895,10 @@ public class XxcsoContractRegistInitUtils
       dest2Row.setAddress1(             dest2Row2.getAddress1()               );
       dest2Row.setAddress2(             dest2Row2.getAddress2()               );
       dest2Row.setAddressLinesPhonetic( dest2Row2.getAddressLinesPhonetic()   );
+      // E_本稼動_15904 Add Start
+      dest2Row.setBmTaxKbn(             dest2Row2.getBmTaxKbn()               );
+      dest2Row.setBmTaxKbnNm(           dest2Row2.getBmTaxKbnNm()             );
+      // E_本稼動_15904 Add End
     }
 
     if ( bank2Row2 != null )
@@ -943,6 +952,10 @@ public class XxcsoContractRegistInitUtils
       dest3Row.setAddress1(             dest3Row2.getAddress1()               );
       dest3Row.setAddress2(             dest3Row2.getAddress2()               );
       dest3Row.setAddressLinesPhonetic( dest3Row2.getAddressLinesPhonetic()   );
+      // E_本稼動_15904 Add Start
+      dest3Row.setBmTaxKbn(             dest3Row2.getBmTaxKbn()               );
+      dest3Row.setBmTaxKbnNm(           dest3Row2.getBmTaxKbnNm()             );
+      // E_本稼動_15904 Add End
     }
 
     if ( bank3Row2 != null )
