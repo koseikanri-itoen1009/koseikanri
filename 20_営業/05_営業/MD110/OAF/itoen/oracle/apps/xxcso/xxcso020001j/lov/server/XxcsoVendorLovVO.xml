@@ -10,6 +10,11 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
+--[E_本稼動_16293]Y.Sasaki Add Start
+WITH  common AS(
+        SELECT TRUNC(xxcso_util_common_pkg.get_online_sysdate) AS current_date FROM DUAL
+      )
+--[E_本稼動_16293]Y.Sasaki Add End
 SELECT  pv.segment1 vendor_number
        ,pv.vendor_id
        ,SUBSTRB(pvs.attribute1, 1, 80) vendor_name
@@ -51,8 +56,14 @@ SELECT  pv.segment1 vendor_number
 FROM    po_vendors            pv
        ,po_vendor_sites       pvs
        ,xxcso_bank_accts_v    xbav
+--[E_本稼動_16293]Y.Sasaki Add Start
+       ,common                cmn
+--[E_本稼動_16293]Y.Sasaki Add End
 WHERE   pv.vendor_type_lookup_code    = 'VD'
   AND   pv.enabled_flag               = 'Y'
+--[E_本稼動_16293]Y.Sasaki Add Start
+  AND   cmn.current_date               < TRUNC( NVL( pv.end_date_active, cmn.current_date+1) )
+--[E_本稼動_16293]Y.Sasaki Add End
   AND   pvs.vendor_id                 = pv.vendor_id
   AND   pvs.attribute4 IS NOT NULL
   AND   pvs.attribute4               <> '5'
@@ -60,6 +71,9 @@ WHERE   pv.vendor_type_lookup_code    = 'VD'
         OR
         pvs.bank_charge_bearer        IS NULL
         )
+--[E_本稼動_16293]Y.Sasaki Add Start
+  AND   cmn.current_date               < TRUNC( NVL( pvs.inactive_date, cmn.current_date+1) )
+--[E_本稼動_16293]Y.Sasaki Add End
   AND   xbav.vendor_id(+)             = pvs.vendor_id
   AND   xbav.vendor_site_id(+)        = pvs.vendor_site_id
    ]]></SQLQuery>
