@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -37,7 +37,8 @@ AS
  *  chk_bank_account_change   F    V      銀行口座マスタ変更チェック
  *  chk_owner_change_use      F    V      オーナ変更物件使用チェック
  *  chk_supp_info_change      F    V      送付先情報変更チェック
- *  
+ *  chk_bm_bank_chg           F    V      BM銀行口座変更チェック
+ *  chk_vendor_inbalid        F    V      仕入先無効日チェック
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -67,7 +68,8 @@ AS
  *  2015/12/03    1.16  S.Yamashita      E_本稼動_13345対応
  *  2016/01/06    1.17  K.Kiriu          E_本稼動_13456対応
  *  2019/03/05    1.18  Y.Sasaki         E_本稼動_15349対応
- *****************************************************************************************/
+ *  2020/10/28    1.19  Y.Sasaki         E_本稼動_16293、E_本稼動_16410対応
+*****************************************************************************************/
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -2371,6 +2373,193 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_supp_info_change;
 /* v1.18 Y.Sasaki Added END */
+/* [E_本稼動_16410] Add START */
+  /**********************************************************************************
+   * Function Name    : chk_bm_bank_chg
+   * Description      : ＢＭ銀行口座チェック
+   ***********************************************************************************/
+  FUNCTION chk_bm_bank_chg(
+      iv_vendor_code                IN  VARCHAR2         -- 送付先コード
+    , iv_bank_number                IN  VARCHAR2         -- 銀行番号
+    , iv_bank_num                   IN  VARCHAR2         -- 支店番号
+    , iv_bank_account_num           IN  VARCHAR2         -- 口座番号
+    , iv_bank_account_type          IN  VARCHAR2         -- 口座種別
+    , iv_bank_account_holder_nm_alt IN  VARCHAR2         -- 口座名義カナ
+    , iv_bank_account_holder_nm     IN  VARCHAR2         -- 口座名義漢字
+    , ov_bank_vendor_code           OUT VARCHAR2         -- 口座仕入先コード
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                   CONSTANT VARCHAR2(100)   := 'chk_bm_bank_chg';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_flag_yes                   CONSTANT VARCHAR2(1)     := 'Y';                        -- 主フラグ
+    cv_flag_y                     CONSTANT VARCHAR2(1)     := 'Y';                        -- 有効フラグ
+    cv_unupdate_dest_cd           CONSTANT VARCHAR2(30)    := 'XXCSO1_UNUPDATE_DEST_CD';  -- 参照表：更新不可送付先コード
+    cd_process_date               CONSTANT DATE            := TRUNC(xxcso_util_common_pkg.get_online_sysdate());
+                                                                                          -- 業務日付
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_retcode                    VARCHAR2(1) DEFAULT xxcso_common_pkg.gv_status_normal;
+    lt_bank_account_type          ap_bank_accounts.bank_account_type%TYPE;
+    lt_account_holder_name_alt    ap_bank_accounts.account_holder_name_alt%TYPE;
+    lt_account_holder_name        ap_bank_accounts.account_holder_name%TYPE;
+    lt_bank_account_id            ap_bank_accounts.bank_account_id%TYPE;
+    ln_unupdate_flag              NUMBER      DEFAULT 0;
+--
+  BEGIN
+--
+    BEGIN
+      SELECT
+          bac.bank_account_type         AS bank_account_type       -- 口座種別
+        , bac.account_holder_name_alt   AS account_holder_name_alt -- 口座名義カナ
+        , bac.account_holder_name       AS account_holder_name     -- 口座名義
+        , bac.bank_account_id           AS bank_account_id
+      INTO
+          lt_bank_account_type
+        , lt_account_holder_name_alt
+        , lt_account_holder_name
+        , lt_bank_account_id
+      FROM
+             ap_bank_branches     bbr   -- 銀行マスタ
+            ,ap_bank_accounts     bac   -- 口座マスタビュー
+      WHERE  bbr.bank_number       =  iv_bank_number       -- 銀行番号
+      AND    bbr.bank_num          =  iv_bank_num          -- 支店番号
+      AND    bbr.bank_branch_id    =  bac.bank_branch_id
+      AND    bac.bank_account_num  =  iv_bank_account_num  -- 口座番号
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        return lv_retcode;
+    END;
+--
+    -- 画面の値とマスタの値でいずれかが異なるとき
+    IF (    ( iv_bank_account_type <> lt_bank_account_type )
+        OR  ( iv_bank_account_holder_nm_alt <> lt_account_holder_name_alt )
+        OR  ( iv_bank_account_holder_nm <> lt_account_holder_name )
+    ) THEN
+--
+      BEGIN
+        -- 銀行口座に紐付く仕入先コードが更新不可であるか確認
+        SELECT  pv.segment1
+        INTO    ov_bank_vendor_code
+        FROM   ap_bank_account_uses bau   -- 口座割当マスタビュー
+             , po_vendors           pv    -- 仕入先マスタ
+             , fnd_lookup_values    flv   -- 参照表：更新不可送付先
+        WHERE  lt_bank_account_id     =  bau.external_bank_account_id
+        AND    bau.primary_flag       =  cv_flag_yes          -- 主フラグ
+        AND    bau.vendor_id          =  pv.vendor_id
+        AND    TRUNC(NVL(bau.start_date, cd_process_date))
+                                      <= cd_process_date      -- 開始日
+        AND    TRUNC(NVL(bau.end_date, cd_process_date))
+                                      >= cd_process_date      -- 終了日
+        AND    flv.lookup_type        = cv_unupdate_dest_cd
+        AND    flv.language           = USERENV('LANG')
+        AND    flv.enabled_flag       = cv_flag_y
+        AND    cd_process_date        BETWEEN TRUNC(NVL( flv.start_date_active, cd_process_date ))
+                                          AND TRUNC(NVL( flv.end_date_active  , cd_process_date ))
+        AND    pv.segment1            = flv.lookup_code
+        AND    ROWNUM                 = 1
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ov_bank_vendor_code := NULL;
+      END;
+--
+      -- 更新不可だった場合
+      IF ( ov_bank_vendor_code IS NOT NULL ) THEN
+--
+        -- 戻り値を設定
+        lv_retcode          := xxcso_common_pkg.gv_status_error;
+--
+      END IF;
+--
+    END IF;
+--
+    return lv_retcode;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_bm_bank_chg;
+/* [E_本稼動_16410] Add END */
+/* [E_本稼動_16293] Add START */
+  /**********************************************************************************
+   * Function Name    : chk_vendor_inbalid
+   * Description      : 仕入先無効日チェック
+   ***********************************************************************************/
+  FUNCTION chk_vendor_inbalid(
+    iv_vendor_code                IN  VARCHAR2
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                   CONSTANT VARCHAR2(100)    := 'chk_vendor_inbalid';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cd_process_date               CONSTANT DATE             := TRUNC(xxcso_util_common_pkg.get_online_sysdate()); -- 業務日付
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ld_v_invalid_date             DATE;
+    ld_v_site_invalid_date        DATE;
+    ld_current_date               DATE;
+    lv_v_site_code                VARCHAR2(15);
+    lv_retcode                    VARCHAR2(1);
+--
+  BEGIN
+--
+    --初期化
+    lv_retcode              := xxcso_common_pkg.gv_status_normal;
+
+--
+    BEGIN
+      SELECT  pv.end_date_active    AS end_date_active    -- 仕入先無効日
+            , pvs.inactive_date     AS inactive_date      -- 仕入先サイト無効日
+      INTO    ld_v_invalid_date
+            , ld_v_site_invalid_date
+      FROM  po_vendors            pv
+          , po_vendor_sites       pvs
+      WHERE pv.segment1     = iv_vendor_code
+        AND pv.vendor_id    = pvs.vendor_id
+        AND pvs.attribute4  IS NOT NULL
+        AND pvs.attribute4  <> '5'
+      ;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ld_v_invalid_date := NULL;
+        ld_v_site_invalid_date := NULL;
+    END;
+--
+    IF (    ( ld_v_invalid_date IS NOT NULL AND ld_v_invalid_date <= cd_process_date)
+        OR  ( ld_v_site_invalid_date IS NOT NULL AND ld_v_site_invalid_date <= cd_process_date ) ) THEN
+      lv_retcode := xxcso_common_pkg.gv_status_error;
+    END IF;
+--
+    return lv_retcode;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_vendor_inbalid;
+/* [E_本稼動_16293] Add END */
 --
 END xxcso_010003j_pkg;
 /

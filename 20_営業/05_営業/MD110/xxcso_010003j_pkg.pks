@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2015/12/03    1.10  S.Yamashita      E_本稼動_13345対応
  *  2016/01/06    1.11  K.Kiriu          E_本稼動_13456対応
  *  2019/02/19    1.12  Y.Sasaki         E_本稼動_15349対応
+ *  2020/10/28    1.13  Y.Sasaki         E_本稼動_16410,E_本稼動_16293対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -280,6 +281,25 @@ AS
     ,ov_bank_account_holder_nm       OUT VARCHAR2         -- 口座名義漢字
   ) RETURN VARCHAR2;
 /* V1.12 Y.Sasaki Added END   */
+/* E_本稼動_16410 Add START */
+  -- BM銀行口座変更チェック
+  FUNCTION chk_bm_bank_chg(
+      iv_vendor_code                IN  VARCHAR2          -- 送付先コード
+    , iv_bank_number                IN  VARCHAR2          -- 銀行コード
+    , iv_bank_num                   IN  VARCHAR2          -- 支店コード
+    , iv_bank_account_num           IN  VARCHAR2          -- 口座番号
+    , iv_bank_account_type          IN  VARCHAR2          -- 口座種別
+    , iv_bank_account_holder_nm_alt IN  VARCHAR2          -- 口座名義カナ
+    , iv_bank_account_holder_nm     IN  VARCHAR2          -- 口座名義漢字
+    , ov_bank_vendor_code           OUT VARCHAR2          -- 口座仕入先コード
+  ) RETURN VARCHAR2;
+/* E_本稼動_16410 Add End */
+/* E_本稼動_16293 Add START */
+  -- 仕入先無効日チェック
+  FUNCTION chk_vendor_inbalid(
+    iv_vendor_code                  IN  VARCHAR2          -- 送付先コード
+  ) RETURN VARCHAR2;
+/* E_本稼動_16293 Add END   */
 --
 END xxcso_010003j_pkg;
 /
