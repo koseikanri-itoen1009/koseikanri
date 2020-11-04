@@ -6,7 +6,10 @@
 ##                                                                            ##
 ##   [作成/更新履歴]                                                          ##
 ##        作成者  ：   SCSK 廣守             2019/09/26 1.0.0                 ##
-##        更新履歴：                                                          ##
+##        更新履歴：   SCSK 廣守             2020/08/07 1.1.0                 ##
+##                       E_本稼動_16487【基盤】一時表領域の拡張エラー発生対応 ##
+##                             ・対象SQL IDを参照タイプから取得               ##
+##                             ・ログに参照タイプの対象機能名を出力           ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -30,7 +33,7 @@ L_sherumei=`/bin/basename $0`            #シェル名
 L_hosutomei=`/bin/hostname`              #ホスト名
 L_hizuke=`/bin/date "+%y%m%d"`           #日付
 L_rogupasu="/var/EBS/jp1/${L_kankyoumei}/log"    #ログファイル格納ディレクトリ
-L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .sh`"${L_hosutomei}${L_hizuke}.log"   #ログ名
+L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"   #ログ名 E_本稼動_16487対応 Rev1.1.0 拡張子修正 
 L_zczzcomn=`/bin/dirname $0`"/ZCZZCOMN.env"     #共通環境変数ファイル名
 
 ### INパラメータ取得 ###
@@ -99,7 +102,7 @@ else
 fi
 
 ### 一時表領域 kill対象確認 ###
-${ORACLE_HOME}/bin/sqlplus -s system/ito\#en03<< EOF1 >> /dev/null
+${ORACLE_HOME}/bin/sqlplus -s apps/apps<< EOF1 >> /dev/null  # E_本稼動_16487対応 Rev1.1.0 実行スキーマ変更
 WHENEVER OSERROR EXIT FAILURE
 WHENEVER SQLERROR EXIT FAILURE
 
@@ -127,11 +130,20 @@ select
    ,program
    ,machine
    ,temp_space_allocated / 1024 / 1024 / 1024 temp_alloc_gb
+   ,lvvl.DESCRIPTION    -- E_本稼動_16487対応 Rev1.1.0 参照タイプ・摘要(機能名)追加
 from
     v\$active_session_history
+   ,fnd_lookup_values_vl lvvl    -- E_本稼動_16487対応 Rev1.1.0 参照タイプ追加
 where
     (temp_space_allocated / 1024 / 1024 / 1024) > ${GSIZE}
-    and sql_id in('12wxxxpfgfq49', '8wt3rn9z02c0k', 'b5juyc9qavq7y')
+-- E_本稼動_16487対応 Rev1.1.0 修正開始
+--    and sql_id in('12wxxxpfgfq49', '8wt3rn9z02c0k', 'b5juyc9qavq7y')
+    and sql_id = lvvl.meaning
+    and lvvl.lookup_type  = 'XXCCP1_TU_KILL_MODULE'
+    and lvvl.enabled_flag = 'Y'
+    and TRUNC(SYSDATE) BETWEEN TRUNC(lvvl.start_date_active)
+                          AND TRUNC(NVL(lvvl.end_date_active, SYSDATE))
+-- E_本稼動_16487対応 Rev1.1.0 修正終了
     and sample_time > to_timestamp (sysdate - 2/1440, 'YYYY/MM/DD HH24:MI:SS') 
     and sample_time = (select max(sample_time)
                        from v\$active_session_history
@@ -157,6 +169,8 @@ while IFS=, read L_TIME L_SID L_SERIAL L_SEQ L_USER L_SQL_ID L_TSQL_ID L_EVENT L
 do 
    if [ -n "${L_SQL_ID}" ] #空白行判定（spoolファイルの1行目が改行のみのため）
    then
+      read L_DESC      ### E_本稼動_16487対応 Rev1.1.0 参照タイプ・摘要(機能名) L_DESC追加
+
       L_SQL_ID=`echo ${L_SQL_ID} | tr -d " "`
 
       ${ORACLE_HOME}/bin/sqlplus -s system/ito\#en03 << EOF2 >> /dev/null
@@ -228,7 +242,9 @@ EOF2
              L_SERIAL2=`echo ${L_SERIAL2} | tr -d " "`
 
              L_rogushuturyoku "kill Session SID : ${L_SID2} SERIAL# : ${L_SERIAL2} TEMP_USED(GB) : ${L_TEMP}"
-             L_rogushuturyoku "     USER : ${L_USER} PROCESS : ${L_PROCESS} PROGRAM : ${L_PROGRAM} MACHINE : ${L_MACHINE} SQL_ID : ${L_SQL_ID}"
+### E_本稼動_16487対応 Rev1.1.0 参照タイプ・摘要(機能名) L_DESC追加
+#             L_rogushuturyoku "     USER : ${L_USER} PROCESS : ${L_PROCESS} PROGRAM : ${L_PROGRAM} MACHINE : ${L_MACHINE} SQL_ID : ${L_SQL_ID}"
+             L_rogushuturyoku "     USER : ${L_USER} PROCESS : ${L_PROCESS} PROGRAM : ${L_PROGRAM} MACHINE : ${L_MACHINE} SQL_ID : ${L_SQL_ID} Function : ${L_DESC}"
              L_rogushuturyoku "     SQL_TEXT : ${L_SQL_TEXT}"
 
             ${ORACLE_HOME}/bin/sqlplus -s system/ito\#en03 << EOF3 >> /dev/null
