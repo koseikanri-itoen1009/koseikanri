@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.22
+* バージョン : 1.23
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -30,6 +30,7 @@
 * 2016-01-07 1.20 SCSK山下翔太 [E_本稼動_13456]自販機管理システム代替対応
 * 2018-05-16 1.21 SCSK小路恭弘 [E_本稼動_14989]ＳＰ項目追加
 * 2020-08-21 1.22 SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
+* 2020-10-28 1.23 SCSK佐々木大和[E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -7685,4 +7686,145 @@ public class XxcsoSpDecisionValidateUtils
     return errorList;
   }
 // [E_本稼動_15904] Add End
+// [E_本稼動_16293] Add Start
+  /*****************************************************************************
+   * 仕入先無効チェック
+   * @param  txn            OADBTransactionインスタンス
+   * @param  bm1Vo          BM1登録／更新用ビューインスタンス
+   * @param  bm2Vo          BM2登録／更新用ビューインスタンス
+   * @param  bm3Vo          BM3登録／更新用ビューインスタンス
+   * @param  OperationMode  操作モード
+   *****************************************************************************
+   */
+ public static List validateInbalidVendor(
+    OADBTransaction                     txn
+   ,XxcsoSpDecisionBm1CustFullVOImpl    bm1Vo
+   ,XxcsoSpDecisionBm2CustFullVOImpl    bm2Vo
+   ,XxcsoSpDecisionBm3CustFullVOImpl    bm3Vo
+   ,String                              OperationMode
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
+      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
+    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
+      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
+    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
+      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
+      
+    // 変数の初期化  
+    List errorList = new ArrayList();
+    int bmMaxLoopCnt = 3;
+    int loopCnt      = 0;
+    OracleCallableStatement stmt = null;
+    String retCode = null;
+    String vendorCode = null;
+    String bmToken = null;
+    StringBuffer sql = null;
+    
+    // 提出、承認ボタンの場合
+    if (
+        OperationMode==XxcsoSpDecisionConstants.OPERATION_SUBMIT ||
+        OperationMode==XxcsoSpDecisionConstants.OPERATION_APPROVE
+       )
+    {
+      XxcsoUtils.debug(txn, "[START]");
+      
+      while (loopCnt < bmMaxLoopCnt) {
+        // 変数の初期化
+        stmt = null;
+        retCode = null;
+        vendorCode = null;
+        bmToken = null;
+        sql = null;
+        ++loopCnt;
+
+        // 仕入先番号、メッセージトークンに値を格納
+        switch (loopCnt) {
+          case 1:
+            if (bm1Row != null) {vendorCode = bm1Row.getVendorNumber();}
+            bmToken = XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION;
+            break;
+          case 2:
+            if (bm2Row != null) {vendorCode = bm2Row.getVendorNumber();}
+            bmToken = XxcsoSpDecisionConstants.TOKEN_VALUE_BM2_REGION;
+            break;
+          case 3:
+            if (bm3Row != null) {vendorCode = bm3Row.getVendorNumber();}
+            bmToken = XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION;
+            break;
+        }          
+        try
+        {
+          //　仕入先番号がnullでない場合、チェックを実施
+          if (vendorCode != null)
+          {
+            sql = new StringBuffer(100);
+ 
+            sql.append("BEGIN");
+            sql.append("  xxcso_020001j_pkg.chk_vendor_inbalid(");
+            sql.append("    iv_vendor_code  => :1" );
+            sql.append("   ,ov_retcode      => :2" );
+            sql.append("  );");
+            sql.append("END;");
+
+            XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+            stmt
+              = (OracleCallableStatement)
+                  txn.createCallableStatement(sql.toString(), 0);
+
+            stmt.setString(1, vendorCode);
+            stmt.registerOutParameter(2, OracleTypes.VARCHAR);
+
+            stmt.execute();
+
+            retCode = stmt.getString(2);
+
+            // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+            if ( !"0".equals(retCode) )
+            {
+              OAException error
+                = XxcsoMessage.createErrorMessage(
+                    XxcsoConstants.APP_XXCSO1_00911
+                   ,XxcsoConstants.TOKEN_BM_KBN
+                   ,bmToken
+                   ,XxcsoConstants.TOKEN_VENDOR_CD
+                   ,vendorCode
+                  );
+              errorList.add(error);
+            }
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoSpDecisionConstants.TOKEN_VALUE_CONSTRUCTION_PERIOD
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+      }
+      XxcsoUtils.debug(txn, "[END]");
+    }
+    return errorList;
+  }
+// [E_本稼動_16293] Add End
 }
