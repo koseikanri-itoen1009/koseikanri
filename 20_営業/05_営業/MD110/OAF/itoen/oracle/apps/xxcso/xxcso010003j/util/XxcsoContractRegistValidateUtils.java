@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.16
+* バージョン : 1.17
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者           修正内容
@@ -25,6 +25,8 @@
 * 2015-11-26 1.14 SCSK山下翔太     [E_本稼動_13345]オーナ変更マスタ連携エラー対応
 * 2016-01-06 1.15 SCSK桐生和幸     [E_本稼動_13456]自販機管理システム代替対応
 * 2020-08-21 1.16 SCSK佐々木大和   [E_本稼動_15904]税抜き自販機BM計算について
+* 2020-10-28 1.17 SCSK佐々木大和   [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
+*                                  [E_本稼動_16410]契約書画面からの銀行口座変更について
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -5828,4 +5830,339 @@ public class XxcsoContractRegistValidateUtils
     return retVal;
   }
 // 2011-06-06 Ver1.12 [E_本稼動_01963] Add End
+// [E_本稼動_16410] Add Strat
+  /*****************************************************************************
+   * ＢＭ銀行口座変更チェック
+   * @param  txn          OADBTransactionインスタンス
+   * @param  dest1Vo      BM1登録／更新用ビューインスタンス
+   * @param  bank1Vo      BM1銀行口座アドオンマスタ情報用ビューインスタンス
+   * @param  dest2Vo      BM2登録／更新用ビューインスタンス
+   * @param  bank2Vo      BM2銀行口座アドオンマスタ情報用ビューインスタンス
+   * @param  dest3Vo      BM3登録／更新用ビューインスタンス
+   * @param  bank3Vo      BM3銀行口座アドオンマスタ情報用ビューインスタンス
+   * @return errorList    エラーメッセージリスト
+   *****************************************************************************
+   */
+ public static List validateBmBankChg(
+    OADBTransaction                  txn
+   ,XxcsoBm1DestinationFullVOImpl    dest1Vo
+   ,XxcsoBm1BankAccountFullVOImpl    bank1Vo
+   ,XxcsoBm2DestinationFullVOImpl    dest2Vo
+   ,XxcsoBm2BankAccountFullVOImpl    bank2Vo
+   ,XxcsoBm3DestinationFullVOImpl    dest3Vo
+   ,XxcsoBm3BankAccountFullVOImpl    bank3Vo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoBm1DestinationFullVORowImpl dest1Row
+      = (XxcsoBm1DestinationFullVORowImpl)dest1Vo.first();
+    XxcsoBm2DestinationFullVORowImpl dest2Row
+      = (XxcsoBm2DestinationFullVORowImpl)dest2Vo.first();
+    XxcsoBm3DestinationFullVORowImpl dest3Row
+      = (XxcsoBm3DestinationFullVORowImpl)dest3Vo.first();
+    XxcsoBm1BankAccountFullVORowImpl bank1Row
+      = (XxcsoBm1BankAccountFullVORowImpl)bank1Vo.first();
+    XxcsoBm2BankAccountFullVORowImpl bank2Row
+      = (XxcsoBm2BankAccountFullVORowImpl)bank2Vo.first();
+    XxcsoBm3BankAccountFullVORowImpl bank3Row
+      = (XxcsoBm3BankAccountFullVORowImpl)bank3Vo.first();
+
+    // 変数の初期化 ※ループ外
+    List errorList = new ArrayList();
+    int bmMaxLoopCnt = 3;
+    int loopCnt      = 0;
+    OracleCallableStatement stmt = null;
+    String retCode = null;
+    String vendorCode = null;
+    String bmToken = null;
+    StringBuffer sql = null;
+    String bankVendorCd = null;
+    String bankNumber = null;
+    String bankNum = null;
+    String bankAccountNum = null;
+    String bankAccountType = null;
+    String bnkAcNameKana = null;
+    String bnkAcNameKanji = null;
+    
+    
+    XxcsoUtils.debug(txn, "[START]");
+      
+    while (loopCnt < bmMaxLoopCnt) {
+      
+      // 変数の初期化 ※ループ内
+      stmt = null;
+      retCode = null;
+      vendorCode = null;
+      bmToken = null;
+      sql = null;
+      bankVendorCd = null;
+      bankNumber = null;
+      bankNum = null;
+      bankAccountNum = null;
+      bankAccountType = null;
+      bnkAcNameKana = null;
+      bnkAcNameKanji = null;
+      
+      ++loopCnt;
+
+      // 仕入先番号、メッセージトークンに値を格納
+      switch (loopCnt) {
+        case 1:
+          if (dest1Row != null) {vendorCode = dest1Row.getVendorCode();}
+          if (bank1Row != null) {
+            bankNumber = bank1Row.getBankNumber();
+            bankNum =  bank1Row.getBranchNumber();
+            bankAccountNum = bank1Row.getBankAccountNumber();
+            bankAccountType = bank1Row.getBankAccountType();
+            bnkAcNameKana = bank1Row.getBankAccountNameKana();
+            bnkAcNameKanji = bank1Row.getBankAccountNameKanji();
+          }
+          bmToken = XxcsoContractRegistConstants.TOKEN_VALUE_BM1;
+          break;
+        case 2:
+          if (dest2Row != null) {vendorCode = dest2Row.getVendorCode();}
+          if (bank2Row != null) {
+            bankNumber = bank2Row.getBankNumber();
+            bankNum =  bank2Row.getBranchNumber();
+            bankAccountNum = bank2Row.getBankAccountNumber();
+            bankAccountType = bank2Row.getBankAccountType();
+            bnkAcNameKana = bank2Row.getBankAccountNameKana();
+            bnkAcNameKanji = bank2Row.getBankAccountNameKanji();
+          }
+          bmToken = XxcsoContractRegistConstants.TOKEN_VALUE_BM2;
+          break;
+        case 3:
+          if (dest3Row != null) {vendorCode = dest3Row.getVendorCode();}
+          if (bank3Row != null) {
+            bankNumber = bank3Row.getBankNumber();
+            bankNum =  bank3Row.getBranchNumber();
+            bankAccountNum = bank3Row.getBankAccountNumber();
+            bankAccountType = bank3Row.getBankAccountType();
+            bnkAcNameKana = bank3Row.getBankAccountNameKana();
+            bnkAcNameKanji = bank3Row.getBankAccountNameKanji();
+          }
+          bmToken = XxcsoContractRegistConstants.TOKEN_VALUE_BM3;
+          break;
+      }          
+      try
+      {
+        //　金融情報がnullでない場合、チェックを実施
+        if (bankNumber != null && bankNum != null && bankAccountNum != null)
+        {
+          sql = new StringBuffer(100);
+ 
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010003j_pkg.chk_bm_bank_chg(");
+          sql.append("          iv_vendor_code       => :2" );
+          sql.append("         ,iv_bank_number       => :3" );
+          sql.append("         ,iv_bank_num          => :4" );
+          sql.append("         ,iv_bank_account_num  => :5" );
+          sql.append("         ,iv_bank_account_type => :6" );
+          sql.append("         ,iv_bank_account_holder_nm_alt => :7" );
+          sql.append("         ,iv_bank_account_holder_nm  => :8" );
+          sql.append("         ,ov_bank_vendor_code => :9" );
+          sql.append("        );");
+          sql.append("END;");
+
+          XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, vendorCode);
+          stmt.setString(3, bankNumber);
+          stmt.setString(4, bankNum);
+          stmt.setString(5, bankAccountNum);
+          stmt.setString(6, bankAccountType);
+          stmt.setString(7, bnkAcNameKana);
+          stmt.setString(8, bnkAcNameKanji);
+          stmt.registerOutParameter(9, OracleTypes.VARCHAR);
+          
+          stmt.execute();
+
+          retCode = stmt.getString(1);
+          bankVendorCd = stmt.getString(9);
+
+          // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+          if ( !"0".equals(retCode) )
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00910
+                 ,XxcsoConstants.TOKEN_VENDOR_CD
+                 ,bankVendorCd
+                );
+            errorList.add(error);
+          }
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+        throw
+          XxcsoMessage.createSqlErrorMessage(
+            e
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BUNK_ACCOUNT_MST_CHK
+          );
+      }
+      finally
+      {
+        try
+        {
+          if ( stmt != null )
+          {
+            stmt.close();
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+        }
+      }
+    }
+    
+    XxcsoUtils.debug(txn, "[END]");
+    
+    return errorList;
+  }
+// [E_本稼動_16410] Add End
+// [E_本稼動_16293] Add Start
+  /*****************************************************************************
+   * 仕入先無効チェック
+   * @param  txn            OADBTransactionインスタンス
+   * @param  dest1Vo        BM1登録／更新用ビューインスタンス
+   * @param  dest2Vo        BM2登録／更新用ビューインスタンス
+   * @param  dest3Vo        BM3登録／更新用ビューインスタンス
+   * @return errorList      エラーメッセージリスト
+   *****************************************************************************
+   */
+ public static List validateInbalidVendor(
+    OADBTransaction                  txn
+   ,XxcsoBm1DestinationFullVOImpl    dest1Vo
+   ,XxcsoBm2DestinationFullVOImpl    dest2Vo
+   ,XxcsoBm3DestinationFullVOImpl    dest3Vo
+  )
+  {
+    /////////////////////////////////////
+    // 各行を取得
+    /////////////////////////////////////
+    XxcsoBm1DestinationFullVORowImpl dest1Row
+      = (XxcsoBm1DestinationFullVORowImpl)dest1Vo.first();
+    XxcsoBm2DestinationFullVORowImpl dest2Row
+      = (XxcsoBm2DestinationFullVORowImpl)dest2Vo.first();
+    XxcsoBm3DestinationFullVORowImpl dest3Row
+      = (XxcsoBm3DestinationFullVORowImpl)dest3Vo.first();
+      
+    // 変数の初期化 ※ループ外
+    List errorList = new ArrayList();
+    int bmMaxLoopCnt = 3;
+    int loopCnt      = 0;
+    OracleCallableStatement stmt = null;
+    String retCode = null;
+    String vendorCode = null;
+    String bmToken = null;
+    StringBuffer sql = null;
+    
+    XxcsoUtils.debug(txn, "[START]");
+      
+    while (loopCnt < bmMaxLoopCnt) {
+      
+      // 変数の初期化 ※ループ内
+      stmt = null;
+      retCode = null;
+      vendorCode = null;
+      bmToken = null;
+      sql = null;
+      ++loopCnt;
+
+      // 仕入先番号、メッセージトークンに値を格納
+      switch (loopCnt) {
+        case 1:
+          if (dest1Row != null) {vendorCode = dest1Row.getVendorCode();}
+          bmToken = XxcsoContractRegistConstants.TOKEN_VALUE_BM1;
+          break;
+        case 2:
+          if (dest2Row != null) {vendorCode = dest2Row.getVendorCode();}
+          bmToken = XxcsoContractRegistConstants.TOKEN_VALUE_BM2;
+          break;
+        case 3:
+          if (dest3Row != null) {vendorCode = dest3Row.getVendorCode();}
+          bmToken = XxcsoContractRegistConstants.TOKEN_VALUE_BM3;
+          break;
+      }          
+      try
+      {
+        //　仕入先番号がnullでない場合、チェックを実施
+        if (vendorCode != null)
+        {
+          sql = new StringBuffer(100);
+ 
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_010003j_pkg.chk_vendor_inbalid(");
+          sql.append("          iv_vendor_code  => :2" );
+          sql.append("        );");
+          sql.append("END;");
+
+          XxcsoUtils.debug(txn, "execute = " + sql.toString());
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setString(2, vendorCode);
+
+          stmt.execute();
+
+          retCode = stmt.getString(1);
+
+          // チェック結果が正常以外の場合、エラーメッセージを取得&戻り値に格納
+          if ( !"0".equals(retCode) )
+          {
+            OAException error
+              = XxcsoMessage.createErrorMessage(
+                  XxcsoConstants.APP_XXCSO1_00911
+                 ,XxcsoConstants.TOKEN_BM_KBN
+                 ,bmToken
+                 ,XxcsoConstants.TOKEN_VENDOR_CD
+                 ,vendorCode
+                );
+            errorList.add(error);
+          }
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+        throw
+          XxcsoMessage.createSqlErrorMessage(
+            e
+           ,XxcsoContractRegistConstants.TOKEN_VALUE_BUNK_ACCOUNT_MST_CHK
+          );
+      }
+      finally
+      {
+        try
+        {
+          if ( stmt != null )
+          {
+            stmt.close();
+          }
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+        }
+      }
+    }
+    
+    XxcsoUtils.debug(txn, "[END]");
+    
+    return errorList;
+  }
+// [E_本稼動_16293] Add End
 }
