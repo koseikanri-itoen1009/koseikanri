@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *  chk_validate_db           P    -     ＤＢ更新判定チェック
  *  get_contract_end_period   F    V     契約終了期間取得
  *  get_required_check_flag   F    N     工期、設置見込み期間必須フラグ取得
+ *  chk_vendor_inbalid        P    -     仕入先無効日チェック
+ *  
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -63,6 +65,7 @@ AS
  *  2010/03/01    1.14  D.Abe            [E_本稼動_01678]現金支払対応
  *  2014/12/15    1.15  K.Kiriu          [E_本稼動_12565]SP・契約書画面改修対応
  *  2018/05/16    1.16  Y.Shoji          [E_本稼動_14989]ＳＰ項目追加
+ *  2020/10/28    1.17  Y.Sasaki         [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
 *****************************************************************************************/
 --
   -- ===============================
@@ -3204,5 +3207,69 @@ AS
 --#####################################  固定部 END   ##########################################
   END get_required_check_flag;
 -- 20180516_Y.Shoji E_本稼動_14989 Add END
+-- E_本稼動_16293 Add START
+  /**********************************************************************************
+   * Function Name    : chk_vendor_inbalid
+   * Description      : 仕入先無効日チェック
+   ***********************************************************************************/
+  PROCEDURE chk_vendor_inbalid(
+    iv_vendor_code                IN  VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                  CONSTANT VARCHAR2(100)   := 'chk_vendor_inbalid';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cd_process_date              CONSTANT DATE            := TRUNC(xxcso_util_common_pkg.get_online_sysdate()); -- 業務日付
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    ld_v_invalid_date             DATE;
+    ld_v_site_invalid_date        DATE;
+    lv_v_site_code                VARCHAR2(15);
+--
+  BEGIN
+--
+    --初期化
+    ov_retcode              := xxcso_common_pkg.gv_status_normal;
+--
+    BEGIN
+      SELECT  pv.end_date_active    AS end_date_active    -- 仕入先無効日
+            , pvs.inactive_date     AS inactive_date      -- 仕入先サイト無効日
+      INTO    ld_v_invalid_date
+            , ld_v_site_invalid_date
+      FROM  po_vendors            pv
+          , po_vendor_sites       pvs
+      WHERE pv.segment1     = iv_vendor_code
+        AND pv.vendor_id    = pvs.vendor_id
+        AND pvs.attribute4  IS NOT NULL
+        AND pvs.attribute4  <> '5'
+      ;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        ld_v_invalid_date       := NULL;
+        ld_v_site_invalid_date  := NULL;
+    END;
+--
+    IF (    ( ld_v_invalid_date IS NOT NULL AND ld_v_invalid_date <= cd_process_date)
+        OR  ( ld_v_site_invalid_date IS NOT NULL AND ld_v_site_invalid_date <= cd_process_date ) ) THEN
+      ov_retcode := xxcso_common_pkg.gv_status_error;
+    END IF;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_vendor_inbalid;
+-- E_本稼動_16293 Add END
 END xxcso_020001j_pkg;
 /

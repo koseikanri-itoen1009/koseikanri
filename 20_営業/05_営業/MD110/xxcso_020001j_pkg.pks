@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(SPEC)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2010/03/01    1.6   D.Abe            [E_本稼動_01678]現金支払対応
  *  2014/12/15    1.7   K.Kiriu          [E_本稼動_12565]SP・契約書画面改修対応
  *  2018/05/16    1.8   Y.Shoji          [E_本稼動_14989]ＳＰ項目追加
+ *  2020/10/28    1.9   Y.Sasaki         [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -420,5 +421,11 @@ AS
    ,ov_errmsg                     OUT VARCHAR2
   );
 -- 20180516_Y.Shoji E_本稼動_14989 Add END
+-- E_本稼動_16293 Add START
+  PROCEDURE chk_vendor_inbalid(
+    iv_vendor_code                IN  VARCHAR2
+   ,ov_retcode                    OUT VARCHAR2
+  );
+-- E_本稼動_16293 Add END
 END xxcso_020001j_pkg;
 /
