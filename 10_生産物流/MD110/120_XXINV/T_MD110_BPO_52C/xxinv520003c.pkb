@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52C
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2009/06/02    1.5  SCS    伊藤 ひとみ  本番障害#1517対応
  *  2014/04/21    1.6  SCSK   池田 木綿子  E_EBSパッチ_00031 品目振替のESパッチ対応
  *  2020/03/10    1.7  SCSK   佐々木 大和  E_本稼動_16213対応
+ *  2020/11/04    1.8  SCSK   及川 領      E_本稼動_16771対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -6516,22 +6517,29 @@ AS
     -- ***************************
     -- 有機のチェック
     -- ***************************
-    -- 振替先または振替元がY
-    IF (  NVL( ir_masters_rec.to_organic, gv_chk_flg_n )
-          <> NVL( ir_masters_rec.from_organic, gv_chk_flg_n ) ) THEN
-      -- 振替先、振替元が一致しない場合エラー
-      -- エラーメッセージを取得
-      lv_errmsg :=  xxcmn_common_pkg.get_msg(
-                      iv_application  => gv_msg_kbn_inv
-                    , iv_name         => gv_msg_xxinv_10218
-                    , iv_token_name1  => gv_tkn_from_v
-                    , iv_token_value1 => ir_masters_rec.from_organic
-                    , iv_token_name2  => gv_tkn_to_v
-                    , iv_token_value2 => ir_masters_rec.to_organic
-                    );
-      -- 共通関数例外ハンドラ
-      RAISE global_api_expt;
+-- V1.8 Add Start
+    -- 振替元が非有機原料（Y以外）の場合チェック対象
+    IF ( NVL( ir_masters_rec.from_organic, gv_chk_flg_n ) = gv_chk_flg_n ) THEN
+--    -- 振替先または振替元がY
+-- V1.8 Add End
+      IF (  NVL( ir_masters_rec.to_organic, gv_chk_flg_n )
+            <> NVL( ir_masters_rec.from_organic, gv_chk_flg_n ) ) THEN
+        -- 振替先、振替元が一致しない場合エラー
+        -- エラーメッセージを取得
+        lv_errmsg :=  xxcmn_common_pkg.get_msg(
+                        iv_application  => gv_msg_kbn_inv
+                      , iv_name         => gv_msg_xxinv_10218
+                      , iv_token_name1  => gv_tkn_from_v
+                      , iv_token_value1 => ir_masters_rec.from_organic
+                      , iv_token_name2  => gv_tkn_to_v
+                      , iv_token_value2 => ir_masters_rec.to_organic
+                      );
+        -- 共通関数例外ハンドラ
+        RAISE global_api_expt;
+      END IF;
+-- V1.8 Add Start
     END IF;
+-- V1.8 Add End
 --
   EXCEPTION
 --
