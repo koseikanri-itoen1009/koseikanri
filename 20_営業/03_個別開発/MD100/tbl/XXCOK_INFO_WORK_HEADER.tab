@@ -1,0 +1,165 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_INFO_WORK_HEADER
+ * Description : インフォマート用ワーク（ヘッダー）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/11/10    1.0   SCSK N.Abe       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_info_work_header (
+     set_code                       VARCHAR2(15)
+    ,cust_code                      VARCHAR2(9)
+    ,cust_name                      VARCHAR2(60)
+    ,dest_post_code                 VARCHAR2(10)
+    ,dest_address1                  VARCHAR2(200)
+    ,dest_tel                       VARCHAR2(24)
+    ,fax                            VARCHAR2(24)
+    ,dept_name                      VARCHAR2(60)
+    ,send_post_code                 VARCHAR2(10)
+    ,send_address1                  VARCHAR2(200)
+    ,send_tel                       VARCHAR2(24)
+    ,num                            VARCHAR2(20)
+    ,vendor_code                    VARCHAR2(15)
+    ,payment_date                   DATE
+    ,closing_date                   DATE
+    ,notifi_amt                     NUMBER(13)
+    ,total_amt_no_tax_10            NUMBER(13)
+    ,tax_amt_10                     NUMBER(13)
+    ,total_amt_10                   NUMBER(13)
+    ,total_amt_no_tax_8             NUMBER(13)
+    ,tax_amt_8                      NUMBER(13)
+    ,total_amt_8                    NUMBER(13)
+    ,total_amt_no_tax_0             NUMBER(13)
+    ,tax_amt_0                      NUMBER(13)
+    ,total_amt_0                    NUMBER(13)
+    ,total_sales_qty                NUMBER(12,2)
+    ,total_sales_amt                NUMBER(13)
+    ,sales_fee                      NUMBER(13)
+    ,electric_amt                   NUMBER(13)
+    ,tax_amt                        NUMBER(13)
+    ,transfer_fee                   NUMBER(13)
+    ,payment_amt                    NUMBER(13)
+    ,remarks                        VARCHAR2(1000)
+    ,bank_code                      VARCHAR2(30)
+    ,bank_name                      VARCHAR2(60)
+    ,branch_code                    VARCHAR2(25)
+    ,branch_name                    VARCHAR2(60)
+    ,bank_holder_name_alt           VARCHAR2(150)
+    ,tax_div                        VARCHAR2(1)
+    ,target_div                     VARCHAR2(1)
+    ,created_by                     NUMBER(15)
+    ,creation_date                  DATE
+    ,last_updated_by                NUMBER(15)
+    ,last_update_date               DATE
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcok_info_work_header IS 'インフォマート用ワーク（ヘッダー）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.set_code                                IS '通知書書式設定コード'
+/
+COMMENT ON COLUMN xxcok_info_work_header.cust_code                               IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok_info_work_header.cust_name                               IS '会社名'
+/
+COMMENT ON COLUMN xxcok_info_work_header.dest_post_code                          IS '郵便番号'
+/
+COMMENT ON COLUMN xxcok_info_work_header.dest_address1                           IS '住所'
+/
+COMMENT ON COLUMN xxcok_info_work_header.dest_tel                                IS '電話番号'
+/
+COMMENT ON COLUMN xxcok_info_work_header.fax                                     IS 'FAX番号'
+/
+COMMENT ON COLUMN xxcok_info_work_header.dept_name                               IS '部署名'
+/
+COMMENT ON COLUMN xxcok_info_work_header.send_post_code                          IS '郵便番号（送付元）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.send_address1                           IS '住所（送付元）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.send_tel                                IS '電話番号（送付元）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.num                                     IS '番号'
+/
+COMMENT ON COLUMN xxcok_info_work_header.vendor_code                             IS '送付先コード'
+/
+COMMENT ON COLUMN xxcok_info_work_header.payment_date                            IS '支払日'
+/
+COMMENT ON COLUMN xxcok_info_work_header.closing_date                            IS '締め日'
+/
+COMMENT ON COLUMN xxcok_info_work_header.notifi_amt                              IS 'おもての通知金額'
+/
+COMMENT ON COLUMN xxcok_info_work_header.total_amt_no_tax_10                     IS '10%合計金額（税抜）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.tax_amt_10                              IS '10%消費税額'
+/
+COMMENT ON COLUMN xxcok_info_work_header.total_amt_10                            IS '10%合計金額（税込）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.total_amt_no_tax_8                      IS '軽減8%合計金額（税抜）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.tax_amt_8                               IS '軽減8%消費税額'
+/
+COMMENT ON COLUMN xxcok_info_work_header.total_amt_8                             IS '軽減8%合計金額（税込）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.total_amt_no_tax_0                      IS '非課税合計金額（税抜）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.tax_amt_0                               IS '非課税消費税額'
+/
+COMMENT ON COLUMN xxcok_info_work_header.total_amt_0                             IS '非課税合計金額（税込）'
+/
+COMMENT ON COLUMN xxcok_info_work_header.total_sales_qty                         IS '販売本数合計'
+/
+COMMENT ON COLUMN xxcok_info_work_header.total_sales_amt                         IS '販売金額合計'
+/
+COMMENT ON COLUMN xxcok_info_work_header.sales_fee                               IS '販売手数料'
+/
+COMMENT ON COLUMN xxcok_info_work_header.electric_amt                            IS '電気代等合計　税抜'
+/
+COMMENT ON COLUMN xxcok_info_work_header.tax_amt                                 IS '消費税'
+/
+COMMENT ON COLUMN xxcok_info_work_header.transfer_fee                            IS '振込手数料　税込'
+/
+COMMENT ON COLUMN xxcok_info_work_header.payment_amt                             IS 'お支払金額　税込'
+/
+COMMENT ON COLUMN xxcok_info_work_header.remarks                                 IS 'おもて備考'
+/
+COMMENT ON COLUMN xxcok_info_work_header.bank_code                               IS '銀行コード'
+/
+COMMENT ON COLUMN xxcok_info_work_header.bank_name                               IS '銀行名'
+/
+COMMENT ON COLUMN xxcok_info_work_header.branch_code                             IS '支店コード'
+/
+COMMENT ON COLUMN xxcok_info_work_header.branch_name                             IS '支店名'
+/
+COMMENT ON COLUMN xxcok_info_work_header.bank_holder_name_alt                    IS '口座名'
+/
+COMMENT ON COLUMN xxcok_info_work_header.tax_div                                 IS '税区分'
+/
+COMMENT ON COLUMN xxcok_info_work_header.target_div                              IS '対象区分'
+/
+COMMENT ON COLUMN xxcok_info_work_header.created_by                              IS '作成者'
+/
+COMMENT ON COLUMN xxcok_info_work_header.creation_date                           IS '作成日'
+/
+COMMENT ON COLUMN xxcok_info_work_header.last_updated_by                         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok_info_work_header.last_update_date                        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok_info_work_header.last_update_login                       IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok_info_work_header.request_id                              IS '要求ID'
+/
+COMMENT ON COLUMN xxcok_info_work_header.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok_info_work_header.program_id                              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok_info_work_header.program_update_date                     IS 'プログラム更新日'
+/

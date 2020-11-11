@@ -1,0 +1,87 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_INFO_WORK_LINE
+ * Description : インフォマート用ワーク（明細）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/11/10    1.0   SCSK N.Abe       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_info_work_line (
+     order_num                      VARCHAR2(1)
+    ,line_item                      VARCHAR2(100)
+    ,unit_price                     NUMBER(12,2)
+    ,qty                            NUMBER(12,2)
+    ,unit_type                      VARCHAR2(10)
+    ,amt                            NUMBER(13)
+    ,tax_amt                        NUMBER(13)
+    ,total_amt                      NUMBER(13)
+    ,inst_dest                      VARCHAR2(100)
+    ,cust_code                      VARCHAR2(9)
+    ,item_code                      VARCHAR2(7)
+    ,vendor_code                    VARCHAR2(9)
+    ,tax_div                        VARCHAR2(1)
+    ,target_div                     VARCHAR2(1)
+    ,created_by                     NUMBER(15)
+    ,creation_date                  DATE
+    ,last_updated_by                NUMBER(15)
+    ,last_update_date               DATE
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcok_info_work_line IS 'インフォマート用ワーク（明細）'
+/
+COMMENT ON COLUMN xxcok_info_work_line.order_num                                 IS '順序'
+/
+COMMENT ON COLUMN xxcok_info_work_line.line_item                                 IS '明細項目'
+/
+COMMENT ON COLUMN xxcok_info_work_line.unit_price                                IS '単価'
+/
+COMMENT ON COLUMN xxcok_info_work_line.qty                                       IS '数量'
+/
+COMMENT ON COLUMN xxcok_info_work_line.unit_type                                 IS '単位'
+/
+COMMENT ON COLUMN xxcok_info_work_line.amt                                       IS '金額'
+/
+COMMENT ON COLUMN xxcok_info_work_line.tax_amt                                   IS '消費税額'
+/
+COMMENT ON COLUMN xxcok_info_work_line.total_amt                                 IS '合計金額'
+/
+COMMENT ON COLUMN xxcok_info_work_line.inst_dest                                 IS '設置先名'
+/
+COMMENT ON COLUMN xxcok_info_work_line.cust_code                                 IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok_info_work_line.item_code                                 IS '品目コード'
+/
+COMMENT ON COLUMN xxcok_info_work_line.vendor_code                               IS '送付先コード'
+/
+COMMENT ON COLUMN xxcok_info_work_line.tax_div                                   IS '税区分（パラメータ）'
+/
+COMMENT ON COLUMN xxcok_info_work_line.target_div                                IS '対象区分'
+/
+COMMENT ON COLUMN xxcok_info_work_line.created_by                                IS '作成者'
+/
+COMMENT ON COLUMN xxcok_info_work_line.creation_date                             IS '作成日'
+/
+COMMENT ON COLUMN xxcok_info_work_line.last_updated_by                           IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok_info_work_line.last_update_date                          IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok_info_work_line.last_update_login                         IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok_info_work_line.request_id                                IS '要求ID'
+/
+COMMENT ON COLUMN xxcok_info_work_line.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok_info_work_line.program_id                                IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok_info_work_line.program_update_date                       IS 'プログラム更新日'
+/

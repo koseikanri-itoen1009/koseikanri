@@ -1,0 +1,105 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_INFO_WORK_CUSTOM
+ * Description : インフォマート用ワーク（カスタム明細）
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/11/10    1.0   SCSK N.Abe       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_info_work_custom (
+     vendor_code                    VARCHAR2(9)
+    ,cust_code                      VARCHAR2(9)
+    ,inst_dest                      VARCHAR2(100)
+    ,calc_type                      NUMBER(2)
+    ,calc_sort                      NUMBER
+    ,sell_bottle                    VARCHAR2(100)
+    ,sales_qty                      NUMBER(13)
+    ,sales_tax_amt                  NUMBER(13)
+    ,sales_amt                      VARCHAR2(13)
+    ,contract                       VARCHAR2(100)
+    ,sales_fee                      NUMBER(13)
+    ,tax_amt                        NUMBER(13)
+    ,sales_tax_fee                  NUMBER(13)
+    ,bottle_code                    VARCHAR2(100)
+    ,salling_price                  NUMBER(13)
+    ,rebate_rate                    NUMBER(4,2)
+    ,rebate_amt                     NUMBER(8,2)
+    ,tax_code                       VARCHAR2(4)
+    ,tax_div                        VARCHAR2(1)
+    ,target_div                     VARCHAR2(1)
+    ,created_by                     NUMBER(15)
+    ,creation_date                  DATE
+    ,last_updated_by                NUMBER(15)
+    ,last_update_date               DATE
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcok_info_work_custom IS 'インフォマート用ワーク（カスタム明細）'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.vendor_code                             IS '送付先コード'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.cust_code                               IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.inst_dest                               IS '設置場所'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.calc_type                               IS '計算条件'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.calc_sort                               IS '計算条件ソート順'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.sell_bottle                             IS '売価／容器'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.sales_qty                               IS '販売本数'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.sales_tax_amt                           IS '販売金額（税込）'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.sales_amt                               IS '販売金額（税抜）'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.contract                                IS 'ご契約内容'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.sales_fee                               IS '販売手数料（税抜）'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.tax_amt                                 IS '消費税'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.sales_tax_fee                           IS '販売手数料（税込）'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.bottle_code                             IS '容器区分コード'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.salling_price                           IS '売価金額'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.rebate_rate                             IS '割戻率'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.rebate_amt                              IS '割戻額'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.tax_code                                IS '税コード'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.tax_div                                 IS '税区分'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.target_div                              IS '対象区分'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.created_by                              IS '作成者'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.creation_date                           IS '作成日'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.last_updated_by                         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.last_update_date                        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.last_update_login                       IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.request_id                              IS '要求ID'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.program_application_id                  IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.program_id                              IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok_info_work_custom.program_update_date                     IS 'プログラム更新日'
+/
