@@ -37,51 +37,51 @@ CREATE TABLE xxcok.xxcok_info_work_line (
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE)
 /
-COMMENT ON TABLE xxcok_info_work_line IS 'インフォマート用ワーク（明細）'
+COMMENT ON TABLE xxcok.xxcok_info_work_line IS 'インフォマート用ワーク（明細）'
 /
-COMMENT ON COLUMN xxcok_info_work_line.order_num                                 IS '順序'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.order_num                                 IS '順序'
 /
-COMMENT ON COLUMN xxcok_info_work_line.line_item                                 IS '明細項目'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.line_item                                 IS '明細項目'
 /
-COMMENT ON COLUMN xxcok_info_work_line.unit_price                                IS '単価'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.unit_price                                IS '単価'
 /
-COMMENT ON COLUMN xxcok_info_work_line.qty                                       IS '数量'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.qty                                       IS '数量'
 /
-COMMENT ON COLUMN xxcok_info_work_line.unit_type                                 IS '単位'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.unit_type                                 IS '単位'
 /
-COMMENT ON COLUMN xxcok_info_work_line.amt                                       IS '金額'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.amt                                       IS '金額'
 /
-COMMENT ON COLUMN xxcok_info_work_line.tax_amt                                   IS '消費税額'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.tax_amt                                   IS '消費税額'
 /
-COMMENT ON COLUMN xxcok_info_work_line.total_amt                                 IS '合計金額'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.total_amt                                 IS '合計金額'
 /
-COMMENT ON COLUMN xxcok_info_work_line.inst_dest                                 IS '設置先名'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.inst_dest                                 IS '設置先名'
 /
-COMMENT ON COLUMN xxcok_info_work_line.cust_code                                 IS '顧客コード'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.cust_code                                 IS '顧客コード'
 /
-COMMENT ON COLUMN xxcok_info_work_line.item_code                                 IS '品目コード'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.item_code                                 IS '品目コード'
 /
-COMMENT ON COLUMN xxcok_info_work_line.vendor_code                               IS '送付先コード'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.vendor_code                               IS '送付先コード'
 /
-COMMENT ON COLUMN xxcok_info_work_line.tax_div                                   IS '税区分（パラメータ）'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.tax_div                                   IS '税区分（パラメータ）'
 /
-COMMENT ON COLUMN xxcok_info_work_line.target_div                                IS '対象区分'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.target_div                                IS '対象区分'
 /
-COMMENT ON COLUMN xxcok_info_work_line.created_by                                IS '作成者'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.created_by                                IS '作成者'
 /
-COMMENT ON COLUMN xxcok_info_work_line.creation_date                             IS '作成日'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.creation_date                             IS '作成日'
 /
-COMMENT ON COLUMN xxcok_info_work_line.last_updated_by                           IS '最終更新者'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.last_updated_by                           IS '最終更新者'
 /
-COMMENT ON COLUMN xxcok_info_work_line.last_update_date                          IS '最終更新日'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.last_update_date                          IS '最終更新日'
 /
-COMMENT ON COLUMN xxcok_info_work_line.last_update_login                         IS '最終更新ログイン'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.last_update_login                         IS '最終更新ログイン'
 /
-COMMENT ON COLUMN xxcok_info_work_line.request_id                                IS '要求ID'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.request_id                                IS '要求ID'
 /
-COMMENT ON COLUMN xxcok_info_work_line.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID'
 /
-COMMENT ON COLUMN xxcok_info_work_line.program_id                                IS 'コンカレント・プログラムID'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.program_id                                IS 'コンカレント・プログラムID'
 /
-COMMENT ON COLUMN xxcok_info_work_line.program_update_date                       IS 'プログラム更新日'
+COMMENT ON COLUMN xxcok.xxcok_info_work_line.program_update_date                       IS 'プログラム更新日'
 /
