@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_info_work_line_n01
+ON xxcok.xxcok_info_work_line (
+     vendor_code
+    ,target_div
+    ,tax_div
+)
+TABLESPACE xxidx2
+/
