@@ -1,13 +1,14 @@
 /*============================================================================
 * ƒtƒ@ƒCƒ‹–¼ : XxcsoSpDecisionCalculateUtils
 * ŠT—và–¾   : SPêŒˆŒvŽZƒ†[ƒeƒBƒŠƒeƒBƒNƒ‰ƒX
-* ƒo[ƒWƒ‡ƒ“ : 1.1
+* ƒo[ƒWƒ‡ƒ“ : 1.2
 *============================================================================
 * C³—š—ð
 * “ú•t       Ver. ’S“–ŽÒ       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCS¬ì_     V‹Kì¬
 * 2014-12-15 1.1  SCSK‹Ë¶˜aK  [E_–{‰Ò“®_12565]SPEŒ_–ñ‘‰æ–Ê‰üC‘Î‰ž
+* 2020-11-05 1.2  SCSK²X–Ø‘å˜a[E_–{‰Ò“®_15904]‘æ3’e@’è‰¿Š·ŽZ—¦ŒvŽZŽ®C³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -26,6 +27,14 @@ import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAllCcLineFullV
 import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionAllCcLineFullVORowImpl;
 import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSelCcLineFullVOImpl;
 import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionSelCcLineFullVORowImpl;
+//[E_–{‰Ò“®_15904]‘æ3’e Add Start
+import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm1CustFullVOImpl;
+import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm2CustFullVOImpl;
+import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm3CustFullVOImpl;
+import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm1CustFullVORowImpl;
+import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm2CustFullVORowImpl;
+import itoen.oracle.apps.xxcso.xxcso020001j.server.XxcsoSpDecisionBm3CustFullVORowImpl;
+//[E_–{‰Ò“®_15904]‘æ3’e Add End
 import com.sun.java.util.collections.List;
 import com.sun.java.util.collections.ArrayList;
 import java.sql.SQLException;
@@ -49,6 +58,11 @@ public class XxcsoSpDecisionCalculateUtils
     OADBTransaction                         txn
    ,XxcsoSpDecisionHeaderFullVOImpl         headerVo
    ,XxcsoSpDecisionScLineFullVOImpl         scVo
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add Start
+   ,XxcsoSpDecisionBm1CustFullVOImpl        bm1Vo
+   ,XxcsoSpDecisionBm2CustFullVOImpl        bm2Vo
+   ,XxcsoSpDecisionBm3CustFullVOImpl        bm3Vo
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -60,6 +74,14 @@ public class XxcsoSpDecisionCalculateUtils
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
     XxcsoSpDecisionScLineFullVORowImpl scRow
       = (XxcsoSpDecisionScLineFullVORowImpl)scVo.first();
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add Start     
+    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
+      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
+    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
+      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
+    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
+      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add End
 
     OracleCallableStatement stmt = null;
     List grossProfitList = new ArrayList();
@@ -78,14 +100,27 @@ public class XxcsoSpDecisionCalculateUtils
       sql.append("    ,iv_bm2_bm_amt    => :6");
       sql.append("    ,iv_bm3_bm_rate   => :7");
       sql.append("    ,iv_bm3_bm_amt    => :8");
-      sql.append("    ,on_gross_profit  => :9");
-      sql.append("    ,on_sales_price   => :10");
-      sql.append("    ,ov_bm_rate       => :11");
-      sql.append("    ,ov_bm_amount     => :12");
-      sql.append("    ,ov_bm_conv_rate  => :13");
-      sql.append("    ,ov_errbuf        => :14");
-      sql.append("    ,ov_retcode       => :15");
-      sql.append("    ,ov_errmsg        => :16");
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start 
+//      sql.append("    ,on_gross_profit  => :9");
+//      sql.append("    ,on_sales_price   => :10");
+//      sql.append("    ,ov_bm_rate       => :11");
+//      sql.append("    ,ov_bm_amount     => :12");
+//      sql.append("    ,ov_bm_conv_rate  => :13");
+//      sql.append("    ,ov_errbuf        => :14");
+//      sql.append("    ,ov_retcode       => :15");
+//      sql.append("    ,ov_errmsg        => :16");
+      sql.append("    ,iv_bm1_tax_kbn   => :9");
+      sql.append("    ,iv_bm2_tax_kbn   => :10");
+      sql.append("    ,iv_bm3_tax_kbn   => :11");
+      sql.append("    ,on_gross_profit  => :12");
+      sql.append("    ,on_sales_price   => :13");
+      sql.append("    ,ov_bm_rate       => :14");
+      sql.append("    ,ov_bm_amount     => :15");
+      sql.append("    ,ov_bm_conv_rate  => :16");
+      sql.append("    ,ov_errbuf        => :17");
+      sql.append("    ,ov_retcode       => :18");
+      sql.append("    ,ov_errmsg        => :19");
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End
       sql.append("  );");
       sql.append("END;");
 
@@ -108,27 +143,53 @@ public class XxcsoSpDecisionCalculateUtils
         stmt.setString(6,  scRow.getBm2BmAmount());
         stmt.setString(7,  scRow.getBm3BmRate());
         stmt.setString(8,  scRow.getBm3BmAmount());
-        stmt.registerOutParameter(9,  OracleTypes.NUMBER);
-        stmt.registerOutParameter(10, OracleTypes.NUMBER);
-        stmt.registerOutParameter(11, OracleTypes.VARCHAR);
-        stmt.registerOutParameter(12, OracleTypes.VARCHAR);
-        stmt.registerOutParameter(13, OracleTypes.VARCHAR);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start 
+//        stmt.registerOutParameter(9,  OracleTypes.NUMBER);
+//        stmt.registerOutParameter(10, OracleTypes.NUMBER);
+//        stmt.registerOutParameter(11, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(12, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(13, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(14, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(15, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(16, OracleTypes.VARCHAR);
+        stmt.setString(9,  bm1Row.getBm1TaxKbnCodeView());
+        stmt.setString(10, bm2Row.getBm2TaxKbnCodeView());
+        stmt.setString(11, bm3Row.getBm3TaxKbnCodeView());
+        stmt.registerOutParameter(12,  OracleTypes.NUMBER);
+        stmt.registerOutParameter(13, OracleTypes.NUMBER);
         stmt.registerOutParameter(14, OracleTypes.VARCHAR);
         stmt.registerOutParameter(15, OracleTypes.VARCHAR);
         stmt.registerOutParameter(16, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(17, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(18, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(19, OracleTypes.VARCHAR);
+//debug
+ String vm1 = bm1Row.getBm1TaxKbnCodeView();
+ String vm2 = bm2Row.getBm2TaxKbnCodeView();
+//debug
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End        
 
         XxcsoUtils.debug(txn, "execute stored start");
         stmt.execute();
         XxcsoUtils.debug(txn, "execute stored end");
-
-        NUMBER grossProfit = stmt.getNUMBER(9);
-        NUMBER salesPrice  = stmt.getNUMBER(10);
-        String bmRate      = stmt.getString(11);
-        String bmAmount    = stmt.getString(12);
-        String bmConvRate  = stmt.getString(13);
-        String errBuf      = stmt.getString(14);
-        String retCode     = stmt.getString(15);
-        String errMsg      = stmt.getString(16);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start 
+//        NUMBER grossProfit = stmt.getNUMBER(9);
+//        NUMBER salesPrice  = stmt.getNUMBER(10);
+//        String bmRate      = stmt.getString(11);
+//        String bmAmount    = stmt.getString(12);
+//        String bmConvRate  = stmt.getString(13);
+//        String errBuf      = stmt.getString(14);
+//        String retCode     = stmt.getString(15);
+//        String errMsg      = stmt.getString(16);
+        NUMBER grossProfit = stmt.getNUMBER(12);
+        NUMBER salesPrice  = stmt.getNUMBER(13);
+        String bmRate      = stmt.getString(14);
+        String bmAmount    = stmt.getString(15);
+        String bmConvRate  = stmt.getString(16);
+        String errBuf      = stmt.getString(17);
+        String retCode     = stmt.getString(18);
+        String errMsg      = stmt.getString(19);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End 
 
         XxcsoUtils.debug(txn, "grossProfit = " + grossProfit.stringValue());
         XxcsoUtils.debug(txn, "salesPrice  = " + salesPrice.stringValue());
@@ -294,6 +355,11 @@ public class XxcsoSpDecisionCalculateUtils
     OADBTransaction                         txn
    ,XxcsoSpDecisionHeaderFullVOImpl         headerVo
    ,XxcsoSpDecisionAllCcLineFullVOImpl      allCcVo
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add Start
+   ,XxcsoSpDecisionBm1CustFullVOImpl        bm1Vo
+   ,XxcsoSpDecisionBm2CustFullVOImpl        bm2Vo
+   ,XxcsoSpDecisionBm3CustFullVOImpl        bm3Vo
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -305,6 +371,14 @@ public class XxcsoSpDecisionCalculateUtils
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
     XxcsoSpDecisionAllCcLineFullVORowImpl allCcRow
       = (XxcsoSpDecisionAllCcLineFullVORowImpl)allCcVo.first();
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add Start     
+    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
+      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
+    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
+      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
+    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
+      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add End
 
     OracleCallableStatement stmt = null;
     List grossProfitList = new ArrayList();
@@ -323,14 +397,27 @@ public class XxcsoSpDecisionCalculateUtils
       sql.append("    ,iv_bm2_bm_amt      => :6");
       sql.append("    ,iv_bm3_bm_rate     => :7");
       sql.append("    ,iv_bm3_bm_amt      => :8");
-      sql.append("    ,on_gross_profit    => :9");
-      sql.append("    ,on_sales_price     => :10");
-      sql.append("    ,ov_bm_rate         => :11");
-      sql.append("    ,ov_bm_amount       => :12");
-      sql.append("    ,ov_bm_conv_rate    => :13");
-      sql.append("    ,ov_errbuf          => :14");
-      sql.append("    ,ov_retcode         => :15");
-      sql.append("    ,ov_errmsg          => :16");
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start
+//      sql.append("    ,on_gross_profit    => :9");
+//      sql.append("    ,on_sales_price     => :10");
+//      sql.append("    ,ov_bm_rate         => :11");
+//      sql.append("    ,ov_bm_amount       => :12");
+//      sql.append("    ,ov_bm_conv_rate    => :13");
+//      sql.append("    ,ov_errbuf          => :14");
+//      sql.append("    ,ov_retcode         => :15");
+//      sql.append("    ,ov_errmsg          => :16");
+      sql.append("    ,iv_bm1_tax_kbn     => :9");
+      sql.append("    ,iv_bm2_tax_kbn     => :10");
+      sql.append("    ,iv_bm3_tax_kbn     => :11");
+      sql.append("    ,on_gross_profit    => :12");
+      sql.append("    ,on_sales_price     => :13");
+      sql.append("    ,ov_bm_rate         => :14");
+      sql.append("    ,ov_bm_amount       => :15");
+      sql.append("    ,ov_bm_conv_rate    => :16");
+      sql.append("    ,ov_errbuf          => :17");
+      sql.append("    ,ov_retcode         => :18");
+      sql.append("    ,ov_errmsg          => :19");
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End
       sql.append("  );");
       sql.append("END;");
 
@@ -385,27 +472,50 @@ public class XxcsoSpDecisionCalculateUtils
         stmt.setString(6,  allCcRow.getBm2BmAmount());
         stmt.setString(7,  allCcRow.getBm3BmRate());
         stmt.setString(8,  allCcRow.getBm3BmAmount());
-        stmt.registerOutParameter(9,  OracleTypes.NUMBER);
-        stmt.registerOutParameter(10, OracleTypes.NUMBER);
-        stmt.registerOutParameter(11, OracleTypes.VARCHAR);
-        stmt.registerOutParameter(12, OracleTypes.VARCHAR);
-        stmt.registerOutParameter(13, OracleTypes.VARCHAR);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start
+//        stmt.registerOutParameter(9,  OracleTypes.NUMBER);
+//        stmt.registerOutParameter(10, OracleTypes.NUMBER);
+//        stmt.registerOutParameter(11, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(12, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(13, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(14, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(15, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(16, OracleTypes.VARCHAR);
+        stmt.setString(9,  bm1Row.getBm1TaxKbnCodeView());
+        stmt.setString(10, bm2Row.getBm2TaxKbnCodeView());
+        stmt.setString(11, bm3Row.getBm3TaxKbnCodeView());
+        stmt.registerOutParameter(12,  OracleTypes.NUMBER);
+        stmt.registerOutParameter(13, OracleTypes.NUMBER);
         stmt.registerOutParameter(14, OracleTypes.VARCHAR);
         stmt.registerOutParameter(15, OracleTypes.VARCHAR);
         stmt.registerOutParameter(16, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(17, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(18, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(19, OracleTypes.VARCHAR);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End
 
         XxcsoUtils.debug(txn, "execute stored start");
         stmt.execute();
         XxcsoUtils.debug(txn, "execute stored end");
 
-        NUMBER grossProfit = stmt.getNUMBER(9);
-        NUMBER salesPrice  = stmt.getNUMBER(10);
-        String bmRate      = stmt.getString(11);
-        String bmAmount    = stmt.getString(12);
-        String bmConvRate  = stmt.getString(13);
-        String errBuf      = stmt.getString(14);
-        String retCode     = stmt.getString(15);
-        String errMsg      = stmt.getString(16);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start
+//        NUMBER grossProfit = stmt.getNUMBER(9);
+//        NUMBER salesPrice  = stmt.getNUMBER(10);
+//        String bmRate      = stmt.getString(11);
+//        String bmAmount    = stmt.getString(12);
+//        String bmConvRate  = stmt.getString(13);
+//        String errBuf      = stmt.getString(14);
+//        String retCode     = stmt.getString(15);
+//        String errMsg      = stmt.getString(16);
+        NUMBER grossProfit = stmt.getNUMBER(12);
+        NUMBER salesPrice  = stmt.getNUMBER(13);
+        String bmRate      = stmt.getString(14);
+        String bmAmount    = stmt.getString(15);
+        String bmConvRate  = stmt.getString(16);
+        String errBuf      = stmt.getString(17);
+        String retCode     = stmt.getString(18);
+        String errMsg      = stmt.getString(19);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End
 
         XxcsoUtils.debug(txn, "grossProfit = " + grossProfit.stringValue());
         XxcsoUtils.debug(txn, "salesPrice  = " + salesPrice.stringValue());
@@ -571,6 +681,11 @@ public class XxcsoSpDecisionCalculateUtils
     OADBTransaction                         txn
    ,XxcsoSpDecisionHeaderFullVOImpl         headerVo
    ,XxcsoSpDecisionSelCcLineFullVOImpl      selCcVo
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add Start
+   ,XxcsoSpDecisionBm1CustFullVOImpl        bm1Vo
+   ,XxcsoSpDecisionBm2CustFullVOImpl        bm2Vo
+   ,XxcsoSpDecisionBm3CustFullVOImpl        bm3Vo
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -582,6 +697,14 @@ public class XxcsoSpDecisionCalculateUtils
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
     XxcsoSpDecisionSelCcLineFullVORowImpl selCcRow
       = (XxcsoSpDecisionSelCcLineFullVORowImpl)selCcVo.first();
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add Start     
+    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
+      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
+    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
+      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
+    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
+      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Add End
 
     OracleCallableStatement stmt = null;
     List grossProfitList = new ArrayList();
@@ -600,14 +723,27 @@ public class XxcsoSpDecisionCalculateUtils
       sql.append("    ,iv_bm2_bm_amt      => :6");
       sql.append("    ,iv_bm3_bm_rate     => :7");
       sql.append("    ,iv_bm3_bm_amt      => :8");
-      sql.append("    ,on_gross_profit    => :9");
-      sql.append("    ,on_sales_price     => :10");
-      sql.append("    ,ov_bm_rate         => :11");
-      sql.append("    ,ov_bm_amount       => :12");
-      sql.append("    ,ov_bm_conv_rate    => :13");
-      sql.append("    ,ov_errbuf          => :14");
-      sql.append("    ,ov_retcode         => :15");
-      sql.append("    ,ov_errmsg          => :16");
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start
+//      sql.append("    ,on_gross_profit    => :9");
+//      sql.append("    ,on_sales_price     => :10");
+//      sql.append("    ,ov_bm_rate         => :11");
+//      sql.append("    ,ov_bm_amount       => :12");
+//      sql.append("    ,ov_bm_conv_rate    => :13");
+//      sql.append("    ,ov_errbuf          => :14");
+//      sql.append("    ,ov_retcode         => :15");
+//      sql.append("    ,ov_errmsg          => :16");
+      sql.append("    ,iv_bm1_tax_kbn     => :9");
+      sql.append("    ,iv_bm2_tax_kbn     => :10");
+      sql.append("    ,iv_bm3_tax_kbn     => :11");
+      sql.append("    ,on_gross_profit    => :12");
+      sql.append("    ,on_sales_price     => :13");
+      sql.append("    ,ov_bm_rate         => :14");
+      sql.append("    ,ov_bm_amount       => :15");
+      sql.append("    ,ov_bm_conv_rate    => :16");
+      sql.append("    ,ov_errbuf          => :17");
+      sql.append("    ,ov_retcode         => :18");
+      sql.append("    ,ov_errmsg          => :19");
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End
       sql.append("  );");
       sql.append("END;");
 
@@ -662,27 +798,50 @@ public class XxcsoSpDecisionCalculateUtils
         stmt.setString(6,  selCcRow.getBm2BmAmount());
         stmt.setString(7,  selCcRow.getBm3BmRate());
         stmt.setString(8,  selCcRow.getBm3BmAmount());
-        stmt.registerOutParameter(9,  OracleTypes.NUMBER);
-        stmt.registerOutParameter(10, OracleTypes.NUMBER);
-        stmt.registerOutParameter(11, OracleTypes.VARCHAR);
-        stmt.registerOutParameter(12, OracleTypes.VARCHAR);
-        stmt.registerOutParameter(13, OracleTypes.VARCHAR);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start
+//        stmt.registerOutParameter(9,  OracleTypes.NUMBER);
+//        stmt.registerOutParameter(10, OracleTypes.NUMBER);
+//        stmt.registerOutParameter(11, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(12, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(13, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(14, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(15, OracleTypes.VARCHAR);
+//        stmt.registerOutParameter(16, OracleTypes.VARCHAR);
+        stmt.setString(9,  bm1Row.getBm1TaxKbnCodeView());
+        stmt.setString(10, bm2Row.getBm2TaxKbnCodeView());
+        stmt.setString(11, bm3Row.getBm3TaxKbnCodeView());
+        stmt.registerOutParameter(12, OracleTypes.NUMBER);
+        stmt.registerOutParameter(13, OracleTypes.NUMBER);
         stmt.registerOutParameter(14, OracleTypes.VARCHAR);
         stmt.registerOutParameter(15, OracleTypes.VARCHAR);
         stmt.registerOutParameter(16, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(17, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(18, OracleTypes.VARCHAR);
+        stmt.registerOutParameter(19, OracleTypes.VARCHAR);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End
 
         XxcsoUtils.debug(txn, "execute stored start");
         stmt.execute();
         XxcsoUtils.debug(txn, "execute stored end");
 
-        NUMBER grossProfit = stmt.getNUMBER(9);
-        NUMBER salesPrice  = stmt.getNUMBER(10);
-        String bmRate      = stmt.getString(11);
-        String bmAmount    = stmt.getString(12);
-        String bmConvRate  = stmt.getString(13);
-        String errBuf      = stmt.getString(14);
-        String retCode     = stmt.getString(15);
-        String errMsg      = stmt.getString(16);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod Start
+//        NUMBER grossProfit = stmt.getNUMBER(9);
+//        NUMBER salesPrice  = stmt.getNUMBER(10);
+//        String bmRate      = stmt.getString(11);
+//        String bmAmount    = stmt.getString(12);
+//        String bmConvRate  = stmt.getString(13);
+//        String errBuf      = stmt.getString(14);
+//        String retCode     = stmt.getString(15);
+//        String errMsg      = stmt.getString(16);
+        NUMBER grossProfit = stmt.getNUMBER(12);
+        NUMBER salesPrice  = stmt.getNUMBER(13);
+        String bmRate      = stmt.getString(14);
+        String bmAmount    = stmt.getString(15);
+        String bmConvRate  = stmt.getString(16);
+        String errBuf      = stmt.getString(17);
+        String retCode     = stmt.getString(18);
+        String errMsg      = stmt.getString(19);
+//E_–{‰Ò“®_15904‘Î‰ž‘æ3’e Mod End
 
         XxcsoUtils.debug(txn, "grossProfit = " + grossProfit.stringValue());
         XxcsoUtils.debug(txn, "salesPrice  = " + salesPrice.stringValue());
