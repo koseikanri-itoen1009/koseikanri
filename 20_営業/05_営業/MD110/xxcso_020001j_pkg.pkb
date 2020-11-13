@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(BODY)
  * Description      : ƒtƒ‹ƒxƒ“ƒ_[SPêŒˆ
  * MD.050/070       : 
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2014/12/15    1.15  K.Kiriu          [E_–{‰Ò“®_12565]SPEŒ_–ñ‘‰æ–Ê‰üC‘Î‰
  *  2018/05/16    1.16  Y.Shoji          [E_–{‰Ò“®_14989]‚r‚o€–Ú’Ç‰Á
  *  2020/10/28    1.17  Y.Sasaki         [E_–{‰Ò“®_16293]SPEŒ_–ñ‘‰æ–Ê‚©‚ç‚Ìd“üæƒR[ƒh‚Ì‘I‘ğ‚É‚Â‚¢‚Ä
+ *  2020/11/12    1.18  Y.Sasaki         [E_–{‰Ò“®_15904]‘æO’e ’è‰¿Š·Z—¦Zo•ÏX
 *****************************************************************************************/
 --
   -- ===============================
@@ -1194,6 +1195,11 @@ AS
    ,iv_bm2_bm_amt                  IN  VARCHAR2
    ,iv_bm3_bm_rate                 IN  VARCHAR2
    ,iv_bm3_bm_amt                  IN  VARCHAR2
+-- E_–{‰Ò“®_15904 Add Start
+   ,iv_bm1_tax_kbn                 IN  VARCHAR2
+   ,iv_bm2_tax_kbn                 IN  VARCHAR2
+   ,iv_bm3_tax_kbn                 IN  VARCHAR2
+-- E_–{‰Ò“®_15904 Add End
    ,on_gross_profit                OUT NUMBER
    ,on_sales_price                 OUT NUMBER
    ,ov_bm_rate                     OUT VARCHAR2
@@ -1208,6 +1214,17 @@ AS
     -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100)   := 'calculate_sc_line';
+-- E_–{‰Ò“®_15904 Add Start
+    -- ===============================
+    -- ƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_apl_name                  CONSTANT VARCHAR2(5)     := 'XXCSO';
+    cv_excluding_tax_kbn         CONSTANT VARCHAR2(1)     := '2';   -- ‚a‚lÅ‹æ•ªiÅ”²‚«j
+    cv_flag_y                    CONSTANT VARCHAR2(1)     := 'Y';
+    cv_prf_calc_sales_tax_code   CONSTANT VARCHAR2(100)   := 'XXCSO1_CALC_SALES_TAX_CODE';
+    cv_prf_bks_id                CONSTANT VARCHAR2(100)   := 'GL_SET_OF_BKS_ID';
+    cv_msg_xxcso1_00913          CONSTANT VARCHAR2(100)   := 'APP-XXCSO1-00913';  -- ŒvZ—pÅƒR[ƒhæ“¾ƒGƒ‰[
+-- E_–{‰Ò“®_15904 Add End
     -- ===============================
     -- ƒ[ƒJƒ‹•Ï”
     -- ===============================
@@ -1217,11 +1234,55 @@ AS
     ln_bm_rate                        NUMBER;
     ln_bm_amount                      NUMBER;
     ln_bm_conv_rate                   NUMBER;
+-- E_–{‰Ò“®_15904 Add Start
+    ln_criteria_conv_rate             NUMBER;       -- •W€‚Å‚ÌZo
+    ln_bm1_r_conv_rate                NUMBER;       -- —¦‚Å‚ÌZo
+    ln_bm2_r_conv_rate                NUMBER;       -- —¦‚Å‚ÌZo
+    ln_bm3_r_conv_rate                NUMBER;       -- —¦‚Å‚ÌZo
+    ln_bm1_a_conv_rate                NUMBER;       -- ‹àŠz‚Å‚ÌZo
+    ln_bm2_a_conv_rate                NUMBER;       -- ‹àŠz‚Å‚ÌZo
+    ln_bm3_a_conv_rate                NUMBER;       -- ‹àŠz‚Å‚ÌZo
+    ln_bm1_rate                       NUMBER;       -- BM1—¦
+    ln_bm2_rate                       NUMBER;       -- BM2—¦
+    ln_bm3_rate                       NUMBER;       -- BM3—¦
+    ln_bm1_amount                     NUMBER;       -- BM1‹àŠz
+    ln_bm2_amount                     NUMBER;       -- BM2‹àŠz
+    ln_bm3_amount                     NUMBER;       -- BM3‹àŠz
+    ln_bm1_tax_rate                   NUMBER;       -- BM1”„ãÅ—¦
+    ln_bm2_tax_rate                   NUMBER;       -- BM2”„ãÅ—¦
+    ln_bm3_tax_rate                   NUMBER;       -- BM3”„ãÅ—¦
+    lv_tax_code                       VARCHAR2(10); -- ÅƒR[ƒh
+    lv_bks_id                         VARCHAR2(50); -- ‰ïŒv’ •ëID
+    lt_tax_rate                       ar_vat_tax_all_b.tax_rate%TYPE;
+-- E_–{‰Ò“®_15904 Add End
   BEGIN
     -- ‰Šú‰»
     ov_retcode := xxcso_common_pkg.gv_status_normal;
     ov_errbuf  := NULL;
     ov_errmsg  := NULL;
+-- E_–{‰Ò“®_15904 Add Start
+--
+    ln_bm1_tax_rate := 0;
+    ln_bm2_tax_rate := 0;
+    ln_bm3_tax_rate := 0;
+--
+    ln_bm1_rate := TO_NUMBER(NVL(REPLACE(iv_bm1_bm_rate, ',', ''), '0'));
+    ln_bm2_rate := TO_NUMBER(NVL(REPLACE(iv_bm2_bm_rate, ',', ''), '0'));
+    ln_bm3_rate := TO_NUMBER(NVL(REPLACE(iv_bm3_bm_rate, ',', ''), '0'));
+--
+    ln_bm1_amount := TO_NUMBER(NVL(REPLACE(iv_bm1_bm_amt, ',', ''), '0'));
+    ln_bm2_amount := TO_NUMBER(NVL(REPLACE(iv_bm2_bm_amt, ',', ''), '0'));
+    ln_bm3_amount := TO_NUMBER(NVL(REPLACE(iv_bm3_bm_amt, ',', ''), '0'));
+--
+    -- ********************************
+    -- * ƒvƒƒtƒ@ƒCƒ‹‚ğæ“¾
+    -- ********************************
+    -- ŒvZ—p”„ãÅƒR[ƒh‚ğæ“¾
+    lv_tax_code := FND_PROFILE.VALUE( cv_prf_calc_sales_tax_code );
+    -- ‰ïŒv’ •ëID‚ğæ“¾
+    lv_bks_id   := FND_PROFILE.VALUE( cv_prf_bks_id );
+--
+-- E_–{‰Ò“®_15904 Add End
 --
     -- İ’èŒ´‰¿—¦æ“¾
     SELECT  TO_NUMBER(flvv.attribute1)
@@ -1254,13 +1315,101 @@ AS
                     TO_NUMBER(NVL(REPLACE(iv_bm2_bm_amt, ',', ''), '0')) +
                     TO_NUMBER(NVL(REPLACE(iv_bm3_bm_amt, ',', ''), '0'));
 --
+-- E_–{‰Ò“®_15904 Add Start
+--
+    -- ”„ãÅ—¦‚Ìæ“¾
+    -- Å”²‚«‚Ì‚a‚lÅ‹æ•ª‚ª‚Ğ‚Æ‚Â‚Å‚à‚ ‚éê‡
+    IF   ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn )
+      OR ( NVL(iv_bm2_tax_kbn, '1') = cv_excluding_tax_kbn )
+      OR ( NVL(iv_bm3_tax_kbn, '1') = cv_excluding_tax_kbn )
+    THEN
+      BEGIN
+        -- Å—¦‚ğæ“¾
+        SELECT avtab.tax_rate           -- Á”ïÅ—¦
+        INTO   lt_tax_rate 
+        FROM   ar_vat_tax_all_b avtab   -- ARÁ”ïÅƒ}ƒXƒ^
+        WHERE  avtab.tax_code = lv_tax_code
+        AND    avtab.set_of_books_id = TO_NUMBER( lv_bks_id )
+        AND    NVL( avtab.start_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate) ) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        AND    NVL( avtab.end_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate) ) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        AND    avtab.enabled_flag = cv_flag_y
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ov_retcode := xxcso_common_pkg.gv_status_error;
+          ov_errmsg  := xxccp_common_pkg.get_msg(
+                           cv_apl_name
+                          ,cv_msg_xxcso1_00913
+                        );
+          ov_errbuf  := ov_errmsg;
+      END;
+      -- Å‹æ•ª‚ª2:Å”²‚«‚Ìê‡Aæ“¾‚µ‚½Å—¦‚ğ”„ãÅ—¦‚Æ‚·‚é
+      -- BM1
+      IF ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn ) THEN
+        ln_bm1_tax_rate := lt_tax_rate;
+      END IF;
+      -- BM2
+      IF ( NVL(iv_bm2_tax_kbn, '1') = cv_excluding_tax_kbn ) THEN
+        ln_bm2_tax_rate := lt_tax_rate;
+      END IF;
+      -- BM3
+      IF ( NVL(iv_bm3_tax_kbn, '1') = cv_excluding_tax_kbn ) THEN
+        ln_bm3_tax_rate := lt_tax_rate;
+      END IF;
+    END IF;
+--
+    -- Šî€‚Å‚ÌŒvZ ®‚P
+    ln_criteria_conv_rate
+      -- (’è‰¿|”„‰¿)€’è‰¿
+      :=  ( ln_fixed_price - on_sales_price ) / ln_fixed_price
+    ;
+    -- BM1—¦‚Å‚ÌŒvZ ®‚Q
+    ln_bm1_r_conv_rate
+      -- ”„‰¿~‚a‚l‚P—¦€i100 + ‚a‚l‚P”„ãÅ—¦j€’è‰¿
+      :=  ( on_sales_price * ln_bm1_rate / (100 + ln_bm1_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM1‹àŠz‚Å‚ÌŒvZ ®‚R
+    ln_bm1_a_conv_rate
+      --  ‚a‚l‚P‹àŠz~100€(100{‚a‚l‚P”„ãÅ—¦)€’è‰¿
+      :=  ( ln_bm1_amount * 100 / (100 + ln_bm1_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM2—¦‚Å‚ÌŒvZ ®‚S
+    ln_bm2_r_conv_rate
+      -- ”„‰¿~‚a‚l‚Q—¦€i100 + ‚a‚l‚Q”„ãÅ—¦j€’è‰¿
+      :=  ( on_sales_price * ln_bm2_rate / (100 + ln_bm2_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM2‹àŠz‚Å‚ÌŒvZ ®‚T
+    ln_bm2_a_conv_rate
+      -- ‚a‚l‚Q‹àŠz~100€(100{‚a‚l‚Q”„ãÅ—¦)€’è‰¿
+      :=  ( ln_bm2_amount * 100 / (100 + ln_bm2_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM3—¦‚Å‚ÌŒvZ ®‚U
+    ln_bm3_r_conv_rate
+      -- ”„‰¿~‚a‚l‚R—¦€i100 + ‚a‚l‚R”„ãÅ—¦j€’è‰¿
+      :=  ( on_sales_price * ln_bm3_rate / (100 + ln_bm3_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM3‹àŠz‚Å‚ÌŒvZ ®‚V
+    ln_bm3_a_conv_rate
+      -- ‚a‚l‚R‹àŠz~100€(100{‚a‚l‚R”„ãÅ—¦)€’è‰¿
+      :=  ( ln_bm3_amount * 100 / (100 + ln_bm3_tax_rate) ) / ln_fixed_price
+    ;
+-- E_–{‰Ò“®_15904 Add End
     -- ’è‰¿Š·Z—¦‚ğŒvZ
     ln_bm_conv_rate
-      := (
-          ((on_sales_price * ln_bm_rate / 100) +
-           (ln_fixed_price - on_sales_price + ln_bm_amount)
-          ) / ln_fixed_price
-         ) * 100;
+-- E_–{‰Ò“®_15904 mod Start
+--      := (
+--          ((on_sales_price * ln_bm_rate / 100) +
+--           (ln_fixed_price - on_sales_price + ln_bm_amount)
+--          ) / ln_fixed_price
+--         ) * 100;
+      -- i®‚P{®‚Q{®‚R{®‚S{®‚T{®‚U{®‚Vj~100
+      := (  ln_criteria_conv_rate
+          + ln_bm1_r_conv_rate + ln_bm1_a_conv_rate
+          + ln_bm2_r_conv_rate + ln_bm2_a_conv_rate
+          + ln_bm3_r_conv_rate + ln_bm3_a_conv_rate
+          ) * 100
+    ;
+-- E_–{‰Ò“®_15904 mod End
 --
     -- •Ô‹p’l‚ğİ’è
     ov_bm_rate      := TO_CHAR(ln_bm_rate, 'FM999G999G999G999G990D90');
@@ -1279,7 +1428,7 @@ AS
 --
   /**********************************************************************************
    * Function Name    : calculate_cc_line
-   * Description      : ”„‰¿•ÊğŒŒvZi–¾×s‚²‚Æj
+   * Description      : ˆê—¥ğŒE—eŠí•ÊğŒŒvZi–¾×s‚²‚Æj
    ***********************************************************************************/
   PROCEDURE calculate_cc_line(
     iv_container_type              IN  VARCHAR2
@@ -1290,6 +1439,11 @@ AS
    ,iv_bm2_bm_amt                  IN  VARCHAR2
    ,iv_bm3_bm_rate                 IN  VARCHAR2
    ,iv_bm3_bm_amt                  IN  VARCHAR2
+-- E_–{‰Ò“®_15904 Add Start
+   ,iv_bm1_tax_kbn                 IN  VARCHAR2
+   ,iv_bm2_tax_kbn                 IN  VARCHAR2
+   ,iv_bm3_tax_kbn                 IN  VARCHAR2
+-- E_–{‰Ò“®_15904 Add End
    ,on_gross_profit                OUT NUMBER
    ,on_sales_price                 OUT NUMBER
    ,ov_bm_rate                     OUT VARCHAR2
@@ -1304,6 +1458,17 @@ AS
     -- ŒÅ’èƒ[ƒJƒ‹’è”
     -- ===============================
     cv_prg_name                  CONSTANT VARCHAR2(100)   := 'calculate_cc_line';
+-- E_–{‰Ò“®_15904 Add Start
+    -- ===============================
+    -- ƒ[ƒJƒ‹’è”
+    -- ===============================
+    cv_apl_name                  CONSTANT VARCHAR2(5)     := 'XXCSO';
+    cv_excluding_tax_kbn         CONSTANT VARCHAR2(1)     := '2';   -- ‚a‚lÅ‹æ•ªiÅ”²‚«j
+    cv_flag_y                    CONSTANT VARCHAR2(1)     := 'Y';
+    cv_prf_calc_sales_tax_code   CONSTANT VARCHAR2(100)   := 'XXCSO1_CALC_SALES_TAX_CODE';
+    cv_prf_bks_id                CONSTANT VARCHAR2(100)   := 'GL_SET_OF_BKS_ID';
+    cv_msg_xxcso1_00913          CONSTANT VARCHAR2(100)   := 'APP-XXCSO1-00913';  -- ŒvZ—pÅƒR[ƒhæ“¾ƒGƒ‰[
+-- E_–{‰Ò“®_15904 Add End
     -- ===============================
     -- ƒ[ƒJƒ‹•Ï”
     -- ===============================
@@ -1314,11 +1479,55 @@ AS
     ln_bm_rate                        NUMBER;
     ln_bm_amount                      NUMBER;
     ln_bm_conv_rate                   NUMBER;
+-- E_–{‰Ò“®_15904 Add Start
+    ln_criteria_conv_rate             NUMBER;       -- •W€‚Å‚ÌZo
+    ln_bm1_r_conv_rate                NUMBER;       -- —¦‚Å‚ÌZo
+    ln_bm2_r_conv_rate                NUMBER;       -- —¦‚Å‚ÌZo
+    ln_bm3_r_conv_rate                NUMBER;       -- —¦‚Å‚ÌZo
+    ln_bm1_a_conv_rate                NUMBER;       -- ‹àŠz‚Å‚ÌZo
+    ln_bm2_a_conv_rate                NUMBER;       -- ‹àŠz‚Å‚ÌZo
+    ln_bm3_a_conv_rate                NUMBER;       -- ‹àŠz‚Å‚ÌZo
+    ln_bm1_rate                       NUMBER;       -- BM1—¦
+    ln_bm2_rate                       NUMBER;       -- BM2—¦
+    ln_bm3_rate                       NUMBER;       -- BM3—¦
+    ln_bm1_amount                     NUMBER;       -- BM1‹àŠz
+    ln_bm2_amount                     NUMBER;       -- BM2‹àŠz
+    ln_bm3_amount                     NUMBER;       -- BM3‹àŠz
+    ln_bm1_tax_rate                   NUMBER;       -- BM1”„ãÅ—¦
+    ln_bm2_tax_rate                   NUMBER;       -- BM2”„ãÅ—¦
+    ln_bm3_tax_rate                   NUMBER;       -- BM3”„ãÅ—¦
+    lv_tax_code                       VARCHAR2(10); -- ÅƒR[ƒh
+    lv_bks_id                         VARCHAR2(50); -- ‰ïŒv’ •ëID
+    lt_tax_rate                       ar_vat_tax_all_b.tax_rate%TYPE;
+-- E_–{‰Ò“®_15904 Add End
   BEGIN
     -- ‰Šú‰»
     ov_retcode := xxcso_common_pkg.gv_status_normal;
     ov_errbuf  := NULL;
     ov_errmsg  := NULL;
+-- E_–{‰Ò“®_15904 Add Start
+--
+    ln_bm1_tax_rate := 0;
+    ln_bm2_tax_rate := 0;
+    ln_bm3_tax_rate := 0;
+--
+    ln_bm1_rate := TO_NUMBER(NVL(REPLACE(iv_bm1_bm_rate, ',', ''), '0'));
+    ln_bm2_rate := TO_NUMBER(NVL(REPLACE(iv_bm2_bm_rate, ',', ''), '0'));
+    ln_bm3_rate := TO_NUMBER(NVL(REPLACE(iv_bm3_bm_rate, ',', ''), '0'));
+--
+    ln_bm1_amount := TO_NUMBER(NVL(REPLACE(iv_bm1_bm_amt, ',', ''), '0'));
+    ln_bm2_amount := TO_NUMBER(NVL(REPLACE(iv_bm2_bm_amt, ',', ''), '0'));
+    ln_bm3_amount := TO_NUMBER(NVL(REPLACE(iv_bm3_bm_amt, ',', ''), '0'));
+--
+    -- ********************************
+    -- * ƒvƒƒtƒ@ƒCƒ‹‚ğæ“¾
+    -- ********************************
+    -- ŒvZ—p”„ãÅƒR[ƒh‚ğæ“¾
+    lv_tax_code := FND_PROFILE.VALUE( cv_prf_calc_sales_tax_code );
+    -- ‰ïŒv’ •ëID‚ğæ“¾
+    lv_bks_id   := FND_PROFILE.VALUE( cv_prf_bks_id );
+--
+-- E_–{‰Ò“®_15904 Add End
 --
     -- İ’è’è‰¿Aİ’èŒ´‰¿—¦æ“¾
     SELECT  TO_NUMBER(flvv.attribute2)
@@ -1356,14 +1565,102 @@ AS
     ln_bm_amount := TO_NUMBER(NVL(REPLACE(iv_bm1_bm_amt, ',', ''), '0')) +
                     TO_NUMBER(NVL(REPLACE(iv_bm2_bm_amt, ',', ''), '0')) +
                     TO_NUMBER(NVL(REPLACE(iv_bm3_bm_amt, ',', ''), '0'));
+-- E_–{‰Ò“®_15904 Add Start
+--
+    -- ”„ãÅ—¦‚Ìæ“¾
+    -- Å”²‚«‚Ì‚a‚lÅ‹æ•ª‚ª‚Ğ‚Æ‚Â‚Å‚à‚ ‚éê‡
+    IF   ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn )
+      OR ( NVL(iv_bm2_tax_kbn, '1') = cv_excluding_tax_kbn )
+      OR ( NVL(iv_bm3_tax_kbn, '1') = cv_excluding_tax_kbn )
+    THEN
+      BEGIN
+        -- Å—¦‚ğæ“¾
+        SELECT avtab.tax_rate           -- Á”ïÅ—¦
+        INTO   lt_tax_rate 
+        FROM   ar_vat_tax_all_b avtab   -- ARÁ”ïÅƒ}ƒXƒ^
+        WHERE  avtab.tax_code = lv_tax_code
+        AND    avtab.set_of_books_id = TO_NUMBER( lv_bks_id )
+        AND    NVL( avtab.start_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate) ) <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        AND    NVL( avtab.end_date, TRUNC(xxcso_util_common_pkg.get_online_sysdate) ) >= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+        AND    avtab.enabled_flag = cv_flag_y
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ov_retcode := xxcso_common_pkg.gv_status_error;
+          ov_errmsg  := xxccp_common_pkg.get_msg(
+                           cv_apl_name
+                          ,cv_msg_xxcso1_00913
+                        );
+          ov_errbuf  := ov_errmsg;
+      END;
+      -- Å‹æ•ª‚ª2:Å”²‚«‚Ìê‡Aæ“¾‚µ‚½Å—¦‚ğ”„ãÅ—¦‚Æ‚·‚é
+      -- BM1
+      IF ( NVL(iv_bm1_tax_kbn, '1') = cv_excluding_tax_kbn ) THEN
+        ln_bm1_tax_rate := lt_tax_rate;
+      END IF;
+      -- BM2
+      IF ( NVL(iv_bm2_tax_kbn, '1') = cv_excluding_tax_kbn ) THEN
+        ln_bm2_tax_rate := lt_tax_rate;
+      END IF;
+      -- BM3
+      IF ( NVL(iv_bm3_tax_kbn, '1') = cv_excluding_tax_kbn ) THEN
+        ln_bm3_tax_rate := lt_tax_rate;
+      END IF;
+    END IF;
+--
+    -- Šî€‚Å‚ÌŒvZ ®‚P
+    ln_criteria_conv_rate
+      -- (’è‰¿|”„‰¿)€’è‰¿
+      :=  ( ln_fixed_price - on_sales_price ) / ln_fixed_price
+    ;
+    -- BM1—¦‚Å‚ÌŒvZ ®‚Q
+    ln_bm1_r_conv_rate
+      -- ”„‰¿~‚a‚l‚P—¦€i100 + ‚a‚l‚P”„ãÅ—¦j€’è‰¿
+      :=  ( on_sales_price * ln_bm1_rate / (100 + ln_bm1_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM1‹àŠz‚Å‚ÌŒvZ ®‚R
+    ln_bm1_a_conv_rate
+      --  ‚a‚l‚P‹àŠz~100€(100{‚a‚l‚P”„ãÅ—¦)€’è‰¿
+      :=  ( ln_bm1_amount * 100 / (100 + ln_bm1_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM2—¦‚Å‚ÌŒvZ ®‚S
+    ln_bm2_r_conv_rate
+      -- ”„‰¿~‚a‚l‚Q—¦€i100 + ‚a‚l‚Q”„ãÅ—¦j€’è‰¿
+      :=  ( on_sales_price * ln_bm2_rate / (100 + ln_bm2_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM2‹àŠz‚Å‚ÌŒvZ ®‚T
+    ln_bm2_a_conv_rate
+      -- ‚a‚l‚Q‹àŠz~100€(100{‚a‚l‚Q”„ãÅ—¦)€’è‰¿
+      :=  ( ln_bm2_amount * 100 / (100 + ln_bm2_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM3—¦‚Å‚ÌŒvZ ®‚U
+    ln_bm3_r_conv_rate
+      -- ”„‰¿~‚a‚l‚R—¦€i100 + ‚a‚l‚R”„ãÅ—¦j€’è‰¿
+      :=  ( on_sales_price * ln_bm3_rate / (100 + ln_bm3_tax_rate) ) / ln_fixed_price
+    ;
+    -- BM3‹àŠz‚Å‚ÌŒvZ ®‚V
+    ln_bm3_a_conv_rate
+      -- ‚a‚l‚R‹àŠz~100€(100{‚a‚l‚R”„ãÅ—¦)€’è‰¿
+      :=  ( ln_bm3_amount * 100 / (100 + ln_bm3_tax_rate) ) / ln_fixed_price
+    ;
+-- E_–{‰Ò“®_15904 Add End
 --
     -- ’è‰¿Š·Z—¦‚ğŒvZ
     ln_bm_conv_rate
-      := (
-          ((on_sales_price * ln_bm_rate / 100) +
-           (0 - ln_discount_amt + ln_bm_amount)
-          ) / ln_fixed_price
-         ) * 100;
+-- E_–{‰Ò“®_15904 mod Start
+--      := (
+--          ((on_sales_price * ln_bm_rate / 100) +
+--           (0 - ln_discount_amt + ln_bm_amount)
+--          ) / ln_fixed_price
+--         ) * 100;
+      -- i®‚P{®‚Q{®‚R{®‚S{®‚T{®‚U{®‚Vj~100
+      := (  ln_criteria_conv_rate
+          + ln_bm1_r_conv_rate + ln_bm1_a_conv_rate
+          + ln_bm2_r_conv_rate + ln_bm2_a_conv_rate
+          + ln_bm3_r_conv_rate + ln_bm3_a_conv_rate
+          ) * 100
+    ;
+-- E_–{‰Ò“®_15904 mod End
 --
     -- •Ô‹p’l‚ğİ’è
     ov_bm_rate      := TO_CHAR(ln_bm_rate, 'FM999G999G999G999G990D90');
