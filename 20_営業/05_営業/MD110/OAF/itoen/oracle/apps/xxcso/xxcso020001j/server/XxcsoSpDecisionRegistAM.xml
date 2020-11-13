@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
 
 <AppModule
@@ -253,6 +253,18 @@
    <ViewUsage
       Name="XxcsoMonthsListVO"
       ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBM2TaxListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBM3TaxListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.common.poplist.server.XxcsoLookupListVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxcsoBM1TaxListVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso020001j.poplist.server.XxcsoBM1TaxListVO" >
    </ViewUsage>
    <ViewLinkUsage
       Name="XxcsoSpDecHeaderInstCustVL1"
