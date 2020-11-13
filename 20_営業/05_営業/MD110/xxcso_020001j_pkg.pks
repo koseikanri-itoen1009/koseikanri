@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_020001j_pkg(SPEC)
  * Description      : フルベンダーSP専決
  * MD.050/070       : 
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2014/12/15    1.7   K.Kiriu          [E_本稼動_12565]SP・契約書画面改修対応
  *  2018/05/16    1.8   Y.Shoji          [E_本稼動_14989]ＳＰ項目追加
  *  2020/10/28    1.9   Y.Sasaki         [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
+ *  2020/11/05    1.10  Y.Sasaki         [E_本稼動_15904]定額換算率の修正
  *****************************************************************************************/
 --
   -- トランザクション初期化処理
@@ -148,6 +149,11 @@ AS
    ,iv_bm2_bm_amt                  IN  VARCHAR2
    ,iv_bm3_bm_rate                 IN  VARCHAR2
    ,iv_bm3_bm_amt                  IN  VARCHAR2
+-- E_本稼動_15904 Add Start
+   ,iv_bm1_tax_kbn                 IN  VARCHAR2
+   ,iv_bm2_tax_kbn                 IN  VARCHAR2
+   ,iv_bm3_tax_kbn                 IN  VARCHAR2
+-- E_本稼動_15904 Add End
    ,on_gross_profit                OUT NUMBER
    ,on_sales_price                 OUT NUMBER
    ,ov_bm_rate                     OUT VARCHAR2
@@ -168,6 +174,11 @@ AS
    ,iv_bm2_bm_amt                  IN  VARCHAR2
    ,iv_bm3_bm_rate                 IN  VARCHAR2
    ,iv_bm3_bm_amt                  IN  VARCHAR2
+-- E_本稼動_15904 Add Start
+   ,iv_bm1_tax_kbn                 IN  VARCHAR2
+   ,iv_bm2_tax_kbn                 IN  VARCHAR2
+   ,iv_bm3_tax_kbn                 IN  VARCHAR2
+-- E_本稼動_15904 Add End
    ,on_gross_profit                OUT NUMBER
    ,on_sales_price                 OUT NUMBER
    ,ov_bm_rate                     OUT VARCHAR2
