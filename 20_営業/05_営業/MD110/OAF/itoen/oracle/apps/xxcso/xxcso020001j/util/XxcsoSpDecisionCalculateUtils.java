@@ -8,7 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-27 1.0  SCSè¨êÏç_     êVãKçÏê¨
 * 2014-12-15 1.1  SCSKãÀê∂òaçK  [E_ñ{â“ìÆ_12565]SPÅEå_ñÒèëâÊñ â¸èCëŒâû
-* 2020-11-05 1.2  SCSKç≤ÅXñÿëÂòa[E_ñ{â“ìÆ_15904]ëÊ3íeÅ@íËâøä∑éZó¶åvéZéÆèCê≥
+* 2020-11-17 1.2  SCSKç≤ÅXñÿëÂòa[E_ñ{â“ìÆ_15904]ëÊ3íeÅ@íËâøä∑éZó¶åvéZéÆèCê≥
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -58,11 +58,6 @@ public class XxcsoSpDecisionCalculateUtils
     OADBTransaction                         txn
    ,XxcsoSpDecisionHeaderFullVOImpl         headerVo
    ,XxcsoSpDecisionScLineFullVOImpl         scVo
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add Start
-   ,XxcsoSpDecisionBm1CustFullVOImpl        bm1Vo
-   ,XxcsoSpDecisionBm2CustFullVOImpl        bm2Vo
-   ,XxcsoSpDecisionBm3CustFullVOImpl        bm3Vo
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -74,14 +69,6 @@ public class XxcsoSpDecisionCalculateUtils
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
     XxcsoSpDecisionScLineFullVORowImpl scRow
       = (XxcsoSpDecisionScLineFullVORowImpl)scVo.first();
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add Start     
-    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
-      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
-    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
-      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
-    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
-      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add End
 
     OracleCallableStatement stmt = null;
     List grossProfitList = new ArrayList();
@@ -152,9 +139,9 @@ public class XxcsoSpDecisionCalculateUtils
 //        stmt.registerOutParameter(14, OracleTypes.VARCHAR);
 //        stmt.registerOutParameter(15, OracleTypes.VARCHAR);
 //        stmt.registerOutParameter(16, OracleTypes.VARCHAR);
-        stmt.setString(9,  bm1Row.getBm1TaxKbnCodeView());
-        stmt.setString(10, bm2Row.getBm2TaxKbnCodeView());
-        stmt.setString(11, bm3Row.getBm3TaxKbnCodeView());
+        stmt.setString(9,  headerRow.getBm1TaxKbn());
+        stmt.setString(10, headerRow.getBm2TaxKbn());
+        stmt.setString(11, headerRow.getBm3TaxKbn());
         stmt.registerOutParameter(12,  OracleTypes.NUMBER);
         stmt.registerOutParameter(13, OracleTypes.NUMBER);
         stmt.registerOutParameter(14, OracleTypes.VARCHAR);
@@ -163,10 +150,6 @@ public class XxcsoSpDecisionCalculateUtils
         stmt.registerOutParameter(17, OracleTypes.VARCHAR);
         stmt.registerOutParameter(18, OracleTypes.VARCHAR);
         stmt.registerOutParameter(19, OracleTypes.VARCHAR);
-//debug
- String vm1 = bm1Row.getBm1TaxKbnCodeView();
- String vm2 = bm2Row.getBm2TaxKbnCodeView();
-//debug
 //E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Mod End        
 
         XxcsoUtils.debug(txn, "execute stored start");
@@ -355,11 +338,6 @@ public class XxcsoSpDecisionCalculateUtils
     OADBTransaction                         txn
    ,XxcsoSpDecisionHeaderFullVOImpl         headerVo
    ,XxcsoSpDecisionAllCcLineFullVOImpl      allCcVo
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add Start
-   ,XxcsoSpDecisionBm1CustFullVOImpl        bm1Vo
-   ,XxcsoSpDecisionBm2CustFullVOImpl        bm2Vo
-   ,XxcsoSpDecisionBm3CustFullVOImpl        bm3Vo
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -371,14 +349,6 @@ public class XxcsoSpDecisionCalculateUtils
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
     XxcsoSpDecisionAllCcLineFullVORowImpl allCcRow
       = (XxcsoSpDecisionAllCcLineFullVORowImpl)allCcVo.first();
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add Start     
-    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
-      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
-    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
-      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
-    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
-      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add End
 
     OracleCallableStatement stmt = null;
     List grossProfitList = new ArrayList();
@@ -481,9 +451,9 @@ public class XxcsoSpDecisionCalculateUtils
 //        stmt.registerOutParameter(14, OracleTypes.VARCHAR);
 //        stmt.registerOutParameter(15, OracleTypes.VARCHAR);
 //        stmt.registerOutParameter(16, OracleTypes.VARCHAR);
-        stmt.setString(9,  bm1Row.getBm1TaxKbnCodeView());
-        stmt.setString(10, bm2Row.getBm2TaxKbnCodeView());
-        stmt.setString(11, bm3Row.getBm3TaxKbnCodeView());
+        stmt.setString(9,  headerRow.getBm1TaxKbn());
+        stmt.setString(10, headerRow.getBm2TaxKbn());
+        stmt.setString(11, headerRow.getBm3TaxKbn());
         stmt.registerOutParameter(12,  OracleTypes.NUMBER);
         stmt.registerOutParameter(13, OracleTypes.NUMBER);
         stmt.registerOutParameter(14, OracleTypes.VARCHAR);
@@ -681,11 +651,6 @@ public class XxcsoSpDecisionCalculateUtils
     OADBTransaction                         txn
    ,XxcsoSpDecisionHeaderFullVOImpl         headerVo
    ,XxcsoSpDecisionSelCcLineFullVOImpl      selCcVo
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add Start
-   ,XxcsoSpDecisionBm1CustFullVOImpl        bm1Vo
-   ,XxcsoSpDecisionBm2CustFullVOImpl        bm2Vo
-   ,XxcsoSpDecisionBm3CustFullVOImpl        bm3Vo
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add End
   )
   {
     XxcsoUtils.debug(txn, "[START]");
@@ -697,14 +662,6 @@ public class XxcsoSpDecisionCalculateUtils
       = (XxcsoSpDecisionHeaderFullVORowImpl)headerVo.first();
     XxcsoSpDecisionSelCcLineFullVORowImpl selCcRow
       = (XxcsoSpDecisionSelCcLineFullVORowImpl)selCcVo.first();
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add Start     
-    XxcsoSpDecisionBm1CustFullVORowImpl bm1Row
-      = (XxcsoSpDecisionBm1CustFullVORowImpl)bm1Vo.first();
-    XxcsoSpDecisionBm2CustFullVORowImpl bm2Row
-      = (XxcsoSpDecisionBm2CustFullVORowImpl)bm2Vo.first();
-    XxcsoSpDecisionBm3CustFullVORowImpl bm3Row
-      = (XxcsoSpDecisionBm3CustFullVORowImpl)bm3Vo.first();
-//E_ñ{â“ìÆ_15904ëŒâûëÊ3íe Add End
 
     OracleCallableStatement stmt = null;
     List grossProfitList = new ArrayList();
@@ -807,9 +764,9 @@ public class XxcsoSpDecisionCalculateUtils
 //        stmt.registerOutParameter(14, OracleTypes.VARCHAR);
 //        stmt.registerOutParameter(15, OracleTypes.VARCHAR);
 //        stmt.registerOutParameter(16, OracleTypes.VARCHAR);
-        stmt.setString(9,  bm1Row.getBm1TaxKbnCodeView());
-        stmt.setString(10, bm2Row.getBm2TaxKbnCodeView());
-        stmt.setString(11, bm3Row.getBm3TaxKbnCodeView());
+        stmt.setString(9,  headerRow.getBm1TaxKbn());
+        stmt.setString(10, headerRow.getBm2TaxKbn());
+        stmt.setString(11, headerRow.getBm3TaxKbn());
         stmt.registerOutParameter(12, OracleTypes.NUMBER);
         stmt.registerOutParameter(13, OracleTypes.NUMBER);
         stmt.registerOutParameter(14, OracleTypes.VARCHAR);
