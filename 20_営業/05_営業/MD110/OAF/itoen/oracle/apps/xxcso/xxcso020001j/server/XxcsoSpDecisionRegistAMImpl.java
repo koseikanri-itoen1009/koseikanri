@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.19
+* バージョン : 1.21
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -26,6 +26,8 @@
 * 2018-05-16 1.17 SCSK小路恭弘  [E_本稼動_14989]ＳＰ項目追加
 * 2020-06-16 1.18 SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
 * 2020-10-28 1.19 SCSK佐々木大和[E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
+* 2020-11-05 1.20 SCSK佐々木大和[E_本稼動_15904]追加対応第3弾 定価換算率計算式修正
+* 2020-11-17 1.21 SCSK佐々木大和[E_本稼動_15904]追加対応第3弾 定価換算率計算式修正 対応不要のため削除
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -1489,6 +1491,39 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           "XxcsoSpDecisionScLineFullVO1"
         );
     }
+//E_本稼動_15904追加対応第3弾 Del Start
+//    //E_本稼動_15904追加対応第3弾 Add Start
+//    XxcsoSpDecisionBm1CustFullVOImpl bm1Vo
+//      = getXxcsoSpDecisionBm1CustFullVO1();
+//    if ( bm1Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm1CustFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecisionBm2CustFullVOImpl bm2Vo
+//      = getXxcsoSpDecisionBm2CustFullVO1();
+//    if ( bm2Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm2CustFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecisionBm3CustFullVOImpl bm3Vo
+//      = getXxcsoSpDecisionBm3CustFullVO1();
+//    if ( bm3Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm3CustFullVO1"
+//        );
+//    }
+//    //E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
 
     List errorList = new ArrayList();
 
@@ -1510,6 +1545,13 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       txn
      ,headerVo
      ,scVo
+//E_本稼動_15904追加対応第3弾 Del Start
+////E_本稼動_15904追加対応第3弾 Add Start
+//     ,bm1Vo
+//     ,bm2Vo
+//     ,bm3Vo
+////E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
     );
 
     scVo.first();
@@ -1548,7 +1590,39 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           "XxcsoSpDecisionAllCcLineFullVO1"
         );
     }
-
+//E_本稼動_15904追加対応第3弾 Del Start
+//    //E_本稼動_15904追加対応第3弾 Add Start
+//    XxcsoSpDecisionBm1CustFullVOImpl bm1Vo
+//      = getXxcsoSpDecisionBm1CustFullVO1();
+//    if ( bm1Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm1CustFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecisionBm2CustFullVOImpl bm2Vo
+//      = getXxcsoSpDecisionBm2CustFullVO1();
+//    if ( bm2Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm2CustFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecisionBm3CustFullVOImpl bm3Vo
+//      = getXxcsoSpDecisionBm3CustFullVO1();
+//    if ( bm3Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm3CustFullVO1"
+//        );
+//    }
+//    //E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
     List errorList = new ArrayList();
 
     errorList.addAll(
@@ -1569,6 +1643,13 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       txn
      ,headerVo
      ,allCcVo
+//E_本稼動_15904追加対応第3弾 Del Start
+////E_本稼動_15904追加対応第3弾 Add Start
+//     ,bm1Vo
+//     ,bm2Vo
+//     ,bm3Vo
+////E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
     );
 
     allCcVo.first();
@@ -1607,7 +1688,39 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           "XxcsoSpDecisionSelCcLineFullVO1"
         );
     }
-
+//E_本稼動_15904追加対応第3弾 Del Start
+//    //E_本稼動_15904追加対応第3弾 Add Start
+//    XxcsoSpDecisionBm1CustFullVOImpl bm1Vo
+//      = getXxcsoSpDecisionBm1CustFullVO1();
+//    if ( bm1Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm1CustFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecisionBm2CustFullVOImpl bm2Vo
+//      = getXxcsoSpDecisionBm2CustFullVO1();
+//    if ( bm2Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm2CustFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecisionBm3CustFullVOImpl bm3Vo
+//      = getXxcsoSpDecisionBm3CustFullVO1();
+//    if ( bm3Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm3CustFullVO1"
+//        );
+//    }
+//    //E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
     List errorList = new ArrayList();
 
     errorList.addAll(
@@ -1628,6 +1741,13 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       txn
      ,headerVo
      ,selCcVo
+//E_本稼動_15904追加対応第3弾 Del Start
+////E_本稼動_15904追加対応第3弾 Add Start
+//     ,bm1Vo
+//     ,bm2Vo
+//     ,bm3Vo
+////E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del Start
     );
 
     selCcVo.first();
@@ -2293,6 +2413,39 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           "XxcsoSpDecisionSelCcLineFullVO1"
         );
     }
+//E_本稼動_15904追加対応第3弾 Del Start
+//    //E_本稼動_15904追加対応第3弾 Add Start
+//    XxcsoSpDecisionBm1CustFullVOImpl bm1Vo
+//      = getXxcsoSpDecisionBm1CustFullVO1();
+//    if ( bm1Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm1CustFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecisionBm2CustFullVOImpl bm2Vo
+//      = getXxcsoSpDecisionBm2CustFullVO1();
+//    if ( bm2Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm2CustFullVO1"
+//        );
+//    }
+//
+//    XxcsoSpDecisionBm3CustFullVOImpl bm3Vo
+//      = getXxcsoSpDecisionBm3CustFullVO1();
+//    if ( bm3Vo == null )
+//    {
+//      throw
+//        XxcsoMessage.createInstanceLostError(
+//          "XxcsoSpDecisionBm3CustFullVO1"
+//        );
+//    }
+//    //E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
 
     /////////////////////////////////////
     // 各行を取得
@@ -2378,6 +2531,13 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         txn
        ,headerVo
        ,scVo
+//E_本稼動_15904追加対応第3弾 Del Start
+////E_本稼動_15904追加対応第3弾 Add Start
+//       ,bm1Vo
+//       ,bm2Vo
+//       ,bm3Vo
+////E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
       );
 
       scVo.first();
@@ -2392,6 +2552,13 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           txn
          ,headerVo
          ,allCcVo
+//E_本稼動_15904追加対応第3弾 Del Start
+////E_本稼動_15904追加対応第3弾 Add Start
+//         ,bm1Vo
+//         ,bm2Vo
+//         ,bm3Vo
+////E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
         );
 
         allCcVo.first();
@@ -2402,6 +2569,13 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           txn
          ,headerVo
          ,selCcVo
+//E_本稼動_15904追加対応第3弾 Del Start
+////E_本稼動_15904追加対応第3弾 Add Start
+//         ,bm1Vo
+//         ,bm2Vo
+//         ,bm3Vo
+////E_本稼動_15904追加対応第3弾 Add End
+//E_本稼動_15904追加対応第3弾 Del End
         );
 
         selCcVo.first();
