@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM004A11C(body)
  * Description      : 品目マスタIF出力（情報系）
  * MD.050           : 品目マスタIF出力（情報系） CMM_004_A11
- * Version          : Issue3.5
+ * Version          : Issue1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/06/15    1.5   H.Yoshikawa      障害T1_1455対応
  *  2010/02/02    1.6   Shigeto.Niki     E_本稼動_01420対応 
  *  2019/07/16    1.7   Kawaguchi.Takuya E_本稼動_15472対応 
+ *  2020/11/05    1.8   Y.Koh            E_本稼動_16736対応
  *
  *****************************************************************************************/
 --
@@ -228,7 +229,7 @@ AS
     ,item_product_class         mtl_categories_b.segment1%TYPE                  -- VARCHAR2(40)
     -- 率区分                            数値型(1)
     ,rate_class                 xxcmn_item_mst_b.rate_class%TYPE                -- VARCHAR2(1)
-    -- NET                               数値型(5)
+    -- NET                               数値型(6.1)
     ,net                        VARCHAR2(240)                                   -- VARCHAR2(240)
     -- 重量/体積                         数値型(7)
     ,unit                       VARCHAR2(240)                                   -- VARCHAR2(240)
@@ -582,7 +583,10 @@ AS
 -- End1.5
                  ,mcv.segment1        AS item_product_class                   -- 商品製品区分
                  ,xoiv.rate_class                                             -- 率区分
-                 ,xoiv.net                                                    -- NET
+-- 2020/11/05 Ver1.8 MOD Start
+                 ,ROUND(TO_NUMBER(xoiv.net)) AS net                           -- NET
+--                 ,xoiv.net                                                    -- NET
+-- 2020/11/05 Ver1.8 MOD End
                  ,xoiv.unit                                                   -- 重量/体積
                  ,xoiv.nets                                                   -- 内容量
                  ,xoiv.nets_uom_code                                          -- 内容量単位
