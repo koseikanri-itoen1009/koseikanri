@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_info_work_head_n02
+ON xxcok.xxcok_info_work_header (
+     vendor_code
+)
+TABLESPACE xxidx2
+/
