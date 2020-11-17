@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.20
+ * Version          : 3.21
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2018/12/26    3.18  E.Yazaki         [E_本稼動_15349] 【営業・個別】仕入先CD制御
  *  2019/07/16    3.19  K.Nara           [E_本稼動_15472] 軽減税率対応
  *  2020/08/21    3.20  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
+ *  2020/11/13    3.21  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -4589,12 +4590,20 @@ END insert_xcbs;
       ln_bm1_elect_amt_tax      := TRUNC( i_get_sales_data_rec.bm1_electric_amt_tax );
     -- BM1税区分 = '2'（税抜）
     ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
-      -- 【BM1】電気料(税抜)
-      IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 ) THEN
-        ln_bm1_elect_amt_no_tax := CEIL( i_get_sales_data_rec.bm1_electric_amt_no_tax );
-      ELSIF( i_get_sales_data_rec.bm1_electric_amt_no_tax < 0 ) THEN
-        ln_bm1_elect_amt_no_tax := FLOOR( i_get_sales_data_rec.bm1_electric_amt_no_tax );
+-- Ver.3.21 N.Abe ADD START
+--      -- 【BM1】電気料(税抜)
+--      IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 ) THEN
+--        ln_bm1_elect_amt_no_tax := CEIL( i_get_sales_data_rec.bm1_electric_amt_no_tax );
+--      ELSIF( i_get_sales_data_rec.bm1_electric_amt_no_tax < 0 ) THEN
+--        ln_bm1_elect_amt_no_tax := FLOOR( i_get_sales_data_rec.bm1_electric_amt_no_tax );
+--      END IF;
+      -- 【BM1】電気料(税込)
+      IF( i_get_sales_data_rec.bm1_electric_amt_tax >= 0 ) THEN
+        ln_bm1_elect_amt_tax := CEIL( i_get_sales_data_rec.bm1_electric_amt_tax );
+      ELSIF( i_get_sales_data_rec.bm1_electric_amt_tax < 0 ) THEN
+        ln_bm1_elect_amt_tax := FLOOR( i_get_sales_data_rec.bm1_electric_amt_tax );
       END IF;
+-- Ver.3.21 N.Abe ADD END
     END IF;
 -- Ver.3.20 N.Abe ADD END
     --==================================================
@@ -4801,21 +4810,29 @@ END insert_xcbs;
       ln_bm1_rcpt_discount_amt_notax
         := l_xcbs_data_tab( cn_index_1 ).csh_rcpt_discount_amt / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 )  );
     END IF;
--- Ver.3.20 N.Abe MOD START
-    --BM1税区分 = '1'（税込）
-    IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
-      -- BM1 電気料(税抜)の設定
-      IF( ln_bm1_elect_amt_tax IS NOT NULL ) THEN
-        ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-      END IF;
-    --BM1税区分 = '2'（税抜）
-    ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
-      -- BM1 電気料(税込)の設定
-      IF( ln_bm1_elect_amt_no_tax IS NOT NULL ) THEN
-        ln_bm1_elect_amt_tax    := ln_bm1_elect_amt_no_tax * ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-      END IF;
-    END IF;
+-- Ver.3.21 N.Abe DEL START
+---- Ver.3.20 N.Abe MOD START
+--    --BM1税区分 = '1'（税込）
+--    IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+--      -- BM1 電気料(税抜)の設定
+--      IF( ln_bm1_elect_amt_tax IS NOT NULL ) THEN
+--        ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--      END IF;
+--    --BM1税区分 = '2'（税抜）
+--    ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
+--      -- BM1 電気料(税込)の設定
+--      IF( ln_bm1_elect_amt_no_tax IS NOT NULL ) THEN
+--        ln_bm1_elect_amt_tax    := ln_bm1_elect_amt_no_tax * ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--      END IF;
+--    END IF;
 -- Ver.3.20 N.Abe MOD END
+-- Ver.3.21 N.Abe DEL END
+-- Ver.3.21 N.Abe Add START
+    -- BM1 電気料(税抜)の設定
+    IF( ln_bm1_elect_amt_tax IS NOT NULL ) THEN
+      ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+    END IF;
+-- Ver.3.21 N.Abe Add END
 -- Ver.3.20 N.Abe DEL START
 --    -- BM2 VDBM(税抜)の設定
 --    IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax IS NOT NULL ) THEN
@@ -4950,9 +4967,15 @@ END insert_xcbs;
           ln_bm1_amt_no_tax  := FLOOR( ln_bm1_amt_no_tax );
         END IF;
         -- 【BM1】電気料(税抜)
-        IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 )    THEN
+-- Ver.3.21 N.Abe MOD START
+--        IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 )    THEN
+        IF( ln_bm1_elect_amt_no_tax >= 0 )    THEN
+-- Ver.3.21 N.Abe MOD END
           ln_bm1_elect_amt_no_tax  := CEIL( ln_bm1_elect_amt_no_tax );
-        ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
+-- Ver.3.21 N.Abe MOD START
+--        ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
+        ELSIF( ln_bm1_elect_amt_no_tax < 0 ) THEN
+-- Ver.3.21 N.Abe MOD END
           ln_bm1_elect_amt_no_tax  := FLOOR( ln_bm1_elect_amt_no_tax );
         END IF;
       END IF;
@@ -5024,12 +5047,20 @@ END insert_xcbs;
         ln_bm1_amt_tax  := FLOOR( ln_bm1_amt_tax );
       END IF;
 --
-      -- 【BM1】電気料(税込)
-      IF( ln_bm1_elect_amt_tax >= 0 ) THEN
-        ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
-      ELSIF( ln_bm1_elect_amt_tax < 0 ) THEN
-        ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
+-- Ver.3.21 N.Abe MOD START
+--      -- 【BM1】電気料(税込)
+--      IF( ln_bm1_elect_amt_tax >= 0 ) THEN
+--        ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
+--      ELSIF( ln_bm1_elect_amt_tax < 0 ) THEN
+--        ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
+--      END IF;
+      -- 【BM1】電気料(税抜)
+      IF( ln_bm1_elect_amt_no_tax >= 0 ) THEN
+        ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
+      ELSIF( ln_bm1_elect_amt_no_tax < 0 ) THEN
+        ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
       END IF;
+-- Ver.3.21 N.Abe MOD END
     END IF;
 --
     -- BM2税区分 IN ( '2', '3' )（税抜、非課税）
