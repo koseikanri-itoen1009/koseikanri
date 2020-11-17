@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目マスタインタフェース T_MD070_BPO_80D
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/09/18    1.4  Oracle 山根 一浩  T_S_460,T_S_453,T_S_575,T_S_559,変更#232対応
  *  2008/10/08    1.5  Oracle 椎名 昭圭  I_S_328対応
  *  2018/02/20    1.6  SCSK佐々木        E_本稼動_14862
+ *  2020/11/05    1.7  Y.Koh             E_本稼動_16736対応
  *
  *****************************************************************************************/
 --
@@ -279,7 +280,11 @@ AS
             iimb.attribute11,                             -- ケース入数
             iimb.attribute25,                             -- 重量
             iimb.attribute16,                             -- 容積
-            iimb.attribute12,                             -- NET
+-- 2020/11/05 Ver1.7 MOD Start
+            ROUND(TO_NUMBER(iimb.attribute12)) attribute12,
+                                                          -- NET
+--            iimb.attribute12,                             -- NET
+-- 2020/11/05 Ver1.7 MOD End
             CASE
               WHEN (iimb.attribute6 <= TO_CHAR(gd_sysdate, 'YYYYMMDD')) THEN
                 iimb.attribute5                           -- 新・定価
