@@ -29,7 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2020/11/10    1.0   N.Abe            新規作成
+ *  2020/11/16    1.0   N.Abe            新規作成
  *
  *****************************************************************************************/
 --
@@ -162,6 +162,7 @@ AS
      ,it_target_div IN  VARCHAR2
   )
   IS
+    -- 支払あり
     SELECT  xiwh.set_code               AS  set_code
            ,xiwh.cust_name              AS  cust_name
            ,NULL                        AS  office
@@ -227,20 +228,100 @@ AS
            ,xiwh.branch_name            AS  branch_name
            ,xiwh.bank_holder_name_alt   AS  bank_holder_name_alt
            ,xiwl.cust_code              AS  cust_code
+           ,xiwl.order_num              AS  order_num
+           ,xiwl.item_code              AS  item_code
       FROM  xxcok_info_work_header   xiwh
            ,xxcok_info_work_line     xiwl
      WHERE xiwh.vendor_code   = xiwl.vendor_code(+)
      AND   xiwh.tax_div       = it_tax_div
-     AND   xiwl.tax_div(+)    = it_tax_div
+     AND   xiwl.tax_div(+)    = it_tax_div          -- 販売明細が存在しない場合も含む（外部結合）
      AND   xiwh.target_div    = it_target_div
-     AND   xiwl.target_div(+) = it_target_div
+     AND   xiwl.target_div(+) = it_target_div       -- 販売明細が存在しない場合も含む（外部結合）
+     AND   xiwh.payment_amt   > 0                   -- 支払あり
+    UNION ALL
+    -- 支払なし 且つ 販売明細が存在する場合
+    SELECT  xiwh.set_code               AS  set_code
+           ,xiwh.cust_name              AS  cust_name
+           ,NULL                        AS  office
+           ,xiwh.dest_post_code         AS  dest_post_code
+           ,xiwh.dest_address1          AS  dest_address1
+           ,NULL                        AS  dest_address2
+           ,xiwh.dest_tel               AS  dest_tel
+           ,xiwh.fax                    AS  fax
+           ,NULL                        AS  business
+           ,xiwh.dept_name              AS  dept_name
+           ,xiwh.send_post_code         AS  send_post_code
+           ,xiwh.send_address1          AS  send_address1
+           ,NULL                        AS  send_address2
+           ,xiwh.send_tel               AS  send_tel
+           ,xiwh.num                    AS  num
+           ,xiwh.vendor_code            AS  vendor_code
+           ,NULL                        AS  subject
+           ,xiwh.payment_date           AS  payment_date
+           ,CASE
+              WHEN xiwh.notifi_amt < 0 THEN
+                0
+              ELSE
+                xiwh.notifi_amt
+            END                         AS  notifi_amt
+           ,xiwh.total_amt_no_tax_10    AS  total_amt_no_tax_10
+           ,xiwh.tax_amt_10             AS  tax_amt_10
+           ,xiwh.total_amt_10           AS  total_amt_10
+           ,xiwh.total_amt_no_tax_8     AS  total_amt_no_tax_8
+           ,xiwh.tax_amt_8              AS  tax_amt_8
+           ,xiwh.total_amt_8            AS  total_amt_8
+           ,xiwh.total_amt_no_tax_0     AS  total_amt_no_tax_0
+           ,xiwh.tax_amt_0              AS  tax_amt_0
+           ,xiwh.total_amt_0            AS  total_amt_0
+           ,xiwh.closing_date           AS  closing_date
+           ,xiwh.total_sales_qty        AS  total_sales_qty
+           ,xiwh.total_sales_amt        AS  total_sales_amt
+           ,xiwh.sales_fee              AS  sales_fee
+           ,CASE
+              WHEN xiwh.set_code IN ('0', '2')
+              THEN NULL
+              ELSE xiwh.electric_amt
+            END                         AS  electric_amt
+           ,xiwh.tax_amt                AS  h_tax_amt
+           ,xiwh.transfer_fee           AS  transfer_fee
+           ,CASE
+              WHEN xiwh.payment_amt < 0 THEN
+                0
+              ELSE
+                xiwh.payment_amt
+            END                         AS  payment_amt
+           ,xiwl.line_item              AS  line_item
+           ,xiwl.unit_price             AS  unit_price
+           ,xiwl.qty                    AS  qty
+           ,xiwl.unit_type              AS  unit_type
+           ,xiwl.amt                    AS  amt
+           ,xiwl.tax_amt                AS  l_tax_amt
+           ,xiwl.total_amt              AS  total_amt
+           ,xiwl.inst_dest              AS  inst_dest
+           ,xiwh.remarks                AS  remarks
+           ,xiwh.bank_code              AS  bank_code
+           ,xiwh.bank_name              AS  bank_name
+           ,xiwh.branch_code            AS  branch_code
+           ,xiwh.branch_name            AS  branch_name
+           ,xiwh.bank_holder_name_alt   AS  bank_holder_name_alt
+           ,xiwl.cust_code              AS  cust_code
+           ,xiwl.order_num              AS  order_num
+           ,xiwl.item_code              AS  item_code
+      FROM  xxcok_info_work_header   xiwh
+           ,xxcok_info_work_line     xiwl
+     WHERE xiwh.vendor_code   = xiwl.vendor_code(+)
+     AND   xiwh.tax_div       = it_tax_div
+     AND   xiwl.tax_div       = it_tax_div          -- 販売明細が存在する場合（等結合）
+     AND   xiwh.target_div    = it_target_div
+     AND   xiwl.target_div    = it_target_div       -- 販売明細が存在する場合（等結合）
+     AND   xiwh.payment_amt  <= 0                   -- 支払なし
      ORDER BY
-           xiwh.vendor_code
-          ,xiwl.cust_code
-          ,xiwl.inst_dest
-          ,xiwl.order_num
-          ,xiwl.item_code
-          ,xiwl.unit_price
+           vendor_code
+          ,cust_code
+          ,inst_dest
+          ,order_num
+          ,item_code
+          ,unit_price
     ;
 --
   g_head_rec    g_head_cur%ROWTYPE;
@@ -276,6 +357,13 @@ AS
      FROM   xxcok_info_work_custom   xiwc
      WHERE  xiwc.vendor_code    = it_supplier_code
      AND    xiwc.tax_div        = it_tax_div
+     AND    exists (
+              SELECT 1
+              FROM   xxcok_info_work_header   xiwh
+              WHERE  xiwh.vendor_code = xiwc.vendor_code
+              AND    xiwh.tax_div     = xiwc.tax_div
+              AND    xiwh.payment_amt > 0                 -- 支払あり
+              )
      ORDER BY xiwc.cust_code
              ,xiwc.inst_dest
              ,xiwc.calc_sort
@@ -2002,7 +2090,7 @@ AS
            ,flv2.calc_type_sort                     AS  calc_sort               -- 計算条件ソート順
            ,CASE xcbs.calc_type
               WHEN '10'
-              THEN TO_CHAR( SUM( xcbs.selling_price ) )
+              THEN TO_CHAR( xcbs.selling_price )
               WHEN '20'
               THEN SUBSTR( flv1.container_type_name, 1, 10 )
               ELSE flv2.disp
