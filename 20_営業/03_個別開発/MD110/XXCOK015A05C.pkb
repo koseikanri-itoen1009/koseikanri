@@ -29,7 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2020/11/16    1.0   N.Abe            新規作成
+ *  2020/11/24    1.0   N.Abe            新規作成
  *
  *****************************************************************************************/
 --
@@ -240,7 +240,11 @@ AS
      AND   xiwh.payment_amt   > 0                   -- 支払あり
     UNION ALL
     -- 支払なし 且つ 販売明細が存在する場合
-    SELECT  xiwh.set_code               AS  set_code
+    SELECT  
+            CASE
+              WHEN it_tax_div = '1' THEN '0'
+              WHEN it_tax_div = '2' THEN '2'
+            END                         AS  set_code                -- 通知書書式設定コード
            ,xiwh.cust_name              AS  cust_name
            ,NULL                        AS  office
            ,xiwh.dest_post_code         AS  dest_post_code
@@ -258,12 +262,7 @@ AS
            ,xiwh.vendor_code            AS  vendor_code
            ,NULL                        AS  subject
            ,xiwh.payment_date           AS  payment_date
-           ,CASE
-              WHEN xiwh.notifi_amt < 0 THEN
-                0
-              ELSE
-                xiwh.notifi_amt
-            END                         AS  notifi_amt
+           ,0                           AS  notifi_amt
            ,xiwh.total_amt_no_tax_10    AS  total_amt_no_tax_10
            ,xiwh.tax_amt_10             AS  tax_amt_10
            ,xiwh.total_amt_10           AS  total_amt_10
@@ -276,20 +275,11 @@ AS
            ,xiwh.closing_date           AS  closing_date
            ,xiwh.total_sales_qty        AS  total_sales_qty
            ,xiwh.total_sales_amt        AS  total_sales_amt
-           ,xiwh.sales_fee              AS  sales_fee
-           ,CASE
-              WHEN xiwh.set_code IN ('0', '2')
-              THEN NULL
-              ELSE xiwh.electric_amt
-            END                         AS  electric_amt
-           ,xiwh.tax_amt                AS  h_tax_amt
-           ,xiwh.transfer_fee           AS  transfer_fee
-           ,CASE
-              WHEN xiwh.payment_amt < 0 THEN
-                0
-              ELSE
-                xiwh.payment_amt
-            END                         AS  payment_amt
+           ,0                           AS  sales_fee
+           ,NULL                        AS  electric_amt
+           ,0                           AS  h_tax_amt
+           ,0                           AS  transfer_fee
+           ,0                           AS  payment_amt
            ,xiwl.line_item              AS  line_item
            ,xiwl.unit_price             AS  unit_price
            ,xiwl.qty                    AS  qty
@@ -309,11 +299,11 @@ AS
            ,xiwl.item_code              AS  item_code
       FROM  xxcok_info_work_header   xiwh
            ,xxcok_info_work_line     xiwl
-     WHERE xiwh.vendor_code   = xiwl.vendor_code(+)
+     WHERE xiwh.vendor_code   = xiwl.vendor_code    -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
      AND   xiwh.tax_div       = it_tax_div
-     AND   xiwl.tax_div       = it_tax_div          -- 販売明細が存在する場合（等結合）
+     AND   xiwl.tax_div       = it_tax_div          -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
      AND   xiwh.target_div    = it_target_div
-     AND   xiwl.target_div    = it_target_div       -- 販売明細が存在する場合（等結合）
+     AND   xiwl.target_div    = it_target_div       -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
      AND   xiwh.payment_amt  <= 0                   -- 支払なし
      ORDER BY
            vendor_code
