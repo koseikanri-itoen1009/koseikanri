@@ -29,7 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2020/11/24    1.0   N.Abe            êVãKçÏê¨
+ *  2020/11/25    1.0   N.Abe            êVãKçÏê¨
  *
  *****************************************************************************************/
 --
@@ -273,8 +273,8 @@ AS
            ,xiwh.tax_amt_0              AS  tax_amt_0
            ,xiwh.total_amt_0            AS  total_amt_0
            ,xiwh.closing_date           AS  closing_date
-           ,xiwh.total_sales_qty        AS  total_sales_qty
-           ,xiwh.total_sales_amt        AS  total_sales_amt
+           ,0                           AS  total_sales_qty
+           ,0                           AS  total_sales_amt
            ,0                           AS  sales_fee
            ,NULL                        AS  electric_amt
            ,0                           AS  h_tax_amt
