@@ -83,7 +83,7 @@ AS
  *  2018/12/26    3.18  E.Yazaki         [E_本稼動_15349] 【営業・個別】仕入先CD制御
  *  2019/07/16    3.19  K.Nara           [E_本稼動_15472] 軽減税率対応
  *  2020/08/21    3.20  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
- *  2020/11/13    3.21  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
+ *  2020/11/26    3.21  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -810,6 +810,10 @@ AS
          , xbc.bm2_tax_kbn                                         AS bm2_tax_kbn              -- BM2税区分
          , xbc.bm3_tax_kbn                                         AS bm3_tax_kbn              -- BM3税区分
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.21 N.Abe ADD START
+         , NULL                                                    AS electric_fix_cost        -- 定額電気代
+         , NULL                                                    AS electric_variable_cost   -- 変動電気代
+-- Ver.3.21 N.Abe ADD END
     FROM ( SELECT xse.sales_base_code                                                              AS sales_base_code          -- 売上拠点コード
                 , NVL2( xmbc.calc_type, xse.results_employee_code              , NULL )            AS results_employee_code    -- 成績計上者コード
                 , xse.ship_to_customer_code                                                        AS ship_to_customer_code    -- 【出荷先】顧客コード
@@ -1207,6 +1211,10 @@ AS
          , xbc.bm2_tax_kbn                                         AS bm2_tax_kbn              -- BM2税区分
          , xbc.bm3_tax_kbn                                         AS bm3_tax_kbn              -- BM3税区分
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.21 N.Abe ADD START
+         , NULL                                                    AS electric_fix_cost        -- 定額電気代
+         , NULL                                                    AS electric_variable_cost   -- 変動電気代
+-- Ver.3.21 N.Abe ADD END
     FROM ( SELECT xse.sales_base_code                                                              AS sales_base_code          -- 売上拠点コード
                 , NVL2( xmbc.calc_type, xse.results_employee_code              , NULL )            AS results_employee_code    -- 成績計上者コード
                 , xse.ship_to_customer_code                                                        AS ship_to_customer_code    -- 【出荷先】顧客コード
@@ -1638,6 +1646,10 @@ AS
          , NVL( xmbc.bm2_tax_kbn, '1' )                                            AS bm2_tax_kbn              -- BM2税区分
          , NVL( xmbc.bm3_tax_kbn, '1' )                                            AS bm3_tax_kbn              -- BM3税区分
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.21 N.Abe ADD START
+         , NULL                                                                    AS electric_fix_cost        -- 定額電気代
+         , NULL                                                                    AS electric_variable_cost   -- 変動電気代
+-- Ver.3.21 N.Abe ADD END
     FROM xxcok_mst_bm_contract       xmbc  -- 販手条件マスタ
        , xxcos_sales_exp_lines       xsel  -- 販売実績明細
        , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
@@ -2164,6 +2176,10 @@ AS
          , NVL( xmbc.bm2_tax_kbn, '1' )  AS bm2_tax_kbn              -- BM2税区分
          , NVL( xmbc.bm3_tax_kbn, '1' )  AS bm3_tax_kbn              -- BM3税区分
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.21 N.Abe ADD START
+         , NULL                          AS electric_fix_cost        -- 定額電気代
+         , NULL                          AS electric_variable_cost   -- 変動電気代
+-- Ver.3.21 N.Abe ADD END
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
 --    FROM xxcok_tmp_014a01c_custdata      xt0c  -- 条件別販手販協計算顧客情報一時表
     FROM xxcok_wk_014a01c_custdata       xt0c  -- 条件別販手販協計算顧客情報一時表
@@ -3181,6 +3197,58 @@ GROUP BY CASE
          ,'1'                            AS bm2_tax_kbn              -- BM2税区分
          ,'1'                            AS bm3_tax_kbn              -- BM3税区分
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.21 N.Abe ADD START
+         , NVL( ( SELECT xmbc.bm1_amt
+                  FROM xxcok_mst_bm_contract     xmbc
+                      ,xxcos_sales_exp_headers   xseh  -- 販売実績ヘッダ
+                      ,xxcos_sales_exp_lines     xsel  -- 販売実績明細
+                  WHERE xmbc.calc_type               = cv_calc_type_electricity_cost  -- 計算条件：電気代
+                    AND xmbc.cust_code               = xt0c.ship_cust_code
+                    AND xmbc.calc_target_flag        = cv_enable
+                    AND xseh.ship_to_customer_code   = xmbc.cust_code
+                    AND xseh.delivery_date          <= xt0c.closing_date
+                    AND xseh.delivery_date          >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
+                    AND xseh.business_date          <= gd_process_date
+                    AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+                    AND EXISTS ( SELECT  'X'
+                                 FROM fnd_lookup_values flv -- 販手計算対象売上区分
+                                 WHERE flv.lookup_type         = cv_lookup_type_07             -- 参照タイプ：販手計算対象売上区分
+                                   AND flv.lookup_code         = xsel.sales_class
+                                   AND flv.language            = cv_lang
+                                   AND flv.enabled_flag        = cv_enable
+                                   AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                             AND NVL( flv.end_date_active  , gd_process_date )
+                        )
+                    AND xsel.item_code              <> gv_elec_change_item_code
+                    AND ROWNUM = 1
+                )
+              , 0
+           )                             AS electric_fix_cost        -- 定額電気代
+         , NVL( ( SELECT SUM( xsel.pure_amount + xsel.tax_amount )
+                  FROM xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
+                     , xxcos_sales_exp_lines       xsel  -- 販売実績明細
+                  WHERE xseh.ship_to_customer_code  = xt0c.ship_cust_code
+                    AND xseh.delivery_date         <= xt0c.closing_date
+                    AND xseh.business_date         <= gd_process_date
+                    AND xseh.delivery_date         >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
+                    AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
+                    AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                    AND EXISTS ( SELECT  'X'
+                                 FROM fnd_lookup_values flv -- 販手計算対象売上区分
+                                 WHERE flv.lookup_type         = cv_lookup_type_07             -- 参照タイプ：販手計算対象売上区分
+                                   AND flv.lookup_code         = xsel.sales_class
+                                   AND flv.language            = cv_lang
+                                   AND flv.enabled_flag        = cv_enable
+                                   AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                             AND NVL( flv.end_date_active  , gd_process_date )
+                                   AND ROWNUM = 1
+                        )
+                    AND xsel.item_code              = gv_elec_change_item_code
+                )
+              , 0
+           )                             AS electric_variable_cost   -- 変動電気代
+-- Ver.3.21 N.Abe ADD END
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
 --    FROM xxcok_tmp_014a01c_custdata      xt0c  -- 条件別販手販協計算顧客情報一時表
     FROM xxcok_wk_014a01c_custdata       xt0c  -- 条件別販手販協計算顧客情報一時表
@@ -3406,6 +3474,10 @@ GROUP BY CASE
          , '1'                                                                                   AS bm2_tax_kbn              -- BM2税区分
          , '1'                                                                                   AS bm3_tax_kbn              -- BM3税区分
 -- Ver.3.20 N.Abe ADD START
+-- Ver.3.21 N.Abe ADD START
+         , NULL                                                                                  AS electric_fix_cost        -- 定額電気代
+         , NULL                                                                                  AS electric_variable_cost   -- 変動電気代
+-- Ver.3.21 N.Abe ADD END
     FROM xxcos_sales_exp_lines       xsel  -- 販売実績明細
        , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
@@ -3581,6 +3653,10 @@ GROUP BY CASE
   , bm2_tax_kbn                    VARCHAR2(1)
   , bm3_tax_kbn                    VARCHAR2(1)
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.21 N.Abe ADD START
+  , electric_fix_cost              NUMBER
+  , electric_variable_cost         NUMBER
+-- Ver.3.21 N.Abe ADD END
   );
   TYPE xcbs_data_ttype             IS TABLE OF xxcok_cond_bm_support%ROWTYPE INDEX BY BINARY_INTEGER;
 -- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD START
@@ -4578,34 +4654,28 @@ END insert_xcbs;
     l_xcbs_data_tab( cn_index_1 ) := NULL;
     l_xcbs_data_tab( cn_index_2 ) := NULL;
     l_xcbs_data_tab( cn_index_3 ) := NULL;
+-- Ver.3.21 N.Abe DEL START
 -- Ver.3.20 N.Abe ADD START
-    --==================================================
-    -- 電気料抽出時の端数調整（抽出時に調整がないため）
-    -- 税込⇒切り捨て
-    -- 税抜⇒切り上げ
-    --==================================================
-    -- BM1税区分 = '1'（税込）
-    IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN 
-      -- 【BM1】電気料(税込)
-      ln_bm1_elect_amt_tax      := TRUNC( i_get_sales_data_rec.bm1_electric_amt_tax );
-    -- BM1税区分 = '2'（税抜）
-    ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
--- Ver.3.21 N.Abe ADD START
+--    --==================================================
+--    -- 電気料抽出時の端数調整（抽出時に調整がないため）
+--    -- 税込⇒切り捨て
+--    -- 税抜⇒切り上げ
+--    --==================================================
+--    -- BM1税区分 = '1'（税込）
+--    IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN 
+--      -- 【BM1】電気料(税込)
+--      ln_bm1_elect_amt_tax      := TRUNC( i_get_sales_data_rec.bm1_electric_amt_tax );
+--    -- BM1税区分 = '2'（税抜）
+--    ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
 --      -- 【BM1】電気料(税抜)
 --      IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 ) THEN
 --        ln_bm1_elect_amt_no_tax := CEIL( i_get_sales_data_rec.bm1_electric_amt_no_tax );
 --      ELSIF( i_get_sales_data_rec.bm1_electric_amt_no_tax < 0 ) THEN
 --        ln_bm1_elect_amt_no_tax := FLOOR( i_get_sales_data_rec.bm1_electric_amt_no_tax );
 --      END IF;
-      -- 【BM1】電気料(税込)
-      IF( i_get_sales_data_rec.bm1_electric_amt_tax >= 0 ) THEN
-        ln_bm1_elect_amt_tax := CEIL( i_get_sales_data_rec.bm1_electric_amt_tax );
-      ELSIF( i_get_sales_data_rec.bm1_electric_amt_tax < 0 ) THEN
-        ln_bm1_elect_amt_tax := FLOOR( i_get_sales_data_rec.bm1_electric_amt_tax );
-      END IF;
--- Ver.3.21 N.Abe ADD END
-    END IF;
+--    END IF;
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.21 N.Abe DEL END
     --==================================================
     -- 1.販売実績情報の業態(小分類)が '25':フルサービスVDの場合、VDBM(税込)を設定します。
     --==================================================
@@ -4827,12 +4897,6 @@ END insert_xcbs;
 --    END IF;
 -- Ver.3.20 N.Abe MOD END
 -- Ver.3.21 N.Abe DEL END
--- Ver.3.21 N.Abe Add START
-    -- BM1 電気料(税抜)の設定
-    IF( ln_bm1_elect_amt_tax IS NOT NULL ) THEN
-      ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-    END IF;
--- Ver.3.21 N.Abe Add END
 -- Ver.3.20 N.Abe DEL START
 --    -- BM2 VDBM(税抜)の設定
 --    IF( l_xcbs_data_tab( cn_index_2 ).cond_bm_amt_tax IS NOT NULL ) THEN
@@ -4893,7 +4957,9 @@ END insert_xcbs;
       -- BM1税区分 = '1'（税込）
       IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
         ln_bm1_amt_no_tax       := ROUND( ln_bm1_amt_no_tax );        -- 【BM1】VDBM(税抜)
-        ln_bm1_elect_amt_no_tax := ROUND( ln_bm1_elect_amt_no_tax );  -- 【BM1】電気料(税抜)
+-- Ver.3.21 N.Abe DEL START
+--        ln_bm1_elect_amt_no_tax := ROUND( ln_bm1_elect_amt_no_tax );  -- 【BM1】電気料(税抜)
+-- Ver.3.21 N.Abe DEL END
       END IF;
       -- BM2税区分 = '1'（税込）
       IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
@@ -4966,18 +5032,14 @@ END insert_xcbs;
         ELSIF ( ln_bm1_amt_no_tax < 0 ) THEN
           ln_bm1_amt_no_tax  := FLOOR( ln_bm1_amt_no_tax );
         END IF;
-        -- 【BM1】電気料(税抜)
--- Ver.3.21 N.Abe MOD START
+-- Ver.3.21 N.Abe DEL START
+--        -- 【BM1】電気料(税抜)
 --        IF( i_get_sales_data_rec.bm1_electric_amt_no_tax >= 0 )    THEN
-        IF( ln_bm1_elect_amt_no_tax >= 0 )    THEN
--- Ver.3.21 N.Abe MOD END
-          ln_bm1_elect_amt_no_tax  := CEIL( ln_bm1_elect_amt_no_tax );
--- Ver.3.21 N.Abe MOD START
+--          ln_bm1_elect_amt_no_tax  := CEIL( ln_bm1_elect_amt_no_tax );
 --        ELSIF( l_xcbs_data_tab( cn_index_1 ).electric_amt_no_tax < 0 ) THEN
-        ELSIF( ln_bm1_elect_amt_no_tax < 0 ) THEN
--- Ver.3.21 N.Abe MOD END
-          ln_bm1_elect_amt_no_tax  := FLOOR( ln_bm1_elect_amt_no_tax );
-        END IF;
+--          ln_bm1_elect_amt_no_tax  := FLOOR( ln_bm1_elect_amt_no_tax );
+--        END IF;
+-- Ver.3.21 N.Abe DEL END
       END IF;
 --
       -- BM2税区分 = '1'（税込）
@@ -5022,7 +5084,9 @@ END insert_xcbs;
       -- BM1税区分 = '1'（税込）
       IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
         ln_bm1_amt_no_tax       := TRUNC( ln_bm1_amt_no_tax );             -- 【BM1】VDBM(税抜)
-        ln_bm1_elect_amt_no_tax := TRUNC( ln_bm1_elect_amt_no_tax );  -- 【BM1】電気料(税抜)
+-- Ver.3.21 N.Abe DEL START
+--        ln_bm1_elect_amt_no_tax := TRUNC( ln_bm1_elect_amt_no_tax );  -- 【BM1】電気料(税抜)
+-- Ver.3.21 N.Abe DEL END
       END IF;
       -- BM2税区分 = '1'（税込）
       IF ( i_get_sales_data_rec.bm2_tax_kbn = '1' ) THEN
@@ -5047,20 +5111,14 @@ END insert_xcbs;
         ln_bm1_amt_tax  := FLOOR( ln_bm1_amt_tax );
       END IF;
 --
--- Ver.3.21 N.Abe MOD START
+-- Ver.3.21 N.Abe DEL START
 --      -- 【BM1】電気料(税込)
 --      IF( ln_bm1_elect_amt_tax >= 0 ) THEN
 --        ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
 --      ELSIF( ln_bm1_elect_amt_tax < 0 ) THEN
 --        ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
 --      END IF;
-      -- 【BM1】電気料(税抜)
-      IF( ln_bm1_elect_amt_no_tax >= 0 ) THEN
-        ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
-      ELSIF( ln_bm1_elect_amt_no_tax < 0 ) THEN
-        ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
-      END IF;
--- Ver.3.21 N.Abe MOD END
+-- Ver.3.21 N.Abe DEL END
     END IF;
 --
     -- BM2税区分 IN ( '2', '3' )（税抜、非課税）
@@ -5082,6 +5140,83 @@ END insert_xcbs;
         ln_bm3_amt_tax  := FLOOR( ln_bm3_amt_tax );
       END IF;
     END IF;
+-- Ver.3.21 N.Abe ADD START
+    --==================================================
+    -- 電気代の計算処理
+    --==================================================
+    -- BM1税区分 = '1'（税込）
+    IF ( i_get_sales_data_rec.bm1_tax_kbn = '1' ) THEN
+      -- 定額電気代が0以外
+      IF ( NVL( i_get_sales_data_rec.electric_fix_cost, 0 ) <> 0 ) THEN
+        -- 【BM1】電気料(税込)に定額電気代を設定
+        ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_fix_cost;
+      -- 変動電気代が0以外
+      ELSIF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) <> 0 ) THEN
+        -- 【BM1】電気料(税込)に変動電気代を設定
+        ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_variable_cost;
+      END IF;
+      -- 【BM1】電気料(税込)の端数切り捨て
+      ln_bm1_elect_amt_tax := TRUNC( ln_bm1_elect_amt_tax );
+      -- 【BM1】電気料(税抜)を算出
+      ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+      -- ==========================
+      -- 端数調整区分での端数調整
+      -- ==========================
+      -- 端数処理区分が 'NEAREST':四捨五入の場合、電気代(税抜)の少数点以下を四捨五入
+      IF( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_nearest ) THEN
+        ln_bm1_elect_amt_no_tax := ROUND( ln_bm1_elect_amt_no_tax );
+      -- 端数処理区分が 'UP':切り上げの場合、電気代(税抜)の小数点以下を切り上げ
+      ELSIF ( i_get_sales_data_rec.tax_rounding_rule = cv_tax_rounding_rule_up ) THEN
+        IF ( ln_bm1_elect_amt_no_tax >= 0 ) THEN
+          ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
+        ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
+          ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
+        END IF;
+      -- 上記以外の場合、'DOWN':切り捨てが設定されていることとする。少数点以下の端数を切り捨て
+      ELSE
+        ln_bm1_elect_amt_no_tax := TRUNC( ln_bm1_elect_amt_no_tax );
+      END IF;
+    -- BM1税区分 = '2'（税抜）
+    ELSIF ( i_get_sales_data_rec.bm1_tax_kbn = '2' ) THEN
+      -- 定額電気代が0以外
+      IF ( NVL( i_get_sales_data_rec.electric_fix_cost, 0 ) <> 0 ) THEN
+        -- 【BM1】電気料(税抜)に定額電気代を設定
+        ln_bm1_elect_amt_no_tax := i_get_sales_data_rec.electric_fix_cost;
+        -- 【BM1】電気料(税抜)の端数を切り上げ
+        IF ( ln_bm1_elect_amt_no_tax >= 0 ) THEN
+          ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
+        ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
+          ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
+        END IF;
+        -- 【BM1】電気料(税込)を算出
+        ln_bm1_elect_amt_tax := ln_bm1_elect_amt_no_tax * ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+        -- 【BM1】電気料(税込)の端数を切り上げ
+        IF ( ln_bm1_elect_amt_tax >= 0 ) THEN
+          ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
+        ELSIF ( ln_bm1_elect_amt_tax < 0 ) THEN
+          ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
+        END IF;
+      -- 変動電気代が0以外
+      ELSIF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) <> 0 ) THEN
+        -- 【BM1】電気料(税込)に変動電気代を設定
+        ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_variable_cost;
+        -- 【BM1】電気料(税込)の端数を切り上げ
+        IF ( ln_bm1_elect_amt_tax >= 0 ) THEN
+          ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
+        ELSIF ( ln_bm1_elect_amt_tax < 0 ) THEN
+          ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
+        END IF;
+        -- 【BM1】電気料(税抜)を算出
+        ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+        -- 【BM1】電気料(税抜)の端数を切り上げ
+        IF ( ln_bm1_elect_amt_no_tax >= 0 ) THEN
+          ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
+        ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
+          ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
+        END IF;
+      END IF;
+    END IF;
+-- Ver.3.21 N.Abe ADD END
     --==================================================
     -- 計算した値を変数に格納
     --==================================================
