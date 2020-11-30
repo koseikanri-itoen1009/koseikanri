@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP001A02C(body)
  * Description      : 不正販売実績検知
  * MD.070           : 不正販売実績検知(MD070_IPO_CCP_001_A02)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/08/06    1.0   N.Koyama         [E_本稼動_16546]新規作成
+ *  2020/11/24    1.1   N.Koyama         [E_本稼動_16781]不正な販売実績を検知する 税額差異
  *
  *****************************************************************************************/
 --
@@ -152,6 +153,28 @@ AS
                            WHERE pap.employee_number  = xseh.results_employee_code
                              AND xseh.delivery_date BETWEEN pap.effective_start_date
                                AND  NVL( pap.effective_end_date, ld_date ))
+--  Ver1.1 Add Start
+       UNION ALL
+--  販売実績ヘッダ税額不正
+       SELECT  3                                          AS error_kind
+              ,xseh.sales_exp_header_id                   AS sales_exp_header_id
+              ,xseh.ship_to_customer_code                 AS ship_to_customer_code
+              ,TO_CHAR(xseh.delivery_date,'YYYY/MM/DD')   AS delivery_date
+              ,xseh.tax_amount_sum                        AS sale_amount_sum
+              ,SUM(xsel.tax_amount)                       AS sale_amount_sum_l
+              ,xseh.results_employee_code                 AS results_employee_code
+         FROM xxcos_sales_exp_headers xseh
+             ,xxcos_sales_exp_lines   xsel
+        WHERE xseh.business_date = ld_date
+          AND xseh.sales_exp_header_id = xsel.sales_exp_header_id
+        GROUP BY 1
+                ,xseh.sales_exp_header_id
+                ,xseh.ship_to_customer_code
+                ,TO_CHAR(xseh.delivery_date,'YYYY/MM/DD')
+                ,xseh.tax_amount_sum
+                ,xseh.results_employee_code
+       HAVING xseh.tax_amount_sum <> SUM(xsel.tax_amount)
+--  Ver1.1 Add End
       ;
     -- メインカーソルレコード型
     main_rec  main_cur%ROWTYPE;
@@ -202,7 +225,10 @@ AS
                      ' ヘッダ金額:'   || main_rec.sale_amount_sum                               ||  -- ヘッダ金額
                      ' 明細金額合計:' || main_rec.sale_amount_sum_l                                 -- 明細金額合計
         );
-      ELSE
+--  Ver1.1 Mod Start
+--      ELSE
+      ELSIF ( main_rec.error_kind = 2 ) THEN
+--  Ver1.1 Mod End
         FND_FILE.PUT_LINE(
            which  => FND_FILE.OUTPUT
           ,buff   => '販売実績ヘッダの成績者コードが従業員マスタに存在しません。'               ||
@@ -211,6 +237,18 @@ AS
                      ' 納品日:'       || main_rec.delivery_date                                 ||  -- 納品日
                      ' 成績者コード:' || main_rec.results_employee_code                             -- 成績者コード
         );
+--  Ver1.1 Mod Start
+      ELSIF ( main_rec.error_kind = 3 ) THEN
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => '販売実績ヘッダの税額合計金額と販売実績明細の合計税額金額が一致していません。'     ||
+                     ' 販売実績ID:'   || main_rec.sales_exp_header_id                           ||  -- 販売実績ID
+                     ' 顧客コード:'   || main_rec.ship_to_customer_code                         ||  -- 顧客コード
+                     ' 納品日:'       || main_rec.delivery_date                                 ||  -- 納品日
+                     ' ヘッダ税額:'   || main_rec.sale_amount_sum                               ||  -- ヘッダ税額
+                     ' 明細税額合計:' || main_rec.sale_amount_sum_l                                 -- 明細税額合計
+        );
+--  Ver1.1 Mod End
       END IF;
     END LOOP;
     IF ( gn_error_cnt > 0 ) THEN
