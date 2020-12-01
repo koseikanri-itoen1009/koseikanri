@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A06R (body)
  * Description      : EDI納品予定未納リスト
  * MD.050           : EDI納品予定未納リスト MD050_COS_009_A06
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/07/13    1.5   K.Kiriu          障害対応[0000488]PT対応
  *  2009/10/09    1.6   M.Sano           障害対応[0001378]帳票テーブルの桁あふれ対応
  *  2011/08/24    1.7   K.Kiriu          [E_本稼動_08181]PT対応
+ *  2020/11/24    1.8   Y.Shoji          [E_本稼動_16760]対応
  *
  *****************************************************************************************/
 --
@@ -121,18 +122,28 @@ AS
   cv_msg_api_err            CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00017';    -- APIエラーメッセージ
   cv_msg_proc_date_err      CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00014';    -- 業務日付取得エラーメッセージ
   cv_msg_prof_err           CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00004';    -- プロファイル取得エラーメッセージ
+-- Ver1.8 Add Start
+  cv_msg_parameter          CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11902';    -- パラメータ出力メッセージ
+-- Ver1.8 Add End
   --トークン名
   cv_tkn_nm_table_name      CONSTANT  VARCHAR2(100) :=  'TABLE_NAME';          --テーブル名称
   cv_tkn_nm_table_lock      CONSTANT  VARCHAR2(100) :=  'TABLE';               --テーブル名称(ロックエラー時用)
   cv_tkn_nm_key_data        CONSTANT  VARCHAR2(100) :=  'KEY_DATA';            --キーデータ
   cv_tkn_nm_api_name        CONSTANT  VARCHAR2(100) :=  'API_NAME';            --API名称
   cv_tkn_nm_profile         CONSTANT  VARCHAR2(100) :=  'PROFILE';             --プロファイル名(販売領域)
+-- Ver1.8 Add Start
+  cv_tkn_nm_base_code       CONSTANT  VARCHAR2(100) :=  'DELIVERY_BASE_CODE';  --納品拠点コード
+-- Ver1.8 Add End
   --トークン値
   cv_msg_vl_table_name      CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11901';    --帳票ワークテーブル名
   cv_msg_vl_api_name        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00041';    --API名称
   cv_msg_vl_key_request_id  CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00088';    --要求ID
   cv_msg_vl_min_date        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00120';    --MIN日付
   cv_msg_vl_max_date        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-00056';    --MAX日付
+-- Ver1.8 Add Start
+  cv_msg_dlv_target_date    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11903';    --XXCOS:EDI未納納品日取得対象日数
+  cv_msg_ord_target_date    CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11904';    --XXCOS:EDI未納受注日取得対象日数
+-- Ver1.8 Add End
   --日付フォーマット
   cv_yyyymmdd               CONSTANT  VARCHAR2(100) :=  'YYYYMMDD';            --YYYYMMDD型
   cv_yyyy_mm_dd             CONSTANT  VARCHAR2(100) :=  'YYYY/MM/DD';          --YYYY/MM/DD型
@@ -148,6 +159,10 @@ AS
   --プロファイル関連
   cv_prof_min_date          CONSTANT  VARCHAR2(100) :=  'XXCOS1_MIN_DATE';     -- プロファイル名(MIN日付)
   cv_prof_max_date          CONSTANT  VARCHAR2(100) :=  'XXCOS1_MAX_DATE';     -- プロファイル名(MAX日付)
+-- Ver1.8 Add Start
+  cv_dlv_target_date        CONSTANT  VARCHAR2(100) :=  'XXCOS1_DLV_TARGET_DATE'; -- プロファイル名(EDI未納納品日取得対象日数)
+  cv_ord_target_date        CONSTANT  VARCHAR2(100) :=  'XXCOS1_ORD_TARGET_DATE'; -- プロファイル名(EDI未納受注日取得対象日数)
+-- Ver1.8 Add End
   --カテゴリ／ステータス
   cv_emp                    CONSTANT  VARCHAR2(100) := 'EMP';                  -- 従業員
   cv_oh_status_booked       CONSTANT  VARCHAR2(100) := 'BOOKED';               -- 受注ヘッダステータス(記帳済)
@@ -163,6 +178,13 @@ AS
   ct_prof_org_id            CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'ORG_ID'; -- MO:営業単位
   cv_str_profile_nm         CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-00047';     -- MO:営業単位
 -- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD END    *****************************************
+-- Ver1.8 Add Start
+  cv_output_type_1          CONSTANT  VARCHAR2(1)   := '1';                    -- 出力区分：拠点実行
+  cv_output_type_2          CONSTANT  VARCHAR2(1)   := '2';                    -- 出力区分：全拠点実行
+  cv_cursor_type_1          CONSTANT  VARCHAR2(1)   := '1';                    -- カーソル種類判定：拠点あり
+  cv_cursor_type_2          CONSTANT  VARCHAR2(1)   := '2';                    -- カーソル種類判定：拠点なし
+  cv_cstm_class_base        CONSTANT  VARCHAR2(1)   := '1';                    -- 顧客区分:拠点
+-- Ver1.8 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -181,12 +203,21 @@ AS
   -- 営業単位
   gn_org_id                 NUMBER;
 -- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD END    *****************************************
+-- Ver1.8 Add Start
+  gv_cursor_type            VARCHAR2(1);                                        --カーソル種類判定
+  gn_dlv_target_date        NUMBER;                                             --プロファイル値(EDI未納納品日取得対象日数)
+  gn_ord_target_date        NUMBER;                                             --プロファイル値(EDI未納受注日取得対象日数)
+-- Ver1.8 Add End
 --
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
    ***********************************************************************************/
   PROCEDURE init(
+-- Ver1.8 Add Start
+    iv_output_type         IN VARCHAR2,   --   出力区分
+    iv_delivery_base_code  IN VARCHAR2,   --   納品拠点コード
+-- Ver1.8 Add End
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -212,6 +243,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_no_para_msg  VARCHAR2(5000);  -- パラメータ無しメッセージ
+-- Ver1.8 Add Start
+    lv_para_msg     VARCHAR2(5000);  -- パラメータ出力メッセージ
+-- Ver1.8 Add End
     lv_date_item    VARCHAR2(100);   -- MIN日付/MAX日付
 -- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD START  *****************************************
     lv_profile_name VARCHAR2(5000);  -- MO:営業単位
@@ -230,22 +264,61 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- Ver1.8 Mod Start
+--    --========================================
+--    -- 1.パラメータ無しメッセージ出力処理
+--    --========================================
+--    lv_no_para_msg            :=  xxccp_common_pkg.get_msg(
+--        iv_application        =>  cv_xxccp_short_name,
+--        iv_name               =>  cv_msg_no_para
+--      );
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.LOG
+--      ,buff   => lv_no_para_msg
+--    );
+--    --空行挿入
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.LOG
+--      ,buff   => ''
+--    );
     --========================================
-    -- 1.パラメータ無しメッセージ出力処理
+    -- 1.パラメータ出力処理
     --========================================
-    lv_no_para_msg            :=  xxccp_common_pkg.get_msg(
-        iv_application        =>  cv_xxccp_short_name,
-        iv_name               =>  cv_msg_no_para
+    -- 拠点実行の場合、パラメータなし
+    IF ( iv_output_type = cv_output_type_1 )  THEN
+      lv_no_para_msg            :=  xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxccp_short_name,
+          iv_name               =>  cv_msg_no_para
+        );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_no_para_msg
       );
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.LOG
-      ,buff   => lv_no_para_msg
-    );
-    --空行挿入
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.LOG
-      ,buff   => ''
-    );
+      --空行挿入
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => ''
+      );
+    -- 全拠点実行の場合、パラメータあり
+    ELSIF ( iv_output_type = cv_output_type_2 ) THEN
+      lv_para_msg             :=   xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_parameter,
+        iv_token_name1        =>  cv_tkn_nm_base_code,
+        iv_token_value1       =>  iv_delivery_base_code
+      );
+--
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_para_msg
+      );
+      --空行挿入
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => ''
+      );
+    END IF;
+-- Ver1.8 Mod End
 --
     --========================================
     -- 2.業務日付取得処理
@@ -322,6 +395,106 @@ AS
       RAISE global_api_expt;
     END IF;
 -- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD END    *****************************************
+-- Ver1.8 Add Start
+    --==================================
+    -- 6.XXCOS:EDI未納納品日取得対象日数
+    --==================================
+    gn_dlv_target_date := TO_NUMBER(FND_PROFILE.VALUE( cv_dlv_target_date ));
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( gn_dlv_target_date IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_profile_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_short_name,
+                           iv_name        => cv_msg_dlv_target_date
+                         );
+--
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_prof_err,
+        iv_token_name1        =>  cv_tkn_nm_profile,
+        iv_token_value1       =>  lv_profile_name
+      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    -- 7.拠点実行の場合
+    IF ( iv_output_type = cv_output_type_1 )  THEN
+      -- 自拠点、もしくは、管理元の場合は配下の拠点
+      BEGIN
+        -- EDI納品予定未納リスト一時表の作成
+        INSERT INTO xxcos_tmp_edi_no_dlv_lists(
+           base_code                        -- 拠点コード
+          ,base_name                        -- 拠点名
+        )
+         SELECT lbiv.base_code  base_code   -- 拠点コード
+               ,lbiv.base_name  base_name   -- 拠点名
+         FROM   xxcos_login_base_info_v  lbiv  -- ログインユーザ拠点ビュー
+        ;
+      END;
+      -- カーソル種類判定：拠点あり
+      gv_cursor_type := cv_cursor_type_1;
+--
+    -- 8.全拠点実行かつ、納品拠点コードがNULLではない
+    ELSIF ( iv_output_type        = cv_output_type_2
+      AND   iv_delivery_base_code IS NOT NULL ) THEN
+      -- 指定された納品拠点、もしくは、管理元の場合は納品拠点の配下の拠点
+      BEGIN
+        -- EDI納品予定未納リスト一時表の作成
+        INSERT INTO xxcos_tmp_edi_no_dlv_lists(
+           base_code                        -- 拠点コード
+          ,base_name                        -- 拠点名
+        )
+         SELECT hca.account_number  account_number  -- 拠点コード
+               ,hp.party_name       party_name      -- 拠点名
+         FROM   hz_cust_accounts    hca,          -- 顧客マスタ
+                hz_parties          hp            -- パーティ
+         WHERE  hca.account_number = iv_delivery_base_code
+         AND    hca.party_id       = hp.party_id
+         UNION
+         SELECT hca.account_number  account_number  -- 拠点コード
+               ,hp.party_name       party_name      -- 拠点名
+         FROM   hz_cust_accounts    hca,          -- 顧客マスタ
+                hz_parties          hp,           -- パーティ
+                xxcmm_cust_accounts xca           -- 顧客アドオン
+         WHERE  xca.management_base_code = iv_delivery_base_code
+         AND    xca.customer_code        = hca.account_number
+         AND    hca.party_id             = hp.party_id
+         ;
+      END;
+      -- カーソル種類判定：拠点あり
+      gv_cursor_type := cv_cursor_type_1;
+--
+    -- 9.全拠点実行かつ、納品拠点コードがNULL
+    ELSIF ( iv_output_type        = cv_output_type_2
+      AND   iv_delivery_base_code IS NULL ) THEN
+      --==================================
+      -- XXCOS:EDI未納受注日取得対象日数
+      --==================================
+      gn_ord_target_date := TO_NUMBER(FND_PROFILE.VALUE( cv_ord_target_date ));
+--
+      -- プロファイルが取得できない場合はエラー
+      IF ( gn_ord_target_date IS NULL ) THEN
+        --プロファイル名文字列取得
+        lv_profile_name := xxccp_common_pkg.get_msg(
+                             iv_application => cv_xxcos_short_name,
+                             iv_name        => cv_msg_ord_target_date
+                           );
+--
+        lv_errmsg               :=  xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxcos_short_name,
+          iv_name               =>  cv_msg_prof_err,
+          iv_token_name1        =>  cv_tkn_nm_profile,
+          iv_token_value1       =>  lv_profile_name
+        );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+      -- カーソル種類判定：拠点なし
+      gv_cursor_type := cv_cursor_type_2;
+    END IF;
+-- Ver1.8 Add End
 --#################################  固定例外処理部 START   ####################################
 --
   EXCEPTION
@@ -348,6 +521,10 @@ AS
    * Description      : 処理対象データ取得(A-2)
    ***********************************************************************************/
   PROCEDURE get_data(
+-- Ver1.8 Add Start
+    iv_output_type         IN VARCHAR2,   --   出力区分
+    iv_delivery_base_code  IN VARCHAR2,   --   納品拠点コード
+-- Ver1.8 Add End
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -374,16 +551,25 @@ AS
     lv_tkn_vl_table_name      VARCHAR2(100);
     ln_idx                    NUMBER;                                 --メインループカウント
     lt_record_id              xxcos_rep_sch_dlv_list.record_id%TYPE;  --レコードID
+-- Ver1.8 Add Start
+    ld_request_date_from      DATE;                                   --要求開始日
+    ld_ordered_date_from      DATE;                                   --受注開始日
+-- Ver1.8 Add End
 --
     -- *** ローカル・カーソル ***
     CURSOR data_cur
     IS
       SELECT  
 /* 2011/08/24 Ver1.7 Add Start */
-        /*+
-          NO_MERGE(lbiv)
+-- Ver1.8 Mod Start
+--        /*+
+--          NO_MERGE(lbiv)
+--          LEADING(lbiv)
+--        */
+       /*+
           LEADING(lbiv)
         */
+-- Ver1.8 Mod End
 /* 2011/08/24 Ver1.7 Add End   */
         lbiv.base_code                    base_code,        --納品拠点コード
         MAX( lbiv.base_name )             base_name,        --納品拠点名
@@ -508,7 +694,10 @@ AS
         oe_transaction_types_all  otta,                     --受注明細用取引タイプ
         per_person_types          ppt,                      --従業員タイプマスタ
         oe_order_sources          oos,                      --受注ソースマスタ
-        xxcos_login_base_info_v   lbiv,                     --ログインユーザ拠点ビュー
+-- Ver1.8 Mod Start
+--        xxcos_login_base_info_v   lbiv,                     --ログインユーザ拠点ビュー
+        xxcos_tmp_edi_no_dlv_lists lbiv,                    --EDI納品予定未納リスト一時表
+-- Ver1.8 Mod End
         ( SELECT  look_val.meaning   meaning
           FROM    fnd_lookup_values  look_val
           WHERE   look_val.lookup_type  = cv_ord_src_type
@@ -531,6 +720,9 @@ AS
       AND   ooha.org_id             = gn_org_id             --組織ID
                                                             --受注明細.ステータス <> クローズ、取消
       AND   oola.flow_status_code   NOT IN ( cv_ol_status_closed, cv_ol_status_cancelled )
+-- Ver1.8 Add Start
+      AND   oola.request_date       >= ld_request_date_from --受注明細.要求日 >= 要求開始日
+-- Ver1.8 Add End
       AND   oola.request_date       < gd_proc_date          --受注明細.要求日 < 業務日付
       AND   msi.attribute13         = flv_hc.meaning        --クイックコード(保管場所:営業車) = 保管場所マスタ.保管場所分類
       AND   gd_proc_date            BETWEEN NVL( papf.effective_start_date, gd_min_date )
@@ -547,7 +739,7 @@ AS
       AND   ooha.sold_to_org_id     = hca.cust_account_id   --受注ヘッダ.顧客ID = 顧客マスタ.顧客ID
       AND   hca.party_id            = hp.party_id           --顧客マスタ.パーティーID = パーティ.パーティーID
       AND   hca.cust_account_id     = xca.customer_id       --顧客マスタ.顧客ID = 顧客アドオン.顧客ID
-      AND   xca.delivery_base_code  = lbiv.base_code        --顧客アドオン.納品拠点コード = 拠点ビュー.拠点コード
+      AND   xca.delivery_base_code  = lbiv.base_code        --顧客アドオン.納品拠点コード = EDI納品予定未納リスト一時表.拠点コード
             --営業担当者の取得用
       AND   ooha.salesrep_id        = jrs.salesrep_id       --受注ヘッダ.営業担当ID = jtf_rs_salesreps.営業担当ID
       AND   jrs.resource_id         = jrre.resource_id
@@ -555,7 +747,7 @@ AS
       AND   papf.person_type_id     = ppt.person_type_id
       AND   oola.line_type_id       = otta.transaction_type_id  --受注明細.取引タイプID = 受注明細用取引タイプ.取引タイプID
 /* 2009/07/13 Ver1.5 Mod End   */
-      GROUP BY  lbiv.base_code,                                       --納品拠点コード
+      GROUP BY  lbiv.base_code,                                       --拠点コード
                 ooha.request_date,                                    --要求日
                 jrre.source_number,                                   --従業員番号
                 hca.account_number,                                   --顧客コード
@@ -564,8 +756,101 @@ AS
                 ooha.ordered_date                                     --受注日
       ;
 --
+-- Ver1.8 Add Start
+    -- 拠点の指定なし
+    CURSOR data_cur2
+    IS
+      SELECT
+          xca.delivery_base_code           base_code        --納品拠点コード
+        ,''                                base_name        --納品拠点名
+        ,ooha.request_date                 req_date         --要求日
+        ,jrre.source_number                emp_code         --従業員番号
+        ,MAX( papf.per_information18 ||
+         cv_half_space               ||
+         papf.per_information19 )          emp_name         --漢字姓 + 漢字名
+        ,hca.account_number                cust_code        --顧客コード
+        ,MAX( hp.party_name )              cust_name        --顧客名称
+        ,ooha.order_number                 order_no         --受注番号
+        ,ooha.cust_po_number               entry_no         --顧客発注
+        ,ooha.ordered_date                 ord_date         --受注日
+        --金額合計
+        ,SUM( 
+          oola.ordered_quantity * DECODE( otta.order_category_code, cv_order_return, -1, 1 ) * oola.unit_selling_price
+         )                                 amount            --金額
+      FROM
+        oe_order_lines_all        oola,                     --受注明細テーブル
+        oe_order_headers_all      ooha,                     --受注ヘッダテーブル
+        hz_parties                hp,                       --パーティ
+        hz_cust_accounts          hca,                      --顧客マスタ
+        xxcmm_cust_accounts       xca,                      --顧客アドオン
+        per_all_people_f          papf,                     --従業員マスタ
+        mtl_secondary_inventories msi,                      --保管場所マスタ
+        jtf_rs_resource_extns     jrre,                     --リソースマスタ
+        jtf_rs_salesreps          jrs,                      --jtf_rs_salesreps
+        oe_transaction_types_all  otta,                     --受注明細用取引タイプ
+        per_person_types          ppt,                      --従業員タイプマスタ
+        oe_order_sources          oos,                      --受注ソースマスタ
+        ( SELECT  look_val.meaning   meaning
+          FROM    fnd_lookup_values  look_val
+          WHERE   look_val.lookup_type  = cv_ord_src_type
+          AND     look_val.lookup_code  = cv_ord_src_code
+          AND     look_val.enabled_flag = ct_enabled_flg_y
+          AND     look_val.language     = cv_lang
+          AND     gd_proc_date BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                               AND     NVL( look_val.end_date_active,   gd_max_date )
+        )                         flv_osc,                  --クイックコード(受注ソース:EDI受注)
+        ( SELECT  look_val.meaning   meaning
+          FROM    fnd_lookup_values  look_val
+          WHERE   look_val.lookup_type  = cv_hokan_type
+          AND     look_val.lookup_code  = cv_hokan_code
+          AND     look_val.enabled_flag = ct_enabled_flg_y
+          AND     look_val.language     = cv_lang
+          AND     gd_proc_date BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                               AND     NVL( look_val.end_date_active,   gd_max_date )
+        )                         flv_hc                     --クイックコード(保管場所:営業車)
+      WHERE ooha.flow_status_code   = cv_oh_status_booked    --受注ヘッダ.ステータス = 記帳済
+      AND   ooha.org_id             = gn_org_id              --組織ID
+      AND   NVL(ooha.ordered_date,gd_proc_date) >= ld_ordered_date_from  --受注ヘッダ.受注日 >= 受注開始日
+                                                             --受注明細.ステータス <> クローズ、取消
+      AND   oola.flow_status_code   NOT IN ( cv_ol_status_closed, cv_ol_status_cancelled )
+      AND   oola.request_date       >= ld_request_date_from  --受注明細.要求日 >= 要求開始日
+      AND   oola.request_date       < gd_proc_date           --受注明細.要求日 <  業務日付
+      AND   msi.attribute13         = flv_hc.meaning         --クイックコード(保管場所:営業車) = 保管場所マスタ.保管場所分類
+      AND   gd_proc_date            BETWEEN NVL( papf.effective_start_date, gd_min_date )
+                                    AND     NVL( papf.effective_end_date,   gd_max_date )
+      AND   ppt.business_group_id   = cn_per_business_group_id
+      AND   ppt.system_person_type  = cv_emp
+      AND   ppt.active_flag         = ct_enabled_flg_y
+      AND   otta.transaction_type_code = cv_line
+      AND   oos.name                = flv_osc.meaning       --クイックコード(受注ソース:EDI受注) = 受注ソースマスタ.名称
+      AND   ooha.order_source_id    = oos.order_source_id   --受注ヘッダ.受注ソースID = 受注ソース.受注ソースID
+      AND   ooha.header_id          = oola.header_id        --受注ヘッダ.ヘッダID = 受注明細.ヘッダID
+      AND   oola.subinventory       = msi.secondary_inventory_name  --受注明細.保管場所 = 保管場所マスタ.名称
+      AND   oola.ship_from_org_id   = msi.organization_id   --受注明細.出荷元組織ID = 保管場所マスタ.在庫組織ID
+      AND   ooha.sold_to_org_id     = hca.cust_account_id   --受注ヘッダ.顧客ID = 顧客マスタ.顧客ID
+      AND   hca.party_id            = hp.party_id           --顧客マスタ.パーティーID = パーティ.パーティーID
+      AND   hca.cust_account_id     = xca.customer_id       --顧客マスタ.顧客ID = 顧客アドオン.顧客ID
+            --営業担当者の取得用
+      AND   ooha.salesrep_id        = jrs.salesrep_id       --受注ヘッダ.営業担当ID = jtf_rs_salesreps.営業担当ID
+      AND   jrs.resource_id         = jrre.resource_id
+      AND   jrre.source_id          = papf.person_id
+      AND   papf.person_type_id     = ppt.person_type_id
+      AND   oola.line_type_id       = otta.transaction_type_id  --受注明細.取引タイプID = 受注明細用取引タイプ.取引タイプID
+      GROUP BY  
+                xca.delivery_base_code,                               --納品拠点コード
+                ooha.request_date,                                    --要求日
+                jrre.source_number,                                   --従業員番号
+                hca.account_number,                                   --顧客コード
+                ooha.order_number,                                    --受注番号
+                ooha.cust_po_number,                                  --顧客発注
+                ooha.ordered_date                                     --受注日
+      ;
+-- Ver1.8 Add End
     -- *** ローカル・レコード ***
     l_data_rec                data_cur%ROWTYPE;
+-- Ver1.8 Add Start
+    l_data_rec2               data_cur2%ROWTYPE;
+-- Ver1.8 Add End
 --
   BEGIN
 --
@@ -577,49 +862,136 @@ AS
 --
     --ループカウント初期化
     ln_idx          := 0;
-    --対象データ取得
-    <<loop_get_data>>
-    FOR l_data_rec IN data_cur LOOP
-      -- レコードIDの取得
-      BEGIN
-        SELECT
-          xxcos_rep_sch_dlv_list_s01.NEXTVAL     redord_id
-        INTO
-          lt_record_id
-        FROM
-          dual
-        ;
-      END;
-      --
-      ln_idx := ln_idx + 1;
-      g_report_data_tab(ln_idx).record_id              := lt_record_id;                --レコードID
-      g_report_data_tab(ln_idx).base_code              := l_data_rec.base_code;        --拠点コード
-/* 2009/10/08 Ver1.6 Mod Start */
---      g_report_data_tab(ln_idx).base_name              := l_data_rec.base_name;        --拠点名称
-      g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_data_rec.base_name, 1, 40 ); --拠点名称
-/* 2009/10/08 Ver1.6 Mod End   */
-      g_report_data_tab(ln_idx).schedule_dlv_date      := l_data_rec.req_date;         --納品予定日
-      g_report_data_tab(ln_idx).employee_base_code     := l_data_rec.emp_code;         --営業担当者コード
-      g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec.emp_name, 1, 12 );  --営業担当者名
-      g_report_data_tab(ln_idx).customer_number        := l_data_rec.cust_code;                   --顧客番号
-      g_report_data_tab(ln_idx).customer_name          := SUBSTRB( l_data_rec.cust_name, 1, 20 ); --顧客名
-      g_report_data_tab(ln_idx).order_number           := l_data_rec.order_no;         --受注番号
-/* 2009/10/08 Ver1.6 Mod Start */
---      g_report_data_tab(ln_idx).entry_number           := l_data_rec.entry_no;         --伝票番号
-      g_report_data_tab(ln_idx).entry_number           := SUBSTRB( l_data_rec.entry_no, 1, 12 );  --伝票番号
-/* 2009/10/08 Ver1.6 Mod End   */
-      g_report_data_tab(ln_idx).amount                 := l_data_rec.amount;           --金額
-      g_report_data_tab(ln_idx).ordered_date           := l_data_rec.ord_date;         --受注日                        
-      g_report_data_tab(ln_idx).created_by             := cn_created_by;               --作成者
-      g_report_data_tab(ln_idx).creation_date          := cd_creation_date;            --作成日
-      g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;          --最終更新者
-      g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;         --最終更新日
-      g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;        --最終更新ﾛｸﾞｲﾝ
-      g_report_data_tab(ln_idx).request_id             := cn_request_id;               --要求ID
-      g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-      g_report_data_tab(ln_idx).program_id             := cn_program_id;               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-      g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;      --ﾌﾟﾛｸﾞﾗﾑ更新日
-    END LOOP loop_get_data;
+-- Ver1.8 Mod Start
+--    --対象データ取得
+--    <<loop_get_data>>
+--    FOR l_data_rec IN data_cur LOOP
+--      -- レコードIDの取得
+--      BEGIN
+--        SELECT
+--          xxcos_rep_sch_dlv_list_s01.NEXTVAL     redord_id
+--        INTO
+--          lt_record_id
+--        FROM
+--          dual
+--        ;
+--      END;
+--      --
+--      ln_idx := ln_idx + 1;
+--      g_report_data_tab(ln_idx).record_id              := lt_record_id;                --レコードID
+--      g_report_data_tab(ln_idx).base_code              := l_data_rec.base_code;        --拠点コード
+--/* 2009/10/08 Ver1.6 Mod Start */
+----      g_report_data_tab(ln_idx).base_name              := l_data_rec.base_name;        --拠点名称
+--      g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_data_rec.base_name, 1, 40 ); --拠点名称
+--/* 2009/10/08 Ver1.6 Mod End   */
+--      g_report_data_tab(ln_idx).schedule_dlv_date      := l_data_rec.req_date;         --納品予定日
+--      g_report_data_tab(ln_idx).employee_base_code     := l_data_rec.emp_code;         --営業担当者コード
+--      g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec.emp_name, 1, 12 );  --営業担当者名
+--      g_report_data_tab(ln_idx).customer_number        := l_data_rec.cust_code;                   --顧客番号
+--      g_report_data_tab(ln_idx).customer_name          := SUBSTRB( l_data_rec.cust_name, 1, 20 ); --顧客名
+--      g_report_data_tab(ln_idx).order_number           := l_data_rec.order_no;         --受注番号
+--/* 2009/10/08 Ver1.6 Mod Start */
+----      g_report_data_tab(ln_idx).entry_number           := l_data_rec.entry_no;         --伝票番号
+--      g_report_data_tab(ln_idx).entry_number           := SUBSTRB( l_data_rec.entry_no, 1, 12 );  --伝票番号
+--/* 2009/10/08 Ver1.6 Mod End   */
+--      g_report_data_tab(ln_idx).amount                 := l_data_rec.amount;           --金額
+--      g_report_data_tab(ln_idx).ordered_date           := l_data_rec.ord_date;         --受注日                        
+--      g_report_data_tab(ln_idx).created_by             := cn_created_by;               --作成者
+--      g_report_data_tab(ln_idx).creation_date          := cd_creation_date;            --作成日
+--      g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;          --最終更新者
+--      g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;         --最終更新日
+--      g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;        --最終更新ﾛｸﾞｲﾝ
+--      g_report_data_tab(ln_idx).request_id             := cn_request_id;               --要求ID
+--      g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;   --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--      g_report_data_tab(ln_idx).program_id             := cn_program_id;               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--      g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;      --ﾌﾟﾛｸﾞﾗﾑ更新日
+--    END LOOP loop_get_data;
+    -- 要求開始日を取得
+    ld_request_date_from := gd_proc_date - gn_dlv_target_date;
+--
+    --拠点指定あり
+    IF ( gv_cursor_type = cv_cursor_type_1 ) THEN
+      --対象データ取得
+      <<loop_get_data>>
+      FOR l_data_rec IN data_cur LOOP
+        -- レコードIDの取得
+        BEGIN
+          SELECT xxcos_rep_sch_dlv_list_s01.NEXTVAL     redord_id
+          INTO   lt_record_id
+          FROM   dual
+          ;
+        END;
+        --
+        ln_idx := ln_idx + 1;
+        g_report_data_tab(ln_idx).record_id              := lt_record_id;                           --レコードID
+        g_report_data_tab(ln_idx).base_code              := l_data_rec.base_code;                   --拠点コード
+        g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_data_rec.base_name, 1, 40 ); --拠点名称
+        g_report_data_tab(ln_idx).schedule_dlv_date      := l_data_rec.req_date;                    --納品予定日
+        g_report_data_tab(ln_idx).employee_base_code     := l_data_rec.emp_code;                    --営業担当者コード
+        g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec.emp_name, 1, 12 );  --営業担当者名
+        g_report_data_tab(ln_idx).customer_number        := l_data_rec.cust_code;                   --顧客番号
+        g_report_data_tab(ln_idx).customer_name          := SUBSTRB( l_data_rec.cust_name, 1, 20 ); --顧客名
+        g_report_data_tab(ln_idx).order_number           := l_data_rec.order_no;                    --受注番号
+        g_report_data_tab(ln_idx).entry_number           := SUBSTRB( l_data_rec.entry_no, 1, 12 );  --伝票番号
+        g_report_data_tab(ln_idx).amount                 := l_data_rec.amount;                      --金額
+        g_report_data_tab(ln_idx).ordered_date           := l_data_rec.ord_date;                    --受注日                        
+        g_report_data_tab(ln_idx).created_by             := cn_created_by;                          --作成者
+        g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                       --作成日
+        g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;                     --最終更新者
+        g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;                    --最終更新日
+        g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;                   --最終更新ﾛｸﾞｲﾝ
+        g_report_data_tab(ln_idx).request_id             := cn_request_id;                          --要求ID
+        g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;              --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        g_report_data_tab(ln_idx).program_id             := cn_program_id;                          --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;                 --ﾌﾟﾛｸﾞﾗﾑ更新日
+      END LOOP loop_get_data;
+    ELSIF( gv_cursor_type = cv_cursor_type_2 ) THEN
+--
+      -- 受注開始日を取得
+      ld_ordered_date_from := gd_proc_date - gn_ord_target_date;
+--
+      --対象データ取得
+      <<loop_get_data2>>
+      FOR l_data_rec2 IN data_cur2 LOOP
+        -- レコードID,拠点名称の取得
+        BEGIN
+          SELECT xxcos_rep_sch_dlv_list_s01.NEXTVAL     redord_id   -- レコードID
+                ,hp.party_name                          party_name  -- 拠点名
+          INTO   lt_record_id
+                ,l_data_rec2.base_name
+          FROM   hz_cust_accounts    hca -- 顧客マスタ
+                ,hz_parties          hp  -- パーティ
+          WHERE  hca.account_number      = l_data_rec2.base_code
+          AND    hca.customer_class_code = cv_cstm_class_base    -- 顧客区分：1（拠点）
+          AND    hca.party_id            = hp.party_id
+          ;
+        END;
+        --
+        ln_idx := ln_idx + 1;
+        g_report_data_tab(ln_idx).record_id              := lt_record_id;                            --レコードID
+        g_report_data_tab(ln_idx).base_code              := l_data_rec2.base_code;                   --拠点コード
+        g_report_data_tab(ln_idx).base_name              := SUBSTRB( l_data_rec2.base_name, 1, 40 ); --拠点名称
+        g_report_data_tab(ln_idx).schedule_dlv_date      := l_data_rec2.req_date;                    --納品予定日
+        g_report_data_tab(ln_idx).employee_base_code     := l_data_rec2.emp_code;                    --営業担当者コード
+        g_report_data_tab(ln_idx).employee_base_name     := SUBSTRB( l_data_rec2.emp_name, 1, 12 );  --営業担当者名
+        g_report_data_tab(ln_idx).customer_number        := l_data_rec2.cust_code;                   --顧客番号
+        g_report_data_tab(ln_idx).customer_name          := SUBSTRB( l_data_rec2.cust_name, 1, 20 ); --顧客名
+        g_report_data_tab(ln_idx).order_number           := l_data_rec2.order_no;                    --受注番号
+        g_report_data_tab(ln_idx).entry_number           := SUBSTRB( l_data_rec2.entry_no, 1, 12 );  --伝票番号
+        g_report_data_tab(ln_idx).amount                 := l_data_rec2.amount;                      --金額
+        g_report_data_tab(ln_idx).ordered_date           := l_data_rec2.ord_date;                    --受注日                        
+        g_report_data_tab(ln_idx).created_by             := cn_created_by;                           --作成者
+        g_report_data_tab(ln_idx).creation_date          := cd_creation_date;                        --作成日
+        g_report_data_tab(ln_idx).last_updated_by        := cn_last_updated_by;                      --最終更新者
+        g_report_data_tab(ln_idx).last_update_date       := cd_last_update_date;                     --最終更新日
+        g_report_data_tab(ln_idx).last_update_login      := cn_last_update_login;                    --最終更新ﾛｸﾞｲﾝ
+        g_report_data_tab(ln_idx).request_id             := cn_request_id;                           --要求ID
+        g_report_data_tab(ln_idx).program_application_id := cn_program_application_id;               --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+        g_report_data_tab(ln_idx).program_id             := cn_program_id;                           --ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+        g_report_data_tab(ln_idx).program_update_date    := cd_program_update_date;                  --ﾌﾟﾛｸﾞﾗﾑ更新日
+      END LOOP loop_get_data2;
+    END IF;
+-- Ver1.8 Mod End
 --
     --処理件数カウント
     gn_target_cnt := g_report_data_tab.COUNT;
@@ -1023,6 +1395,10 @@ AS
    * Description      : メイン処理プロシージャ
    **********************************************************************************/
   PROCEDURE submain(
+-- Ver1.8 Add Start
+    iv_output_type         IN VARCHAR2,   --   出力区分
+    iv_delivery_base_code  IN VARCHAR2,   --   納品拠点コード
+-- Ver1.8 Add End
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1076,6 +1452,10 @@ AS
     -- A-1  初期処理
     -- ===============================
     init(
+-- Ver1.8 Add Start
+      iv_output_type,        -- 出力区分
+      iv_delivery_base_code, -- 納品拠点コード
+-- Ver1.8 Add End
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1089,6 +1469,10 @@ AS
     -- A-2  対象データ取得
     -- ===============================
     get_data(
+-- Ver1.8 Add Start
+      iv_output_type,        -- 出力区分
+      iv_delivery_base_code, -- 納品拠点コード
+-- Ver1.8 Add End
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
       lv_retcode,         -- リターン・コード             --# 固定 #
       lv_errmsg);         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1197,7 +1581,12 @@ AS
 --
   PROCEDURE main(
     errbuf              OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
-    retcode             OUT VARCHAR2       --   リターン・コード    --# 固定 #
+-- Ver1.8 Mod Start
+--    retcode             OUT VARCHAR2       --   リターン・コード    --# 固定 #
+    retcode             OUT VARCHAR2,      --   リターン・コード    --# 固定 #
+    iv_output_type         IN  VARCHAR2,   --   出力区分
+    iv_delivery_base_code  IN  VARCHAR2    --   納品拠点コード
+-- Ver1.8 Mod End
   )
 --
 --
@@ -1251,7 +1640,14 @@ AS
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
     submain(
-       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+-- Ver1.8 Add Start
+       iv_output_type            -- 出力区分
+      ,iv_delivery_base_code     -- 納品拠点コード
+-- Ver1.8 Add End
+-- Ver1.8 Mod Start
+--       lv_errbuf   -- エラー・メッセージ           --# 固定 #
+      ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
+-- Ver1.8 Mod End
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
