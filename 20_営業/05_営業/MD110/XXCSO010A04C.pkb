@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *
- * Version          : 1.13
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,9 @@ AS
  *  2015-02-16    1.11  K.Nakatsu        E_本稼動_12565対応
  *  2015-06-25    1.12  Y.Shoji          E_本稼動_13019対応
  *  2018-11-15    1.13  E.Yazaki         E_本稼動_15367対応
+ *  2020-05-07    1.14  N.Abe            E_本稼動_15904対応（外税対応）
+ *  2020-08-07    1.15  N.Abe            E_本稼動_15904対応（外税対応）16パターン化
+ *  2020-12-03    1.16  K.Kanada         E_本稼動_15904対応（外税対応）条件内容編集、パターン修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -235,6 +238,14 @@ AS
   -- 書式フォーマット
   cv_format_yyyymmdd_date        CONSTANT VARCHAR2(50)    := 'YYYY"年"MM"月"DD"日"';
 /* 2018/11/15 Ver1.13 E.Yazaki ADD END */
+--  Ver1.16 K.Kanada Add Start
+  cv_lkup_condition_contents     CONSTANT VARCHAR2(30) :=  'XXCSO1_CONDITION_CONTENTS';  -- 参照タイプ：自販機設置契約書条件内容固定文
+  cv_lkup_elect_tax_kbn          CONSTANT VARCHAR2(30) :=  'XXCSO1_ELECTRIC_TAX_KBN';    -- 参照タイプ：電気代用税区分
+  cv_null               CONSTANT VARCHAR2(1)   := NULL ;
+  cv_contents_msg_max   CONSTANT NUMBER        := 14 ;
+  cv_msg_xxcso_00911    CONSTANT VARCHAR2(30) :=  'APP-XXCSO1-00912';                 --  販売手数料但書（容器別）メッセージ
+--  Ver1.16 K.Kanada Add End
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -338,6 +349,9 @@ AS
     condition_contents_flag       BOOLEAN,                                              -- 販売手数料情報有無フラグ
     install_support_amt_flag      BOOLEAN,                                              -- 設置協賛金有無フラグ
     electricity_information_flag  BOOLEAN                                              -- 電気代情報有無フラグ
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+   ,bm_tax_kbn                    xxcso_rep_auto_sale_cont.bm_tax_kbn%TYPE                     -- BM税区分
+-- 2020/05/07 Ver1.14 N.Abe ADD END
   );
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD START */
   -- 覚書帳票ワークテーブル データ格納用レコード型定義
@@ -417,6 +431,10 @@ AS
   TYPE g_org_request_ttype IS TABLE OF g_org_request_rtype INDEX BY PLS_INTEGER;
   g_org_request  g_org_request_ttype;
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+--  Ver1.16 K.Kanada Add Start
+  TYPE g_contents_msg_ttype IS TABLE OF VARCHAR2(240) INDEX BY PLS_INTEGER;           -- 条件内容固定文用テーブル型変数
+  g_contents_msg  g_contents_msg_ttype;
+--  Ver1.16 K.Kanada Add End
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -450,6 +468,18 @@ AS
 -- == 2010/08/03 V1.9 Added START ===============================================================
     lv_err_key          VARCHAR2(30);
 -- == 2010/08/03 V1.9 Added END   ===============================================================
+--  Ver1.16 K.Kanada Add Start
+    ln_loop_cnt          NUMBER ;
+    -- *** ローカル・カーソル ***
+    CURSOR condition_contents_cur
+    IS
+      SELECT flvv.description
+      FROM   fnd_lookup_values_vl  flvv               -- 参照タイプテーブル
+      WHERE  flvv.lookup_type  = cv_lkup_condition_contents
+      AND    flvv.enabled_flag = cv_enabled_flag
+      ORDER BY flvv.lookup_code
+      ;
+--  Ver1.16 K.Kanada Add End
 --
   BEGIN
 --
@@ -699,6 +729,28 @@ AS
         lv_errbuf :=  lv_errmsg;
         RAISE global_process_expt;
     END;
+--
+--  Ver1.16 K.Kanada Add Start
+    -- ===================================================
+    -- 条件内容固定文取得
+    -- ===================================================
+    ln_loop_cnt := 0 ;
+    << condition_contents_get_loop >>
+    FOR lt_condition_contents_rec IN condition_contents_cur LOOP
+      ln_loop_cnt := ln_loop_cnt + 1 ;
+      g_contents_msg(ln_loop_cnt) := lt_condition_contents_rec.description ;
+    END LOOP condition_contents_get_loop ;
+    -- プロファイル値チェック
+    IF ( ln_loop_cnt <> cv_contents_msg_max ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name         -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcso_00911  -- メッセージコード
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--  Ver1.16 K.Kanada Add End
+--
     -- ===================================================
     -- プロファイル取得
     -- ===================================================
@@ -939,42 +991,45 @@ AS
 --                               || 'のとき、１本につき '
 --                               || TO_CHAR(xsdl.bm1_bm_amount) || '円を支払う'
 --              END) condition_contents                               -- 条件内容
-            , CASE
-                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
-                        AND (xsdl.bm1_bm_rate IS NOT NULL)
-                        AND (xsdl.bm1_bm_rate <> '0')
-                      )
-                THEN      '販売価格 '
-                      ||  TO_CHAR(xsdl.sales_price)
-                      ||  '円の商品につき、販売金額に対し、'
-                      ||  TO_CHAR(xsdl.bm1_bm_rate)
-                      ||  '%とする。'
-                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
-                        AND (xsdl.bm1_bm_amount IS NOT NULL)
-                        AND (xsdl.bm1_bm_amount <> '0')
-                      )
-                THEN      '販売価格 '
-                      ||  TO_CHAR(xsdl.sales_price)
-                      ||  '円の商品につき、１本当たり '
-                      ||  TO_CHAR(xsdl.bm1_bm_amount)
-                      ||  '円とする。'
-                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
-                        AND (xsdl.bm1_bm_rate IS NOT NULL)
-                        AND (xsdl.bm1_bm_rate <> '0')
-                      )
-                THEN      flvv.meaning
-                      ||  '商品につき、販売金額に対し、'
-                      ||  TO_CHAR(xsdl.bm1_bm_rate)
-                      ||  '%とする。'
-                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
-                        AND (xsdl.bm1_bm_amount IS NOT NULL)
-                        AND (xsdl.bm1_bm_amount <> '0')
-                      )
-                THEN      flvv.meaning
-                      ||  '商品につき、１本当たり '
-                      ||  TO_CHAR(xsdl.bm1_bm_amount)
-                      ||  '円とする。'
-              END                                 condition_contents                          --  条件内容
+--  Ver1.16 K.Kanada Add+Els Start
+--            , CASE
+--                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
+--                        AND (xsdl.bm1_bm_rate IS NOT NULL)
+--                        AND (xsdl.bm1_bm_rate <> '0')
+--                      )
+--                THEN      '販売価格 '
+--                      ||  TO_CHAR(xsdl.sales_price)
+--                      ||  '円の商品につき、販売金額に対し、'
+--                      ||  TO_CHAR(xsdl.bm1_bm_rate)
+--                      ||  '%とする。'
+--                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2))
+--                        AND (xsdl.bm1_bm_amount IS NOT NULL)
+--                        AND (xsdl.bm1_bm_amount <> '0')
+--                      )
+--                THEN      '販売価格 '
+--                      ||  TO_CHAR(xsdl.sales_price)
+--                      ||  '円の商品につき、１本当たり '
+--                      ||  TO_CHAR(xsdl.bm1_bm_amount)
+--                      ||  '円とする。'
+--                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+--                        AND (xsdl.bm1_bm_rate IS NOT NULL)
+--                        AND (xsdl.bm1_bm_rate <> '0')
+--                      )
+--                THEN      flvv.meaning
+--                      ||  '商品につき、販売金額に対し、'
+--                      ||  TO_CHAR(xsdl.bm1_bm_rate)
+--                      ||  '%とする。'
+--                WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
+--                        AND (xsdl.bm1_bm_amount IS NOT NULL)
+--                        AND (xsdl.bm1_bm_amount <> '0')
+--                      )
+--                THEN      flvv.meaning
+--                      ||  '商品につき、１本当たり '
+--                      ||  TO_CHAR(xsdl.bm1_bm_amount)
+--                      ||  '円とする。'
+--              END                                 condition_contents                          --  条件内容
+            ,flvv.meaning                 container_type_name       -- 容器区分名
+--  Ver1.16 K.Kanada Add+Els End
             , CASE  WHEN  (     (xsdh.condition_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4))
                             AND (xsdl.bm1_bm_rate IS NOT NULL)
                             AND (xsdl.bm1_bm_rate <> 0)
@@ -1152,7 +1207,10 @@ AS
               , ( DECODE( xsdh.electricity_type
 /* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
 --                            , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（税込）とする。'
-                            , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（'|| flv_tax.tax_type_name ||'）とする。'
+-- 2020/05/07 Ver1.14 N.Abe MOD START
+--                            , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（'|| flv_tax.tax_type_name ||'）とする。'
+                            , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（'|| flv_tax2.tax_kbn_name ||'）とする。'
+-- 2020/05/07 Ver1.14 N.Abe MOD END
 /* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
                             , cv_electricity_type_2, '販売機に関わる電気代は、実費にて乙が支払う。'
                             , ''
@@ -1284,6 +1342,9 @@ AS
                END                                      electric_memo_flg             -- 覚書（電気代）出力フラグ
               ,xsdh.install_supp_amt                    install_supp_amt2             -- 設置協賛金総額（発行元情報分岐用）
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+              ,NVL( xd.bm_tax_kbn, '1' )                bm_tax_kbn                    -- BM税区分
+-- 2020/05/07 Ver1.14 N.Abe ADD END
         INTO   o_rep_cont_data_rec.install_location              -- 設置ロケーション
               ,o_rep_cont_data_rec.contract_number               -- 契約書番号
               ,o_rep_cont_data_rec.contract_name                 -- 契約者名
@@ -1366,6 +1427,9 @@ AS
               ,o_rep_memo_data_rec.electric_memo_flg             -- 覚書（電気代）出力フラグ
               ,lt_install_supp_amt                               -- 設置協賛金総額（発行元情報分岐用）
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+              ,o_rep_cont_data_rec.bm_tax_kbn                    -- BM税区分
+-- 2020/05/07 Ver1.14 N.Abe ADD END
         FROM   xxcso_cust_accounts_v      xcav     -- 顧客マスタビュー
               ,xxcso_contract_managements xcm      -- 契約管理テーブル
               ,xxcso_sp_decision_headers  xsdh     -- ＳＰ専決ヘッダテーブル
@@ -1425,6 +1489,19 @@ AS
                  AND    TRUNC(ld_sysdate)   BETWEEN TRUNC(NVL(flvv.start_date_active ,ld_sysdate))
                                             AND     TRUNC(NVL(flvv.end_date_active   ,ld_sysdate))
                )                         flv_tax   -- 税区分名取得
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+              ,( SELECT flvv.lookup_code    tax_kbn
+                       ,flvv.description    tax_kbn_name
+                 FROM   fnd_lookup_values_vl    flvv
+--  Ver1.16 K.Kanada Mod Start
+--                 WHERE  flvv.lookup_type              =   cv_lkup_sp_tax_type
+                 WHERE  flvv.lookup_type              =   cv_lkup_elect_tax_kbn
+--  Ver1.16 K.Kanada Mod End
+                 AND    flvv.enabled_flag             =   cv_enabled_flag
+                 AND    TRUNC(ld_sysdate)   BETWEEN TRUNC(NVL(flvv.start_date_active ,ld_sysdate))
+                                            AND     TRUNC(NVL(flvv.end_date_active   ,ld_sysdate))
+               )                         flv_tax2  -- BM税区分名取得
+-- 2020/05/07 Ver1.14 N.Abe ADD END
               ,(SELECT  flvv.lookup_code    bk_chg_bearer_cd
                        ,flvv.attribute1     bk_chg_bearer_nm
                 FROM    fnd_lookup_values_vl    flvv
@@ -1486,6 +1563,9 @@ AS
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD START */
           AND  xcm.contract_other_custs_id    = xcoc.contract_other_custs_id(+)
           AND  flv_tax.tax_type(+)            = NVL2(xsdh.tax_type, xsdh.tax_type, cv_in_tax)
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+          AND  flv_tax2.tax_kbn(+)            = NVL( xd.bm_tax_kbn, '1' )
+-- 2020/05/07 Ver1.14 N.Abe ADD END
           AND  abb1.bank_number(+)            = xcoc.install_supp_bk_number
           AND  abb1.bank_num(+)               = xcoc.install_supp_branch_number
           AND  abb2.bank_number(+)            = xcoc.intro_chg_bk_number
@@ -1659,7 +1739,10 @@ AS
               , DECODE(xsdh.electricity_type
 /* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
 --                        , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（税込）とする。'
-                        , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（'|| flv_tax.tax_type_name ||'）とする。'
+-- 2020/05/07 Ver1.14 N.Abe MOD START
+--                        , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（'|| flv_tax.tax_type_name ||'）とする。'
+                        , cv_electricity_type_1, '月額 定額 '|| xsdh.electricity_amount || '円（'|| flv_tax2.tax_kbn_name ||'）とする。'
+-- 2020/05/07 Ver1.14 N.Abe MOD END
 /* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
                         , cv_electricity_type_2, '販売機に関わる電気代は、実費にて乙が支払う。'
                         , ''
@@ -1788,6 +1871,9 @@ AS
                END                                      electric_memo_flg             -- 覚書（電気代）出力フラグ
               ,xsdh.install_supp_amt                    install_supp_amt2             -- 設置協賛金総額（発行元情報分岐用）
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+              ,NVL( xd.bm_tax_kbn, '1' )                bm_tax_kbn                    -- BM税区分
+-- 2020/05/07 Ver1.14 N.Abe ADD END
 -- == 2010/08/03 V1.9 Modified END   ===============================================================
         INTO   o_rep_cont_data_rec.install_location              -- 設置ロケーション
               ,o_rep_cont_data_rec.contract_number               -- 契約書番号
@@ -1871,6 +1957,9 @@ AS
               ,o_rep_memo_data_rec.electric_memo_flg             -- 覚書（電気代）出力フラグ
               ,lt_install_supp_amt                               -- 設置協賛金総額（発行元情報分岐用）
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD  END  */
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+              ,o_rep_cont_data_rec.bm_tax_kbn                    -- BM税区分
+-- 2020/05/07 Ver1.14 N.Abe ADD END
         FROM   xxcso_contract_managements xcm      -- 契約管理テーブル
               ,xxcso_cust_acct_sites_v    xcasv    -- 顧客マスタサイトビュー
               ,xxcso_sp_decision_headers  xsdh     -- ＳＰ専決ヘッダテーブル
@@ -1937,6 +2026,19 @@ AS
                   AND     TRUNC(ld_sysdate)   BETWEEN TRUNC(NVL(flvv.start_date_active ,ld_sysdate))
                                               AND     TRUNC(NVL(flvv.end_date_active   ,ld_sysdate))
                 )                         flv_tax   -- 税区分名取得
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+              ,( SELECT flvv.lookup_code    tax_kbn
+                       ,flvv.description    tax_kbn_name
+                 FROM   fnd_lookup_values_vl    flvv
+--  Ver1.16 K.Kanada Mod Start
+--                 WHERE  flvv.lookup_type              =   cv_lkup_sp_tax_type
+                 WHERE  flvv.lookup_type              =   cv_lkup_elect_tax_kbn
+--  Ver1.16 K.Kanada Mod End
+                 AND    flvv.enabled_flag             =   cv_enabled_flag
+                 AND    TRUNC(ld_sysdate)   BETWEEN TRUNC(NVL(flvv.start_date_active ,ld_sysdate))
+                                            AND     TRUNC(NVL(flvv.end_date_active   ,ld_sysdate))
+               )                         flv_tax2  -- BM税区分名取得
+-- 2020/05/07 Ver1.14 N.Abe ADD END
               ,(SELECT  flvv.lookup_code    bk_chg_bearer_cd
                        ,flvv.attribute1     bk_chg_bearer_nm
                 FROM    fnd_lookup_values_vl    flvv
@@ -2005,6 +2107,9 @@ AS
 /* 2015/02/13 Ver1.11 K.Nakatsu ADD START */
           AND  xcm.contract_other_custs_id    = xcoc.contract_other_custs_id(+)
           AND  flv_tax.tax_type(+)            = NVL2(xsdh.tax_type, xsdh.tax_type, cv_in_tax)
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+          AND  flv_tax2.tax_kbn(+)            = NVL( xd.bm_tax_kbn, '1' )
+-- 2020/05/07 Ver1.14 N.Abe ADD END
           AND  abb1.bank_number(+)            = xcoc.install_supp_bk_number
           AND  abb1.bank_num(+)               = xcoc.install_supp_branch_number
           AND  abb2.bank_number(+)            = xcoc.intro_chg_bk_number
@@ -2397,44 +2502,151 @@ AS
              (l_sales_charge_rec.bm1_bm_amount IS  NOT NULL AND
               l_sales_charge_rec.bm1_bm_amount <> '0')
             ) THEN
+--
+--  Ver1.16 K.Kanada Mod Start
+          -- ===================================================
+          -- 条件内容の文言編集①（※一律条件は②で対応）
+          -- ===================================================
+          --
+          lv_cond_conts_tmp := g_contents_msg(1) ;      -- 固定文言
+          --
+          -- 売価別条件
+          IF (lv_cond_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2)) THEN
+            -- 額
+            IF (l_sales_charge_rec.bm1_bm_amount IS NOT NULL AND l_sales_charge_rec.bm1_bm_amount <> '0') THEN
+              -- 税込
+              IF    o_rep_cont_data_rec.bm_tax_kbn = cv_in_tax THEN
+                lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(11) ;
+              -- 税抜
+              ELSIF o_rep_cont_data_rec.bm_tax_kbn = cv_ex_tax THEN
+                lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(12) ;
+              END IF ;
+            END IF ;
+          END IF ;
+          --
+          -- 売価別条件
+          IF    (lv_cond_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2)) THEN
+            lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(2)
+                                 || TO_CHAR(l_sales_charge_rec.sales_price) || g_contents_msg(3) ;  -- (2)＋売価＋(3)
+          -- 容器別条件
+          ELSIF (lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4)) THEN
+            lv_cond_conts_tmp := lv_cond_conts_tmp || l_sales_charge_rec.container_type_name
+                                 || g_contents_msg(4) ;                                             -- 容器区分名＋(4)
+          END IF ;
+          --
+          -- 容器別条件
+          IF (lv_cond_business_type IN (cv_cond_b_type_3, cv_cond_b_type_4)) THEN
+            -- 率
+            IF (l_sales_charge_rec.bm1_bm_rate IS NOT NULL AND l_sales_charge_rec.bm1_bm_rate <> '0') THEN
+              -- 税込
+              IF    o_rep_cont_data_rec.bm_tax_kbn = cv_in_tax THEN
+                lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(11) ;
+              -- 税抜
+              ELSIF o_rep_cont_data_rec.bm_tax_kbn = cv_ex_tax THEN
+                lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(12) ;
+              END IF ;
+            END IF ;
+          END IF ;
+          --
+          -- 額
+          IF    (l_sales_charge_rec.bm1_bm_amount IS NOT NULL AND l_sales_charge_rec.bm1_bm_amount <> '0') THEN
+            lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(7)
+                                 || TO_CHAR(l_sales_charge_rec.bm1_bm_amount) || g_contents_msg(8) ;  -- (7)＋BM1額＋(8)
+          -- 率
+          ELSIF (l_sales_charge_rec.bm1_bm_rate   IS NOT NULL AND l_sales_charge_rec.bm1_bm_rate   <> '0') THEN
+            lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(9)
+                                 || TO_CHAR(l_sales_charge_rec.bm1_bm_rate)   || g_contents_msg(10) ; -- (9)＋BM1率＋(10)
+          END IF ;
+          --
+          -- 売価別条件
+          IF (lv_cond_business_type IN (cv_cond_b_type_1, cv_cond_b_type_2)) THEN
+            -- 率
+            IF (l_sales_charge_rec.bm1_bm_rate IS NOT NULL AND l_sales_charge_rec.bm1_bm_rate <> '0') THEN
+              -- 税込
+              IF    o_rep_cont_data_rec.bm_tax_kbn = cv_in_tax THEN
+                lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(13) ;
+              -- 税抜
+              ELSIF o_rep_cont_data_rec.bm_tax_kbn = cv_ex_tax THEN
+                lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(14) ;
+              END IF ;
+            END IF ;
+          END IF ;
+          --
           -- 条件内容セット
           IF (o_rep_cont_data_rec.condition_contents_1 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_1 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_1  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_2 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_2 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_2  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_3 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_3 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_3  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_4 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_4 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_4  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_5 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_5 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_5  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_6 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_6 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_6  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_7 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_7 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_7  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_8 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_8 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_8  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_9 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_9 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_9  := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_10 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_10 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_10 := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_11 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_11 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_11 := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_12 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_12 := l_sales_charge_rec.condition_contents;
-/* 2014/02/03 Ver1.10 S.Niki ADD START */
+            o_rep_cont_data_rec.condition_contents_12 := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_13 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_13 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_13 := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_14 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_14 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_14 := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_15 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_15 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_15 := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_16 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_16 := l_sales_charge_rec.condition_contents;
+            o_rep_cont_data_rec.condition_contents_16 := lv_cond_conts_tmp ;
           ELSIF (o_rep_cont_data_rec.condition_contents_17 IS NULL) THEN
-            o_rep_cont_data_rec.condition_contents_17 := l_sales_charge_rec.condition_contents;
-/* 2014/02/03 Ver1.10 S.Niki ADD END */
+            o_rep_cont_data_rec.condition_contents_17 := lv_cond_conts_tmp ;
           END IF;
+--          -- 条件内容セット
+--          IF (o_rep_cont_data_rec.condition_contents_1 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_1 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_2 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_2 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_3 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_3 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_4 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_4 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_5 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_5 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_6 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_6 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_7 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_7 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_8 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_8 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_9 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_9 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_10 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_10 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_11 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_11 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_12 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_12 := l_sales_charge_rec.condition_contents;
+--/* 2014/02/03 Ver1.10 S.Niki ADD START */
+--          ELSIF (o_rep_cont_data_rec.condition_contents_13 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_13 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_14 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_14 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_15 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_15 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_16 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_16 := l_sales_charge_rec.condition_contents;
+--          ELSIF (o_rep_cont_data_rec.condition_contents_17 IS NULL) THEN
+--            o_rep_cont_data_rec.condition_contents_17 := l_sales_charge_rec.condition_contents;
+--/* 2014/02/03 Ver1.10 S.Niki ADD END */
+--          END IF;
+--  Ver1.16 K.Kanada Mod End
           lb_bm1_bm := TRUE;
 --
           -- 件数計算
@@ -2573,26 +2785,52 @@ AS
               OR  lv_condition_content_type <> '0'
             )
         THEN
-          --  全容器一律、または、定率
--- == 2010/08/03 V1.9 Modified END   ===============================================================
-          -- ＢＭ１ＢＭ率
--- == 2010/08/03 V1.9 Modified START ===============================================================
---          IF (lb_bm1_bm_rate) THEN
---            lv_cond_conts_tmp := '販売金額につき、１本 ' || ln_bm1_bm_rate || '%を支払う';
+--  Ver1.16 K.Kanada Mod Start
+--          --  全容器一律、または、定率
+---- == 2010/08/03 V1.9 Modified END   ===============================================================
+--          -- ＢＭ１ＢＭ率
+---- == 2010/08/03 V1.9 Modified START ===============================================================
+----          IF (lb_bm1_bm_rate) THEN
+----            lv_cond_conts_tmp := '販売金額につき、１本 ' || ln_bm1_bm_rate || '%を支払う';
+----          -- ＢＭ１ＢＭ金額
+----          ELSE
+----            lv_cond_conts_tmp := '販売金額につき、１本 ' || ln_bm1_bm_amount || '円を支払う';
+----          END IF;
+--          IF  (     lb_bm1_bm_rate
+--                OR  lv_condition_content_type = '1'
+--              )
+--          THEN
+--            lv_cond_conts_tmp := '販売金額に対し、' || ln_bm1_bm_rate || '%とする。';
 --          -- ＢＭ１ＢＭ金額
 --          ELSE
---            lv_cond_conts_tmp := '販売金額につき、１本 ' || ln_bm1_bm_amount || '円を支払う';
+--            lv_cond_conts_tmp := '販売数量に対し、１本当たり ' || ln_bm1_bm_amount || '円とする。';
 --          END IF;
-          IF  (     lb_bm1_bm_rate
-                OR  lv_condition_content_type = '1'
-              )
-          THEN
-            lv_cond_conts_tmp := '販売金額に対し、' || ln_bm1_bm_rate || '%とする。';
-          -- ＢＭ１ＢＭ金額
-          ELSE
-            lv_cond_conts_tmp := '販売数量に対し、１本当たり ' || ln_bm1_bm_amount || '円とする。';
-          END IF;
--- == 2010/08/03 V1.9 Modified END   ===============================================================
+---- == 2010/08/03 V1.9 Modified END   ===============================================================
+          -- ===================================================
+          -- 条件内容の文言編集②（※一律条件）
+          -- ===================================================
+          --
+          lv_cond_conts_tmp := g_contents_msg(1) ;      -- 固定文言
+          --
+          -- 額
+          IF    (l_sales_charge_rec.bm1_bm_amount IS NOT NULL AND l_sales_charge_rec.bm1_bm_amount <> '0') THEN
+            lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(5)       || g_contents_msg(7)
+                                 || TO_CHAR(l_sales_charge_rec.bm1_bm_amount) || g_contents_msg(8) ;  -- (5)＋(7)＋BM1額＋(8)
+          -- 率
+          ELSIF (l_sales_charge_rec.bm1_bm_rate   IS NOT NULL AND l_sales_charge_rec.bm1_bm_rate   <> '0') THEN
+            -- 税込
+            IF    o_rep_cont_data_rec.bm_tax_kbn = cv_in_tax THEN
+              lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(11) ;
+            -- 税抜
+            ELSIF o_rep_cont_data_rec.bm_tax_kbn = cv_ex_tax THEN
+              lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(12) ;
+            END IF ;
+            -- 率
+            lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(6)     || g_contents_msg(9)
+                                 || TO_CHAR(l_sales_charge_rec.bm1_bm_rate) || g_contents_msg(10) ; -- (6)＋(9)＋BM1率＋(10)
+          END IF ;
+--  Ver1.16 K.Kanada Mod End
+          --
           -- 取引条件（定率）
           o_rep_cont_data_rec.exchange_condition := cv_tei_rate;
           -- 条件内容セット
@@ -2970,6 +3208,9 @@ AS
           ,program_application_id           -- アプリケーションid
           ,program_id                       -- プログラムid
           ,program_update_date              -- プログラム更新日
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+          ,bm_tax_kbn                       -- BM税区分
+-- 2020/05/07 Ver1.14 N.Abe ADD END
         )
       VALUES
         (  i_rep_cont_data_rec.install_location                 -- 設置ロケーション
@@ -3033,6 +3274,9 @@ AS
           ,cn_program_application_id                            -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑｱﾌﾟﾘｹｰｼｮﾝ
           ,cn_program_id                                        -- ｺﾝｶﾚﾝﾄﾌﾟﾛｸﾞﾗﾑＩＤ
           ,cd_program_update_date                               -- ﾌﾟﾛｸﾞﾗﾑ更新日
+-- 2020/05/07 Ver1.14 N.Abe ADD START
+          ,i_rep_cont_data_rec.bm_tax_kbn                       -- BM税区分
+-- 2020/05/07 Ver1.14 N.Abe ADD END
         );
 --
       -- ログ出力
@@ -3918,6 +4162,9 @@ AS
     lv_errbuf_svf         VARCHAR2(5000);                                  -- エラー・メッセージ
     lv_retcode_svf        VARCHAR2(1);                                     -- リターン・コード
     lv_errmsg_svf         VARCHAR2(5000);                                  -- ユーザー・エラー・メッセージ
+-- Ver1.16  K.Kanada Add S
+    lv_msg_layout_ptn     VARCHAR2(200);                                   -- ユーザー・エラー・メッセージ
+-- Ver1.16  K.Kanada Add E
 --
     -- *** ローカル・レコード ***
     l_rep_cont_data_rec   g_rep_cont_data_rtype;
@@ -4025,155 +4272,401 @@ AS
 /* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
     );
 --
-    -- ① 販売手数料有り、且つ設置協賛金有り、且つ電気代有りの場合
+-- Ver1.16  K.Kanada Mod S
+--    -- ① 販売手数料有り、且つ設置協賛金有り、且つ電気代有り、且つ税込の場合　又は
+--    -- ⑨ 販売手数料有り、且つ設置協賛金有り、且つ電気代有り、且つ税別の場合
+--    IF ((l_rep_cont_data_rec.condition_contents_flag = TRUE)
+--          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
+----          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)) THEN
+--          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)
+--          AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)) THEN
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税込
+--      IF (l_rep_cont_data_rec.bm_tax_kbn = '1') THEN
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S01.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S01.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+---- 2020/08/07 Ver1.15 N.Abe MOD START
+----          ,buff   => '① 販売手数料有り、且つ設置協賛金有り、且つ電気代有り'
+--          ,buff   => '① 販売手数料有り、且つ設置協賛金有り、且つ電気代有り、且つ税込'
+---- 2020/08/07 Ver1.15 N.Abe MOD END
+--        );
+----
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税別
+--      ELSE
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S09.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S09.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => '⑨ 販売手数料有り、且つ設置協賛金有り、且つ電気代有り、且つ税別'
+--        );
+--      END IF;
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--    -- ② 販売手数料有り、且つ設置協賛金有り、且つ電気代無しの場合
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
+--    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = TRUE)
+----          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)
+----          AND (l_rep_cont_data_rec.electricity_information_flag = FALSE)) THEN
+--            AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)) THEN
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税込
+--      IF (l_rep_cont_data_rec.bm_tax_kbn = '1') THEN
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S02.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S02.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+---- 2020/08/07 Ver1.15 N.Abe MOD START
+----          ,buff   => '② 販売手数料有り、且つ設置協賛金有り、且つ電気代無し'
+--          ,buff   => '② 販売手数料有り、且つ設置協賛金有り、且つ電気代無し、税込'
+---- 2020/08/07 Ver1.15 N.Abe MOD END
+--        );
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税別
+--      ELSE
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S10.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S10.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => '⑩ 販売手数料有り、且つ設置協賛金有り、且つ電気代無し、税別'
+--        );
+--      END IF;
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+----
+--    -- ③ 販売手数料有り、且つ設置協賛金無し、且つ電気代有りの場合
+--    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = TRUE)
+--          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
+----          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)) THEN
+--          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)
+--          AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)) THEN
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税込
+--      IF (l_rep_cont_data_rec.bm_tax_kbn = '1') THEN
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S03.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S03.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+---- 2020/08/07 Ver1.15 N.Abe MOD START
+----          ,buff   => '③ 販売手数料有り、且つ設置協賛金無し、且つ電気代有り'
+--          ,buff   => '③ 販売手数料有り、且つ設置協賛金無し、且つ電気代有り、税込'
+---- 2020/08/07 Ver1.15 N.Abe MOD END
+--        );
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税別
+--      ELSE
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S11.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S11.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => '⑪ 販売手数料有り、且つ設置協賛金無し、且つ電気代有り、税別'
+--        );
+--      END IF;
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+----
+--    -- ④ 販売手数料有り、且つ設置協賛金無し、且つ電気代無しの場合
+--    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = TRUE)
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
+----          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)
+----          AND (l_rep_cont_data_rec.electricity_information_flag = FALSE)) THEN
+--          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)) THEN
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税込
+--      IF (l_rep_cont_data_rec.bm_tax_kbn = '1') THEN
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S04.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S04.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+---- 2020/08/07 Ver1.15 N.Abe MOD START
+----          ,buff   => '④ 販売手数料有り、且つ設置協賛金無し、且つ電気代無し'
+--          ,buff   => '④ 販売手数料有り、且つ設置協賛金無し、且つ電気代無し、税込'
+---- 2020/08/07 Ver1.15 N.Abe MOD END
+--        );
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税別
+--      ELSE
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S12.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S12.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => '⑫ 販売手数料有り、且つ設置協賛金無し、且つ電気代無し、税別'
+--        );
+--      END IF;
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+----
+--    -- ⑤ 販売手数料無し、且つ設置協賛金有り、且つ電気代有りの場合
+--    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = FALSE)
+--          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
+----          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)) THEN
+--          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)
+--          AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)) THEN
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税込
+--      IF (l_rep_cont_data_rec.bm_tax_kbn = '1') THEN
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S05.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S05.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+---- 2020/08/07 Ver1.15 N.Abe MOD START
+----          ,buff   => '⑤ 販売手数料無し、且つ設置協賛金有り、且つ電気代有り'
+--          ,buff   => '⑤ 販売手数料無し、且つ設置協賛金有り、且つ電気代有り、税込'
+---- 2020/08/07 Ver1.15 N.Abe MOD END
+--        );
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税別
+--      ELSE
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S13.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S13.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => '⑬ 販売手数料無し、且つ設置協賛金有り、且つ電気代有り、税別'
+--        );
+--      END IF;
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+----
+--    -- ⑥ 販売手数料無し、且つ設置協賛金有り、且つ電気代無しの場合
+--    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = FALSE)
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
+----          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)
+----          AND (l_rep_cont_data_rec.electricity_information_flag = FALSE)) THEN
+--          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)) THEN
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税込
+--      IF (l_rep_cont_data_rec.bm_tax_kbn = '1') THEN
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S06.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S06.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+---- 2020/08/07 Ver1.15 N.Abe MOD START
+----          ,buff   => '⑥ 販売手数料無し、且つ設置協賛金有り、且つ電気代無し'
+--          ,buff   => '⑥ 販売手数料無し、且つ設置協賛金有り、且つ電気代無し、税込'
+---- 2020/08/07 Ver1.15 N.Abe MOD END
+--        );
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税別
+--      ELSE
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S14.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S14.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => '⑭ 販売手数料無し、且つ設置協賛金有り、且つ電気代無し、税別'
+--        );
+--      END IF;
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+----
+--    -- ⑦ 販売手数料無し、且つ設置協賛金無し、且つ電気代有りの場合
+--    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = FALSE)
+--          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
+----          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)) THEN
+--          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)
+--          AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)) THEN
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税込
+--      IF (l_rep_cont_data_rec.bm_tax_kbn = '1') THEN
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S07.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S07.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+---- 2020/08/07 Ver1.15 N.Abe MOD START
+----          ,buff   => '⑦ 販売手数料無し、且つ設置協賛金無し、且つ電気代有り'
+--          ,buff   => '⑦ 販売手数料無し、且つ設置協賛金無し、且つ電気代有り、税込'
+---- 2020/08/07 Ver1.15 N.Abe MOD END
+--        );
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税別
+--      ELSE
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S15.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S15.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => '⑮ 販売手数料無し、且つ設置協賛金無し、且つ電気代有り、税別'
+--        );
+--      END IF;
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+----
+--    -- ⑧ 販売手数料無し、且つ設置協賛金無し、且つ電気代無しの場合
+--    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = FALSE)
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+----          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)
+----          AND (l_rep_cont_data_rec.electricity_information_flag = FALSE)) THEN
+--          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)) THEN
+--/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税込
+--      IF (l_rep_cont_data_rec.bm_tax_kbn = '1') THEN
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S08.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S08.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+---- 2020/08/07 Ver1.15 N.Abe MOD START
+----          ,buff   => '⑧ 販売手数料無し、且つ設置協賛金無し、且つ電気代無し'
+--          ,buff   => '⑧ 販売手数料無し、且つ設置協賛金無し、且つ電気代無し、税込'
+---- 2020/08/07 Ver1.15 N.Abe MOD END
+--        );
+---- 2020/08/07 Ver1.15 N.Abe ADD START
+--      -- BM税区分：税別
+--      ELSE
+--        -- フォーム様式ファイル名
+--        lv_svf_form_nm  := cv_svf_name || 'S16.xml';
+--        -- クエリー様式ファイル名
+--        lv_svf_query_nm := cv_svf_name || 'S16.vrq';
+----
+--        -- ログ出力
+--        fnd_file.put_line(
+--           which  => FND_FILE.LOG
+--          ,buff   => '⑯ 販売手数料無し、且つ設置協賛金無し、且つ電気代無し、税別'
+--        );
+--      END IF;
+---- 2020/08/07 Ver1.15 N.Abe ADD END
+----
+--    END IF;
+--
+    -- ①③ 販売手数料有り、電気代有り の場合
     IF ((l_rep_cont_data_rec.condition_contents_flag = TRUE)
-          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
---          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)) THEN
           AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)
           AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)) THEN
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
-      -- フォーム様式ファイル名
-      lv_svf_form_nm  := cv_svf_name || 'S01.xml';
-      -- クエリー様式ファイル名
-      lv_svf_query_nm := cv_svf_name || 'S01.vrq';
+      -- BM1税区分：税抜
+      IF (l_rep_cont_data_rec.bm_tax_kbn = '2') THEN
+        lv_svf_form_nm    := cv_svf_name || 'S01.xml';   -- フォーム様式ファイル名
+        lv_svf_query_nm   := cv_svf_name || 'S01.vrq';   -- クエリー様式ファイル名
+        lv_msg_layout_ptn := '① 販売手数料有り、電気代有り、BM1税区分：税抜';  -- ログ出力時<< 帳票出力パターン >>
+      -- BM1税区分：税込もしくはNULL
+      ELSE
+        lv_svf_form_nm    := cv_svf_name || 'S03.xml';   -- フォーム様式ファイル名
+        lv_svf_query_nm   := cv_svf_name || 'S03.vrq';   -- クエリー様式ファイル名
+        lv_msg_layout_ptn := '③ 販売手数料有り、電気代有り、BM1税区分：税込';  -- ログ出力時<< 帳票出力パターン >>
+      END IF;
 --
-      -- ログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => '① 販売手数料有り、且つ設置協賛金有り、且つ電気代有り'
-      );
+    -- ②④ 販売手数料有り、電気代無し の場合
+    ELSIF (   (l_rep_cont_data_rec.condition_contents_flag = TRUE) ) THEN
+      -- BM1税区分：税抜
+      IF (l_rep_cont_data_rec.bm_tax_kbn = '2') THEN
+        lv_svf_form_nm    := cv_svf_name || 'S02.xml';   -- フォーム様式ファイル名
+        lv_svf_query_nm   := cv_svf_name || 'S02.vrq';   -- クエリー様式ファイル名
+        lv_msg_layout_ptn := '② 販売手数料有り、電気代無し、BM1税区分：税抜';  -- ログ出力時<< 帳票出力パターン >>
+      -- BM1税区分：税込もしくはNULL
+      ELSE
+        lv_svf_form_nm    := cv_svf_name || 'S04.xml';   -- フォーム様式ファイル名
+        lv_svf_query_nm   := cv_svf_name || 'S04.vrq';   -- クエリー様式ファイル名
+        lv_msg_layout_ptn := '④ 販売手数料有り、電気代無し、BM1税区分：税込';  -- ログ出力時<< 帳票出力パターン >>
+      END IF;
 --
-    -- ② 販売手数料有り、且つ設置協賛金有り、且つ電気代無しの場合
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
-    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = TRUE)
---          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)
---          AND (l_rep_cont_data_rec.electricity_information_flag = FALSE)) THEN
-            AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)) THEN
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
-      -- フォーム様式ファイル名
-      lv_svf_form_nm  := cv_svf_name || 'S02.xml';
-      -- クエリー様式ファイル名
-      lv_svf_query_nm := cv_svf_name || 'S02.vrq';
---
-      -- ログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => '② 販売手数料有り、且つ設置協賛金有り、且つ電気代無し'
-      );
---
-    -- ③ 販売手数料有り、且つ設置協賛金無し、且つ電気代有りの場合
-    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = TRUE)
-          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
---          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)) THEN
+    -- ⑤⑦ 販売手数料無し、電気代有り の場合
+    ELSIF (   (l_rep_cont_data_rec.condition_contents_flag = FALSE)
           AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)
-          AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)) THEN
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
-      -- フォーム様式ファイル名
-      lv_svf_form_nm  := cv_svf_name || 'S03.xml';
-      -- クエリー様式ファイル名
-      lv_svf_query_nm := cv_svf_name || 'S03.vrq';
+          AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)  ) THEN
+      -- BM1税区分：税抜
+      IF (l_rep_cont_data_rec.bm_tax_kbn = '2') THEN
+        lv_svf_form_nm    := cv_svf_name || 'S05.xml';   -- フォーム様式ファイル名
+        lv_svf_query_nm   := cv_svf_name || 'S05.vrq';   -- クエリー様式ファイル名
+        lv_msg_layout_ptn := '⑤ 販売手数料無し、電気代有り、BM1税区分：税抜';  -- ログ出力時<< 帳票出力パターン >>
+      -- BM1税区分：税込もしくはNULL
+      ELSE
+        lv_svf_form_nm    := cv_svf_name || 'S07.xml';   -- フォーム様式ファイル名
+        lv_svf_query_nm   := cv_svf_name || 'S07.vrq';   -- クエリー様式ファイル名
+        lv_msg_layout_ptn := '⑦ 販売手数料無し、電気代有り、BM1税区分：税込';  -- ログ出力時<< 帳票出力パターン >>
+      END IF;
 --
-      -- ログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => '③ 販売手数料有り、且つ設置協賛金無し、且つ電気代有り'
-      );
---
-    -- ④ 販売手数料有り、且つ設置協賛金無し、且つ電気代無しの場合
-    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = TRUE)
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
---          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)
---          AND (l_rep_cont_data_rec.electricity_information_flag = FALSE)) THEN
-          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)) THEN
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
-      -- フォーム様式ファイル名
-      lv_svf_form_nm  := cv_svf_name || 'S04.xml';
-      -- クエリー様式ファイル名
-      lv_svf_query_nm := cv_svf_name || 'S04.vrq';
---
-      -- ログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => '④ 販売手数料有り、且つ設置協賛金無し、且つ電気代無し'
-      );
---
-    -- ⑤ 販売手数料無し、且つ設置協賛金有り、且つ電気代有りの場合
-    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = FALSE)
-          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
---          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)) THEN
-          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)
-          AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)) THEN
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
-      -- フォーム様式ファイル名
-      lv_svf_form_nm  := cv_svf_name || 'S05.xml';
-      -- クエリー様式ファイル名
-      lv_svf_query_nm := cv_svf_name || 'S05.vrq';
---
-      -- ログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => '⑤ 販売手数料無し、且つ設置協賛金有り、且つ電気代有り'
-      );
---
-    -- ⑥ 販売手数料無し、且つ設置協賛金有り、且つ電気代無しの場合
-    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = FALSE)
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
---          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)
---          AND (l_rep_cont_data_rec.electricity_information_flag = FALSE)) THEN
-          AND (l_rep_cont_data_rec.install_support_amt_flag = TRUE)) THEN
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
-      -- フォーム様式ファイル名
-      lv_svf_form_nm  := cv_svf_name || 'S06.xml';
-      -- クエリー様式ファイル名
-      lv_svf_query_nm := cv_svf_name || 'S06.vrq';
---
-      -- ログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => '⑥ 販売手数料無し、且つ設置協賛金有り、且つ電気代無し'
-      );
---
-    -- ⑦ 販売手数料無し、且つ設置協賛金無し、且つ電気代有りの場合
-    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = FALSE)
-          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD START */
---          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)) THEN
-          AND (l_rep_cont_data_rec.electricity_information_flag = TRUE)
-          AND (l_rep_memo_data_rec.electric_memo_flg = cn_e_memo_cont)) THEN
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
-      -- フォーム様式ファイル名
-      lv_svf_form_nm  := cv_svf_name || 'S07.xml';
-      -- クエリー様式ファイル名
-      lv_svf_query_nm := cv_svf_name || 'S07.vrq';
---
-      -- ログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => '⑦ 販売手数料無し、且つ設置協賛金無し、且つ電気代有り'
-      );
---
-    -- ⑧ 販売手数料無し、且つ設置協賛金無し、且つ電気代無しの場合
-    ELSIF ((l_rep_cont_data_rec.condition_contents_flag = FALSE)
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
---          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)
---          AND (l_rep_cont_data_rec.electricity_information_flag = FALSE)) THEN
-          AND (l_rep_cont_data_rec.install_support_amt_flag = FALSE)) THEN
-/* 2015/02/13 Ver1.11 K.Nakatsu MOD  END  */
-      -- フォーム様式ファイル名
-      lv_svf_form_nm  := cv_svf_name || 'S08.xml';
-      -- クエリー様式ファイル名
-      lv_svf_query_nm := cv_svf_name || 'S08.vrq';
---
-      -- ログ出力
-      fnd_file.put_line(
-         which  => FND_FILE.LOG
-        ,buff   => '⑧ 販売手数料無し、且つ設置協賛金無し、且つ電気代無し'
-      );
---
+    -- ⑥⑧ 販売手数料無し、電気代無し の場合
+    ELSIF (   (l_rep_cont_data_rec.condition_contents_flag = FALSE) ) THEN
+      -- BM1税区分：税抜
+      IF (l_rep_cont_data_rec.bm_tax_kbn = '2') THEN
+        lv_svf_form_nm    := cv_svf_name || 'S06.xml';   -- フォーム様式ファイル名
+        lv_svf_query_nm   := cv_svf_name || 'S06.vrq';   -- クエリー様式ファイル名
+        lv_msg_layout_ptn := '⑥ 販売手数料無し、電気代無し、BM1税区分：税抜';  -- ログ出力時<< 帳票出力パターン >>
+      -- BM1税区分：税込もしくはNULL
+      ELSE
+        lv_svf_form_nm    := cv_svf_name || 'S08.xml';   -- フォーム様式ファイル名
+        lv_svf_query_nm   := cv_svf_name || 'S08.vrq';   -- クエリー様式ファイル名
+        lv_msg_layout_ptn := '⑧ 販売手数料無し、電気代無し、BM1税区分：税込';  -- ログ出力時<< 帳票出力パターン >>
+      END IF;
     END IF;
+--
+    -- ログ出力<< 帳票出力パターン >>
+    fnd_file.put_line(
+        which  => FND_FILE.LOG
+       ,buff   => lv_msg_layout_ptn
+    );
+-- Ver1.16  K.Kanada Mod E
 --
     -- ログ出力
     fnd_file.put_line(
