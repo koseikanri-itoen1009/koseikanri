@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.21
+ * Version          : 3.22
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *  2019/07/16    3.19  K.Nara           [E_本稼動_15472] 軽減税率対応
  *  2020/08/21    3.20  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
  *  2020/11/26    3.21  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
+ *  2020/12/04    3.22  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -3193,7 +3194,10 @@ GROUP BY CASE
          , xt0c.vendor_dummy_flag        AS vendor_dummy_flag        -- 仕入先ダミーフラグ
 -- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- Ver.3.20 N.Abe ADD START
-         ,NVL( xmbc.bm1_tax_kbn, '1' )   AS bm1_tax_kbn              -- BM1税区分
+-- Ver.3.22 N.Abe MOD START
+--         ,NVL( xmbc.bm1_tax_kbn, '1' )   AS bm1_tax_kbn              -- BM1税区分
+         ,NVL( pvsa.attribute6, '1' )    AS bm1_tax_kbn               -- BM1税区分
+-- Ver.3.22 N.Abe MOD END
          ,'1'                            AS bm2_tax_kbn              -- BM2税区分
          ,'1'                            AS bm3_tax_kbn              -- BM3税区分
 -- Ver.3.20 N.Abe ADD END
@@ -3263,6 +3267,10 @@ GROUP BY CASE
 -- Ver.3.20 N.Abe ADD START
        , xxcok_mst_bm_contract           xmbc  -- 販手条件マスタ
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.22 N.Abe ADD START
+       , po_vendors                      pv    -- 仕入先マスタ
+       , po_vendor_sites_all             pvsa  -- 仕入先サイト
+-- Ver.3.22 N.Abe ADD END
     WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
       AND xt0c.proc_type              = gv_param_proc_type
@@ -3336,6 +3344,11 @@ GROUP BY CASE
       AND xmbc.cust_code(+)           = xt0c.ship_cust_code
       AND xmbc.calc_target_flag(+)    = cv_enable
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.22 N.Abe ADD START
+      AND xt0c.bm1_vendor_code        = pv.segment1
+      AND pv.vendor_id                = pvsa.vendor_id
+      AND pvsa.org_id                 = gn_org_id
+-- Ver.3.22 N.Abe ADD END
     GROUP BY CASE
                WHEN TRUNC( xt0c.closing_date, 'MM' ) = TRUNC( gd_process_date, 'MM' ) THEN
                  xca.sale_base_code
@@ -3369,7 +3382,10 @@ GROUP BY CASE
 -- 2018/12/26 Ver.3.18 [E_本稼動_15349] SCSK E.Yazaki ADD END
 -- 2010/12/13 Ver.3.12 [E_本稼動_01896] SCS S.Niki REPAIR END
 -- Ver.3.20 N.Abe ADD START
-           , NVL( xmbc.bm1_tax_kbn, '1' )           -- BM1税区分
+-- Ver.3.20 N.Abe MOD START
+--           , NVL( xmbc.bm1_tax_kbn, '1' )           -- BM1税区分
+           , NVL( pvsa.attribute6, '1' )           -- BM1税区分
+-- Ver.3.20 N.Abe MOD END
 -- Ver.3.20 N.Abe ADD END
   ;
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR END
