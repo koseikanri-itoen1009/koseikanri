@@ -4,7 +4,7 @@ AS
  *
  * Package Name     : XXCCP009A03C(body)
  * Description      : 請求書保留ステータス更新処理
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/10/30    1.0   SCSK K.Nakatsu  [E_本稼動_11000]新規作成
  *  2015/01/08    1.1   SCSK T.Ishiwata [E_本稼動_11000]再対応
+ *  2020/12/01    1.2   SCSK R.Oikawa   [E_本稼動_16800]パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -126,7 +127,12 @@ AS
   CURSOR target_cur(
       in_request_id NUMBER
   ) IS
-    SELECT   rcta.attribute7             AS e_attribute7            -- 請求書保留ステータス
+-- 2020/12/01 Ver.1.2 Mod Start
+--    SELECT   rcta.attribute7             AS e_attribute7            -- 請求書保留ステータス
+    SELECT  /*+ LEADING(inv)
+            INDEX(rcta RA_CUSTOMER_TRX_U1)*/
+             rcta.attribute7             AS e_attribute7            -- 請求書保留ステータス
+-- 2020/12/01 Ver.1.2 Mod End
             ,rcta.trx_number             AS e_trx_number            -- 取引番号
             ,rcta.trx_date               AS e_trx_date              -- 取引日
             ,rctta.name                  AS e_name                  -- 取引タイプ
@@ -155,6 +161,16 @@ AS
             ,ar_payment_schedules_all       apsa
             ,hz_cust_accounts               hca
             ,hz_parties                     hp
+-- 2020/12/01 Ver.1.2 Add Start
+            ,(
+              SELECT DISTINCT xil.trx_id  trx_id
+              FROM   xxcfr_invoice_headers xih,
+                     xxcfr_invoice_lines xil
+              WHERE  xih.invoice_id      = xil.invoice_id
+              AND    xih.cutoff_date     = gd_target_date           -- 締日
+              AND    xih.bill_cust_code  = gv_bill_cust_code        -- 請求先顧客
+             ) inv
+-- 2020/12/01 Ver.1.2 Add End
     WHERE    1 = 1
     AND      hp.party_id            = hca.party_id
     AND      hca.cust_account_id    = rcta.bill_to_customer_id
@@ -173,16 +189,19 @@ AS
     AND      hca.account_number     = gv_bill_cust_code             -- 請求先顧客
     AND      rcta.org_id            = cn_org_id                     -- ログインユーザ組織
     AND      rcta.request_id        = in_request_id                 -- 要求ID
--- 2015/01/08 Ver.1.1 Mod Start
---    AND      apsa.due_date          = gd_target_date                -- 締日
-    AND EXISTS (
-        SELECT /*+ INDEX_SS(xil XXCFR_INVOICE_LINES_N01) */
-               'X'
-        FROM   xxcfr_invoice_lines xil
-        WHERE  xil.trx_id      = rcta.customer_trx_id
-        AND    xil.cutoff_date = gd_target_date                     -- 締日
-    )
--- 2015/01/08 Ver.1.1 Mod End
+-- 2020/12/01 Ver.1.2 Mod Start
+---- 2015/01/08 Ver.1.1 Mod Start
+----    AND      apsa.due_date          = gd_target_date                -- 締日
+--    AND EXISTS (
+--        SELECT /*+ INDEX_SS(xil XXCFR_INVOICE_LINES_N01) */
+--               'X'
+--        FROM   xxcfr_invoice_lines xil
+--        WHERE  xil.trx_id      = rcta.customer_trx_id
+--        AND    xil.cutoff_date = gd_target_date                     -- 締日
+--    )
+---- 2015/01/08 Ver.1.1 Mod End
+    AND  inv.trx_id                 = rcta.customer_trx_id
+-- 2020/12/01 Ver.1.2 Mod End
     AND      rcta.attribute7        = gv_status_from                -- 変更対象ステータス
     ORDER BY rcta.trx_date
 -- 2015/01/08 Ver.1.1 Mod Start
