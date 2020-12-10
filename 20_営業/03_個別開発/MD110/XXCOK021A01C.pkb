@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2012/11/22    1.12  M.Nagai          [E_本稼動_09766] チェック追加：勘定科目転記可否、AP会計期間内、顧客マスタ関連
  *  2013/04/03    1.13  S.Niki           [E_本稼動_10393] 支払予定日チェック変更
  *  2016/12/06    1.14  S.Niki           [E_本稼動_13321] 重複データ登録防止
+ *  2020/12/03    1.15  Y.Koh            [障害E_本稼動_15749]
  *
  *****************************************************************************************/
 --
@@ -144,7 +145,11 @@ AS
   cv_message_90004           CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90004';   --正常終了メッセージ
   cv_message_90006           CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90006';   --エラー終了全ロールバックメッセージ
   --プロファイル
-  cv_dept_code_p             CONSTANT VARCHAR2(100) := 'XXCOK1_AFF2_DEPT_ACT';   --業務管理部の部門コード
+-- 2020/12/03 Ver1.15 MOD Start
+  cv_all_base_allowed        CONSTANT VARCHAR2(100) := 'XXCOK1_WHOLESALE_INVOICE_UPLOAD_ALL_BASE_ALLOWED';
+                                                                                   --全拠点許可フラグ
+--  cv_dept_code_p             CONSTANT VARCHAR2(100) := 'XXCOK1_AFF2_DEPT_ACT';   --業務管理部の部門コード
+-- 2020/12/03 Ver1.15 MOD End
   cv_org_id_p                CONSTANT VARCHAR2(100) := 'ORG_ID';                 --営業単位ID
 -- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
   cv_prof_books_id           CONSTANT VARCHAR2(40)  := 'GL_SET_OF_BKS_ID';               -- 会計帳簿ID
@@ -254,7 +259,10 @@ AS
   gn_normal_cnt     NUMBER        DEFAULT 0;                  --成功件数
   gn_error_cnt      NUMBER        DEFAULT 0;                  --エラー件数
   gv_user_dept_code VARCHAR2(100) DEFAULT NULL;               --ユーザ担当拠点(A-1,A-4)
-  gv_dept_code      VARCHAR2(100) DEFAULT NULL;               --カスタム･プロファイル取得変数
+-- 2020/12/03 Ver1.15 MOD Start
+  gv_all_base_allowed VARCHAR2(1);                            --カスタム･プロファイル取得変数
+--  gv_dept_code      VARCHAR2(100) DEFAULT NULL;               --カスタム･プロファイル取得変数
+-- 2020/12/03 Ver1.15 MOD End
   gn_org_id         NUMBER;                                   --プロファイル(営業単位)
   gd_prdate         DATE;                                     --業務日付
   gv_chk_code       VARCHAR2(1)   DEFAULT cv_status_normal;   --妥当性チェックの処理結果ステータス
@@ -1556,7 +1564,10 @@ AS
                     );
       ov_retcode := cv_status_continue;
     ELSE
-      IF (    ( gv_dept_code      <> gv_user_dept_code )
+-- 2020/12/03 Ver1.15 MOD Start
+      IF (    ( gv_all_base_allowed = 'N' )
+--      IF (    ( gv_dept_code      <> gv_user_dept_code )
+-- 2020/12/03 Ver1.15 MOD End
           AND ( gv_user_dept_code <> iv_base_code )
          ) THEN
         lv_msg := xxccp_common_pkg.get_msg(
@@ -2838,10 +2849,17 @@ AS
     -- =============================================================================
     -- 2.(1)プロファイルを取得(業務管理部の部門コード)
     -- =============================================================================
-    gv_dept_code := FND_PROFILE.VALUE( cv_dept_code_p );
+-- 2020/12/03 Ver1.15 MOD Start
+    gv_all_base_allowed := FND_PROFILE.VALUE( cv_all_base_allowed );
+--    gv_dept_code := MOD.VALUE( cv_dept_code_p );
+-- 2020/12/03 Ver1.15 ADD End
 --
-    IF ( gv_dept_code IS NULL ) THEN
-      lv_profile_code := cv_dept_code_p;
+-- 2020/12/03 Ver1.15 MOD Start
+    IF ( gv_all_base_allowed IS NULL ) THEN
+      lv_profile_code := cv_all_base_allowed;
+--    IF ( gv_dept_code IS NULL ) THEN
+--      lv_profile_code := cv_dept_code_p;
+-- 2020/12/03 Ver1.15 MOD End
       RAISE get_profile_expt;
     END IF;
     -- =============================================================================
