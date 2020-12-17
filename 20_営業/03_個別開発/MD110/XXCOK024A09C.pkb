@@ -3,10 +3,10 @@ AS
 /*****************************************************************************************
  * Copyright(c)SCSK Corporation, 2020. All rights reserved.
  *
- * Package Name     : XXCOK024A09C (spec)
+ * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/05/13    1.0   H.Ishii          新規作成
+ *  2020/12/03    1.1   SCSK Y.Koh       [E_本稼動_16026]
  *
  *****************************************************************************************/
 --
@@ -94,7 +95,9 @@ AS
   --メッセージ
   cv_data_get_msg           CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-00001';               -- 対象データなしエラーメッセージ
   cv_msg_proc_date_err      CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-00028';               -- 業務日付取得エラーメッセージ
+-- 2020/12/03 Ver1.1 ADD Start
   cv_msg_id_error           CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10592';               -- 前回処理ID取得エラー
+-- 2020/12/03 Ver1.1 ADD End
   cv_msg_cal_error          CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10593';               -- 控除額算出エラー
   cv_msg_slip_date_err      CONSTANT  VARCHAR2(20)  := 'APP-XXCOK1-10708';               -- 支払処理対象外メッセージ
   cv_msg_lock_err           CONSTANT VARCHAR2(50)   := 'APP-XXCOK1-10632';               -- ロックエラーメッセージ
@@ -224,11 +227,21 @@ AS
   gn_dedu_unit_price        NUMBER      DEFAULT 0;                            -- 控除単価
   gn_dedu_quantity          NUMBER      DEFAULT 0;                            -- 控除数量
   gn_dedu_amount            NUMBER      DEFAULT 0;                            -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+  gn_compensation             NUMBER;                                         -- 補填
+  gn_margin                   NUMBER;                                         -- 問屋マージン
+  gn_sales_promotion_expenses NUMBER;                                         -- 拡売
+  gn_margin_reduction         NUMBER;                                         -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
   gn_dedu_tax_amount        NUMBER      DEFAULT 0;                            -- 控除税額
-  gn_sales_id_1             NUMBER      DEFAULT 0;                            -- 前回処理ID(販売実績明細ID)
---  gn_sales_id_2             NUMBER      DEFAULT 0;                            -- 前回処理ID(売上実績振替情報ID)
-  gd_prev_date              DATE ;                                            -- 前日業務日付
-  gd_prev_month_date        DATE ;                                            -- 前月末日付
+-- 2020/12/03 Ver1.1 ADD Start
+  gn_sales_id_1             NUMBER      DEFAULT 0;                            -- 前回処理ID(販売実績ヘッダーID)
+  gn_sales_id_2             NUMBER      DEFAULT 0;                            -- 前回処理ID(売上実績振替情報ID)
+-- 2020/12/03 Ver1.1 ADD End
+-- 2020/12/03 Ver1.1 DEL Start
+--  gd_prev_date              DATE ;                                            -- 前日業務日付
+--  gd_prev_month_date        DATE ;                                            -- 前月末日付
+-- 2020/12/03 Ver1.1 DEL End
   gv_tax_code               VARCHAR2(4) DEFAULT NULL;                         -- 税コード
   gn_tax_rate               NUMBER      DEFAULT 0;                            -- 税率
 --
@@ -376,7 +389,15 @@ AS
           ,xcrt.material_rate_1                    material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2          condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                       accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                  compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3              wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                       accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4          wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5          condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6          deduction_unit_price_en_6    -- 控除単価(円)
           ,dtyp.attribute2                         attribute2                   -- 控除タイプ
@@ -391,7 +412,6 @@ AS
           ,flvc1                                                      d_typ
           ,flvc2                                                      mk_cls
           ,flvc3                                                      gyotai_sho
---    WHERE  xsel.sales_exp_line_id           <= gn_sales_id_1
     WHERE  1=1
     AND    xseh.sales_exp_header_id          = xsel.sales_exp_header_id
     AND    xseh.create_class                 = mk_cls.meaning
@@ -408,15 +428,22 @@ AS
     AND    dtyp.enabled_flag                 = cv_y_flag
     AND    xseh.ship_to_customer_code        = xcrt.customer_code
     AND    xcrt.customer_code           IS NOT NULL
+-- 2020/12/03 Ver1.1 MOD Start
     AND    xseh.delivery_date          BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_date
-                   END
+                                       AND     xcrt.end_date_active
+--    AND    xseh.delivery_date          BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l               = cv_y_flag
     AND (  xsel.item_code                    = xcrt.item_code
     OR     xsel.product_class                = xcrt.product_class)
     AND    dtyp.attribute2                   = d_typ.lookup_code
+-- 2020/12/03 Ver1.1 ADD Start
+    AND    xseh.sales_exp_header_id         <= gn_sales_id_1
+-- 2020/12/03 Ver1.1 ADD End
     UNION ALL
     -- ②控除用チェーン
     SELECT /*+ leading(xcrt xca xseh xsel chcd dtyp) FULL(xcrt)
@@ -452,7 +479,15 @@ AS
           ,xcrt.material_rate_1                    material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2          condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                       accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                  compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3              wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                       accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4          wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5          condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6          deduction_unit_price_en_6    -- 控除単価(円)
           ,dtyp.attribute2                         attribute2                   -- 控除タイプ
@@ -467,7 +502,6 @@ AS
           ,flvc1                                                      d_typ
           ,flvc2                                                      mk_cls
           ,flvc3                                                      gyotai_sho
---    WHERE  xsel.sales_exp_line_id           <= gn_sales_id_1
     WHERE  1=1
     AND    xseh.sales_exp_header_id          = xsel.sales_exp_header_id
     AND    xseh.create_class                 = mk_cls.meaning
@@ -484,15 +518,22 @@ AS
     AND    dtyp.enabled_flag                 = cv_y_flag
     AND    xca.intro_chain_code2             = xcrt.deduction_chain_code
     AND    xcrt.deduction_chain_code    IS NOT NULL
+-- 2020/12/03 Ver1.1 MOD Start
     AND    xseh.delivery_date          BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_date
-                   END
+                                       AND     xcrt.end_date_active
+--    AND    xseh.delivery_date          BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l               = cv_y_flag
     AND (  xsel.item_code                    = xcrt.item_code
     OR     xsel.product_class                = xcrt.product_class)
     AND    dtyp.attribute2                   = d_typ.lookup_code
+-- 2020/12/03 Ver1.1 ADD Start
+    AND    xseh.sales_exp_header_id         <= gn_sales_id_1
+-- 2020/12/03 Ver1.1 ADD End
     UNION ALL
     -- ③企業
     SELECT /*+ leading(xcrt chcd xca xseh xsel dtyp) FULL(xcrt)
@@ -528,7 +569,15 @@ AS
           ,xcrt.material_rate_1                    material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2          condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                       accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                  compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3              wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                       accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4          wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5          condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6          deduction_unit_price_en_6    -- 控除単価(円)
           ,dtyp.attribute2                         attribute2                   -- 控除タイプ
@@ -543,7 +592,6 @@ AS
           ,flvc1                                                      d_typ
           ,flvc2                                                      mk_cls
           ,flvc3                                                      gyotai_sho
---    WHERE  xsel.sales_exp_line_id           <= gn_sales_id_1
     WHERE  1=1
     AND    xseh.sales_exp_header_id          = xsel.sales_exp_header_id
     AND    xseh.create_class                 = mk_cls.meaning
@@ -560,15 +608,22 @@ AS
     AND    dtyp.enabled_flag                 = cv_y_flag
     AND    chcd.attribute1                   = xcrt.corp_CODE
     AND    xcrt.corp_code               IS NOT NULL
+-- 2020/12/03 Ver1.1 MOD Start
     AND    xseh.delivery_date          BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_date
-                   END
+                                       AND     xcrt.end_date_active
+--    AND    xseh.delivery_date          BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l               = cv_y_flag
     AND (  xsel.item_code                    = xcrt.item_code
     OR     xsel.product_class                = xcrt.product_class)
     AND    dtyp.attribute2                   = d_typ.lookup_code
+-- 2020/12/03 Ver1.1 ADD Start
+    AND    xseh.sales_exp_header_id         <= gn_sales_id_1
+-- 2020/12/03 Ver1.1 ADD End
     ;
 --
   -- カーソルレコード取得用
@@ -628,7 +683,15 @@ AS
           ,xcrt.material_rate_1                      material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2            condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                         accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                    compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3                wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                         accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                  just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4            wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5            condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6            deduction_unit_price_en_6    -- 控除単価(円)
           ,flv2.attribute2                           attribute2                   -- 控除タイプ
@@ -641,7 +704,6 @@ AS
           ,xxcok_condition_recovery_temp  xcrt            -- 控除マスタリカバリ用ワークテーブル
           ,flvc1                          d_typ
           ,flvc3                          gyotai_sho
---    WHERE  xsi.selling_trns_info_id     <= gn_sales_id_2
     WHERE  1=1
     AND    xsi.report_decision_flag      = cv_1
     AND    xsi.selling_trns_type         = cv_1
@@ -659,14 +721,21 @@ AS
     AND    flv2.attribute2               = d_typ.lookup_code
     AND    xsi.cust_code                 = xcrt.customer_code
     AND    xcrt.customer_code           IS NOT NULL
+-- 2020/12/03 Ver1.1 MOD Start
     AND    xsi.selling_date        BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_date
-                   END
+                                       AND xcrt.end_date_active
+--    AND    xsi.selling_date        BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l           = cv_y_flag
     AND (  xsi.item_code                 = xcrt.item_code
     OR     xsi.product_class             = xcrt.product_class )
+-- 2020/12/03 Ver1.1 ADD Start
+    AND    xsi.selling_trns_info_id     <= gn_sales_id_2
+-- 2020/12/03 Ver1.1 ADD End
     UNION ALL
     -- ②控除用チェーン
     SELECT /*+ leading(xcrt xca xsi flv2 flv) full(xcrt)
@@ -704,7 +773,15 @@ AS
           ,xcrt.material_rate_1                      material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2            condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                         accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                    compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3                wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                         accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                  just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4            wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5            condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6            deduction_unit_price_en_6    -- 控除単価(円)
           ,flv2.attribute2                           attribute2                   -- 控除タイプ
@@ -717,7 +794,6 @@ AS
           ,xxcok_condition_recovery_temp  xcrt            -- 控除マスタリカバリ用ワークテーブル
           ,flvc1                          d_typ
           ,flvc3                          gyotai_sho
---    WHERE  xsi.selling_trns_info_id     <= gn_sales_id_2
     WHERE  1=1
     AND    xsi.report_decision_flag      = cv_1
     AND    xsi.selling_trns_type         = cv_1
@@ -735,14 +811,21 @@ AS
     AND    flv2.attribute2               = d_typ.lookup_code
     AND    xca.intro_chain_code2         = xcrt.deduction_chain_code
     AND    xcrt.deduction_chain_code    IS NOT NULL
+-- 2020/12/03 Ver1.1 MOD Start
     AND    xsi.selling_date        BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_date
-                   END
+                                       AND xcrt.end_date_active
+--    AND    xsi.selling_date        BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l           = cv_y_flag
     AND (  xsi.item_code                 = xcrt.item_code
     OR     xsi.product_class             = xcrt.product_class )
+-- 2020/12/03 Ver1.1 ADD Start
+    AND    xsi.selling_trns_info_id     <= gn_sales_id_2
+-- 2020/12/03 Ver1.1 ADD End
     UNION ALL
     -- ③企業
     SELECT /*+ leading(xcrt flv xca xsi flv2) full(xcrt)
@@ -780,7 +863,15 @@ AS
           ,xcrt.material_rate_1                      material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2            condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                         accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                    compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3                wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                         accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                  just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4            wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5            condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6            deduction_unit_price_en_6    -- 控除単価(円)
           ,flv2.attribute2                           attribute2                   -- 控除タイプ
@@ -793,7 +884,6 @@ AS
           ,xxcok_condition_recovery_temp  xcrt            -- 控除マスタリカバリ用ワークテーブル
           ,flvc1                          d_typ
           ,flvc3                          gyotai_sho
---    WHERE  xsi.selling_trns_info_id     <= gn_sales_id_2
     WHERE  1=1
     AND    xsi.report_decision_flag      = cv_1
     AND    xsi.selling_trns_type         = cv_1
@@ -811,14 +901,21 @@ AS
     AND    flv2.attribute2               = d_typ.lookup_code
     AND    flv.attribute1                = xcrt.corp_CODE
     AND    xcrt.corp_code           IS NOT NULL
+-- 2020/12/03 Ver1.1 MOD Start
     AND    xsi.selling_date        BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_date
-                   END
+                                       AND xcrt.end_date_active
+--    AND    xsi.selling_date        BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l           = cv_y_flag
     AND (  xsi.item_code                 = xcrt.item_code
     OR     xsi.product_class             = xcrt.product_class )
+-- 2020/12/03 Ver1.1 ADD Start
+    AND    xsi.selling_trns_info_id     <= gn_sales_id_2
+-- 2020/12/03 Ver1.1 ADD End
     ;
 --
   -- カーソルレコード取得用
@@ -878,7 +975,15 @@ AS
           ,xcrt.material_rate_1                        material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2              condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                           accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                      compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3                  wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                           accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                    just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4              wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5              condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6              deduction_unit_price_en_6    -- 控除単価(円)
           ,flv2.attribute2                             attribute2                   -- 控除タイプ
@@ -908,11 +1013,15 @@ AS
     AND    flv2.attribute2               = d_typ.lookup_code
     AND    xdst.cust_code                = xcrt.customer_code
     AND    xcrt.customer_code       IS NOT NULL
+-- 2020/12/03 Ver1.1 MOD Start
     AND    xdst.selling_date       BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_month_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_month_date
-                   END
+                                       AND xcrt.end_date_active
+--    AND    xdst.selling_date       BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_month_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_month_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l           = cv_y_flag
     AND   (xdst.item_code                = xcrt.item_code
     OR     xdst.product_class            = xcrt.product_class)
@@ -953,7 +1062,15 @@ AS
           ,xcrt.material_rate_1                        material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2              condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                           accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                      compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3                  wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                           accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                    just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4              wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5              condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6              deduction_unit_price_en_6    -- 控除単価(円)
           ,flv2.attribute2                             attribute2                   -- 控除タイプ
@@ -983,11 +1100,15 @@ AS
     AND    flv2.attribute2               = d_typ.lookup_code
     AND    xca.intro_chain_code2          = xcrt.deduction_chain_code
     AND    xcrt.deduction_chain_code IS NOT NULL
-    AND    xdst.selling_date        BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_month_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_month_date
-                   END
+-- 2020/12/03 Ver1.1 MOD Start
+    AND    xdst.selling_date       BETWEEN xcrt.start_date_active
+                                       AND xcrt.end_date_active
+--    AND    xdst.selling_date        BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_month_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_month_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l            = cv_y_flag
     AND   (xdst.item_code                = xcrt.item_code
     OR     xdst.product_class            = xcrt.product_class)
@@ -1028,7 +1149,15 @@ AS
           ,xcrt.material_rate_1                        material_rate_1              -- 料率(％)
           ,xcrt.condition_unit_price_en_2              condition_unit_price_en_2    -- 条件単価２(円)
           ,xcrt.accrued_en_3                           accrued_en_3                 -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.compensation_en_3                      compensation_en_3            -- 補填(円)
+          ,xcrt.wholesale_margin_en_3                  wholesale_margin_en_3        -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.accrued_en_4                           accrued_en_4                 -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+          ,xcrt.just_condition_en_4                    just_condition_en_4          -- 今回条件(円)
+          ,xcrt.wholesale_adj_margin_en_4              wholesale_adj_margin_en_4    -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
           ,xcrt.condition_unit_price_en_5              condition_unit_price_en_5    -- 条件単価５(円)
           ,xcrt.deduction_unit_price_en_6              deduction_unit_price_en_6    -- 控除単価(円)
           ,flv2.attribute2                             attribute2                   -- 控除タイプ
@@ -1058,11 +1187,15 @@ AS
     AND    flv2.attribute2               = d_typ.lookup_code
     AND    flv.attribute1                = xcrt.corp_CODE
     AND    xcrt.corp_code           IS NOT NULL
+-- 2020/12/03 Ver1.1 MOD Start
     AND    xdst.selling_date       BETWEEN xcrt.start_date_active
-               AND CASE WHEN xcrt.end_date_active < gd_prev_month_date 
-                     THEN xcrt.end_date_active
-                     ELSE gd_prev_month_date
-                   END
+                                       AND xcrt.end_date_active
+--    AND    xdst.selling_date       BETWEEN xcrt.start_date_active
+--               AND CASE WHEN xcrt.end_date_active < gd_prev_month_date 
+--                     THEN xcrt.end_date_active
+--                     ELSE gd_prev_month_date
+--                   END
+-- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l            = cv_y_flag
     AND   (xdst.item_code                = xcrt.item_code
     OR     xdst.product_class            = xcrt.product_class)
@@ -1106,6 +1239,7 @@ AS
 --
 --##################################  固定部 END  ##################################
 --
+-- 2020/12/03 Ver1.1 ADD Start
     --========================================
     -- 1.最大販売実績明細ID(販売実績情報)取得処理
     --========================================
@@ -1134,36 +1268,37 @@ AS
         RAISE global_api_expt;
     END IF;
 --
---    --========================================
---    -- 2.最大売上実績振替情報ID(実績振替（EDI）)取得処理
---    --========================================
---    BEGIN
---      SELECT MAX(xsdc.last_processing_id)            -- 前回処理ID(売上実績振替情報ID)
---      INTO   gn_sales_id_2
---      FROM   xxcok_sales_deduction_control  xsdc     -- 販売控除連携管理情報
---      WHERE  xsdc.control_flag  = cv_t_flag          -- 管理情報フラグ:実績振替
---      ;
-----
---    EXCEPTION
---      WHEN  OTHERS THEN
---        lv_errmsg :=  xxccp_common_pkg.get_msg( cv_xxcok_short_name
---                                              , cv_msg_id_error
---                                               );
---        lv_errbuf :=  lv_errmsg;
---        RAISE global_api_expt;
---    END;
-----
---    -- 前回処理ID(売上実績振替情報ID)が取得できなかった場合
---    IF  (gn_sales_id_2 IS NULL) THEN
---        lv_errmsg :=  xxccp_common_pkg.get_msg( cv_xxcok_short_name
---                                              , cv_msg_id_error
---                                               );
---        lv_errbuf :=  lv_errmsg;
---        RAISE global_api_expt;
---    END IF;
-----
     --========================================
-    -- 2.業務日付取得処理
+    -- 2.最大売上実績振替情報ID(実績振替（EDI）)取得処理
+    --========================================
+    BEGIN
+      SELECT MAX(xsdc.last_processing_id)            -- 前回処理ID(売上実績振替情報ID)
+      INTO   gn_sales_id_2
+      FROM   xxcok_sales_deduction_control  xsdc     -- 販売控除連携管理情報
+      WHERE  xsdc.control_flag  = cv_t_flag          -- 管理情報フラグ:実績振替
+      ;
+--
+    EXCEPTION
+      WHEN  OTHERS THEN
+        lv_errmsg :=  xxccp_common_pkg.get_msg( cv_xxcok_short_name
+                                              , cv_msg_id_error
+                                               );
+        lv_errbuf :=  lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+    -- 前回処理ID(売上実績振替情報ID)が取得できなかった場合
+    IF  (gn_sales_id_2 IS NULL) THEN
+        lv_errmsg :=  xxccp_common_pkg.get_msg( cv_xxcok_short_name
+                                              , cv_msg_id_error
+                                               );
+        lv_errbuf :=  lv_errmsg;
+        RAISE global_api_expt;
+    END IF;
+-- 2020/12/03 Ver1.1 ADD End
+--
+    --========================================
+    -- 3.業務日付取得処理
     --========================================
     gd_proc_date := TRUNC( xxccp_common_pkg2.get_process_date );
 --
@@ -1176,11 +1311,13 @@ AS
       RAISE global_api_expt;
     END IF;
 --
-    --========================================
-    -- 3.前月末日、前日の取得
-    --========================================
-    gd_prev_date       := gd_proc_date - 1 ;
-    gd_prev_month_date := trunc(gd_proc_date,'MM') - 1 ;
+-- 2020/12/03 Ver1.1 DEL Start
+--    --========================================
+--    -- 3.前月末日、前日の取得
+--    --========================================
+--    gd_prev_date       := gd_proc_date - 1 ;
+--    gd_prev_month_date := trunc(gd_proc_date,'MM') - 1 ;
+-- 2020/12/03 Ver1.1 DEL End
 --
   EXCEPTION
 --
@@ -1247,6 +1384,12 @@ AS
       FROM   xxcok_sales_deduction  xsd
       WHERE  xsd.recon_slip_num     IS NULL                                -- 支払伝票番号
       AND    xsd.gl_if_flag         IN ( cv_y_flag ,cv_n_flag )            -- GL連携フラグ(Y:連携済、N:未連携)
+-- 2020/12/03 Ver1.1 ADD Start
+      AND    xsd.source_category    IN ( cv_s_flag ,cv_t_flag
+                                        ,cv_v_flag ,cv_f_flag)             -- 作成元区分
+      AND  ( xsd.report_decision_flag   IS NULL         OR
+             xsd.report_decision_flag    = cv_deci_flag )                  -- 速報確定フラグ
+-- 2020/12/03 Ver1.1 ADD End
       AND    xsd.status              = cv_n_flag                           -- ステータス(N：新規)
       AND    xsd.condition_line_id   = in_condition_line_id                -- 控除詳細ID
       ;
@@ -1277,6 +1420,10 @@ AS
       AND    xsd.source_category    IN ( cv_s_flag ,cv_t_flag
                                         ,cv_v_flag ,cv_f_flag)             -- 作成元区分
       AND    xsd.gl_if_flag         IN ( cv_y_flag ,cv_n_flag )            -- GL連携フラグ(Y:連携済、N:未連携)
+-- 2020/12/03 Ver1.1 ADD Start
+      AND  ( xsd.report_decision_flag   IS NULL         OR
+             xsd.report_decision_flag    = cv_deci_flag )                  -- 速報確定フラグ
+-- 2020/12/03 Ver1.1 ADD End
       AND    xsd.status              = cv_n_flag                           -- ステータス(N：新規)
       AND    xsd.condition_line_id   = in_condition_line_id                -- 控除詳細ID
       ;
@@ -1288,6 +1435,10 @@ AS
       FROM   xxcok_sales_deduction  xsd
       WHERE  xsd.recon_slip_num     IS NULL                                -- 支払伝票番号
       AND    xsd.source_category     = iv_syori_type                       -- 作成元区分
+-- 2020/12/03 Ver1.1 ADD Start
+      AND  ( xsd.report_decision_flag   IS NULL         OR
+             xsd.report_decision_flag    = cv_deci_flag )                  -- 速報確定フラグ
+-- 2020/12/03 Ver1.1 ADD End
       AND    xsd.gl_if_flag         IN ( cv_y_flag ,cv_n_flag )            -- GL連携フラグ(Y:連携済、N:未連携)
       AND    xsd.status              = cv_n_flag                           -- ステータス(N：新規)
       AND    xsd.condition_line_id   = in_condition_line_id                -- 控除詳細ID
@@ -1316,6 +1467,10 @@ AS
             ,xsd.program_update_date     = cd_program_update_date                   -- プログラム更新日
       WHERE  xsd.recon_slip_num     IS NULL                                -- 支払伝票番号
       AND    xsd.source_category     = iv_syori_type                       -- 作成元区分
+-- 2020/12/03 Ver1.1 ADD Start
+      AND  ( xsd.report_decision_flag   IS NULL         OR
+             xsd.report_decision_flag    = cv_deci_flag )                  -- 速報確定フラグ
+-- 2020/12/03 Ver1.1 ADD End
       AND    xsd.gl_if_flag         IN ( cv_y_flag ,cv_n_flag )            -- GL連携フラグ(Y:連携済、N:未連携)
       AND    xsd.status              = cv_n_flag                           -- ステータス(N：新規)
       AND    xsd.condition_line_id   = in_condition_line_id                -- 控除詳細ID
@@ -1387,7 +1542,15 @@ AS
         ,in_material_rate_1            =>  g_sales_exp_rec.material_rate_1            -- 料率(％)
         ,in_condition_unit_price_en_2  =>  g_sales_exp_rec.condition_unit_price_en_2  -- 条件単価２(円)
         ,in_accrued_en_3               =>  g_sales_exp_rec.accrued_en_3               -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+        ,in_compensation_en_3          =>  g_sales_exp_rec.compensation_en_3          -- 補填(円)
+        ,in_wholesale_margin_en_3      =>  g_sales_exp_rec.wholesale_margin_en_3      -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
         ,in_accrued_en_4               =>  g_sales_exp_rec.accrued_en_4               -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+        ,in_just_condition_en_4        =>  g_sales_exp_rec.just_condition_en_4        -- 今回条件(円)
+        ,in_wholesale_adj_margin_en_4  =>  g_sales_exp_rec.wholesale_adj_margin_en_4  -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
         ,in_condition_unit_price_en_5  =>  g_sales_exp_rec.condition_unit_price_en_5  -- 条件単価５(円)
         ,in_deduction_unit_price_en_6  =>  g_sales_exp_rec.deduction_unit_price_en_6  -- 控除単価(円)
         ,iv_tax_code_mst               =>  g_sales_exp_rec.tax_code_con               -- 税コード(MST)
@@ -1396,6 +1559,12 @@ AS
         ,on_deduction_unit_price       =>  gn_dedu_unit_price                         -- 控除単価
         ,on_deduction_quantity         =>  gn_dedu_quantity                           -- 控除数量
         ,on_deduction_amount           =>  gn_dedu_amount                             -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+        ,on_compensation               =>  gn_compensation                            -- 補填
+        ,on_margin                     =>  gn_margin                                  -- 問屋マージン
+        ,on_sales_promotion_expenses   =>  gn_sales_promotion_expenses                -- 拡売
+        ,on_margin_reduction           =>  gn_margin_reduction                        -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
         ,on_deduction_tax_amount       =>  gn_dedu_tax_amount                         -- 控除税額
         ,ov_tax_code                   =>  gv_tax_code                                -- 税コード
         ,on_tax_rate                   =>  gn_tax_rate                                -- 税率
@@ -1470,7 +1639,15 @@ AS
         ,in_material_rate_1            =>  g_selling_trns_rec.material_rate_1            -- 料率(％)
         ,in_condition_unit_price_en_2  =>  g_selling_trns_rec.condition_unit_price_en_2  -- 条件単価２(円)
         ,in_accrued_en_3               =>  g_selling_trns_rec.accrued_en_3               -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+        ,in_compensation_en_3          =>  g_selling_trns_rec.compensation_en_3          -- 補填(円)
+        ,in_wholesale_margin_en_3      =>  g_selling_trns_rec.wholesale_margin_en_3      -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
         ,in_accrued_en_4               =>  g_selling_trns_rec.accrued_en_4               -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+        ,in_just_condition_en_4        =>  g_selling_trns_rec.just_condition_en_4        -- 今回条件(円)
+        ,in_wholesale_adj_margin_en_4  =>  g_selling_trns_rec.wholesale_adj_margin_en_4  -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
         ,in_condition_unit_price_en_5  =>  g_selling_trns_rec.condition_unit_price_en_5  -- 条件単価５(円)
         ,in_deduction_unit_price_en_6  =>  g_selling_trns_rec.deduction_unit_price_en_6  -- 控除単価(円)
         ,iv_tax_code_mst               =>  g_selling_trns_rec.tax_code_con               -- 税コード(MST)
@@ -1479,6 +1656,12 @@ AS
         ,on_deduction_unit_price       =>  gn_dedu_unit_price                            -- 控除単価
         ,on_deduction_quantity         =>  gn_dedu_quantity                              -- 控除数量
         ,on_deduction_amount           =>  gn_dedu_amount                                -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+        ,on_compensation               =>  gn_compensation                               -- 補填
+        ,on_margin                     =>  gn_margin                                     -- 問屋マージン
+        ,on_sales_promotion_expenses   =>  gn_sales_promotion_expenses                   -- 拡売
+        ,on_margin_reduction           =>  gn_margin_reduction                           -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
         ,on_deduction_tax_amount       =>  gn_dedu_tax_amount                            -- 控除税額
         ,ov_tax_code                   =>  gv_tax_code                                  -- 税コード
         ,on_tax_rate                   =>  gn_tax_rate                                  -- 税率
@@ -1553,7 +1736,15 @@ AS
         ,in_material_rate_1            =>  g_actual_trns_rec.material_rate_1            -- 料率(％)
         ,in_condition_unit_price_en_2  =>  g_actual_trns_rec.condition_unit_price_en_2  -- 条件単価２(円)
         ,in_accrued_en_3               =>  g_actual_trns_rec.accrued_en_3               -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+        ,in_compensation_en_3          =>  g_actual_trns_rec.compensation_en_3          -- 補填(円)
+        ,in_wholesale_margin_en_3      =>  g_actual_trns_rec.wholesale_margin_en_3      -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
         ,in_accrued_en_4               =>  g_actual_trns_rec.accrued_en_4               -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+        ,in_just_condition_en_4        =>  g_actual_trns_rec.just_condition_en_4        -- 今回条件(円)
+        ,in_wholesale_adj_margin_en_4  =>  g_actual_trns_rec.wholesale_adj_margin_en_4  -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
         ,in_condition_unit_price_en_5  =>  g_actual_trns_rec.condition_unit_price_en_5  -- 条件単価５(円)
         ,in_deduction_unit_price_en_6  =>  g_actual_trns_rec.deduction_unit_price_en_6  -- 控除単価(円)
         ,iv_tax_code_mst               =>  g_actual_trns_rec.tax_code_con               -- 税コード(MST)
@@ -1562,6 +1753,12 @@ AS
         ,on_deduction_unit_price       =>  gn_dedu_unit_price                           -- 控除単価
         ,on_deduction_quantity         =>  gn_dedu_quantity                             -- 控除数量
         ,on_deduction_amount           =>  gn_dedu_amount                               -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+        ,on_compensation               =>  gn_compensation                              -- 補填
+        ,on_margin                     =>  gn_margin                                    -- 問屋マージン
+        ,on_sales_promotion_expenses   =>  gn_sales_promotion_expenses                  -- 拡売
+        ,on_margin_reduction           =>  gn_margin_reduction                          -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
         ,on_deduction_tax_amount       =>  gn_dedu_tax_amount                           -- 控除税額
         ,ov_tax_code                   =>  gv_tax_code                                  -- 税コード
         ,on_tax_rate                   =>  gn_tax_rate                                  -- 税率
@@ -1685,6 +1882,12 @@ AS
           ,deduction_unit_price                  -- 控除単価
           ,deduction_quantity                    -- 控除数量
           ,deduction_amount                      -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+          ,compensation                          -- 補填
+          ,margin                                -- 問屋マージン
+          ,sales_promotion_expenses              -- 拡売
+          ,margin_reduction                      -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
           ,tax_code                              -- 税コード
           ,tax_rate                              -- 税率
           ,recon_tax_code                        -- 消込時税コード
@@ -1744,6 +1947,12 @@ AS
           ,gn_dedu_unit_price                    -- 控除単価
           ,gn_dedu_quantity                      -- 控除数量
           ,gn_dedu_amount                        -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+          ,gn_compensation                       -- 補填
+          ,gn_margin                             -- 問屋マージン
+          ,gn_sales_promotion_expenses           -- 拡売
+          ,gn_margin_reduction                   -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
           ,gv_tax_code                           -- 税コード
           ,gn_tax_rate                           -- 税率
           ,NULL                                  -- 消込時税コード
@@ -1807,6 +2016,12 @@ AS
           ,deduction_unit_price                                     -- 控除単価
           ,deduction_quantity                                       -- 控除数量
           ,deduction_amount                                         -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+          ,compensation                                             -- 補填
+          ,margin                                                   -- 問屋マージン
+          ,sales_promotion_expenses                                 -- 拡売
+          ,margin_reduction                                         -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
           ,tax_code                                                 -- 税コード
           ,tax_rate                                                 -- 税率
           ,recon_tax_code                                           -- 消込時税コード
@@ -1866,6 +2081,12 @@ AS
           ,gn_dedu_unit_price                                       -- 控除単価
           ,gn_dedu_quantity                                         -- 控除数量
           ,gn_dedu_amount                                           -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+          ,gn_compensation                       -- 補填
+          ,gn_margin                             -- 問屋マージン
+          ,gn_sales_promotion_expenses           -- 拡売
+          ,gn_margin_reduction                   -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
           ,gv_tax_code                                              -- 税コード
           ,gn_tax_rate                                              -- 税率
           ,NULL                                                     -- 消込時税コード
@@ -1929,6 +2150,12 @@ AS
           ,deduction_unit_price                                     -- 控除単価
           ,deduction_quantity                                       -- 控除数量
           ,deduction_amount                                         -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+          ,compensation                                             -- 補填
+          ,margin                                                   -- 問屋マージン
+          ,sales_promotion_expenses                                 -- 拡売
+          ,margin_reduction                                         -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
           ,tax_code                                                 -- 税コード
           ,tax_rate                                                 -- 税率
           ,recon_tax_code                                           -- 消込時税コード
@@ -1988,6 +2215,12 @@ AS
           ,gn_dedu_unit_price                                       -- 控除単価
           ,gn_dedu_quantity                                         -- 控除数量
           ,gn_dedu_amount                                           -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+          ,gn_compensation                       -- 補填
+          ,gn_margin                             -- 問屋マージン
+          ,gn_sales_promotion_expenses           -- 拡売
+          ,gn_margin_reduction                   -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
           ,gv_tax_code                                              -- 税コード
           ,gn_tax_rate                                              -- 税率
           ,NULL                                                     -- 消込時税コード
@@ -2051,6 +2284,12 @@ AS
           ,deduction_unit_price                                     -- 控除単価
           ,deduction_quantity                                       -- 控除数量
           ,deduction_amount                                         -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+          ,compensation                                             -- 補填
+          ,margin                                                   -- 問屋マージン
+          ,sales_promotion_expenses                                 -- 拡売
+          ,margin_reduction                                         -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
           ,tax_code                                                 -- 税コード
           ,tax_rate                                                 -- 税率
           ,recon_tax_code                                           -- 消込時税コード
@@ -2110,6 +2349,12 @@ AS
           ,NULL                                                        -- 控除単価
           ,NULL                                                        -- 控除数量
           ,gt_condition_work_tbl(in_main_idx).deduction_amount         -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+          ,NULL                                                        -- 補填
+          ,NULL                                                        -- 問屋マージン
+          ,NULL                                                        -- 拡売
+          ,NULL                                                        -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
           ,gt_condition_work_tbl(in_main_idx).tax_code                 -- 税コード
           ,NULL                                                        -- 税率
           ,NULL                                                        -- 消込時税コード
@@ -2902,7 +3147,15 @@ AS
            ,shop_pay_1                                           -- 店納(％)
            ,material_rate_1                                      -- 料率(％)
            ,condition_unit_price_en_2                            -- 条件単価２(円)
+-- 2020/12/03 Ver1.1 ADD Start
+           ,compensation_en_3                                    -- 補填(円)
+           ,wholesale_margin_en_3                                -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
            ,accrued_en_3                                         -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+           ,just_condition_en_4                                  -- 今回条件(円)
+           ,wholesale_adj_margin_en_4                            -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
            ,accrued_en_4                                         -- 未収計４(円)
            ,condition_unit_price_en_5                            -- 条件単価５(円)
            ,deduction_unit_price_en_6                            -- 控除単価(円)
@@ -2929,7 +3182,15 @@ AS
            ,gt_condition_work_tbl(i).shop_pay_1                  -- 店納(％)
            ,gt_condition_work_tbl(i).material_rate_1             -- 料率(％)
            ,gt_condition_work_tbl(i).condition_unit_price_en_2   -- 条件単価２(円)
+-- 2020/12/03 Ver1.1 ADD Start
+           ,gt_condition_work_tbl(i).compensation_en_3           -- 補填(円)
+           ,gt_condition_work_tbl(i).wholesale_margin_en_3       -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
            ,gt_condition_work_tbl(i).accrued_en_3                -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+           ,gt_condition_work_tbl(i).just_condition_en_4         -- 今回条件(円)
+           ,gt_condition_work_tbl(i).wholesale_adj_margin_en_4   -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
            ,gt_condition_work_tbl(i).accrued_en_4                -- 未収計４(円)
            ,gt_condition_work_tbl(i).condition_unit_price_en_5   -- 条件単価５(円)
            ,gt_condition_work_tbl(i).deduction_unit_price_en_6   -- 控除単価(円)
