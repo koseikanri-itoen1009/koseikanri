@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A03C_pkg(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：販売実績・販売控除データの作成 MD050_COK_024_A03
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/01/15    1.0   Y.Koh            新規作成
+ *  2020/12/03    1.1   SCSK Y.Koh       [E_本稼動_16026]
  *
  *****************************************************************************************/
 --
@@ -94,6 +95,12 @@ AS
   gn_deduction_unit_price     NUMBER;                                                               -- 控除単価
   gn_deduction_quantity       NUMBER;                                                               -- 控除数量
   gn_deduction_amount         NUMBER;                                                               -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+  gn_compensation             NUMBER;                                                               -- 補填
+  gn_margin                   NUMBER;                                                               -- 問屋マージン
+  gn_sales_promotion_expenses NUMBER;                                                               -- 拡売
+  gn_margin_reduction         NUMBER;                                                               -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
   gn_deduction_tax_amount     NUMBER;                                                               -- 控除税額
   gn_tax_code                 VARCHAR2(4);                                                          -- 税コード
   gn_tax_rate                 NUMBER;                                                               -- 税率
@@ -164,7 +171,15 @@ AS
       XCL.MATERIAL_RATE_1 ,
       XCL.CONDITION_UNIT_PRICE_EN_2 ,
       XCL.ACCRUED_EN_3 ,
+-- 2020/12/03 Ver1.1 ADD Start
+      XCL.COMPENSATION_EN_3 ,
+      XCL.WHOLESALE_MARGIN_EN_3 ,
+-- 2020/12/03 Ver1.1 ADD End
       XCL.ACCRUED_EN_4 ,
+-- 2020/12/03 Ver1.1 ADD Start
+      XCL.JUST_CONDITION_EN_4 ,
+      XCL.WHOLESALE_ADJ_MARGIN_EN_4 ,
+-- 2020/12/03 Ver1.1 ADD End
       XCL.CONDITION_UNIT_PRICE_EN_5 ,
       XCL.DEDUCTION_UNIT_PRICE_EN_6 ,
       DTYP.ATTRIBUTE2
@@ -237,7 +252,15 @@ AS
       XCL.MATERIAL_RATE_1 ,
       XCL.CONDITION_UNIT_PRICE_EN_2 ,
       XCL.ACCRUED_EN_3 ,
+-- 2020/12/03 Ver1.1 ADD Start
+      XCL.COMPENSATION_EN_3 ,
+      XCL.WHOLESALE_MARGIN_EN_3 ,
+-- 2020/12/03 Ver1.1 ADD End
       XCL.ACCRUED_EN_4 ,
+-- 2020/12/03 Ver1.1 ADD Start
+      XCL.JUST_CONDITION_EN_4 ,
+      XCL.WHOLESALE_ADJ_MARGIN_EN_4 ,
+-- 2020/12/03 Ver1.1 ADD End
       XCL.CONDITION_UNIT_PRICE_EN_5 ,
       XCL.DEDUCTION_UNIT_PRICE_EN_6 ,
       DTYP.ATTRIBUTE2
@@ -310,7 +333,15 @@ AS
       XCL.MATERIAL_RATE_1 ,
       XCL.CONDITION_UNIT_PRICE_EN_2 ,
       XCL.ACCRUED_EN_3 ,
+-- 2020/12/03 Ver1.1 ADD Start
+      XCL.COMPENSATION_EN_3 ,
+      XCL.WHOLESALE_MARGIN_EN_3 ,
+-- 2020/12/03 Ver1.1 ADD End
       XCL.ACCRUED_EN_4 ,
+-- 2020/12/03 Ver1.1 ADD Start
+      XCL.JUST_CONDITION_EN_4 ,
+      XCL.WHOLESALE_ADJ_MARGIN_EN_4 ,
+-- 2020/12/03 Ver1.1 ADD End
       XCL.CONDITION_UNIT_PRICE_EN_5 ,
       XCL.DEDUCTION_UNIT_PRICE_EN_6 ,
       DTYP.ATTRIBUTE2
@@ -481,7 +512,15 @@ AS
       in_material_rate_1            =>  g_sales_exp_rec.material_rate_1           , -- 料率(％)
       in_condition_unit_price_en_2  =>  g_sales_exp_rec.condition_unit_price_en_2 , -- 条件単価２(円)
       in_accrued_en_3               =>  g_sales_exp_rec.accrued_en_3              , -- 未収計３(円)
+-- 2020/12/03 Ver1.1 ADD Start
+      in_compensation_en_3          =>  g_sales_exp_rec.compensation_en_3         , -- 補填(円)
+      in_wholesale_margin_en_3      =>  g_sales_exp_rec.wholesale_margin_en_3     , -- 問屋マージン(円)
+-- 2020/12/03 Ver1.1 ADD End
       in_accrued_en_4               =>  g_sales_exp_rec.accrued_en_4              , -- 未収計４(円)
+-- 2020/12/03 Ver1.1 ADD Start
+      in_just_condition_en_4        =>  g_sales_exp_rec.just_condition_en_4       , -- 今回条件(円)
+      in_wholesale_adj_margin_en_4  =>  g_sales_exp_rec.wholesale_adj_margin_en_4 , -- 問屋マージン修正(円)
+-- 2020/12/03 Ver1.1 ADD End
       in_condition_unit_price_en_5  =>  g_sales_exp_rec.condition_unit_price_en_5 , -- 条件単価５(円)
       in_deduction_unit_price_en_6  =>  g_sales_exp_rec.deduction_unit_price_en_6 , -- 控除単価(円)
       iv_tax_code_mst               =>  g_sales_exp_rec.tax_code_mst              , -- 税コード(MST)
@@ -490,6 +529,12 @@ AS
       on_deduction_unit_price       =>  gn_deduction_unit_price                   , -- 控除単価
       on_deduction_quantity         =>  gn_deduction_quantity                     , -- 控除数量
       on_deduction_amount           =>  gn_deduction_amount                       , -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+      on_compensation               =>  gn_compensation                           , -- 補填
+      on_margin                     =>  gn_margin                                 , -- 問屋マージン
+      on_sales_promotion_expenses   =>  gn_sales_promotion_expenses               , -- 拡売
+      on_margin_reduction           =>  gn_margin_reduction                       , -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
       on_deduction_tax_amount       =>  gn_deduction_tax_amount                   , -- 控除税額
       ov_tax_code                   =>  gn_tax_code                               , -- 税コード
       on_tax_rate                   =>  gn_tax_rate                                 -- 税率
@@ -610,6 +655,12 @@ AS
       deduction_unit_price                        , -- 控除単価
       deduction_quantity                          , -- 控除数量
       deduction_amount                            , -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+      compensation                                , -- 補填
+      margin                                      , -- 問屋マージン
+      sales_promotion_expenses                    , -- 拡売
+      margin_reduction                            , -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
       tax_code                                    , -- 税コード
       tax_rate                                    , -- 税率
       recon_tax_code                              , -- 消込時税コード
@@ -620,7 +671,13 @@ AS
       gl_if_flag                                  , -- GL連携フラグ
       gl_base_code                                , -- GL計上拠点
       gl_date                                     , -- GL記帳日
-      recovery_date                               , -- リカバリー日付
+-- 2020/12/03 Ver1.1 MOD Start
+      recovery_date                               , -- リカバリデータ追加時日付
+      recovery_add_request_id                     , -- リカバリデータ追加時要求ID
+      recovery_del_date                           , -- リカバリデータ削除時日付
+      recovery_del_request_id                     , -- リカバリデータ削除時要求ID
+--      recovery_date                               , -- リカバリー日付
+-- 2020/12/03 Ver1.1 MOD End
       cancel_flag                                 , -- 取消フラグ
       cancel_base_code                            , -- 取消時計上拠点
       cancel_gl_date                              , -- 取消GL記帳日
@@ -666,6 +723,12 @@ AS
       gn_deduction_unit_price                     , -- 控除単価
       gn_deduction_quantity                       , -- 控除数量
       gn_deduction_amount                         , -- 控除額
+-- 2020/12/03 Ver1.1 ADD Start
+      gn_compensation                             , -- 補填
+      gn_margin                                   , -- 問屋マージン
+      gn_sales_promotion_expenses                 , -- 拡売
+      gn_margin_reduction                         , -- 問屋マージン減額
+-- 2020/12/03 Ver1.1 ADD End
       gn_tax_code                                 , -- 税コード
       gn_tax_rate                                 , -- 税率
       NULL                                        , -- 消込時税コード
@@ -676,7 +739,13 @@ AS
       cv_flag_n                                   , -- GL連携フラグ
       NULL                                        , -- GL計上拠点
       NULL                                        , -- GL記帳日
-      NULL                                        , -- リカバリー日付
+-- 2020/12/03 Ver1.1 MOD Start
+      NULL                                        , -- リカバリデータ追加時日付
+      NULL                                        , -- リカバリデータ追加時要求ID
+      NULL                                        , -- リカバリデータ削除時日付
+      NULL                                        , -- リカバリデータ削除時要求ID
+--      NULL                                        , -- リカバリー日付
+-- 2020/12/03 Ver1.1 MOD End
       cv_flag_n                                   , -- 取消フラグ
       NULL                                        , -- 取消時計上拠点
       NULL                                        , -- 取消GL記帳日
