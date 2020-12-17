@@ -1,3 +1,18 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_CONDITION_RECOVERY_TEMP
+ * Description : 控除マスタリカバリ用ワークテーブル
+ * Version     : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/05/14    1.0   SCSK H.Ishii     新規作成
+ *  2020/12/04    1.1   SCSK Y.Koh       [E_本稼動_16026]
+ *
+ ****************************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_condition_recovery_temp (
      condition_id                   NUMBER
     ,condition_no                   VARCHAR2(12)
@@ -19,7 +34,15 @@ CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_condition_recovery_temp (
     ,shop_pay_1                     NUMBER
     ,material_rate_1                NUMBER
     ,condition_unit_price_en_2      NUMBER
+-- 2020/12/04 Ver1.1 ADD Start
+    ,compensation_en_3              NUMBER
+    ,wholesale_margin_en_3          NUMBER
+-- 2020/12/04 Ver1.1 ADD End
     ,accrued_en_3                   NUMBER
+-- 2020/12/04 Ver1.1 ADD Start
+    ,just_condition_en_4            NUMBER
+    ,wholesale_adj_margin_en_4      NUMBER
+-- 2020/12/04 Ver1.1 ADD End
     ,accrued_en_4                   NUMBER
     ,condition_unit_price_en_5      NUMBER
     ,deduction_unit_price_en_6      NUMBER
@@ -69,8 +92,20 @@ COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.material_rate_1           
 /
 COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.condition_unit_price_en_2        IS '条件単価２(円)'
 /
+-- 2020/12/04 Ver1.1 ADD Start
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.compensation_en_3                IS '補填(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.wholesale_margin_en_3            IS '問屋マージン(円)'
+/
+-- 2020/12/04 Ver1.1 ADD End
 COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.accrued_en_3                     IS '未収計３(円)'
 /
+-- 2020/12/04 Ver1.1 ADD Start
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.just_condition_en_4              IS '今回条件(円)'
+/
+COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.wholesale_adj_margin_en_4        IS '問屋マージン修正(円)'
+/
+-- 2020/12/04 Ver1.1 ADD End
 COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.accrued_en_4                     IS '未収計４(円)'
 /
 COMMENT ON COLUMN xxcok.xxcok_condition_recovery_temp.condition_unit_price_en_5        IS '条件単価５(円)'
