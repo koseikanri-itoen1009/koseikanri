@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A05C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用データファイル作成
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/11/25    1.0   N.Abe            新規作成
+ *  2020/12/14    1.1   N.Abe            E_本稼動_16841
  *
  *****************************************************************************************/
 --
@@ -355,9 +356,14 @@ AS
               AND    xiwh.payment_amt > 0                 -- 支払あり
               )
      ORDER BY xiwc.cust_code
-             ,xiwc.inst_dest
+-- Ver1.1 N.Abe MOD START
+--             ,xiwc.inst_dest
              ,xiwc.calc_sort
              ,xiwc.bottle_code
+             ,xiwc.salling_price
+             ,xiwc.rebate_rate
+             ,xiwc.rebate_amt
+-- Ver1.1 N.Abe MOD END
      ;
 --
   g_custom_rec  g_custom_cur%ROWTYPE;
@@ -2075,7 +2081,10 @@ AS
                 */
             xbb.supplier_code                       AS  vendor_code             -- 送付先コード
            ,xcbs.delivery_cust_code                 AS  cust_code               -- 顧客コード
-           ,SUBSTR( sub1.cust_name, 1, 18 )         AS  inst_dest               -- 設置場所
+-- Ver1.1 N.Abe MOD START
+--           ,SUBSTR( sub1.cust_name, 1, 18 )         AS  inst_dest               -- 設置場所
+           ,SUBSTR( sub1.cust_name, 1, 50 )         AS  inst_dest               -- 設置場所
+-- Ver1.1 N.Abe MOD END
            ,xcbs.calc_type                          AS  calc_type               -- 計算条件
            ,flv2.calc_type_sort                     AS  calc_sort               -- 計算条件ソート順
            ,CASE xcbs.calc_type
@@ -2496,6 +2505,28 @@ AS
     AND     xseh.delivery_date                          >= LAST_DAY(ADD_MONTHS(gd_closing_date, -1)) + 1 --月初日
     AND     xseh.delivery_date                          <= LAST_DAY(gd_closing_date)                     --月末日
     AND     xseh.ship_to_customer_code                   = xbb_1.cust_code
+-- Ver1.1 N.Abe ADD START
+    AND EXISTS ( SELECT 'X'
+                 FROM fnd_lookup_values flv -- 販手計算対象売上区分
+                 WHERE flv.lookup_type         = 'XXCOK1_CALC_SALES_CLASS'      -- 参照タイプ：販手計算対象売上区分
+                   AND flv.lookup_code         = xsel.sales_class
+                   AND flv.language            = USERENV( 'LANG' )
+                   AND flv.enabled_flag        = 'Y'
+                   AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                             AND NVL( flv.end_date_active  , gd_process_date )
+                   AND ROWNUM = 1
+        )
+    AND NOT EXISTS ( SELECT 'X'
+                     FROM fnd_lookup_values flv -- 非在庫品目
+                     WHERE flv.lookup_type         = 'XXCOS1_NO_INV_ITEM_CODE'  -- 参照タイプ：非在庫品目
+                       AND flv.lookup_code         = xsel.item_code
+                       AND flv.language            = USERENV( 'LANG' )
+                       AND flv.enabled_flag        = 'Y'
+                       AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                 AND NVL( flv.end_date_active  , gd_process_date )
+                       AND ROWNUM = 1
+        )
+-- Ver1.1 N.Abe ADD END
     GROUP BY
             ximb.item_short_name
            ,xsel.dlv_unit_price
