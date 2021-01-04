@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.22
+ * Version          : 3.23
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -85,6 +85,7 @@ AS
  *  2020/08/21    3.20  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
  *  2020/11/26    3.21  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
  *  2020/12/04    3.22  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
+ *  2021/01/04    3.23  H.Futamura       [E_本稼動_15904] 税抜きでの自販機BM計算について
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -4646,6 +4647,10 @@ END insert_xcbs;
     ln_bm1_elect_amt_tax           NUMBER         DEFAULT NULL;                 -- 【BM1】電気料(税込)_一時格納
     ln_bm1_elect_amt_no_tax        NUMBER         DEFAULT NULL;                 -- 【BM1】電気料(税抜)_一時格納
 -- Ver.3.20 N.Abe ADD END
+-- Ver.3.23 H.Futamura ADD START
+    ln_bm1_elect_amt_tax_var       NUMBER         DEFAULT NULL;                 -- 【BM1】電気料(税込)変動_一時格納
+    ln_bm1_elect_amt_no_tax_var    NUMBER         DEFAULT NULL;                 -- 【BM1】電気料(税抜)変動_一時格納
+-- Ver.3.23 H.Futamura ADD END
 --
     -- 連携ステータス(条件別販手販協)_一時格納
     lv_cond_bm_interface_status    xxcok_cond_bm_support.cond_bm_interface_status%TYPE DEFAULT NULL;
@@ -5166,10 +5171,20 @@ END insert_xcbs;
       IF ( NVL( i_get_sales_data_rec.electric_fix_cost, 0 ) <> 0 ) THEN
         -- 【BM1】電気料(税込)に定額電気代を設定
         ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_fix_cost;
+-- Ver.3.23 H.Futamura ADD START
+      ELSIF ( NVL( i_get_sales_data_rec.electric_fix_cost, 0 ) = 0 ) THEN
+        ln_bm1_elect_amt_tax := 0;
+      END IF;
+-- Ver.3.23 H.Futamura ADD END
       -- 変動電気代が0以外
-      ELSIF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) <> 0 ) THEN
-        -- 【BM1】電気料(税込)に変動電気代を設定
-        ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_variable_cost;
+-- Ver.3.23 H.Futamura MOD START
+--      ELSIF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) <> 0 ) THEN
+--        -- 【BM1】電気料(税込)に変動電気代を設定
+--        ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_variable_cost;
+      IF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) <> 0 ) THEN
+        -- 【BM1】電気料(税込)に定額電気代に変動電気代を足した金額を設定
+        ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_variable_cost + ln_bm1_elect_amt_tax;
+-- Ver.3.23 H.Futamura MOD END
       END IF;
       -- 【BM1】電気料(税込)の端数切り捨て
       ln_bm1_elect_amt_tax := TRUNC( ln_bm1_elect_amt_tax );
@@ -5212,25 +5227,58 @@ END insert_xcbs;
         ELSIF ( ln_bm1_elect_amt_tax < 0 ) THEN
           ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
         END IF;
-      -- 変動電気代が0以外
-      ELSIF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) <> 0 ) THEN
-        -- 【BM1】電気料(税込)に変動電気代を設定
-        ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_variable_cost;
-        -- 【BM1】電気料(税込)の端数を切り上げ
-        IF ( ln_bm1_elect_amt_tax >= 0 ) THEN
-          ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
-        ELSIF ( ln_bm1_elect_amt_tax < 0 ) THEN
-          ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
-        END IF;
-        -- 【BM1】電気料(税抜)を算出
-        ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
-        -- 【BM1】電気料(税抜)の端数を切り上げ
-        IF ( ln_bm1_elect_amt_no_tax >= 0 ) THEN
-          ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
-        ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
-          ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
-        END IF;
+-- Ver.3.23 H.Futamura ADD START
+      ELSIF ( NVL( i_get_sales_data_rec.electric_fix_cost, 0 ) = 0 ) THEN
+        ln_bm1_elect_amt_no_tax := 0;
+        ln_bm1_elect_amt_tax := 0;
       END IF;
+-- Ver.3.23 H.Futamura ADD END
+      -- 変動電気代が0以外
+-- Ver.3.23 H.Futamura MOD START
+--      ELSIF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) <> 0 ) THEN
+--        -- 【BM1】電気料(税込)に変動電気代を設定
+--        ln_bm1_elect_amt_tax := i_get_sales_data_rec.electric_variable_cost;
+      IF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) <> 0 ) THEN
+        -- 【BM1】電気料(税込)に変動電気代を設定
+        ln_bm1_elect_amt_tax_var := i_get_sales_data_rec.electric_variable_cost;
+        -- 【BM1】電気料(税込)の端数を切り上げ
+--        IF ( ln_bm1_elect_amt_tax >= 0 ) THEN
+--          ln_bm1_elect_amt_tax := CEIL( ln_bm1_elect_amt_tax );
+--        ELSIF ( ln_bm1_elect_amt_tax < 0 ) THEN
+--          ln_bm1_elect_amt_tax := FLOOR( ln_bm1_elect_amt_tax );
+--        END IF;
+        IF ( ln_bm1_elect_amt_tax_var >= 0 ) THEN
+          ln_bm1_elect_amt_tax_var := CEIL( ln_bm1_elect_amt_tax_var );
+        ELSIF ( ln_bm1_elect_amt_tax_var < 0 ) THEN
+          ln_bm1_elect_amt_tax_var := FLOOR( ln_bm1_elect_amt_tax_var );
+        END IF;
+-- Ver.3.23 H.Futamura MOD END
+        -- 【BM1】電気料(税抜)を算出
+-- Ver.3.23 H.Futamura MOD START
+--        ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_tax / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+--        -- 【BM1】電気料(税抜)の端数を切り上げ
+--        IF ( ln_bm1_elect_amt_no_tax >= 0 ) THEN
+--          ln_bm1_elect_amt_no_tax := CEIL( ln_bm1_elect_amt_no_tax );
+--        ELSIF ( ln_bm1_elect_amt_no_tax < 0 ) THEN
+--          ln_bm1_elect_amt_no_tax := FLOOR( ln_bm1_elect_amt_no_tax );
+        ln_bm1_elect_amt_no_tax_var := ln_bm1_elect_amt_tax_var / ( 1 + ( i_get_sales_data_rec.tax_rate / 100 ) );
+        -- 【BM1】電気料(税抜)の端数を切り上げ
+        IF ( ln_bm1_elect_amt_no_tax_var >= 0 ) THEN
+          ln_bm1_elect_amt_no_tax_var := CEIL( ln_bm1_elect_amt_no_tax_var );
+        ELSIF ( ln_bm1_elect_amt_no_tax_var < 0 ) THEN
+          ln_bm1_elect_amt_no_tax_var := FLOOR( ln_bm1_elect_amt_no_tax_var );
+        END IF;
+      ELSIF ( NVL( i_get_sales_data_rec.electric_variable_cost, 0 ) = 0 ) THEN
+        ln_bm1_elect_amt_no_tax_var := 0;
+        ln_bm1_elect_amt_tax_var := 0;
+-- Ver.3.23 H.Futamura MOD END
+      END IF;
+-- Ver.3.23 H.Futamura ADD START
+      -- 【BM1】電気料(税込)に定額電気代と変動電気代を合算した値を設定
+      ln_bm1_elect_amt_tax := ln_bm1_elect_amt_tax + ln_bm1_elect_amt_tax_var;
+      -- 【BM1】電気料(税抜)に定額電気代と変動電気代を合算した値を設定
+      ln_bm1_elect_amt_no_tax := ln_bm1_elect_amt_no_tax + ln_bm1_elect_amt_no_tax_var;
+-- Ver.3.23 H.Futamura ADD END
     END IF;
 -- Ver.3.21 N.Abe ADD END
     --==================================================
