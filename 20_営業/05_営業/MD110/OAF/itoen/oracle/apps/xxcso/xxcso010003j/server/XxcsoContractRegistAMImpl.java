@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 2.4
+* バージョン : 2.5
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -24,6 +24,7 @@
 * 2020-08-21 2.3  SCSK佐々木大和 [E_本稼動_15904]税抜き自販機ＢＭ計算について
 * 2020-10-28 2.4  SCSK佐々木大和 [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
 *                                [E_本稼動_16410]契約書画面からの銀行口座変更について
+* 2020-12-29 2.5  SCSK小路恭弘   [E_本稼動_16895]送付先コード税区分修正
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -3732,6 +3733,20 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
           }
         }
       }
+// V2.5 Y.Shoji Added START
+      // BM1の送付先コードがnullの場合
+      else
+      {
+        // BM1の税区分がNULLの場合
+        if (bm1DestVoRow.getBmTaxKbn() == null )
+        {
+          // BM1税区分を取得
+          XxcsoLookupListVOImpl bm1TaxKbnListVo = getXxcsoBM1TaxKbnListVO1();
+          // BM1税区分を設定
+          bm1DestVoRow.setBmTaxKbn(bm1TaxKbnListVo);
+        }
+      }
+// V2.5 Y.Shoji Added END
     }
 
     retVal         = null;
@@ -3924,6 +3939,20 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
           }
         }
       }
+// V2.5 Y.Shoji Added START
+      // BM2の送付先コードがnullの場合
+      else
+      {
+        // BM2の税区分がNULLの場合
+        if (bm2DestVoRow.getBmTaxKbn() == null )
+        {
+          // BM2税区分を取得
+          XxcsoLookupListVOImpl bm2TaxKbnListVo = getXxcsoBM2TaxKbnListVO1();
+          // BM2税区分を設定
+          bm2DestVoRow.setBmTaxKbn(bm2TaxKbnListVo);
+        }
+      }
+// V2.5 Y.Shoji Added END
     }
 
     retVal         = null;
@@ -4116,7 +4145,20 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
           }
         }
       }
-     
+// V2.5 Y.Shoji Added START
+      // BM3の送付先コードがnullの場合
+      else
+      {
+        // BM3の税区分がNULLの場合
+        if (bm3DestVoRow.getBmTaxKbn() == null )
+        {
+          // BM3税区分を取得
+          XxcsoLookupListVOImpl bm3TaxKbnListVo = getXxcsoBM3TaxKbnListVO1();
+          // BM3税区分を設定
+          bm3DestVoRow.setBmTaxKbn(bm3TaxKbnListVo);
+        }
+      }
+// V2.5 Y.Shoji Added END
     }
     
     // 送付先情報が変更されている場合、確認画面を表示する
