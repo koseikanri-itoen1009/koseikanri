@@ -3,7 +3,7 @@
  *
  * View Name   : XXCOK_001A01F_V
  * Description : ŒÚ‹qˆÚs“ü—Í‰æ–ÊiŒÚ‹q’PˆÊjƒrƒ…[
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          V‹Kì¬
  *  2011/02/03    1.1   M.Hirose         [E_–{‰Ò“®_02010,06187]‘Î‰
  *  2011/11/01    1.2   A.Shirakawa      [E_–{‰Ò“®_08680]‘Î‰
+ *  2020/12/21    1.3   R.Oikawa         [E_–{‰Ò“®_16834]‘Î‰
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_001a01f_v(
@@ -39,6 +40,10 @@ CREATE OR REPLACE VIEW apps.xxcok_001a01f_v(
  ,new_base_code_to
  ,customer_class_code
 -- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR END
+-- 2020/12/07 Ver.1.3 [E_–{‰Ò“®_16834] SCSK R.Oikawa REPAIR START
+ ,resv_selling_clr_flag
+ ,base_split_flag
+-- 2020/12/07 Ver.1.3 [E_–{‰Ò“®_16834] SCSK R.Oikawa REPAIR END
  ,created_by
  ,creation_date
  ,last_updated_by
@@ -70,6 +75,10 @@ SELECT xcsi.ROWID                       AS row_id
      , TRUNC(xadv.end_date_active  )    AS new_base_code_to
      , hca1.customer_class_code         AS customer_class_code
 -- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR END
+-- 2020/12/07 Ver.1.3 [E_–{‰Ò“®_16834] SCSK R.Oikawa REPAIR START
+     , xcsi.resv_selling_clr_flag       AS resv_selling_clr_flag
+     , xcsi.base_split_flag             AS base_split_flag
+-- 2020/12/07 Ver.1.3 [E_–{‰Ò“®_16834] SCSK R.Oikawa REPAIR END
      , xcsi.created_by                  AS created_by
      , xcsi.creation_date               AS creation_date
      , xcsi.last_updated_by             AS last_updated_by
@@ -148,6 +157,12 @@ COMMENT ON COLUMN apps.xxcok_001a01f_v.new_base_code_to          IS 'V‹’“_ƒR[ƒ
 COMMENT ON COLUMN apps.xxcok_001a01f_v.customer_class_code       IS 'ŒÚ‹q‹æ•ª'
 /
 -- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR END
+-- 2020/12/07 Ver.1.3 [E_–{‰Ò“®_16834] SCSK R.Oikawa REPAIR START
+COMMENT ON COLUMN apps.xxcok_001a01f_v.resv_selling_clr_flag     IS '—\–ñ”„ãÁ‹ƒtƒ‰ƒO'
+/
+COMMENT ON COLUMN apps.xxcok_001a01f_v.base_split_flag           IS '‹’“_•ªŠ„î•ñ˜AŒgƒtƒ‰ƒO'
+/
+-- 2020/12/07 Ver.1.3 [E_–{‰Ò“®_16834] SCSK R.Oikawa REPAIR END
 COMMENT ON COLUMN apps.xxcok_001a01f_v.created_by                IS 'ì¬Ò'
 /
 COMMENT ON COLUMN apps.xxcok_001a01f_v.creation_date             IS 'ì¬“ú'
