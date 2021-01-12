@@ -8,7 +8,7 @@ AS
  *                    拠点変更情報を抽出し、対応する顧客追加情報の予約拠点情報項目へ
  *                    連携する機能です。
  * MD.050           : 拠点更新データ連携 MD050_CMM_003_A12
- * Version          : Draft3A
+ * Version          : 1.1
  *
  * Program List
  * -------------------- -----------------------------------------------------------------
@@ -16,9 +16,11 @@ AS
  * -------------------- -----------------------------------------------------------------
  *  prc_upd_xxcok_cust_shift_info   顧客移行情報テーブル拠点分割情報連携フラグ更新(A-4)
  *  prc_upd_xxcmm_cust_accounts     顧客追加情報テーブル予約拠点情報更新(A-3)
+ *  upd_for_cust_shift_cancel       顧客移行 変更・取消し処理(A-6)
  *  prc_init                        初期処理(A-1)
  *  submain                         メイン処理プロシージャ(A-2:処理対象データ抽出)
  *                                    ・prc_init
+ *                                    ・upd_for_cust_shift_cancel
  *                                    ・prc_upd_xxcmm_cust_accounts
  *                                    ・prc_upd_xxcok_cust_shift_info
  *  main                            コンカレント実行ファイル登録プロシージャ(A-5:終了処理)
@@ -29,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/26    1.0   SCS Okuyama      新規作成
+ *  2020/12/22    1.1   SCSK Yoshino     E_本稼動_16384 確定取消し対応
  *
  *****************************************************************************************/
 --
@@ -50,6 +53,9 @@ AS
   cd_program_update_date    CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
   cv_cust_shift_status_act  CONSTANT VARCHAR2(1) := 'A';  -- 顧客移行情報ステータス（確定済）
   cv_base_split_flag_on     CONSTANT VARCHAR2(1) := '1';  -- 拠点分割連携フラグ（連携済）
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD START
+  cv_resv_selling_clr_flag  CONSTANT VARCHAR2(1) := '1';  -- 予約売上消去フラグ（予約消去対象）
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD END
 --
   cv_msg_part               CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont               CONSTANT VARCHAR2(3) := '.';
@@ -70,6 +76,10 @@ AS
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- スキップ件数
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD START
+  gn_cust_shift_cnt NUMBER ;                  -- 顧客移行 変更・取消し対象件数
+  gd_process_date  DATE ;                     -- 業務処理日付
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD END
 --
 --################################  固定部 END   ##################################
 --
@@ -103,6 +113,7 @@ AS
   cv_msg_xxcmm_00001        CONSTANT VARCHAR2(16) := 'APP-XXCMM1-00001';    -- 対象データ無し
   cv_msg_xxcmm_00008        CONSTANT VARCHAR2(16) := 'APP-XXCMM1-00008';    -- ロックエラー
   cv_msg_xxcmm_00300        CONSTANT VARCHAR2(16) := 'APP-XXCMM1-00300';    -- データ更新エラー
+
   -- メッセージトークン
   cv_tkn_ng_table           CONSTANT VARCHAR2(8)  := 'NG_TABLE';            -- テーブル名
   cv_tkn_cust_code          CONSTANT VARCHAR2(7)  := 'CUST_CD';             -- 顧客コード
@@ -146,6 +157,146 @@ AS
       AND xcsi.base_split_flag    IS NULL
     FOR UPDATE OF xcsi.cust_code, xcac.customer_id NOWAIT
     ;
+--
+--
+--
+--
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD START
+  /**********************************************************************************
+   * Procedure Name   : upd_for_cust_shift_cancel
+   * Description      : 顧客移行 変更・取消し処理(A-6)
+   ***********************************************************************************/
+  PROCEDURE upd_for_cust_shift_cancel(
+    ov_errbuf     OUT VARCHAR2,                   -- エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,                   -- リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2                    -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_for_cust_shift_cancel'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--    lv_step       VARCHAR2(10);     -- ステップ
+--
+    -- ***  顧客移行情報カーソル ***
+--
+  CURSOR l_cust_shift_cur
+  IS
+    SELECT xcsi.cust_code     AS cust_code     -- 顧客コード
+          ,xcsi.ROWID         AS xcsi_rowid    -- レコードID（顧客移行）
+          ,xcac.ROWID         AS xcac_rowid    -- レコードID（顧客追加）
+    FROM   xxcok_cust_shift_info       xcsi    -- 顧客移行情報テーブル
+          ,xxcmm_cust_accounts         xcac    -- 顧客追加情報テーブル
+    WHERE  xcsi.resv_selling_clr_flag = cv_resv_selling_clr_flag
+    AND    xcsi.cust_shift_date       > gd_process_date
+    AND    xcsi.cust_code             = xcac.customer_code
+    FOR UPDATE OF xcsi.cust_code , xcac.customer_code NOWAIT
+    ;
+--
+  l_cust_shift_rec    l_cust_shift_cur%ROWTYPE;
+--
+  BEGIN
+--    lv_step := 'A-6-1';
+    gn_cust_shift_cnt := 0 ;              -- 顧客移行 変更・取消し件数
+    OPEN l_cust_shift_cur ;
+    --
+    LOOP
+      -- 処理対象データ・カーソルフェッチ
+      FETCH l_cust_shift_cur INTO l_cust_shift_rec ;
+      EXIT WHEN l_cust_shift_cur%NOTFOUND;
+--
+--      lv_step := 'A-6-3';
+      -- 顧客追加情報更新
+      UPDATE xxcmm_cust_accounts xcac                                 -- 顧客追加情報テーブル
+      SET    xcac.rsv_sale_base_code     = NULL                       -- 予約売上拠点コード
+            ,xcac.rsv_sale_base_act_date = NULL                       -- 予約売上拠点有効開始日
+            ,xcac.last_updated_by        = cn_last_updated_by         -- 最終更新者
+            ,xcac.last_update_date       = cd_last_update_date        -- 最終更新日
+            ,xcac.last_update_login      = cn_last_update_login       -- 最終更新ログイン
+            ,xcac.request_id             = cn_request_id              -- 要求ID
+            ,xcac.program_application_id = cn_program_application_id  -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+            ,xcac.program_id             = cn_program_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+            ,xcac.program_update_date    = cd_program_update_date     -- プログラム更新日
+      WHERE xcac.ROWID                   = l_cust_shift_rec.xcac_rowid ;
+--
+--      lv_step := 'A-6-5';
+--      -- 顧客移行情報テーブル
+      UPDATE xxcok_cust_shift_info       xcsi                         -- 顧客移行情報テーブル
+      SET    xcsi.resv_selling_clr_flag  = NULL                       -- 予約売上消去フラグ
+            ,xcsi.base_split_flag        = NULL                       -- 拠点分割情報連携フラグ
+            ,xcsi.last_updated_by        = cn_last_updated_by         -- 最終更新者
+            ,xcsi.last_update_date       = cd_last_update_date        -- 最終更新日
+            ,xcsi.last_update_login      = cn_last_update_login       -- 最終更新ログイン
+            ,xcsi.request_id             = cn_request_id              -- 要求ID
+            ,xcsi.program_application_id = cn_program_application_id  -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+            ,xcsi.program_id             = cn_program_id              -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+            ,xcsi.program_update_date    = cd_program_update_date     -- プログラム更新日
+      WHERE  xcsi.ROWID                  = l_cust_shift_rec.xcsi_rowid ;
+--
+      gn_cust_shift_cnt := gn_cust_shift_cnt + 1 ;                    -- 顧客移行 変更・取消し件数カウントアップ
+    END LOOP ;
+--
+    CLOSE l_cust_shift_cur;
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    -- ***  ロックエラー例外ハンドラ ***
+    WHEN global_check_lock_expt THEN
+      IF l_cust_shift_cur%ISOPEN THEN
+        CLOSE  l_cust_shift_cur;
+      END IF;
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                        iv_application  =>  cv_apl_name_cmm,        -- アプリケーション短縮名
+                        iv_name         =>  cv_msg_xxcmm_00008,     -- メッセージコード
+                        iv_token_name1  =>  cv_tkn_ng_table,        -- トークンコード1
+                        iv_token_value1 =>  (cv_tbl_nm_xcsi)        -- トークン値1
+                      );
+      lv_errbuf   :=  lv_errmsg;
+      ov_errmsg   :=  lv_errmsg;
+      ov_errbuf   :=  cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      -- 処理ステータスセット
+      ov_retcode  :=  cv_status_error;
+      -- エラー件数設定
+      gn_error_cnt := 1 ;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  =>  cv_apl_name_ccp,          -- アプリケーション短縮名
+                      iv_name         =>  cv_msg_xxccp_91003        -- メッセージコード
+                    );
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      RAISE global_process_expt;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_for_cust_shift_cancel;
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD END
 --
 --
 --
@@ -412,6 +563,7 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
     lv_step := 'A-1.1';
+
     --
     -- コンカレント・パラメータのログ出力
     -- メッセージセット
@@ -436,6 +588,12 @@ AS
        which  => fnd_file.log
       ,buff   => ''
     );
+
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD START
+    -- 業務日付の取得
+    gd_process_date := xxccp_common_pkg2.get_process_date ;
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD END
+
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -499,6 +657,7 @@ AS
 --
     -- *** ローカル・レコード ***
     xxcmm003A12c_rec    xxcmm003A12c_cur%ROWTYPE;
+
 --
   BEGIN
 --
@@ -532,6 +691,18 @@ AS
       lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
     );
     --
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD START
+    -- ===============================
+    -- A-6.顧客移行 変更・取消し処理
+    -- ===============================
+    lv_step := 'A-6';
+
+      upd_for_cust_shift_cancel(
+        lv_errbuf,    -- エラー・メッセージ           --# 固定 #
+        lv_retcode,   -- リターン・コード             --# 固定 #
+        lv_errmsg     -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD END
     -- ===============================
     -- A-2.処理対象データ抽出
     -- ===============================
@@ -728,6 +899,10 @@ AS
     cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD START
+    cv_cust_shift_msg  CONSTANT VARCHAR2(100) := 'APP-XXCMM1-10501'; -- 顧客移行 変更・取消件数メッセージ
+    cv_app_sht_nam_xxcmm CONSTANT VARCHAR2(10)  := 'XXCMM';            -- アドオン：共通・IF領域
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD END
     --
     cv_log             CONSTANT VARCHAR2(100) := 'LOG';              -- ログ
     cv_output          CONSTANT VARCHAR2(100) := 'OUTPUT';           -- アウトプット
@@ -806,12 +981,13 @@ AS
        which  => fnd_file.log
       ,buff   => ''
     );
+--
     --対象件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_target_rec_msg
                     ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_target_cnt)
+                    ,iv_token_value1 => TO_CHAR(gn_target_cnt + gn_cust_shift_cnt )
                    );
     fnd_file.put_line(
        which  => fnd_file.output
@@ -837,7 +1013,27 @@ AS
        which  => fnd_file.log
       ,buff   => gv_out_msg
     );
-    --
+--
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD START
+--
+    --取消し件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_sht_nam_xxcmm
+                    ,iv_name         => cv_cust_shift_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_cust_shift_cnt)
+                   );
+    fnd_file.put_line(
+       which  => fnd_file.output
+      ,buff   => gv_out_msg
+    );
+    fnd_file.put_line(
+       which  => fnd_file.log
+      ,buff   => gv_out_msg
+    );
+--
+-- 2020/12/22 Ver.1.1 [E_本稼動_16834] SCSK K.Yoshino ADD END
+--
     --エラー件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_appl_short_name
