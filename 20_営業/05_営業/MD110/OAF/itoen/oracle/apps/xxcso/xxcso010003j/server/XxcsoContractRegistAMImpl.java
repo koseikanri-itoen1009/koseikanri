@@ -55,6 +55,9 @@ import oracle.jdbc.OracleCallableStatement;
 import oracle.jdbc.OracleTypes;
 
 import oracle.sql.NUMBER;
+// V2.5 Y.Shoji Added START
+import itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoElectricVORowImpl;
+// V2.5 Y.Shoji Added END
 
 /*******************************************************************************
  * 自販機設置契約情報の保存／確定を行うためのアプリケーション・モジュールクラス。
@@ -3554,6 +3557,12 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     XxcsoBm3BankAccountFullVORowImpl bank3Row
       = (XxcsoBm3BankAccountFullVORowImpl)bank3Vo.first();
 
+// V2.5 Y.Shoji Added START
+    // 電気代ビューのインスタンスを取得
+    XxcsoElectricVOImpl electricVo = getXxcsoElectricVO1();
+    XxcsoElectricVORowImpl electricVoRow = (XxcsoElectricVORowImpl) electricVo.first();
+// V2.5 Y.Shoji Added END
+
     /////////////////////////////////////
     // BM1送付先変更チェック
     /////////////////////////////////////
@@ -3740,10 +3749,8 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         // BM1の税区分がNULLの場合
         if (bm1DestVoRow.getBmTaxKbn() == null )
         {
-          // BM1税区分を取得
-          XxcsoLookupListVOImpl bm1TaxKbnListVo = getXxcsoBM1TaxKbnListVO1();
           // BM1税区分を設定
-          bm1DestVoRow.setBmTaxKbn(bm1TaxKbnListVo);
+          bm1DestVoRow.setBmTaxKbn(electricVoRow.getBm1TaxKbn());
         }
       }
 // V2.5 Y.Shoji Added END
@@ -3946,10 +3953,8 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         // BM2の税区分がNULLの場合
         if (bm2DestVoRow.getBmTaxKbn() == null )
         {
-          // BM2税区分を取得
-          XxcsoLookupListVOImpl bm2TaxKbnListVo = getXxcsoBM2TaxKbnListVO1();
           // BM2税区分を設定
-          bm2DestVoRow.setBmTaxKbn(bm2TaxKbnListVo);
+          bm2DestVoRow.setBmTaxKbn(electricVoRow.getBm2TaxKbn());
         }
       }
 // V2.5 Y.Shoji Added END
@@ -4152,10 +4157,8 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
         // BM3の税区分がNULLの場合
         if (bm3DestVoRow.getBmTaxKbn() == null )
         {
-          // BM3税区分を取得
-          XxcsoLookupListVOImpl bm3TaxKbnListVo = getXxcsoBM3TaxKbnListVO1();
           // BM3税区分を設定
-          bm3DestVoRow.setBmTaxKbn(bm3TaxKbnListVo);
+          bm3DestVoRow.setBmTaxKbn(electricVoRow.getBm3TaxKbn());
         }
       }
 // V2.5 Y.Shoji Added END
