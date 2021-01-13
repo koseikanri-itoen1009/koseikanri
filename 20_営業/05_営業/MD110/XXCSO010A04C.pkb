@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2020-05-07    1.14  N.Abe            E_本稼動_15904対応（外税対応）
  *  2020-08-07    1.15  N.Abe            E_本稼動_15904対応（外税対応）16パターン化
  *  2020-12-03    1.16  K.Kanada         E_本稼動_15904対応（外税対応）条件内容編集、パターン修正
+ *  2021-01-12    1.17  K.Kanada         E_本稼動_15904対応（外税対応不具合）条件内容編集（定率・定額）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2812,12 +2813,20 @@ AS
           --
           lv_cond_conts_tmp := g_contents_msg(1) ;      -- 固定文言
           --
+--  Ver1.17 K.Kanada Mod Start
+--          -- 額
+--          IF    (l_sales_charge_rec.bm1_bm_amount IS NOT NULL AND l_sales_charge_rec.bm1_bm_amount <> '0') THEN
+--            lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(5)       || g_contents_msg(7)
+--                                 || TO_CHAR(l_sales_charge_rec.bm1_bm_amount) || g_contents_msg(8) ;  -- (5)＋(7)＋BM1額＋(8)
+--          -- 率
+--          ELSIF (l_sales_charge_rec.bm1_bm_rate   IS NOT NULL AND l_sales_charge_rec.bm1_bm_rate   <> '0') THEN
           -- 額
-          IF    (l_sales_charge_rec.bm1_bm_amount IS NOT NULL AND l_sales_charge_rec.bm1_bm_amount <> '0') THEN
+          IF    (ln_bm1_bm_amount IS NOT NULL AND ln_bm1_bm_amount <> '0') THEN
             lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(5)       || g_contents_msg(7)
-                                 || TO_CHAR(l_sales_charge_rec.bm1_bm_amount) || g_contents_msg(8) ;  -- (5)＋(7)＋BM1額＋(8)
+                                 || TO_CHAR(ln_bm1_bm_amount) || g_contents_msg(8) ;  -- (5)＋(7)＋BM1額＋(8)
           -- 率
-          ELSIF (l_sales_charge_rec.bm1_bm_rate   IS NOT NULL AND l_sales_charge_rec.bm1_bm_rate   <> '0') THEN
+          ELSIF (ln_bm1_bm_rate IS NOT NULL AND ln_bm1_bm_rate <> '0') THEN
+--  Ver1.17 K.Kanada Mod End
             -- 税込
             IF    o_rep_cont_data_rec.bm_tax_kbn = cv_in_tax THEN
               lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(11) ;
@@ -2827,7 +2836,10 @@ AS
             END IF ;
             -- 率
             lv_cond_conts_tmp := lv_cond_conts_tmp || g_contents_msg(6)     || g_contents_msg(9)
-                                 || TO_CHAR(l_sales_charge_rec.bm1_bm_rate) || g_contents_msg(10) ; -- (6)＋(9)＋BM1率＋(10)
+--  Ver1.17 K.Kanada Mod Start
+--                                 || TO_CHAR(l_sales_charge_rec.bm1_bm_rate) || g_contents_msg(10) ; -- (6)＋(9)＋BM1率＋(10)
+                                 || TO_CHAR(ln_bm1_bm_rate) || g_contents_msg(10) ; -- (6)＋(9)＋BM1率＋(10)
+--  Ver1.17 K.Kanada Mod End
           END IF ;
 --  Ver1.16 K.Kanada Mod End
           --
