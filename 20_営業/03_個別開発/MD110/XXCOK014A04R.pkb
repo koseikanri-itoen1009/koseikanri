@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2013/05/28    1.20  SCSK S.Niki      [障害E_本稼動_10411再] エラーフラグ更新条件変更
  *  2013/06/11    1.21  SCSK S.Niki      [障害E_本稼動_10819]   エラー有りデータのソート順変更
  *  2014/09/17    1.22  SCSK S.Niki      [障害E_本稼動_12185]   パフォーマンス改善対応
+ *  2020/12/21    1.23  SCSK N.Abe       [障害E_本稼動_16860]   支払ステータス「自動繰越」の表示条件対応
  *
  *****************************************************************************************/
   -- ===============================================
@@ -1100,23 +1101,44 @@ AS
     -- (本振、未払分が対象)
     CURSOR l_payment_cur
     IS
-      SELECT
+-- Ver1.23 N.Abe Mod START
+--      SELECT
+      SELECT /*+ leading(xrbb sub) */
+-- Ver1.23 N.Abe Mod END
             xrbb.payment_code                 AS  payment_code        -- 支払先コード
            ,xrbb.bm_payment_code              AS  bm_payment_code     -- BM支払区分
            ,xrbb.bank_trns_fee                AS  bank_trns_fee       -- 振込手数料負担者
-           ,NVL(SUM(xrbb.unpaid_balance), 0)  AS  unpaid_balance      -- 未払残高
+-- Ver1.23 N.Abe Mod START
+--           ,NVL(SUM(xrbb.unpaid_balance), 0)  AS  unpaid_balance      -- 未払残高
+           ,NVL(sub.expect_payment_amt_tax, 0)  AS  unpaid_balance    -- 未払残高
+-- Ver1.23 N.Abe Mod END
       FROM
             xxcok_rep_bm_balance    xrbb  -- 販手残高一覧帳票ワークテーブル
+-- Ver1.23 N.Abe Add START
+           ,(SELECT xbb.supplier_code                       AS supplier_code                -- 仕入先コード
+                   ,NVL(SUM(xbb.expect_payment_amt_tax), 0) AS expect_payment_amt_tax       -- 支払予定額（税込）
+             FROM   xxcok_backmargin_balance xbb     -- 販手残高テーブル
+             WHERE  xbb.expect_payment_date <= gd_payment_date
+             GROUP BY xbb.supplier_code
+             HAVING SUM(NVL(xbb.expect_payment_amt_tax, 0))  >  0  -- 未払分が対象
+            ) sub
+-- Ver1.23 N.Abe Add END
       WHERE
             xrbb.request_id           =  cn_request_id                              -- 要求ID(今回実行分)
       AND   xrbb.bm_payment_code     IN  (cv_bm_payment_type1, cv_bm_payment_type2) -- BM支払区分(本振)
+-- Ver1.23 N.Abe Add START
+      AND   xrbb.payment_code         =  sub.supplier_code
+-- Ver1.23 N.Abe Add END
       GROUP BY
             -- 支払先ごと
             xrbb.payment_code                       -- 支払先コード
            ,xrbb.bm_payment_code                    -- BM支払区分
            ,xrbb.bank_trns_fee                      -- 振込手数料(負担先)
-      HAVING
-            NVL(SUM(xrbb.unpaid_balance), 0)  >  0  -- 未払分が対象
+-- Ver1.23 N.Abe Del START
+           ,NVL(sub.expect_payment_amt_tax, 0)
+--      HAVING
+--            NVL(SUM(xrbb.unpaid_balance), 0)  >  0  -- 未払分が対象
+-- Ver1.23 N.Abe Del END
       ORDER BY
             xrbb.payment_code                       -- 支払先コード
     ;
