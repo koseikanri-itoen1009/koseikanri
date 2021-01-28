@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A02C(body)
  * Description      : 情報系システム向け受注情報の作成を行う
  * MD.050           : 受注情報の情報系連携 MD050_COS_015_A02
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/06/22    1.0   N.Koyama         [E_本稼動_16429]新規作成
+ *  2021/01/12    1.1   N.Koyama         [E_本稼動_16897]対応
  *
  *****************************************************************************************/
 --
@@ -108,6 +109,9 @@ AS
   cv_pf_company_code          CONSTANT VARCHAR2(50)     := 'XXCOI1_COMPANY_CODE';              -- 会社コード
   cv_pf_csv_file_name         CONSTANT VARCHAR2(50)     := 'XXCOS1_KB_ORDER_FILE_NAME';        -- 受注情報ファイル名
   cv_pf_month                 CONSTANT VARCHAR2(50)     := 'XXCOS1_KB_ORDER_MONTH';            -- 受注日対象期間月数
+-- Ver1.1 Add Start
+  cv_pf_month_to              CONSTANT VARCHAR2(50)     := 'XXCOS1_KB_ORDER_MONTH_TO';         -- 受注日対象期間月数(TO)
+-- Ver1.1 Add End
   cv_pf_org_id                CONSTANT VARCHAR2(50)     := 'ORG_ID';                           -- MO:営業単位
   cv_pf_org                   CONSTANT VARCHAR2(50)     := 'XXCOI1_ORGANIZATION_CODE';         -- 在庫組織コード
   cv_pf_gl_set_of_bks_id      CONSTANT VARCHAR2(50)     := 'GL_SET_OF_BKS_ID';                 -- GL会計帳簿ID
@@ -153,6 +157,9 @@ AS
   gt_output_directory   fnd_profile_option_values.profile_option_value%TYPE;      -- ディレクトリパス
   gt_csv_file_name      fnd_profile_option_values.profile_option_value%TYPE;      -- 受注情報ファイル名
   gn_kb_month           NUMBER;                                                   -- 情報系受注連携対象月数
+-- Ver1.1 Add Stasrt
+  gn_kb_month_to        NUMBER;                                                   -- 情報系受注連携対象月数(TO)
+-- Ver1.1 Add End
   gt_company_code       fnd_profile_option_values.profile_option_value%TYPE;      -- 会社コード
   gt_org_id             fnd_profile_option_values.profile_option_value%TYPE;      -- MO:営業単位
   gt_file_handle        UTL_FILE.FILE_TYPE;                                       -- ファイルハンドル
@@ -233,7 +240,10 @@ AS
         AND     selk.LOOKUP_TYPE(+)             = cv_qck_typ_sale
         AND     selk.language(+)                = cv_lang
         AND     oos.order_source_id             = oel.order_source_id
-        AND     oeh.ordered_date BETWEEN ADD_MONTHS(gd_business_date,gn_kb_month * -1) AND gd_business_date + 86399/86400
+-- Ver1.1 Mod Start
+--        AND     oeh.ordered_date BETWEEN ADD_MONTHS(gd_business_date,gn_kb_month * -1) AND gd_business_date + 86399/86400
+        AND     oeh.ordered_date BETWEEN ADD_MONTHS(gd_business_date,gn_kb_month * -1) AND ADD_MONTHS(gd_business_date,gn_kb_month_to) + 86399/86400
+-- Ver1.1 Mod End
         AND     oel.request_date BETWEEN gd_date_from                                  AND gd_date_to       + 86399/86400
         AND     oeh.flow_status_code       NOT IN (cv_header_closed,cv_header_cancelled)
         AND     oel.flow_status_code           <>  cv_line_closed
@@ -443,6 +453,21 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+--
+-- Ver1.1 Add Start
+    gn_kb_month_to := TO_NUMBER(FND_PROFILE.VALUE( cv_pf_month_to ));
+--
+    IF ( gn_kb_month_to IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+        ,iv_name         => cv_msg_notfound_profile     -- メッセージ
+        ,iv_token_name1  => cv_tkn_pro_tok              -- トークン1名
+        ,iv_token_value1 => cv_pf_month_to);               -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- Ver1.1 Add End
 --
     --==================================
     -- 7.会社コード取得
