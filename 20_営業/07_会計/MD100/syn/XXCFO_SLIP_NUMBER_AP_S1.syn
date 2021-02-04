@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfo_slip_number_ap_s1 FOR xxcfo.xxcfo_slip_number_ap_s1;
