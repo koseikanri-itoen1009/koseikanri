@@ -8,7 +8,7 @@ AS
  * Description      : インターフェーステーブルからの請求書データインポート
  * MD.050(CMD.040)  : 部門入力バッチ処理（AP） OCSJ/BFAFIN/MD050/F212
  * MD.070(CMD.050)  : 部門入力（AP）データインポート OCSJ/BFAFIN/MD070/F423
- * Version          : 11.5.10.2.10H
+ * Version          : 11.5.10.2.10I
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2007/10/29   11.5.10.2.10G  通貨の精度チェック(入力可能精度か桁チェック)追加のため
  *                              伝票情報取得時に通貨書式に丸める処理を削除
  *  2016/11/11   11.5.10.2.10H  [E_本稼動_13901]対応 稟議決済番号の追加
+ *  2020/02/02   11.5.10.2.10I  障害対応E_本稼動_16026
  *
  *****************************************************************************************/
 --
@@ -701,6 +702,10 @@ AS
            ) ppf
         WHERE
               xpsi.APPROVER_PERSON_NUMBER = ppf.EMPLOYEE_NUMBER
+          -- ver 11.5.10.2.10I Add Start
+          AND  xpsi.request_id             = h_request_id
+          AND  xpsi.source                 = h_source
+          -- ver 11.5.10.2.10I Add End
           AND EXISTS (SELECT '1'
                       FROM   XX03_APPROVER_PERSON_LOV_V xaplv
                       WHERE  xaplv.PERSON_ID = ppf.person_id
@@ -4432,11 +4437,16 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    -- ver 11.5.10.2.10I Add Start
+    cv_slip_code CONSTANT VARCHAR2(3) := 'TMP';
+    -- ver 11.5.10.2.10I Add End
 --
     -- *** ローカル変数 ***
     ln_update_count NUMBER;     -- 更新件数
-    lv_slip_code VARCHAR2(10);  -- 請求書コード
-    ln_slip_number NUMBER;      -- 請求書番号
+-- ver 11.5.10.2.10I Del Start
+--    lv_slip_code VARCHAR2(10);  -- 請求書コード
+--    ln_slip_number NUMBER;      -- 請求書番号
+-- ver 11.5.10.2.10I Del Start
 --
     -- *** ローカル・カーソル ***
     -- 更新対象取得カーソル
@@ -4483,19 +4493,21 @@ AS
         FROM XX03_PAYMENT_SLIPS xps
        WHERE xps.REQUEST_ID = xx00_global_pkg.conc_request_id;
 --
-      -- 請求書番号取得
-      update_slip_number(
-        ln_update_count,
-        lv_slip_code,
-        ln_slip_number,
-        lv_errbuf,
-        lv_retcode,
-        lv_errmsg);
-      IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
-        RAISE global_process_expt;
-      ELSIF (lv_retcode = xx00_common_pkg.set_status_warn_f) THEN
-        RAISE global_process_expt;
-      END IF;
+-- ver 11.5.10.2.10I Del Start
+--      -- 請求書番号取得
+--      update_slip_number(
+--        ln_update_count,
+--        lv_slip_code,
+--        ln_slip_number,
+--        lv_errbuf,
+--        lv_retcode,
+--        lv_errmsg);
+--      IF (lv_retcode = xx00_common_pkg.set_status_error_f) THEN
+--        RAISE global_process_expt;
+--      ELSIF (lv_retcode = xx00_common_pkg.set_status_warn_f) THEN
+--        RAISE global_process_expt;
+--      END IF;
+-- ver 11.5.10.2.10I Del End
 --
       -- 更新対象取得
       OPEN update_record_cur;
@@ -4508,14 +4520,19 @@ AS
           EXIT update_record_loop;
         END IF;
 --
-        -- 請求書番号加算
-        ln_slip_number := ln_slip_number + 1;
+-- ver 11.5.10.2.10I Del Start
+--        -- 請求書番号加算
+--        ln_slip_number := ln_slip_number + 1;
+-- ver 11.5.10.2.10I Del Del
 --
 -- 20050217 V1.2 START
 -- 条件追加【ORG_ID】
         -- 請求書番号更新
         UPDATE XX03_PAYMENT_SLIPS xps
-           SET xps.INVOICE_NUM = lv_slip_code || TO_CHAR(ln_slip_number)
+-- ver 11.5.10.2.10I Mod Start
+--           SET xps.INVOICE_NUM = lv_slip_code || TO_CHAR(ln_slip_number)
+           SET xps.INVOICE_NUM = cv_slip_code || TO_CHAR(xxcfo_slip_number_ap_s1.NEXTVAL)
+-- ver 11.5.10.2.10I Mod End
          WHERE xps.INVOICE_ID = update_record_rec.INVOICE_ID
            AND xps.ORG_ID = gn_org_id;
 -- 20050217 V1.2 END
