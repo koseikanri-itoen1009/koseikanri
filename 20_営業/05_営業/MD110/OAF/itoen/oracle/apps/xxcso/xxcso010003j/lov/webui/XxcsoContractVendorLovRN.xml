@@ -42,6 +42,7 @@ HISTORY
             <oa:formValue id="VendorId2" viewName="XxcsoContractVendorLovVO1" viewAttr="VendorId2" dataType="NUMBER"/>
             <oa:formValue id="BmTaxKbn" viewName="XxcsoContractVendorLovVO1" viewAttr="BmTaxKbn"/>
             <oa:formValue id="BmTaxKbnNm" viewName="XxcsoContractVendorLovVO1" viewAttr="BmTaxKbnNm"/>
+            <oa:formValue id="SIteEmailAddress" dataType="VARCHAR2" viewName="XxcsoContractVendorLovVO1" viewAttr="SiteEmailAddress"/>
          </ui:contents>
       </oa:table>
    </ui:contents>
