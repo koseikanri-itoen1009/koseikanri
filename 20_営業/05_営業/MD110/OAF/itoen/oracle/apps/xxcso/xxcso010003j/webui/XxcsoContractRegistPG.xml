@@ -800,6 +800,7 @@
                                           <lovMap id="Bm1SupplierId2Map" lovItem="VendorId2" resultTo="Bm1SpCustomerId" useForValidation="no"/>
                                           <lovMap id="Bm1TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm1TaxKbnForm" useForValidation="no"/>
                                           <lovMap id="Bm1TaxKbnNmMap" resultTo="Bm1TaxKbnNmForm" lovItem="BmTaxKbnNm" useForValidation="no"/>
+                                          <lovMap id="Bm1EmailAddressMap" useForValidation="no" lovItem="SIteEmailAddress" resultTo="Bm1EmailAddress"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm1BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1BankTransferFeeDivLayout">
@@ -855,6 +856,8 @@
                                     <oa:messageTextInput id="Bm1Address2" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
                                     <oa:messageStyledText id="Bm1AddressLinesPhoneticView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
                                     <oa:messageTextInput id="Bm1AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm1EmailAddressView" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" prompt="BM1送付先Eメールアドレス(xxx@xxx)" viewAttr="SiteEmailAddress"/>
+                                    <oa:messageTextInput id="Bm1EmailAddress" dataType="VARCHAR2" viewName="XxcsoBm1DestinationFullVO1" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" prompt="BM1送付先Eメールアドレス(xxx@xxx)" viewAttr="SiteEmailAddress"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm1DestSpacer02" height="20"/>
@@ -936,6 +939,7 @@
                                     <oa:messageStyledText id="Bm1Address1Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address1" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm1Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1Address2"/>
                                     <oa:messageStyledText id="Bm1AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm1AddressLinesPhonetic"/>
+                                    <oa:messageStyledText id="Bm1EmailAddressBlank" dataType="VARCHAR2" required="no" prompt="BM1送付先Eメールアドレス(xxx@xxx)"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm1DestSpacer021" height="20"/>
@@ -1003,6 +1007,7 @@
                                           <lovMap id="Bm2SupplierId2Map" lovItem="VendorId2" resultTo="Bm2SpCustomerId" useForValidation="no"/>
                                           <lovMap id="Bm2TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm2TaxKbnForm" useForValidation="no"/>
                                           <lovMap id="BM2TaxKbnNmMap" lovItem="BmTaxKbnNm" resultTo="Bm2TaxKbnNmForm" useForValidation="no"/>
+                                          <lovMap id="Bm2EmailAddressMap" lovItem="SIteEmailAddress" resultTo="Bm2EmailAddress"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm2BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2BankTransferFeeDivLayout">
@@ -1058,6 +1063,8 @@
                                     <oa:messageTextInput id="Bm2Address2" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
                                     <oa:messageStyledText id="Bm2AddressLinesPhoneticView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
                                     <oa:messageTextInput id="Bm2AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm2EmailAddressView" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="SiteEmailAddress" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" prompt="BM2送付先Eメールアドレス(xxx@xxx)"/>
+                                    <oa:messageTextInput id="Bm2EmailAddress" dataType="VARCHAR2" viewName="XxcsoBm2DestinationFullVO1" viewAttr="SiteEmailAddress" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" prompt="BM2送付先Eメールアドレス(xxx@xxx)"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm2DestSpacer02" height="20"/>
@@ -1139,6 +1146,7 @@
                                     <oa:messageStyledText id="Bm2Address1Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address1" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm2Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2Address2"/>
                                     <oa:messageStyledText id="Bm2AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2AddressLinesPhonetic"/>
+                                    <oa:messageStyledText id="Bm2EmailAddressBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm2PostalCode" required="no" prompt="BM2送付先Eメールアドレス(xxx@xxx)"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm2DestSpacer021" height="20"/>
@@ -1202,6 +1210,7 @@
                                           <lovMap id="Bm3SupplierId2Map" lovItem="VendorId2" resultTo="Bm3SpCustomerId" useForValidation="no"/>
                                           <lovMap id="Bm3TaxKbnMap" lovItem="BmTaxKbn" resultTo="Bm3TaxKbnForm" useForValidation="no"/>
                                           <lovMap id="Bm3TaxKbnNmMap" resultTo="Bm3TaxKbnNmForm" lovItem="BmTaxKbnNm" useForValidation="no"/>
+                                          <lovMap id="Bm3EmailAddressMap" lovItem="SIteEmailAddress" resultTo="Bm3EmailAddress" useForValidation="no"/>
                                        </lovMappings>
                                     </oa:messageLovInput>
                                     <oa:messageLayout id="Bm3BankTransferFeeDivLayout" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3BankTransferFeeDivLayout">
@@ -1257,6 +1266,8 @@
                                     <oa:messageTextInput id="Bm3Address2" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="Address2" maximumLength="35" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address2" columns="40" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
                                     <oa:messageStyledText id="Bm3AddressLinesPhoneticView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText"/>
                                     <oa:messageTextInput id="Bm3AddressLinesPhonetic" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="AddressLinesPhonetic" maximumLength="30" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3AddressLinesPhonetic" columns="35" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}"/>
+                                    <oa:messageStyledText id="Bm3EmailAddressView" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="SiteEmailAddress" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionViewRender}" styleClass="OraDataText" prompt="BM3送付先Eメールアドレス(xxx@xxx)"/>
+                                    <oa:messageTextInput id="Bm3EmailAddress" dataType="VARCHAR2" viewName="XxcsoBm3DestinationFullVO1" viewAttr="SiteEmailAddress" maximumLength="150" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="no" columns="50" rendered="${oa.XxcsoPageRenderVO1.RegionInputRender}" prompt="BM3送付先Eメールアドレス(xxx@xxx)"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm3DestSpacer02" height="20"/>
@@ -1338,6 +1349,7 @@
                                     <oa:messageStyledText id="Bm3Address1Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address1" required="uiOnly"/>
                                     <oa:messageStyledText id="Bm3Address2Blank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3Address2"/>
                                     <oa:messageStyledText id="Bm3AddressLinesPhoneticBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3AddressLinesPhonetic"/>
+                                    <oa:messageStyledText id="Bm3EmailAddressBlank" use="/itoen/oracle/apps/xxcso/xxcso010003j/attributesets/XxcsoContractRegistAttrSets/Bm3PostalCode" required="no" prompt="BM3送付先Eメールアドレス(xxx@xxx)"/>
                                  </ui:contents>
                               </oa:messageComponentLayout>
                               <oa:spacer id="Bm3DestSpacer021" height="20"/>
