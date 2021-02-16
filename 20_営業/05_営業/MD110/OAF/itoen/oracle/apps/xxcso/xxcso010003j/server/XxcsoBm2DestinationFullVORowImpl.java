@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoBm2DestinationFullVORowImpl
 * 概要説明   : BM2送付先テーブル情報ビュー行オブジェクトクラス
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS小川浩    新規作成
 * 2020-08-21 1.1  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
+* 2020-12-14 1.2  SCSK佐々木大和[E_本稼動_16642]送付先コードに紐付くメールアドレスについて
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -42,21 +43,22 @@ public class XxcsoBm2DestinationFullVORowImpl extends OAViewRowImpl
   protected static final int ADDRESS1 = 12;
   protected static final int ADDRESS2 = 13;
   protected static final int ADDRESSLINESPHONETIC = 14;
-  protected static final int CREATEDBY = 15;
-  protected static final int CREATIONDATE = 16;
-  protected static final int LASTUPDATEDBY = 17;
-  protected static final int LASTUPDATEDATE = 18;
-  protected static final int LASTUPDATELOGIN = 19;
-  protected static final int REQUESTID = 20;
-  protected static final int PROGRAMAPPLICATIONID = 21;
-  protected static final int PROGRAMID = 22;
-  protected static final int PROGRAMUPDATEDATE = 23;
-  protected static final int INQUERYCHARGEHUBNAME = 24;
-  protected static final int VENDORCODE = 25;
+  protected static final int SITEEMAILADDRESS = 15;
+  protected static final int CREATEDBY = 16;
+  protected static final int CREATIONDATE = 17;
+  protected static final int LASTUPDATEDBY = 18;
+  protected static final int LASTUPDATEDATE = 19;
+  protected static final int LASTUPDATELOGIN = 20;
+  protected static final int REQUESTID = 21;
+  protected static final int PROGRAMAPPLICATIONID = 22;
+  protected static final int PROGRAMID = 23;
+  protected static final int PROGRAMUPDATEDATE = 24;
+  protected static final int INQUERYCHARGEHUBNAME = 25;
   protected static final int VENDORFLAG = 26;
-  protected static final int BMTAXKBN = 27;
-  protected static final int BMTAXKBNNM = 28;
-  protected static final int XXCSOBM2BANKACCOUNTFULLVO = 29;
+  protected static final int VENDORCODE = 27;
+  protected static final int BMTAXKBN = 28;
+  protected static final int BMTAXKBNNM = 29;
+  protected static final int XXCSOBM2BANKACCOUNTFULLVO = 30;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -541,6 +543,8 @@ public class XxcsoBm2DestinationFullVORowImpl extends OAViewRowImpl
         return getAddress2();
       case ADDRESSLINESPHONETIC:
         return getAddressLinesPhonetic();
+      case SITEEMAILADDRESS:
+        return getSiteEmailAddress();
       case CREATEDBY:
         return getCreatedBy();
       case CREATIONDATE:
@@ -561,10 +565,10 @@ public class XxcsoBm2DestinationFullVORowImpl extends OAViewRowImpl
         return getProgramUpdateDate();
       case INQUERYCHARGEHUBNAME:
         return getInqueryChargeHubName();
-      case VENDORCODE:
-        return getVendorCode();
       case VENDORFLAG:
         return getVendorFlag();
+      case VENDORCODE:
+        return getVendorCode();
       case BMTAXKBN:
         return getBmTaxKbn();
       case BMTAXKBNNM:
@@ -626,6 +630,9 @@ public class XxcsoBm2DestinationFullVORowImpl extends OAViewRowImpl
       case ADDRESSLINESPHONETIC:
         setAddressLinesPhonetic((String)value);
         return;
+      case SITEEMAILADDRESS:
+        setSiteEmailAddress((String)value);
+        return;
       case CREATEDBY:
         setCreatedBy((Number)value);
         return;
@@ -656,11 +663,11 @@ public class XxcsoBm2DestinationFullVORowImpl extends OAViewRowImpl
       case INQUERYCHARGEHUBNAME:
         setInqueryChargeHubName((String)value);
         return;
-      case VENDORCODE:
-        setVendorCode((String)value);
-        return;
       case VENDORFLAG:
         setVendorFlag((String)value);
+        return;
+      case VENDORCODE:
+        setVendorCode((String)value);
         return;
       case BMTAXKBN:
         setBmTaxKbn((String)value);
@@ -776,6 +783,30 @@ public class XxcsoBm2DestinationFullVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(BMTAXKBNNM, value);
   }
+
+  /**
+   * 
+   * Gets the attribute value for SITE_EMAIL_ADDRESS using the alias name SiteEmailAddress
+   */
+  public String getSiteEmailAddress()
+  {
+    return (String)getAttributeInternal(SITEEMAILADDRESS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as attribute value for SITE_EMAIL_ADDRESS using the alias name SiteEmailAddress
+   */
+  public void setSiteEmailAddress(String value)
+  {
+    setAttributeInternal(SITEEMAILADDRESS, value);
+  }
+
+
+
+
+
+
 
 
 

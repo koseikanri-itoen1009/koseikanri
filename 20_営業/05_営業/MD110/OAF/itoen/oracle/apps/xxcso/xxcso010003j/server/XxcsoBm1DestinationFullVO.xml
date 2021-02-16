@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -8,6 +8,7 @@
    RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1DestinationFullVORowImpl"
    ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm1DestinationFullVOImpl"
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
@@ -167,6 +168,14 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
           )
         , TRUNC(xxcso_util_common_pkg.get_online_sysdate)
       )                                                AS bm_tax_kbn_nm
+      ,xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.site_email_address
+        ,pvs.attribute7
+       )                                               AS site_email_address
 FROM XXCSO_DESTINATIONS          XxcsoDestinationsEO
     ,xxcso_contract_managements  xcm
     ,po_vendors                  pv
@@ -413,6 +422,12 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       AliasName="BmTaxKbnNm"
       Expression="BmTaxKbnNm"
       SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SiteEmailAddress"
+      EntityAttrName="SiteEmailAddress"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="SiteEmailAddress" >
    </ViewAttribute>
    <ViewLinkAccessor
       Name="XxcsoBm1BankAccountFullVO"

@@ -8,6 +8,7 @@
    RowClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestinationFullVORowImpl"
    ComponentClass="itoen.oracle.apps.xxcso.xxcso010003j.server.XxcsoBm3DestinationFullVOImpl"
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
@@ -126,6 +127,14 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
         ,XxcsoDestinationsEO.ADDRESS_LINES_PHONETIC
         ,pvs.phone
        )                                               AS address_lines_phonetic,
+       xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.site_email_address
+        ,pvs.attribute7
+       )                                               AS site_email_address,
        XxcsoDestinationsEO.CREATED_BY                  AS created_by,
        XxcsoDestinationsEO.CREATION_DATE               AS creation_date,
        XxcsoDestinationsEO.LAST_UPDATED_BY             AS last_updated_by,
@@ -147,6 +156,26 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
         ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
        )                                               AS inquery_charge_hub_name
       ,pv.segment1                                     AS vendor_code
+      ,xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.BM_TAX_KBN
+        ,pvs.attribute6
+       )                                               AS bm_tax_kbn
+      ,xxcso_util_common_pkg.get_lookup_meaning(
+          'XXCSO1_BM_TAX_KBN'
+        , xxcso_010003j_pkg.decode_bm_info(
+            XxcsoDestinationsEO.SUPPLIER_ID
+           ,xcm.status
+           ,xcm.cooperate_flag
+           ,xcm.batch_proc_status
+           ,XxcsoDestinationsEO.BM_TAX_KBN
+           ,pvs.attribute6
+          )
+        , TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+      )                                                AS bm_tax_kbn_nm
 FROM XXCSO_DESTINATIONS          XxcsoDestinationsEO
     ,xxcso_contract_managements  xcm
     ,po_vendors                  pv
@@ -158,7 +187,7 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
-      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_version" Value="9.0.3.14.01" />
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <EntityUsage
@@ -272,6 +301,12 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       AliasName="ADDRESS_LINES_PHONETIC" >
    </ViewAttribute>
    <ViewAttribute
+      Name="SiteEmailAddress"
+      EntityAttrName="SiteEmailAddress"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="SiteEmailAddress" >
+   </ViewAttribute>
+   <ViewAttribute
       Name="CreatedBy"
       IsNotNull="true"
       Precision="15"
@@ -355,6 +390,17 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
+      Name="VendorFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_FLAG"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
       Name="VendorCode"
       IsPersistent="false"
       Precision="9"
@@ -368,14 +414,19 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
-      Name="VendorFlag"
-      IsQueriable="false"
+      Name="BmTaxKbn"
+      EntityAttrName="BmTaxKbn"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="BmTaxKbn" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BmTaxKbnNm"
       IsPersistent="false"
-      Precision="1"
+      Precision="4000"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
-      AliasName="VENDOR_FLAG"
-      Passivate="true"
+      AliasName="BmTaxKbnNm"
+      Expression="BmTaxKbnNm"
       SQLType="VARCHAR" >
    </ViewAttribute>
    <ViewLinkAccessor

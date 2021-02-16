@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -126,6 +126,14 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
         ,XxcsoDestinationsEO.ADDRESS_LINES_PHONETIC
         ,pvs.phone
        )                                               AS address_lines_phonetic,
+       xxcso_010003j_pkg.decode_bm_info(
+         XxcsoDestinationsEO.SUPPLIER_ID
+        ,xcm.status
+        ,xcm.cooperate_flag
+        ,xcm.batch_proc_status
+        ,XxcsoDestinationsEO.site_email_address
+        ,pvs.attribute7
+       )                                               AS site_email_address,
        XxcsoDestinationsEO.CREATED_BY                  AS created_by,
        XxcsoDestinationsEO.CREATION_DATE               AS creation_date,
        XxcsoDestinationsEO.LAST_UPDATED_BY             AS last_updated_by,
@@ -292,6 +300,12 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       AliasName="ADDRESS_LINES_PHONETIC" >
    </ViewAttribute>
    <ViewAttribute
+      Name="SiteEmailAddress"
+      EntityAttrName="SiteEmailAddress"
+      EntityUsage="XxcsoDestinationsEO"
+      AliasName="SiteEmailAddress" >
+   </ViewAttribute>
+   <ViewAttribute
       Name="CreatedBy"
       IsNotNull="true"
       Precision="15"
@@ -375,6 +389,17 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
+      Name="VendorFlag"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VENDOR_FLAG"
+      Passivate="true"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
       Name="VendorCode"
       IsPersistent="false"
       Precision="9"
@@ -386,17 +411,6 @@ AND   pvs.vendor_id(+)           = XxcsoDestinationsEO.SUPPLIER_ID
       <DesignTime>
          <Attr Name="_DisplaySize" Value="4000" />
       </DesignTime>
-   </ViewAttribute>
-   <ViewAttribute
-      Name="VendorFlag"
-      IsQueriable="false"
-      IsPersistent="false"
-      Precision="1"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="VENDOR_FLAG"
-      Passivate="true"
-      SQLType="VARCHAR" >
    </ViewAttribute>
    <ViewAttribute
       Name="BmTaxKbn"
