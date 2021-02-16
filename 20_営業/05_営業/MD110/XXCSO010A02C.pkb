@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -90,6 +90,7 @@ AS
  *  2016-02-02    1.23  H.Okada          E_本稼働_13456対応
  *  2019-06-14    1.24  N.Miyamoto       E_本稼動_15472軽減税率対応
  *  2020-08-21    1.25  M.Sato           E_本稼動_15904対応
+ *  2020-12-14    1.26  R.Oikawa         E_本稼動_16642対応
  *
  *****************************************************************************************/
   --
@@ -350,6 +351,9 @@ AS
   cv_debug_msg87 CONSTANT VARCHAR2(200) := 'electric_payment_type   = ';
   cv_debug_msg88 CONSTANT VARCHAR2(200) := 'tax_type                = ';
   /* 2015.02.25 H.Wajima E_本稼動_12565 END */
+  -- 2020/12/14 Ver.1.26 Add Start
+  cv_debug_msg89 CONSTANT VARCHAR2(200) := 'site_email_address           = ';
+  -- 2020/12/14 Ver.1.26 Add End
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -413,6 +417,9 @@ AS
     -- 2020/08/21 V1.25 M.SATO ADD START --
     ,bm_tax_kbn                   xxcso_destinations.bm_tax_kbn%TYPE                   -- ＢＭ税区分
     -- 2020/08/21 V1.25 M.SATO ADD END   --
+    -- 2020/12/14 Ver.1.26 Add Start
+    ,site_email_address           xxcso_destinations.site_email_address%TYPE           -- Eメールアドレス
+    -- 2020/12/14 Ver.1.26 Add End
     -- 銀行口座情報
     ,bank_number             xxcso_bank_accounts.bank_number%TYPE             -- 銀行番号
     ,bank_name               xxcso_bank_accounts.bank_name%TYPE               -- 銀行名
@@ -1168,6 +1175,9 @@ AS
                 -- 2020/08/21 V1.25 M.SATO ADD START --
                 ,site_attribute6              -- 仕入先サイト予備6
                 -- 2020/08/21 V1.25 M.SATO ADD END   --
+                -- 2020/12/14 Ver.1.26 Add Start
+                ,site_attribute7              -- 仕入先サイト予備7
+                -- 2020/12/14 Ver.1.26 Add End
                 ,site_bank_number             -- 仕入先サイト銀行支店コード
                 ,site_vendor_site_code_alt    -- 仕入先サイト仕入先サイト名（カナ）
                 ,site_bank_charge_bearer      -- 仕入先サイト銀行手数料負担者
@@ -1225,6 +1235,9 @@ AS
                 -- 2020/08/21 V1.25 M.SATO ADD START --
                 ,SUBSTRB(it_mst_regist_info_rec.bm_tax_kbn, 1, 150)            -- 仕入先サイト予備6
                 -- 2020/08/21 V1.25 M.SATO ADD END   --
+                -- 2020/12/14 Ver.1.26 Add Start
+                ,SUBSTRB(it_mst_regist_info_rec.site_email_address, 1, 150)    -- 仕入先サイト予備7
+                -- 2020/12/14 Ver.1.26 Add End
                 ,SUBSTRB(lt_bank_num, 1, 30)                                   -- 仕入先サイト支店コード
                 ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先サイト仕入先サイト名（カナ）
                 ,it_mst_regist_info_rec.bank_transfer_fee_charge_div           -- 仕入先サイト銀行手数料負担者
@@ -1446,6 +1459,9 @@ AS
           -- 2020/08/21 V1.25 M.SATO ADD START --
           ,site_attribute6              -- 仕入先サイト予備6
           -- 2020/08/21 V1.25 M.SATO ADD END   --
+          -- 2020/12/14 Ver.1.26 Add Start
+          ,site_attribute7              -- 仕入先サイト予備7
+          -- 2020/12/14 Ver.1.26 Add End
           ,site_bank_number             -- 仕入先サイト銀行支店コード
           ,site_vendor_site_code_alt    -- 仕入先サイト仕入先サイト名（カナ）
           ,site_bank_charge_bearer      -- 仕入先サイト銀行手数料負担者
@@ -1522,6 +1538,9 @@ AS
           -- 2020/08/21 V1.25 M.SATO ADD START --
           ,SUBSTRB(it_mst_regist_info_rec.bm_tax_kbn, 1, 150)            -- 仕入先サイト予備6
           -- 2020/08/21 V1.25 M.SATO ADD END   --
+          -- 2020/12/14 Ver.1.26 Add Start
+          ,SUBSTRB(it_mst_regist_info_rec.site_email_address, 1, 150)    -- 仕入先サイト予備7
+          -- 2020/12/14 Ver.1.26 Add End
           ,SUBSTRB(lt_bank_num, 1, 30)                                   -- 仕入先サイト支店コード
           ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先サイト仕入先サイト名（カナ）
           ,it_mst_regist_info_rec.bank_transfer_fee_charge_div           -- 仕入先サイト銀行手数料負担者
@@ -4466,6 +4485,9 @@ AS
             -- 2020/08/21 V1.25 M.SATO ADD START --
             ,xde.bm_tax_kbn                   bm_tax_kbn                   -- ＢＭ税区分
             -- 2020/08/21 V1.25 M.SATO ADD END   --
+            -- 2020/12/14 Ver.1.26 Add Start
+            ,xde.site_email_address           site_email_address           -- Eメールアドレス
+            -- 2020/12/14 Ver.1.26 Add End
             ,xba.bank_number                  bank_number                  -- 銀行番号
             ,xba.bank_name                    bank_name                    -- 銀行名
             ,xba.branch_number                branch_number                -- 支店番号
@@ -4610,6 +4632,9 @@ AS
         -- 2020/08/21 V1.25 M.SATO ADD START --
         lt_mst_regist_info_rec.bm_tax_kbn                   := lt_vendor_info_rec.bm_tax_kbn;
         -- 2020/08/21 V1.25 M.SATO ADD END   --
+        -- 2020/12/14 Ver.1.26 Add Start
+        lt_mst_regist_info_rec.site_email_address           := lt_vendor_info_rec.site_email_address;
+        -- 2020/12/14 Ver.1.26 Add End
         lt_mst_regist_info_rec.bank_number                  := lt_vendor_info_rec.bank_number;
         lt_mst_regist_info_rec.bank_name                    := lt_vendor_info_rec.bank_name;
         lt_mst_regist_info_rec.branch_number                := lt_vendor_info_rec.branch_number;
@@ -4640,6 +4665,9 @@ AS
                      /* 2009.10.15 D.Abe 0001537対応 START */
                      cv_debug_msg80 || lt_vendor_info_rec.delivery_id                  || CHR(10) ||
                      /* 2009.10.15 D.Abe 0001537対応 END */
+                     -- 2020/12/14 Ver.1.26 Add Start
+                     cv_debug_msg89 || lt_vendor_info_rec.site_email_address           || CHR(10) ||
+                     -- 2020/12/14 Ver.1.26 Add End
                      cv_debug_msg28 || lt_vendor_info_rec.bank_number                  || CHR(10) ||
                      cv_debug_msg29 || lt_vendor_info_rec.bank_name                    || CHR(10) ||
                      cv_debug_msg30 || lt_vendor_info_rec.branch_number                || CHR(10) ||
@@ -4648,7 +4676,6 @@ AS
                      cv_debug_msg33 || lt_vendor_info_rec.bank_account_number          || CHR(10) ||
                      cv_debug_msg34 || lt_vendor_info_rec.bank_account_name_kana       || CHR(10) ||
                      cv_debug_msg35 || lt_vendor_info_rec.bank_account_name_kanji      || CHR(10) ||
-
                      ''
         );
         -- *** DEBUG_LOG END ***

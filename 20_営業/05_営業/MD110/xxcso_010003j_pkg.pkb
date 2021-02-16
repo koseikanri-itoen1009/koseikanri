@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  chk_supp_info_change      F    V      送付先情報変更チェック
  *  chk_bm_bank_chg           F    V      BM銀行口座変更チェック
  *  chk_vendor_inbalid        F    V      仕入先無効日チェック
+ *  chk_email_address         F    V      メールアドレスチェック（共通関数ラッピング）
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -69,6 +70,7 @@ AS
  *  2016/01/06    1.17  K.Kiriu          E_本稼動_13456対応
  *  2019/03/05    1.18  Y.Sasaki         E_本稼動_15349対応
  *  2020/10/28    1.19  Y.Sasaki         E_本稼動_16293、E_本稼動_16410対応
+ *  2020/12/14    1.20  Y.Sasaki         E_本稼動_16642対応
 *****************************************************************************************/
 --
   -- ===============================
@@ -2560,6 +2562,65 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_vendor_inbalid;
 /* [E_本稼動_16293] Add END */
+/* [E_本稼動_16642] Add START */
+  /**********************************************************************************
+   * Function Name    : chk_email_address
+   * Description      : メールアドレスチェック
+   ***********************************************************************************/
+  FUNCTION chk_email_address(
+    iv_email_address                IN  VARCHAR2
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name                   CONSTANT VARCHAR2(100)    := 'chk_email_address';
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lb_retcode                    BOOLEAN;
+    ln_chk_num                    NUMBER;
+    lv_retcode                    VARCHAR2(1);
+--
+  BEGIN
+--
+    --初期化
+    lv_retcode              := xxcso_common_pkg.gv_status_normal;
+    lb_retcode              := true;
+    ln_chk_num              := 0;
+--
+    -- 半角文字のみ使用しているか確認
+    lb_retcode := xxccp_common_pkg.chk_single_byte(
+                    iv_email_address
+                  );
+--
+    IF lb_retcode IS NOT NULL THEN
+      IF lb_retcode THEN
+        -- @を使用しているか確認
+        ln_chk_num := INSTR(iv_email_address, '@');
+        IF ln_chk_num = 0 THEN
+          lv_retcode := xxcso_common_pkg.gv_status_error;
+        END IF;
+      ELSE
+        lv_retcode := xxcso_common_pkg.gv_status_error;
+      END IF;
+    END IF;
+--
+    return lv_retcode;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+  END chk_email_address;
+/* [E_本稼動_16642] Add END */
 --
 END xxcso_010003j_pkg;
 /

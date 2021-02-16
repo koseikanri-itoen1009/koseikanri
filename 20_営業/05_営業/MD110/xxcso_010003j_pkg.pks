@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  chk_bank_account_change   F    V      銀行口座マスタ変更チェック
  *  chk_owner_change_use      F    V      オーナ変更物件使用チェック
  *  chk_supp_info_change      F    V      送付先変更チェック
+ *  chk_email_address         F    V      メールアドレスチェック（共通関数ラッピング）
+ *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -60,6 +62,7 @@ AS
  *  2016/01/06    1.11  K.Kiriu          E_本稼動_13456対応
  *  2019/02/19    1.12  Y.Sasaki         E_本稼動_15349対応
  *  2020/10/28    1.13  Y.Sasaki         E_本稼動_16410,E_本稼動_16293対応
+ *  2020/12/14    1.14  Y.Sasaki         E_本稼動_16642対応
  *****************************************************************************************/
 --
   -- BM情報分岐取得
@@ -298,6 +301,12 @@ AS
   -- 仕入先無効日チェック
   FUNCTION chk_vendor_inbalid(
     iv_vendor_code                  IN  VARCHAR2          -- 送付先コード
+  ) RETURN VARCHAR2;
+/* E_本稼動_16293 Add END   */
+/* E_本稼動_16293 Add START */
+  -- メールアドレスチェック
+  FUNCTION chk_email_address(
+    iv_email_address                IN  VARCHAR2          -- Eメールアドレス
   ) RETURN VARCHAR2;
 /* E_本稼動_16293 Add END   */
 --
