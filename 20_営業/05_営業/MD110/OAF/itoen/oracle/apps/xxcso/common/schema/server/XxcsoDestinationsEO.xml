@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE Entity SYSTEM "jbo_03_01.dtd">
 
 <Entity
@@ -8,7 +8,7 @@
    AliasName="XxcsoDestinationsEO"
    BindingStyle="Oracle"
    UseGlueCode="false"
-   CodeGenFlag="4"
+   CodeGenFlag="5"
    RowClass="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEOImpl"
    DefClass="oracle.apps.fnd.framework.server.OAEntityDefImpl"
    CollClass="oracle.apps.fnd.framework.server.OAEntityCache" >
@@ -325,6 +325,15 @@
          <Attr Name="_DisplaySize" Value="1" />
       </DesignTime>
    </Attribute>
+   <Attribute
+      Name="SiteEmailAddress"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnName="SITE_EMAIL_ADDRESS"
+      ColumnType="VARCHAR2"
+      SQLType="VARCHAR"
+      TableName="XXCSO_DESTINATIONS" >
+   </Attribute>
    <AccessorAttribute
       Name="XxcsoContractManagementsEO"
       Association="itoen.oracle.apps.xxcso.common.schema.server.XxcsoContractMngDestAO"
@@ -340,6 +349,28 @@
       Type="itoen.oracle.apps.xxcso.common.schema.server.XxcsoBankAccountsEOImpl" >
    </AccessorAttribute>
    <Key
+      Name="SysC00180583" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.CreationDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00180583" />
+         <Attr Name="_checkCondition" Value="&#34;CREATION_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00180584" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00180584" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
       Name="SysC00191509" >
       <AttrArray Name="Attributes">
          <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.CreationDate" />
@@ -347,6 +378,27 @@
       <DesignTime>
          <Attr Name="_DBObjectName" Value="SYS_C00191509" />
          <Attr Name="_checkCondition" Value="&#34;CREATION_DATE&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="XxcsoDestinationsPk" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.DeliveryId" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="XXCSO_DESTINATIONS_PK" />
+         <Attr Name="_isPrimary" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
+      Name="SysC00191511" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.LastUpdateDate" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00191511" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
          <Attr Name="_isCheck" Value="true" />
       </DesignTime>
    </Key>
@@ -362,6 +414,17 @@
       </DesignTime>
    </Key>
    <Key
+      Name="SysC00191510" >
+      <AttrArray Name="Attributes">
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.LastUpdatedBy" />
+      </AttrArray>
+      <DesignTime>
+         <Attr Name="_DBObjectName" Value="SYS_C00191510" />
+         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
+         <Attr Name="_isCheck" Value="true" />
+      </DesignTime>
+   </Key>
+   <Key
       Name="SysC00180585" >
       <AttrArray Name="Attributes">
          <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.LastUpdateDate" />
@@ -369,28 +432,6 @@
       <DesignTime>
          <Attr Name="_DBObjectName" Value="SYS_C00180585" />
          <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00180583" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.CreationDate" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00180583" />
-         <Attr Name="_checkCondition" Value="&#34;CREATION_DATE&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00180582" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.CreatedBy" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00180582" />
-         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
          <Attr Name="_isCheck" Value="true" />
       </DesignTime>
    </Key>
@@ -417,45 +458,13 @@
       </DesignTime>
    </Key>
    <Key
-      Name="SysC00180584" >
+      Name="SysC00180582" >
       <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.LastUpdatedBy" />
+         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.CreatedBy" />
       </AttrArray>
       <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00180584" />
-         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="XxcsoDestinationsPk" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.DeliveryId" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="XXCSO_DESTINATIONS_PK" />
-         <Attr Name="_isPrimary" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00191510" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.LastUpdatedBy" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00191510" />
-         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATED_BY&#34; IS NOT NULL" />
-         <Attr Name="_isCheck" Value="true" />
-      </DesignTime>
-   </Key>
-   <Key
-      Name="SysC00191511" >
-      <AttrArray Name="Attributes">
-         <Item Value="itoen.oracle.apps.xxcso.common.schema.server.XxcsoDestinationsEO.LastUpdateDate" />
-      </AttrArray>
-      <DesignTime>
-         <Attr Name="_DBObjectName" Value="SYS_C00191511" />
-         <Attr Name="_checkCondition" Value="&#34;LAST_UPDATE_DATE&#34; IS NOT NULL" />
+         <Attr Name="_DBObjectName" Value="SYS_C00180582" />
+         <Attr Name="_checkCondition" Value="&#34;CREATED_BY&#34; IS NOT NULL" />
          <Attr Name="_isCheck" Value="true" />
       </DesignTime>
    </Key>
