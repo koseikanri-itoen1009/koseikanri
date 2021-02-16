@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_destinations
  * Description     : 送付先テーブル
  * MD.070          : 
- * Version         : 1.3
+ * Version         : 1.4
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -14,6 +14,7 @@
  *  2009/03/04    1.1  S.Yoda        桁数変更（郵便番号、都道府県、市区）
  *  2009/10/20    1.2  D.Abe         仕入先番号を追加
  *  2020/08/21    1.3  N.Koyama      E_本稼動_15904対応(BM税区分追加)
+ *  2020/12/21    1.4  Y.Sasaki      E_本稼動_16642対応(仕入先サイトメールアドレス追加)
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_destinations
 (
@@ -45,6 +46,9 @@ CREATE TABLE xxcso.xxcso_destinations
 /* N.Koyama Ver1.3 Add Start */
   bm_tax_kbn                      VARCHAR2(1),
 /* N.Koyama Ver1.3 Add End */
+/* Y.Sasaki Ver1.4 Add Start */
+  site_email_address              VARCHAR2(150),
+/* Y.Sasaki Ver1.4 Add End */
   CONSTRAINT xxcso_destinations_pk PRIMARY KEY ( delivery_id )
   USING INDEX TABLESPACE xxidx2
 )
@@ -81,3 +85,7 @@ COMMENT ON COLUMN xxcso.xxcso_destinations.vendor_number                        
 /* N.Koyama Ver1.3 Add Start */
 COMMENT ON COLUMN xxcso.xxcso_destinations.bm_tax_kbn                            IS 'ＢＭ税区分';
 /* N.Koyama Ver1.3 Add End */
+/* Y.Sasaki Ver1.4 Add Start */
+COMMENT ON COLUMN XXCSO.XXCSO_DESTINATIONS.SITE_EMAIL_ADDRESS        IS '仕入先サイトEメールアドレス';
+/* Y.Sasaki Ver1.4 Add End */
+
