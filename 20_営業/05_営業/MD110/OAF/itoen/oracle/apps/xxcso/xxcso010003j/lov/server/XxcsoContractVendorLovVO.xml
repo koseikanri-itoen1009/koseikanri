@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -55,6 +55,7 @@ SELECT  pv.segment1                          AS vendor_number
            ,pvs.attribute6
            ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
           )                                                           AS bm_tax_kbn_nm
+       ,pvs.attribute7                                                AS site_email_address
 FROM    po_vendors            pv
        ,po_vendor_sites       pvs
        ,xxcso_bank_accts_v    xbav
@@ -418,6 +419,19 @@ WHERE   pv.vendor_type_lookup_code    = 'VD'
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="SiteEmailAddress"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="SITE_EMAIL_ADDRESS"
+      Expression="SITE_EMAIL_ADDRESS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

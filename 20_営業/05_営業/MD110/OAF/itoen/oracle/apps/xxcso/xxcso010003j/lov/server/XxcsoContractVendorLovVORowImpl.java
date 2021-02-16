@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxcsoContractVendorLovVORowImpl
 * 概要説明   : 仕入先(送付先)情報取得LOVビュー行オブジェクトクラス
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2009-01-27 1.0  SCS小川浩    新規作成
 * 2020-08-21 1.1  SCSK佐々木大和[E_本稼動_15904]税抜きでの自販機BM計算について
+* 2020-12-14 1.2  SCSK佐々木大和[E_本稼動_16642]送付先コードに紐付くメールアドレスについて
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.lov.server;
@@ -52,6 +53,8 @@ public class XxcsoContractVendorLovVORowImpl extends OAViewRowImpl
   protected static final int BANKACCOUNTTYPENAME = 23;
   protected static final int BMTAXKBN = 24;
   protected static final int BMTAXKBNNM = 25;
+  protected static final int SITEEMAILADDRESS = 26;
+  protected static final int SITEMAILADDRESS = 10;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -497,6 +500,8 @@ public class XxcsoContractVendorLovVORowImpl extends OAViewRowImpl
         return getBmTaxKbn();
       case BMTAXKBNNM:
         return getBmTaxKbnNm();
+      case SITEEMAILADDRESS:
+        return getSiteEmailAddress();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -584,6 +589,9 @@ public class XxcsoContractVendorLovVORowImpl extends OAViewRowImpl
         return;
       case BMTAXKBNNM:
         setBmTaxKbnNm((String)value);
+        return;
+      case SITEEMAILADDRESS:
+        setSiteEmailAddress((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -679,5 +687,41 @@ public class XxcsoContractVendorLovVORowImpl extends OAViewRowImpl
   public void setBmTaxKbnNm(String value)
   {
     setAttributeInternal(BMTAXKBNNM, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute SiteMailAddress
+   */
+  public String getSiteMailAddress()
+  {
+    return (String)getAttributeInternal(SITEMAILADDRESS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute SiteMailAddress
+   */
+  public void setSiteMailAddress(String value)
+  {
+    setAttributeInternal(SITEMAILADDRESS, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute SiteEmailAddress
+   */
+  public String getSiteEmailAddress()
+  {
+    return (String)getAttributeInternal(SITEEMAILADDRESS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute SiteEmailAddress
+   */
+  public void setSiteEmailAddress(String value)
+  {
+    setAttributeInternal(SITEEMAILADDRESS, value);
   }
 }
