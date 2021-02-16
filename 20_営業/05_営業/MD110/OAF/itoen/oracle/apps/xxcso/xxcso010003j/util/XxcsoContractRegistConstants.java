@@ -1,7 +1,7 @@
 /*==============================================================================
 * ファイル名 : XxcsoContractRegistConstants
 * 概要説明   : 自販機設置契約情報登録共通固定値クラス
-* バージョン : 2.3
+* バージョン : 2.4
 *==============================================================================
 * 修正履歴
 * 日付       Ver. 担当者         修正内容
@@ -22,6 +22,7 @@
 * 2015-11-30 2.1  SCSK山下翔太   [E_本稼動_13345]オーナ変更マスタ連携エラー対応
 * 2016-01-06 2.2  SCSK桐生和幸   [E_本稼動_13456]自販機管理システム代替対応
 * 2019-02-19 2.3  SCSK佐々木大和 [E_本稼動_15349]仕入先CD制御対応
+* 2020-12-14 2.4  SCSK佐々木大和 [E_本稼動_16642]送付先コードに紐付くメールアドレスについて
 *==============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -398,6 +399,10 @@ public class XxcsoContractRegistConstants
     TOKEN_VALUE_ADDRESS_2               = "送付先住所　住所２(全角)";
   public static final String
     TOKEN_VALUE_ADDRESS_LINES_PHONETIC  = "送付先電話番号(00-0000-0000)";
+// [E_本稼動_16642] Add Start
+  public static final String
+    TOKEN_VALUE_EMAIL_ADDRESS           = "送付先メールアドレス(xxx@xxx)";
+// [E_本稼動_16642] Add End
   public static final String
     TOKEN_VALUE_BANK_NUMBER             = "金融機関名";
   public static final String
@@ -492,6 +497,10 @@ public class XxcsoContractRegistConstants
   public static final String
     TOKEN_VALUE_SUPPLIER_CHANGE_CHK     = "送付先情報変更チェック";
 // V2.3 Y.Sasaki Added END
+// [E_本稼動_16642] Add Start
+  public static final String
+    TOKEN_VALUE_EMAIL_ADDRESS_CHK       = "メールアドレス形式チェック";
+// [E_本稼動_16642] Add End
   // PDF出力時付加文言
   public static final String
     TOKEN_VALUE_PDF_OUT                 = "PDF出力";

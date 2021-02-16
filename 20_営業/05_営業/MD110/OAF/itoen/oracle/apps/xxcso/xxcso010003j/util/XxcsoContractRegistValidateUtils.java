@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.17
+* バージョン : 1.18
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者           修正内容
@@ -27,6 +27,7 @@
 * 2020-08-21 1.16 SCSK佐々木大和   [E_本稼動_15904]税抜き自販機BM計算について
 * 2020-10-28 1.17 SCSK佐々木大和   [E_本稼動_16293]SP・契約書画面からの仕入先コードの選択について
 *                                  [E_本稼動_16410]契約書画面からの銀行口座変更について
+* 2020-12-14 1.18 SCSK佐々木大和   [E_本稼動_16642]送付先コードに紐付くメールアドレスについて
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -1000,6 +1001,26 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
+// [E_本稼動_16642] Add Start
+    // ///////////////////////////////////
+    // 送付先メールアドレス
+    // ///////////////////////////////////
+    if ( fixedFrag ) {
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_EMAIL_ADDRESS;
+
+      if ( ! isEmailAddress(txn, bm1DestVoRow.getSiteEmailAddress()) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00914
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+            );
+        errorList.add(error);
+      }
+    }
+//  [E_本稼動_16642] Add End
 // 2010-03-01 [E_本稼動_01678] Add Start
     // 支払方法、明細書が現金支払以外の場合
     if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm1DestVoRow.getBellingDetailsDiv()))
@@ -1646,7 +1667,27 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
+// [E_本稼動_16642] Add Start
+    // ///////////////////////////////////
+    // 送付先メールアドレス
+    // ///////////////////////////////////
+    if ( fixedFrag ) {
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_EMAIL_ADDRESS;
 
+      if ( ! isEmailAddress(txn, bm2DestVoRow.getSiteEmailAddress()) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00914
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+            );
+        errorList.add(error);
+      }
+    }
+//  [E_本稼動_16642] Add End
+// 2010-03-01 [E_本稼動_01678] Add Start
 // 2010-03-01 [E_本稼動_01678] Add Start
     // 支払方法、明細書が現金支払以外の場合
     if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm2DestVoRow.getBellingDetailsDiv()))
@@ -2293,7 +2334,27 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
+// [E_本稼動_16642] Add Start
+    // ///////////////////////////////////
+    // 送付先メールアドレス
+    // ///////////////////////////////////
+    if ( fixedFrag ) {
+      token1 = tokenMain
+              + XxcsoContractRegistConstants.TOKEN_VALUE_EMAIL_ADDRESS;
 
+      if ( ! isEmailAddress(txn, bm3DestVoRow.getSiteEmailAddress()) )
+      {
+        OAException error
+          = XxcsoMessage.createErrorMessage(
+              XxcsoConstants.APP_XXCSO1_00914
+             ,XxcsoConstants.TOKEN_REGION
+             ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+            );
+        errorList.add(error);
+      }
+    }
+//  [E_本稼動_16642] Add End
+// 2010-03-01 [E_本稼動_01678] Add Start
 // 2010-03-01 [E_本稼動_01678] Add Start
     // 支払方法、明細書が現金支払以外の場合
     if (! XxcsoContractRegistConstants.BM_PAYMENT_TYPE4.equals(bm3DestVoRow.getBellingDetailsDiv()))
@@ -6165,4 +6226,74 @@ public class XxcsoContractRegistValidateUtils
     return errorList;
   }
 // [E_本稼動_16293] Add End
+// [E_本稼動_16642] Add Start
+  /*****************************************************************************
+   * メールアドレスの検証（共通関数）
+   * @param txn                 OADBTransactionインスタンス
+   * @param value               チェック対象の値
+   * @return boolean            検証結果
+   *****************************************************************************
+   */
+  private static boolean isEmailAddress(
+    OADBTransaction   txn
+   ,String            value
+  )
+  {
+    OracleCallableStatement stmt = null;
+    boolean returnValue = true;
+
+    if ( value == null || "".equals(value.trim()) )
+    {
+      return true;
+    }
+
+    try
+    {
+      StringBuffer sql = new StringBuffer(100);
+      sql.append("BEGIN");
+      sql.append("  :1 := xxcso_010003j_pkg.chk_email_address(:2);");
+      sql.append("END;");
+
+      stmt
+        = (OracleCallableStatement)
+            txn.createCallableStatement(sql.toString(), 0);
+
+      stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+      stmt.setString(2, value);
+
+      stmt.execute();
+
+      String returnString = stmt.getString(1);
+      // チェック結果が正常以外の場合
+      if ( ! "0".equals(returnString) )
+      {
+        returnValue = false;
+      }
+    }
+    catch ( SQLException e )
+    {
+      XxcsoUtils.unexpected(txn, e);
+      throw
+        XxcsoMessage.createSqlErrorMessage(
+          e
+         ,XxcsoContractRegistConstants.TOKEN_VALUE_EMAIL_ADDRESS_CHK
+        );
+    }
+    finally
+    {
+      try
+      {
+        if ( stmt != null )
+        {
+          stmt.close();
+        }
+      }
+      catch ( SQLException e )
+      {
+        XxcsoUtils.unexpected(txn, e);
+      }
+    }
+    return returnValue;
+ }
+// 2009-04-27 [ST障害T1_0708] Add End
 }
