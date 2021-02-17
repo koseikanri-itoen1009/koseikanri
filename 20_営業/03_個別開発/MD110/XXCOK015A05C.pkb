@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A05C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用データファイル作成
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/11/25    1.0   N.Abe            新規作成
  *  2020/12/14    1.1   N.Abe            E_本稼動_16841
+ *  2021/02/16    1.2   N.Abe            E_本稼動_16843
  *
  *****************************************************************************************/
 --
@@ -164,7 +165,11 @@ AS
   )
   IS
     -- 支払あり
-    SELECT  xiwh.set_code               AS  set_code
+-- Ver1.2 N.Abe MOD START
+--    SELECT  xiwh.set_code               AS  set_code
+    SELECT  /*+ LEADING(xiwh xiwl) USE_HASH(xiwl) */
+            xiwh.set_code               AS  set_code
+-- Ver1.2 N.Abe MOD END
            ,xiwh.cust_name              AS  cust_name
            ,NULL                        AS  office
            ,xiwh.dest_post_code         AS  dest_post_code
@@ -180,7 +185,10 @@ AS
            ,xiwh.send_tel               AS  send_tel
            ,xiwh.num                    AS  num
            ,xiwh.vendor_code            AS  vendor_code
-           ,NULL                        AS  subject
+-- Ver1.2 N.Abe MOD START
+--           ,NULL                        AS  subject
+           ,xiwh.cust_name              AS  subject
+-- Ver1.2 N.Abe MOD END
            ,xiwh.payment_date           AS  payment_date
            ,CASE
               WHEN xiwh.notifi_amt < 0 THEN
@@ -238,10 +246,17 @@ AS
      AND   xiwl.tax_div(+)    = it_tax_div          -- 販売明細が存在しない場合も含む（外部結合）
      AND   xiwh.target_div    = it_target_div
      AND   xiwl.target_div(+) = it_target_div       -- 販売明細が存在しない場合も含む（外部結合）
+-- Ver1.2 N.Abe ADD START
+     AND   xiwl.tax_div(+)    = xiwh.tax_div          -- 販売明細が存在しない場合も含む（外部結合）
+     AND   xiwl.target_div(+) = xiwh.target_div       -- 販売明細が存在しない場合も含む（外部結合）
+-- Ver1.2 N.Abe ADD END
      AND   xiwh.payment_amt   > 0                   -- 支払あり
     UNION ALL
     -- 支払なし 且つ 販売明細が存在する場合
-    SELECT  
+-- Ver1.2 N.Abe MOD START
+--    SELECT
+    SELECT  /*+ LEADING(xiwh xiwl) USE_NL(xiwl) INDEX(xiwl XXCOK_INFO_WORK_LINE_N01) */
+-- Ver1.2 N.Abe MOD END
             CASE
               WHEN it_tax_div = '1' THEN '0'
               WHEN it_tax_div = '2' THEN '2'
@@ -261,7 +276,10 @@ AS
            ,xiwh.send_tel               AS  send_tel
            ,xiwh.num                    AS  num
            ,xiwh.vendor_code            AS  vendor_code
-           ,NULL                        AS  subject
+-- Ver1.2 N.Abe MOD START
+--           ,NULL                        AS  subject
+           ,xiwh.cust_name              AS  subject
+-- Ver1.2 N.Abe MOD END
            ,xiwh.payment_date           AS  payment_date
            ,0                           AS  notifi_amt
            ,xiwh.total_amt_no_tax_10    AS  total_amt_no_tax_10
@@ -302,9 +320,14 @@ AS
            ,xxcok_info_work_line     xiwl
      WHERE xiwh.vendor_code   = xiwl.vendor_code    -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
      AND   xiwh.tax_div       = it_tax_div
-     AND   xiwl.tax_div       = it_tax_div          -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
+-- Ver1.2 N.Abe MOD START
+--     AND   xiwl.tax_div       = it_tax_div          -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
+--     AND   xiwh.target_div    = it_target_div
+--     AND   xiwl.target_div    = it_target_div       -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
      AND   xiwh.target_div    = it_target_div
-     AND   xiwl.target_div    = it_target_div       -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
+     AND   xiwl.tax_div       = xiwh.tax_div          -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
+     AND   xiwl.target_div    = xiwh.target_div       -- 販売明細(ﾜｰｸ明細)が存在する場合（等結合）
+-- Ver1.2 N.Abe MOD END
      AND   xiwh.payment_amt  <= 0                   -- 支払なし
      ORDER BY
            vendor_code
@@ -345,11 +368,17 @@ AS
            ,xiwc.inst_dest              AS  cust_name
            ,xiwc.calc_type              AS  calc_type
            ,xiwc.cust_code              AS  cust_code
+-- Ver1.2 N.Abe MOD START
+           ,xiwc.calc_sort              AS  calc_sort
+-- Ver1.2 N.Abe MOD END
      FROM   xxcok_info_work_custom   xiwc
      WHERE  xiwc.vendor_code    = it_supplier_code
      AND    xiwc.tax_div        = it_tax_div
      AND    exists (
-              SELECT 1
+-- Ver1.2 N.Abe MOD START
+--              SELECT 1
+              SELECT /*+ use_nl(xiwh) */ 1
+-- Ver1.2 N.Abe MOD END
               FROM   xxcok_info_work_header   xiwh
               WHERE  xiwh.vendor_code = xiwc.vendor_code
               AND    xiwh.tax_div     = xiwc.tax_div
@@ -361,6 +390,14 @@ AS
              ,xiwc.calc_sort
              ,xiwc.bottle_code
              ,xiwc.salling_price
+-- Ver1.2 N.Abe MOD START
+             ,CASE
+                WHEN xiwc.calc_sort = '2.7' THEN
+                  TO_NUMBER(xiwc.sell_bottle)
+                ELSE
+                  NULL
+              END
+-- Ver1.2 N.Abe MOD END
              ,xiwc.rebate_rate
              ,xiwc.rebate_amt
 -- Ver1.1 N.Abe MOD END
@@ -664,29 +701,31 @@ AS
           ov_retcode := cv_status_warn;
         END IF;
 --
-        -- おもて備考
-        lb_chk_return := xxccp_common_pkg.chk_double_byte(
-                           iv_chk_char  => it_head_rec.remarks
-                         );
-        IF ( lb_chk_return = FALSE ) THEN
---
-          lv_outmsg       := xxccp_common_pkg.get_msg(
-                               iv_application   => cv_appli_short_name_xxcok
-                              ,iv_name          => cv_msg_xxcok1_10769
-                              ,iv_token_name1   => cv_tkn_col
-                              ,iv_token_value1  => gt_head_item(45)
-                              ,iv_token_name2   => cv_tkn_vendor_code
-                              ,iv_token_value2  => it_head_rec.vendor_code
-                              ,iv_token_name3   => cv_tkn_value
-                              ,iv_token_value3  => it_head_rec.remarks
-                             );
-          lb_msg_return   := xxcok_common_pkg.put_message_f(
-                               in_which         => FND_FILE.LOG
-                              ,iv_message       => lv_outmsg
-                              ,in_new_line      => 0
-                             );
-          ov_retcode := cv_status_warn;
-        END IF;
+-- Ver1.2 N.Abe DEL START
+--        -- おもて備考
+--        lb_chk_return := xxccp_common_pkg.chk_double_byte(
+--                           iv_chk_char  => it_head_rec.remarks
+--                         );
+--        IF ( lb_chk_return = FALSE ) THEN
+----
+--          lv_outmsg       := xxccp_common_pkg.get_msg(
+--                               iv_application   => cv_appli_short_name_xxcok
+--                              ,iv_name          => cv_msg_xxcok1_10769
+--                              ,iv_token_name1   => cv_tkn_col
+--                              ,iv_token_value1  => gt_head_item(45)
+--                              ,iv_token_name2   => cv_tkn_vendor_code
+--                              ,iv_token_value2  => it_head_rec.vendor_code
+--                              ,iv_token_name3   => cv_tkn_value
+--                              ,iv_token_value3  => it_head_rec.remarks
+--                             );
+--          lb_msg_return   := xxcok_common_pkg.put_message_f(
+--                               in_which         => FND_FILE.LOG
+--                              ,iv_message       => lv_outmsg
+--                              ,in_new_line      => 0
+--                             );
+--          ov_retcode := cv_status_warn;
+--        END IF;
+-- Ver1.2 N.Abe DEL END
 --
         -- 銀行名
         lb_chk_return := xxccp_common_pkg.chk_double_byte(
@@ -800,8 +839,12 @@ AS
 --
     -- カスタム明細
     IF (iv_h_c = 'C') THEN
-      -- 計算条件が売価別条件以外の場合
-      IF ( NVL( it_cust_rec.calc_type, '0' ) <> '10' ) THEN
+      -- 計算条件が売価別条件、一律条件明細行以外の場合
+-- Ver1.2 N.Abe MOD START
+--      IF ( NVL( it_cust_rec.calc_type, '0' ) <> '10' ) THEN
+      IF    ( ( NVL( it_cust_rec.calc_type, '0' ) <> '10' )
+        AND   ( NVL( it_cust_rec.calc_sort, '0' ) <> '2.7' ) ) THEN
+-- Ver1.2 N.Abe MOD END
         -- 売価／容器
         lb_chk_return := xxccp_common_pkg.chk_double_byte(
                            iv_chk_char  => it_cust_rec.custom2
@@ -1850,7 +1893,11 @@ AS
                          END
                       , 0)
             END                                   AS  payment_amt             -- お支払金額　税込
-           ,SUBSTR( gv_remarks, 1, 500 )          AS  remarks                 -- おもて備考
+-- Ver1.2 N.Abe MOD START
+--           ,SUBSTR( gv_remarks, 1, 500 )          AS  remarks                 -- おもて備考
+           ,SUBSTR( '"' || gv_remarks || '"', 1, 500 )
+                                                  AS  remarks                 -- おもて備考
+-- Ver1.2 N.Abe MOD END
            ,abb.bank_number                       AS  bank_code               -- 銀行コード
            ,abb.bank_name                         AS  bank_name               -- 銀行名
            ,abb.bank_num                          AS  branch_code             -- 支店コード
@@ -2029,6 +2076,47 @@ AS
     lv_retcode      VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
     lv_errmsg       VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
     lv_outmsg       VARCHAR2(5000) DEFAULT NULL;              -- 出力用メッセージ
+-- Ver1.2 N.Abe ADD START
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    -- 定額のみデータ取得
+    CURSOR l_fixed_amt_cur
+    IS
+      SELECT xiwc.rowid       AS  row_id
+            ,xiwc.vendor_code AS  vendor_code
+            ,xiwc.cust_code   AS  cust_code
+      FROM   xxcok_info_work_custom xiwc
+      WHERE  xiwc.calc_type  = '40'                 -- 40:定額
+      AND    xiwc.tax_div    = iv_tax_div
+      AND    xiwc.target_div = iv_target_div
+      AND NOT EXISTS (SELECT 'X'
+                      FROM   xxcok_info_work_custom xiwc2
+                      WHERE  xiwc2.vendor_code = xiwc.vendor_code
+                      AND    xiwc2.cust_code = xiwc.cust_code
+                      AND    xiwc2.calc_type IN ('10','20','30')
+                     )
+   ;
+--
+    -- 電気代のみデータ取得
+    CURSOR l_electric_cur
+    IS
+      SELECT xiwc.rowid       AS  row_id
+            ,xiwc.vendor_code AS  vendor_code
+            ,xiwc.cust_code   AS  cust_code
+      FROM   xxcok_info_work_custom xiwc
+      WHERE  xiwc.calc_type  = '50'                 -- 50:電気代
+      AND    xiwc.tax_div    = iv_tax_div
+      AND    xiwc.target_div = iv_target_div
+      AND NOT EXISTS (SELECT 'X'
+                      FROM   xxcok_info_work_custom xiwc2
+                      WHERE  xiwc2.vendor_code = xiwc.vendor_code
+                      AND    xiwc2.cust_code = xiwc.cust_code
+                      AND    xiwc2.calc_type IN ('10','20','30','40')
+                     )
+   ;
+
+-- Ver1.2 N.Abe ADD END
     -- ===============================================
     -- ローカル例外
     -- ===============================================
@@ -2284,6 +2372,398 @@ AS
     -- 登録件数（成功件数）
     gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
 --
+-- Ver1.2 N.Abe ADD START
+    -- ===============================================
+    -- カスタム明細情報登録（一律条件明細行）
+    -- ===============================================
+    INSERT INTO xxcok_info_work_custom(
+      vendor_code                 -- 送付先コード
+     ,cust_code                   -- 顧客コード
+     ,inst_dest                   -- 設置場所
+     ,calc_type                   -- 計算条件
+     ,calc_sort                   -- 計算条件ソート順
+     ,sell_bottle                 -- 売価／容器
+     ,sales_qty                   -- 販売本数
+     ,sales_tax_amt               -- 販売金額（税込）
+     ,sales_amt                   -- 販売金額（税抜）
+     ,contract                    -- ご契約内容
+     ,sales_fee                   -- 販売手数料（税抜）
+     ,tax_amt                     -- 消費税
+     ,sales_tax_fee               -- 販売手数料（税込）
+     ,bottle_code                 -- 容器区分コード
+     ,salling_price               -- 売価金額
+     ,rebate_rate                 -- 割戻率
+     ,rebate_amt                  -- 割戻額
+     ,tax_code                    -- 税コード
+     ,tax_div                     -- 税区分
+     ,target_div                  -- 対象区分
+     ,created_by                  -- 作成者
+     ,creation_date               -- 作成日
+     ,last_updated_by             -- 最終更新者
+     ,last_update_date            -- 最終更新日
+     ,last_update_login           -- 最終更新ログイン
+     ,request_id                  -- 要求ID
+     ,program_application_id      -- コンカレント・プログラム・アプリケーションID
+     ,program_id                  -- コンカレント・プログラムID
+     ,program_update_date         -- プログラム更新日
+    )
+    SELECT  /*+ 
+                LEADING(xbb_1 xseh xsel flv)
+                USE_NL(xseh) USE_NL(xsel) USE_NL(flv)
+                */
+            xbb_1.supplier_code                 AS vendor_code            -- 01.送付先コード
+           ,xseh.ship_to_customer_code          AS cust_code              -- 02.顧客コード
+           ,SUBSTR( hp.party_name, 1, 50)       AS inst_dest              -- 03.設置場所
+           ,NULL                                AS calc_type              -- 04.計算条件
+           ,'2.7'                               AS calc_sort              -- 05.計算条件ソート順
+           ,xsel.dlv_unit_price                 AS sell_bottle            -- 06.売価／容器
+           ,SUM( xsel.dlv_qty)                  AS sales_qty              -- 07.販売本数
+           ,SUM( xsel.pure_amount ) + SUM( xsel.tax_amount )
+                                                AS sales_tax_amt          -- 08.販売金額（税込）
+           ,SUM( xsel.pure_amount )             AS sales_amt              -- 09.販売金額（税抜）
+           ,NULL                                AS contract               -- 10.ご契約内容
+           ,NULL                                AS sales_fee              -- 11.販売手数料（税抜）
+           ,NULL                                AS tax_amt                -- 12.消費税
+           ,NULL                                AS sales_tax_fee          -- 13.販売手数料（税込）
+           ,NULL                                AS bottle_code            -- 14.容器区分コード
+           ,NULL                                AS salling_price          -- 15.売価金額
+           ,NULL                                AS rebate_rate            -- 16.割戻率
+           ,NULL                                AS rebate_amt             -- 17.割戻額
+           ,NULL                                AS tax_code               -- 18.税コード
+           ,iv_tax_div                          AS tax_div                -- 19.税区分
+           ,SUBSTR( xbb_1.supplier_code, -1, 1) AS target_div             -- 20.対象区分
+           ,cn_created_by                       AS created_by             -- 21.作成者
+           ,SYSDATE                             AS creation_date          -- 22.作成日
+           ,cn_last_updated_by                  AS last_updated_by        -- 23.最終更新者
+           ,SYSDATE                             AS last_update_date       -- 24.最終更新日
+           ,cn_last_update_login                AS last_update_login      -- 25.最終更新ログイン
+           ,cn_request_id                       AS request_id             -- 26.要求id
+           ,cn_program_application_id           AS program_application_id -- 27.コンカレント・プログラム・アプリケーションid
+           ,cn_program_id                       AS program_id             -- 28.コンカレント・プログラムid
+           ,SYSDATE                             AS program_update_date    -- 29.プログラム更新日
+    FROM    xxcos_sales_exp_headers   xseh  -- 販売実績ヘッダー
+           ,xxcos_sales_exp_lines     xsel  -- 販売実績明細
+           ,hz_cust_accounts          hca   -- 顧客マスタ
+           ,hz_parties                hp    -- パーティー
+           ,fnd_lookup_values         flv   -- 販手計算対象売上区分
+           ,(
+             SELECT  /*+ 
+                        LEADING(xbb pv pvsa xcbs)
+                        INDEX(xbb xxcok_backmargin_balance_n05)
+                        USE_NL(pv) USE_NL(pvsa) use_nl(xcbs)
+                      */
+                     xbb.supplier_code
+                    ,xbb.cust_code
+                    ,xbb.closing_date
+             FROM    xxcok_backmargin_balance  xbb       --販手残高テーブル
+                    ,xxcok_cond_bm_support     xcbs  --条件別販手販協テーブル
+                    ,po_vendors                pv    --仕入先
+                    ,po_vendor_sites_all       pvsa  --仕入先サイト
+             WHERE   xcbs.base_code                    =  xbb.base_code
+             AND     xcbs.delivery_cust_code           =  xbb.cust_code
+             AND     xcbs.supplier_code                =  xbb.supplier_code
+             AND     xcbs.closing_date                 =  xbb.closing_date
+             AND     xcbs.expect_payment_date          =  xbb.expect_payment_date
+             AND     xcbs.calc_type                    =  '30'                 -- 30:一律条件
+             AND     xbb.supplier_code                 =  pv.segment1
+             AND     pv.vendor_id                      =  pvsa.vendor_id
+             AND     ( pvsa.inactive_date              >  gd_closing_date     --締め日
+                 OR    pvsa.inactive_date              IS NULL )
+             AND     pvsa.org_id                       =  gn_org_id
+             AND     pvsa.attribute4                   =  '1' --本振あり
+             AND     NVL( xbb.resv_flag, 'N' )         != 'Y'
+             AND     SUBSTR( xbb.supplier_code, -1, 1) =  iv_target_div
+             AND     xbb.closing_date                  <= gd_closing_date    --締め日
+             AND     xbb.expect_payment_date           <= gd_schedule_date   --支払予定日
+             AND     xbb.edi_interface_status          =  '0'
+             AND     xbb.fb_interface_status           =  '0'
+             AND     xbb.gl_interface_status           =  '0'
+             AND     NVL(xbb.payment_amt_tax,0)        =   0
+             AND     xbb.amt_fix_status                =  '1'
+             AND     iv_tax_div = CASE
+                                    WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
+                                    WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
+                                    END
+             GROUP BY xbb.supplier_code, xbb.cust_code, xbb.closing_date
+             ) xbb_1
+    WHERE   xseh.sales_exp_header_id    =  xsel.sales_exp_header_id
+    AND     hca.account_number          =  xseh.ship_to_customer_code
+    AND     hca.party_id                =  hp.party_id
+    AND     xsel.item_code              <> gv_elec_change_item_code       -- 電気料（変動）品目コード を除く
+    AND     xseh.ship_to_customer_code  =  xbb_1.cust_code
+    AND     xseh.delivery_date          >= LAST_DAY(ADD_MONTHS(xbb_1.closing_date, -1)) + 1 --月初日
+    AND     xseh.delivery_date          <= xbb_1.closing_date                               --月末日
+    AND     flv.lookup_code             =  xsel.sales_class
+    AND     flv.lookup_type             =  'XXCOK1_CALC_SALES_CLASS'      -- 参照タイプ：販手計算対象売上区分
+    AND     flv.language                =  USERENV( 'LANG' )
+    AND     flv.enabled_flag            =  'Y'
+    AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                              AND NVL( flv.end_date_active  , gd_process_date )
+    AND NOT EXISTS ( SELECT 'X'
+                     FROM fnd_lookup_values flv -- 非在庫品目
+                     WHERE flv.lookup_type         = 'XXCOS1_NO_INV_ITEM_CODE'  -- 参照タイプ：非在庫品目
+                       AND flv.lookup_code         = xsel.item_code
+                       AND flv.language            = USERENV( 'LANG' )
+                       AND flv.enabled_flag        = 'Y'
+                       AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                 AND NVL( flv.end_date_active  , gd_process_date )
+        )
+    GROUP BY
+            xseh.ship_to_customer_code
+           ,SUBSTR( hp.party_name, 1, 50)
+           ,xbb_1.supplier_code
+           ,SUBSTR( xbb_1.supplier_code, -1, 1)
+           ,xsel.dlv_unit_price
+    ;
+--
+    -- 登録件数（成功件数）
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    -- ===============================================
+    -- カスタム明細情報登録(一律条件小計行)
+    -- ===============================================
+    INSERT INTO xxcok_info_work_custom(
+      vendor_code                 -- 送付先コード
+     ,cust_code                   -- 顧客コード
+     ,inst_dest                   -- 設置場所
+     ,calc_sort                   -- 計算条件ソート順
+     ,sell_bottle                 -- 売価／容器
+     ,sales_qty                   -- 販売本数
+     ,sales_tax_amt               -- 販売金額（税込）
+     ,sales_amt                   -- 販売金額（税抜）
+     ,sales_fee                   -- 販売手数料（税抜）
+     ,tax_amt                     -- 消費税
+     ,sales_tax_fee               -- 販売手数料（税込）
+     ,tax_div                     -- 税区分
+     ,target_div                  -- 対象区分
+     ,created_by                  -- 作成者
+     ,creation_date               -- 作成日
+     ,last_updated_by             -- 最終更新者
+     ,last_update_date            -- 最終更新日
+     ,last_update_login           -- 最終更新ログイン
+     ,request_id                  -- 要求ID
+     ,program_application_id      -- コンカレント・プログラム・アプリケーションID
+     ,program_id                  -- コンカレント・プログラムID
+     ,program_update_date         -- プログラム更新日
+    )
+    SELECT  xiwc.vendor_code                AS  vendor_code             -- 送付先コード
+           ,xiwc.cust_code                  AS  cust_code               -- 顧客コード
+           ,xiwc.inst_dest                  AS  inst_dest               -- 設置場所
+           ,3.5                             AS  calc_sort               -- 計算条件ソート順
+           ,'小計'                          AS  sell_bottle             -- 売価／容器
+           ,SUM(NVL(xiwc.sales_qty,0))      AS  sales_qty               -- 販売本数
+           ,SUM(NVL(xiwc.sales_tax_amt,0))  AS  sales_tax_amt           -- 販売金額（税込）
+           ,SUM(NVL(xiwc.sales_amt,0))      AS  sales_amt               -- 販売金額（税抜）
+           ,SUM(NVL(xiwc.sales_fee,0))      AS  sales_fee               -- 販売手数料（税抜）
+           ,SUM(NVL(xiwc.tax_amt,0))        AS  tax_amt                 -- 消費税
+           ,SUM(NVL(xiwc.sales_tax_fee,0))  AS  sales_tax_fee           -- 販売手数料（税込）
+           ,xiwc.tax_div                    AS  tax_div                 -- 税区分
+           ,xiwc.target_div                 AS  target_div              -- 対象区分
+           ,cn_created_by                   AS  created_by              -- 作成者
+           ,SYSDATE                         AS  creation_date           -- 作成日
+           ,cn_last_updated_by              AS  last_updated_by         -- 最終更新者
+           ,SYSDATE                         AS  last_update_date        -- 最終更新日
+           ,cn_last_update_login            AS  last_update_login       -- 最終更新ログイン
+           ,cn_request_id                   AS  request_id              -- 要求ID
+           ,cn_program_application_id       AS  program_application_id  -- コンカレント・プログラム・ア
+           ,cn_program_id                   AS  program_id              -- コンカレント・プログラムID
+           ,SYSDATE                         AS  program_update_date     -- プログラム更新日
+    FROM    xxcok_info_work_custom  xiwc
+    WHERE   xiwc.calc_type  = '30'
+    AND     xiwc.tax_div    = iv_tax_div
+    AND     xiwc.target_div = iv_target_div
+    AND     xiwc.request_id = cn_request_id
+    GROUP BY
+            xiwc.vendor_code
+           ,xiwc.cust_code
+           ,xiwc.inst_dest
+           ,xiwc.tax_div
+           ,xiwc.target_div
+    ;
+--
+    -- 登録件数（成功件数）
+    gn_normal_cnt := gn_normal_cnt + SQL%ROWCOUNT;
+--
+    -- ===============================================
+    -- 定額のみデータ取得
+    -- ===============================================
+    <<fixed_amt_loop>>
+    FOR l_fixed_amt_rec IN l_fixed_amt_cur LOOP
+      -- ===============================================
+      -- 定額のみデータ更新
+      -- ===============================================
+      UPDATE xxcok_info_work_custom xiwc
+      SET    ( sales_qty
+--              ,sales_tax_amt
+              ,sales_amt
+             ) = (SELECT  /*+ 
+                              LEADING(xbb pv pvsa xcbs xseh xsel flv)
+                              INDEX(xbb XXCOK_BACKMARGIN_BALANCE_N06 )
+                              USE_NL(pv) USE_NL(pvsa)
+                              USE_NL(xseh) USE_NL(xsel) USE_NL(flv)
+                          */
+                          SUM( xsel.dlv_qty)                                AS sales_qty              -- 販売本数
+--                         ,SUM( xsel.pure_amount ) + SUM( xsel.tax_amount )  AS sales_tax_amt          -- 販売金額（税込）
+                         ,SUM( xsel.pure_amount )                           AS sales_amt              -- 販売金額（税抜）
+                  FROM    xxcos_sales_exp_headers   xseh  -- 販売実績ヘッダー
+                         ,xxcos_sales_exp_lines     xsel  -- 販売実績明細
+                         ,hz_cust_accounts          hca   -- 顧客マスタ
+                         ,hz_parties                hp    -- パーティー
+                         ,fnd_lookup_values         flv   -- 販手計算対象売上区分
+                         ,xxcok_backmargin_balance  xbb   -- 販手残高テーブル
+                         ,xxcok_cond_bm_support     xcbs  -- 条件別販手販協テーブル
+                         ,po_vendors                pv    -- 仕入先
+                         ,po_vendor_sites_all       pvsa  -- 仕入先サイト
+                  WHERE   xseh.sales_exp_header_id    =  xsel.sales_exp_header_id
+                  AND     hca.account_number          =  xseh.ship_to_customer_code
+                  AND     hca.party_id                =  hp.party_id
+                  AND     xsel.item_code              <> gv_elec_change_item_code       -- 電気料（変動）品目コード を除く
+                  AND     flv.lookup_code             =  xsel.sales_class
+                  AND     flv.lookup_type             =  'XXCOK1_CALC_SALES_CLASS'      -- 参照タイプ：販手計算対象売上区分
+                  AND     flv.language                =  USERENV( 'LANG' )
+                  AND     flv.enabled_flag            =  'Y'
+                  AND     gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                AND NVL( flv.end_date_active  , gd_process_date )
+                  AND NOT EXISTS ( SELECT 'X'
+                                   FROM fnd_lookup_values flv -- 非在庫品目
+                                   WHERE flv.lookup_type         = 'XXCOS1_NO_INV_ITEM_CODE'  -- 参照タイプ：非在庫品目
+                                     AND flv.lookup_code         = xsel.item_code
+                                     AND flv.language            = USERENV( 'LANG' )
+                                     AND flv.enabled_flag        = 'Y'
+                                     AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                               AND NVL( flv.end_date_active  , gd_process_date )
+                      )
+                  AND     xseh.ship_to_customer_code        =  xbb.cust_code
+                  AND     xseh.delivery_date                >= LAST_DAY(ADD_MONTHS(xbb.closing_date, -1)) + 1 --月初日
+                  AND     xseh.delivery_date                <= xbb.closing_date                     --月末日
+                  AND     xcbs.base_code                    =  xbb.base_code
+                  AND     xcbs.delivery_cust_code           =  xbb.cust_code
+                  AND     xcbs.supplier_code                =  xbb.supplier_code
+                  AND     xcbs.closing_date                 =  xbb.closing_date
+                  AND     xcbs.expect_payment_date          =  xbb.expect_payment_date
+                  AND     xcbs.calc_type                    =  '40'                 -- 40:定額
+                  AND     xbb.supplier_code                 =  pv.segment1
+                  AND     pv.vendor_id                      =  pvsa.vendor_id
+                  AND     ( pvsa.inactive_date              >  gd_closing_date     --締め日
+                      OR    pvsa.inactive_date              IS NULL )
+                  AND     pvsa.org_id                       =  gn_org_id
+                  AND     pvsa.attribute4                   =  '1' --本振あり
+                  AND     NVL( xbb.resv_flag, 'N' )         != 'Y'
+                  AND     SUBSTR( xbb.supplier_code, -1, 1) =  iv_target_div
+                  AND     xbb.closing_date                  <=  gd_closing_date    --締め日
+                  AND     xbb.expect_payment_date           <=  gd_schedule_date   --支払予定日
+                  AND     xbb.edi_interface_status          =  '0'
+                  AND     xbb.fb_interface_status           =  '0'
+                  AND     xbb.gl_interface_status           =  '0'
+                  AND     NVL(xbb.payment_amt_tax,0)        =  0
+                  AND     xbb.amt_fix_status                =  '1'
+                  AND     iv_tax_div                        =  CASE
+                                                                 WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
+                                                                 WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
+                                                               END
+                  AND     xbb.supplier_code                 = l_fixed_amt_rec.vendor_code
+                  AND     xbb.cust_code                     = l_fixed_amt_rec.cust_code
+                  GROUP BY
+                          xseh.ship_to_customer_code
+                         ,SUBSTR( hp.party_name, 1, 50)
+                         ,xbb.supplier_code
+                         ,SUBSTR( xbb.supplier_code, -1, 1)
+              )
+      WHERE xiwc.rowid       = l_fixed_amt_rec.row_id
+      ;
+--
+    END LOOP fixed_amt_loop;
+--
+    -- ===============================================
+    -- 電気代のみデータ取得
+    -- ===============================================
+    <<elctric_loop>>
+    FOR l_electric_rec IN l_electric_cur LOOP
+      -- ===============================================
+      -- 電気代データ更新
+      -- ===============================================
+      UPDATE xxcok_info_work_custom xiwc
+      SET    ( sales_qty
+              ,sales_tax_amt
+              ,sales_amt
+             ) = (SELECT  /*+ 
+                              LEADING(xbb pv pvsa xcbs xseh xsel flv)
+                              INDEX(xbb XXCOK_BACKMARGIN_BALANCE_N06 )
+                              USE_NL(pv) USE_NL(pvsa)
+                              USE_NL(xseh) USE_NL(xsel) USE_NL(flv)
+                          */
+                          SUM( xsel.dlv_qty)                                AS sales_qty              -- 販売本数
+                         ,SUM( xsel.pure_amount ) + SUM( xsel.tax_amount )  AS sales_tax_amt          -- 販売金額（税込）
+                         ,SUM( xsel.pure_amount )                           AS sales_amt              -- 販売金額（税抜）
+                  FROM    xxcos_sales_exp_headers   xseh  -- 販売実績ヘッダー
+                         ,xxcos_sales_exp_lines     xsel  -- 販売実績明細
+                         ,hz_cust_accounts          hca   -- 顧客マスタ
+                         ,hz_parties                hp    -- パーティー
+                         ,fnd_lookup_values         flv   -- 販手計算対象売上区分
+                         ,xxcok_backmargin_balance  xbb   -- 販手残高テーブル
+                         ,xxcok_cond_bm_support     xcbs  -- 条件別販手販協テーブル
+                         ,po_vendors                pv    -- 仕入先
+                         ,po_vendor_sites_all       pvsa  -- 仕入先サイト
+                  WHERE   xseh.sales_exp_header_id    =  xsel.sales_exp_header_id
+                  AND     hca.account_number          =  xseh.ship_to_customer_code
+                  AND     hca.party_id                =  hp.party_id
+                  AND     xsel.item_code              <> gv_elec_change_item_code       -- 電気料（変動）品目コード を除く
+                  AND     flv.lookup_code             =  xsel.sales_class
+                  AND     flv.lookup_type             =  'XXCOK1_CALC_SALES_CLASS'      -- 参照タイプ：販手計算対象売上区分
+                  AND     flv.language                =  USERENV( 'LANG' )
+                  AND     flv.enabled_flag            =  'Y'
+                  AND     gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                AND NVL( flv.end_date_active  , gd_process_date )
+                  AND NOT EXISTS ( SELECT 'X'
+                                   FROM fnd_lookup_values flv -- 非在庫品目
+                                   WHERE flv.lookup_type         = 'XXCOS1_NO_INV_ITEM_CODE'  -- 参照タイプ：非在庫品目
+                                     AND flv.lookup_code         = xsel.item_code
+                                     AND flv.language            = USERENV( 'LANG' )
+                                     AND flv.enabled_flag        = 'Y'
+                                     AND gd_process_date   BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                                               AND NVL( flv.end_date_active  , gd_process_date )
+                      )
+                  AND     xseh.ship_to_customer_code        =  xbb.cust_code
+                  AND     xseh.delivery_date                >= LAST_DAY(ADD_MONTHS(xbb.closing_date, -1)) + 1 --月初日
+                  AND     xseh.delivery_date                <= xbb.closing_date                     --月末日
+                  AND     xcbs.base_code                    =  xbb.base_code
+                  AND     xcbs.delivery_cust_code           =  xbb.cust_code
+                  AND     xcbs.supplier_code                =  xbb.supplier_code
+                  AND     xcbs.closing_date                 =  xbb.closing_date
+                  AND     xcbs.expect_payment_date          =  xbb.expect_payment_date
+                  AND     xcbs.calc_type                    =  '50'                 -- 50:電気代
+                  AND     xbb.supplier_code                 =  pv.segment1
+                  AND     pv.vendor_id                      =  pvsa.vendor_id
+                  AND     ( pvsa.inactive_date              >  gd_closing_date     --締め日
+                      OR    pvsa.inactive_date              IS NULL )
+                  AND     pvsa.org_id                       =  gn_org_id
+                  AND     pvsa.attribute4                   =  '1' --本振あり
+                  AND     NVL( xbb.resv_flag, 'N' )         != 'Y'
+                  AND     SUBSTR( xbb.supplier_code, -1, 1) =  iv_target_div
+                  AND     xbb.closing_date                  <=  gd_closing_date    --締め日
+                  AND     xbb.expect_payment_date           <=  gd_schedule_date   --支払予定日
+                  AND     xbb.edi_interface_status          =  '0'
+                  AND     xbb.fb_interface_status           =  '0'
+                  AND     xbb.gl_interface_status           =  '0'
+                  AND     NVL(xbb.payment_amt_tax,0)        =  0
+                  AND     xbb.amt_fix_status                =  '1'
+                  AND     iv_tax_div                        =  CASE
+                                                                 WHEN pvsa.attribute6 = '1'         THEN '2' -- 税込 ⇒ 内税
+                                                                 WHEN pvsa.attribute6 IN ('2', '3') THEN '1' -- 税抜、非課税 ⇒ 外税
+                                                               END
+                  AND     xbb.supplier_code                 = l_electric_rec.vendor_code
+                  AND     xbb.cust_code                     = l_electric_rec.cust_code
+                  GROUP BY
+                          xseh.ship_to_customer_code
+                         ,SUBSTR( hp.party_name, 1, 50)
+                         ,xbb.supplier_code
+                         ,SUBSTR( xbb.supplier_code, -1, 1)
+              )
+      WHERE xiwc.rowid       = l_electric_rec.row_id
+      ;
+--
+    END LOOP elctric_loop;
+-- Ver1.2 N.Abe ADD END
     -- ===============================================
     -- カスタム明細情報登録(合計行)
     -- ===============================================
@@ -2334,7 +2814,10 @@ AS
            ,cn_program_id                   AS  program_id              -- コンカレント・プログラムID
            ,SYSDATE                         AS  program_update_date     -- プログラム更新日
     FROM    xxcok_info_work_custom  xiwc
-    WHERE   xiwc.calc_sort  <> 2.5
+-- Ver1.2 N.Abe MOD START
+--    WHERE   xiwc.calc_sort  <> 2.5
+    WHERE   xiwc.calc_sort  NOT IN ( '2.5', '2.7', '3.5' )
+-- Ver1.2 N.Abe MOD END
     AND     xiwc.tax_div    = iv_tax_div
     AND     xiwc.target_div = iv_target_div
     AND     xiwc.request_id = cn_request_id
@@ -2438,7 +2921,11 @@ AS
            ,xsel.dlv_uom_code                   AS  unit_type               --  5.単位
            ,SUM( xsel.pure_amount )             AS  amt                     --  6.金額
            ,SUM( xsel.tax_amount )              AS  tax_amt                 --  7.消費税額
-           ,SUM( xsel.sale_amount )             AS  total_amt               --  8.合計金額
+-- Ver1.2 N.Abe MOD START
+--           ,SUM( xsel.sale_amount )             AS  total_amt               --  8.合計金額
+           ,SUM( xsel.pure_amount ) + SUM( xsel.tax_amount )
+                                                AS  total_amt               --  8.合計金額
+-- Ver1.2 N.Abe MOD END
            ,SUBSTR( hp.party_name, 1, 50)       AS  inst_dest               --  9.設置先名
            ,xseh.ship_to_customer_code          AS  cust_code               -- 10.顧客コード
            ,xsel.item_code                      AS  item_code               -- 11.品目コード
