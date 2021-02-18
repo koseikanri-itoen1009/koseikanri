@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_DLV_CHK_LIST
  * Description : 納品書チェックリスト帳票ワークテーブル
- * Version     : 1.6
+ * Version     : 1.7
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -19,6 +19,7 @@
  *  2016/03/08    1.4   SCSK S.Niki      [E_本稼動_13480] 納品書チェックリスト対応
  *  2018/08/23    1.5   SCSK E.Yazaki    [E_本稼動_15199] 納品書チェックリストへの伝票枚数
  *  2019/01/22    1.6   SCSK E.Yazaki    [E_本稼動_15535] 納品書チェックリストのソート順対応
+ *  2021/02/16    1.7   SCSK H.Futamura  [E_本稼動_16933]納品書チェックリストの出力表示変更
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
@@ -77,6 +78,9 @@ CREATE TABLE XXCOS.XXCOS_REP_DLV_CHK_LIST
 -- Ver.1.6 ADD Start
     BUSINESS_LOW_TYPE             VARCHAR2(2),                                 --業態（小分類）
 -- Ver.1.6 ADD End
+-- Ver.1.7 ADD Start
+    HHT_RECEIVED_FLAG             VARCHAR2(1),                                 --HHT受信フラグ
+-- Ver.1.7 ADD End
     CREATED_BY                    NUMBER(15,0)    NOT NULL,                    --作成者
     CREATION_DATE                 DATE            NOT NULL,                    --作成日
     LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,                    --最終更新者
@@ -144,6 +148,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATE_CLASS                     
 -- Ver.1.6 ADD Start
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.BUSINESS_LOW_TYPE               IS '業態（小分類）';
 -- Ver.1.6 ADD End
+-- Ver.1.7 ADD Start
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.HHT_RECEIVED_FLAG               IS 'HHT受信フラグ';
+-- Ver.1.7 ADD End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATED_BY                      IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.CREATION_DATE                   IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DLV_CHK_LIST.LAST_UPDATED_BY                 IS '最終更新者';
