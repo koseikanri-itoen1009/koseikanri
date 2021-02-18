@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2009/10/02    1.26  Marushita        本番障害1648対応
  *  2013/07/03    1.27  S.Niki           E_本稼動_10839対応（消費税増税対応）
  *  2019/05/14    1.28  N.Abe            E_本稼動_15601対応（生産_軽減税率対応）
+ *  2021/01/26    1.29  K.Tomie          E_本稼動_16931対応
  *
  *****************************************************************************************/
 --
@@ -2385,6 +2386,10 @@ AS
     || ' AND xpv.end_date_active >= TRUNC(itp.trans_date)' 
 */
     || ' AND hps.party_site_id = xoha.result_deliver_to_id' 
+-- 2021/01/26 Ver1.29 Add Start
+    || ' AND xp.start_date_active <= TRUNC(itp.trans_date)' 
+    || ' AND xp.end_date_active   >= TRUNC(itp.trans_date)' 
+-- 2021/01/26 Ver1.29 Add End
     || ' AND xp.party_id       = hps.party_id' 
     || ' AND hca.party_id      = hps.party_id' 
 -- 2008/12/17 v1.20 UPDATE END
