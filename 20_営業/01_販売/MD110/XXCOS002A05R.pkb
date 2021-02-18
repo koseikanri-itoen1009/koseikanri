@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2017/04/28    1.28  N.Watanabe       [E_本稼動_14220]HHTからのシステム時刻情報の取り込み障害対応
  *  2018/08/23    1.29  E.Yazaki         [E_本稼動_15199]伝票枚数追加
  *  2019/01/22    1.30  E.Yazaki         [E_本稼動_15535]納品書チェックリストのソート順対応
+ *  2021/02/16    1.31  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更
  *
  *****************************************************************************************/
 --
@@ -291,7 +292,20 @@ AS
   -- HHT受信フラグ
   cv_hht_received               CONSTANT VARCHAR2(1)   := 'Y';   -- HHT受信データ
 -- ************* Ver.1.26 ADD END   *************--
---
+-- 2021/02/16 Ver.1.31 Add Start
+  -- クイックコード（業態小分類特定マスタ）内容
+  cv_full_service_con_vd        CONSTANT VARCHAR2(2)   := '24';  -- フルサービス（消化）VD
+  cv_full_service_vd            CONSTANT VARCHAR2(2)   := '25';  -- フルサービスVD
+  cv_consume_vd                 CONSTANT VARCHAR2(2)   := '27';  -- 消化VD
+  -- HHT受信フラグではない
+  cv_no_hht_received            CONSTANT VARCHAR2(1)   := 'N';   -- HHT受信データ以外
+  -- VDの判断
+  cv_vd                         CONSTANT VARCHAR2(1)   := '2';   -- VD
+  cv_no_vd                      CONSTANT VARCHAR2(1)   := '1';   -- VD以外
+  -- 納品データの判断
+  cv_delivery                   CONSTANT VARCHAR2(1)   := '1';   -- 納品データ
+  cv_payment                    CONSTANT VARCHAR2(1)   := '2';   -- 入金データ
+-- 2021/02/16 Ver.1.31 Add End
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -531,6 +545,15 @@ AS
     lt_set_plice           xxcos_rep_dlv_chk_list.ploce%TYPE;               -- 売値
     lt_tax_amount          NUMBER;                                          -- 税金
     lt_tax_rate            xxcos_sales_exp_headers.tax_rate%TYPE;           -- 消費税税率
+    -- 2021/02/16 Ver.1.31 Add Start
+    lt_invoice_no_pre      xxcos_rep_dlv_chk_list.entry_number%TYPE;        -- 前回伝票番号
+    lt_party_num           xxcos_rep_dlv_chk_list.party_num%TYPE;           -- 前回顧客コード
+    lt_order_number        xxcos_rep_dlv_chk_list.order_number%TYPE;        -- 前回オーダーNo
+    lt_input_class         xxcos_rep_dlv_chk_list.input_class%TYPE;         -- 前回入力区分
+    lt_card_sale_class     xxcos_rep_dlv_chk_list.card_sale_class%TYPE;     -- 前回カード売り区分
+    lt_consumption_tax_class xxcos_sales_exp_headers.consumption_tax_class%TYPE; -- 前回消費税区分
+    lt_create_class        xxcos_rep_dlv_chk_list.create_class%TYPE;        -- 前回作成元区分
+    -- 2021/02/16 Ver.1.31 Add End
 --
     -- *** ローカル・カーソル ***
 -- ******************** 2009/06/05 Var.1.9 T.Tominaga MOD START  ******************************************
@@ -1138,6 +1161,9 @@ AS
 -- 2019/01/22 Ver.1.30 Add Start
         ,cuac.business_low_type                    AS business_low_type               -- 業態（小分類）
 -- 2019/01/22 Ver.1.30 Add End
+-- 2021/02/16 Ver.1.31 Add Start
+        ,infh.hht_received_flag                    AS hht_received_flag               -- HHT受信フラグ
+-- 2021/02/16 Ver.1.31 Add End
       FROM
          hz_cust_accounts         base          -- 顧客マスタ_拠点
         ,hz_cust_accounts         cust          -- 顧客マスタ_顧客
@@ -1282,6 +1308,9 @@ AS
                 ELSE 0
               END                             AS cash_card_sales_amt          -- 現金・カード販売金額
 -- ************* Ver.1.26 ADD END *************--
+-- 2021/02/16 Ver.1.31 ADD Start
+             ,seh.hht_received_flag           AS hht_received_flag            -- HHT受信フラグ
+-- 2021/02/16 Ver.1.31 ADD End
            FROM
               xxcos_sales_exp_headers   seh          -- 販売実績ヘッダテーブル
            WHERE
@@ -1316,6 +1345,9 @@ AS
              ,seh.consumption_tax_class              -- 消費税区分
              ,seh.invoice_class                      -- 伝票区分
              ,seh.create_class                       -- 作成元区分
+-- 2021/02/16 Ver.1.31 ADD Start
+             ,seh.hht_received_flag                  -- HHT受信フラグ
+-- 2021/02/16 Ver.1.31 ADD End
 -- **************** 2009/12/12 1.18 N.Maeda ADD START **************** --
 -- Ver1.28 DEL Start
 --             ,seh.hht_dlv_input_date                 -- HHT納品入力日時
@@ -1690,6 +1722,30 @@ AS
 --      AND disc.dlv_invoice_line_number = infd.dlv_invoice_line_number                -- 納品明細番号
 -- 2009/12/17 Ver.1.19 Del End
 -- **************** 2009/12/12 1.18 N.Maeda ADD  END  **************** --
+-- 2021/02/16 Ver.1.31 Add Start
+      ORDER BY DECODE(cuac.business_low_type, cv_full_service_con_vd, cv_vd, cv_full_service_vd, cv_vd, cv_consume_vd, cv_vd, cv_no_vd)
+              ,riv.group_code
+              ,riv.group_in_sequence
+              ,riv.employee_number
+              ,TO_CHAR(infh.hht_dlv_input_date,cv_fmt_time_default)
+              ,infh.ship_to_customer_code
+              ,infh.dlv_invoice_number
+              ,DECODE(infh.create_class, NULL, cv_payment, cv_delivery)
+              ,infh.order_invoice_number
+              ,infh.inspect_date
+              ,incl.meaning
+              ,infh.invoice_classification_code
+              ,infh.invoice_class
+              ,CASE gysm1.vd_gyotai
+                 WHEN  cv_yes  THEN cscl.meaning
+                 ELSE  NULL
+               END DESC
+              ,infh.results_employee_code
+              ,tacl.description
+              ,htcl.description
+              ,infd.dlv_invoice_line_number
+              ,infd.payment_class DESC
+-- 2021/02/16 Ver.1.31 Add End
       ;
 -- ******************** 2009/06/02 Var.1.9 T.Tominaga MOD END    ******************************************
 --
@@ -1723,6 +1779,15 @@ AS
     --==========================================================
     BEGIN
       ld_delivery_date  :=  TO_DATE(iv_delivery_date, cv_fmt_date_default);
+-- 2021/02/16 Ver.1.31 Add Start
+      lt_invoice_no_pre  :=  NULL;
+      lt_party_num       :=  NULL;
+      lt_order_number    :=  NULL;
+      lt_input_class     :=  NULL;
+      lt_card_sale_class :=  NULL;
+      lt_consumption_tax_class := NULL;
+      lt_create_class    :=  NULL;
+-- 2021/02/16 Ver.1.31 Add End
 --
       -- チェックマーク取得
       lv_check_mark := xxccp_common_pkg.get_msg( cv_application, cv_msg_check_mark );
@@ -1799,6 +1864,103 @@ AS
 --
         -- 配列番号取得
         ln_num := ln_num + 1;
+-- 2021/02/16 Ver.1.31 ADD Start
+        -- HHT受信フラグが'Y'ではなく、業態小分類がVDの場合
+        IF ( NVL( lt_get_sale_data(in_no).hht_received_flag, cv_no_hht_received ) = cv_no_hht_received AND
+              ( lt_get_sale_data(in_no).business_low_type = cv_full_service_con_vd OR
+                lt_get_sale_data(in_no).business_low_type = cv_full_service_vd OR
+                lt_get_sale_data(in_no).business_low_type = cv_consume_vd ) ) THEN
+--
+          -- 顧客情報を比較し、同じ場合処理しない（明細行を作成しない）
+          IF ( lt_get_sale_data(in_no).invoice_no = lt_invoice_no_pre AND
+               lt_get_sale_data(in_no).party_num  = lt_party_num AND
+               NVL( lt_get_sale_data(in_no).order_number, cv_x ) = NVL( lt_order_number, cv_x ) AND
+               NVL( lt_get_sale_data(in_no).input_class, cv_x ) = NVL( lt_input_class, cv_x ) AND
+               NVL( lt_get_sale_data(in_no).card_sale_class, cv_x ) = NVL( lt_card_sale_class, cv_x ) AND
+               NVL( lt_get_sale_data(in_no).consumption_tax_class, cv_x ) = NVL( lt_consumption_tax_class, cv_x ) AND
+               lt_get_sale_data(in_no).create_class = lt_create_class ) THEN
+            CONTINUE;
+          END IF;
+--
+          --  レコードID取得
+          SELECT
+            xxcos_rep_dlv_chk_list_s01.nextval
+          INTO
+            gt_dlv_chk_list(ln_num).record_id
+          FROM
+            DUAL;
+          
+          /* ヘッダ部の伝票番号・顧客（コード・名称）・売上額・売上値引き額・消費税金額合計・
+          営業員（コード・名称）・成績者（コード・名称）とソートで使用する項目を設定する */
+          -- 対象日付
+          gt_dlv_chk_list(ln_num).target_date                  := lt_get_sale_data(in_no).target_date;
+          -- 拠点コード
+          gt_dlv_chk_list(ln_num).base_code                    := lt_get_sale_data(in_no).base_code;
+          -- 拠点名称
+          gt_dlv_chk_list(ln_num).base_name                    := lt_get_sale_data(in_no).base_name;
+          -- 営業員コード
+          gt_dlv_chk_list(ln_num).employee_num                 := lt_get_sale_data(in_no).employee_num;
+          -- 営業員氏名
+          gt_dlv_chk_list(ln_num).employee_name                := lt_get_sale_data(in_no).employee_name;
+          -- グループ番号
+          gt_dlv_chk_list(ln_num).group_code                   := lt_get_sale_data(in_no).group_code;
+          -- グループ内順序
+          gt_dlv_chk_list(ln_num).group_in_sequence            := lt_get_sale_data(in_no).group_in_sequence;
+          -- 伝票番号
+          gt_dlv_chk_list(ln_num).entry_number                 := lt_get_sale_data(in_no).invoice_no;
+          -- 顧客コード
+          gt_dlv_chk_list(ln_num).party_num                    := lt_get_sale_data(in_no).party_num;
+          -- 顧客名
+          gt_dlv_chk_list(ln_num).customer_name                := lt_get_sale_data(in_no).customer_name;
+          -- 成績者コード
+          gt_dlv_chk_list(ln_num).performance_by_code          := lt_get_sale_data(in_no).performance_by_code;
+          -- 成績者名
+          gt_dlv_chk_list(ln_num).performance_by_name          := lt_get_sale_data(in_no).performance_by_name;
+          -- 売上額
+          gt_dlv_chk_list(ln_num).sudstance_total_amount       := lt_get_sale_data(in_no).sudstance_total_amount;
+          -- 売上値引額
+          gt_dlv_chk_list(ln_num).sale_discount_amount         := lt_get_sale_data(in_no).sale_discount_amount;
+          -- 消費税金額合計
+          gt_dlv_chk_list(ln_num).consumption_tax_total_amount := lt_get_sale_data(in_no).consumption_tax_total_amount;
+          -- 訪問時間
+          gt_dlv_chk_list(ln_num).visit_time                   := TO_CHAR(lt_get_sale_data(in_no).hht_dlv_input_date,cv_fmt_time_default);
+          -- 出力区分
+          gt_dlv_chk_list(ln_num).output_type                  := iv_output_type;
+          -- 作成元区分
+          gt_dlv_chk_list(ln_num).create_class                 := lt_get_sale_data(in_no).create_class;
+          -- 業態（小分類）
+          gt_dlv_chk_list(ln_num).business_low_type            := lt_get_sale_data(in_no).business_low_type;
+          -- HHT受信フラグ
+          gt_dlv_chk_list(ln_num).hht_received_flag            := lt_get_sale_data(in_no).hht_received_flag;
+          -- 作成者
+          gt_dlv_chk_list(ln_num).created_by                   := cn_created_by;
+          -- 作成日
+          gt_dlv_chk_list(ln_num).creation_date                := cd_creation_date;
+          -- 最終更新者
+          gt_dlv_chk_list(ln_num).last_updated_by              := cn_last_updated_by;
+          -- 最終更新日
+          gt_dlv_chk_list(ln_num).last_update_date             := cd_last_update_date;
+          -- 最終更新ログイン
+          gt_dlv_chk_list(ln_num).last_update_login            := cn_last_update_login;
+          -- 要求ＩＤ
+          gt_dlv_chk_list(ln_num).request_id                   := cn_request_id;
+          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+          gt_dlv_chk_list(ln_num).program_application_id       := cn_program_application_id;
+          -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+          gt_dlv_chk_list(ln_num).program_id                   := cn_program_id;
+          -- ﾌﾟﾛｸﾞﾗﾑ更新日
+          gt_dlv_chk_list(ln_num).program_update_date          := cd_program_update_date;
+          -- 同一顧客情報か判断する為顧客情報を取得
+          lt_invoice_no_pre    := lt_get_sale_data(in_no).invoice_no;
+          lt_party_num         := lt_get_sale_data(in_no).party_num;
+          lt_order_number      := lt_get_sale_data(in_no).order_number;
+          lt_input_class       := lt_get_sale_data(in_no).input_class;
+          lt_card_sale_class   := lt_get_sale_data(in_no).card_sale_class;
+          lt_consumption_tax_class := lt_get_sale_data(in_no).consumption_tax_class;
+          lt_create_class      := lt_get_sale_data(in_no).create_class;
+          CONTINUE;
+        END IF;
+-- 2021/02/16 Ver.1.31 ADD End
 --
         --  レコードID取得
         SELECT
@@ -2108,6 +2270,18 @@ AS
 -- 2019/01/22 Ver.1.30 Add Start
         gt_dlv_chk_list(ln_num).business_low_type            := lt_get_sale_data(in_no).business_low_type;
 -- 2019/01/22 Ver.1.30 Add End
+-- 2021/02/16 Ver.1.31 ADD Start
+        -- HHT受信フラグ
+        gt_dlv_chk_list(ln_num).hht_received_flag            := lt_get_sale_data(in_no).hht_received_flag;
+        -- 同一顧客情報か判断する為顧客情報取得
+        lt_invoice_no_pre        := lt_get_sale_data(in_no).invoice_no;
+        lt_party_num             := lt_get_sale_data(in_no).party_num;
+        lt_order_number          := lt_get_sale_data(in_no).order_number;
+        lt_input_class           := lt_get_sale_data(in_no).input_class;
+        lt_card_sale_class       := lt_get_sale_data(in_no).card_sale_class;
+        lt_consumption_tax_class := lt_get_sale_data(in_no).consumption_tax_class;
+        lt_create_class          := lt_get_sale_data(in_no).create_class;
+-- 2021/02/16 Ver.1.31 ADD End
 /*        IF ( lt_get_sale_data(in_no).payment_amount IS NOT NULL
           AND
              lt_invoice_num.EXISTS( lt_get_sale_data(in_no).invoice_no ) = FALSE ) THEN
@@ -2309,6 +2483,11 @@ AS
     ln_payment_cnt         NUMBER;    -- 取得入金件数
     ln_no_dlv_data         NUMBER;    -- 納品データ有無フラグ
 -- 2009/12/17 Ver.1.19 Add End
+-- 2021/02/16 Ver.1.31 ADD Start
+    ln_delete_cnt          NUMBER;    -- 納品書チェックリスト帳票ワークテーブル削除判断
+    lt_business_low_type   xxcos_rep_dlv_chk_list.business_low_type%TYPE;    -- 業態（小分類）
+    lt_hht_received_flag   xxcos_rep_dlv_chk_list.hht_received_flag%TYPE;    -- HHT受信フラグ
+-- 2021/02/16 Ver.1.31 ADD End
 --
     -- *** ローカル・カーソル ***
 -- 2009/12/17 Ver.1.19 Add Start
@@ -2336,6 +2515,10 @@ AS
              ,NULL                consumption_tax_class_mst           -- 消費税区分（マスタ)
              ,NULL                consum_tax_calss_entered            -- 消費税区分（入力)
 -- 2013/04/12 Ver.1.24 Add End
+-- 2021/02/16 Ver.1.31 ADD Start
+             ,xrdcl.record_id     record_id                           -- レコードID
+             ,xrdcl.business_low_type business_low_type               -- 業態（小分類）
+-- 2021/02/16 Ver.1.31 ADD End
       FROM    xxcos_rep_dlv_chk_list    xrdcl           -- 納品書チェックリスト帳票ワークテーブル
              ,fnd_lookup_values         flv             -- ルックアップ
       WHERE  xrdcl.request_id      = cn_request_id
@@ -2648,8 +2831,69 @@ AS
     <<payment_loop>>
     FOR ln_idx IN 1..ln_payment_cnt LOOP
       ln_no_dlv_data := 0;
+-- 2021/02/16 Ver.1.31 ADD Start
+      ln_delete_cnt        := 0;
+      lt_business_low_type := NULL;
+      lt_hht_received_flag := NULL;
+-- 2021/02/16 Ver.1.31 ADD End
+--
       -- 入金データがある場合
       BEGIN
+-- 2021/02/16 Ver.1.31 ADD Start
+        -- 同一顧客、納品伝票番号のデータが存在するかチェック
+        SELECT COUNT(xrdcl.record_id)
+        INTO   ln_delete_cnt
+        FROM   xxcos_rep_dlv_chk_list    xrdcl                -- 納品書チェックリスト帳票ワークテーブル
+        WHERE  xrdcl.request_id      = cn_request_id
+        AND    xrdcl.target_date     = gt_payment_tbl(ln_idx).target_date       -- 対象日付
+        AND    xrdcl.base_code       = gt_payment_tbl(ln_idx).base_code         -- 拠点コード
+        AND    xrdcl.employee_num    = gt_payment_tbl(ln_idx).employee_num      -- 営業員コード
+        AND    xrdcl.entry_number    = gt_payment_tbl(ln_idx).entry_number      -- 伝票番号
+        AND    xrdcl.party_num       = gt_payment_tbl(ln_idx).party_num         -- 顧客コード
+        AND    xrdcl.payment_class   IS NULL                                    -- 入金区分
+        ;
+--
+        -- 納品データが存在する場合、または入金データが複数存在する場合納品データの業態小分類コードとHTT受信フラグを取得
+        IF ( ln_delete_cnt > 0 ) THEN
+          SELECT  xrdcl.business_low_type
+                 ,xrdcl.hht_received_flag
+          INTO    lt_business_low_type
+                 ,lt_hht_received_flag
+          FROM    xxcos_rep_dlv_chk_list    xrdcl             -- 納品書チェックリスト帳票ワークテーブル
+          WHERE  xrdcl.request_id      = cn_request_id
+          AND    xrdcl.target_date     = gt_payment_tbl(ln_idx).target_date       -- 対象日付
+          AND    xrdcl.base_code       = gt_payment_tbl(ln_idx).base_code         -- 拠点コード
+          AND    xrdcl.employee_num    = gt_payment_tbl(ln_idx).employee_num      -- 営業員コード
+          AND    xrdcl.entry_number    = gt_payment_tbl(ln_idx).entry_number      -- 伝票番号
+          AND    xrdcl.party_num       = gt_payment_tbl(ln_idx).party_num         -- 顧客コード
+          AND    xrdcl.payment_class   IS NULL                                    -- 入金区分
+          AND    rownum  = 1
+          ;
+--
+          -- HHT受信フラグが'Y'ではなく、業態小分類がVDの場合入金データを削除
+          IF ( NVL( lt_hht_received_flag, cv_no_hht_received ) = cv_no_hht_received AND
+            ( lt_business_low_type = cv_full_service_con_vd OR
+              lt_business_low_type = cv_full_service_vd OR
+              lt_business_low_type = cv_consume_vd ) ) THEN
+            DELETE FROM xxcos_rep_dlv_chk_list    xrdcl       -- 納品書チェックリスト帳票ワークテーブル
+            WHERE  xrdcl.record_id       = gt_payment_tbl(ln_idx).record_id
+            ;
+          END IF;
+--
+        -- 納品データが存在しない業態小分類コードがVDの場合、入金データを削除
+        ELSIF ( ln_delete_cnt = 0 ) THEN
+--
+          IF ( gt_payment_tbl(ln_idx).business_low_type = cv_full_service_con_vd OR
+              gt_payment_tbl(ln_idx).business_low_type = cv_full_service_vd OR
+              gt_payment_tbl(ln_idx).business_low_type = cv_consume_vd ) THEN
+            DELETE FROM xxcos_rep_dlv_chk_list    xrdcl       -- 納品書チェックリスト帳票ワークテーブル
+            WHERE  xrdcl.record_id       = gt_payment_tbl(ln_idx).record_id
+            ;
+          END IF;
+--
+        END IF;
+-- 2021/02/16 Ver.1.31 ADD End
+-- 
         -- 同一顧客、納品伝票番号で、上記で取得した検収日内で最小の訪問日時を取得
         SELECT MIN(xrdcl.visit_time)
         INTO   gt_payment_tbl(ln_idx).dlv_visit_time
