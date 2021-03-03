@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A05C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてインフォマート社へ送信する支払案内書用データファイル作成
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2020/11/25    1.0   N.Abe            新規作成
  *  2020/12/14    1.1   N.Abe            E_本稼動_16841
  *  2021/02/16    1.2   N.Abe            E_本稼動_16843
+ *  2021/03/03    1.3   K.Kanada         E_本稼動_16843（本番障害対応）
  *
  *****************************************************************************************/
 --
@@ -1959,7 +1960,10 @@ AS
                     END                     AS  sales_fee
                    ,xiwc.vendor_code
              FROM   xxcok_info_work_custom  xiwc
-             WHERE  calc_sort NOT IN (2.5, 5, 6)
+--Mod Ver1.3 K.Kanada S
+--             WHERE  calc_sort NOT IN (2.5, 5, 6)  -- 小計、電気代、合計 を除く
+             WHERE  calc_sort IN (1,2,3,4)          -- 売価別、容器別、一律条件、定額条件
+--Mod Ver1.3 K.Kanada E
              AND    xiwc.tax_div   = iv_tax_div
              GROUP BY xiwc.vendor_code
             ) sum_ne
