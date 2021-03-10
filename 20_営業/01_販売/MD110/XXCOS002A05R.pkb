@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.31
+ * Version          : 1.32
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -84,6 +84,7 @@ AS
  *  2018/08/23    1.29  E.Yazaki         [E_本稼動_15199]伝票枚数追加
  *  2019/01/22    1.30  E.Yazaki         [E_本稼動_15535]納品書チェックリストのソート順対応
  *  2021/02/16    1.31  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更
+ *  2021/03/03    1.32  H.Futamura       [E_本稼動_16933]納品書チェックリストの出力表示変更 追加対応
  *
  *****************************************************************************************/
 --
@@ -1864,9 +1865,13 @@ AS
 --
         -- 配列番号取得
         ln_num := ln_num + 1;
--- 2021/02/16 Ver.1.31 ADD Start
-        -- HHT受信フラグが'Y'ではなく、業態小分類がVDの場合
-        IF ( NVL( lt_get_sale_data(in_no).hht_received_flag, cv_no_hht_received ) = cv_no_hht_received AND
+-- 2021/03/03 Ver.1.32 Mod Start
+---- 2021/02/16 Ver.1.31 ADD Start
+--        -- HHT受信フラグが'Y'ではなく、業態小分類がVDの場合
+--        IF ( NVL( lt_get_sale_data(in_no).hht_received_flag, cv_no_hht_received ) = cv_no_hht_received AND
+        -- HHT受信フラグが'Y'かつ、業態小分類がVDの場合
+        IF ( NVL( lt_get_sale_data(in_no).hht_received_flag, cv_no_hht_received ) = cv_hht_received AND
+-- 2021/03/03 Ver.1.32 Mod End
               ( lt_get_sale_data(in_no).business_low_type = cv_full_service_con_vd OR
                 lt_get_sale_data(in_no).business_low_type = cv_full_service_vd OR
                 lt_get_sale_data(in_no).business_low_type = cv_consume_vd ) ) THEN
@@ -1889,9 +1894,11 @@ AS
             gt_dlv_chk_list(ln_num).record_id
           FROM
             DUAL;
-          
-          /* ヘッダ部の伝票番号・顧客（コード・名称）・売上額・売上値引き額・消費税金額合計・
-          営業員（コード・名称）・成績者（コード・名称）とソートで使用する項目を設定する */
+-- 2021/03/03 Ver.1.32 Mod Start
+--          /* ヘッダ部の伝票番号・顧客（コード・名称）・売上額・売上値引き額・消費税金額合計・
+--          営業員（コード・名称）・成績者（コード・名称）とソートで使用する項目を設定する */
+          /* ヘッダ部とソートで使用する項目を設定する */
+-- 2021/03/03 Ver.1.32 Mod End
           -- 対象日付
           gt_dlv_chk_list(ln_num).target_date                  := lt_get_sale_data(in_no).target_date;
           -- 拠点コード
@@ -1950,6 +1957,24 @@ AS
           gt_dlv_chk_list(ln_num).program_id                   := cn_program_id;
           -- ﾌﾟﾛｸﾞﾗﾑ更新日
           gt_dlv_chk_list(ln_num).program_update_date          := cd_program_update_date;
+-- 2021/03/03 Ver.1.32 Add Start
+          -- 伝票分類コード
+          gt_dlv_chk_list(ln_num).invoice_classification_code  := lt_get_sale_data(in_no).invoice_classification_code;
+          -- 伝票区分
+          gt_dlv_chk_list(ln_num).invoice_class                := lt_get_sale_data(in_no).invoice_class;
+          -- オーダーNo
+          gt_dlv_chk_list(ln_num).order_number                 := lt_get_sale_data(in_no).order_number;
+          -- 検収日
+          gt_dlv_chk_list(ln_num).dlv_date                     := lt_get_sale_data(in_no).dlv_date;
+          -- 入力区分
+          gt_dlv_chk_list(ln_num).input_class                  := lt_get_sale_data(in_no).input_class;
+          -- カード売り区分
+          gt_dlv_chk_list(ln_num).card_sale_class              := lt_get_sale_data(in_no).card_sale_class;
+          -- 消費税区分（マスタ)
+          gt_dlv_chk_list(ln_num).consumption_tax_class_mst    := lt_get_sale_data(in_no).consumption_tax_class_mst;
+          -- 消費税区分（入力)
+          gt_dlv_chk_list(ln_num).consum_tax_calss_entered     := lt_get_sale_data(in_no).consum_tax_calss_entered;
+-- 2021/03/03 Ver.1.32 Add End
           -- 同一顧客情報か判断する為顧客情報を取得
           lt_invoice_no_pre    := lt_get_sale_data(in_no).invoice_no;
           lt_party_num         := lt_get_sale_data(in_no).party_num;
@@ -2853,7 +2878,7 @@ AS
         AND    xrdcl.payment_class   IS NULL                                    -- 入金区分
         ;
 --
-        -- 納品データが存在する場合、または入金データが複数存在する場合納品データの業態小分類コードとHTT受信フラグを取得
+        -- 納品データが存在する場合、納品データの業態小分類コードとHTT受信フラグを取得
         IF ( ln_delete_cnt > 0 ) THEN
           SELECT  xrdcl.business_low_type
                  ,xrdcl.hht_received_flag
@@ -2870,26 +2895,33 @@ AS
           AND    rownum  = 1
           ;
 --
-          -- HHT受信フラグが'Y'ではなく、業態小分類がVDの場合入金データを削除
-          IF ( NVL( lt_hht_received_flag, cv_no_hht_received ) = cv_no_hht_received AND
+-- 2021/03/03 Ver.1.32 Mod Start
+--          -- HHT受信フラグが'Y'ではなく、業態小分類がVDの場合入金データを削除
+--          IF ( NVL( lt_hht_received_flag, cv_no_hht_received ) = cv_no_hht_received AND
+          -- HHT受信フラグが'Y'かつ、業態小分類がVDの場合入金データを削除
+          IF ( NVL( lt_hht_received_flag, cv_no_hht_received ) = cv_hht_received AND
+-- 2021/03/03 Ver.1.32 Mod End
             ( lt_business_low_type = cv_full_service_con_vd OR
               lt_business_low_type = cv_full_service_vd OR
               lt_business_low_type = cv_consume_vd ) ) THEN
             DELETE FROM xxcos_rep_dlv_chk_list    xrdcl       -- 納品書チェックリスト帳票ワークテーブル
             WHERE  xrdcl.record_id       = gt_payment_tbl(ln_idx).record_id
             ;
+            CONTINUE;
           END IF;
 --
-        -- 納品データが存在しない業態小分類コードがVDの場合、入金データを削除
-        ELSIF ( ln_delete_cnt = 0 ) THEN
---
-          IF ( gt_payment_tbl(ln_idx).business_low_type = cv_full_service_con_vd OR
-              gt_payment_tbl(ln_idx).business_low_type = cv_full_service_vd OR
-              gt_payment_tbl(ln_idx).business_low_type = cv_consume_vd ) THEN
-            DELETE FROM xxcos_rep_dlv_chk_list    xrdcl       -- 納品書チェックリスト帳票ワークテーブル
-            WHERE  xrdcl.record_id       = gt_payment_tbl(ln_idx).record_id
-            ;
-          END IF;
+-- 2021/03/03 Ver.1.32 Del Start
+--        -- 納品データが存在しない業態小分類コードがVDの場合、入金データを削除
+--        ELSIF ( ln_delete_cnt = 0 ) THEN
+----
+--          IF ( gt_payment_tbl(ln_idx).business_low_type = cv_full_service_con_vd OR
+--              gt_payment_tbl(ln_idx).business_low_type = cv_full_service_vd OR
+--              gt_payment_tbl(ln_idx).business_low_type = cv_consume_vd ) THEN
+--            DELETE FROM xxcos_rep_dlv_chk_list    xrdcl       -- 納品書チェックリスト帳票ワークテーブル
+--            WHERE  xrdcl.record_id       = gt_payment_tbl(ln_idx).record_id
+--            ;
+--          END IF;
+-- 2021/03/03 Ver.1.32 Del End
 --
         END IF;
 -- 2021/02/16 Ver.1.31 ADD End
