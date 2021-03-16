@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_010003j_pkg(BODY)
  * Description      : 自動販売機設置契約情報登録更新_共通関数
  * MD.050/070       : 
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  chk_supp_info_change      F    V      送付先情報変更チェック
  *  chk_bm_bank_chg           F    V      BM銀行口座変更チェック
  *  chk_vendor_inbalid        F    V      仕入先無効日チェック
+ *  chk_not_include_kana      F    B      半角ｶﾅ文字が含まれていないチェック（※外部呼出し不可）
  *  chk_email_address         F    V      メールアドレスチェック（共通関数ラッピング）
  *
  * Change Record
@@ -71,6 +72,7 @@ AS
  *  2019/03/05    1.18  Y.Sasaki         E_本稼動_15349対応
  *  2020/10/28    1.19  Y.Sasaki         E_本稼動_16293、E_本稼動_16410対応
  *  2020/12/14    1.20  Y.Sasaki         E_本稼動_16642対応
+ *  2021/03/02    1.21  K.Kanada         E_本稼動_16642対応(T4不具合対応)
 *****************************************************************************************/
 --
   -- ===============================
@@ -2562,6 +2564,64 @@ AS
 --#####################################  固定部 END   ##########################################
   END chk_vendor_inbalid;
 /* [E_本稼動_16293] Add END */
+/* Ver.1.21 [E_本稼動_16642] Add Start */
+  /**********************************************************************************
+   * Function  Name   : chk_not_include_kana
+   * Description      : 半角ｶﾅ文字が含まれていないことをチェックする
+   ***********************************************************************************/
+  FUNCTION chk_not_include_kana(
+                                iv_check_char IN  VARCHAR2 --チェック対象文字列
+                               )
+    RETURN BOOLEAN
+  IS
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_prg_name     CONSTANT VARCHAR2(100) := 'chk_not_include_kana';  -- プログラム名
+    cn_string_code1 CONSTANT NUMBER        := 166; --半角ｦ
+    cn_string_code2 CONSTANT NUMBER        := 223; --半角ﾟ
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_check_char   VARCHAR2(1);       --文字格納用
+--
+  BEGIN
+    --NULLチェック
+    IF(iv_check_char IS NULL) THEN
+      RETURN NULL;
+    --半角チェック
+    ELSIF(LENGTH(iv_check_char) <> LENGTHB(iv_check_char)) THEN
+      RETURN FALSE;
+    END IF;
+--
+    --LOOP処理開始
+    FOR ln_position IN 1..LENGTH(iv_check_char) LOOP
+      -- 文字を一つづつ取り出す
+      lv_check_char := SUBSTR(iv_check_char
+                             ,ln_position
+                             ,1
+                             );
+      --半角カタカナが含まれる場合、FALSEを返す
+      IF  (lv_check_char >= CHR(cn_string_code1)) AND (lv_check_char <= CHR(cn_string_code2)) THEN
+        RETURN FALSE;
+      END IF;
+    END LOOP;
+    --上記に合致しない場合、TRUEを返却
+    RETURN TRUE;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_not_include_kana;
+--
+/* Ver.1.21 [E_本稼動_16642] Add End */
 /* [E_本稼動_16642] Add START */
   /**********************************************************************************
    * Function Name    : chk_email_address
@@ -2584,6 +2644,10 @@ AS
     lb_retcode                    BOOLEAN;
     ln_chk_num                    NUMBER;
     lv_retcode                    VARCHAR2(1);
+/* Ver.1.21 [E_本稼動_16642] Add Start */
+    ln_chk_num_pre                NUMBER := 0;
+    ln_chk_num_post               NUMBER := 0;
+/* Ver.1.21 [E_本稼動_16642] Add END */
 --
   BEGIN
 --
@@ -2592,22 +2656,58 @@ AS
     lb_retcode              := true;
     ln_chk_num              := 0;
 --
-    -- 半角文字のみ使用しているか確認
+/* Ver.1.21 [E_本稼動_16642] Add Start */
+    -- 1.NULLチェック
+    IF(iv_email_address IS NULL) THEN
+      RETURN lv_retcode;
+    END IF;
+/* Ver.1.21 [E_本稼動_16642] Add End */
+--
+    -- 2.半角文字のみ使用しているか確認（全角が含まれている場合 FALSE）
     lb_retcode := xxccp_common_pkg.chk_single_byte(
                     iv_email_address
                   );
 --
-    IF lb_retcode IS NOT NULL THEN
-      IF lb_retcode THEN
-        -- @を使用しているか確認
-        ln_chk_num := INSTR(iv_email_address, '@');
-        IF ln_chk_num = 0 THEN
-          lv_retcode := xxcso_common_pkg.gv_status_error;
-        END IF;
+/* Ver.1.21 [E_本稼動_16642] Els Start */
+--    IF lb_retcode IS NOT NULL THEN
+--      IF lb_retcode THEN
+--        -- @を使用しているか確認
+--        ln_chk_num := INSTR(iv_email_address, '@');
+--        IF ln_chk_num = 0 THEN
+--          lv_retcode := xxcso_common_pkg.gv_status_error;
+--        END IF;
+--      ELSE
+--        lv_retcode := xxcso_common_pkg.gv_status_error;
+--      END IF;
+--    END IF;
+/* Ver.1.21 [E_本稼動_16642] Els END */
+--
+/* Ver.1.21 [E_本稼動_16642] Add Start */
+    -- 3.半角ｶﾅが含まれているか確認（半角ｶﾅがが含まれている場合 FALSE）
+    IF lb_retcode THEN
+      lb_retcode := chk_not_include_kana(
+                    iv_email_address
+                  );
+    END IF;
+--
+    -- 4.xxx@yyyy となっているか確認
+    --    （@の前が1文字以上なければ FALSE）
+    --    （@の後ろが1文字以上なければ FALSE）
+    IF lb_retcode = TRUE THEN
+      ln_chk_num_pre  := INSTR(iv_email_address, '@', 1) - 1;
+      ln_chk_num_post := LENGTH(iv_email_address) - INSTR(iv_email_address,'@',-1);
+      IF ln_chk_num_pre >= 1 AND ln_chk_num_post >= 1 THEN
+        lb_retcode := TRUE;
       ELSE
-        lv_retcode := xxcso_common_pkg.gv_status_error;
+        lb_retcode := FALSE;
       END IF;
     END IF;
+--
+    -- 5.戻り値を返す
+    IF lb_retcode = FALSE THEN
+      lv_retcode := xxcso_common_pkg.gv_status_error;
+    END IF;
+/* Ver.1.21 [E_本稼動_16642] Add END */
 --
     return lv_retcode;
 --
