@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2018/07/27    1.25  K.Kiriu          [E_本稼動_15193]中止決裁済条件追加対応
  *  2019/06/25    1.26  T.Kawaguchi      [E_本稼動_15472]軽減税率対応
  *  2019/09/24    1.27  SCSK 郭 有司     [E_本稼動_15934]障害対応
+ *  2021/03/08    1.28  T.Nishikawa      [E_本稼動_16618]HHT受注からの帳票発行の表示
  *
  *****************************************************************************************/
 --
@@ -2549,9 +2550,15 @@ AS
             ,NULL                                                               deliver_to                    --届け先（漢字）
             ,NULL                                                               deliver_to1_alt               --届け先１（カナ）
             ,NULL                                                               deliver_to2_alt               --届け先２（カナ）
-            ,NULL                                                               deliver_to_address            --届け先住所（漢字）
+/* 2021/03/08 Ver1.28 Mod Start */  -- 使用していない届け先住所（漢字）に顧客店舗名称を連携する
+--            ,NULL                                                               deliver_to_address            --届け先住所（漢字）
+            ,ivoh.cust_store_name                                               deliver_to_address            --届け先住所（漢字）
+/* 2021/03/08 Ver1.28 Mod End */
             ,NULL                                                               deliver_to_address_alt        --届け先住所（カナ）
-            ,NULL                                                               deliver_to_tel                --届け先ＴＥＬ
+/* 2021/03/08 Ver1.28 Mod Start */  -- 使用していない届け先ＴＥＬに店舗コードを連携する
+--            ,NULL                                                               deliver_to_tel                --届け先ＴＥＬ
+            ,ivoh.store_code                                                    shop_code                     --届け先ＴＥＬ
+/* 2021/03/08 Ver1.28 Mod End */
             ,NULL                                                               balance_accounts_code         --帳合先コード
             ,NULL                                                               balance_accounts_company_code --帳合先社コード
             ,NULL                                                               balance_accounts_shop_code    --帳合先店コード
@@ -2990,9 +2997,16 @@ AS
 --******************************************* 2010/02/18 Ver.1.21 S.Karikomi MOD  END  *************************************
              END                                                                shipping_cost_amt             --原価金額（出荷）
             ,NULL                                                               stockout_cost_amt             --原価金額（欠品）
-            ,NULL                                                               selling_price                 --売単価
+/* 2021/03/08 Ver1.28 Mod Start */
+--            ,NULL                                                               selling_price                 --売単価
+            ,TO_NUMBER(oola.attribute10)                                        selling_price                 --売単価
+/* 2021/03/08 Ver1.28 Mod End */
             ,NULL                                                               order_price_amt               --売価金額（発注）
-            ,NULL                                                               shipping_price_amt            --売価金額（出荷）
+/* 2021/03/08 Ver1.28 Mod Start */
+--            ,NULL                                                               shipping_price_amt            --売価金額（出荷）
+            ,TO_CHAR( TRUNC ( TO_NUMBER( oola.attribute10 )
+                            * TO_NUMBER( oola.ordered_quantity ) ) )            shipping_price_amt            --売価金額（出荷）
+/* 2021/03/08 Ver1.28 Mod End */
             ,NULL                                                               stockout_price_amt            --売価金額（欠品）
             ,NULL                                                               a_column_department           --Ａ欄（百貨店）
             ,NULL                                                               d_column_department           --Ｄ欄（百貨店）
