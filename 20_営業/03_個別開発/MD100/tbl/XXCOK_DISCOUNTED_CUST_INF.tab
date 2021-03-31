@@ -1,0 +1,89 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : XXCOK_DISCOUNTED_CUST_INF
+ * Description : 入金時値引対象顧客情報
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2021/01/06    1.0   SCSK Y.Koh       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_discounted_cust_inf (
+     ship_to_customer_code          VARCHAR2(9)   NOT NULL
+    ,ship_to_customer_id            NUMBER
+    ,ship_to_customer_site_id       NUMBER
+    ,last_record_date               DATE          NOT NULL
+    ,billing_customer_code          VARCHAR2(9)
+    ,billing_customer_id            NUMBER
+    ,billing_customer_site_id       NUMBER
+    ,payment_terms_1                VARCHAR2(15)
+    ,payment_terms_2                VARCHAR2(15)
+    ,payment_terms_3                VARCHAR2(15)
+    ,invoice_issue_cycle            NUMBER(1)
+    ,last_closing_date              DATE
+    ,next_closing_date              DATE
+    ,next_payment_term              VARCHAR2(15)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcok_discounted_cust_inf_pk PRIMARY KEY (ship_to_customer_code)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcok.xxcok_discounted_cust_inf IS '入金時値引対象顧客情報'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.ship_to_customer_code                IS '納品先顧客'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.ship_to_customer_id                  IS '納品先顧客ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.ship_to_customer_site_id             IS '納品先顧客サイトID'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.last_record_date                     IS '最終計上日'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.billing_customer_code                IS '請求先顧客'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.billing_customer_id                  IS '請求先顧客ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.billing_customer_site_id             IS '請求先顧客サイトID'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.payment_terms_1                      IS '支払条件1'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.payment_terms_2                      IS '支払条件2'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.payment_terms_3                      IS '支払条件3'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.invoice_issue_cycle                  IS '請求書発行サイクル'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.last_closing_date                    IS '前回締日'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.next_closing_date                    IS '今回締日'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.next_payment_term                    IS '今回支払条件'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.created_by                           IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.creation_date                        IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.last_updated_by                      IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.last_update_date                     IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.last_update_login                    IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.request_id                           IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.program_application_id               IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.program_id                           IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_discounted_cust_inf.program_update_date                  IS 'プログラム更新日'
+/

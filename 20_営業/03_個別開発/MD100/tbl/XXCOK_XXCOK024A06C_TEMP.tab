@@ -1,0 +1,39 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_XXCOK024A06C_TEMP
+ * Description : 販売控除データGL連携（XXCOK024A06C）用一時表
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/06/10    1.0   SCSK K.Kanada   新規作成
+ *
+ ****************************************************************************************/
+CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_xxcok024a06c_temp (
+   sales_deduction_id   NUMBER
+  ,accounting_base      VARCHAR2(4)
+  ,past_sale_base_code  VARCHAR2(4)
+  ,account              VARCHAR2(150)
+  ,sub_account          VARCHAR2(150)
+  ,deduction_amount     NUMBER
+  ,tax_code             VARCHAR2(150)
+  ,deduction_tax_amount NUMBER
+  ,corp_code            VARCHAR2(150)
+  ,customer_code        VARCHAR2(150)
+  )
+ ON COMMIT DELETE ROWS
+;
+COMMENT ON TABLE  xxcok.xxcok_xxcok024a06c_temp IS '販売控除データGL連携（XXCOK024A06C）用一時表';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.sales_deduction_id    IS '販売控除ID';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.accounting_base       IS '拠点コード(定額控除)';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.past_sale_base_code   IS '拠点コード(定額控除以外)';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.account               IS '勘定科目';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.sub_account           IS '補助科目';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.deduction_amount      IS '控除額';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.tax_code              IS '税コード';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.deduction_tax_amount  IS '税額';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.corp_code             IS '企業コード';
+COMMENT ON COLUMN xxcok.xxcok_xxcok024a06c_temp.customer_code         IS '顧客コード';

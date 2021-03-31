@@ -1,0 +1,116 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2020. All rights reserved.
+ *
+ * Table Name  : XXCOK_DEDUCTION_RECON_HEAD
+ * Description : 控除消込ヘッダー情報
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2020/07/08    1.0   SCSK Y.Koh       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_DEDUCTION_RECON_HEAD (
+     deduction_recon_head_id        NUMBER        NOT NULL
+    ,recon_base_code                VARCHAR2(4)
+    ,recon_slip_num                 VARCHAR2(20)  NOT NULL
+    ,recon_status                   VARCHAR2(2)   NOT NULL
+    ,application_date               DATE
+    ,approval_date                  DATE
+    ,cancellation_date              DATE
+    ,recon_due_date                 DATE
+    ,gl_date                        DATE
+    ,target_date_end                DATE
+    ,interface_div                  VARCHAR2(2)
+    ,payee_code                     VARCHAR2(30)
+    ,corp_code                      VARCHAR2(6)
+    ,deduction_chain_code           VARCHAR2(9)
+    ,cust_code                      VARCHAR2(9)
+    ,invoice_number                 VARCHAR2(30)
+    ,target_data_type               VARCHAR2(60)
+    ,applicant                      VARCHAR2(30)
+    ,approver                       VARCHAR2(30)
+    ,ap_ar_if_flag                  VARCHAR2(1)
+    ,gl_if_flag                     VARCHAR2(1)
+    ,terms_name                     VARCHAR2(500)
+    ,invoice_date                   DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcok_deduction_recon_head_pk PRIMARY KEY (deduction_recon_head_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcok.xxcok_deduction_recon_head IS '控除消込ヘッダー情報'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.deduction_recon_head_id             IS '控除消込ヘッダーID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.recon_base_code                     IS '支払請求拠点'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.recon_slip_num                      IS '支払伝票番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.recon_status                        IS '消込ステータス'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.application_date                    IS '申請日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.approval_date                       IS '承認日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.cancellation_date                   IS '取消日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.recon_due_date                      IS '支払予定日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.gl_date                             IS 'GL記帳日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.target_date_end                     IS '対象期間(TO)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.interface_div                       IS '連携先'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.payee_code                          IS '支払先コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.corp_code                           IS '企業コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.deduction_chain_code                IS '控除用チェーンコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.cust_code                           IS '顧客コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.invoice_number                      IS '問屋請求書番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.target_data_type                    IS '対象データ種類'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.applicant                           IS '申請者'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.approver                            IS '承認者'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.ap_ar_if_flag                       IS 'AP/AR連携フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.gl_if_flag                          IS '消込GL連携フラグ'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.terms_name                          IS '支払条件'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.invoice_date                        IS '請求書日付'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.created_by                          IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.creation_date                       IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.last_updated_by                     IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.last_update_date                    IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.last_update_login                   IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.request_id                          IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.program_application_id              IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.program_id                          IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_head.program_update_date                 IS 'プログラム更新日'
+/

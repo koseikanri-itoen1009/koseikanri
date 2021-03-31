@@ -1,0 +1,92 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : XXCOK_DEDUCTION_RECON_LINE_AP
+ * Description : 控除消込明細情報
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2019/11/29    1.0   SCSK Y.Koh       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_deduction_recon_line_ap (
+     deduction_recon_line_id        NUMBER        NOT NULL
+    ,recon_slip_num                 VARCHAR2(20)  NOT NULL
+    ,deduction_line_num             NUMBER        NOT NULL
+    ,recon_line_status              VARCHAR2(2)   NOT NULL
+    ,deduction_chain_code           VARCHAR2(9)
+    ,prev_carryover_amt             NUMBER(12,0)
+    ,prev_carryover_tax             NUMBER(11,0)
+    ,deduction_amt                  NUMBER(12,0)
+    ,deduction_tax                  NUMBER(11,0)
+    ,payment_amt                    NUMBER(12,0)
+    ,payment_tax                    NUMBER(11,0)
+    ,difference_amt                 NUMBER(12,0)
+    ,difference_tax                 NUMBER(11,0)
+    ,next_carryover_amt             NUMBER(12,0)
+    ,next_carryover_tax             NUMBER(11,0)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcok_deduction_recon_l_ap_pk PRIMARY KEY (deduction_recon_line_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcok.xxcok_deduction_recon_line_ap IS '控除消込明細情報(AP申請)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.deduction_recon_line_id          IS '控除消込明細ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.recon_slip_num                   IS '支払伝票番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.deduction_line_num               IS '消込明細番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.recon_line_status                IS '入力ステータス'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.deduction_chain_code             IS '控除用チェーンコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.prev_carryover_amt               IS '前月繰越額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.prev_carryover_tax               IS '前月繰越額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.deduction_amt                    IS '控除額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.deduction_tax                    IS '控除額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.payment_amt                      IS '支払額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.payment_tax                      IS '支払額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.difference_amt                   IS '調整差額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.difference_tax                   IS '調整差額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.next_carryover_amt               IS '翌月繰越額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.next_carryover_tax               IS '翌月繰越額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.created_by                       IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.creation_date                    IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.last_updated_by                  IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.last_update_date                 IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.last_update_login                IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.request_id                       IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.program_application_id           IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.program_id                       IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_recon_line_ap.program_update_date              IS 'プログラム更新日'
+/

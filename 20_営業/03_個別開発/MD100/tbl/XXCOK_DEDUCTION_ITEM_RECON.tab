@@ -1,0 +1,137 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2019. All rights reserved.
+ *
+ * Table Name  : XXCOK_DEDUCTION_ITEM_RECON
+ * Description : 商品別突合情報
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2019/11/29    1.0   SCSK Y.Koh       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcok.xxcok_deduction_item_recon (
+     deduction_item_recon_id        NUMBER        NOT NULL
+    ,recon_slip_num                 VARCHAR2(20)  NOT NULL
+    ,deduction_chain_code           VARCHAR2(9)
+    ,item_code                      VARCHAR2(7)   NOT NULL
+    ,tax_code                       VARCHAR2(4)   NOT NULL
+    ,tax_rate                       NUMBER        NOT NULL
+    ,uom_code                       VARCHAR2(3)   NOT NULL
+    ,billing_quantity               NUMBER(9,2)
+    ,billing_unit_price             NUMBER(12,2)
+    ,billing_adj_amount             NUMBER(12,0)
+    ,billing_amount                 NUMBER(12,0)
+    ,fixed_quantity                 NUMBER(9,2)
+    ,fixed_unit_price               NUMBER(12,2)
+    ,fixed_adj_amount               NUMBER(12,0)
+    ,fixed_amount                   NUMBER(12,0)
+    ,prev_carryover_amt             NUMBER(12,0)
+    ,prev_carryover_tax             NUMBER(11,0)
+    ,deduction_quantity             NUMBER(9,2)
+    ,deduction_unit_price           NUMBER(12,2)
+    ,deduction_amt                  NUMBER(12,0)
+    ,deduction_030                  NUMBER(12,0)
+    ,deduction_040                  NUMBER(12,0)
+    ,deduction_tax                  NUMBER(11,0)
+    ,payment_amt                    NUMBER(12,0)
+    ,payment_tax                    NUMBER(11,0)
+    ,difference_amt                 NUMBER(12,0)
+    ,difference_tax                 NUMBER(11,0)
+    ,next_carryover_amt             NUMBER(12,0)
+    ,next_carryover_tax             NUMBER(11,0)
+    ,differences                    VARCHAR2(20)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcok_deduction_item_recon_pk PRIMARY KEY (deduction_item_recon_id)
+  USING INDEX TABLESPACE xxidx2)
+/
+COMMENT ON TABLE xxcok.xxcok_deduction_item_recon IS '商品別突合情報'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.deduction_item_recon_id             IS '商品別突合情報ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.recon_slip_num                      IS '支払伝票番号'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.deduction_chain_code                IS '控除用チェーンコード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.item_code                           IS '品目コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.tax_code                            IS '消費税コード'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.tax_rate                            IS '税率'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.uom_code                            IS '単位'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.billing_quantity                    IS '請求数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.billing_unit_price                  IS '請求単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.billing_adj_amount                  IS '請求差額'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.billing_amount                      IS '請求額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.fixed_quantity                      IS '修正後請求数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.fixed_unit_price                    IS '修正後請求単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.fixed_adj_amount                    IS '修正後請求差額'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.fixed_amount                        IS '修正後請求額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.prev_carryover_amt                  IS '前月繰越額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.prev_carryover_tax                  IS '前月繰越額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.deduction_quantity                  IS '控除数量'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.deduction_unit_price                IS '控除単価'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.deduction_amt                       IS '控除額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.deduction_030                       IS '控除額(通常)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.deduction_040                       IS '控除額(拡売)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.deduction_tax                       IS '控除額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.payment_amt                         IS '支払額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.payment_tax                         IS '支払額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.difference_amt                      IS '調整差額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.difference_tax                      IS '調整差額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.next_carryover_amt                  IS '翌月繰越額(税抜)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.next_carryover_tax                  IS '翌月繰越額(消費税)'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.differences                         IS '差異情報'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.created_by                          IS '作成者'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.creation_date                       IS '作成日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.last_updated_by                     IS '最終更新者'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.last_update_date                    IS '最終更新日'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.last_update_login                   IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.request_id                          IS '要求ID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.program_application_id              IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.program_id                          IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcok.xxcok_deduction_item_recon.program_update_date                 IS 'プログラム更新日'
+/
