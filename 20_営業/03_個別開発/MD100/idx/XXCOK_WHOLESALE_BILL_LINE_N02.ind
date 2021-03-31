@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_wholesale_bill_line_n02
+ON xxcok.xxcok_wholesale_bill_line(
+     bill_no
+)
+TABLESPACE xxidx2
+;

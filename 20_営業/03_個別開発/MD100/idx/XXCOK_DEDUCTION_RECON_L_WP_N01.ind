@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_deduction_recon_l_wp_n01
+ON xxcok.xxcok_deduction_recon_line_wp(
+     recon_slip_num
+)
+TABLESPACE xxidx2
+/

@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_deduction_num_recon_n01
+ON xxcok.xxcok_deduction_num_recon(
+     recon_slip_num
+   , target_flag
+)
+TABLESPACE xxidx2
+/

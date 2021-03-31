@@ -1,0 +1,9 @@
+CREATE INDEX xxcok.xxcok_deduction_recon_head_n02
+ON xxcok.xxcok_deduction_recon_head(
+     recon_status
+   , interface_div
+   , ap_ar_if_flag
+   , cancellation_date
+)
+TABLESPACE xxidx2
+/

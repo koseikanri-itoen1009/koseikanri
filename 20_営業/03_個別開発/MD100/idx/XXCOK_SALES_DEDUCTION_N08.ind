@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_sales_deduction_n08
+ON xxcok.xxcok_sales_deduction(
+     customer_code_to
+   , deduction_chain_code
+   , corp_code
+)
+TABLESPACE xxidx2
+/

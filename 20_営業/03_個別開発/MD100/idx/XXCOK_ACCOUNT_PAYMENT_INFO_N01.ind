@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_account_payment_info_n01
+ON xxcok.xxcok_account_payment_info(
+     recon_slip_num
+   , payment_tax_code
+)
+TABLESPACE xxidx2
+/

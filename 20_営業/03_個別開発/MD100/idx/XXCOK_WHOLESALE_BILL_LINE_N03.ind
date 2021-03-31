@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_wholesale_bill_line_n03
+ON xxcok.xxcok_wholesale_bill_line(
+     recon_slip_num
+    ,wholesale_bill_detail_id
+)
+TABLESPACE xxidx2
+;

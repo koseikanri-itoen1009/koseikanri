@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_dedu_trn_rev_n01
+ON xxcok.xxcok_dedu_trn_rev(
+     sales_deduction_id
+)
+tablespace XXIDX2
+/

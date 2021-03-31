@@ -1,0 +1,7 @@
+CREATE INDEX xxcok.xxcok_sales_deduction_n09
+ON xxcok.xxcok_sales_deduction(
+     status
+   , recovery_del_date
+)
+tablespace XXIDX2
+/
