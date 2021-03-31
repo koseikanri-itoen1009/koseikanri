@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_WHOLESALE_BILL_LINE
  * Description : ñ‚âÆêøãÅèëñæç◊ÉeÅ[ÉuÉã
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          êVãKçÏê¨
  *  2009/07/09    1.1   K.Yamaguchi      [è·äQ0000515]STORAGEãÂí«â¡
  *  2009/12/25    1.2   K.Nakamura       [E_ñ{â“ìÆ_00608]êøãÅíPâøÅAéxï•íPâøÇÃåÖêîèCê≥
+ *  2021/03/21    1.3   SCSK Y.Koh       [E_ñ{â“ìÆ_16026]é˚âvîFéØ
  *
  **************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_LINE
@@ -21,13 +22,22 @@ CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_LINE
    BILL_NO                  VARCHAR2(10) NOT NULL,
    SALES_OUTLETS_CODE       VARCHAR2(9)  NOT NULL,
    ITEM_CODE                VARCHAR2(7),
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+   EXPANSION_SALES_TYPE     VARCHAR2(1),
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD END
    DEMAND_QTY               NUMBER       NOT NULL,
 -- 2009/12/25 Ver.1.2 [E_ñ{â“ìÆ_00608] SCS K.Nakamura MOD START
 --   DEMAND_UNIT_PRICE        NUMBER(8,2)  NOT NULL,
    DEMAND_UNIT_PRICE        NUMBER       NOT NULL,
 -- 2009/12/25 Ver.1.2 [E_ñ{â“ìÆ_00608] SCS K.Nakamura MOD END
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+   DIFFERENCE_AMT           NUMBER,
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD END
    DEMAND_AMT               NUMBER,
    SELLING_MONTH            VARCHAR2(6)  NOT NULL,
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+   SELLING_DATE             DATE,
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD END
    DEMAND_UNIT_TYPE         VARCHAR2(1)  NOT NULL,
    ACCT_CODE                VARCHAR2(5),
    SUB_ACCT_CODE            VARCHAR2(5),
@@ -39,6 +49,9 @@ CREATE TABLE XXCOK.XXCOK_WHOLESALE_BILL_LINE
 -- 2009/12/25 Ver.1.2 [E_ñ{â“ìÆ_00608] SCS K.Nakamura MOD END
    PAYMENT_AMT              NUMBER,
    STATUS                   VARCHAR2(1),
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+   RECON_SLIP_NUM           VARCHAR2(20 BYTE) DEFAULT NULL,
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD END
    REVISE_FLAG              VARCHAR2(1)  NOT NULL,
    PAYMENT_CREATION_DATE    DATE,
    CREATED_BY               NUMBER(15,0) NOT NULL,
@@ -69,13 +82,25 @@ COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.SALES_OUTLETS_CODE       IS 'ñ
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.ITEM_CODE                IS 'ïiñ⁄ÉRÅ[Éh'
 /
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.EXPANSION_SALES_TYPE     IS 'ägîÑãÊï™'
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+/
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DEMAND_QTY               IS 'êøãÅêîó '
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DEMAND_UNIT_PRICE        IS 'êøãÅíPâø'
 /
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DIFFERENCE_AMT           IS 'êøãÅç∑äz(ê≈î≤)'
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+/
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DEMAND_AMT               IS 'êøãÅã‡äz'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.SELLING_MONTH            IS 'îÑè„ëŒè€îNåé'
+/
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.SELLING_DATE             IS 'îÑè„ëŒè€îNåéì˙'
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.DEMAND_UNIT_TYPE         IS 'êøãÅíPà '
 /
@@ -92,6 +117,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.PAYMENT_UNIT_PRICE       IS 'é
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.PAYMENT_AMT              IS 'éxï•ã‡äz'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.STATUS                   IS 'ÉXÉeÅ[É^ÉX'
+/
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.RECON_SLIP_NUM           IS 'éxï•ì`ï[î‘çÜ'
+-- 2021/03/21 Ver.1.3 [E_ñ{â“ìÆ_16026] SCS Y.Koh ADD START
 /
 COMMENT ON COLUMN XXCOK.XXCOK_WHOLESALE_BILL_LINE.REVISE_FLAG              IS 'ã∆ä«í˘ê≥ÉtÉâÉO'
 /
