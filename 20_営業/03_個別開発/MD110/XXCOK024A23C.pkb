@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A23C (body)
  * Description      : 控除マスタを元に、毎月定額で発生する控除データを作成し販売控除情報へ登録する
  * MD.050           : 定額控除データ作成 MD050_COK_024_A23
- * Version          : 1.00
+ * Version          : 1.1
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -22,6 +22,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- -------------------------------------------------------------------------
  *  2020/04/13    1.0   M.Sato           新規作成
+ *  2021/04/06    1.1   K.Yoshikawa      定額控除複数明細対応
  *
  *****************************************************************************************/
 --
@@ -85,6 +86,9 @@ AS
   cv_master_err_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10652';                -- マスタ不備エラーメッセージ
   cv_cus_chain_corp         CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10648';                -- 顧客、チェーン、企業のいずれか1つ
   cv_base_cd                CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10638';                -- 拠点コード
+-- 2021/04/06 Ver1.1 ADD Start
+  cv_accounting_customer    CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10793';                -- 計上顧客
+-- 2021/04/06 Ver1.1 ADD End
   cv_deduction_amount       CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10645';                -- 控除額
   cv_tax_cd                 CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10646';                -- 税コード
   cv_tax_credit             CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10647';                -- 控除税額
@@ -119,7 +123,11 @@ AS
       ,data_type                    xxcok_condition_header.data_type%TYPE                   -- データ種類
       ,tax_code                     xxcok_condition_header.tax_code%TYPE                    -- 税コード
       ,condition_line_id            xxcok_condition_lines.condition_line_id%TYPE            -- 控除詳細ID
-      ,accounting_base              xxcok_condition_lines.accounting_base%TYPE              -- 計上拠点
+-- 2021/04/06 Ver1.1 MOD Start
+--      ,accounting_base              xxcok_condition_lines.accounting_base%TYPE              -- 計上拠点
+      ,accounting_customer_code     xxcok_condition_lines.accounting_customer_code%TYPE     -- 計上顧客
+      ,sale_base_code               xxcmm_cust_accounts.sale_base_code%TYPE                 -- 売上拠点
+-- 2021/04/06 Ver1.1 MOD End
       ,deduction_amount             xxcok_condition_lines.deduction_amount%TYPE             -- 控除額(本体)
       ,deduction_tax                xxcok_condition_lines.deduction_tax_amount%TYPE         -- 控除税額
   );
@@ -266,13 +274,20 @@ AS
             ,xch.data_type                AS data_type          -- データ種類
             ,xch.tax_code                 AS tax_code           -- 税コード
             ,xcl.condition_line_id        AS condition_line_id  -- 控除詳細ID
-            ,xcl.accounting_base          AS accounting_base    -- 計上拠点
+-- 2021/04/06 Ver1.1 MOD Start
+--            ,xcl.accounting_base          AS accounting_base    -- 計上拠点
+            ,xcl.accounting_customer_code AS accounting_customer_code    -- 計上顧客
+            ,xca.sale_base_code           AS sale_base_code     -- 売上拠点
+-- 2021/04/06 Ver1.1 MOD Start
             ,xcl.deduction_amount         AS deduction_amount   -- 控除額(本体)
             ,xcl.deduction_tax_amount     AS deduction_tax      -- 控除税額
       FROM
              xxcok_condition_header       xch                   -- 控除条件テーブル
             ,xxcok_condition_lines        xcl                   -- 控除詳細テーブル
             ,fnd_lookup_values            flv                   -- 参照表
+-- 2021/04/06 Ver1.1 ADD Start
+            ,xxcmm_cust_accounts          xca                   -- 顧客追加情報
+-- 2021/04/06 Ver1.1 ADD End
       WHERE 1 = 1
       AND xch.enabled_flag_h              = cv_y_flag                     -- 有効フラグ
       AND gd_accounting_date              BETWEEN xch.start_date_active   -- 開始日
@@ -284,6 +299,9 @@ AS
       AND flv.attribute2                  = cv_fix_dedcton_type           -- 控除タイプ
       AND xcl.condition_id                = xch.condition_id              -- 控除条件ID
       AND xcl.enabled_flag_l              = cv_y_flag                     -- 控除詳細:有効フラグ
+-- 2021/04/06 Ver1.1 ADD Start
+      AND xcl.accounting_customer_code    = xca.customer_code(+)          -- 控除詳細:計上顧客
+-- 2021/04/06 Ver1.1 ADD End
       ;
 --
   BEGIN
@@ -409,9 +427,14 @@ AS
       THEN
         lv_column_name := cv_cus_chain_corp;
         lv_retcode := cv_status_warn;
-      -- 拠点コードがNULLであった場合
-      ELSIF ( gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_base IS NULL ) THEN
-        lv_column_name := cv_base_cd;
+-- 2021/04/06 Ver1.1 MOD Start
+      ---- 拠点コードがNULLであった場合
+      -- 計上顧客コードがNULLであった場合
+--      ELSIF ( gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_base IS NULL ) THEN
+      ELSIF ( gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_customer_code IS NULL ) THEN
+--        lv_column_name := cv_base_cd;
+        lv_column_name := cv_accounting_customer;
+-- 2021/04/06 Ver1.1 MOD End
         lv_retcode := cv_status_warn;
       -- 控除額がNULLであった場合
       ELSIF ( gt_dedctn_cond_tbl(ln_ins_sls_dedctn).deduction_amount IS NULL ) THEN
@@ -506,12 +529,20 @@ AS
             ,program_update_date                                      -- プログラム更新日
           )VALUES(
              xxcok_sales_deduction_s01.nextval                        -- 販売控除ID
-            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_base    -- 振替元拠点
-            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_base    -- 振替先拠点
-            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).customer_code      -- 振替元顧客コード
-            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).customer_code      -- 振替先顧客コード
-            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).chain_code         -- 控除用チェーンコード
-            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).corp_code          -- 企業コード
+-- 2021/04/06 Ver1.1 MOD Start
+--            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_base    -- 振替元拠点
+            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).sale_base_code     -- 振替元拠点
+--            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_base    -- 振替先拠点
+            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).sale_base_code     -- 振替先拠点
+--            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).customer_code      -- 振替元顧客コード
+            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_customer_code      -- 振替元顧客コード
+--            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).customer_code      -- 振替先顧客コード
+            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).accounting_customer_code      -- 振替先顧客コード
+--            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).chain_code         -- 控除用チェーンコード
+            ,NULL                                                       -- 控除用チェーンコード
+--            ,gt_dedctn_cond_tbl(ln_ins_sls_dedctn).corp_code          -- 企業コード
+            ,NULL                                                       -- 企業コード
+-- 2021/04/06 Ver1.1 MOD End
             ,gd_accounting_date                                       -- 計上日
             ,cv_created_sec                                           -- 作成元区分
             ,NULL                                                     -- 作成元明細ID
