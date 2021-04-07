@@ -3,20 +3,25 @@
  *
  * Table Name  : xxcok_sales_exp_l
  * Description : çTèúÉfÅ[É^çÏê¨ópîÃîÑé¿ê—ñæç◊
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2020/05/25    1.0   SCSK N.Koyama    êVãKçÏê¨
+ *  2021/04/06    1.1   SCSK Y.Koh       E_ñ{â“ìÆ_16026ëŒâû
  *
  ****************************************************************************************/
 CREATE TABLE xxcok.xxcok_sales_exp_l (
   sales_exp_line_id              NUMBER        NOT NULL
  ,sales_exp_header_id            NUMBER        NOT NULL
  ,item_code                      VARCHAR2(7)   NOT NULL
- ,product_class                  VARCHAR2(40) 
+ ,product_class                  VARCHAR2(40)
+-- 2021/04/06 Ver1.2 ADD Start
+ ,vessel_group                   VARCHAR2(4)
+ ,vessel_group_item_code         VARCHAR2(7)
+-- 2021/04/06 Ver1.2 ADD End
  ,dlv_uom_code                   VARCHAR2(3)   NOT NULL
  ,dlv_unit_price                 NUMBER(12,2)  NOT NULL
  ,dlv_qty                        NUMBER(9,2)   NOT NULL
@@ -41,6 +46,10 @@ COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.sales_exp_line_id      IS 'îÃîÑé¿ê—ñæç
 COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.sales_exp_header_id    IS 'îÃîÑé¿ê—ÉwÉbÉ_ID';
 COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.item_code              IS 'ïiñ⁄ÉRÅ[Éh';
 COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.product_class          IS 'ïiñ⁄ãÊï™';
+-- 2021/04/06 Ver1.2 ADD Start
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.vessel_group           IS 'óeäÌåQ';
+COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.vessel_group_item_code IS 'óeäÌåQïiñ⁄';
+-- 2021/04/06 Ver1.2 ADD End
 COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.dlv_uom_code           IS 'î[ïiíPà ';
 COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.dlv_unit_price         IS 'î[ïiíPâø';
 COMMENT ON COLUMN xxcok.xxcok_sales_exp_l.dlv_qty                IS 'î[ïiêîó ';
