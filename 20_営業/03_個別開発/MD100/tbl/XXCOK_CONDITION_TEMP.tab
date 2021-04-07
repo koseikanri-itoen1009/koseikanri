@@ -3,14 +3,15 @@
  *
  * Table Name  : XXCOK_CONDITION_TEMP
  * Description : 控除マスタCSVアップロードワークテーブル
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2020/05/12    1.0   SCSK Y.Ishii    新規作成
+ *  2020/05/12    1.0   SCSK Y.Ishii     新規作成
  *  2020/06/10    1.0   SCSK K.Kanada    決裁番号の桁数変更（10⇒11）
+ *  2021/04/06    1.1   SCSK Y.Koh       定額控除追加要件対応
  *
  ****************************************************************************************/
 CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_condition_temp (
@@ -49,6 +50,9 @@ CREATE GLOBAL TEMPORARY TABLE xxcok.xxcok_condition_temp (
     ,CONDITION_UNIT_PRICE_EN_2_6    NUMBER
     ,target_rate_6                  NUMBER
     ,accounting_base                VARCHAR2(4)
+-- 2021/04/06 Ver1.1 ADD Start
+    ,accounting_customer_code       VARCHAR2(9)
+-- 2021/04/06 Ver1.1 ADD End
     ,deduction_amount               NUMBER
     ,tax_code                       VARCHAR2(4)
     ,tax_rate                       NUMBER
@@ -139,6 +143,10 @@ COMMENT ON COLUMN xxcok.xxcok_condition_temp.target_rate_6                      
 /
 COMMENT ON COLUMN xxcok.xxcok_condition_temp.accounting_base                           IS '計上拠点'
 /
+-- 2021/04/06 Ver1.1 ADD Start
+COMMENT ON COLUMN xxcok.xxcok_condition_temp.accounting_customer_code                  IS '計上顧客'
+/
+-- 2021/04/06 Ver1.1 ADD End
 COMMENT ON COLUMN xxcok.xxcok_condition_temp.deduction_amount                          IS '控除額(本体)'
 /
 COMMENT ON COLUMN xxcok.xxcok_condition_temp.tax_code                                  IS '税コード'
