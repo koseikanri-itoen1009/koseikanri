@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A09C(body)
  * Description      : 控除データリカバリー(販売控除)
  * MD.050           : 控除データリカバリー(販売控除) MD050_COK_024_A09
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/05/13    1.0   H.Ishii          新規作成
  *  2020/12/03    1.1   SCSK Y.Koh       [E_本稼動_16026]
+ *  2021/04/06    1.2   SCSK Y.Koh       [E_本稼動_16026]容器区分対応
+ *                                       [E_本稼動_16026]定額控除複数明細対応
  *
  *****************************************************************************************/
 --
@@ -194,7 +196,11 @@ AS
    ,condition_unit_price_en_6   xxcok_condition_lines.condition_unit_price_en_6%TYPE     -- 条件単価６(円)
    ,target_rate_6               xxcok_condition_lines.target_rate_6%TYPE                 -- 対象率(％)
    ,deduction_unit_price_en_6   xxcok_condition_lines.deduction_unit_price_en_6%TYPE     -- 控除単価(円)
-   ,accounting_base             xxcok_condition_lines.accounting_base%TYPE               -- 計上拠点
+-- 2021/03/22 Ver1.2 MOD Start
+--   ,accounting_base             xxcok_condition_lines.accounting_base%TYPE               -- 計上拠点
+   ,accounting_customer_code    xxcok_condition_lines.accounting_customer_code%TYPE      -- 計上顧客
+   ,sale_base_code              xxcmm_cust_accounts.sale_base_code%TYPE                  -- 売上拠点
+-- 2021/03/22 Ver1.2 MOD End
    ,deduction_amount            xxcok_condition_lines.deduction_amount%TYPE              -- 控除額(本体)
    ,deduction_tax_amount        xxcok_condition_lines.deduction_tax_amount%TYPE          -- 控除税額
    ,deduction_type              fnd_lookup_values.attribute2%TYPE                        -- 控除タイプ
@@ -298,13 +304,20 @@ AS
           ,xcl.condition_unit_price_en_6           condition_unit_price_en_6                     -- 条件単価６(円)
           ,xcl.target_rate_6                       target_rate_6                                 -- 対象率(％)
           ,xcl.deduction_unit_price_en_6           deduction_unit_price_en_6                     -- 控除単価(円)
-          ,xcl.accounting_base                     accounting_base                               -- 計上拠点
+-- 2021/03/22 Ver1.2 MOD Start
+--          ,xcl.accounting_base                     accounting_base                               -- 計上拠点
+          ,xcl.accounting_customer_code            accounting_customer_code                      -- 計上顧客
+          ,xca.sale_base_code                      sale_base_code                                -- 売上拠点
+-- 2021/03/22 Ver1.2 MOD End
           ,xcl.deduction_amount                    deduction_amount                              -- 控除額(本体)
           ,xcl.deduction_tax_amount                deduction_tax_amount                          -- 控除税額
           ,flv.attribute2                          deduction_type                                -- 控除タイプ
     FROM   xxcok_condition_header    xch                     -- 控除条件テーブル
           ,xxcok_condition_lines     xcl                     -- 控除詳細テーブル
           ,fnd_lookup_values         flv                     -- クイックコード
+-- 2021/03/22 Ver1.2 ADD Start
+          ,xxcmm_cust_accounts       xca                     -- 顧客追加情報
+-- 2021/03/22 Ver1.2 ADD End
     WHERE  xch.condition_id              = xcl.condition_id     -- 控除条件ID
     AND    xch.data_type                 = flv.lookup_code      -- データ種類
     AND    flv.lookup_type               = cv_lookup_dedu_code  -- 控除データ種類
@@ -318,6 +331,9 @@ AS
            AND xcl.line_recovery_flag   <> cv_n_flag))          -- リカバリ対象フラグ
     AND  (     xch.request_id            = gn_request_id
            OR  xcl.request_id            = gn_request_id)       -- 要求ID
+-- 2021/03/22 Ver1.2 ADD Start
+      AND xcl.accounting_customer_code   = xca.customer_code(+)          -- 控除詳細:計上顧客
+-- 2021/03/22 Ver1.2 ADD End
     ORDER BY
            DECODE(xcl.line_recovery_flag,cv_d_flag,cn_1
                                         ,cv_i_flag,cn_2
@@ -438,7 +454,10 @@ AS
 --                   END
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l               = cv_y_flag
-    AND (  xsel.item_code                    = xcrt.item_code
+-- 2021/04/06 Ver1.2 MOD Start
+    AND (  xcrt.item_code IN (xsel.item_code, xsel.vessel_group_item_code)
+--    AND (  xsel.item_code                    = xcrt.item_code
+-- 2021/04/06 Ver1.2 MOD End
     OR     xsel.product_class                = xcrt.product_class)
     AND    dtyp.attribute2                   = d_typ.lookup_code
 -- 2020/12/03 Ver1.1 ADD Start
@@ -528,7 +547,10 @@ AS
 --                   END
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l               = cv_y_flag
-    AND (  xsel.item_code                    = xcrt.item_code
+-- 2021/04/06 Ver1.2 MOD Start
+    AND (  xcrt.item_code IN (xsel.item_code, xsel.vessel_group_item_code)
+--    AND (  xsel.item_code                    = xcrt.item_code
+-- 2021/04/06 Ver1.2 MOD End
     OR     xsel.product_class                = xcrt.product_class)
     AND    dtyp.attribute2                   = d_typ.lookup_code
 -- 2020/12/03 Ver1.1 ADD Start
@@ -618,7 +640,10 @@ AS
 --                   END
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l               = cv_y_flag
-    AND (  xsel.item_code                    = xcrt.item_code
+-- 2021/04/06 Ver1.2 MOD Start
+    AND (  xcrt.item_code IN (xsel.item_code, xsel.vessel_group_item_code)
+--    AND (  xsel.item_code                    = xcrt.item_code
+-- 2021/04/06 Ver1.2 MOD End
     OR     xsel.product_class                = xcrt.product_class)
     AND    dtyp.attribute2                   = d_typ.lookup_code
 -- 2020/12/03 Ver1.1 ADD Start
@@ -732,7 +757,7 @@ AS
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l           = cv_y_flag
     AND (  xsi.item_code                 = xcrt.item_code
-    OR     xsi.product_class             = xcrt.product_class )
+    OR     xsi.product_class             = xcrt.product_class ) -- ★
 -- 2020/12/03 Ver1.1 ADD Start
     AND    xsi.selling_trns_info_id     <= gn_sales_id_2
 -- 2020/12/03 Ver1.1 ADD End
@@ -822,7 +847,7 @@ AS
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l           = cv_y_flag
     AND (  xsi.item_code                 = xcrt.item_code
-    OR     xsi.product_class             = xcrt.product_class )
+    OR     xsi.product_class             = xcrt.product_class ) -- ★
 -- 2020/12/03 Ver1.1 ADD Start
     AND    xsi.selling_trns_info_id     <= gn_sales_id_2
 -- 2020/12/03 Ver1.1 ADD End
@@ -912,7 +937,7 @@ AS
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l           = cv_y_flag
     AND (  xsi.item_code                 = xcrt.item_code
-    OR     xsi.product_class             = xcrt.product_class )
+    OR     xsi.product_class             = xcrt.product_class ) -- ★
 -- 2020/12/03 Ver1.1 ADD Start
     AND    xsi.selling_trns_info_id     <= gn_sales_id_2
 -- 2020/12/03 Ver1.1 ADD End
@@ -1024,7 +1049,7 @@ AS
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l           = cv_y_flag
     AND   (xdst.item_code                = xcrt.item_code
-    OR     xdst.product_class            = xcrt.product_class)
+    OR     xdst.product_class            = xcrt.product_class) -- ★
     UNION ALL
     -- ②控除用チェーン
     SELECT /*+ leading(xcrt xca xdst flv2 flv) full(xcrt)
@@ -1111,7 +1136,7 @@ AS
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l            = cv_y_flag
     AND   (xdst.item_code                = xcrt.item_code
-    OR     xdst.product_class            = xcrt.product_class)
+    OR     xdst.product_class            = xcrt.product_class) -- ★
     UNION ALL
     -- ③企業
     SELECT /*+ leading(xcrt flv xca xdst flv2) full(xcrt)
@@ -1198,7 +1223,7 @@ AS
 -- 2020/12/03 Ver1.1 MOD End
     AND    xcrt.enabled_flag_l            = cv_y_flag
     AND   (xdst.item_code                = xcrt.item_code
-    OR     xdst.product_class            = xcrt.product_class)
+    OR     xdst.product_class            = xcrt.product_class) -- ★
   ;
 --
   -- カーソルレコード取得用
@@ -2325,12 +2350,20 @@ AS
           ,program_update_date                                      -- プログラム更新日
         )VALUES(
            xxcok_sales_deduction_s01.nextval                           -- 販売控除ID
-          ,gt_condition_work_tbl(in_main_idx).accounting_base          -- 振替元拠点
-          ,gt_condition_work_tbl(in_main_idx).accounting_base          -- 振替先拠点
-          ,gt_condition_work_tbl(in_main_idx).customer_code            -- 振替元顧客コード
-          ,gt_condition_work_tbl(in_main_idx).customer_code            -- 振替先顧客コード
-          ,gt_condition_work_tbl(in_main_idx).deduction_chain_code     -- 控除用チェーンコード
-          ,gt_condition_work_tbl(in_main_idx).corp_code                -- 企業コード
+-- 2021/03/22 Ver1.2 MOD Start
+--          ,gt_condition_work_tbl(in_main_idx).accounting_base          -- 振替元拠点
+          ,gt_condition_work_tbl(in_main_idx).sale_base_code           -- 振替元拠点
+--          ,gt_condition_work_tbl(in_main_idx).accounting_base          -- 振替先拠点
+          ,gt_condition_work_tbl(in_main_idx).sale_base_code           -- 振替元拠点
+--          ,gt_condition_work_tbl(in_main_idx).customer_code            -- 振替元顧客コード
+          ,gt_condition_work_tbl(in_main_idx).accounting_customer_code -- 振替元顧客コード
+--          ,gt_condition_work_tbl(in_main_idx).customer_code            -- 振替先顧客コード
+          ,gt_condition_work_tbl(in_main_idx).accounting_customer_code -- 振替先顧客コード
+--          ,gt_condition_work_tbl(in_main_idx).deduction_chain_code     -- 控除用チェーンコード
+          ,NULL                                                        -- 控除用チェーンコード
+--          ,gt_condition_work_tbl(in_main_idx).corp_code                -- 企業コード
+          ,NULL                                                        -- 企業コード
+-- 2021/03/22 Ver1.2 MOD End
           ,gd_work_date                                                -- 計上日
           ,cv_f_flag                                                   -- 作成元区分
           ,NULL                                                        -- 作成元明細ID
