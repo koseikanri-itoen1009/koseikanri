@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A02C (body)
  * Description      : 控除マスタCSV出力
  * MD.050           : 控除マスタCSV出力 MD050_COK_024_A02
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,7 +23,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/05/21    1.0   Y.Nakajima       新規作成
- *
+ *  2021/04/06    1.1   K.Yoshikawa      定額控除複数明細対応
+ 
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -218,6 +219,9 @@ AS
           
           ,xcl.target_rate_6                            AS target_rate6                            -- 対象率(％)
           ,xcl.accounting_base                          AS accounting_base                         -- 計上拠点
+-- 2021/04/06 Ver1.1 ADD Start
+          ,xcl.accounting_customer_code                 AS accounting_customer_code                -- 計上顧客
+-- 2021/04/06 Ver1.1 ADD End
           ,xcl.deduction_amount                         AS deduction_amount                        -- 控除額(本体)
           ,xch.tax_code                                 AS tax_code                                -- 税コード
           ,xcl.deduction_tax_amount                     AS deduction_tax_amount                    -- 控除税額
@@ -234,6 +238,9 @@ AS
         ,fnd_flex_values_vl           ffvv                                                         -- 企業マスタ
         ,fnd_lookup_values_vl         flvv1                                                        -- チェーンマスタ
         ,xxcmm_cust_accounts          xca                                                          -- 顧客マスタ
+-- 2021/04/06 Ver1.1 ADD Start
+        ,xxcmm_cust_accounts          xca2                                                         -- 顧客マスタ2
+-- 2021/04/06 Ver1.1 ADD End
         ,fnd_lookup_values_vl         flvv2                                                        -- 控除データ種類
         ,fnd_user                     fu                                                           -- ユーザーマスタ
         ,fnd_user                     fu2                                                          -- ユーザーマスタ2
@@ -309,6 +316,8 @@ AS
     AND    flvv1.lookup_type(+)                   = cv_type_chain_code
     -- 顧客
     AND    xch.customer_code                      = xca.customer_code(+)                           -- 控除条件.顧客コード         ＝ 顧客マスタ.顧客コード
+    -- 計上顧客
+    AND    xcl.accounting_customer_code           = xca2.customer_code(+)                          -- 控除詳細.計上顧客コード     ＝ 顧客マスタ2.顧客コード
     -- パラメータ
     AND    (iv_order_deduction_no     IS NULL                                                                                                -- パラメータ.控除番号         IS NULL
       OR    xch.condition_no          = iv_order_deduction_no)                                                                               -- 控除条件.控除番号           ＝ パラメータ.控除番号
@@ -331,7 +340,10 @@ AS
       OR     ffvv.attribute2           = gv_user_base_code                              -- 企業マスタ.本部担当拠点     ＝ 所属拠点コード
       OR     flvv1.attribute3          = gv_user_base_code                              -- チェーンマスタ.本部担当拠点 ＝ 所属拠点コード
       OR     xca.sale_base_code        = gv_user_base_code                              -- 顧客.売上担当拠点           ＝ 所属拠点コード
-      OR     xcl.accounting_base       = gv_user_base_code                              -- 控除詳細.計上拠点           ＝ 所属拠点コード
+-- 2021/04/06 Ver1.1 MOD Start
+--      OR     xcl.accounting_base       = gv_user_base_code                              -- 控除詳細.計上拠点           ＝ 所属拠点コード
+      OR     xca2.sale_base_code       = gv_user_base_code                              -- 控除詳細.計上顧客           ＝ 所属拠点コード
+-- 2021/04/06 Ver1.1 MOD End
              )
     -- ヘッダ従業員情報
     AND    fu.user_id                  = xch.last_updated_by
@@ -858,7 +870,10 @@ AS
          || cv_delimit || gt_out_file_tab(i).support_amount_sum_en                    -- 協賛金合計(円)
          || cv_delimit || gt_out_file_tab(i).condition_unit_price_en                  -- 条件単価(円)
          || cv_delimit || gt_out_file_tab(i).target_rate6                             -- 対象率(％)
-         || cv_delimit || gt_out_file_tab(i).accounting_base                          -- 計上拠点
+-- 2021/04/06 Ver1.1 MOD Start
+         --|| cv_delimit || gt_out_file_tab(i).accounting_base                          -- 計上拠点
+         || cv_delimit || gt_out_file_tab(i).accounting_customer_code                 -- 計上顧客
+-- 2021/04/06 Ver1.1 MOD End
          || cv_delimit || gt_out_file_tab(i).deduction_amount                         -- 控除額(本体)
          || cv_delimit || gt_out_file_tab(i).deduction_tax_amount                     -- 控除税額
          || cv_delimit || TO_CHAR(gt_out_file_tab(i).head_last_update_date,cv_date_format_time)                          -- ヘッダ最終更新日
