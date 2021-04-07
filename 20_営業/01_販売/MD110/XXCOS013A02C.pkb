@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/10/08    1.12  M.Sano           [0001520]PT対応
  *  2010/11/01    1.13  K.Kiriu          [E_本稼動_05350]日中化対応に伴う対象外データ更新判定追加
  *  2011/01/17    1.14  K.Kiriu          [E_本稼動_01762]入出庫データの拠点コード設定見直し対応
+ *  2021/04/07    1.15  T.Nishikawa      [E_本稼動_16026]収益認識対応
  *
  *****************************************************************************************/
 --
@@ -299,7 +300,12 @@ AS
     in_out_cls                  VARCHAR2(1),                                             --入出庫区分
     dept_code                   VARCHAR2(20),                                            --部門コード
     acc_item                    VARCHAR2(20),                                            --勘定科目コード
-    ass_item                    VARCHAR2(20)                                             --補助科目コード
+/* 2021/04/07 Ver1.15 Mod Start */
+--    ass_item                    VARCHAR2(20)                                             --補助科目コード
+    ass_item                    VARCHAR2(20),                                            --補助科目コード
+    start_date_active           DATE,                                                    --有効開始日
+    end_date_active             DATE                                                     --有効終了日
+/* 2021/04/07 Ver1.15 Mod End */
   );
   --取引タイプ／仕訳パターンマッピング表コレクション型
   TYPE g_jor_map_ttype IS TABLE OF g_rec_jor_map_rtype INDEX BY BINARY_INTEGER;
@@ -1797,7 +1803,12 @@ AS
             look_val.attribute11         in_out_cls,         --入出庫区分
             look_val.attribute8          dept_code,          --部門コード
             look_val.attribute9          acc_item,           --勘定科目コード
-            look_val.attribute10         ass_item            --補助科目コード
+/* 2021/04/07 Ver1.15 Mod Start */
+--            look_val.attribute10         ass_item            --補助科目コード
+            look_val.attribute10         ass_item,           --補助科目コード
+            look_val.start_date_active   start_date_active,  --有効開始日
+            look_val.end_date_active     end_date_active     --有効終了日
+/* 2021/04/07 Ver1.15 Mod End */
     BULK COLLECT INTO
             l_jor_map_tab
 /* 2009/07/16 Ver1.7 Mod Start */
@@ -1949,8 +1960,10 @@ AS
             fnd_lookup_values            look_val5
     WHERE   look_val.lookup_type         = cv_txn_jor_type
     AND     look_val.language            = cv_lang
-    AND     gd_proc_date                 BETWEEN NVL( look_val.start_date_active, gd_min_date )
-                                         AND     NVL( look_val.end_date_active, gd_max_date )
+/* 2021/04/07 Ver1.15 Del Start */
+--    AND     gd_proc_date                 BETWEEN NVL( look_val.start_date_active, gd_min_date )
+--                                         AND     NVL( look_val.end_date_active, gd_max_date )
+/* 2021/04/07 Ver1.15 Del End */
     AND     look_val.enabled_flag        = ct_enabled_flg_y
             --赤黒フラグ特定
     AND     look_val1.lookup_type        = cv_red_black_type
@@ -2110,7 +2123,12 @@ AS
              g_sales_exp_tab(i).dlv_invoice_class = l_jor_map_tab(j).dlv_invoice_class AND  --納品伝票区分
              g_sales_exp_tab(i).dlv_pattern_class = l_jor_map_tab(j).dlv_pattern_class AND  --納品形態区分
              g_sales_exp_tab(i).sales_class       = l_jor_map_tab(j).sales_class       AND  --売上区分
-             g_sales_exp_tab(i).goods_prod_class  = l_jor_map_tab(j).goods_prod_class       --商品製品区分
+/* 2021/04/07 Ver1.15 Mod Start */
+--             g_sales_exp_tab(i).goods_prod_class  = l_jor_map_tab(j).goods_prod_class       --商品製品区分
+             g_sales_exp_tab(i).goods_prod_class  = l_jor_map_tab(j).goods_prod_class  AND  --商品製品区分
+             g_sales_exp_tab(i).dlv_date         >= NVL(l_jor_map_tab(j).start_date_active, gd_min_date )   AND      --有効開始日
+             g_sales_exp_tab(i).dlv_date         <= NVL(l_jor_map_tab(j).end_date_active, gd_max_date )              --有効終了日
+/* 2021/04/07 Ver1.15 Mod End */
            ) THEN
           ln_jor_out_inx := ln_jor_out_inx + 1;
           l_jor_out_tab(ln_jor_out_inx).txn_src_type  := l_jor_map_tab(j).txn_src_type;     --取引ソースタイプ
