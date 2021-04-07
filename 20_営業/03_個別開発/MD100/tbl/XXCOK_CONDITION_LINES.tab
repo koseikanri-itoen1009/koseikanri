@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_CONDITION_LINES
  * Description : 控除詳細テーブル
- * Version     : 1.0
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2019/12/03    1.0   SCSK Y.Koh       新規作成
  *  2020/04/09    1.1   SCSK H.Ishii     税コード削除
  *  2020/05/21    1.2   SCSK H.Ishii     DL用項目追加
+ *  2021/04/06    1.3   SCSK Y.Koh       定額控除追加要件対応
  *
  ****************************************************************************************/
 CREATE TABLE xxcok.xxcok_condition_lines (
@@ -53,6 +54,9 @@ CREATE TABLE xxcok.xxcok_condition_lines (
     ,target_rate_6                  NUMBER
     ,deduction_unit_price_en_6      NUMBER
     ,accounting_base                VARCHAR2(4)
+-- 2021/04/06 Ver1.3 ADD Start
+    ,accounting_customer_code       VARCHAR2(9)
+-- 2021/04/06 Ver1.3 ADD End
     ,deduction_amount               NUMBER
 -- 2020/04/09 Ver1.1 DEL Ishii START
 --    ,tax_code                       VARCHAR2(4)
@@ -148,6 +152,10 @@ COMMENT ON COLUMN xxcok.xxcok_condition_lines.deduction_unit_price_en_6         
 /
 COMMENT ON COLUMN xxcok.xxcok_condition_lines.accounting_base                          IS '計上拠点'
 /
+-- 2021/04/06 Ver1.3 ADD Start
+COMMENT ON COLUMN xxcok.xxcok_condition_lines.accounting_customer_code                 IS '計上顧客'
+/
+-- 2021/04/06 Ver1.3 ADD End
 COMMENT ON COLUMN xxcok.xxcok_condition_lines.deduction_amount                         IS '控除額(本体)'
 /
 -- 2020/04/09 Ver1.1 DEL Ishii START
