@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A03C_pkg(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：販売実績・販売控除データの作成 MD050_COK_024_A03
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/01/15    1.0   Y.Koh            新規作成
  *  2020/12/03    1.1   SCSK Y.Koh       [E_本稼動_16026]
+ *  2021/04/06    1.2   SCSK Y.Koh       [E_本稼動_16026]
  *
  *****************************************************************************************/
 --
@@ -88,8 +89,8 @@ AS
   gn_skip_cnt                 NUMBER    DEFAULT 0;                                                  -- スキップ件数
   gn_error_cnt                NUMBER    DEFAULT 0;                                                  -- エラー件数
 --
-  gn_target_header_id_st        NUMBER;                                                               -- 販売実績明細ID (自)
-  gn_target_header_id_ed        NUMBER;                                                               -- 販売実績明細ID (至)
+  gn_target_header_id_st      NUMBER;                                                               -- 販売実績明細ID (自)
+  gn_target_header_id_ed      NUMBER;                                                               -- 販売実績明細ID (至)
 --
   gv_deduction_uom_code       VARCHAR2(3);                                                          -- 控除単位
   gn_deduction_unit_price     NUMBER;                                                               -- 控除単価
@@ -212,7 +213,10 @@ AS
     AND XSEH.DELIVERY_DATE BETWEEN XCH.START_DATE_ACTIVE AND XCH.END_DATE_ACTIVE
     AND XCL.CONDITION_ID   = XCH.CONDITION_ID
     AND XCL.ENABLED_FLAG_L = 'Y'
-    AND ( XSEL.ITEM_CODE   = XCL.ITEM_CODE
+-- 2021/04/06 Ver1.2 MOD Start
+    AND ( XCL.ITEM_CODE IN (XSEL.ITEM_CODE, XSEL.VESSEL_GROUP_ITEM_CODE)
+--    AND ( XSEL.ITEM_CODE   = XCL.ITEM_CODE
+-- 2021/04/06 Ver1.2 MOD End
     OR    XSEL.PRODUCT_CLASS  = XCL.PRODUCT_CLASS )
     AND DTYP.ATTRIBUTE2  = D_TYP.LOOKUP_CODE
     UNION ALL
@@ -293,7 +297,10 @@ AS
     AND XSEH.DELIVERY_DATE BETWEEN XCH.START_DATE_ACTIVE AND XCH.END_DATE_ACTIVE
     AND XCL.CONDITION_ID   = XCH.CONDITION_ID
     AND XCL.ENABLED_FLAG_L = 'Y'
-    AND ( XSEL.ITEM_CODE   = XCL.ITEM_CODE
+-- 2021/04/06 Ver1.2 MOD Start
+    AND ( XCL.ITEM_CODE IN (XSEL.ITEM_CODE, XSEL.VESSEL_GROUP_ITEM_CODE)
+--    AND ( XSEL.ITEM_CODE   = XCL.ITEM_CODE
+-- 2021/04/06 Ver1.2 MOD End
     OR    XSEL.PRODUCT_CLASS  = XCL.PRODUCT_CLASS )
     AND DTYP.ATTRIBUTE2  = D_TYP.LOOKUP_CODE
     UNION ALL
@@ -374,7 +381,10 @@ AS
     AND XSEH.DELIVERY_DATE BETWEEN XCH.START_DATE_ACTIVE AND XCH.END_DATE_ACTIVE
     AND XCL.CONDITION_ID   = XCH.CONDITION_ID
     AND XCL.ENABLED_FLAG_L = 'Y'
-    AND ( XSEL.ITEM_CODE   = XCL.ITEM_CODE
+-- 2021/04/06 Ver1.2 MOD Start
+    AND ( XCL.ITEM_CODE IN (XSEL.ITEM_CODE, XSEL.VESSEL_GROUP_ITEM_CODE)
+--    AND ( XSEL.ITEM_CODE   = XCL.ITEM_CODE
+-- 2021/04/06 Ver1.2 MOD End
     OR    XSEL.PRODUCT_CLASS  = XCL.PRODUCT_CLASS )
     AND DTYP.ATTRIBUTE2  = D_TYP.LOOKUP_CODE;
 --
