@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A27C (body)
  * Description      : 控除データ用販売実績作成
  * MD.050           : 控除データ用販売実績作成 MD050_COK_024_A27
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/09/25    1.0   N.Koyama         新規作成
+ *  2021/04/06    1.1   SCSK Y.Koh       [E_本稼動_16026]
  *
  *****************************************************************************************/
 --
@@ -409,6 +410,10 @@ AS
               ,sales_exp_header_id
               ,item_code
               ,product_class
+-- 2021/04/06 Ver1.1 ADD Start
+              ,vessel_group
+              ,vessel_group_item_code
+-- 2021/04/06 Ver1.1 ADD End
               ,dlv_uom_code
               ,dlv_unit_price
               ,dlv_qty
@@ -430,6 +435,10 @@ AS
               ,xsel.sales_exp_header_id
               ,xsel.item_code
               ,mcv.segment1
+-- 2021/04/06 Ver1.1 ADD Start
+              ,xsib.vessel_group
+              ,flv.meaning
+-- 2021/04/06 Ver1.1 ADD End
               ,xsel.dlv_uom_code
               ,xsel.dlv_unit_price
               ,xsel.dlv_qty
@@ -452,6 +461,9 @@ AS
               ,gmi_item_categories     gic
               ,mtl_category_sets_vl    mcsv
               ,xxcmm_system_items_b    xsib
+-- 2021/04/06 Ver1.1 ADD Start
+              ,fnd_lookup_values       flv
+-- 2021/04/06 Ver1.1 ADD End
         WHERE  xseh.request_id          = cn_request_id
            AND xseh.sales_exp_header_id = xsel.sales_exp_header_id
            AND mcsv.category_set_name   = '本社商品区分'
@@ -459,6 +471,12 @@ AS
            AND gic.category_set_id      = mcsv.category_set_id
            AND mcv.category_id          = gic.category_id
            AND xsel.item_code           = xsib.item_code
+-- 2021/04/06 Ver1.1 ADD Start
+           AND flv.lookup_type(+)       = 'XXCOK1_VESSEL_GROUP_CONVERSION'
+           AND flv.lookup_code(+)       = xsib.vessel_group
+           AND flv.language(+)          = 'JA'
+           AND flv.enabled_flag(+)      = 'Y'
+-- 2021/04/06 Ver1.1 ADD End
            AND NOT EXISTS (
                SELECT
                         'X'
