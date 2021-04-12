@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A29C(body)
  * Description      : 問屋販売条件請求書Excelアップロード（収益認識）
  * MD.050           : 問屋販売条件請求書Excelアップロード（収益認識） MD050_COK_024_A29
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/11/09    1.0   A.Aoki           新規作成
+ *  2021/04/09    1.1   SCSK Y.Koh       [E_本稼動_16026]
  *
  *****************************************************************************************/
 --
@@ -77,7 +78,9 @@ AS
   cv_err_msg_10780           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10780';   --請求金額チェックエラーメッセージ
   cv_err_msg_10781           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10781';   --売上対象年月日の同一値チェックエラーメッセージ
   cv_err_msg_10504           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10504';   --AP会計期間未オープンエラーメッセージ
-  cv_err_msg_10505           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10505';   --問屋管理コード未設定エラーメッセージ
+-- 2021/04/09 Ver1.1 DEL Start
+--  cv_err_msg_10505           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10505';   --問屋管理コード未設定エラーメッセージ
+-- 2021/04/09 Ver1.1 DEL End
   cv_err_msg_10506           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10506';   --銀行口座情報設定エラーメッセージ
   cv_err_msg_00059           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00059';   --会計帳期間報取得エラーメッセージ
   cv_err_msg_00061           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00061';   --IF表ロック取得エラー
@@ -1446,36 +1449,38 @@ AS
                     );
       ov_retcode := cv_status_continue;
     END IF;
-    -- =============================================================================
-    -- 15.問屋管理コード設定チェック
-    -- =============================================================================
-    --問屋管理コードが設定されているかチェックを行う
-    SELECT COUNT('X') AS cnt
-    INTO   ln_count
-    FROM   hz_cust_accounts         hca      -- 顧客マスタ（顧客）
-         , xxcmm_cust_accounts      xca      -- 顧客追加情報（顧客）
-    WHERE  hca.cust_account_id   = xca.customer_id
-    AND    xca.wholesale_ctrl_code IS NOT NULL
-    AND    hca.account_number    = iv_cust_code -- ★
-    ;
---
-    -- *** 値が取得できなかった場合、例外処理 ***
-    IF ( ln_count = cn_0 ) THEN
-      lv_msg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcok_appl_name
-                , iv_name         => cv_err_msg_10505
-                , iv_token_name1  => cv_token_customer_code
-                , iv_token_value1 => iv_cust_code
-                , iv_token_name2  => cv_token_row_num
-                , iv_token_value2 => TO_CHAR( in_loop_cnt )
-                );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.OUTPUT    --出力区分
-                    , iv_message  => lv_msg             --メッセージ
-                    , in_new_line => 0                  --改行
-                    );
-      ov_retcode := cv_status_continue;
-    END IF;
+-- 2021/04/09 Ver1.1 DEL Start
+--    -- =============================================================================
+--    -- 15.問屋管理コード設定チェック
+--    -- =============================================================================
+--    --問屋管理コードが設定されているかチェックを行う
+--    SELECT COUNT('X') AS cnt
+--    INTO   ln_count
+--    FROM   hz_cust_accounts         hca      -- 顧客マスタ（顧客）
+--         , xxcmm_cust_accounts      xca      -- 顧客追加情報（顧客）
+--    WHERE  hca.cust_account_id   = xca.customer_id
+--    AND    xca.wholesale_ctrl_code IS NOT NULL
+--    AND    hca.account_number    = iv_cust_code -- ★
+--    ;
+----
+--    -- *** 値が取得できなかった場合、例外処理 ***
+--    IF ( ln_count = cn_0 ) THEN
+--      lv_msg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcok_appl_name
+--                , iv_name         => cv_err_msg_10505
+--                , iv_token_name1  => cv_token_customer_code
+--                , iv_token_value1 => iv_cust_code
+--                , iv_token_name2  => cv_token_row_num
+--                , iv_token_value2 => TO_CHAR( in_loop_cnt )
+--                );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.OUTPUT    --出力区分
+--                    , iv_message  => lv_msg             --メッセージ
+--                    , in_new_line => 0                  --改行
+--                    );
+--      ov_retcode := cv_status_continue;
+--    END IF;
+-- 2021/04/09 Ver1.1 DEL End
     -- =============================================================================
     -- 16.銀行口座有効チェック
     -- =============================================================================
