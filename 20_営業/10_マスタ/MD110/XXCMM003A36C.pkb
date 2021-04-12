@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A36C(body)
  * Description      : 各諸マスタ連携IFデータ作成
  * MD.050           : MD050_CMM_003_A36_各諸マスタ連携IFデータ作成
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2019/01/25    1.10  Yasuhiro.Shoji      E_本稼動_15490の対応
  *  2019/07/16    1.11  Kawaguch.Takuya     E_本稼動_15472の対応
  *  2020/08/21    1.12  Nobuo.Koyama        E_本稼動_15904の対応
+ *  2021/04/09    1.13  SCSK Y.Koh          E_本稼動_16026
  *
  *****************************************************************************************/
 --
@@ -3454,14 +3455,25 @@ AS
                                 SELECT 
                                        lookup_type AS lv_ref_type 
                                       ,lookup_code AS lv_ref_code 
-                                      ,meaning     AS lv_ref_name                                 
+                                      ,meaning     AS lv_ref_name
                                       ,NULL        AS lv_pt_ref_type
                                       ,NULL        AS lv_pt_ref_code
                                 FROM  fnd_lookup_values
                                 WHERE language = cv_language_ja
                                 AND   lookup_type = 'XXCOS1_DELIVERY_PATTERN'
                                 AND   enabled_flag = cv_y_flag
-                                ORDER BY lookup_code;
+-- 2021/04/09 Ver1.13 MOD Start
+                              UNION
+                                SELECT
+                                       'XXCOS1_DELIVERY_PATTERN'
+                                      ,'9'
+                                      ,'その他'
+                                      ,NULL
+                                      ,NULL
+                                FROM DUAL
+                                ORDER BY lv_ref_code;
+--                                ORDER BY lookup_code;
+-- 2021/04/09 Ver1.13 MOD End
 
       dliy_pattn_rec dliy_pattn_cur%ROWTYPE;
 
