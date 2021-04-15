@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoContractOtherCustsEOImpl
 * 概要説明   : 契約先以外テーブルエンティティクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者        修正内容
 * ---------- ---- ------------- ---------------------------------------------
 * 2015-02-02 1.0  SCSK山下翔太  新規作成
+* 2021-04-08 1.1  SCSK二村悠香  [E_本稼動_17053 契約書コピー不具合]
 *=============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -173,7 +174,10 @@ public class XxcsoContractOtherCustsEOImpl extends OAPlsqlEntityImpl
     {
       XxcsoContractManagementsEOImpl contractMngEo
         = (XxcsoContractManagementsEOImpl)contractMngIt.next();
-      if ( contractMngEo.getContractOtherCustsId() == null)
+// 2021-04-08 [E_本稼動_17053] Mod Start
+//      if ( contractMngEo.getContractOtherCustsId() == null)
+      if ( contractMngEo.getEntityState() == OAPlsqlEntityImpl.STATUS_NEW )
+// 2021-04-08 [E_本稼動_17053] Mod End
       {
         // 契約管理テーブル
         contractMngEo.setContractOtherCustsId(ContractOtherCustsId);
