@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.23
+ * Version          : 3.24
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -86,6 +86,7 @@ AS
  *  2020/11/26    3.21  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
  *  2020/12/04    3.22  N.Abe            [E_本稼動_15904] 自販機BM計算税抜き対応
  *  2021/01/04    3.23  H.Futamura       [E_本稼動_15904] 税抜きでの自販機BM計算について
+ *  2021/04/15    3.24  SCSK Y.Koh       [E_本稼動_16026]
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -6558,7 +6559,16 @@ END delete_xcbs;
     , i_get_cust_data_rec.tax_rounding_rule          -- 端数処理区分
     , i_get_cust_data_rec.receiv_discount_rate       -- 入金値引率
     , iv_term_name                                   -- 支払条件
-    , id_close_date                                  -- 締め日
+-- 2021/04/15 Ver3.24 MOD Start
+    , CASE
+        WHEN  i_get_cust_data_rec.ship_gyotai_sho IN  (cv_gyotai_sho_24, cv_gyotai_sho_25, cv_gyotai_sho_27)
+        THEN
+          id_close_date
+        ELSE
+          LEAST(id_close_date, TO_DATE('2021/04/30','YYYY/MM/DD'))
+      END
+--    , id_close_date
+-- 2021/04/15 Ver3.24 MOD End
     , ld_expect_payment_date                         -- 支払予定日
     , in_period_year                                 -- 会計年度
     , ld_calc_target_period_from                     -- 計算対象期間(FROM)
