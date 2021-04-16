@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP003A02C(body)
  * Description      : 問屋未確定データ出力
  * MD.070           : 問屋未確定データ出力 (MD070_IPO_CCP_003_A02)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2016/03/23    1.0   H.Okada          [E_本稼動_11084]新規作成
+ *  2021/04/15    1.1   SCSK Y.Koh       [E_本稼動_16026]
  *
  *****************************************************************************************/
 --
@@ -42,6 +43,14 @@ AS
 --
   cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
   cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+-- 2021/04/15 Ver1.1 ADD Start
+  cv_xxcok_appl_name        CONSTANT VARCHAR2(10)  := 'XXCOK';
+  cv_all_base_allowed       CONSTANT VARCHAR2(100) := 'XXCOK1_WHOLESALE_INVOICE_UPLOAD_ALL_BASE_ALLOWED';
+  cv_err_msg_00003          CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00003';   --プロファイル取得エラー
+  cv_err_msg_00030          CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00030';   --所属部門取得エラー
+  cv_token_profile          CONSTANT VARCHAR2(10)  := 'PROFILE';         --トークン名(PROFILE)
+  cv_token_user_id          CONSTANT VARCHAR2(10)  := 'USER_ID';         --トークン名(USER_ID)
+-- 2021/04/15 Ver1.1 ADD End
 --
 --################################  固定部 END   ##################################
 --
@@ -52,6 +61,10 @@ AS
   gn_normal_cnt    NUMBER;                    -- 正常件数
   gn_error_cnt     NUMBER;                    -- エラー件数
   gn_warn_cnt      NUMBER;                    -- 警告件数
+-- 2021/04/15 Ver1.1 ADD Start
+  gv_all_base_allowed VARCHAR2(1);            --カスタム･プロファイル取得変数
+  gv_user_dept_code VARCHAR2(100);            --ユーザ担当拠点
+-- 2021/04/15 Ver1.1 ADD End
 --
 --################################  固定部 END   ##################################
 --
@@ -105,12 +118,21 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name             CONSTANT VARCHAR2(100) := 'submain';           -- プログラム名
+-- 2021/04/15 Ver1.1 ADD Start
+    cv_flag_n               CONSTANT VARCHAR2(1)   := 'N';                 --N:対象外
+-- 2021/04/15 Ver1.1 ADD End
     -- ===============================
     -- ローカル変数
     -- ===============================
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+-- 2021/04/15 Ver1.1 ADD Start
+    lv_msg            VARCHAR2(5000) DEFAULT NULL;                --メッセージ取得変数
+    lb_retcode        BOOLEAN        DEFAULT TRUE;                --メッセージ出力の戻り値
+    lv_profile_code   VARCHAR2(100)  DEFAULT NULL; --プロファイル値
+    lv_user_dept_code VARCHAR2(100)  DEFAULT NULL; --ユーザ担当拠点
+-- 2021/04/15 Ver1.1 ADD End
 --
 --###########################  固定部 END   ####################################
 --
@@ -123,6 +145,14 @@ AS
     ld_process_date  DATE := xxccp_common_pkg2.get_process_date; -- 業務日付
     lt_sales_ou_id   hr_operating_units.organization_id%TYPE;    -- 営業組織ID
 --
+-- 2021/04/15 Ver1.1 ADD Start
+    -- =======================
+    -- ローカル例外
+    -- =======================
+    get_profile_expt        EXCEPTION;   -- カスタム･プロファイル取得エラー
+    get_user_dept_code_expt EXCEPTION;   -- 所属部門取得エラー
+--
+-- 2021/04/15 Ver1.1 ADD End
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -160,8 +190,16 @@ AS
                  ,xwbh.supplier_code                                AS supplier_code
                  ,pvs.attribute1                                    AS supplier_name
                  ,TO_CHAR( xwbh.expect_payment_date, 'RRRR/MM/DD' ) AS expect_payment_date
-                 ,xwbl.selling_month                                AS selling_month
+-- 2021/04/15 Ver1.1 MOD Start
+                 ,NVL( TO_CHAR( xwbl.selling_date, 'YYYY/MM/DD' ), TO_CHAR( TO_DATE(xwbl.selling_month,'YYYYMM'), 'YYYY/MM' ) )
+                                                                    AS selling_date
+--                 ,xwbl.selling_month                                AS selling_month
+-- 2021/04/15 Ver1.1 MOD End
                  ,xwbh.cust_code                                    AS cust_code
+-- 2021/04/15 Ver1.1 ADD Start
+                 ,xwbl.bill_no                                      AS bill_no
+                 ,xwbl.recon_slip_num                               AS recon_slip_num
+-- 2021/04/15 Ver1.1 ADD End
                  ,SUM( xwbl.demand_amt )                            AS demand_amt
                  ,SUM( xwbl.payment_amt )                           AS payment_amt
                  ,xwbl.status                                       AS status
@@ -170,13 +208,17 @@ AS
                  ,po_vendors                 pv    -- 仕入先マスタ
                  ,po_vendor_sites_all        pvs   -- 仕入先サイト
            WHERE  xwbl.wholesale_bill_header_id   =  xwbh.wholesale_bill_header_id
-             AND  xwbl.payment_amt                <> 0
+-- 2021/04/15 Ver1.1 DEL Start
+--             AND  xwbl.payment_amt                <> 0
+-- 2021/04/15 Ver1.1 DEL End
              AND  pv.segment1                     =  xwbh.supplier_code
              AND  pvs.vendor_id                   =  pv.vendor_id
              AND  pvs.org_id                      =  lt_sales_ou_id  -- 営業組織ID
-             AND  (     pvs.inactive_date         IS NULL
-                    OR  pvs.inactive_date         <  ld_process_date
-                  )
+-- 2021/04/15 Ver1.1 DEL Start
+--             AND  (     pvs.inactive_date         IS NULL
+--                    OR  pvs.inactive_date         <  ld_process_date
+--                  )
+-- 2021/04/15 Ver1.1 DEL End
              AND  xwbh.expect_payment_date        >= TO_DATE( iv_payment_date_from ,'YYYY/MM/DD HH24:MI:SS' )
              AND  xwbh.expect_payment_date        <= TO_DATE( iv_payment_date_to   ,'YYYY/MM/DD HH24:MI:SS' )
            GROUP BY xwbh.base_code            -- 拠点CD
@@ -184,7 +226,14 @@ AS
                    ,pvs.attribute1            -- 仕入先名
                    ,xwbh.expect_payment_date  -- 支払予定日
                    ,xwbl.selling_month        -- 売上年月
+-- 2021/04/15 Ver1.1 ADD Start
+                   ,xwbl.selling_date         -- 売上対象年月日
+-- 2021/04/15 Ver1.1 ADD End
                    ,xwbh.cust_code            -- 顧客CD
+-- 2021/04/15 Ver1.1 ADD Start
+                   ,xwbl.bill_no              -- 請求書No
+                   ,xwbl.recon_slip_num       -- 支払伝票番号
+-- 2021/04/15 Ver1.1 ADD End
                    ,xwbl.status               -- ステータス
           )
       SELECT wv.base_code            AS base_code
@@ -192,12 +241,22 @@ AS
             ,wv.supplier_code        AS supplier_code
             ,wv.supplier_name        AS supplier_name
             ,wv.expect_payment_date  AS expect_payment_date
-            ,wv.selling_month        AS selling_month
+-- 2021/04/15 Ver1.1 MOD Start
+            ,wv.selling_date         AS selling_date
+--            ,wv.selling_month        AS selling_month
+-- 2021/04/15 Ver1.1 MOD End
             ,wv.cust_code            AS cust_code
             ,cv.cust_name            AS cust_name
+-- 2021/04/15 Ver1.1 ADD Start
+            ,wv.bill_no              AS bill_no
+            ,wv.recon_slip_num       AS recon_slip_num
+-- 2021/04/15 Ver1.1 ADD End
             ,wv.demand_amt           AS demand_amt
             ,wv.payment_amt          AS payment_amt
-            ,wv.status               AS status
+-- 2021/04/15 Ver1.1 MOD Start
+            ,RPAD(wv.status,2,' ')   AS status
+--            ,wv.status               AS status
+-- 2021/04/15 Ver1.1 MOD End
             ,sv.status_name          AS status_name
       FROM   wholesale_v    wv   -- 問屋請求VIEW
             ,base_v         bv   -- 拠点VIEW
@@ -209,11 +268,38 @@ AS
       ORDER BY wv.base_code            -- 拠点CD
               ,wv.supplier_code        -- 仕入先CD
               ,wv.expect_payment_date  -- 支払予定日
-              ,wv.selling_month        -- 売上年月
+-- 2021/04/15 Ver1.1 MOD Start
+              ,wv.selling_date         -- 売上対象年月日
+--              ,wv.selling_month        -- 売上年月
+-- 2021/04/15 Ver1.1 MOD End
               ,wv.cust_code            -- 顧客CD
+-- 2021/04/15 Ver1.1 ADD Start
+              ,wv.bill_no              -- 請求書No
+              ,wv.recon_slip_num       -- 支払伝票番号
+-- 2021/04/15 Ver1.1 ADD End
       ;
     -- メインカーソルレコード型
     main_rec  main_cur%ROWTYPE;
+--
+-- 2021/04/15 Ver1.1 ADD Start
+    -- 支払金額取得
+    CURSOR deduction_recon_cur( iv_recon_slip_num IN VARCHAR2 )
+    IS
+      SELECT  ( SELECT NVL(SUM(xdrla.payment_amt),0) from XXCOK_DEDUCTION_RECON_LINE_AP xdrla where xdrla.recon_slip_num = iv_recon_slip_num )  +
+              ( SELECT NVL(SUM(xdrlw.payment_amt),0) from XXCOK_DEDUCTION_RECON_LINE_WP xdrlw where xdrlw.recon_slip_num = iv_recon_slip_num )  +
+              ( SELECT NVL(SUM(xapi.payment_amt ),0) from XXCOK_ACCOUNT_PAYMENT_INFO    xapi  where xapi .recon_slip_num = iv_recon_slip_num )
+                                        AS  payment_amt ,   -- 支払金額
+              xdrh.recon_status         AS  status      ,   -- ステータス
+              flv.MEANING               AS  status_name     -- ステータス名
+      FROM    fnd_lookup_values           flv , -- クイックコード
+              xxcok_deduction_recon_head  xdrh  -- 控除消込ヘッダー情報
+      WHERE   xdrh.recon_slip_num       = iv_recon_slip_num           AND
+              flv.LOOKUP_TYPE           = 'XXCOK1_HEAD_ERASE_STATUS'  AND
+              flv.LANGUAGE              = 'JA'                        AND
+              flv.LOOKUP_CODE           = xdrh.recon_status;
+--
+    deduction_recon_rec deduction_recon_cur%ROWTYPE;
+-- 2021/04/15 Ver1.1 ADD End
 --
   BEGIN
 --
@@ -243,6 +329,33 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
+-- 2021/04/15 Ver1.1 ADD Start
+    --==============================================================
+    -- カスタム・プロファイル・オプション取得
+    --==============================================================
+    BEGIN  --lv_all_base_allow_flag
+      gv_all_base_allowed := FND_PROFILE.VALUE( cv_all_base_allowed );
+    IF ( gv_all_base_allowed IS NULL ) THEN
+      lv_profile_code := cv_all_base_allowed;
+      RAISE get_profile_expt;
+    END IF;
+    END;
+--
+    -- =============================================================================
+    -- 3.ユーザの所属部門を取得
+    -- =============================================================================
+    BEGIN
+      lv_user_dept_code := xxcok_common_pkg.get_department_code_f(
+                             in_user_id => cn_created_by
+                           );
+--
+      IF ( lv_user_dept_code IS NULL ) THEN
+        RAISE get_user_dept_code_expt;
+    END IF;
+    gv_user_dept_code := lv_user_dept_code ;
+    END;
+--
+-- 2021/04/15 Ver1.1 ADD End
     --==============================================================
     -- 入力パラメータ出力
     --==============================================================
@@ -270,14 +383,25 @@ AS
       -- 項目名出力
       FND_FILE.PUT_LINE(
          which  => FND_FILE.OUTPUT
-        ,buff   =>           '"' || '拠点CD'                     || '"' -- 拠点CD
+-- 2021/04/15 Ver1.1 MOD Start
+        ,buff   =>           '"' || '削除区分'                   || '"' -- 削除区分
+                   || ',' || '"' || '拠点CD'                     || '"' -- 拠点CD
+--        ,buff   =>           '"' || '拠点CD'                     || '"' -- 拠点CD
+-- 2021/04/15 Ver1.1 MOD End
                    || ',' || '"' || '拠点名'                     || '"' -- 拠点名
                    || ',' || '"' || '仕入先CD'                   || '"' -- 仕入先CD
                    || ',' || '"' || '仕入先名'                   || '"' -- 仕入先名
                    || ',' || '"' || '支払予定日'                 || '"' -- 支払予定日
-                   || ',' || '"' || '売上対象年月'               || '"' -- 売上対象年月
+-- 2021/04/15 Ver1.1 MOD Start
+                   || ',' || '"' || '売上対象年月日'             || '"' -- 売上対象年月日
+--                   || ',' || '"' || '売上対象年月'               || '"' -- 売上対象年月
+-- 2021/04/15 Ver1.1 MOD End
                    || ',' || '"' || '顧客CD'                     || '"' -- 顧客CD
                    || ',' || '"' || '顧客名'                     || '"' -- 顧客名
+-- 2021/04/15 Ver1.1 ADD Start
+                   || ',' || '"' || '請求書No'                   || '"' -- 請求書No
+                   || ',' || '"' || '支払伝票番号'               || '"' -- 支払伝票番号
+-- 2021/04/15 Ver1.1 ADD End
                    || ',' || '"' || '請求金額'                   || '"' -- 請求金額
                    || ',' || '"' || '支払金額'                   || '"' -- 支払金額
                    || ',' || '"' || 'ステータス'                 || '"' -- ステータス
@@ -285,24 +409,54 @@ AS
       );
       -- データ部出力(CSV)
       FOR main_rec IN main_cur( iv_payment_date_from, iv_payment_date_to ) LOOP
+-- 2021/04/15 Ver1.1 ADD Start
+        IF ( gv_all_base_allowed  <> cv_flag_n )
+          OR ( gv_all_base_allowed = cv_flag_n AND lv_user_dept_code = main_rec.base_code )
+          THEN
+-- 2021/04/15 Ver1.1 ADD End
         --件数セット
-        gn_target_cnt := gn_target_cnt + 1;
-        --
-        FND_FILE.PUT_LINE(
-           which  => FND_FILE.OUTPUT
-          ,buff   =>         '"' || main_rec.base_code           || '"' -- 拠点CD
-                   || ',' || '"' || main_rec.base_name           || '"' -- 拠点名
-                   || ',' || '"' || main_rec.supplier_code       || '"' -- 仕入先CD
-                   || ',' || '"' || main_rec.supplier_name       || '"' -- 仕入先名
-                   || ',' || '"' || main_rec.expect_payment_date || '"' -- 支払予定日
-                   || ',' || '"' || main_rec.selling_month       || '"' -- 売上対象年月
-                   || ',' || '"' || main_rec.cust_code           || '"' -- 顧客CD
-                   || ',' || '"' || main_rec.cust_name           || '"' -- 顧客名
-                   || ',' || '"' || main_rec.demand_amt          || '"' -- 請求金額
-                   || ',' || '"' || main_rec.payment_amt         || '"' -- 支払金額
-                   || ',' || '"' || main_rec.status              || '"' -- ステータス
-                   || ',' || '"' || main_rec.status_name         || '"' -- ステータス名
-        );
+          gn_target_cnt := gn_target_cnt + 1;
+--
+-- 2021/04/15 Ver1.1 ADD Start
+          IF  main_rec.recon_slip_num IS  NOT NULL  THEN
+            OPEN  deduction_recon_cur(main_rec.recon_slip_num);
+            FETCH deduction_recon_cur INTO  deduction_recon_rec;
+            CLOSE deduction_recon_cur;
+            main_rec.payment_amt  :=  deduction_recon_rec.payment_amt ;
+            main_rec.status       :=  deduction_recon_rec.status      ;
+            main_rec.status_name  :=  deduction_recon_rec.status_name ;
+          END IF;
+-- 2021/04/15 Ver1.1 ADD End
+--
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+-- 2021/04/15 Ver1.1 MOD Start
+            ,buff   =>         '"' || NULL                         || '"' -- 削除区分
+                     || ',' || '"' || main_rec.base_code           || '"' -- 拠点CD
+--            ,buff   =>         '"' || main_rec.base_code           || '"' -- 拠点CD
+-- 2021/04/15 Ver1.1 MOD End
+                     || ',' || '"' || main_rec.base_name           || '"' -- 拠点名
+                     || ',' || '"' || main_rec.supplier_code       || '"' -- 仕入先CD
+                     || ',' || '"' || main_rec.supplier_name       || '"' -- 仕入先名
+                     || ',' || '"' || main_rec.expect_payment_date || '"' -- 支払予定日
+-- 2021/04/15 Ver1.1 MOD Start
+                     || ',' || '"' || main_rec.selling_date        || '"' -- 売上対象年月日
+--                     || ',' || '"' || main_rec.selling_month       || '"' -- 売上対象年月
+-- 2021/04/15 Ver1.1 MOD End
+                     || ',' || '"' || main_rec.cust_code           || '"' -- 顧客CD
+                     || ',' || '"' || main_rec.cust_name           || '"' -- 顧客名
+-- 2021/04/15 Ver1.1 ADD Start
+                     || ',' || '"' || main_rec.bill_no             || '"' -- 請求書No
+                     || ',' || '"' || main_rec.recon_slip_num      || '"' -- 支払伝票番号
+-- 2021/04/15 Ver1.1 ADD End
+                     || ',' || '"' || main_rec.demand_amt          || '"' -- 請求金額
+                     || ',' || '"' || main_rec.payment_amt         || '"' -- 支払金額
+                     || ',' || '"' || main_rec.status              || '"' -- ステータス
+                     || ',' || '"' || main_rec.status_name         || '"' -- ステータス名
+          );
+-- 2021/04/15 Ver1.1 ADD Start
+        END IF ;
+-- 2021/04/15 Ver1.1 ADD End
       END LOOP;
 --
       -- 成功件数=対象件数
@@ -322,6 +476,38 @@ AS
 --
 --#################################  固定例外処理部 START   ###################################
 --
+-- 2021/04/15 Ver1.1 ADD Start
+    -- *** プロファイル取得エラー ***
+    WHEN get_profile_expt THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_00003
+                , iv_token_name1  => cv_token_profile
+                , iv_token_value1 => lv_profile_code
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_msg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    WHEN get_user_dept_code_expt THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_00030
+                , iv_token_name1  => cv_token_user_id
+                , iv_token_value1 => cn_created_by
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_msg, 1, 5000 );
+      ov_retcode := cv_status_error;-- 2021/04/15 Ver1.1 ADD End
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
       ov_errmsg  := lv_errmsg;
