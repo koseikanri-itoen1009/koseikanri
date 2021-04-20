@@ -1,0 +1,1 @@
+CREATE OR REPLACE DIRECTORY XXCOK_OUT_AX_KB_DIR AS '/ebsif/outbound/ax_iffile/kb';
