@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A37C(body)
  * Description      : 控除データIF出力（情報系）
  * MD.050           : 控除データIF出力（情報系） MD050_COK_024_A37
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2021/02/15    1.0   K.Yoshikawa      main新規作成
+ *  2021/04/23    1.1   K.Yoshikawa      main新規作成
  *
  *****************************************************************************************/
 --
@@ -1118,7 +1119,7 @@ AS
 -- 2021/04/20 MOD Start
         ELSIF lt_csv_deduction_tab( i ).source_category = cv_source_category_o THEN
           lv_fluctuation_value_class := null;
--- 2021/04/20 MOD Start
+-- 2021/04/20 MOD End
         ELSE
           lv_fluctuation_value_class := lv_attribute11;
         END IF;
@@ -1236,8 +1237,14 @@ AS
             lv_item_code := gv_item_code_dummy_u;
           ELSIF (lt_csv_deduction_tab( i ).source_category = cv_source_category_o) THEN
             lv_item_code := gv_item_code_dummy_o;
+-- 2021/04/23 MOD Start
           ELSE
-            lv_item_code := lt_csv_deduction_tab( i ).item_code;
+            IF(substrb(lt_csv_deduction_tab( i ).condition_no,5,2) = 'UP') THEN
+              lv_item_code := gv_item_code_dummy_u;
+            ELSE
+              lv_item_code := gv_item_code_dummy_f;
+            END IF;  
+-- 2021/04/23 MOD End
           END IF;
         ELSE
           lv_item_code := lt_csv_deduction_tab( i ).item_code;
