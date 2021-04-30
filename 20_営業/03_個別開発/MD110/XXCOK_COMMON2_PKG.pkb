@@ -1,6 +1,3 @@
--- 2020/10/15 Ver1.1 ADD Start
--- 2020/10/15 Ver1.1 ADD End
-
 CREATE OR REPLACE PACKAGE BODY xxcok_common2_pkg
 AS
 /*****************************************************************************************
@@ -9,7 +6,7 @@ AS
  * Package Name     : xxcok_common2_pkg(body)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -23,6 +20,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2020/01/08    1.0   SCSK Y.Koh       [E_本稼動_16026] 収益認識 (新規作成)
  *  2020/12/04    1.1   SCSK Y.Koh       [E_本稼動_16026]
+ *  2021/04/30    1.2   SCSK Y.Koh       [E_本稼動_16026]
  *
  *****************************************************************************************/
   -- ==============================
@@ -415,7 +413,10 @@ AS
     IF    iv_deduction_type = cv_deduction_type_030 THEN
       on_compensation             :=  ROUND(in_compensation_en_3    * on_deduction_quantity,2);
     ELSIF iv_deduction_type = cv_deduction_type_040 THEN
-      on_sales_promotion_expenses :=  ROUND(in_just_condition_en_4  * on_deduction_quantity,2);
+-- 2021/04/30 Ver1.2 MOD Start
+      on_margin_reduction :=  -ROUND(in_wholesale_adj_margin_en_4  * on_deduction_quantity,2);
+--      on_sales_promotion_expenses :=  ROUND(in_just_condition_en_4  * on_deduction_quantity,2);
+-- 2021/04/30 Ver1.2 MOD End
     END IF;
 -- 2020/12/04 Ver1.1 ADD End
 
@@ -426,7 +427,10 @@ AS
     IF    iv_deduction_type = cv_deduction_type_030 THEN
       on_margin                   :=  on_deduction_amount     - on_compensation;
     ELSIF iv_deduction_type = cv_deduction_type_040 THEN
-      on_margin_reduction         :=  on_deduction_amount     - on_sales_promotion_expenses;
+-- 2021/04/30 Ver1.2 MOD Start
+      on_sales_promotion_expenses         :=  on_deduction_amount     - on_margin_reduction;
+--      on_margin_reduction         :=  on_deduction_amount     - on_sales_promotion_expenses;
+-- 2021/04/30 Ver1.2 MOD End
     END IF;
 -- 2020/12/04 Ver1.1 ADD End
 --
