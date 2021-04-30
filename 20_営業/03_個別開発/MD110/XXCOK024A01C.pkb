@@ -34,6 +34,7 @@ AS
  *  2019/03/11    1.0   Y.Sasaki         新規作成
  *  2020/09/25    1.0   H.Ishii          追加課題対応
  *  2021/04/06    1.1   H.Futamura       E_本稼動_16026
+ *  2021/04/28    1.2   A.AOKI           E_本稼動_16026 問屋マージン修正（円）は0円を許す
  *
  *****************************************************************************************/
 --
@@ -3653,8 +3654,13 @@ AS
               g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
             END IF;
 --
-            -- 66.問屋マージン修正（円）が0またはマイナス値または小数桁が2桁を超える場合エラー
-            IF g_cond_tmp_chk_rec.wholesale_adj_margin_en_4  <= 0
+-- 2021/04/28 Ver1.2 MOD Start
+--            -- 66.問屋マージン修正（円）が0またはマイナス値または小数桁が2桁を超える場合エラー
+            -- 66.問屋マージン修正（円）がマイナス値または小数桁が2桁を超える場合エラー
+
+--            IF g_cond_tmp_chk_rec.wholesale_adj_margin_en_4  <= 0
+            IF g_cond_tmp_chk_rec.wholesale_adj_margin_en_4  < 0
+-- 2021/04/28 Ver1.2 MOD End
               OR  TRUNC(g_cond_tmp_chk_rec.wholesale_adj_margin_en_4 ,2)  <>  g_cond_tmp_chk_rec.wholesale_adj_margin_en_4 THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
                              iv_application  => cv_msg_kbn_cok
@@ -3668,8 +3674,12 @@ AS
               g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
             END IF;
 --
-            -- 66.問屋マージン修正(％)が0またはマイナス値または小数桁が2桁を超える場合エラー
-            IF g_cond_tmp_chk_rec.wholesale_adj_margin_per_4 <= 0
+-- 2021/04/28 Ver1.2 MOD Start
+--            -- 66.問屋マージン修正(％)が0またはマイナス値または小数桁が2桁を超える場合エラー
+            -- 66.問屋マージン修正(％)がマイナス値または小数桁が2桁を超える場合エラー
+--            IF g_cond_tmp_chk_rec.wholesale_adj_margin_per_4 <= 0
+            IF g_cond_tmp_chk_rec.wholesale_adj_margin_per_4 < 0
+-- 2021/04/28 Ver1.2 MOD End
               OR  TRUNC(g_cond_tmp_chk_rec.wholesale_adj_margin_per_4 ,2)  <>  g_cond_tmp_chk_rec.wholesale_adj_margin_per_4 THEN
               lv_errmsg := xxccp_common_pkg.get_msg(
                              iv_application  => cv_msg_kbn_cok
