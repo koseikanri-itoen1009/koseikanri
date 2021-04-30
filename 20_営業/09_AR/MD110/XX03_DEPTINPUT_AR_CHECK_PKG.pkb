@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.22
+ * Version                : 11.5.10.2.23
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2016/12/01   11.5.10.2.20   障害「E_本稼動_13901」対応
  *  2018/02/07   11.5.10.2.21   障害 [E_本稼動_14663] 対応
  *  2019/10/25   11.5.10.2.22   障害 [E_本稼動_16009] 対応
+ *  2021/04/28   11.5.10.2.23   障害 [E_本稼動_16026] 対応
  *
  *****************************************************************************************/
 --
@@ -119,6 +120,14 @@ AS
     -- ===============================
     cv_prg_name   CONSTANT VARCHAR2(100) :=
       'xx03_deptinput_ar_check_pkg.check_deptinput_ar'; -- プログラム名
+--2021/04/28 Ver11.5.10.2.23 ADD START
+    cv_dept_fin   CONSTANT VARCHAR2(4)   := '1011';
+    cv_corp_def   CONSTANT VARCHAR2(6)   := '000000';
+    cv_cust_def   CONSTANT VARCHAR2(9)   := '000000000';
+    cv_yes        CONSTANT VARCHAR2(1)   := 'Y';
+    cv_z          CONSTANT VARCHAR2(4)   := 'ZZZZ';
+    cv_lookup_liabilities_code CONSTANT VARCHAR2(30) := 'XXCFO1_LIABILITIES_CODE';
+--2021/04/28 Ver11.5.10.2.23 ADD END
 --
 --#######################  固定ローカル変数宣言部 START   ######################
 --
@@ -211,6 +220,9 @@ AS
 -- ver 11.5.10.2.15 Add Start
     cn_percent_char        CONSTANT VARCHAR(1) := '%'; --%記号
 -- ver 11.5.10.2.15 Add End
+--2021/04/28 Ver11.5.10.2.23 ADD START
+    ln_count               NUMBER       := 0;
+--2021/04/28 Ver11.5.10.2.23 ADD END
 --
     -- *** ローカル・カーソル ***
     -- 処理対象データ取得カーソル
@@ -1962,27 +1974,58 @@ AS
         lv_segment_array(7) := xx03_xrsjlv_rec.segment7;
         lv_segment_array(8) := xx03_xrsjlv_rec.segment8;
 --
-        lb_retcode := FND_FLEX_EXT.GET_COMBINATION_ID(
-                          application_short_name => lv_app_short_name
-                        , key_flex_code          => lv_key_flex_code
-                        , structure_number       => ln_structure_number
-        -- 2006/01/30 Ver11.5.10.1.6C Change Start
-        --              , validation_date        => ld_validation_date
-                        , validation_date        => ld_chk_gl_date
-        -- 2006/01/30 Ver11.5.10.1.6C Change End
-                        , n_segments             => ln_segments
-                        , segments               => lv_segment_array
-                        , combination_id         => on_combination_id
-                        , data_set               => ld_data_set
-        );
---
-        IF lb_retcode THEN
-          NULL;
-        ELSE
-          errflg_tbl(ln_err_cnt) := 'E';
-          errmsg_tbl(ln_err_cnt) := FND_FLEX_EXT.GET_MESSAGE;
-          ln_err_cnt := ln_err_cnt + 1;
+--2021/04/28 Ver11.5.10.2.23 ADD START
+        -- 負債科目かチェック
+        SELECT  COUNT(1)
+          INTO  ln_count
+          FROM  fnd_lookup_values_vl flvv
+         WHERE  flvv.lookup_type = cv_lookup_liabilities_code
+           AND  flvv.lookup_code = xx03_xrsjlv_rec.segment3
+           AND  flvv.enabled_flag  = cv_yes
+           AND  NVL( flvv.start_date_active, TRUNC(SYSDATE) ) <= TRUNC(SYSDATE)
+           AND  NVL( flvv.end_date_active,   TRUNC(SYSDATE) ) >= TRUNC(SYSDATE)
+        ;
+        -- 負債科目の場合、部門、企業コード、顧客コードの整合性チェック
+        IF (ln_count > 0) THEN
+          IF (NVL(xx03_xrsjlv_rec.segment2,cv_z) != cv_dept_fin OR
+              NVL(xx03_xrsjlv_rec.segment5,cv_z) != cv_cust_def OR
+              NVL(xx03_xrsjlv_rec.segment6,cv_z) != cv_corp_def) THEN
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFO'    ,'APP-XXCFO1-00061'
+                                                              ,'SLIP_NUM' ,''
+                                                              ,'TOK_COUNT',xx03_xrsjlv_rec.line_number
+                                                              ,'TOK_ACCT_CODE' ,xx03_xrsjlv_rec.segment3
+                                                              );
+            ln_err_cnt := ln_err_cnt + 1;
+          END IF;
         END IF;
+        -- エラーがない場合CCID取得
+        IF ( ln_err_cnt <= 0 ) THEN
+--2021/04/28 Ver11.5.10.2.23 ADD END
+          lb_retcode := FND_FLEX_EXT.GET_COMBINATION_ID(
+                            application_short_name => lv_app_short_name
+                          , key_flex_code          => lv_key_flex_code
+                          , structure_number       => ln_structure_number
+          -- 2006/01/30 Ver11.5.10.1.6C Change Start
+          --              , validation_date        => ld_validation_date
+                          , validation_date        => ld_chk_gl_date
+          -- 2006/01/30 Ver11.5.10.1.6C Change End
+                          , n_segments             => ln_segments
+                          , segments               => lv_segment_array
+                          , combination_id         => on_combination_id
+                          , data_set               => ld_data_set
+          );
+--
+          IF lb_retcode THEN
+            NULL;
+          ELSE
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := FND_FLEX_EXT.GET_MESSAGE;
+            ln_err_cnt := ln_err_cnt + 1;
+          END IF;
+--2021/04/28 Ver11.5.10.2.23 ADD START
+        END IF;
+--2021/04/28 Ver11.5.10.2.23 ADD END
       END IF; -- xx03_xrsjlv_rec.segment1 IS NOT NULL
 --
 -- 2006/02/18 Ver11.5.10.1.6E add START
