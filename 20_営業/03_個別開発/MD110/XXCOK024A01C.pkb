@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK024A01C(body)
  * Description      : 控除マスタCSVアップロード
  * MD.050           : 控除マスタCSVアップロード MD050_COK_024_A01
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2020/09/25    1.0   H.Ishii          追加課題対応
  *  2021/04/06    1.1   H.Futamura       E_本稼動_16026
  *  2021/04/28    1.2   A.AOKI           E_本稼動_16026 問屋マージン修正（円）は0円を許す
+ *  2021/05/01    1.3   SCSK Y.Koh       E_本稼動_16026 項目数エラーの対応
  *
  *****************************************************************************************/
 --
@@ -154,8 +155,12 @@ AS
 -- 2021/04/06 Ver1.1 MOD End
   cn_deduction_amount               CONSTANT NUMBER := 33;  -- 控除額(本体)
   cn_deduction_tax_amount           CONSTANT NUMBER := 34;  -- 控除税額
-  cn_c_header                       CONSTANT NUMBER := 35;  -- CSVファイル項目数（取得対象）
-  cn_c_header_all                   CONSTANT NUMBER := 36;  -- CSVファイル項目数（全項目）
+-- 2021/05/01 Ver1.3 MOD Start
+  cn_c_header                       CONSTANT NUMBER := 34;  -- CSVファイル項目数（取得対象）
+  cn_c_header_all                   CONSTANT NUMBER := 38;  -- CSVファイル項目数（全項目）
+--  cn_c_header                       CONSTANT NUMBER := 35;  -- CSVファイル項目数（取得対象）
+--  cn_c_header_all                   CONSTANT NUMBER := 36;  -- CSVファイル項目数（全項目）
+-- 2021/05/01 Ver1.3 MOD En
 --
   cv_process_delete                 CONSTANT VARCHAR2(1)  :=  'D';    -- 処理区分(削除)
   cv_process_update                 CONSTANT VARCHAR2(1)  :=  'U';    -- 処理区分(更新)
@@ -288,6 +293,9 @@ AS
   cv_msg_cok_10794                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10794';  -- 子品目エラー
   cv_msg_cok_10795                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10795';  -- 登録情報
 -- 2021/04/06 Ver1.1 ADD End
+-- 2021/05/01 Ver1.3 ADD Start
+  cv_msg_cok_10796                  CONSTANT VARCHAR2(20) := 'APP-XXCOK1-10796';  -- 開始日エラー
+-- 2021/05/01 Ver1.3 ADD End
 --
   cv_tkn_coi_10634                  CONSTANT VARCHAR2(20) := 'APP-XXCOI1-10634';  -- ファイルアップロードIF
   cv_prf_org_err_msg                CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00005';  -- 在庫組織コード取得エラーメッセージ
@@ -1244,7 +1252,10 @@ AS
 --
     -- 項目数チェック
     IF ( ( NVL( LENGTH( gt_file_line_data_tab(in_file_if_loop_cnt) ), 0 )
-         - NVL( LENGTH( REPLACE( gt_file_line_data_tab(in_file_if_loop_cnt), cv_csv_delimiter, NULL ) ), 0 ) ) < ( cn_c_header_all - 1 ) )
+-- 2021/05/01 Ver1.3 MOD Start
+         - NVL( LENGTH( REPLACE( gt_file_line_data_tab(in_file_if_loop_cnt), cv_csv_delimiter, NULL ) ), 0 ) ) != ( cn_c_header_all - 1 ) )
+--         - NVL( LENGTH( REPLACE( gt_file_line_data_tab(in_file_if_loop_cnt), cv_csv_delimiter, NULL ) ), 0 ) ) < ( cn_c_header_all - 1 ) )
+-- 2021/05/01 Ver1.3 MOD End
     THEN
       -- 項目数不一致の場合
       lv_rec_data := gt_file_line_data_tab(in_file_if_loop_cnt);
@@ -1419,7 +1430,7 @@ AS
           );
           gn_chk_cnt := 1;
 -- 2021/04/06 Ver1.1 ADD Start
-					gn_warn_cnt	:=  gn_warn_cnt + 1;
+          gn_warn_cnt :=  gn_warn_cnt + 1;
 -- 2021/04/06 Ver1.1 ADD End
 --
         --共通関数エラー
@@ -2499,6 +2510,18 @@ AS
             ld_start_date :=  TO_DATE( g_cond_tmp_chk_rec.start_date_active ,cv_date_format);
             ld_end_date   :=  TO_DATE( g_cond_tmp_chk_rec.end_date_active ,cv_date_format);
 --
+-- 2021/05/01 Ver1.3 MOD Start
+        IF ( ld_start_date < to_date('2021/05/01','YYYY/MM/DD') )  THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+               iv_application  => cv_msg_kbn_cok
+             , iv_name         => cv_msg_cok_10796
+             , iv_token_name1  => cv_start_date_tok
+             , iv_token_value1 => g_cond_tmp_chk_rec.start_date_active
+             );
+            ln_cnt  :=  ln_cnt + 1;
+            g_message_list_tab( g_cond_tmp_chk_rec.csv_no )( ln_cnt )  :=  lv_errmsg;
+        END IF;
+-- 2021/05/01 Ver1.3 MOD End
         --  18.★開始日が終了日よりも未来日（同日は可）
         IF ( ld_start_date > ld_end_date AND lv_cast_date_flag = cv_const_y )  THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
@@ -5851,9 +5874,11 @@ AS
     IF gn_warn_cnt > 0 THEN
       RAISE global_api_warn_expt;
     END IF;
---    IF ( lv_retcode <> cv_status_normal ) THEN
---      RAISE global_process_expt;
---    END IF;
+-- 2021/05/01 Ver1.3 MOD Start
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2021/05/01 Ver1.3 MOD End
 -- 2021/04/06 Ver1.1 MOD End
 --
     -- ============================================
