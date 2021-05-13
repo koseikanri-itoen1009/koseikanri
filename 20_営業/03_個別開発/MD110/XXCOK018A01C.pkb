@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -44,7 +44,8 @@ AS
  *  2010/07/09    1.10  S.Arizumi        [E_本稼動_02001] AR Web Inquiryに項目を追加する件
  *  2010/12/07    1.11  S.Niki           [E_本稼動_05823] 顧客情報の取得に失敗した場合、警告終了させる
  *                                                        AR連携フラグ更新件数、請求OIF登録件数を出力する
- *  2021/04/15    1.12  SCSK Y.Koh       [E_本稼動_16026]
+ *  2021/02/10    1.12  SCSK Y.Koh       [E_本稼動_16026]
+ *  2021/05/13    1.13  SCSK Y.Koh       [E_本稼動_16026] 障害対応
  *
  *****************************************************************************************/
 --
@@ -106,11 +107,11 @@ AS
   cv_ra_trx_type_digestion_vd   CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_DIGESTION_VD';       -- 取引タイプ_入金値引_消化VD
   cv_ra_trx_type_general        CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_GENERAL';            -- 取引タイプ_入金値引_一般店
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
--- 2021/04/15 Ver1.12 ADD Start
+-- 2021/02/10 Ver1.12 ADD Start
   cv_aff3_equipment_costs       CONSTANT VARCHAR2(50) := 'XXCOK1_AFF3_EQUIPMENT_COSTS';           -- 勘定科目_設備費
   cv_aff4_equipment_costs       CONSTANT VARCHAR2(50) := 'XXCOK1_AFF4_EQUIPMENT_COSTS';           -- 補助科目_設備費
   cv_ra_trx_type_equipment      CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_EQUIPMENT_COSTS';    -- 取引タイプ_入金値引_設備費
--- 2021/04/15 Ver1.12 ADD End
+-- 2021/02/10 Ver1.12 ADD End
   --メッセージ
   cv_90008_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90008'; --入力パラメータなし
   cv_00003_err_msg           CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00003'; --プロファイル値取得エラー
@@ -246,11 +247,11 @@ AS
   gv_ra_trx_type_digestion_vd   VARCHAR2(50) DEFAULT NULL; -- 取引タイプ_入金値引_消化VD
   gv_ra_trx_type_general        VARCHAR2(50) DEFAULT NULL; -- 取引タイプ_入金値引_一般店
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
--- 2021/04/15 Ver1.12 ADD Start
+-- 2021/02/10 Ver1.12 ADD Start
   gv_aff3_equipment_costs       VARCHAR2(50);             -- 勘定科目_設備費
   gv_aff4_equipment_costs       VARCHAR2(50);             -- 補助科目_設備費
   gv_ra_trx_type_equipment      VARCHAR2(50);             -- 取引タイプ_入金値引_設備費
--- 2021/04/15 Ver1.12 ADD End
+-- 2021/02/10 Ver1.12 ADD End
   gn_csh_rcpt                NUMBER         DEFAULT NULL; --入金値引額－入金値引消費税額
   gd_operation_date          DATE           DEFAULT NULL; --業務処理日付
   gv_currency_code           VARCHAR2(50)   DEFAULT NULL; --機能通貨コード
@@ -283,6 +284,9 @@ AS
            , xcbs.emp_code                       AS emp_code                      -- 成績計上担当者コード
            , SUM(xcbs.csh_rcpt_discount_amt)     AS sum_csh_rcpt_discount_amt     -- 入金値引額
            , SUM(xcbs.csh_rcpt_discount_amt_tax) AS sum_csh_rcpt_discount_amt_tax -- 入金値引消費税額
+-- 2021/05/13 Ver1.13 ADD Start
+           , xcbs.calc_target_period_to          AS calc_target_period_to         -- 計算対象期間(TO)
+-- 2021/05/13 Ver1.13 ADD End
            , xcbs.closing_date                   AS closing_date                  -- 締め日
 -- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
 --           , xcbs.expect_payment_date            AS expect_payment_date           -- 支払予定日
@@ -298,6 +302,9 @@ AS
            , xcbs.delivery_cust_code                                              -- 納品顧客コード
            , xcbs.demand_to_cust_code                                             -- 請求顧客コード
            , xcbs.emp_code                                                        -- 成績計上担当者コード
+-- 2021/05/13 Ver1.13 ADD Start
+           , xcbs.calc_target_period_to                                           -- 計算対象期間(TO)
+-- 2021/05/13 Ver1.13 ADD End
            , xcbs.closing_date                                                    -- 締め日
 -- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
 --           , xcbs.expect_payment_date                                             -- 支払予定日
@@ -340,9 +347,9 @@ AS
   g_ra_trx_type_digestion_vd   g_cust_trx_type_cur%ROWTYPE; -- 取引タイプ_入金値引_消化VD
   g_ra_trx_type_general        g_cust_trx_type_cur%ROWTYPE; -- 取引タイプ_入金値引_一般店
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
--- 2021/04/15 Ver1.12 ADD Start
+-- 2021/02/10 Ver1.12 ADD Start
   g_ra_trx_type_equipment      g_cust_trx_type_cur%ROWTYPE; -- 取引タイプ_設備費
--- 2021/04/15 Ver1.12 ADD End
+-- 2021/02/10 Ver1.12 ADD End
   -- ===============================
   -- 共通例外
   -- ===============================
@@ -975,14 +982,14 @@ AS
 --      END IF;
 ---- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
       -- フルVD（消化）
--- 2021/04/15 Ver1.12 MOD Start
+-- 2021/02/10 Ver1.12 MOD Start
       IF  gv_business_low_type  IN  ( cv_low_type_f_digestion_vd, cv_low_type_digestion_vd )
       AND i_discnt_amount_rec.closing_date  >=  TO_DATE('2021/05/01','YYYY/MM/DD')  THEN
         lt_cust_trx_type_id      := g_ra_trx_type_equipment.cust_trx_type_id;
         lt_charge_waiting_status := g_ra_trx_type_equipment.charge_waiting_status;
       ELSIF(    gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
 --      IF(    gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
--- 2021/04/15 Ver1.12 MOD End
+-- 2021/02/10 Ver1.12 MOD End
         lt_cust_trx_type_id      := g_ra_trx_type_f_digestion_vd.cust_trx_type_id;
         lt_charge_waiting_status := g_ra_trx_type_f_digestion_vd.charge_waiting_status;
       -- 納品VD
@@ -1063,7 +1070,18 @@ AS
         , it_link_to_line_context    => lt_link_to_line_context                 -- リンク明細コンテキスト
         , it_link_to_line_attribute1 => lt_link_to_line_attribute1              -- リンク伝票番号
         , it_link_to_line_attribute2 => lt_link_to_line_attribute2              -- リンク明細行番号
-        , it_trx_date                => i_discnt_amount_rec.closing_date        -- 請求書日付
+-- 2021/05/13 Ver1.13 MOD Start
+        , it_trx_date                => CASE gv_business_low_type
+                                          WHEN cv_low_type_f_digestion_vd THEN
+                                            i_discnt_amount_rec.closing_date
+                                          WHEN cv_low_type_digestion_vd THEN
+                                            i_discnt_amount_rec.closing_date
+                                          ELSE
+                                            i_discnt_amount_rec.calc_target_period_to
+                                        END
+                                                                                -- 請求書日付
+--        , it_trx_date                => i_discnt_amount_rec.closing_date        -- 請求書日付
+-- 2021/05/13 Ver1.13 MOD End
 -- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
 --        , it_gl_date                 => i_discnt_amount_rec.expect_payment_date -- 仕訳計上日
 -- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
@@ -1112,7 +1130,18 @@ AS
         , it_link_to_line_context    => lt_link_to_line_context                 -- リンク明細コンテキスト
         , it_link_to_line_attribute1 => lt_link_to_line_attribute1              -- リンク伝票番号
         , it_link_to_line_attribute2 => lt_link_to_line_attribute2              -- リンク明細行番号
-        , it_trx_date                => i_discnt_amount_rec.closing_date        -- 請求書日付
+-- 2021/05/13 Ver1.13 MOD Start
+        , it_trx_date                => CASE gv_business_low_type
+                                          WHEN cv_low_type_f_digestion_vd THEN
+                                            i_discnt_amount_rec.closing_date
+                                          WHEN cv_low_type_digestion_vd THEN
+                                            i_discnt_amount_rec.closing_date
+                                          ELSE
+                                            i_discnt_amount_rec.calc_target_period_to
+                                        END
+                                                                                -- 請求書日付
+--        , it_trx_date                => i_discnt_amount_rec.closing_date        -- 請求書日付
+-- 2021/05/13 Ver1.13 MOD End
 -- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
 --        , it_gl_date                 => i_discnt_amount_rec.expect_payment_date -- 仕訳計上日
 -- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
@@ -1142,7 +1171,7 @@ AS
       --================================================================
       IF ( ln_cnt = 1 ) THEN
         lv_segment2             := i_discnt_amount_rec.base_code;                     -- 部門コード     :拠点コード
--- 2021/04/15 Ver1.12 MOD Start
+-- 2021/02/10 Ver1.12 MOD Start
         IF  gv_business_low_type  IN  ( cv_low_type_f_digestion_vd, cv_low_type_digestion_vd )
         AND i_discnt_amount_rec.closing_date  >=  TO_DATE('2021/05/01','YYYY/MM/DD')  THEN
           lv_segment3             := gv_aff3_equipment_costs;                           -- 勘定科目コード :設備費
@@ -1153,7 +1182,7 @@ AS
         END IF;
 --        lv_segment3             := gv_aff3_allowance_payment;                         -- 勘定科目コード :入金時値引高
 --        lv_segment4             := gv_aff4_subacct_dummy;                             -- 補助科目コード :ダミー値
--- 2021/04/15 Ver1.12 MOD End
+-- 2021/02/10 Ver1.12 MOD End
         lt_account_class        := cv_rev_class;                                      -- 配分タイプ(収益)
         lt_distributions_amount := gn_csh_rcpt;                                       -- 明細金額:入金値引額－入金値引消費税額
         --================================================================
@@ -1653,7 +1682,10 @@ AS
                        gn_set_of_bks_id                        -- 会計帳簿ID
 -- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
 --                     , i_discnt_amount_rec.expect_payment_date -- 処理日(支払予定日)
-                     , i_discnt_amount_rec.closing_date        -- 処理日(締め日)
+-- 2021/05/13 Ver1.13 MOD Start
+                     , i_discnt_amount_rec.calc_target_period_to -- 計算対象期間(TO)
+--                     , i_discnt_amount_rec.closing_date        -- 処理日(締め日)
+-- 2021/05/13 Ver1.13 MOD End
 -- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
                      , cv_appli_ar_name                        -- アプリケーション短縮名
                      );
@@ -1670,7 +1702,10 @@ AS
                     , cv_proc_date_token
 -- Start 2009/04/14 Ver_1.3 T1_0396 M.Hiruta
 --                    , TO_CHAR( i_discnt_amount_rec.expect_payment_date, 'YYYY/MM/DD' )
-                    , TO_CHAR( i_discnt_amount_rec.closing_date, 'YYYY/MM/DD' )
+-- 2021/05/13 Ver1.13 MOD Start
+                    , TO_CHAR( i_discnt_amount_rec.calc_target_period_to, 'YYYY/MM/DD' )
+--                    , TO_CHAR( i_discnt_amount_rec.closing_date, 'YYYY/MM/DD' )
+-- 2021/05/13 Ver1.13 MOD End
 -- End   2009/04/14 Ver_1.3 T1_0396 M.Hiruta
                     );
       lb_retcode := xxcok_common_pkg.put_message_f( 
@@ -1964,11 +1999,11 @@ AS
     gv_ra_trx_type_digestion_vd   := FND_PROFILE.VALUE( cv_ra_trx_type_digestion_vd    );  -- 取引タイプ_入金値引_消化VD
     gv_ra_trx_type_general        := FND_PROFILE.VALUE( cv_ra_trx_type_general         );  -- 取引タイプ_入金値引_一般店
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
--- 2021/04/15 Ver1.12 ADD Start
+-- 2021/02/10 Ver1.12 ADD Start
     gv_aff3_equipment_costs    := FND_PROFILE.VALUE( cv_aff3_equipment_costs );     -- 勘定科目_設備費
     gv_aff4_equipment_costs    := FND_PROFILE.VALUE( cv_aff4_equipment_costs );     -- 補助科目_設備費
     gv_ra_trx_type_equipment   := FND_PROFILE.VALUE( cv_ra_trx_type_equipment );    -- 取引タイプ_設備費
--- 2021/04/15 Ver1.12 ADD End
+-- 2021/02/10 Ver1.12 ADD End
 --
     IF( gn_set_of_bks_id IS NULL ) THEN
       lv_token_value := cv_set_of_bks_id;
@@ -2066,7 +2101,7 @@ AS
       lv_token_value := cv_ra_trx_type_general;
       RAISE profile_expt;
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
--- 2021/04/15 Ver1.12 ADD Start
+-- 2021/02/10 Ver1.12 ADD Start
     ELSIF( gv_aff3_equipment_costs IS NULL ) THEN
       lv_token_value := cv_aff3_equipment_costs;
       RAISE profile_expt;
@@ -2076,7 +2111,7 @@ AS
     ELSIF( gv_ra_trx_type_equipment IS NULL ) THEN
       lv_token_value := cv_ra_trx_type_equipment;
       RAISE profile_expt;
--- 2021/04/15 Ver1.12 ADD End
+-- 2021/02/10 Ver1.12 ADD End
     END IF;
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
 ---- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
@@ -2178,7 +2213,7 @@ AS
       RAISE get_trx_type_expt;
     END IF;
 -- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
--- 2021/04/15 Ver1.12 ADD Start
+-- 2021/02/10 Ver1.12 ADD Start
     --==============================================================
     -- 取引タイプ情報を取得（設備費）
     --==============================================================
@@ -2191,7 +2226,7 @@ AS
       lv_token_value := gv_ra_trx_type_equipment;
       RAISE get_trx_type_expt;
     END IF;
--- 2021/04/15 Ver1.12 ADD End
+-- 2021/02/10 Ver1.12 ADD End
     --==============================================================
     --通貨コードの取得
     --==============================================================
